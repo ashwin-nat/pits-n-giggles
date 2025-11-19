@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .console_interface import ConsoleInterface
+from .main_window import PngLauncherWindow
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "ConsoleInterface",
+    "PngLauncherWindow"
 ]

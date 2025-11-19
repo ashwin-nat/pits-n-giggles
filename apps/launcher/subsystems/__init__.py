@@ -30,8 +30,8 @@ from .save_viewer_mgr import SaveViewerAppMgr
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "PngAppMgrBase",
     "BackendAppMgr",
-    "SaveViewerAppMgr",
     "HudAppMgr",
+    "PngAppMgrBase",
+    "SaveViewerAppMgr",
 ]

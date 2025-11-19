@@ -43,9 +43,9 @@ def load_config_migrated(
 
     Migration rules:
 
-    - If JSON exists → load JSON.
-    - Else if INI exists → load INI (auto-fills defaults), then save JSON.
-    - Else → create default settings and save JSON.
+    - If JSON exists --> load JSON.
+    - Else if INI exists --> load INI (auto-fills defaults), then save JSON.
+    - Else --> create default settings and save JSON.
 
     Args:
         ini_path (str): Path to existing legacy INI config.
@@ -57,7 +57,7 @@ def load_config_migrated(
     """
 
     # ---------------------------------------------------
-    # 1. JSON exists → load it directly
+    # 1. JSON exists --> load it directly
     # ---------------------------------------------------
     if os.path.exists(json_path):
         if logger:
@@ -65,11 +65,11 @@ def load_config_migrated(
         return load_config_from_json(json_path, logger=logger)
 
     # ---------------------------------------------------
-    # 2. JSON missing but old INI exists → migrate
+    # 2. JSON missing but old INI exists --> migrate
     # ---------------------------------------------------
     if os.path.exists(ini_path):
         if logger:
-            logger.info("Migrating configuration from INI → JSON")
+            logger.info("Migrating configuration from INI --> JSON")
             logger.debug("Loading legacy INI config from %s", ini_path)
 
         ini_settings = load_config_from_ini(ini_path, logger=logger, should_write=False)
@@ -84,7 +84,7 @@ def load_config_migrated(
         return model
 
     # ---------------------------------------------------
-    # 3. Neither config exists → create fresh defaults
+    # 3. Neither config exists --> create fresh defaults
     # ---------------------------------------------------
     if logger:
         logger.info("No config found. Creating new JSON config with defaults.")

@@ -120,13 +120,20 @@ class ConfigDiffMixin:
         return result
 
     def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> Dict[str, Any]:
-        """Compare plain attributes and return a dict of changed fields with old/new values."""
         changes = {}
         for f in fields:
             old_val = getattr(self_obj, f, None)
             new_val = getattr(other_obj, f, None)
+
+            # NEW: recursive diff for submodels
+            if isinstance(old_val, ConfigDiffMixin) and isinstance(new_val, ConfigDiffMixin):
+                if nested := old_val.diff(new_val):
+                    changes[f] = nested
+                continue
+
             if old_val != new_val:
                 changes[f] = {"old_value": old_val, "new_value": new_val}
+
         return changes
 
     def has_changed(self,

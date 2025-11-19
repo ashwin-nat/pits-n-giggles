@@ -37,7 +37,7 @@ from apps.backend.state_mgmt_layer import initStateManagementLayer, SessionState
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import load_config_from_ini
+from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.version import get_version
@@ -65,7 +65,7 @@ class PngRunner:
             ipc_port (Optional[int], optional): IPC port. Defaults to None.
         """
         self.m_logger: logging.Logger = logger
-        self.m_config = load_config_from_ini(config_file, logger)
+        self.m_config = load_config_from_json(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = get_version()
 

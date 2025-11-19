@@ -27,7 +27,7 @@ import logging
 import sys
 
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import PngSettings, load_config_from_ini
+from lib.config import PngSettings, load_config_from_json
 from lib.logger import get_logger
 from meta.meta import APP_NAME
 
@@ -85,7 +85,7 @@ def entry_point():
     report_pid_from_child()
     args = parseArgs()
     png_logger = get_logger("hud", args.debug)
-    configs = load_config_from_ini(args.config_file, png_logger)
+    configs = load_config_from_json(args.config_file, png_logger)
     try:
         main(
             logger=png_logger,

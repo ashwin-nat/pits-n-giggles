@@ -22,7 +22,7 @@ from aiohttp import ClientSession, TCPConnector
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
-from lib.config import load_config_from_ini
+from lib.config import load_config_from_json
 from lib.ipc import IpcParent, get_free_tcp_port
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
@@ -378,7 +378,7 @@ if __name__ == "__main__":
     if not IS_WINDOWS:
         signal.signal(signal.SIGTERM, cleanup_and_exit)
 
-    settings = load_config_from_ini("integration_test_cfg.ini")
+    settings = load_config_from_json("integration_test_cfg.json")
     coverage_enabled = "--coverage" in sys.argv
 
     start_time = time.perf_counter()

@@ -25,21 +25,25 @@
 import json
 import sys
 import threading
-from tkinter import ttk
+from typing import TYPE_CHECKING, List
+
+from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import PngSettings
 from lib.ipc import IpcParent
 
-from ..console_interface import ConsoleInterface
 from .base_mgr import PngAppMgrBase
 
-# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+if TYPE_CHECKING:
+    from apps.launcher.gui import PngLauncherWindow
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class HudAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
     def __init__(self,
-                 console_app: ConsoleInterface,
+                 window: "PngLauncherWindow",
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
@@ -67,61 +71,38 @@ class HudAppMgr(PngAppMgrBase):
             udp_port_conflict_settings_field="N/A",
             module_path="apps.hud",
             display_name="HUD",
+            short_name="HUD",
             start_by_default=(self.supported and self.enabled),
-            console_app=console_app,
+            window=window,
             settings=settings,
             args=self.args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled
         )
         if not self.enabled:
-            self.status_var.set("Disabled")
+            self._update_status("Disabled")
         elif not self.supported:
-            self.status_var.set("Unsupported")
+            self._update_status("Unsupported")
         self.register_post_start(self.post_start)
         self.register_post_stop(self.post_stop)
 
-    def get_buttons(self, frame: ttk.Frame) -> list[dict]:
+    def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
-        :param frame: The frame to place the buttons in
         :return: List of button objects
         """
 
-        self.start_stop_button = ttk.Button(
-            frame,
-            text="Start",
-            command=self.start_stop_callback,
-            style="Racing.TButton",
-            state="disabled"  # Initially disabled until the app is running
-        )
-        self.hide_show_button = ttk.Button(
-            frame,
-            text="Hide/Show",
-            command=self.hide_show_callback,
-            style="Racing.TButton",
-            state="disabled"  # Initially disabled until the app is running
-        )
-        self.lock_button = ttk.Button(
-            frame,
-            text="Unlock",
-            command=self.lock_callback,
-            style="Racing.TButton",
-            state="disabled"  # Initially disabled until the app is running
-        )
-        self.reset_button = ttk.Button(
-            frame,
-            text="Reset",
-            command=self.reset_callback,
-            style="Racing.TButton",
-            state="disabled"  # Initially disabled until the app is running
-        )
-        self.next_page_button = ttk.Button( # TODO - remove
-            frame,
-            text="Next Page",
-            command=self.next_page_callback,
-            style="Racing.TButton",
-            state="disabled"  # Initially disabled until the app is running
-        )
+        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback)
+        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback)
+        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback)
+        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback)
+        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback)
+
+        if not self.enabled:
+            self.set_button_state(self.start_stop_button, False)
+            self.set_button_state(self.hide_show_button, False)
+            self.set_button_state(self.lock_button, False)
+            self.set_button_state(self.reset_button, False)
+            self.set_button_state(self.next_page_button, False)
 
         return [
             self.start_stop_button,
@@ -133,47 +114,174 @@ class HudAppMgr(PngAppMgrBase):
 
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
-        self.console_app.info_log("Sending hide/show command to HUD...")
+        self.info_log("Sending hide/show command to HUD...")
         rsp = IpcParent(self.ipc_port).request(
             command="toggle-overlays-visibility", args={}
         )
-        self.console_app.info_log(str(rsp))
+        self.info_log(str(rsp))
 
     def lock_callback(self):
         """Lock or unlock the HUD from receiving data."""
         if not self.debouncer.onButtonPress("lock_button"):
-            self.console_app.debug_log("Lock button press debounced.")
+            self.debug_log("Lock button press debounced.")
             return
 
-        self.console_app.debug_log("Toggling HUD lock state...")
-        self.lock_button.config(state="disabled")
+        self.debug_log("Toggling HUD lock state...")
+        self.set_button_state(self.lock_button, False)
         rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
             "old-value": self.locked,
             "new-value": not self.locked,
         })
         self.locked = not self.locked
-        self.console_app.info_log(str(rsp))
+        self.info_log(str(rsp))
 
-        self.lock_button.config(state="normal")
+        self.set_button_state(self.lock_button, True)
         status = rsp.get("status", None)
         if status is not None:
-            self.set_lock_button_text()
+            self.set_lock_button_icon()
         else:
-            self.console_app.error_log("Failed to toggle lock state.")
+            self.error_log("Failed to toggle lock state.")
 
     def reset_callback(self):
         """Open the dashboard viewer in a web browser."""
-        self.console_app.info_log("Sending reset command to HUD...")
+        self.info_log("Sending reset command to HUD...")
         rsp = IpcParent(self.ipc_port).request(command="reset-overlays", args={})
-        self.console_app.info_log(str(rsp))
+        self.info_log(str(rsp))
 
     def next_page_callback(self): # TODO - remove
         """Open the dashboard viewer in a web browser."""
-        self.console_app.info_log("Sending next page command to HUD...")
+        self.info_log("Sending next page command to HUD...")
         rsp = IpcParent(self.ipc_port).request(
             command="next-page", args={}
         )
-        self.console_app.info_log(str(rsp))
+        self.info_log(str(rsp))
+
+    def start(self, reason: str):
+        """Check for enabled flag before starting"""
+        self.debug_log(f"Starting {self.display_name}... Reason: {reason}")
+        if not self.enabled:
+            self.debug_log(f"{self.display_name} is not enabled.")
+            self._update_status("Disabled")
+            return
+
+        # Run the standard start
+        super().start(reason)
+
+    def post_start(self):
+        """Update buttons after app start"""
+        self.set_button_state(self.hide_show_button, True)
+        self.set_button_state(self.start_stop_button, True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
+        self.set_button_state(self.lock_button, True)
+        self.set_button_state(self.reset_button, True)
+        self.set_button_state(self.next_page_button, True)
+
+        # Start integration test thread if in integration test mode
+        if self.integration_test_mode:
+            self._start_integration_test_thread()
+
+    def post_stop(self):
+        """Update buttons after app stop"""
+        # Stop integration test thread if running
+        if self.integration_test_mode:
+            self._stop_integration_test_thread()
+
+        self.set_button_state(self.hide_show_button, False)
+        self.set_button_state(self.start_stop_button, True)
+        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
+        self.set_button_state(self.lock_button, False)
+        self.set_button_state(self.reset_button, False)
+        self.set_button_state(self.next_page_button, False)
+
+    def start_stop_callback(self):
+        """Start or stop the backend application."""
+        # disable the button. enable in post_start/post_stop
+        self.set_button_state(self.hide_show_button, False)
+        self.set_button_state(self.start_stop_button, False)
+        self.set_button_state(self.lock_button, False)
+        self.set_button_state(self.reset_button, False)
+        self.set_button_state(self.next_page_button, False)
+        try:
+            # Call the start_stop method
+            self.start_stop("Button pressed")
+        except Exception as e: # pylint: disable=broad-exception-caught
+            # Log the error or handle it as needed
+            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            # If no exception, it will be handled in post_start/post_stop
+            self.set_button_state(self.hide_show_button, True)
+            self.set_button_state(self.start_stop_button, True)
+            self.set_button_state(self.lock_button, True)
+            self.set_button_state(self.reset_button, True)
+            self.set_button_state(self.next_page_button, True)
+
+    def set_lock_button_icon(self):
+        if self.locked:
+            self.set_button_icon(self.lock_button, self.get_icon("unlock"))
+        else:
+            self.set_button_icon(self.lock_button, self.get_icon("lock"))
+
+    def process_enabled_change(self):
+        """
+        Process the enabled state change and update the GUI accordingly.
+
+        If the application is enabled, start the backend application,
+        enable the start/stop button, update the lock button text and
+        enable the ping button. If the application is disabled, stop
+        the backend application, disable the start/stop button and
+        disable the ping and lock buttons.
+        """
+
+        if self.enabled:
+            self.start("Enabling HUD")
+            self.set_button_state(self.lock_button, True)
+            self.set_lock_button_icon()
+            self.set_button_state(self.hide_show_button, True)
+        else:
+            self.stop("Disabling HUD")
+            self.set_button_state(self.start_stop_button, False)
+            self.set_button_state(self.hide_show_button, False)
+            self.set_button_state(self.lock_button, False)
+
+    def _send_overlays_opacity_change(self, new_settings: PngSettings) -> None:
+        """Send overlays opacity change to HUD app
+
+        Args:
+            new_settings (PngSettings): New settings
+        """
+        self.debug_log("Sending set-overlays-opacity command to HUD...")
+        rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
+            "opacity": new_settings.HUD.overlays_opacity,
+        })
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to set overlays opacity: {rsp}")
+        else:
+            self.debug_log(f"Set overlays opacity response: {rsp}")
+
+    def _start_integration_test_thread(self):
+        """Start the integration test thread"""
+        self.integration_test_stop_event.clear()
+        self.integration_test_thread = threading.Thread(
+            target=self._integration_test_worker,
+            daemon=True
+        )
+        self.integration_test_thread.start()
+        self.info_log(
+            f"Integration test thread started with interval {self.integration_test_interval}s"
+        )
+
+    def _stop_integration_test_thread(self):
+        """Stop the integration test thread"""
+        if self.integration_test_thread and self.integration_test_thread.is_alive():
+            self.info_log("Stopping integration test thread...")
+            self.integration_test_stop_event.set()
+            self.integration_test_thread.join(timeout=5.0)
+            self.info_log("Integration test thread stopped")
+
+    def _integration_test_worker(self):
+        """Worker thread that periodically calls next_page_callback"""
+        while (not self.integration_test_stop_event.is_set()) and \
+            (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
+            self.next_page_callback()
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -188,14 +296,15 @@ class HudAppMgr(PngAppMgrBase):
                 "enabled",
                 "show_lap_timer",
                 "show_timing_tower",
+                "show_mfd",
+                "mfd_settings",
             ],
         })
-        self.console_app.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
+        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
         should_restart = bool(diff)
         if should_restart:
             self.enabled = new_settings.HUD.enabled
 
-        # TODO: Handle opacity change here
         if self.curr_settings.diff(new_settings, {
             "HUD": [
                 "overlays_opacity",
@@ -203,129 +312,3 @@ class HudAppMgr(PngAppMgrBase):
         }):
             self._send_overlays_opacity_change(new_settings)
         return should_restart
-
-    def start(self):
-        """Check for enabled flag before starting"""
-        if not self.enabled:
-            self.console_app.debug_log(f"{self.display_name} is not enabled.")
-            self.status_var.set("Disabled")
-            return
-
-        # Run the standard start
-        super().start()
-
-    def post_start(self):
-        """Update buttons after app start"""
-        self.hide_show_button.config(state="normal")
-        self.start_stop_button.config(text="Stop")
-        self.start_stop_button.config(state="normal")
-        self.lock_button.config(state="normal")
-        self.reset_button.config(state="normal")
-        self.next_page_button.config(state="normal")
-
-        # Start integration test thread if in integration test mode
-        if self.integration_test_mode:
-            self._start_integration_test_thread()
-
-    def post_stop(self):
-        """Update buttons after app stop"""
-        # Stop integration test thread if running
-        if self.integration_test_mode:
-            self._stop_integration_test_thread()
-
-        self.hide_show_button.config(state="disabled")
-        self.start_stop_button.config(text="Start")
-        self.start_stop_button.config(state="normal")
-        self.lock_button.config(state="disabled")
-        self.reset_button.config(state="disabled")
-        self.next_page_button.config(state="disabled")
-
-    def start_stop_callback(self):
-        """Start or stop the backend application."""
-        # disable the button. enable in post_start/post_stop
-        self.hide_show_button.config(state="disabled")
-        self.start_stop_button.config(state="disabled")
-        self.lock_button.config(state="disabled")
-        self.reset_button.config(state="disabled")
-        self.next_page_button.config(state="disabled")
-        try:
-            # Call the start_stop method
-            self.start_stop()
-        except Exception as e: # pylint: disable=broad-exception-caught
-            # Log the error or handle it as needed
-            self.console_app.debug_log(f"{self.display_name}:Error during start/stop: {e}")
-            # If no exception, it will be handled in post_start/post_stop
-            self.hide_show_button.config(state="normal")
-            self.start_stop_button.config(state="normal")
-            self.lock_button.config(state="normal")
-            self.reset_button.config(state="normal")
-            self.next_page_button.config(state="normal")
-
-    def set_lock_button_text(self):
-        if self.locked:
-            self.lock_button.config(text="Unlock")
-        else:
-            self.lock_button.config(text="Lock")
-
-    def process_enabled_change(self):
-        """
-        Process the enabled state change and update the GUI accordingly.
-
-        If the application is enabled, start the backend application,
-        enable the start/stop button, update the lock button text and
-        enable the ping button. If the application is disabled, stop
-        the backend application, disable the start/stop button and
-        disable the ping and lock buttons.
-        """
-
-        if self.enabled:
-            self.start()
-            self.start_stop_button.config(state="normal")
-            self.set_lock_button_text()
-            self.hide_show_button.config(state="normal")
-        else:
-            self.stop()
-            self.start_stop_button.config(state="disabled")
-            self.hide_show_button.config(state="disabled")
-            self.lock_button.config(state="disabled")
-
-    def _send_overlays_opacity_change(self, new_settings: PngSettings) -> None:
-        """Send overlays opacity change to HUD app
-
-        Args:
-            new_settings (PngSettings): New settings
-        """
-        self.console_app.debug_log("Sending set-overlays-opacity command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
-            "opacity": new_settings.HUD.overlays_opacity,
-        })
-        if not rsp or rsp.get("status") != "success":
-            self.console_app.error_log(f"Failed to set overlays opacity: {rsp}")
-        else:
-            self.console_app.debug_log(f"Set overlays opacity response: {rsp}")
-
-    def _start_integration_test_thread(self):
-        """Start the integration test thread"""
-        self.integration_test_stop_event.clear()
-        self.integration_test_thread = threading.Thread(
-            target=self._integration_test_worker,
-            daemon=True
-        )
-        self.integration_test_thread.start()
-        self.console_app.info_log(
-            f"Integration test thread started with interval {self.integration_test_interval}s"
-        )
-
-    def _stop_integration_test_thread(self):
-        """Stop the integration test thread"""
-        if self.integration_test_thread and self.integration_test_thread.is_alive():
-            self.console_app.info_log("Stopping integration test thread...")
-            self.integration_test_stop_event.set()
-            self.integration_test_thread.join(timeout=5.0)
-            self.console_app.info_log("Integration test thread stopped")
-
-    def _integration_test_worker(self):
-        """Worker thread that periodically calls next_page_callback"""
-        while (not self.integration_test_stop_event.is_set()) and \
-            (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
-            self.next_page_callback()
