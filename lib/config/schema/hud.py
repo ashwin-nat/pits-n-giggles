@@ -62,7 +62,15 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
     pages: Dict[str, MfdPageSettings] = Field(
         default_factory=lambda: copy.deepcopy(DEFAULT_PAGES),
         description="Dictionary of MFD pages",
-        json_schema_extra={"ui": {"type": "group_box", "visible": True}},
+        json_schema_extra={
+            "ui": {
+                "type": "group_box",
+                "visible": True,
+                "reorderable_collection": True,
+                "item_enabled_field": "enabled",
+                "item_position_field": "position"
+            }
+        },
     )
 
     @model_validator(mode="after")
@@ -137,7 +145,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="MFD overlay settings",
         json_schema_extra={
             "ui": {
-                "type" : "page",
+                "type" : "reoderable_view",
                 "visible": True
             }
         }
