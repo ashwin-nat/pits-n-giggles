@@ -325,6 +325,8 @@ class HudAppMgr(PngAppMgrBase):
                 "enabled",
                 "show_lap_timer",
                 "show_timing_tower",
+                "show_mfd",
+                "mfd_settings",
             ],
         })
         self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
