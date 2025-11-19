@@ -36,7 +36,7 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 class WeatherForecastPage(BasePage):
     """Ultra-compact weather forecast widget showing time, emoji, and rain %."""
-
+    KEY = "weather_forecast"
     WEATHER_EMOJIS = {
         "Clear": "☀️",
         "Light Cloud": "☁️",
@@ -61,7 +61,7 @@ class WeatherForecastPage(BasePage):
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
         """
-        super().__init__(parent, logger, "mfd.weather_forecast", title="Weather Forecast")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
 
         # Compact horizontal layout filling available width

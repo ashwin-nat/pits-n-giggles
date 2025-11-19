@@ -38,6 +38,8 @@ EventCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns
 class BasePage(QWidget):
     """Minimal page shown when MFD is collapsed."""
 
+    KEY = "mfd"
+
     # Class variables for title customization
     TITLE_FONT_FACE = "Montserrat"
     TITLE_FONT_SIZE = 13

@@ -24,7 +24,7 @@
 
 import itertools
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
@@ -33,18 +33,35 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
                                             FuelInfoPage, LapTimesPage,
                                             PitRejoinPredictionPage,
-                                            TyreWearPage, WeatherForecastPage)
+                                            TyreInfoPage, WeatherForecastPage)
 
 from .animation import AnimatedStackedWidget
+from lib.config import PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdOverlay(BaseOverlay):
 
     OVERLAY_ID = "mfd"
+    PAGES: List[BasePage] = [
+        CollapsedPage,
+        FuelInfoPage,
+        LapTimesPage,
+        PitRejoinPredictionPage,
+        TyreInfoPage,
+        WeatherForecastPage,
+    ]
+    PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self,
+                 config: OverlaysConfig,
+                 settings: PngSettings,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int):
+
         self.mfdClosed = 40
+        self.settings = settings
         self.mfdOpen = config.height
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
 
@@ -66,17 +83,21 @@ class MfdOverlay(BaseOverlay):
         # Re-apply height rules after every animated page change
         self.pages.currentChanged.connect(self._on_page_changed)
 
-        # Define pages
-        pages = [
-            CollapsedPage,
-            LapTimesPage,
-            WeatherForecastPage,
-            FuelInfoPage,
-            TyreWearPage,
-            PitRejoinPredictionPage,
+        enabled_pages = [
+            {"key": "collapsed", "cls": CollapsedPage, "position": 0},
+            *[
+                {
+                    "key": key,
+                    "cls": self.PAGE_CLS_BY_KEY[key],
+                    "position": settings.position
+                }
+                for key, settings in self.settings.HUD.mfd_settings.pages.items()
+                if settings.enabled
+            ]
         ]
-        for page in pages:
-            self._register_page(page)
+
+        for page in sorted(enabled_pages, key=lambda p: p["position"]):
+            self._register_page(page["cls"])
 
         # Build an opaque iterator that cycles indefinitely
         self.page_cycle = itertools.cycle(range(self.pages.count()))

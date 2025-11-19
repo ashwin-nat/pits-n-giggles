@@ -113,6 +113,7 @@ class OverlaysMgr:
         if settings.HUD.show_mfd:
             self.window_manager.register_overlay(MfdOverlay.OVERLAY_ID, MfdOverlay(
                 self.config[MfdOverlay.OVERLAY_ID],
+                settings,
                 self.logger,
                 locked=True,
                 opacity=settings.HUD.overlays_opacity

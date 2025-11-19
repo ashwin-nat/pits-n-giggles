@@ -37,6 +37,7 @@ from apps.hud.ui.overlays.timing_tower.race_table import RaceTimingTable
 
 class PitRejoinPredictionPage(BasePage):
     """Pit rejoin position prediction page."""
+    KEY = "pit_rejoin"
 
     def __init__(self, parent: QWidget, logger: logging.Logger):
         # Overlay specific fields
@@ -47,7 +48,7 @@ class PitRejoinPredictionPage(BasePage):
         self.timing_table: Optional[RaceTimingTable] = None
         self.pit_time_loss_label: Optional[QLabel] = None
 
-        super().__init__(parent, logger, "mfd.pit_rejoin", title="PIT REJOIN PREDICTION")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="PIT REJOIN PREDICTION")
         self._build_ui()
         self._init_event_handlers()
 

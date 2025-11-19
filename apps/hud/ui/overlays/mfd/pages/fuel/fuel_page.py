@@ -38,6 +38,8 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 class FuelInfoPage(BasePage):
     """Modern fuel statistics display for MFD."""
 
+    KEY = "fuel_info"
+
     FONT_FACE = "Montserrat"
     FONT_SIZE_TITLE = 16
     FONT_SIZE_VALUE = 13
@@ -63,7 +65,7 @@ class FuelInfoPage(BasePage):
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
         """
-        super().__init__(parent, logger, "mfd.fuel_info", title="FUEL INFO")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="FUEL INFO")
 
         # Load fuel icon
         icon_base = Path("assets")

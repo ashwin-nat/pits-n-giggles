@@ -37,9 +37,10 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TyreWearPage(BasePage):
+class TyreInfoPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
+    KEY = "tyre_info"
     FONT_FACE = "Montserrat"
     FONT_SIZE = 13
     NUM_DECIMAL_PLACES = 2
@@ -53,7 +54,7 @@ class TyreWearPage(BasePage):
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
         """
-        super().__init__(parent, logger, "mfd.tyre_info", title="TYRE WEAR INFO")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="TYRE WEAR INFO")
 
         self._init_icons()
         self._build_ui()

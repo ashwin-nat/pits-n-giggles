@@ -45,6 +45,7 @@ class CellColour(Enum):
 
 class LapTimesPage(BasePage):
     """Elegant lap times table with modern styling."""
+    KEY = "lap_times"
     HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
     NUM_ROWS = 5
 
@@ -60,7 +61,7 @@ class LapTimesPage(BasePage):
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
         """
-        super().__init__(parent, logger, "mfd.lap_times", "RECENT LAP TIMES")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", "RECENT LAP TIMES")
         self._last_processed_data: List[Dict[str, Any]] = []
 
         # Font configuration

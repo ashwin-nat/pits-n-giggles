@@ -37,6 +37,7 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
 
+    KEY = "collapsed"
     FONT_FACE = "Montserrat"
     FONT_SIZE = 13
 
