@@ -22,41 +22,37 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import (load_config_from_ini, load_config_from_json,
-                 load_config_migrated, save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, LoggingSettings,
-                     MfdPageSettings, MfdSettings, NetworkSettings,
-                     PitTimeLossF1, PitTimeLossF2, PngSettings,
-                     PrivacySettings, StreamOverlaySettings, SubSysCtrl)
-from .types import FilePathStr
+from typing import Any, ClassVar, Dict
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from pydantic import BaseModel, Field
 
-__all__ = [
-    'CaptureSettings',
-    'DisplaySettings',
-    'ForwardingSettings',
-    'LoggingSettings',
-    'NetworkSettings',
-    'PitTimeLossF1',
-    'PitTimeLossF2',
-    'SubSysCtrl',
-    'PngSettings',
-    'PrivacySettings',
-    'StreamOverlaySettings',
-    'HttpsSettings',
-    'HudSettings',
-    'MfdSettings',
-    'MfdPageSettings',
+from .diff import ConfigDiffMixin
 
-    'FilePathStr',
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-    'load_config_from_ini',
-    'save_config_to_ini',
+class StreamOverlaySettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
 
-    'load_config_from_json',
-    'save_config_to_json',
-
-    'load_config_migrated',
-]
+    show_sample_data_at_start: bool = Field(
+        default=False,
+        description="Show sample data until first real data arrives",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    stream_overlay_update_interval_ms: int = Field(
+        default=100,
+        ge=50,
+        description="Interval between data updates to the stream overlay (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )

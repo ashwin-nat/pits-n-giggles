@@ -22,41 +22,26 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import (load_config_from_ini, load_config_from_json,
-                 load_config_migrated, save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, LoggingSettings,
-                     MfdPageSettings, MfdSettings, NetworkSettings,
-                     PitTimeLossF1, PitTimeLossF2, PngSettings,
-                     PrivacySettings, StreamOverlaySettings, SubSysCtrl)
-from .types import FilePathStr
+from typing import Any, ClassVar, Dict
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from pydantic import BaseModel, Field
 
-__all__ = [
-    'CaptureSettings',
-    'DisplaySettings',
-    'ForwardingSettings',
-    'LoggingSettings',
-    'NetworkSettings',
-    'PitTimeLossF1',
-    'PitTimeLossF2',
-    'SubSysCtrl',
-    'PngSettings',
-    'PrivacySettings',
-    'StreamOverlaySettings',
-    'HttpsSettings',
-    'HudSettings',
-    'MfdSettings',
-    'MfdPageSettings',
+from .diff import ConfigDiffMixin
 
-    'FilePathStr',
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-    'load_config_from_ini',
-    'save_config_to_ini',
+class PrivacySettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
 
-    'load_config_from_json',
-    'save_config_to_json',
-
-    'load_config_migrated',
-]
+    process_car_setup: bool = Field(
+        default=False,
+        description="Whether to process car setup data",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
