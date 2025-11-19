@@ -512,19 +512,27 @@ class PngAppMgrBase(QObject):
 
 
     def _terminate_process(self):
-        """Force-terminate the process"""
+        """Force-terminate the process and all its subprocesses"""
+
+        target_pid = None
         if self.child_pid and self.child_pid != (self.process.pid if self.process else None):
             # Terminate actual child (PyInstaller case)
-            try:
-                psutil.Process(self.child_pid).kill()
-                self.debug_log(f"Killed child PID {self.child_pid}")
-            except psutil.NoSuchProcess:
-                self.debug_log(f"Child PID {self.child_pid} already gone")
+            target_pid = self.child_pid
         elif self.process:
-            # Terminate subprocess
-            self.process.kill()
-            self.process.wait()
-            self.debug_log(f"Killed subprocess PID {self.process.pid}")
+            target_pid = self.process.pid
+
+        if target_pid:
+            try:
+                parent = psutil.Process(target_pid)
+                children = parent.children(recursive=True)
+                for child in children:
+                    child.terminate()
+                parent.terminate()
+                _, alive = psutil.wait_procs([parent] + children, timeout=5)
+                for p in alive:
+                    p.kill()
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.debug_log(f"Failed to terminate process tree for PID {target_pid}: {e}")
 
     def _update_status(self, status: str):
         """Update status and emit signal"""

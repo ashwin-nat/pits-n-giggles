@@ -127,8 +127,7 @@ class ConfigDiffMixin:
 
             # NEW: recursive diff for submodels
             if isinstance(old_val, ConfigDiffMixin) and isinstance(new_val, ConfigDiffMixin):
-                nested = old_val.diff(new_val)
-                if nested:
+                if nested := old_val.diff(new_val):
                     changes[f] = nested
                 continue
 

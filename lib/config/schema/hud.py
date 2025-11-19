@@ -145,7 +145,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="MFD overlay settings",
         json_schema_extra={
             "ui": {
-                "type" : "reoderable_view",
+                "type" : "reorderable_view",
                 "visible": True
             }
         }

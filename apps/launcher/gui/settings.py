@@ -310,9 +310,9 @@ class SettingsWindow(QDialog):
 
             # Handle complex types (nested BaseModel or dict)
             if isinstance(field_value, BaseModel):
-                if ui_type == "reoderable_view":
-                    # Nested reoderable_view - create expandable section
-                    widget = self._build_reoderable_view(field_name, field_value, field_path, field_info)
+                if ui_type == "reorderable_view":
+                    # Nested reorderable_view - create expandable section
+                    widget = self._build_reorderable_view(field_name, field_value, field_path, field_info)
                     layout.addWidget(widget)
                 elif ui_type == "group_box":
                     # Group box with potentially reorderable items
@@ -442,7 +442,7 @@ class SettingsWindow(QDialog):
         group_box.setLayout(layout)
         return group_box
 
-    def _build_reoderable_view(self,
+    def _build_reorderable_view(self,
                            field_name: str,
                            field_value: BaseModel,
                            field_path: str,
@@ -730,7 +730,7 @@ class SettingsWindow(QDialog):
 
         # Find item with position + 1
         target_position = current_position + 1
-        for _, other_item in items_dict.items():
+        for other_item in items_dict.values():
             if (collection_meta.get_enabled(other_item) and
                 collection_meta.get_position(other_item) == target_position):
                 # Swap positions
