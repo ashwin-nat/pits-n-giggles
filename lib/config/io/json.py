@@ -40,10 +40,10 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None) -> PngSett
 
     Behavior matches the INI version:
 
-    - If file missing → write defaults
-    - If section invalid → restore only that section
-    - If new fields added → merge them in
-    - Invalid file → backup and rewrite
+    - If file missing --> write defaults
+    - If section invalid --> restore only that section
+    - If new fields added --> merge them in
+    - Invalid file --> backup and rewrite
 
     Args:
         path (str): Path to the JSON file.
@@ -60,7 +60,7 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None) -> PngSett
         _log_invalid_keys(raw, model, logger, restored)
         return model
 
-    # No config file → create full defaults
+    # No config file --> create full defaults
     model = PngSettings()
     save_config_to_json(model, path)
     return model
@@ -158,7 +158,7 @@ def _maybe_update_config(
     - If invalid sections restored
     - Or if new fields appear
     - Or mismatches exist
-    → rewrite
+    --> rewrite
     """
     model_dict = model.model_dump()
 

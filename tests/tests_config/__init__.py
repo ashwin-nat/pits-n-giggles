@@ -26,7 +26,7 @@
 from .tests_capture_settings import TestCaptureSettings
 from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
                                 TestSampleSettingsFixture)
-from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson
+from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
 from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
@@ -49,6 +49,7 @@ __all__ = [
     "TestSampleSettingsFixture",
     "TestLoadConfigFromIni",
     "TestLoadConfigFromJson",
+    "TestConfigMigration",
     "TestDisplaySettings",
     "TestForwardingSettings",
     "TestLoggingSettings",

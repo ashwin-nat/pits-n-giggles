@@ -21,9 +21,9 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import json
 import os
 import sys
-import json
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -35,7 +35,8 @@ from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
                         HttpsSettings, LoggingSettings, NetworkSettings,
                         PngSettings, PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, load_config_from_json,
-                        save_config_to_ini, save_config_to_json)
+                        load_config_migrated, save_config_to_ini,
+                        save_config_to_json)
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -601,3 +602,176 @@ class TestLoadConfigFromJson(TestConfigIO):
         self.assertEqual(config.Forwarding.target_1, "")
 
         self.assertTrue(os.path.exists(self.json_path + ".invalid"))
+
+class TestConfigMigration(TestConfigIO):
+
+    def setUp(self):
+        # single temp directory per test
+        self.tmp = tempfile.TemporaryDirectory()
+        self.ini_path = os.path.join(self.tmp.name, "config.ini")
+        self.json_path = os.path.join(self.tmp.name, "config.json")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    # ----------------------------------------------------------------------
+    # CASE 1 — JSON exists → MUST load JSON, ignore INI
+    # ----------------------------------------------------------------------
+    def test_load_from_existing_json(self):
+        settings_json = PngSettings(
+            Network=NetworkSettings(telemetry_port=11111),
+            Display=DisplaySettings(refresh_interval=250),
+        )
+
+        save_config_to_json(settings_json, self.json_path)
+
+        # even if an INI file exists, JSON should be used
+        with open(self.ini_path, "w") as f:
+            f.write("[Network]\ntelemetry_port=22222\n")
+
+        loaded = load_config_migrated(self.ini_path, self.json_path)
+
+        self.assertEqual(loaded.Network.telemetry_port, 11111)
+        self.assertEqual(loaded.Display.refresh_interval, 250)
+
+    # ----------------------------------------------------------------------
+    # CASE 2 — JSON missing, INI exists → migrate INI → JSON
+    # ----------------------------------------------------------------------
+    def test_migrate_from_ini_to_json_if_json_missing(self):
+        ini_content = """
+[Network]
+telemetry_port = 12345
+
+[Display]
+refresh_interval = 300
+"""
+        with open(self.ini_path, "w") as f:
+            f.write(ini_content)
+
+        loaded = load_config_migrated(self.ini_path, self.json_path)
+
+        # Should read the INI content
+        self.assertEqual(loaded.Network.telemetry_port, 12345)
+        self.assertEqual(loaded.Display.refresh_interval, 300)
+
+        # JSON must now exist
+        self.assertTrue(os.path.exists(self.json_path))
+
+        # JSON must contain normalized config
+        with open(self.json_path, "r") as f:
+            data = json.load(f)
+
+        self.assertEqual(data["Network"]["telemetry_port"], 12345)
+        # fields not in INI should be filled with defaults
+        self.assertIn("Capture", data)
+        self.assertIn("Logging", data)
+
+    # ----------------------------------------------------------------------
+    # CASE 3 — Both missing → create fresh JSON defaults
+    # ----------------------------------------------------------------------
+    def test_no_files_creates_default_json(self):
+        # ensure no files exist
+        self.assertFalse(os.path.exists(self.ini_path))
+        self.assertFalse(os.path.exists(self.json_path))
+
+        loaded = load_config_migrated(self.ini_path, self.json_path)
+
+        # Should have created JSON with defaults
+        self.assertTrue(os.path.exists(self.json_path))
+        self.assertIsInstance(loaded, PngSettings)
+
+        # default values verified
+        self.assertEqual(loaded.Network.telemetry_port, 20777)
+        self.assertTrue(loaded.Capture.post_race_data_autosave)
+
+    # ----------------------------------------------------------------------
+    # CASE 4 — JSON takes priority over INI even if INI is newer
+    # ----------------------------------------------------------------------
+    def test_json_takes_precedence_over_ini(self):
+        ini_content = """
+[Network]
+telemetry_port = 11111
+"""
+        with open(self.ini_path, "w") as f:
+            f.write(ini_content)
+
+        json_settings = PngSettings(
+            Network=NetworkSettings(telemetry_port=12345)
+        )
+        save_config_to_json(json_settings, self.json_path)
+
+        loaded = load_config_migrated(self.ini_path, self.json_path)
+        self.assertEqual(loaded.Network.telemetry_port, 12345)
+
+    # ----------------------------------------------------------------------
+    # CASE 5 — Migration preserves valid fields + fills missing defaults
+    # ----------------------------------------------------------------------
+    def test_migration_fills_defaults_for_missing_fields(self):
+        ini_content = """
+[Network]
+telemetry_port = 10101
+
+[Logging]
+log_file = custom.log
+"""
+        with open(self.ini_path, "w") as f:
+            f.write(ini_content)
+
+        loaded = load_config_migrated(self.ini_path, self.json_path)
+
+        # loaded values from INI
+        self.assertEqual(loaded.Network.telemetry_port, 10101)
+        self.assertEqual(loaded.Logging.log_file, "custom.log")
+
+        # default values must be filled
+        self.assertIn("Capture", loaded.model_dump())
+        self.assertIn("Forwarding", loaded.model_dump())
+
+        # JSON must match
+        with open(self.json_path) as f:
+            data = json.load(f)
+        self.assertEqual(data["Network"]["telemetry_port"], 10101)
+
+    # ----------------------------------------------------------------------
+    # CASE 6 — Roundtrip migration consistency
+    # ----------------------------------------------------------------------
+    def test_roundtrip_migration(self):
+        ini_content = """
+[Network]
+telemetry_port = 44444
+
+[Forwarding]
+target_1 = server1.example.com:8080
+"""
+        with open(self.ini_path, "w", encoding="utf-8") as f:
+            f.write(ini_content)
+
+        # initial migration
+        migrated = load_config_migrated(self.ini_path, self.json_path)
+
+        # now load again only using JSON
+        loaded_again = load_config_migrated(self.ini_path, self.json_path)
+
+        self.assertEqual(migrated.Network.telemetry_port, loaded_again.Network.telemetry_port)
+        self.assertEqual(migrated.Forwarding.target_1, loaded_again.Forwarding.target_1)
+
+    # ----------------------------------------------------------------------
+    # CASE 7 — JSON written should be valid and loadable again
+    # ----------------------------------------------------------------------
+    def test_migrated_json_is_valid_and_loads(self):
+        ini_content = """
+[Display]
+refresh_interval = 333
+"""
+        with open(self.ini_path, "w") as f:
+            f.write(ini_content)
+
+        migrated = load_config_migrated(self.ini_path, self.json_path)
+
+        # After migration, load via JSON loader
+        with open(self.json_path, "r") as f:
+            data = json.load(f)
+        self.assertEqual(data["Display"]["refresh_interval"], 333)
+
+        loaded_again = load_config_migrated(self.ini_path, self.json_path)
+        self.assertEqual(loaded_again.Display.refresh_interval, 333)
