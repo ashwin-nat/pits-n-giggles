@@ -149,9 +149,9 @@ class PngLauncherWindow(QMainWindow):
         """Load an icon"""
         ret = QIcon(str(path))
         if ret.isNull():
-            self.logger.warning("Failed to load icon: %s" % path)
+            self.logger.warning("Failed to load icon: %s", path)
         else:
-            self.logger.debug("Loaded icon successfully: %s" % path)
+            self.logger.debug("Loaded icon successfully: %s", path)
         return ret
 
     def init_icons(self):
