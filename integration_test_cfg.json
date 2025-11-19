@@ -1,0 +1,140 @@
+{
+    "Network": {
+        "telemetry_port": 20777,
+        "server_port": 4768,
+        "save_viewer_port": 4769,
+        "udp_tyre_delta_action_code": 11,
+        "udp_custom_action_code": 12,
+        "wdt_interval_sec": 30
+    },
+    "Capture": {
+        "post_race_data_autosave": true,
+        "post_quali_data_autosave": true,
+        "post_fp_data_autosave": false,
+        "post_tt_data_autosave": false,
+        "save_race_ctrl_msg": false
+    },
+    "Display": {
+        "refresh_interval": 200,
+        "disable_browser_autoload": false
+    },
+    "Logging": {
+        "log_file": "png.log",
+        "log_file_size": 1000000
+    },
+    "Privacy": {
+        "process_car_setup": false
+    },
+    "Forwarding": {
+        "target_1": "",
+        "target_2": "",
+        "target_3": ""
+    },
+    "StreamOverlay": {
+        "show_sample_data_at_start": false,
+        "stream_overlay_update_interval_ms": 100
+    },
+    "HTTPS": {
+        "enabled": false,
+        "key_file_path": "",
+        "cert_file_path": ""
+    },
+    "HUD": {
+        "enabled": true,
+        "show_lap_timer": true,
+        "show_timing_tower": true,
+        "show_mfd": true,
+        "mfd_settings": {
+            "pages": {
+                "lap_times": {
+                    "enabled": true,
+                    "position": 3
+                },
+                "weather_forecast": {
+                    "enabled": true,
+                    "position": 4
+                },
+                "fuel_info": {
+                    "enabled": true,
+                    "position": 2
+                },
+                "tyre_wear": {
+                    "enabled": true,
+                    "position": 5
+                },
+                "pit_rejoin": {
+                    "enabled": true,
+                    "position": 1
+                }
+            }
+        },
+        "toggle_overlays_udp_action_code": 10,
+        "cycle_mfd_udp_action_code": 9,
+        "overlays_opacity": 100
+    },
+    "TimeLossInPitsF1": {
+        "Melbourne": 18.0,
+        "Shanghai": 22.0,
+        "Suzuka": 22.0,
+        "Sakhir": 23.0,
+        "Jeddah": 18.0,
+        "Miami": 19.0,
+        "Imola": 27.0,
+        "Monaco": 19.0,
+        "Catalunya": 21.0,
+        "Montreal": 16.0,
+        "Austria": 19.0,
+        "Austria_Reverse": 19.0,
+        "Silverstone": 28.0,
+        "Hungaroring": 20.0,
+        "Zandvoort": 18.0,
+        "Spa": 18.0,
+        "Zandvoort_Reverse": 18.0,
+        "Monza": 24.0,
+        "Baku": 18.0,
+        "Singapore": 26.0,
+        "Texas": 20.0,
+        "Mexico": 22.0,
+        "Brazil": 20.0,
+        "Las_Vegas": 20.0,
+        "Losail": 25.0,
+        "Abu_Dhabi": 19.0,
+        "Paul_Ricard": null,
+        "Portimao": null
+    },
+    "TimeLossInPitsF2": {
+        "Melbourne": null,
+        "Shanghai": null,
+        "Suzuka": null,
+        "Sakhir": null,
+        "Jeddah": null,
+        "Miami": null,
+        "Imola": null,
+        "Monaco": null,
+        "Catalunya": null,
+        "Montreal": null,
+        "Austria": null,
+        "Austria_Reverse": null,
+        "Silverstone": null,
+        "Silverstone_Reverse": null,
+        "Hungaroring": null,
+        "Zandvoort": null,
+        "Spa": null,
+        "Zandvoort_Reverse": null,
+        "Monza": null,
+        "Baku": null,
+        "Singapore": null,
+        "Texas": null,
+        "Mexico": null,
+        "Brazil": null,
+        "Las_Vegas": null,
+        "Losail": null,
+        "Abu_Dhabi": null,
+        "Paul_Ricard": null,
+        "Portimao": null
+    },
+    "SubSysCtrlCfg__": {
+        "heartbeat_interval": 5.0,
+        "num_missable_heartbeats": 3
+    }
+}
