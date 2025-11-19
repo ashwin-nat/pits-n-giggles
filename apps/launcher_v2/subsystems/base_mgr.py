@@ -96,7 +96,10 @@ class PngAppMgrBase(QObject):
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
                  http_port_conflict_settings_field: Optional[str] = None,
-                 udp_port_conflict_settings_field: Optional[str] = None):
+                 udp_port_conflict_settings_field: Optional[str] = None,
+                 auto_restart: bool = True,
+                 max_restart_attempts: int = 3,
+                 restart_delay: float = 2.0):
         """
         Initialize the subsystem manager
 
@@ -109,6 +112,9 @@ class PngAppMgrBase(QObject):
             coverage_enabled: Enable code coverage tracking
             http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
             udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
+            auto_restart: Enable automatic restart on unexpected exits
+            max_restart_attempts: Maximum number of restart attempts (default: 3)
+            restart_delay: Delay in seconds between restart attempts (default: 2.0)
         """
         super().__init__()
 
@@ -133,6 +139,14 @@ class PngAppMgrBase(QObject):
 
         # Status tracking
         self.status = "Stopped"
+
+        # Auto-restart configuration
+        self.auto_restart = auto_restart
+        self.max_restart_attempts = max_restart_attempts
+        self.restart_delay = restart_delay
+        self._restart_count = 0
+        self._last_crash_time: Optional[float] = None
+        self._restart_window = 60.0  # Reset counter if stable for 60 seconds
 
         # Hooks
         self._post_start_hook: Optional[Callable[[], None]] = None
@@ -304,7 +318,42 @@ class PngAppMgrBase(QObject):
         if self.is_running:
             self.stop(reason)
         else:
+            # Reset restart counter on manual stop
+            self._restart_count = 0
+            self.debug_log(f"{self.display_name} Reset restart counter on manual stop")
             self.start(reason)
+
+    def _should_auto_restart(self) -> bool:
+        """Determine if auto-restart should be attempted"""
+        if not self.auto_restart:
+            return False
+
+        if self._restart_count >= self.max_restart_attempts:
+            self.error_log(
+                f"{self.display_name} has reached maximum restart attempts ({self.max_restart_attempts})"
+            )
+            return False
+
+        return True
+
+    def _auto_restart(self):
+        """Attempt automatic restart after unexpected exit"""
+        self._restart_count += 1
+
+        self.warning_log(
+            f"{self.display_name} auto-restart attempt {self._restart_count}/{self.max_restart_attempts}"
+        )
+        self._update_status(f"Restarting ({self._restart_count}/{self.max_restart_attempts})")
+
+        # Wait before restarting
+        time.sleep(self.restart_delay)
+
+        # Attempt restart
+        self._is_restarting.set()
+        try:
+            self.start(f"Auto-restart attempt {self._restart_count}")
+        finally:
+            self._is_restarting.clear()
 
     def _capture_output(self):
         """Capture subprocess output"""
@@ -395,6 +444,19 @@ class PngAppMgrBase(QObject):
             except Exception as e:
                 self.error_log(f"Post-stop hook error: {e}")
 
+        # Attempt auto-restart if enabled
+        if self._should_auto_restart():
+            threading.Thread(
+                target=self._auto_restart,
+                daemon=True,
+                name=f"{self.display_name}-auto-restart"
+            ).start()
+        else:
+            if self.auto_restart:
+                self.error_log(
+                    f"{self.display_name} will not auto-restart (max attempts reached)"
+                )
+
     def _send_heartbeat(self):
         """Send periodic heartbeat to child process"""
         # Initial random delay
@@ -410,13 +472,13 @@ class PngAppMgrBase(QObject):
             try:
                 rsp = IpcParent(self.ipc_port, timeout_ms).heartbeat()
                 if rsp.get("status") == "success":
-                    failed_heartbeat_count = 0
+                    failed_count = 0
                     self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
                 else:
                     self.debug_log(
                         f"{self.display_name}: Heartbeat failed with response: {rsp} on port {self.ipc_port}"
                     )
-                    failed_heartbeat_count += 1
+                    failed_count += 1
 
             except Exception as e:
                 self.debug_log(f"Heartbeat error: {e}")
