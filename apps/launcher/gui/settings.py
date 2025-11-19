@@ -41,7 +41,6 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-
 class ReorderableCollection:
     """Helper class to encapsulate reorderable collection metadata"""
 
@@ -69,10 +68,10 @@ class ReorderableCollection:
         if hasattr(item, self.position_field):
             setattr(item, self.position_field, value)
 
-    def get_sorted_enabled_items(self, items_dict: Dict[str, Any]) -> List[Tuple[str, Any]]:
-        """Get sorted list of enabled items"""
+    def get_sorted_all_items(self, items_dict: Dict[str, Any]) -> List[Tuple[str, Any]]:
+        """Get sorted list of all items (enabled and disabled)"""
         return sorted(
-            [(name, item) for name, item in items_dict.items() if self.get_enabled(item)],
+            [(name, item) for name, item in items_dict.items()],
             key=lambda x: self.get_position(x[1])
         )
 
@@ -575,9 +574,7 @@ class SettingsWindow(QDialog):
         container.items_dict = items_dict
         container.collection_meta = collection_meta
 
-        # Add each item in sorted order
-        sorted_items = collection_meta.get_sorted_enabled_items(items_dict)
-
+        sorted_items = collection_meta.get_sorted_all_items(items_dict)
         for item_name, item_settings in sorted_items:
             item_row = self._build_reorderable_item_row(
                 item_name, item_settings, field_path, items_dict, container, collection_meta
@@ -637,6 +634,9 @@ class SettingsWindow(QDialog):
                 border-radius: 4px;
                 padding: 4px;
             }
+            QCheckBox {
+                background-color: transparent;
+            }
         """)
 
         # Store metadata on the widget
@@ -680,15 +680,12 @@ class SettingsWindow(QDialog):
         return row_widget
 
     def _move_item_up(self,
-                      item_name: str,
-                      items_dict: Dict[str, BaseModel],
-                      items_container: QWidget,
-                      collection_meta: ReorderableCollection):
+                    item_name: str,
+                    items_dict: Dict[str, BaseModel],
+                    items_container: QWidget,
+                    collection_meta: ReorderableCollection):
         """Move an item up in ordering"""
         current_item = items_dict[item_name]
-
-        if not collection_meta.get_enabled(current_item):
-            return
 
         current_position = collection_meta.get_position(current_item)
         if current_position == 1:
@@ -697,8 +694,7 @@ class SettingsWindow(QDialog):
         # Find item with position - 1
         target_position = current_position - 1
         for _, other_item in items_dict.items():
-            if (collection_meta.get_enabled(other_item) and
-                collection_meta.get_position(other_item) == target_position):
+            if collection_meta.get_position(other_item) == target_position:
                 # Swap positions
                 collection_meta.set_position(other_item, current_position)
                 collection_meta.set_position(current_item, target_position)
@@ -714,16 +710,10 @@ class SettingsWindow(QDialog):
         """Move an item down in ordering"""
         current_item = items_dict[item_name]
 
-        if not collection_meta.get_enabled(current_item):
-            return
-
         current_position = collection_meta.get_position(current_item)
-
-        # Find max position
         max_position = max(
             collection_meta.get_position(item)
             for item in items_dict.values()
-            if collection_meta.get_enabled(item)
         )
         if current_position == max_position:
             return
@@ -731,8 +721,7 @@ class SettingsWindow(QDialog):
         # Find item with position + 1
         target_position = current_position + 1
         for other_item in items_dict.values():
-            if (collection_meta.get_enabled(other_item) and
-                collection_meta.get_position(other_item) == target_position):
+            if collection_meta.get_position(other_item) == target_position:
                 # Swap positions
                 collection_meta.set_position(other_item, current_position)
                 collection_meta.set_position(current_item, target_position)
