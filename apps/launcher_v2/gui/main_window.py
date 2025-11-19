@@ -81,6 +81,15 @@ class PngLauncherWindow(QMainWindow):
         self.app = QApplication(sys.argv)
         super().__init__()
 
+        # Log colors
+        self.log_colors = {
+            'INFO': '#4ec9b0',      # Teal
+            'DEBUG': '#808080',     # Gray
+            'WARNING': '#d7ba7d',   # Yellow
+            'ERROR': '#f48771',     # Red
+            'CHILD': '#569cd6'      # Blue
+        }
+
         self.ver_str = ver_str
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
@@ -121,6 +130,11 @@ class PngLauncherWindow(QMainWindow):
                coverage_enabled=coverage_enabled
            )
         ]
+        self.subsystems_short_names = set()
+        for subsystem in self.subsystems:
+            assert subsystem.short_name
+            assert subsystem.short_name not in self.subsystems_short_names
+            self.subsystems_short_names.add(subsystem.short_name)
 
         # Setup logging signals
         self.log_signals = LogSignals()
@@ -359,29 +373,56 @@ class PngLauncherWindow(QMainWindow):
                 self.info_log(f"Auto-starting {subsystem.display_name}...")
                 subsystem.start("Initial auto-start")
 
-    def info_log(self, message: str, is_child_message: bool = False):
+    def format_log_message_coloured(self, timestamp: str, message: str, level: str, src: str) -> str:
+
+        if src in self.subsystems_short_names:
+            prefix = src
+            level = 'CHILD'
+        else:
+            prefix = level
+
+        color = self.log_colors[level]
+        formatted = f'<span style="color: #666;">[{timestamp}]</span> '
+        formatted += f'<span style="color: {color}; font-weight: bold;">[{prefix}]</span> '
+        formatted += f'<span style="color: #d4d4d4;">{message}</span>'
+        return formatted
+
+    def format_log_message(self, timestamp: str, message: str, level: str, src: str) -> str:
+
+        if src in self.subsystems_short_names:
+            prefix = src
+            level = 'CHILD'
+        else:
+            prefix = level
+        return f'[{timestamp}] [{prefix}] {message}'
+
+    def info_log(self, message: str, src: str = ''):
         """Thread-safe info logging"""
-        level = 'CHILD' if is_child_message else 'INFO'
-        self.log_signals.log_message.emit(message, level)
+        self.log_signals.log_message.emit(message, 'INFO', src)
 
     def debug_log(self, message: str):
         """Thread-safe debug logging"""
         if not self.debug_mode:
             return
-        self.log_signals.log_message.emit(message, 'DEBUG')
+        self.log_signals.log_message.emit(message, 'DEBUG', '')
 
     def warning_log(self, message: str):
         """Thread-safe warning logging"""
-        self.log_signals.log_message.emit(message, 'WARNING')
+        self.log_signals.log_message.emit(message, 'WARNING', '')
 
     def error_log(self, message: str):
         """Thread-safe error logging"""
-        self.log_signals.log_message.emit(message, 'ERROR')
+        self.log_signals.log_message.emit(message, 'ERROR', '')
 
-    def _write_log(self, message: str, level: str):
+    def _write_log(self, message: str, level: str, src: str):
         """Write log to console and file"""
+
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        console_msg = self.format_log_message_coloured(timestamp, message, level, src)
+        log_msg = self.format_log_message(timestamp, message, level, src)
+
         # Write to console widget
-        self.console.append_log(message, level)
+        self.console.append_log(console_msg)
 
         # Map levels to logger methods
         log_map = {
@@ -389,14 +430,13 @@ class PngLauncherWindow(QMainWindow):
             "INFO": self.logger.info,
             "WARNING": self.logger.warning,
             "ERROR": self.logger.error,
-            "CHILD": lambda msg: self.logger.info(f"[SUBSYS] {msg}")
         }
 
         # Get the appropriate log function (fallback = info)
-        log_func = log_map.get(level, self.logger.info)
+        log_func = log_map[level]
 
         # Write to rotating file logger
-        log_func(message)
+        log_func(log_msg)
 
     def closeEvent(self, event: QCloseEvent):
         self.info_log("Shutting down launcher...")

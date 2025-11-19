@@ -39,7 +39,7 @@ from PySide6.QtGui import QFont, QTextCursor, QCloseEvent
 
 class LogSignals(QObject):
     """Signals for thread-safe logging"""
-    log_message = Signal(str, str)  # message, level
+    log_message = Signal(str, str, str)  # message, level, src
 
 
 class ConsoleWidget(QTextEdit):
@@ -69,15 +69,6 @@ class ConsoleWidget(QTextEdit):
             }
         """)
 
-        # Log colors
-        self.colors = {
-            'INFO': '#4ec9b0',      # Teal
-            'DEBUG': '#808080',     # Gray
-            'WARNING': '#d7ba7d',   # Yellow
-            'ERROR': '#f48771',     # Red
-            'CHILD': '#569cd6'      # Blue
-        }
-
         # Scroll lock state
         self._auto_scroll = True
         self._user_scrolled = False
@@ -102,17 +93,10 @@ class ConsoleWidget(QTextEdit):
             self._auto_scroll = True
             self.scroll_lock_changed.emit(False)
 
-    def append_log(self, message: str, level: str = 'INFO'):
+    def append_log(self, message: str):
         """Append a log message with color coding"""
 
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        color = self.colors.get(level, '#d4d4d4')
-
-        formatted = f'<span style="color: #666;">[{timestamp}]</span> '
-        formatted += f'<span style="color: {color}; font-weight: bold;">[{level}]</span> '
-        formatted += f'<span style="color: #d4d4d4;">{message}</span>'
-
-        self.append(formatted)
+        self.append(message)
 
         # Only auto-scroll if enabled
         if self._auto_scroll:

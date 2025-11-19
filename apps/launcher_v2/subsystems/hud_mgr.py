@@ -71,6 +71,7 @@ class HudAppMgr(PngAppMgrBase):
             udp_port_conflict_settings_field="N/A",
             module_path="apps.hud",
             display_name="HUD",
+            short_name="HUD",
             start_by_default=(self.supported and self.enabled),
             window=window,
             settings=settings,

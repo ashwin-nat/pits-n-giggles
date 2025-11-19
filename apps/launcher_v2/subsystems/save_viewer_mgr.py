@@ -64,6 +64,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
             window=window,
             module_path="apps.save_viewer",
             display_name="Save Viewer",
+            short_name="SAVE",
             settings=settings,
             start_by_default=True,
             args=temp_args,

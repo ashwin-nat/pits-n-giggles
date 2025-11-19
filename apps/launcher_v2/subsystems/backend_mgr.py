@@ -67,6 +67,7 @@ class BackendAppMgr(PngAppMgrBase):
             window=window,
             module_path="apps.backend",
             display_name="Server",
+            short_name="SRVR",
             settings=settings,
             start_by_default=True,
             args=temp_args,

@@ -90,6 +90,7 @@ class PngAppMgrBase(QObject):
                  window: "PngLauncherWindow",
                  module_path: str,
                  display_name: str,
+                 short_name: str,
                  settings: PngSettings,
                  start_by_default: bool = False,
                  args: Optional[List[str]] = None,
@@ -106,6 +107,7 @@ class PngAppMgrBase(QObject):
         Args:
             module_path: Python module path to run (e.g., 'my_app.server')
             display_name: Human-readable name for UI display
+            short_name: Short name for logging
             start_by_default: Whether to auto-start this subsystem
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
@@ -121,6 +123,7 @@ class PngAppMgrBase(QObject):
         self.window = window
         self.module_path = module_path
         self.display_name = display_name
+        self.short_name = short_name
         self.start_by_default = start_by_default
         self.args = args or []
         self.debug_mode = debug_mode
@@ -392,7 +395,7 @@ class PngAppMgrBase(QObject):
                         self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
 
             else:
-                self.info_log(line, is_child_message=True)
+                self.info_log(line, src=self.short_name)
 
 
     def _monitor_exit(self):
@@ -527,9 +530,9 @@ class PngAppMgrBase(QObject):
         self.status_changed.emit(status)
 
     # Logging methods
-    def info_log(self, message: str, is_child_message: bool = False):
+    def info_log(self, message: str, src: str = ''):
         """Log info message"""
-        self.window.info_log(message, is_child_message)
+        self.window.info_log(message, src)
 
     def debug_log(self, message: str):
         """Log debug message"""
