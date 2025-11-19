@@ -22,36 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import (load_config_from_ini, load_config_from_json,
-                 load_config_migrated, save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, LoggingSettings,
-                     MfdPageSettings, MfdSettings, NetworkSettings,
-                     PitTimeLossF1, PitTimeLossF2, PngSettings,
-                     PrivacySettings, StreamOverlaySettings, SubSysCtrl)
-from .types import FilePathStr
+from .ini import load_config_from_ini, save_config_to_ini
+from .json import load_config_from_json, save_config_to_json
+from .migration import load_config_migrated
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'CaptureSettings',
-    'DisplaySettings',
-    'ForwardingSettings',
-    'LoggingSettings',
-    'NetworkSettings',
-    'PitTimeLossF1',
-    'PitTimeLossF2',
-    'SubSysCtrl',
-    'PngSettings',
-    'PrivacySettings',
-    'StreamOverlaySettings',
-    'HttpsSettings',
-    'HudSettings',
-    'MfdSettings',
-    'MfdPageSettings',
-
-    'FilePathStr',
-
     'load_config_from_ini',
     'save_config_to_ini',
 

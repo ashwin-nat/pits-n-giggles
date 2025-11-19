@@ -22,41 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import (load_config_from_ini, load_config_from_json,
-                 load_config_migrated, save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, LoggingSettings,
-                     MfdPageSettings, MfdSettings, NetworkSettings,
-                     PitTimeLossF1, PitTimeLossF2, PngSettings,
-                     PrivacySettings, StreamOverlaySettings, SubSysCtrl)
-from .types import FilePathStr
+from typing import Any, ClassVar, Dict
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from pydantic import BaseModel, Field
 
-__all__ = [
-    'CaptureSettings',
-    'DisplaySettings',
-    'ForwardingSettings',
-    'LoggingSettings',
-    'NetworkSettings',
-    'PitTimeLossF1',
-    'PitTimeLossF2',
-    'SubSysCtrl',
-    'PngSettings',
-    'PrivacySettings',
-    'StreamOverlaySettings',
-    'HttpsSettings',
-    'HudSettings',
-    'MfdSettings',
-    'MfdPageSettings',
+from .diff import ConfigDiffMixin
 
-    'FilePathStr',
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-    'load_config_from_ini',
-    'save_config_to_ini',
+class SubSysCtrl(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : False,
+    }
 
-    'load_config_from_json',
-    'save_config_to_json',
-
-    'load_config_migrated',
-]
+    # Not adding field level metadata since whole section is hidden in UI
+    heartbeat_interval: float = Field(5.0, ge=1.0, le=60.0)
+    num_missable_heartbeats: int = Field(3, ge=1, le=20)

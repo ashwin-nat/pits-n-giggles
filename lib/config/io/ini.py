@@ -30,11 +30,11 @@ from typing import Any, Optional, Dict, Set, Tuple
 
 from pydantic import ValidationError
 
-from .config_schema import PngSettings
+from ..schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSettings:
+def load_config_from_ini(path: str, logger: Optional[Logger] = None, should_write: bool = True) -> PngSettings:
     """
     Load and validate configuration from INI file.
 
@@ -45,6 +45,7 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSetti
     Args:
         path (str): Path to the INI file.
         logger (Optional[Any]): Logger for debug/info logs.
+        should_write (bool): Whether to write the config file if it is missing/outdated
 
     Returns:
         PngSettings: Fully validated config with missing or invalid parts repaired.
@@ -53,7 +54,8 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None) -> PngSetti
         raw = _load_raw_ini(path)
         validated, restored, updated = _validate_sections(raw, logger)
         model = PngSettings(**validated)
-        _maybe_update_config(raw, model, path, logger, updated, restored)
+        if should_write:
+            _maybe_update_config(raw, model, path, logger, updated, restored)
         _log_invalid_keys(raw, model, logger, restored)
         return model
 
