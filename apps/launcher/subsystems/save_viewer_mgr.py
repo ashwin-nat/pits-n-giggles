@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import webbrowser
 from typing import TYPE_CHECKING, List
 
@@ -34,18 +33,17 @@ from lib.ipc import IpcParent
 from .base_mgr import PngAppMgrBase
 
 if TYPE_CHECKING:
-    from apps.launcher_v2.gui import PngLauncherWindow
+    from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BackendAppMgr(PngAppMgrBase):
-    """Implementation of PngApp for backend services"""
+class SaveViewerAppMgr(PngAppMgrBase):
+    """Implementation of PngApp for save viewer"""
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
                  args: list[str],
                  debug_mode: bool,
-                 replay_server: bool,
                  coverage_enabled: bool):
         """Initialize the backend manager
         :param window: Reference to the GUI window object
@@ -59,23 +57,21 @@ class BackendAppMgr(PngAppMgrBase):
         extra_args = []
         if debug_mode:
             extra_args.append("--debug")
-        if replay_server:
-            extra_args.append("--replay-server")
         temp_args = args + extra_args
-        self.port = settings.Network.server_port
+        self.port = settings.Network.save_viewer_port
         self.proto = settings.HTTPS.proto
         super().__init__(
             window=window,
-            module_path="apps.backend",
-            display_name="Server",
-            short_name="SRVR",
+            module_path="apps.save_viewer",
+            display_name="Save Viewer",
+            short_name="SAVE",
             settings=settings,
             start_by_default=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
-            http_port_conflict_settings_field='Network -> "Pits n\' Giggles HTTP Server Port"',
-            udp_port_conflict_settings_field='Network -> "F1 UDP Telemetry Port"',
+            http_port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
+            udp_port_conflict_settings_field="N/A",
         )
 
         self.register_post_start(self.post_start)
@@ -87,24 +83,37 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback)
+        self.open_file_button = self.build_button(self.get_icon("open-file"), self.open_file)
         self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard)
-        self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay)
-        self.manual_save_button = self.build_button(self.get_icon("save"), self.manual_save)
 
         return [
             self.start_stop_button,
+            self.open_file_button,
             self.open_dashboard_button,
-            self.open_obs_overlay_button,
-            self.manual_save_button,
         ]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
+        webbrowser.open(f'http://localhost:{self.port}', new=2)
 
-    def open_obs_overlay(self):
-        """Open the OBS overlay page in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
+    def open_file(self):
+        """Open a file dialog and send the selected file path to the backend process."""
+        file_path = self.select_file(title="Select File", file_filter="JSON files (*.json);;All Files (*.*)")
+
+        if file_path:
+            self.debug_log(f"Selected file: {file_path}")
+
+            if self.process:
+                ipc_client = IpcParent(self.ipc_port)
+                rsp = ipc_client.request("open-file", {"file-path": file_path})
+
+                if rsp["status"] != "error":
+                    self.info_log("File path sent successfully.")
+                else:
+                    self.info_log(f"Error sending file path: {rsp['message']}")
+                    self.show_error("File open error", "\n".join([rsp["message"]]))
+            else:
+                self.info_log("No process running to send the file path to.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -114,81 +123,39 @@ class BackendAppMgr(PngAppMgrBase):
         :return: True if the app needs to be restarted
         """
 
-        # Update the port number
-        self.port = new_settings.Network.server_port
-        self.proto = new_settings.HTTPS.proto
-
         diff = self.curr_settings.diff(new_settings, {
-            "Network": [
-                "telemetry_port",
-                "server_port",
-                "udp_tyre_delta_action_code",
-                "udp_custom_action_code",
-                "wdt_interval_sec",
-            ],
-            "Capture" : [],
-            "Display" : [],
-            "Logging" : [],
-            "Privacy" : [],
-            "Forwarding" : [],
-            "StreamOverlay" : [],
-            "HUD": [
-                "toggle_overlays_udp_action_code",
-            ]
+            "Network": ["save_viewer_port"],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-
-        # Restart if diff is not empty
-        return bool(diff)
+        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        # Update the port number
+        should_restart = (self.port != new_settings.Network.save_viewer_port)
+        self.port = new_settings.Network.save_viewer_port
+        return should_restart
 
     def post_start(self):
         """Update buttons after app start"""
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.start_stop_button, True)
+        self.set_button_state(self.open_file_button, True)
         self.set_button_state(self.open_dashboard_button, True)
-        self.set_button_state(self.open_obs_overlay_button, True)
-        self.set_button_state(self.manual_save_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_state(self.start_stop_button, True)
+        self.set_button_state(self.open_file_button, False)
         self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_obs_overlay_button, False)
-        self.set_button_state(self.manual_save_button, False)
-
-    def manual_save(self):
-        """Send a manual save command to the backend."""
-        self.debug_log("Sending manual save command to backend...")
-        ipc_client = IpcParent(self.ipc_port)
-        rsp = ipc_client.request("manual-save", {})
-
-        status = rsp["status"]
-        message = rsp.get("message")
-
-        if status == "success":
-            self.info_log(f"Manual save success. Path {message}")
-            self.show_success("Manual Save Success", f"The session has been saved successfully at:\n{message}")
-
-        else:
-            error = rsp.get("error", "Unknown error")
-            message = rsp.get("message", "")
-            self.info_log(f"Error in manual save: error={error} message={message}")
-
-            error_details = "\n".join(filter(None, [error, message]))
-            self.show_error("Manual Save Error", error_details)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.manual_save_button, False)
+        self.set_button_state(self.open_file_button, False)
         self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_obs_overlay_button, False)
         try:
             # Call the start_stop method
-            self.start_stop("Stop button pressed")
+            self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")

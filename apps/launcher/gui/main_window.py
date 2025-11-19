@@ -34,8 +34,8 @@ from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)
 
-from apps.launcher_v2.logger import get_rotating_logger
-from apps.launcher_v2.subsystems import (BackendAppMgr, HudAppMgr,
+from apps.launcher.logger import get_rotating_logger
+from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr,
                                          PngAppMgrBase, SaveViewerAppMgr)
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
@@ -93,13 +93,14 @@ class PngLauncherWindow(QMainWindow):
         }
 
         self.ver_str = ver_str
+        self.debug_mode = debug_mode
+        self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        self.init_icons()
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
         self.settings_icon_path = settings_icon_path
-        self.debug_mode = debug_mode
         self.log_file = Path("launcher.log")
-        self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.config_file_legacy = resolve_user_file("png_config.ini")
         self.config_file_new = resolve_user_file("png_config.json")
         self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
@@ -142,16 +143,15 @@ class PngLauncherWindow(QMainWindow):
         self.log_signals = LogSignals()
         self.log_signals.log_message.connect(self._write_log)
 
-        self.init_icons()
         self.setup_ui()
 
     def _load_icon(self, path: Path) -> QIcon:
         """Load an icon"""
         ret = QIcon(str(path))
         if ret.isNull():
-            self.warning_log(f"Failed to load icon: {path}")
+            self.logger.warning("Failed to load icon: %s" % path)
         else:
-            self.debug_log(f"Loaded icon successfully: {path}")
+            self.logger.debug("Loaded icon successfully: %s" % path)
         return ret
 
     def init_icons(self):

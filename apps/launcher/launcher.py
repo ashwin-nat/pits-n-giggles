@@ -29,10 +29,8 @@ import os
 import shutil
 import sys
 import tempfile
-import tkinter as tk
-from functools import partial
 
-from apps.launcher.png_launcher import PngLauncher
+from apps.launcher.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
 from lib.ipc import IpcChildSync
 from lib.version import get_version
@@ -174,12 +172,7 @@ def entry_point() -> None:
         except Exception: # pylint: disable=broad-except
             pass
 
-    root: tk.Tk = tk.Tk()
-    root.title(APP_NAME)
-    root.iconbitmap(load_icon_safely("assets/favicon.ico"))
-
-    app = PngLauncher(
-        root=root,
+    app = PngLauncherWindow(
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
@@ -188,10 +181,6 @@ def entry_point() -> None:
         integration_test_mode=args.ipc_port is not None,
         coverage_enabled=args.coverage
     )
-
-    # --- Tk close handlers ---
-    root.protocol("WM_DELETE_WINDOW", partial(app.on_closing, "WM_DELETE_WINDOW"))
-    root.createcommand("::tk::mac::Quit", partial(app.on_closing, "::tk::mac::Quit"))
 
     ipc = None
     if args.ipc_port is not None:
@@ -226,7 +215,7 @@ def entry_point() -> None:
 
     # main loop
     try:
-        root.mainloop()
+        app.run()
     finally:
         if ipc:
             ipc.close()

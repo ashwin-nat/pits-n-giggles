@@ -42,7 +42,7 @@ from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
 from lib.ipc import IpcParent, get_free_tcp_port
 
 if TYPE_CHECKING:
-    from apps.launcher_v2.gui import PngLauncherWindow
+    from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

@@ -36,7 +36,7 @@ from lib.ipc import IpcParent
 from .base_mgr import PngAppMgrBase
 
 if TYPE_CHECKING:
-    from apps.launcher_v2.gui import PngLauncherWindow
+    from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
