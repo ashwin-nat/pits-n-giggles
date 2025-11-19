@@ -34,9 +34,9 @@ from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
                                             FuelInfoPage, LapTimesPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, WeatherForecastPage)
+from lib.config import PngSettings
 
 from .animation import AnimatedStackedWidget
-from lib.config import PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

@@ -69,12 +69,8 @@ class ReorderableCollection:
             setattr(item, self.position_field, value)
 
     def get_sorted_all_items(self, items_dict: Dict[str, Any]) -> List[Tuple[str, Any]]:
-        """Get sorted list of all items (enabled and disabled)"""
-        return sorted(
-            [(name, item) for name, item in items_dict.items()],
-            key=lambda x: self.get_position(x[1])
-        )
-
+        """Get sorted list of all items (enabled and disabled)."""
+        return sorted(items_dict.items(), key=lambda x: self.get_position(x[1]))
 
 class SettingsWindow(QDialog):
     """Dynamic settings window that builds UI from PngSettings schema"""
