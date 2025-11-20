@@ -234,6 +234,10 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     """
 
     try:
+        if args.debug:
+            loop = asyncio.get_running_loop()
+            loop.set_debug(True)
+            loop.slow_callback_duration = 0.1   # 100 ms
         app = PngRunner(
             logger=logger,
             config_file=args.config_file,
