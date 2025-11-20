@@ -24,33 +24,52 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import json
+from datetime import datetime
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_logger(name: str, debug_mode: bool = False) -> logging.Logger:
-    """Get a logger with a console handler.
+def get_logger(
+    name: str,
+    debug_mode: bool = False,
+    jsonl: bool = False
+) -> logging.Logger:
 
-    Args:
-        debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
-        name (str, optional): The name of the logger. Defaults to "save_viewer".
-
-    Returns:
-        logging.Logger: The logger
-    """
     png_logger = logging.getLogger(name)
-    if debug_mode:
-        png_logger.setLevel(logging.DEBUG)
-    else:
-        png_logger.setLevel(logging.INFO)
+    png_logger.propagate = False
+    png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
     handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+
+    if jsonl:
+        # timestamp with milliseconds
+        ts_format = "%Y-%m-%d %H:%M:%S.%f"
+        formatter = JsonlFormatter(datefmt=ts_format)
+    else:
+        formatter = logging.Formatter(
+            fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+
     handler.setFormatter(formatter)
 
-    if not png_logger.hasHandlers():
+    if not png_logger.handlers:
         png_logger.addHandler(handler)
 
     return png_logger
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class JsonlFormatter(logging.Formatter):
+    def format(self, record):
+
+        return json.dumps(
+            {
+                "time": datetime.fromtimestamp(record.created).isoformat(timespec="milliseconds"),
+                "level": record.levelname,
+                "logger": record.name,
+                "filename": record.filename,
+                "lineno": record.lineno,
+                "func": record.funcName,
+                "message": record.getMessage(),
+            }, ensure_ascii=False)
