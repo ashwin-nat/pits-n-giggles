@@ -26,11 +26,11 @@ import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Any
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
-from PySide6.QtWidgets import (QApplication, QFileDialog, QGridLayout,
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)
 
@@ -41,13 +41,27 @@ from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
 from meta.meta import APP_NAME
 
+from .changelog_window import ChangelogWindow
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
-from .changelog_window import ChangelogWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class ShutdownDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Please wait")
+        self.setModal(True)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)
+
+        layout = QVBoxLayout(self)
+        label = QLabel("Shutting down ...")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+
+        self.setFixedSize(220, 80)
 
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
@@ -476,6 +490,11 @@ class PngLauncherWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         self.info_log("Shutting down launcher...")
 
+        # show the small modal window
+        self.shutdown_dialog = ShutdownDialog(self)
+        self.shutdown_dialog.show()
+        self.process_events()
+
         pool = QThreadPool.globalInstance()
         tasks = []
 
@@ -484,7 +503,9 @@ class PngLauncherWindow(QMainWindow):
             task = StopTask(subsystem, "Launcher shutting down")
             tasks.append(task)
             pool.start(task)
+            self.process_events()
 
+        self.process_events()
         pool.waitForDone()
         event.accept()
 
