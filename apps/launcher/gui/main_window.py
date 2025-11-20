@@ -26,7 +26,7 @@ import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Any
 
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
@@ -45,6 +45,7 @@ from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
+from .changelog_window import ChangelogWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -104,6 +105,7 @@ class PngLauncherWindow(QMainWindow):
         }
 
         self.ver_str = ver_str
+        self.ver_str = 'v2.8.0'
         self.debug_mode = debug_mode
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.init_icons()
@@ -123,6 +125,7 @@ class PngLauncherWindow(QMainWindow):
         self.update_blink_timer.timeout.connect(self._toggle_update_button_blink)
         self._update_blink_state = False
         self.update_available.connect(self.mark_update_button_available)
+        self.newer_versions: List[Dict[str, Any]] = []
 
         # Common args
         args = ["--config-file", self.config_file_new]
@@ -571,8 +574,11 @@ class PngLauncherWindow(QMainWindow):
 
     def on_updates_clicked(self):
         """Handle updates button click"""
-        self.info_log("Updates button clicked")
-        # TODO - implement release notes
+        if self.newer_versions:
+            dialog = ChangelogWindow(self, self.newer_versions, self.icons)
+            dialog.exec()
+        else:
+            self.show_success("No Updates", "You are running the latest version!")
 
     def on_download_clicked(self):
         """Handle download button click"""

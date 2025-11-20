@@ -28,7 +28,7 @@ from PySide6.QtCore import QRunnable
 
 from apps.launcher.subsystems import PngAppMgrBase
 from lib.config import PngSettings
-from lib.version import is_update_available
+from lib.version import is_update_available, get_releases_info, get_newer_stable_releases
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -62,8 +62,13 @@ class UpdateCheckTask(QRunnable):
 
     def run(self):
         try:
-            if is_update_available(self.version):
+            releases = get_releases_info()
+            if is_update_available(self.version, releases):
                 # Emit from worker thread --> handled by GUI thread
                 self.main_window.update_available.emit()
+                newer_versions = get_newer_stable_releases(self.version, releases)
+                assert newer_versions
+                self.main_window.newer_versions = newer_versions
+
         except Exception as e: # pylint: disable=broad-except
             self.main_window.error_log(f"Failed to check for updates - {e}")

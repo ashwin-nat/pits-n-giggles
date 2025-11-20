@@ -39,73 +39,70 @@ from tests_base import F1TelemetryUnitTestsBase
 class TestIsUpdateAvailable(F1TelemetryUnitTestsBase):
     @patch("lib.version.requests.get")
     def test_update_available(self, mock_get):
-        mock_get.return_value = Mock(status_code=200)
-        mock_get.return_value.json.return_value = [
+        fake_rsp = [
             {"tag_name": "v2.0.0", "prerelease": False}
         ]
-        self.assertTrue(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        mock_get.return_value = Mock(status_code=200)
+        mock_get.return_value.json.return_value = fake_rsp
+        self.assertTrue(is_update_available("1.2.3", fake_rsp))
 
     @patch("lib.version.requests.get")
     def test_no_update_available(self, mock_get):
-        mock_get.return_value = Mock(status_code=200)
-        mock_get.return_value.json.return_value = [
+        fake_rsp = [
             {"tag_name": "v1.2.3", "prerelease": False}
         ]
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        mock_get.return_value = Mock(status_code=200)
+        mock_get.return_value.json.return_value = fake_rsp
+        self.assertFalse(is_update_available("1.2.3", fake_rsp))
 
     @patch("lib.version.requests.get")
     def test_skips_prereleases(self, mock_get):
-        mock_get.return_value = Mock(status_code=200)
-        mock_get.return_value.json.return_value = [
+        fake_rsp = [
             {"tag_name": "v2.0.0-beta", "prerelease": True},
             {"tag_name": "v1.2.3", "prerelease": False}
         ]
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        mock_get.return_value = Mock(status_code=200)
+        mock_get.return_value.json.return_value = fake_rsp
+        self.assertFalse(is_update_available("1.2.3", fake_rsp))
 
     @patch("lib.version.requests.get")
     def test_handles_missing_tag_name(self, mock_get):
-        mock_get.return_value = Mock(status_code=200)
-        mock_get.return_value.json.return_value = [
+        fake_rsp = [
             {"tag_name": "", "prerelease": False},
             {"prerelease": False},
             {"tag_name": "v1.2.3", "prerelease": False}
         ]
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        mock_get.return_value = Mock(status_code=200)
+        mock_get.return_value.json.return_value = fake_rsp
+        self.assertFalse(is_update_available("1.2.3", fake_rsp))
 
     @patch("lib.version.requests.get")
     def test_network_error_returns_false(self, mock_get):
         mock_get.side_effect = RequestException("Network error")
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        self.assertFalse(is_update_available("1.2.3", []))
 
     @patch("lib.version.requests.get")
     def test_older_release_uploaded_later_returns_false_due_to_order(self, mock_get):
         # Tests the caveat: even though 1.0.0 is older, it's listed first
-        mock_get.return_value = Mock(status_code=200)
-        mock_get.return_value.json.return_value = [
+        fake_rsp = [
             {"tag_name": "v1.0.0", "prerelease": False},
             {"tag_name": "v2.0.0", "prerelease": False}
         ]
-        self.assertFalse(is_update_available("2.0.0", api_endpoint="mock://test/releases"))
-
-    @patch("lib.version.requests.get")  # replace with your actual module path
-    def test_json_decode_error_returns_false(self, mock_get):
-        mock_response = Mock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "doc", 0)
-        mock_get.return_value = mock_response
-
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        mock_get.return_value = Mock(status_code=200)
+        mock_get.return_value.json.return_value = fake_rsp
+        self.assertFalse(is_update_available("2.0.0", fake_rsp))
 
     @patch("lib.version.requests.get")  # replace with your actual module path
     def test_invalid_version_string_returns_false(self, mock_get):
-        mock_response = Mock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = [
+        fake_rsp =  [
             {"tag_name": "!!!not-a-version", "prerelease": False}
         ]
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = fake_rsp
         mock_get.return_value = mock_response
 
-        self.assertFalse(is_update_available("1.2.3", api_endpoint="mock://test/releases"))
+        self.assertFalse(is_update_available("1.2.3", fake_rsp))
 
 
 class TestGetVersion(F1TelemetryUnitTestsBase):
