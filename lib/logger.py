@@ -23,34 +23,94 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import logging
+import json
+from datetime import datetime
+from typing import Optional
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_logger(name: str, debug_mode: bool = False) -> logging.Logger:
-    """Get a logger with a console handler.
+def get_logger(
+    name: str,
+    debug_mode: bool = False,
+    jsonl: bool = False,
+    file_path: Optional[str] = None,
+) -> logging.Logger:
+    """Initialize and configure the logger.
 
     Args:
+        name (str): The name of the logger.
         debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
-        name (str, optional): The name of the logger. Defaults to "save_viewer".
+        jsonl (bool, optional): Whether to use JSONL format. Defaults to False.
+        file_path (Optional[str], optional): The path to the log file. Defaults to None.
 
     Returns:
-        logging.Logger: The logger
+        logging.Logger: The configured logger.
     """
+
     png_logger = logging.getLogger(name)
-    if debug_mode:
-        png_logger.setLevel(logging.DEBUG)
+    png_logger.propagate = False
+
+    # Optionally enforce "create once" rule
+    assert not png_logger.handlers, f"Logger '{name}' already initialized"
+
+    png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
+
+    # Choose formatters
+    if jsonl:
+        ts_fmt = "%Y-%m-%d %H:%M:%S.%f"
+        console_formatter = JsonlFormatter(datefmt=ts_fmt)
+        file_formatter    = JsonlFormatter(datefmt=ts_fmt)
     else:
-        png_logger.setLevel(logging.INFO)
+        text_fmt = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
+        ts_fmt   = "%Y-%m-%d %H:%M:%S"
+        console_formatter = logging.Formatter(text_fmt, ts_fmt)
+        file_formatter    = logging.Formatter(text_fmt, ts_fmt)
 
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        fmt="%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    handler.setFormatter(formatter)
+    # Console handler (always)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(console_formatter)
+    png_logger.addHandler(console_handler)
 
-    if not png_logger.hasHandlers():
-        png_logger.addHandler(handler)
+    # File handler (optional)
+    if file_path:
+        _clearFileIfRequired(file_path, max_size=1000000)
+        file_handler = logging.FileHandler(
+            file_path, mode="a", encoding="utf-8", delay=False
+        )
+        file_handler.setFormatter(file_formatter)
+        png_logger.addHandler(file_handler)
 
     return png_logger
+
+def _clearFileIfRequired(file_name: str, max_size: int) -> None:
+    """Clear the file if it is larger than 1 MB.
+
+    Args:
+        file_name (str): The name of the file to clear.
+        max_size (int): The maximum size of the file in bytes.
+    """
+
+    if os.path.exists(file_name):
+        file_size = os.path.getsize(file_name)
+        if file_size > max_size:
+            os.remove(file_name)
+            print(f"File {file_name} cleared.")
+
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class JsonlFormatter(logging.Formatter):
+    def format(self, record):
+
+        return json.dumps(
+            {
+                "time": datetime.fromtimestamp(record.created).isoformat(timespec="milliseconds"),
+                "level": record.levelname,
+                "logger": record.name,
+                "filename": record.filename,
+                "lineno": record.lineno,
+                "func": record.funcName,
+                "message": record.getMessage(),
+            }, ensure_ascii=False)

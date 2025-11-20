@@ -410,7 +410,6 @@ class PngAppMgrBase(QObject):
             else:
                 self.info_log(line, src=self.short_name)
 
-
     def _monitor_exit(self):
         """Monitor for unexpected process exit"""
         process = self.process

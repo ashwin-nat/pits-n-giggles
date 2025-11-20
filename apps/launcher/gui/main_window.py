@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import os
 import sys
 import webbrowser
@@ -444,28 +445,72 @@ class PngLauncherWindow(QMainWindow):
                 self.info_log(f"Auto-starting {subsystem.display_name}...")
                 subsystem.start("Initial auto-start")
 
-    def format_log_message_coloured(self, timestamp: str, message: str, level: str, src: str) -> str:
+    def format_log_message_colored_self(self, timestamp: str, message: str, level: str) -> str:
         """Format log message with color coding"""
-        if src in self.subsystems_short_names:
-            prefix = src
-            level = 'CHILD'
-        else:
-            prefix = level
-
         color = self.log_colors[level]
         formatted = f'<span style="color: #666;">[{timestamp}]</span> '
-        formatted += f'<span style="color: {color}; font-weight: bold;">[{prefix}]</span> '
+        formatted += f'<span style="color: {color}; font-weight: bold;">[{level}]</span> '
         formatted += f'<span style="color: #d4d4d4;">{message}</span>'
         return formatted
 
-    def format_log_message(self, timestamp: str, message: str, level: str, src: str) -> str:
+    def format_log_message_plain_self(self, timestamp: str, message: str, level: str) -> str:
         """Format log message"""
-        if src in self.subsystems_short_names:
-            prefix = src
-            level = 'CHILD'
-        else:
-            prefix = level
-        return f'[{timestamp}] [{prefix}] {message}'
+        return f'[{timestamp}] [{level}] {message}'
+
+    def format_log_unknown_message_colored_child(self, timestamp: str, message: str, src: str) -> str:
+        """Format unknown log message with color coding"""
+        src_color = '#4ec9b0'
+        level_color = self.log_colors['INFO']
+
+        # Convert \n --> <br>
+        safe_message = message.replace("\n", "<br>")
+        # Wrap message to preserve indentation, spaces, tabs
+        safe_message = f'<span style="white-space: pre;">{safe_message}</span>'
+
+        return (
+            f'<span style="color: #666;">[{timestamp}]</span> '
+            f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
+            f'<span style="color: {level_color};">[UNKNOWN]</span> '
+            f'<span style="color: #d4d4d4;">{safe_message}</span>'
+        )
+
+    def format_log_message_colored_child(self,
+                                        timestamp: str,
+                                        message: str,
+                                        level: str,
+                                        src: str) -> str:
+        """Format log message with color coding"""
+        src_color = '#4ec9b0'
+        level_color = self.log_colors[level]
+
+        # Convert \n --> <br>
+        safe_message = message.replace("\n", "<br>")
+        # Wrap message to preserve indentation, spaces, tabs
+        safe_message = f'<span style="white-space: pre;">{safe_message}</span>'
+
+        return (
+            f'<span style="color: #666;">[{timestamp}]</span> '
+            f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
+            f'<span style="color: {level_color};">[{level}]</span>'
+            f'<span style="color: #d4d4d4;">{safe_message}</span>'
+        )
+
+    def format_log_message_plain_child(self,
+                                        timestamp: str,
+                                        message: str,
+                                        level: str,
+                                        filename: str,
+                                        lineno: int,
+                                        src: str) -> str:
+        """Format log message"""
+        return f'[{timestamp}] [{src}] [{level}] [{filename}:{lineno}] {message}'
+
+    def format_log_unknown_message_plain_child(self,
+                                        timestamp: str,
+                                        message: str,
+                                        src: str) -> str:
+        """Format log message"""
+        return f'[{timestamp}] [{src}] [UNKNOWN] {message}'
 
     def info_log(self, message: str, src: str = ''):
         """Thread-safe info logging"""
@@ -488,9 +533,43 @@ class PngLauncherWindow(QMainWindow):
     def _write_log(self, message: str, level: str, src: str):
         """Write log to console and file"""
 
+        if src:
+            self._write_log_child(message, src)
+        else:
+            self._write_log_self(message, level)
+
+    def _write_log_child(self, message: str, src: str):
+        """Write log to console and file. These log messages are from child processes"""
+
+        # Unless its from some 3rd party lib, this will definitely be jsonl
+        try:
+            obj = json.loads(message)
+            timestamp = obj['time']
+            level = obj['level']
+            filename = obj['filename']
+            lineno = obj['lineno']
+            text = obj['message']
+
+            console_msg = self.format_log_message_colored_child(timestamp, text, level, src)
+            log_msg = self.format_log_message_plain_child(timestamp, text, level, filename, lineno, src)
+
+        except json.JSONDecodeError:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            console_msg = self.format_log_unknown_message_colored_child(timestamp, message, src)
+            log_msg = self.format_log_unknown_message_plain_child(timestamp, message, src)
+
+        # Write to console widget
+        if self.console:
+            self.console.append_log(console_msg)
+
+        # Write to rotating file logger
+        self.logger.info(log_msg)
+
+    def _write_log_self(self, message: str, level: str):
+        """Write log to console and file. These log messages are from the launcher process"""
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-        console_msg = self.format_log_message_coloured(timestamp, message, level, src)
-        log_msg = self.format_log_message(timestamp, message, level, src)
+        console_msg = self.format_log_message_colored_self(timestamp, message, level)
+        log_msg = self.format_log_message_plain_self(timestamp, message, level)
 
         # Write to console widget
         if self.console:

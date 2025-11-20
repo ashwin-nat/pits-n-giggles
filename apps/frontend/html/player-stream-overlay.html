@@ -363,7 +363,7 @@
             console.log(`🔁 Reconnection attempt ${attempt}`);
         });
 
-        socketio.on('player-overlay-update', function (binaryData) {
+        socketio.on('stream-overlay-update', function (binaryData) {
             let data = window.msgpack.decode(new Uint8Array(binaryData));
             if (!firstDataReceived && data["f1-packet-format"] !== null) {
                 firstDataReceived = true;

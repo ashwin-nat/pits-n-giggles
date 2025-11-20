@@ -84,7 +84,7 @@ def entry_point():
     """Entry point"""
     report_pid_from_child()
     args = parseArgs()
-    png_logger = get_logger("hud", args.debug)
+    png_logger = get_logger("hud", args.debug, jsonl=True)
     configs = load_config_from_json(args.config_file, png_logger)
     try:
         main(
