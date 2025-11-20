@@ -105,7 +105,6 @@ class PngLauncherWindow(QMainWindow):
         }
 
         self.ver_str = ver_str
-        self.ver_str = 'v2.8.0'
         self.debug_mode = debug_mode
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         self.init_icons()
