@@ -28,6 +28,7 @@ import logging
 import os
 import socket
 import sys
+import time
 from typing import List, Optional, Set
 
 import psutil
@@ -93,6 +94,7 @@ class PngRunner:
             debug_mode=debug_mode
         )
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
+        self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -183,6 +185,23 @@ class PngRunner:
         await asyncio.sleep(1)
 
         self.m_logger.debug("Tasks stopped. Exiting...")
+
+    async def _start_event_loop_monitor(self, threshold: float = 0.05) -> None:
+        """
+        Logs a warning whenever the event loop is blocked
+        longer than `threshold` seconds.
+
+        Default threshold = 50ms (0.05s).
+        """
+
+        last = time.perf_counter()
+        while True:
+            await asyncio.sleep(0)  # yield to let loop run
+            now = time.perf_counter()
+            diff = now - last
+            if diff > threshold:
+                self.m_logger.warning(f"[HOGGING] Event loop blocked for {diff:.4f} seconds")
+            last = now
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
