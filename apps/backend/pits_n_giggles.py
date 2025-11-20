@@ -195,7 +195,7 @@ class PngRunner:
         """
 
         last = time.perf_counter()
-        while True:
+        while not self.m_shutdown_event.is_set():
             await asyncio.sleep(0)  # yield to let loop run
             now = time.perf_counter()
             diff = now - last
