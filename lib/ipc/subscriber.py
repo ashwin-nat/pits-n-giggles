@@ -123,7 +123,7 @@ class IpcSubscriber:
     def _handle_connect(self):
         """Post connect callback."""
         self._connected = True
-        self._log(logging.INFO, "Connected to server")
+        self._log(logging.DEBUG, "Connected to server")
         if self._connect_callback:
             try:
                 self._connect_callback()

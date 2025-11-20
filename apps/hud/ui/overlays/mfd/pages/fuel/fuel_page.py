@@ -197,7 +197,6 @@ class FuelInfoPage(BasePage):
                 return
 
             fuel_info = ref_row["fuel-info"]
-            self.logger.debug(f"{self.overlay_id} | Received fuel info: {fuel_info}")
 
             # Extract values (may be None on first lap)
             curr = fuel_info.get("curr-fuel-rate")

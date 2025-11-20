@@ -270,7 +270,7 @@ class PngAppMgrBase(QObject):
                     name=f"{self.display_name}-heartbeat"
                 ).start()
 
-                self.info_log(f"{self.display_name} started (PID: {self.child_pid})")
+                self.debug_log(f"{self.display_name} started (PID: {self.child_pid})")
 
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Failed to start {self.display_name}: {e}")

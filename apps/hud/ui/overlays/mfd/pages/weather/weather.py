@@ -72,7 +72,7 @@ class WeatherForecastPage(BasePage):
         self.page_layout.addLayout(self.forecast_container)
         self._init_event_handlers()
 
-        self.logger.info(f"{self.overlay_id} | Weather forecast widget initialized")
+        self.logger.debug(f"{self.overlay_id} | Weather forecast widget initialized")
 
     def _init_event_handlers(self) -> None:
         @self.on_event("race_table_update")

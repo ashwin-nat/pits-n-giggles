@@ -442,7 +442,7 @@ class PngLauncherWindow(QMainWindow):
         """Auto-start subsystems marked for auto-start"""
         for subsystem in self.subsystems:
             if subsystem.start_by_default:
-                self.info_log(f"Auto-starting {subsystem.display_name}...")
+                self.debug_log(f"Auto-starting {subsystem.display_name}...")
                 subsystem.start("Initial auto-start")
 
     def format_log_message_colored_self(self, timestamp: str, message: str, level: str) -> str:
