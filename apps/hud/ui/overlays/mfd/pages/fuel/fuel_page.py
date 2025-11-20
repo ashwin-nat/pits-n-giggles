@@ -28,7 +28,8 @@ from typing import Any, Dict
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
+                               QVBoxLayout, QWidget)
 
 from apps.hud.common import get_ref_row, load_icon
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
@@ -76,97 +77,57 @@ class FuelInfoPage(BasePage):
         else:
             self.logger.warning(f"{self.overlay_id} | Failed to load fuel icon")
 
-        # Initialize widget references to None
+        # Widget references
         self.curr_rate_widget = None
         self.last_lap_widget = None
         self.target_avg_widget = None
         self.target_next_widget = None
-        self.surplus_laps_widget = None
+        self.surplus_label = None
 
         self._build_ui()
         self._init_event_handlers()
-        self.logger.info(f"{self.overlay_id} | Fuel info widget initialized")
+        self.logger.debug(f"{self.overlay_id} | Fuel info widget initialized")
+
+    # ---------------------------------------------------------
+    # UI BUILD
+    # ---------------------------------------------------------
 
     def _build_ui(self):
-        """Build the fuel info UI."""
-        # Use the existing page_layout from BasePage instead of creating a new one
-        # Clear margins set by parent and apply our own to the content
+        """Build the compact fuel info UI using a 2x2 grid + surplus text."""
         content_widget = QWidget()
         main_layout = QVBoxLayout(content_widget)
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(8)
 
-        # Top row: Current consumption and last lap
-        top_row = self._create_middle_row()
-        main_layout.addLayout(top_row)
+        # --- 2×2 GRID ---------------------------------------------------
+        grid = QGridLayout()
+        grid.setSpacing(10)
 
-        # Separator
-        separator1 = self._create_separator()
-        main_layout.addWidget(separator1)
+        self.curr_rate_widget = self._create_stat_widget("CURRENT RATE", "0.000", "kg/lap")
+        self.last_lap_widget = self._create_stat_widget("LAST LAP", "0.000", "kg")
 
-        # Bottom row: Target rates and surplus laps
-        bottom_row = self._create_bottom_row()
-        main_layout.addLayout(bottom_row)
+        self.target_avg_widget = self._create_stat_widget("TARGET AVG", "0.000", "kg/lap")
+        self.target_next_widget = self._create_stat_widget("TARGET NEXT", "0.000", "kg")
+
+        grid.addWidget(self.curr_rate_widget, 0, 0)
+        grid.addWidget(self.last_lap_widget,  0, 1)
+        grid.addWidget(self.target_avg_widget, 1, 0)
+        grid.addWidget(self.target_next_widget, 1, 1)
+
+        main_layout.addLayout(grid)
+
+        # --- SURPLUS LABEL -----------------------------------------------
+        self.surplus_label = QLabel("Surplus: 0 laps")
+        s_font = QFont(self.FONT_FACE, 11)
+        s_font.setWeight(QFont.Medium)
+        self.surplus_label.setFont(s_font)
+        self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT};")
+        main_layout.addWidget(self.surplus_label, alignment=Qt.AlignCenter)
 
         main_layout.addStretch()
-
-        # Add the content widget to the page layout from BasePage
         self.page_layout.addWidget(content_widget)
 
-    def _create_separator(self) -> QFrame:
-        """Create a horizontal separator line."""
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet(f"background-color: {self.COLOR_BORDER};")
-        line.setFixedHeight(1)
-        return line
-
-    def _create_middle_row(self) -> QHBoxLayout:
-        """Create middle row with current rate and last lap usage."""
-        layout = QHBoxLayout()
-        layout.setSpacing(12)
-
-        # Current fuel rate
-        self.curr_rate_widget = self._create_stat_widget(
-            "CURRENT RATE", "0.000", "kg/lap"
-        )
-        layout.addWidget(self.curr_rate_widget)
-
-        # Last lap used
-        self.last_lap_widget = self._create_stat_widget(
-            "LAST LAP", "0.000", "kg"
-        )
-        layout.addWidget(self.last_lap_widget)
-
-        return layout
-
-    def _create_bottom_row(self) -> QHBoxLayout:
-        """Create bottom row with target rates and surplus."""
-        layout = QHBoxLayout()
-        layout.setSpacing(8)
-
-        # Target average rate
-        self.target_avg_widget = self._create_stat_widget(
-            "TARGET AVG", "0.000", "kg/lap", compact=True
-        )
-        layout.addWidget(self.target_avg_widget)
-
-        # Target next lap
-        self.target_next_widget = self._create_stat_widget(
-            "TARGET NEXT LAP", "0.000", "kg", compact=True
-        )
-        layout.addWidget(self.target_next_widget)
-
-        # Surplus laps
-        self.surplus_laps_widget = self._create_stat_widget(
-            "SURPLUS", "0", "laps", compact=True
-        )
-        layout.addWidget(self.surplus_laps_widget)
-
-        return layout
-
-    def _create_stat_widget(self, label: str, value: str, unit: str,
-                           large: bool = False, compact: bool = False) -> QFrame:
+    def _create_stat_widget(self, label: str, value: str, unit: str) -> QFrame:
         """Create a styled stat display widget."""
         frame = QFrame()
         frame.setStyleSheet(f"""
@@ -178,9 +139,8 @@ class FuelInfoPage(BasePage):
         """)
 
         layout = QVBoxLayout(frame)
-        padding = 6 if compact else 10
-        layout.setContentsMargins(padding, padding, padding, padding)
-        layout.setSpacing(2 if compact else 4)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(4)
 
         # Label
         label_widget = QLabel(label)
@@ -191,24 +151,22 @@ class FuelInfoPage(BasePage):
         label_widget.setAlignment(Qt.AlignLeft)
         layout.addWidget(label_widget)
 
-        # Value container
+        # VALUE ROW
         value_layout = QHBoxLayout()
         value_layout.setSpacing(4)
         value_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Value
         value_widget = QLabel(value)
-        value_font = QFont(self.FONT_FACE, self.FONT_SIZE_VALUE if large else 14)
-        value_font.setWeight(QFont.Bold)
-        value_widget.setFont(value_font)
+        v_font = QFont(self.FONT_FACE, 14)
+        v_font.setWeight(QFont.Bold)
+        value_widget.setFont(v_font)
         value_widget.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
         value_layout.addWidget(value_widget)
 
-        # Unit
         unit_widget = QLabel(unit)
-        unit_font = QFont(self.FONT_FACE, self.FONT_SIZE_UNIT)
-        unit_font.setWeight(QFont.Medium)
-        unit_widget.setFont(unit_font)
+        u_font = QFont(self.FONT_FACE, self.FONT_SIZE_UNIT)
+        u_font.setWeight(QFont.Medium)
+        unit_widget.setFont(u_font)
         unit_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
         unit_widget.setAlignment(Qt.AlignBottom)
         value_layout.addWidget(unit_widget)
@@ -216,11 +174,14 @@ class FuelInfoPage(BasePage):
         value_layout.addStretch()
         layout.addLayout(value_layout)
 
-        # Store references for updates
         frame.value_label = value_widget
         frame.unit_label = unit_widget
 
         return frame
+
+    # ---------------------------------------------------------
+    # UPDATE HANDLING
+    # ---------------------------------------------------------
 
     def _init_event_handlers(self) -> None:
         @self.on_event("race_table_update")
@@ -239,50 +200,37 @@ class FuelInfoPage(BasePage):
             self.logger.debug(f"{self.overlay_id} | Received fuel info: {fuel_info}")
 
             # Extract values (may be None on first lap)
-            curr_fuel_rate = fuel_info.get("curr-fuel-rate")
-            last_lap_used = fuel_info.get("last-lap-fuel-used")
-            surplus_laps = fuel_info.get("surplus-laps-png")
-            target_rate_avg = fuel_info.get("target-fuel-rate-average")
-            target_rate_next_lap = fuel_info.get("target-fuel-rate-next-lap")
+            curr = fuel_info.get("curr-fuel-rate")
+            last = fuel_info.get("last-lap-fuel-used")
+            surplus = fuel_info.get("surplus-laps-png")
+            tgt_avg = fuel_info.get("target-fuel-rate-average")
+            tgt_next = fuel_info.get("target-fuel-rate-next-lap")
 
-            # Handle potentially None values with fallback display
-            if curr_fuel_rate is not None:
-                self._update_stat(self.curr_rate_widget, f"{curr_fuel_rate:.3f}",
-                                self.COLOR_PRIMARY)
+            # Update compact grid
+            self._update_or_dim(self.curr_rate_widget, curr)
+            self._update_or_dim(self.last_lap_widget, last)
+            self._update_or_dim(self.target_avg_widget, tgt_avg, use_primary=False)
+            self._update_or_dim(self.target_next_widget, tgt_next, use_primary=False)
+
+            # Surplus label
+            if surplus is not None:
+                color = self._get_surplus_color(surplus)
+                self.surplus_label.setText(f"Surplus: {surplus:.3f} laps")
+                self.surplus_label.setStyleSheet(f"color: {color};")
             else:
-                self._update_stat(self.curr_rate_widget, "---", self.COLOR_TEXT_DIM)
+                self.surplus_label.setText("Surplus: ---")
+                self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM};")
 
-            if last_lap_used is not None:
-                self._update_stat(self.last_lap_widget, f"{last_lap_used:.3f}",
-                                self.COLOR_PRIMARY)
-            else:
-                self._update_stat(self.last_lap_widget, "---", self.COLOR_TEXT_DIM)
-
-            if target_rate_avg is not None:
-                self._update_stat(self.target_avg_widget, f"{target_rate_avg:.3f}",
-                                self.COLOR_TEXT)
-            else:
-                self._update_stat(self.target_avg_widget, "---", self.COLOR_TEXT_DIM)
-
-            if target_rate_next_lap is not None:
-                self._update_stat(self.target_next_widget, f"{target_rate_next_lap:.3f}",
-                                self.COLOR_TEXT)
-            else:
-                self._update_stat(self.target_next_widget, "---", self.COLOR_TEXT_DIM)
-
-            if surplus_laps is not None:
-                self._update_stat(self.surplus_laps_widget, f"{surplus_laps:.3f}",
-                                self._get_surplus_color(surplus_laps))
-            else:
-                self._update_stat(self.surplus_laps_widget, "---", self.COLOR_TEXT_DIM)
-
-    def _update_stat(self, widget: QFrame, value: str, color: str):
-        """Update a stat widget's value and color."""
-        widget.value_label.setText(value)
-        widget.value_label.setStyleSheet(f"color: {color}; border: none;")
+    def _update_or_dim(self, widget: QFrame, value: float, use_primary: bool = True):
+        if value is not None:
+            widget.value_label.setText(f"{value:.3f}")
+            color = self.COLOR_PRIMARY if use_primary else self.COLOR_TEXT
+            widget.value_label.setStyleSheet(f"color: {color}; border: none;")
+        else:
+            widget.value_label.setText("---")
+            widget.value_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
 
     def _get_surplus_color(self, surplus: float) -> str:
-        """Get color based on surplus laps."""
         if surplus < 0:
             return self.COLOR_DANGER
         if surplus < self.MIN_FUEL:
@@ -290,13 +238,16 @@ class FuelInfoPage(BasePage):
         return self.COLOR_PRIMARY
 
     def _show_telemetry_disabled(self):
-        """Show message when telemetry is disabled."""
-        # Update all displays to show disabled state
-        disabled_text = "---"
-        disabled_color = self.COLOR_TEXT_DIM
+        disabled = ("---", self.COLOR_TEXT_DIM)
 
-        self._update_stat(self.curr_rate_widget, disabled_text, disabled_color)
-        self._update_stat(self.last_lap_widget, disabled_text, disabled_color)
-        self._update_stat(self.target_avg_widget, disabled_text, disabled_color)
-        self._update_stat(self.target_next_widget, disabled_text, disabled_color)
-        self._update_stat(self.surplus_laps_widget, disabled_text, disabled_color)
+        for widget in (
+            self.curr_rate_widget,
+            self.last_lap_widget,
+            self.target_avg_widget,
+            self.target_next_widget,
+        ):
+            widget.value_label.setText(disabled[0])
+            widget.value_label.setStyleSheet(f"color: {disabled[1]}; border: none;")
+
+        self.surplus_label.setText("Surplus: ---")
+        self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM};")
