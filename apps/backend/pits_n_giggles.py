@@ -33,7 +33,6 @@ from typing import List, Optional, Set
 
 import psutil
 
-from apps.backend.common.png_logger import initLogger
 from apps.backend.state_mgmt_layer import initStateManagementLayer, SessionState
 from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
@@ -43,6 +42,7 @@ from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.version import get_version
 from meta.meta import APP_NAME
+from lib.logger import get_logger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -259,10 +259,11 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
-    png_logger = initLogger(
-        file_name=args_obj.log_file_name,
-        max_size=100000,
-        debug_mode=args_obj.debug
+    png_logger = get_logger(
+        name="backend",
+        debug_mode=args_obj.debug,
+        file_path=args_obj.log_file_name,
+        jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
     )
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
