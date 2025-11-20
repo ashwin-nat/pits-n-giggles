@@ -190,6 +190,7 @@ class TimingTowerOverlay(BaseOverlay):
                 self.header_label.setText("TIMING TOWER")
                 self.session_info_label.setText("----")
             elif self._should_show_lap_number(session_type):
+                self.header_label.setText(session_type)
                 current_lap = data.get("current-lap", 0)
                 total_laps = data.get("total-laps", 0)
                 self.session_info_label.setText(f"LAP {current_lap} / {total_laps}")
@@ -197,6 +198,7 @@ class TimingTowerOverlay(BaseOverlay):
                 time_remaining_sec = data.get("session-time-left", 0)
                 minutes = int(time_remaining_sec // 60)
                 seconds = int(time_remaining_sec % 60)
+                self.header_label.setText(session_type)
                 self.session_info_label.setText(f"TIME: {minutes:02d}:{seconds:02d}")
 
     def clear(self):
