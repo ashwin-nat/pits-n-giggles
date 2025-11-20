@@ -462,14 +462,12 @@ class PngLauncherWindow(QMainWindow):
         src_color = '#4ec9b0'
         level_color = self.log_colors['INFO']
 
-        formatted = (
+        return (
             f'<span style="color: #666;">[{timestamp}]</span> '
             f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
             f'<span style="color: {level_color};">[UNKNOWN]</span> '
             f'<span style="color: #d4d4d4;">{message.replace}</span>'
         )
-
-        return formatted
 
     def format_log_message_colored_child(self,
                                         timestamp: str,
@@ -485,14 +483,12 @@ class PngLauncherWindow(QMainWindow):
         # Wrap message to preserve indentation, spaces, tabs
         safe_message = f'<span style="white-space: pre;">{safe_message}</span>'
 
-        formatted = (
+        return (
             f'<span style="color: #666;">[{timestamp}]</span> '
             f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
             f'<span style="color: {level_color};">[{level}]</span>'
             f'<span style="color: #d4d4d4;">{safe_message}</span>'
         )
-
-        return formatted
 
     def format_log_message_plain_child(self,
                                         timestamp: str,
