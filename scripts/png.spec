@@ -52,7 +52,13 @@ PROJECT_ROOT = os.path.abspath(".")
 # Runtime hook: inject PNG_VERSION env var before app starts
 # --------------------------------------------------------------------------------------------------
 
-runtime_hook_code = f'import os\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+# runtime_hook_code = f'import os\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+# TODO: undo. temporarily enabling debug build
+runtime_hook_code = (
+    f'import os, sys\n'
+    f'os.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+    f'sys.argv.append("--debug")\n'
+)
 runtime_hook_path = os.path.join(tempfile.gettempdir(), "png_runtime_hook.py")
 
 with open(runtime_hook_path, "w", encoding="utf-8") as f:
@@ -114,6 +120,7 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-up.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "discord.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "download.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "lock.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "next-page.svg"), "assets/launcher-icons"),
@@ -126,6 +133,8 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "stop.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "twitch.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "unlock.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "updates.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "website.svg"), "assets/launcher-icons"),
 
 ]
 
