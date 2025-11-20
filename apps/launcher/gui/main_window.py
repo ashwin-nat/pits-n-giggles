@@ -459,7 +459,7 @@ class PngLauncherWindow(QMainWindow):
 
     def format_log_unknown_message_colored_child(self, timestamp: str, message: str, src: str) -> str:
         """Format unknown log message with color coding"""
-        src_color = '#4ec9b0'  # TODO
+        src_color = '#4ec9b0'
         level_color = self.log_colors['INFO']
 
         formatted = (
