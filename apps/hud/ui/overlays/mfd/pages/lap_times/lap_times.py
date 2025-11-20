@@ -28,8 +28,7 @@ from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QHeaderView, QTableWidget, QTableWidgetItem,
-                               QWidget)
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QWidget
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
@@ -67,13 +66,10 @@ class LapTimesPage(BasePage):
         # Font configuration
         FONT_SIZE = 13
         FONT_FAMILY = "Montserrat"  # Clean, modern font (falls back gracefully)
-        HEADER_FONT = "Montserrat"  # F1-style font (you can change this to any other appropriate font)
-        HEADER_FONT_SIZE = 13
 
         self.table = QTableWidget(5, 5, self)
-        self.table.setHorizontalHeaderLabels(self.HEADERS)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setVisible(False)
 
         # Disable mouse interaction
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -102,44 +98,27 @@ class LapTimesPage(BasePage):
                 color: #ffffff;
                 gridline-color: #3a3a3a;
                 border: 1px solid #3a3a3a;
-                border-radius: 5px;
             }}
             QTableWidget::item {{
-                padding: 2px;
+                padding: 0px 2px;
+                margin: 0px;
                 font-family: {FONT_FAMILY};
                 font-size: {FONT_SIZE}pt;
             }}
             QTableWidget::item:alternate {{
                 background-color: #252525;
             }}
-            QTableWidget::item:hover {{
-                background-color: transparent;  /* Disable hover highlighting */
-            }}
-            QTableWidget::item:alternate:hover {{
-                background-color: #252525;
-            }}
-            QHeaderView::section {{
-                background-color: #2d2d2d;
-                color: #FF0000;
-                padding: 8px;
-                border: none;
-                border-bottom: 2px solid #FF0000;
-                font-weight: bold;
-                font-family: {HEADER_FONT};
-                font-size: {HEADER_FONT_SIZE}pt;
-            }}
         """)
 
-        # Set column widths here (adjust as needed)
-        self.table.setColumnWidth(0, 20)  # Set width for the "Lap" column (index 0)
-        self.table.setColumnWidth(1, 100) # Set width for the "S1" column (index 1)
-        self.table.setColumnWidth(2, 100) # Set width for the "S2" column (index 2)
-        self.table.setColumnWidth(3, 100) # Set width for the "S3" column (index 3)
-        self.table.setColumnWidth(4, 150) # Set width for the "Lap Time" column (index 4)
+        self.table.setColumnWidth(0, 20)
+        self.table.setColumnWidth(1, 100)
+        self.table.setColumnWidth(2, 100)
+        self.table.setColumnWidth(3, 100)
+        self.table.setColumnWidth(4, 150)
 
-        # Disable text ellipsis — text will just be truncated visually
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
+
         self._init_event_handlers()
 
     def _init_event_handlers(self):
