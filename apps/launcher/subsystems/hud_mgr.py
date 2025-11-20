@@ -77,14 +77,14 @@ class HudAppMgr(PngAppMgrBase):
             settings=settings,
             args=self.args,
             debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled
+            coverage_enabled=coverage_enabled,
+            post_start_cb=self.post_start,
+            post_stop_cb=self.post_stop,
         )
         if not self.enabled:
             self._update_status("Disabled")
         elif not self.supported:
             self._update_status("Unsupported")
-        self.register_post_start(self.post_start)
-        self.register_post_stop(self.post_stop)
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly

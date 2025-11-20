@@ -49,8 +49,10 @@ if TYPE_CHECKING:
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
 
-    # Qt signals for thread-safe UI updates
+    # Qt signals
     status_changed = Signal(str)
+    post_start_signal = Signal()
+    post_stop_signal = Signal()
 
     EXIT_ERRORS = {
         PNG_ERROR_CODE_HTTP_PORT_IN_USE: {
@@ -100,6 +102,8 @@ class PngAppMgrBase(QObject):
                  coverage_enabled: bool = False,
                  http_port_conflict_settings_field: Optional[str] = None,
                  udp_port_conflict_settings_field: Optional[str] = None,
+                 post_start_cb: Optional[Callable[[], None]] = None,
+                 post_stop_cb: Optional[Callable[[], None]] = None,
                  auto_restart: bool = True,
                  max_restart_attempts: int = 3,
                  restart_delay: float = 2.0):
@@ -121,6 +125,7 @@ class PngAppMgrBase(QObject):
             restart_delay: Delay in seconds between restart attempts (default: 2.0)
         """
         super().__init__()
+
 
         self.window = window
         self.module_path = module_path
@@ -154,8 +159,13 @@ class PngAppMgrBase(QObject):
         self._restart_window = 60.0  # Reset counter if stable for 60 seconds
 
         # Hooks
-        self._post_start_hook: Optional[Callable[[], None]] = None
-        self._post_stop_hook: Optional[Callable[[], None]] = None
+        self._post_start_hook: Optional[Callable[[], None]] = post_start_cb
+        self._post_stop_hook: Optional[Callable[[], None]] = post_stop_cb
+        if self._post_start_hook:
+            self.post_start_signal.connect(self._post_start_hook)
+
+        if self._post_stop_hook:
+            self.post_stop_signal.connect(self._post_stop_hook)
 
         # IPC and heartbeat settings
         self.ipc_port: Optional[int] = None
@@ -302,7 +312,7 @@ class PngAppMgrBase(QObject):
             # Run post-stop hook
             if self._post_stop_hook:
                 try:
-                    self._post_stop_hook()
+                    self.post_stop_signal.emit()
                 except Exception as e: # pylint: disable=broad-exception-caught
                     self.error_log(f"Post-stop hook error: {e}")
 
@@ -393,7 +403,7 @@ class PngAppMgrBase(QObject):
                     self._update_status("Running")
                 if self._post_start_hook:
                     try:
-                        self._post_start_hook()
+                        self.post_start_signal.emit()
                     except Exception as e: # pylint: disable=broad-exception-caught
                         self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
 
@@ -446,7 +456,7 @@ class PngAppMgrBase(QObject):
         # Run post-stop hook
         if self._post_stop_hook:
             try:
-                self._post_stop_hook()
+                self.post_stop_signal.emit()
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Post-stop hook error: {e}")
 
@@ -555,17 +565,6 @@ class PngAppMgrBase(QObject):
     def error_log(self, message: str):
         """Log error message"""
         self.window.error_log(message)
-
-    # Hook registration
-    def register_post_start(self, func: Callable[[], None]):
-        """Register a post-start callback"""
-        self._post_start_hook = func
-        return func
-
-    def register_post_stop(self, func: Callable[[], None]):
-        """Register a post-stop callback"""
-        self._post_stop_hook = func
-        return func
 
     def get_icon(self, key: str) -> Optional[QIcon]:
         """Get icon by key"""

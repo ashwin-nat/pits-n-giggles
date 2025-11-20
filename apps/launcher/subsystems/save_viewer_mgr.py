@@ -72,10 +72,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
             coverage_enabled=coverage_enabled,
             http_port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
             udp_port_conflict_settings_field="N/A",
+            post_start_cb=self.post_start,
+            post_stop_cb=self.post_stop
         )
-
-        self.register_post_start(self.post_start)
-        self.register_post_stop(self.post_stop)
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
