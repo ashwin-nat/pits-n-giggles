@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import sys
 import webbrowser
 from datetime import datetime
@@ -120,7 +121,15 @@ class PngLauncherWindow(QMainWindow):
 
         self.ver_str = ver_str
         self.debug_mode = debug_mode
+
+        self.console = None
+
+        # Setup logging
         self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        self.log_signals = LogSignals()
+        self.log_signals.log_message.connect(self._write_log)
+        self.subsystems_short_names = set()
+
         self.init_icons()
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
@@ -167,26 +176,39 @@ class PngLauncherWindow(QMainWindow):
                coverage_enabled=coverage_enabled
            )
         ]
-        self.subsystems_short_names = set()
         for subsystem in self.subsystems:
             assert subsystem.short_name
             assert subsystem.short_name not in self.subsystems_short_names
             self.subsystems_short_names.add(subsystem.short_name)
 
-        # Setup logging signals
-        self.log_signals = LogSignals()
-        self.log_signals.log_message.connect(self._write_log)
-
         self.setup_ui()
 
-    def _load_icon(self, path: Path) -> QIcon:
-        """Load an icon"""
-        ret = QIcon(str(path))
-        if ret.isNull():
-            self.logger.warning("Failed to load icon: %s", path)
-        else:
-            self.logger.debug("Loaded icon successfully: %s", path)
-        return ret
+    def _load_icon(self, relative_path: str) -> QIcon:
+        """
+        Load an icon that works in both dev and PyInstaller builds.
+
+        Args:
+            relative_path: Path to the icon file, relative to the project root or build bundle.
+
+        Returns:
+            QIcon: The loaded icon, or an empty QIcon if loading fails.
+        """
+        try:
+            if hasattr(sys, "_MEIPASS"):
+                # Running inside a PyInstaller bundle
+                base_path = sys._MEIPASS
+            else:
+                # Running from source
+                base_path = os.path.abspath(".")
+
+            full_path = os.path.join(base_path, relative_path)
+            icon = QIcon(full_path)
+            self.debug_log(f"Loaded icon from {full_path}")
+            return icon
+
+        except Exception as e:  # pylint: disable=broad-except
+            self.error_log(f"Failed to load icon from {relative_path}: {e}")
+            return QIcon()
 
     def init_icons(self):
         """Init the dict of icons"""
@@ -471,7 +493,8 @@ class PngLauncherWindow(QMainWindow):
         log_msg = self.format_log_message(timestamp, message, level, src)
 
         # Write to console widget
-        self.console.append_log(console_msg)
+        if self.console:
+            self.console.append_log(console_msg)
 
         # Map levels to logger methods
         log_map = {
@@ -521,7 +544,7 @@ class PngLauncherWindow(QMainWindow):
 
     def build_button(self, icon: QIcon, callback: Callable[[], None], tooltip: str) -> QPushButton:
         """Build a button with an icon and callback"""
-        assert icon and not icon.isNull()
+        assert icon and not icon.isNull(), f"Failed to load icon: {icon}"
 
         btn = QPushButton()
         btn.setIcon(icon)
