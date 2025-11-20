@@ -457,22 +457,39 @@ class PngLauncherWindow(QMainWindow):
         """Format log message"""
         return f'[{timestamp}] [{level}] {message}'
 
-    def format_log_message_colored_child(self,
-                                        timestamp: str,
-                                        message: str,
-                                        level: str,
-                                        filename: str,
-                                        lineno: int,
-                                        src: str) -> str:
-        """Format log message with color coding"""
+    def format_log_unknown_message_colored_child(self, timestamp: str, message: str, src: str) -> str:
+        """Format unknown log message with color coding"""
         src_color = '#4ec9b0'  # TODO
-        level_color = self.log_colors[level]
+        level_color = self.log_colors['INFO']
 
         formatted = (
             f'<span style="color: #666;">[{timestamp}]</span> '
             f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
-            f'<span style="color: {level_color};">[{level}]</span> '
-            f'<span style="color: #d4d4d4;">{message.replace('\n', '<br>')}</span>'
+            f'<span style="color: {level_color};">[UNKNOWN]</span> '
+            f'<span style="color: #d4d4d4;">{message.replace}</span>'
+        )
+
+        return formatted
+
+    def format_log_message_colored_child(self,
+                                        timestamp: str,
+                                        message: str,
+                                        level: str,
+                                        src: str) -> str:
+        """Format log message with color coding"""
+        src_color = '#4ec9b0'
+        level_color = self.log_colors[level]
+
+        # Convert \n --> <br>
+        safe_message = message.replace("\n", "<br>")
+        # Wrap message to preserve indentation, spaces, tabs
+        safe_message = f'<span style="white-space: pre;">{safe_message}</span>'
+
+        formatted = (
+            f'<span style="color: #666;">[{timestamp}]</span> '
+            f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
+            f'<span style="color: {level_color};">[{level}]</span>'
+            f'<span style="color: #d4d4d4;">{safe_message}</span>'
         )
 
         return formatted
@@ -486,6 +503,13 @@ class PngLauncherWindow(QMainWindow):
                                         src: str) -> str:
         """Format log message"""
         return f'[{timestamp}] [{src}] [{level}] [{filename}:{lineno}] {message}'
+
+    def format_log_unknown_message_plain_child(self,
+                                        timestamp: str,
+                                        message: str,
+                                        src: str) -> str:
+        """Format log message"""
+        return f'[{timestamp}] [{src}] [UNKNOWN] {message}'
 
     def info_log(self, message: str, src: str = ''):
         """Thread-safe info logging"""
@@ -525,17 +549,20 @@ class PngLauncherWindow(QMainWindow):
             lineno = obj['lineno']
             text = obj['message']
 
-            console_msg = self.format_log_message_colored_child(timestamp, text, level, filename, lineno, src)
+            console_msg = self.format_log_message_colored_child(timestamp, text, level, src)
             log_msg = self.format_log_message_plain_child(timestamp, text, level, filename, lineno, src)
 
-            # Write to console widget
-            if self.console:
-                self.console.append_log(console_msg)
-
-            # Write to rotating file logger
-            self.logger.info(log_msg)
         except json.JSONDecodeError:
-            pass # TODO
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            console_msg = self.format_log_unknown_message_colored_child(timestamp, message, src)
+            log_msg = self.format_log_unknown_message_plain_child(timestamp, message, src)
+
+        # Write to console widget
+        if self.console:
+            self.console.append_log(console_msg)
+
+        # Write to rotating file logger
+        self.logger.info(log_msg)
 
     def _write_log_self(self, message: str, level: str):
         """Write log to console and file. These log messages are from the launcher process"""
