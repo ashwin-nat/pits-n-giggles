@@ -71,7 +71,7 @@ class ConditionalTimestampFormatter(logging.Formatter):
 def get_rotating_logger(
     name: str = "png_logger",
     log_file_path: str = DEFAULT_LOG_FILE,
-    max_bytes: int = 3 * 1024 * 1024,
+    max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 3,
     debug_mode: bool = False
 ) -> Tuple[logging.Logger, str]:

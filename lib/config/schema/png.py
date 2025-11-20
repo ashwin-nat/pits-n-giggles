@@ -30,7 +30,6 @@ from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
 from .hud import HudSettings
-from .logging import LoggingSettings
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
@@ -44,7 +43,6 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings)
     Capture: CaptureSettings = Field(default_factory=CaptureSettings)
     Display: DisplaySettings = Field(default_factory=DisplaySettings)
-    Logging: LoggingSettings = Field(default_factory=LoggingSettings)
     Privacy: PrivacySettings = Field(default_factory=PrivacySettings)
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)

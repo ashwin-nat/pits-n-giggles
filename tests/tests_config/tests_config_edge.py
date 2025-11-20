@@ -34,7 +34,7 @@ import sys
 
 from pydantic import ValidationError
 
-from lib.config import LoggingSettings, HudSettings
+from lib.config import HudSettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -71,7 +71,7 @@ import configparser
 import tempfile
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        LoggingSettings, NetworkSettings, PngSettings,
+                        NetworkSettings, PngSettings,
                         PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, save_config_to_ini)
 
@@ -152,7 +152,6 @@ class TestSampleSettingsFixture(TestF1ConfigBase):
             Network=NetworkSettings(),
             Capture=CaptureSettings(),
             Display=DisplaySettings(),
-            Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings()
@@ -204,8 +203,6 @@ post_race_data_autosave = true
         # Verify missing sections have default values
         self.assertEqual(config.Display.refresh_interval, 200)  # Default
         self.assertFalse(config.Display.disable_browser_autoload)  # Default
-        self.assertEqual(config.Logging.log_file, "png.log")  # Default
-        self.assertEqual(config.Logging.log_file_size, 1_000_000)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
         self.assertEqual(config.Forwarding.target_1, "")  # Default
         self.assertEqual(config.Forwarding.target_2, "")  # Default
@@ -221,9 +218,6 @@ telemetry_port = 25000
 [Display]
 refresh_interval = 500
 
-[Logging]
-log_file = custom.log
-
 [Privacy]
 
 [Forwarding]
@@ -238,7 +232,6 @@ target_1 = localhost:8080
         # Verify existing keys have correct values
         self.assertEqual(config.Network.telemetry_port, 25000)
         self.assertEqual(config.Display.refresh_interval, 500)
-        self.assertEqual(config.Logging.log_file, "custom.log")
         self.assertEqual(config.Forwarding.target_1, "localhost:8080")
 
         # Verify missing keys have default values
@@ -247,7 +240,6 @@ target_1 = localhost:8080
         self.assertEqual(config.Network.udp_tyre_delta_action_code, 11)  # Default
         self.assertEqual(config.Network.udp_custom_action_code, 12)  # Default
         self.assertFalse(config.Display.disable_browser_autoload)  # Default
-        self.assertEqual(config.Logging.log_file_size, 1_000_000)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
         self.assertEqual(config.Forwarding.target_2, "")  # Default
         self.assertEqual(config.Forwarding.target_3, "")  # Default
@@ -282,8 +274,6 @@ udp_custom_action_code = 5
 
 [Display]
 
-[Logging]
-
 [Privacy]
 
 [Forwarding]
@@ -307,9 +297,6 @@ udp_custom_action_code = 5
 
         self.assertEqual(config.Display.refresh_interval, 200)
         self.assertFalse(config.Display.disable_browser_autoload)
-
-        self.assertEqual(config.Logging.log_file, "png.log")
-        self.assertEqual(config.Logging.log_file_size, 1_000_000)
 
         self.assertFalse(config.Privacy.process_car_setup)
 
@@ -358,24 +345,22 @@ target_2 = example.com:9090
         self.assertTrue(config.Capture.post_race_data_autosave)
         self.assertTrue(config.Capture.post_quali_data_autosave)
         self.assertFalse(config.Capture.post_fp_data_autosave)
-        self.assertEqual(config.Logging.log_file, "png.log")
-        self.assertEqual(config.Logging.log_file_size, 1_000_000)
         self.assertFalse(config.StreamOverlay.show_sample_data_at_start)
 
     def test_only_one_section_present(self):
         """Test when only a single section is present in INI file"""
         ini_content = """
-[Logging]
-log_file = special.log
-log_file_size = 500000
+[Display]
+refresh_interval = 200
+disable_browser_autoload = false
 """
         file_path = self._create_ini_file(ini_content)
 
         config = load_config_from_ini(file_path)
 
         # Verify the present section
-        self.assertEqual(config.Logging.log_file, "special.log")
-        self.assertEqual(config.Logging.log_file_size, 500000)
+        self.assertEqual(config.Display.refresh_interval, 200)
+        self.assertEqual(config.Display.disable_browser_autoload, False)
 
         # Verify all other sections have defaults
         self.assertEqual(config.Network.telemetry_port, 20777)
@@ -414,9 +399,6 @@ target_1 = localhost:8080
         self.assertIn("[Display]", saved_content)
         self.assertIn("refresh_interval = 200", saved_content)
         self.assertIn("disable_browser_autoload = False", saved_content)
-
-        self.assertIn("[Logging]", saved_content)
-        self.assertIn("log_file = png.log", saved_content)
 
         self.assertIn("[Privacy]", saved_content)
         self.assertIn("process_car_setup = False", saved_content)

@@ -30,7 +30,7 @@ from pydantic import ValidationError
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                        LoggingSettings, NetworkSettings, PngSettings, HttpsSettings, HudSettings,
+                        NetworkSettings, PngSettings, HttpsSettings, HudSettings,
                         PrivacySettings, StreamOverlaySettings)
 
 from .tests_config_base import TestF1ConfigBase
@@ -46,7 +46,6 @@ class TestPngSettings(TestF1ConfigBase):
             Network=NetworkSettings(),
             Capture=CaptureSettings(),
             Display=DisplaySettings(),
-            Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings(),
@@ -57,7 +56,6 @@ class TestPngSettings(TestF1ConfigBase):
         self.assertIsInstance(settings.Network, NetworkSettings)
         self.assertIsInstance(settings.Capture, CaptureSettings)
         self.assertIsInstance(settings.Display, DisplaySettings)
-        self.assertIsInstance(settings.Logging, LoggingSettings)
         self.assertIsInstance(settings.Privacy, PrivacySettings)
         self.assertIsInstance(settings.Forwarding, ForwardingSettings)
 
@@ -68,7 +66,6 @@ class TestPngSettings(TestF1ConfigBase):
                 Network=NetworkSettings(telemetry_port=-1),  # Invalid
                 Capture=CaptureSettings(),
                 Display=DisplaySettings(),
-                Logging=LoggingSettings(),
                 Privacy=PrivacySettings(),
                 Forwarding=ForwardingSettings()
             )
@@ -93,7 +90,6 @@ class TestPngSettings(TestF1ConfigBase):
             Network=NetworkSettings(),
             Capture=CaptureSettings(),
             Display=DisplaySettings(),
-            Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings(),
@@ -103,7 +99,6 @@ class TestPngSettings(TestF1ConfigBase):
             Network=NetworkSettings(),
             Capture=CaptureSettings(),
             Display=DisplaySettings(),
-            Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings(),
@@ -113,7 +108,6 @@ class TestPngSettings(TestF1ConfigBase):
             Network=NetworkSettings(server_port=12345),
             Capture=CaptureSettings(),
             Display=DisplaySettings(refresh_interval=1000),
-            Logging=LoggingSettings(),
             Privacy=PrivacySettings(),
             Forwarding=ForwardingSettings(),
             StreamOverlay=StreamOverlaySettings(),

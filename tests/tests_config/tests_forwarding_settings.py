@@ -34,8 +34,6 @@ import sys
 
 from pydantic import ValidationError
 
-from lib.config import LoggingSettings
-
 from .tests_config_base import TestF1ConfigBase
 
 # ----------------------------------------------------------------------------------------------------------------------

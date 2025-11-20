@@ -27,7 +27,6 @@ from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
 from .hud import HudSettings, MfdSettings, MfdPageSettings
-from .logging import LoggingSettings
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
@@ -46,7 +45,6 @@ __all__ = [
     'HudSettings',
     'MfdSettings',
     'MfdPageSettings',
-    'LoggingSettings',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
