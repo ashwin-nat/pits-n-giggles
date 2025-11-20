@@ -33,16 +33,17 @@ from typing import List, Optional, Set
 
 import psutil
 
-from apps.backend.state_mgmt_layer import initStateManagementLayer, SessionState
-from apps.backend.telemetry_layer import initTelemetryLayer
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
+from apps.backend.state_mgmt_layer import (SessionState,
+                                           initStateManagementLayer)
+from apps.backend.telemetry_layer import initTelemetryLayer
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
-from lib.logger import get_logger
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
