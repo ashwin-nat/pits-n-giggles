@@ -308,10 +308,11 @@ def entry_point():
 
 #     report_pid_from_child()
 #     args_obj = parseArgs()
-#     png_logger = initLogger(
-#         file_name=args_obj.log_file_name,
-#         max_size=100000,
-#         debug_mode=args_obj.debug
+#     png_logger = get_logger(
+#         name="backend",
+#         debug_mode=args_obj.debug,
+#         file_path=args_obj.log_file_name,
+#         jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
 #     )
 #     if sys.platform == 'win32':
 #         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
