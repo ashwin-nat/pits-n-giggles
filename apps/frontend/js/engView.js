@@ -325,7 +325,7 @@ class EngViewRaceTable {
             }
 
             let timeClass = '';
-            if (sectorStatus && sectorKey !== 'lap') {
+            if (sectorStatus && sectorKey !== 'lap' && sectorKey !== 'delta') {
                   const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
                   if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
                       timeClass = 'green-time';
@@ -336,6 +336,16 @@ class EngViewRaceTable {
                   }
             }
             return this.createSingleLineCell(cellText, {className: timeClass});
+        };
+    }
+
+    createDeltaCellRendererCurrLap() {
+        return (params) => {
+            const driverInfo = params.data;
+            const currLapInfo = driverInfo["lap-info"]["curr-lap"];
+            const delta = currLapInfo["delta"];
+            const formattedTime = (delta) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
+            return this.createSingleLineCell(formattedTime);
         };
     }
 
@@ -635,6 +645,17 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
                         equals: this.createSectorTimeEqualsComparator('curr-lap', 's3', 's3-time-ms'),
+                    },
+                    {
+                        headerName: "Delta",
+                        colId: "curr-lap-delta",
+                        context: {displayName: "Delta", },
+                        field: `lap-info`,
+                        cellRenderer: this.createDeltaCellRendererCurrLap('delta', 'delta'),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', null, 'delta'),
                     },
                 ]
             },
@@ -1363,6 +1384,10 @@ class EngViewRaceTable {
             // If sector times are 0, just re-render.
             if ((lapType === 'curr-lap') && (newTimeMs === 0)) {
                 return false;
+            }
+
+            if (!sectorKey) {
+                return true;
             }
 
             // If sector status changed, re-render
