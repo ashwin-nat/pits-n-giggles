@@ -197,3 +197,5 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         if self.enabled:
             if not self.show_lap_timer and not self.show_timing_tower and not self.show_mfd:
                 raise ValueError("HUD cannot be enabled while all overlays are disabled")
+            if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
+                raise ValueError("HUD cannot be enabled while all MFD pages are disabled")

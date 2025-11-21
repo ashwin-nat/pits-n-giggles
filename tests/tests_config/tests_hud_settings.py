@@ -267,13 +267,23 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(mfd_settings=mfd)
 
-    # def test_mfd_add_page_duplicate_position(self):
-    #     """Adding a page with a duplicate enabled position should raise ValidationError"""
-    #     settings = HudSettings()
-    #     mfd = settings.mfd_settings
+    #
+    # ------------------------------------------------------------
+    #  VALIDATION — MFD enabled and page disabled
+    # ------------------------------------------------------------
+    #
 
-    #     # Add an initial page with a specific position
-    #     mfd.pages["page1"] = MfdPageSettings(enabled=True, position=10)
+    def test_mfd_enabled_with_pages_disabled(self):
+        """MFD cannot be enabled while all MFD pages are disabled"""
+        with self.assertRaises(ValidationError):
+            HudSettings(show_mfd=True,
+                        mfd_settings={
+                            {"lap_times": MfdPageSettings(enabled=False)},
+                            {"fuel_info": MfdPageSettings(enabled=False)},
+                            {"tyre_info": MfdPageSettings(enabled=False)},
+                        }
+            )
+
 
     #
     # ------------------------------------------------------------
