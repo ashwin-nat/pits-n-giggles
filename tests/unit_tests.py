@@ -51,12 +51,11 @@ from tests_config import (TestCaptureSettings, TestConfigMigration,
                           TestDisplaySettings, TestEdgeCases, TestFilePathStr,
                           TestForwardingSettings, TestHttpsSettings,
                           TestHudSettings, TestLoadConfigFromIni,
-                          TestLoadConfigFromJson,
-                          TestMissingSectionsAndKeys, TestNetworkSettings,
-                          TestPitTimeLossF1, TestPitTimeLossF2,
-                          TestPngSettings, TestPrivacySettings,
-                          TestSampleSettingsFixture, TestStreamOverlaySettings,
-                          TestSubSysCtrl)
+                          TestLoadConfigFromJson, TestMissingSectionsAndKeys,
+                          TestNetworkSettings, TestPitTimeLossF1,
+                          TestPitTimeLossF2, TestPngSettings,
+                          TestPrivacySettings, TestSampleSettingsFixture,
+                          TestStreamOverlaySettings, TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
@@ -84,6 +83,8 @@ from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 from tests.ipc import TestIpcParentChild, TestIpcSubscriber
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
+from tests.tests_delta import (TestDeltaLap, TestDeltaToBestLapManager,
+                               TestIntegrationScenarios)
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_wdt import TestWatchDogTimer
 
