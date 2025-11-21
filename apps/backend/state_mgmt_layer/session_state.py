@@ -544,6 +544,13 @@ class SessionState:
         # Speed trap
         driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
 
+        # Delta
+        driver_obj.m_delta_mgr.record_data_point(
+            lap_num=lap_data.m_currentLapNum,
+            curr_distance=lap_data.m_lapDistance,
+            curr_time_ms=lap_data.m_currentLapTimeInMS
+        )
+
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
         """Process the fastest lap update event notification
 
