@@ -52,7 +52,7 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
         mgr = LapDeltaManager()
 
         mgr.record_data_point(1, 50.0, 3000)
-        mgr.record_data_point(1, 49.0, 3100)  # backwards → should be ignored
+        mgr.record_data_point(1, 49.0, 3100)  # backwards --> should be ignored
         mgr.record_data_point(1, 70.0, 3500)
 
         state = mgr._dump_state()[1]
@@ -105,7 +105,7 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
         mgr.record_data_point(1, 20.0, 2000)
         mgr.set_best_lap(1)
 
-        # current lap at distance 15 → halfway between
+        # current lap at distance 15 --> halfway between
         mgr.record_data_point(2, 15.0, 1700)
 
         delta = mgr.get_delta()
@@ -132,14 +132,13 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
         mgr.record_data_point(1, 20.0, 2000)
         mgr.record_data_point(1, 30.0, 3000)
 
-        # flashback to 18 m — remove >18m
+        # flashback to 18 m — keep < 18, drop >= 18
         mgr.handle_flashback(1, 18.0)
 
         state = mgr._dump_state()[1]
 
-        self.assertEqual(len(state), 2)
+        self.assertEqual(len(state), 1)
         self.assertEqual(state[0], (10.0, 1000))
-        self.assertEqual(state[1], (20.0, 2000))
 
     def test_flashback_to_previous_lap(self):
         mgr = LapDeltaManager()
@@ -172,17 +171,16 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
 
         mgr.handle_flashback(1, 15.0)
 
-        # now only distance 10.0 and 20.0 survive
-        self.assertEqual(mgr._last_recorded_point.distance_m, 20.0)
-        self.assertEqual(mgr._last_recorded_point.time_ms, 2000)
-
+        # only distance < 15 survives --> 10.0
+        self.assertEqual(mgr._last_recorded_point.distance_m, 10.0)
+        self.assertEqual(mgr._last_recorded_point.time_ms, 1000)
 
     def test_get_delta_no_best_lap(self):
         mgr = LapDeltaManager()
         # record one point
         mgr.record_data_point(1, 10.0, 1000)
 
-        # best lap was never set → should hit "if self._best_lap_num is None"
+        # best lap was never set --> should hit "if self._best_lap_num is None"
         self.assertIsNone(mgr.get_delta())
 
     # ---------------------------------------------------------
@@ -191,7 +189,7 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
     def test_get_delta_no_last_point(self):
         mgr = LapDeltaManager()
         mgr.set_best_lap(1)
-        # no points ever recorded → _last_recorded_point is None
+        # no points ever recorded --> _last_recorded_point is None
         self.assertIsNone(mgr.get_delta())
 
     # ---------------------------------------------------------
@@ -217,20 +215,16 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
     def test_same_lap_flashback_keeps_next_point(self):
         mgr = LapDeltaManager()
 
-        # record points in lap 1
         mgr.record_data_point(1, 10.0, 1000)
         mgr.record_data_point(1, 30.0, 3000)
         mgr.record_data_point(1, 60.0, 6000)
 
-        # SAME-LAP flashback (no future laps exist)
+        # SAME-LAP flashback: drop >= 25 --> only 10 remains
         mgr.handle_flashback(1, 25.0)
 
-        # Should keep:
-        #   <=25 → (10)
-        #   + next above distance → (30)
         state = mgr._dump_state()[1]
 
-        self.assertEqual(state, [(10.0, 1000), (30.0, 3000)])
+        self.assertEqual(state, [(10.0, 1000)])
 
     # ---------------------------------------------------------
     # _interpolated_time_for_distance(): lap missing
@@ -254,7 +248,7 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
         mgr._laps[1].append(LapPoint(1, 100.0, 9000))
         mgr._lap_distances[1].append(100.0)
 
-        # ask for exactly this distance → bisect will find the later one,
+        # ask for exactly this distance --> bisect will find the later one,
         # but degenerate branch should return t_lo (5000).
         res = mgr._interpolated_time_for_distance(1, 100.0)
 

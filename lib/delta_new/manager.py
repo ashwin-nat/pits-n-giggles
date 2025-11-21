@@ -128,10 +128,30 @@ class LapDeltaManager:
         )
 
     def handle_flashback(self, lap_num: int, curr_distance: float) -> None:
+        """
+        Handle a flashback (rewind) issued by the simulator.
+
+        Two different behaviors exist:
+
+        1. LAP REWIND (lap_num < previously recorded lap):
+            - Delete all recorded data for future laps.
+            - On the target lap, keep all points whose distance <= curr_distance.
+            (Because the rewind lands *on or after* that position in the past.)
+
+        2. SAME-LAP FLASHBACK (lap_num == current lap):
+            - We rewound to a point *before* curr_distance.
+            - All points whose distance >= curr_distance belong to the "future timeline"
+            and must be removed.
+            - Keep only points strictly less than curr_distance.
+            - The next record_data_point() call will insert a new point at exactly curr_distance.
+
+        After trimming, update _last_recorded_point to the last point in time order.
+        """
+
         lap_num = int(lap_num)
         curr_distance = float(curr_distance)
 
-        # --- Detect lap rewind (future laps deleted) ---
+        # --- Detect lap rewind: any lap greater than target must be removed ---
         future_laps = [ln for ln in list(self._laps.keys()) if ln > lap_num]
         is_lap_rewind = len(future_laps) > 0
 
@@ -139,7 +159,7 @@ class LapDeltaManager:
             del self._laps[ln]
             del self._lap_distances[ln]
 
-        # ensure lap entry
+        # Ensure lap storage exists
         if lap_num not in self._laps:
             self._laps[lap_num] = []
             self._lap_distances[lap_num] = []
@@ -148,23 +168,83 @@ class LapDeltaManager:
         dists = self._lap_distances[lap_num]
 
         if dists:
-            # idx = first element > curr_distance
-            idx = bisect.bisect_right(dists, curr_distance)
 
             if is_lap_rewind:
-                # PREVIOUS-LAP FLASHBACK:
-                # Keep all points <= curr_distance
-                self._laps[lap_num] = pts[:idx]
-                self._lap_distances[lap_num] = dists[:idx]
-            else:
-                # SAME-LAP FLASHBACK:
-                # Keep <= curr_distance AND the first > curr_distance
-                if idx < len(dists):
-                    idx += 1
+                # LAP REWIND:
+                # Keep points <= curr_distance
+                # LAP-REWIND FLASHBACK (lap number decreases)
+                # -------------------------------------------
+                #
+                # Suppose we have recorded:
+                #
+                #     Lap 1:   10 ---- 20 ---- 30 ---- 40 ---- 50
+                #                p1     p2     p3     p4     p5
+                #
+                #     Lap 2:   15 ---- 25 ---- 35
+                #                q1     q2     q3
+                #
+                # And the user flashbacks to:
+                #     lap_num = 1
+                #     curr_distance = 22
+                #
+                # Step 1: Remove all laps > 1, since they are "future timeline":
+                #     Lap 2 is deleted.
+                #
+                # Step 2: In lap 1, keep points whose distance <= 22.
+                #     10, 20 remain.
+                #     30, 40, 50 are removed.
+                #
+                # Final state after flashback:
+                #     Lap 1:   10 ---- 20
+                #                p1     p2
+                #
+                # Next telemetry update will continue from this rewound position.
+
+                idx = bisect.bisect_right(dists, curr_distance)
                 self._laps[lap_num] = pts[:idx]
                 self._lap_distances[lap_num] = dists[:idx]
 
-        # update last point
+            else:
+                # SAME-LAP FLASHBACK:
+                # Discard points >= curr_distance
+                # SAME-LAP FLASHBACK (curr_distance = X)
+                # --------------------------------------
+                #
+                # We have a timeline of recorded points in a lap, sorted by distance:
+                #
+                #     Before flashback:
+                #         10 ---- 20 ---- 30 ---- 40 ---- 50
+                #          p1     p2     p3     p4     p5
+                #
+                # If the flashback happens at distance X = 25:
+                #
+                #     We drop ALL points whose distance >= 25:
+                #         - drop p3 (30)
+                #         - drop p4 (40)
+                #         - drop p5 (50)
+                #
+                #     Keep only points whose distance < 25:
+                #         10 ---- 20
+                #          p1     p2
+                #
+                # After the flashback, the next telemetry update from the sim will be:
+                #         distance = 25
+                # and record_data_point() will accept it because 25 > 20.
+                #
+                # Final state after flashback:
+                #         10 ---- 20
+                #          p1     p2
+
+                new_pts = []
+                new_dists = []
+                for p, d in zip(pts, dists):
+                    if d < curr_distance:
+                        new_pts.append(p)
+                        new_dists.append(d)
+                self._laps[lap_num] = new_pts
+                self._lap_distances[lap_num] = new_dists
+
+        # Refresh last recorded point
         all_points = self._all_points_sorted_by_time_order()
         self._last_recorded_point = all_points[-1] if all_points else None
 
