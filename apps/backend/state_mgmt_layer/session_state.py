@@ -553,14 +553,15 @@ class SessionState:
         # Speed trap
         driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
 
-        # Delta
-        if flashback_occurred:
-            driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
-        driver_obj.m_delta_mgr.record_data_point(
-            lap_num=lap_data.m_currentLapNum,
-            curr_distance=lap_data.m_lapDistance,
-            curr_time_ms=lap_data.m_currentLapTimeInMS
-        )
+        # Delta - not supported in time trial
+        if self.m_session_info.m_session_type and not self.m_session_info.m_session_type.isTimeTrialTypeSession():
+            if flashback_occurred:
+                driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
+            driver_obj.m_delta_mgr.record_data_point(
+                lap_num=lap_data.m_currentLapNum,
+                curr_distance=lap_data.m_lapDistance,
+                curr_time_ms=lap_data.m_currentLapTimeInMS
+            )
 
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
         """Process the fastest lap update event notification
@@ -883,8 +884,9 @@ class SessionState:
                 self.m_fastest_index = None
                 self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
 
-        if packet.m_bestLapTimeLapNum:
-            obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
+        if self.m_session_info.m_session_type and not self.m_session_info.m_session_type.isTimeTrialTypeSession():
+            if packet.m_bestLapTimeLapNum:
+                obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
