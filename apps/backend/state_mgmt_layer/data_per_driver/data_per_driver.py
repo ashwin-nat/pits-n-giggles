@@ -29,11 +29,12 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
+from lib.delta_new import LapDeltaManager
 from lib.f1_types import (CarDamageData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
-from lib.race_ctrl import (CarDamageRaceControlMessage, DriverPittingRaceCtrlMsg,
-                           DriverRaceControlManager,
+from lib.race_ctrl import (CarDamageRaceControlMessage,
+                           DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -45,8 +46,6 @@ from .pending_events import DriverPendingEvents, PendingEventsManager
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
-
-from lib.delta_new import LapDeltaManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 

@@ -319,6 +319,7 @@ class SessionState:
         'm_version',
         'm_connected_to_sim',
         'm_race_ctrl',
+        'm_flashback_occurred',
     )
 
     def __init__(self,
@@ -361,6 +362,7 @@ class SessionState:
         self.m_connected_to_sim: bool = False
 
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
+        self.m_flashback_occurred: bool = False
 
     ####### Control Methods ########
 
@@ -387,6 +389,7 @@ class SessionState:
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
         self.m_race_ctrl.clear()
+        self.m_flashback_occurred = False
 
         self.m_pkt_count = 0
 
@@ -452,7 +455,7 @@ class SessionState:
                 self._handleLapChangeLogic(driver_obj, lap_data)
 
             # Update current lap and process driver status
-            self._updateDriverStatus(driver_obj, lap_data, index)
+            self._updateDriverStatus(driver_obj, lap_data, index, self.m_flashback_occurred)
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
@@ -461,6 +464,7 @@ class SessionState:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
 
         self.m_num_active_cars = num_active_cars
+        self.m_flashback_occurred = False # Reset flashback flag since it must've been processed by now
 
         if should_recompute_fastest_lap:
             self._recomputeFastestLap()
@@ -511,13 +515,18 @@ class SessionState:
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
-    def _updateDriverStatus(self, driver_obj: DataPerDriver, lap_data: LapData, driver_index: int) -> None:
+    def _updateDriverStatus(self,
+                            driver_obj: DataPerDriver,
+                            lap_data: LapData,
+                            driver_index: int,
+                            flashback_occurred: bool) -> None:
         """Update driver's current status including DNF status
 
         Args:
             driver_obj: Driver object to update
             lap_data: Lap data containing status information
             driver_index: Index of the driver in the race
+            flashback_occurred: Whether a flashback occurred
         """
         RESULT_STATUS_MAP = {
             ResultStatus.DID_NOT_FINISH: "DNF",
@@ -545,6 +554,8 @@ class SessionState:
         driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
 
         # Delta
+        if flashback_occurred:
+            driver_obj.m_delta_mgr.handle_flashback(lap_data.m_lapDistance)
         driver_obj.m_delta_mgr.record_data_point(
             lap_num=lap_data.m_currentLapNum,
             curr_distance=lap_data.m_lapDistance,
@@ -980,6 +991,11 @@ class SessionState:
         if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
                                                  record.beingOvertakenVehicleIdx)):
             self.m_overtakes_history.insert(overtake_obj)
+
+    def processFlashbackEvent(self) -> None:
+        """Record that a flashback has happened"""
+
+        self.m_flashback_occurred = True
 
     def handleEvent(self, packet: PacketEventData):
         """Handle the event packet
