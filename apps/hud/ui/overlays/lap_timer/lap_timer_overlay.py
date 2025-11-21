@@ -153,15 +153,15 @@ class LapTimerOverlay(BaseOverlay):
             driver_status = curr_lap["driver-status"]
             delta = curr_lap["delta-ms"]
 
-            if driver_status == "FLYING_LAP":
-                self._display_flying_lap(
+            if driver_status in {"FLYING_LAP", "ON_TRACK"}:
+                self._display_real_lap(
                     display_info["time_ms"],
                     display_info["sector_status"],
                     delta,
                     best_lap["lap-time-ms"]
                 )
             else:
-                self._display_non_flying_lap(
+                self._display_cooldown_lap(
                     driver_status,
                     display_info["sector_status"]
                 )
@@ -225,7 +225,7 @@ class LapTimerOverlay(BaseOverlay):
             "sector_status": curr_lap["sector-status"]
         }
 
-    def _display_flying_lap(
+    def _display_real_lap(
         self,
         time_ms: Optional[int],
         sector_status: Any,
@@ -253,7 +253,7 @@ class LapTimerOverlay(BaseOverlay):
         else:
             self._clear_delta_and_estimated()
 
-    def _display_non_flying_lap(self, driver_status: str, sector_status: Any):
+    def _display_cooldown_lap(self, driver_status: str, sector_status: Any):
         """Display information for non-flying lap status.
 
         Args:

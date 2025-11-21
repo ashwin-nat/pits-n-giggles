@@ -886,10 +886,10 @@ class SessionState:
                 self.m_fastest_index = None
                 self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
 
-            if self.m_session_info.m_session_type and \
-                not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
-                    packet.m_bestLapTimeLapNum:
-                obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
+        if self.m_session_info.m_session_type and \
+            not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
+                packet.m_bestLapTimeLapNum:
+            obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
