@@ -491,7 +491,7 @@ class PngLauncherWindow(QMainWindow):
         return (
             f'<span style="color: #666;">[{timestamp}]</span> '
             f'<span style="color: {src_color}; font-weight: bold;">[{src}]</span> '
-            f'<span style="color: {level_color};">[{level}]</span>'
+            f'<span style="color: {level_color};">[{level}]</span> '
             f'<span style="color: #d4d4d4;">{safe_message}</span>'
         )
 
