@@ -56,21 +56,33 @@ class TestDeltaToBestLapManager(TestF1DeltaBase):
 
     def test_record_data_point(self):
         """Test recording data through manager"""
-        self.manager.start_lap(1)
-        self.assertTrue(self.manager.record_data_point(100, 2.5))
-        self.assertTrue(self.manager.record_data_point(200, 5.0))
+        # No need to call start_lap - it's automatic!
+        self.assertTrue(self.manager.record_data_point(1, 100, 2.5))
+        self.assertTrue(self.manager.record_data_point(1, 200, 5.0))
 
         lap = self.manager.laps[1]
         self.assertEqual(len(lap.data_points), 2)
 
+    def test_record_data_point_auto_lap_transition(self):
+        """Test that lap transitions happen automatically"""
+        # Record data for lap 1
+        self.manager.record_data_point(1, 100, 2.5)
+        self.assertEqual(self.manager.current_lap_number, 1)
+
+        # Record data for lap 2 - should auto-transition
+        self.manager.record_data_point(2, 50, 1.2)
+        self.assertEqual(self.manager.current_lap_number, 2)
+        self.assertIn(2, self.manager.laps)
+
     def test_record_data_point_no_current_lap(self):
-        """Test recording without starting a lap"""
-        self.assertFalse(self.manager.record_data_point(100, 2.5))
+        """Test recording without starting a lap - now auto-starts"""
+        # This should now work - auto-starts lap 1
+        self.assertTrue(self.manager.record_data_point(1, 100, 2.5))
+        self.assertEqual(self.manager.current_lap_number, 1)
 
     def test_set_best_lap_existing(self):
         """Test setting best lap that exists"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
+        self.manager.record_data_point(1, 100, 2.5)
         self.manager.complete_current_lap(10.0)
 
         self.manager.set_best_lap(1)
@@ -85,64 +97,56 @@ class TestDeltaToBestLapManager(TestF1DeltaBase):
 
     def test_get_delta_no_best_lap(self):
         """Test delta calculation with no best lap"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
+        self.manager.record_data_point(1, 100, 2.5)
 
-        delta = self.manager.get_delta(100, 2.5)
+        delta = self.manager.get_delta(1, 100, 2.5)
         self.assertIsNone(delta)
 
     def test_get_delta_basic(self):
         """Test basic delta calculation"""
         # Create best lap
-        self.manager.start_lap(1)
-        self.manager.record_data_point(0, 0.0)
-        self.manager.record_data_point(100, 2.5)
-        self.manager.record_data_point(200, 5.0)
+        self.manager.record_data_point(1, 0, 0.0)
+        self.manager.record_data_point(1, 100, 2.5)
+        self.manager.record_data_point(1, 200, 5.0)
         self.manager.complete_current_lap(5.0)
         self.manager.set_best_lap(1)
 
-        # Start new lap
-        self.manager.start_lap(2)
-
+        # Start new lap (auto-starts on first data point)
         # Test faster
-        delta = self.manager.get_delta(100, 2.3)
+        delta = self.manager.get_delta(2, 100, 2.3)
         self.assertAlmostEqual(delta, -0.2, places=6)
 
         # Test slower
-        delta = self.manager.get_delta(200, 5.3)
+        delta = self.manager.get_delta(2, 200, 5.3)
         self.assertAlmostEqual(delta, 0.3, places=6)
 
     def test_get_delta_caching(self):
         """Test that caching improves performance with monotonic queries"""
         # Create best lap with many points
-        self.manager.start_lap(1)
         for i in range(100):
-            self.manager.record_data_point(i * 10, i * 0.25)
+            self.manager.record_data_point(1, i * 10, i * 0.25)
         self.manager.set_best_lap(1)
 
-        self.manager.start_lap(2)
-
         # First query should set cache
-        delta1 = self.manager.get_delta(100, 2.5)
+        delta1 = self.manager.get_delta(2, 100, 2.5)
         cached_idx_1 = self.manager._cached_search_idx
 
         # Second query with higher distance should use cache
-        delta2 = self.manager.get_delta(200, 5.0)
+        delta2 = self.manager.get_delta(2, 200, 5.0)
         cached_idx_2 = self.manager._cached_search_idx
 
         # Cache index should have advanced
         self.assertGreater(cached_idx_2, cached_idx_1)
 
-        # Starting new lap should reset cache
-        self.manager.start_lap(3)
+        # Starting new lap (via get_delta with new lap number) should reset cache
+        delta3 = self.manager.get_delta(3, 50, 1.0)
         self.assertEqual(self.manager._cached_search_idx, 0)
 
     def test_handle_flashback(self):
         """Test flashback handling through manager"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
-        self.manager.record_data_point(200, 5.0)
-        self.manager.record_data_point(300, 7.5)
+        self.manager.record_data_point(1, 100, 2.5)
+        self.manager.record_data_point(1, 200, 5.0)
+        self.manager.record_data_point(1, 300, 7.5)
 
         self.manager.handle_flashback(150)
 
@@ -152,8 +156,7 @@ class TestDeltaToBestLapManager(TestF1DeltaBase):
 
     def test_complete_current_lap(self):
         """Test completing current lap"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
+        self.manager.record_data_point(1, 100, 2.5)
         self.manager.complete_current_lap(10.5)
 
         lap = self.manager.laps[1]
@@ -161,8 +164,7 @@ class TestDeltaToBestLapManager(TestF1DeltaBase):
 
     def test_invalidate_lap(self):
         """Test invalidating a specific lap"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
+        self.manager.record_data_point(1, 100, 2.5)
 
         self.assertTrue(self.manager.laps[1].is_valid)
         self.manager.invalidate_lap(1)
@@ -170,8 +172,7 @@ class TestDeltaToBestLapManager(TestF1DeltaBase):
 
     def test_get_status(self):
         """Test status reporting"""
-        self.manager.start_lap(1)
-        self.manager.record_data_point(100, 2.5)
+        self.manager.record_data_point(1, 100, 2.5)
         self.manager.complete_current_lap(10.0)
         self.manager.set_best_lap(1)
 

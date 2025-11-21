@@ -28,7 +28,6 @@ from .lap import Lap
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-
 class DeltaToBestLapManager:
     """
     Manages multiple laps and calculates delta to best lap.
@@ -45,7 +44,9 @@ class DeltaToBestLapManager:
 
     def start_lap(self, lap_number: int):
         """
-        Start a new lap.
+        Start a new lap (called automatically by record_data_point).
+        You typically don't need to call this directly unless you want to
+        pre-initialize a lap before receiving data.
 
         Args:
             lap_number: Lap number from sim
@@ -53,23 +54,28 @@ class DeltaToBestLapManager:
         self.current_lap_number = lap_number
         self.laps[lap_number] = Lap(lap_number)
 
-        # Reset delta calculation cache
+        # Reset delta calculation cache for new lap
         self._last_query_distance = -1.0
         self._cached_search_idx = 0
 
-    def record_data_point(self, distance: float, time: float) -> bool:
+    def record_data_point(self, lap_number: int, distance: float, time: float) -> bool:
         """
-        Record data point for current lap.
+        Record data point - automatically starts new lap if needed.
+
+        This is the main entry point for telemetry data. Simply pass each packet's
+        data and the manager handles lap transitions automatically.
 
         Args:
+            lap_number: Current lap number from sim
             distance: Distance from lap start in meters
             time: Time from lap start in seconds
 
         Returns:
-            bool: True if recorded, False if rejected or no current lap
+            bool: True if recorded, False if rejected (non-increasing distance)
         """
-        if self.current_lap_number is None:
-            return False
+        # Auto-start new lap if lap number changed
+        if lap_number != self.current_lap_number:
+            self.start_lap(lap_number)
 
         current_lap = self.laps.get(self.current_lap_number)
         if current_lap is None:
@@ -131,11 +137,22 @@ class DeltaToBestLapManager:
             return None
         return self.laps.get(self.best_lap_number)
 
-    def get_delta(self, current_distance: float, current_time: float) -> Optional[float]:
+    @property
+    def current_lap(self) -> Optional[Lap]:
+        """Get the current lap object, if available"""
+        if self.current_lap_number is None:
+            return None
+        return self.laps.get(self.current_lap_number)
+
+    def get_delta(self, lap_number: int, current_distance: float, current_time: float) -> Optional[float]:
         """
         Calculate delta to best lap at current position with caching optimization.
 
+        This is the main entry point for delta queries. Simply pass each packet's
+        data and get the current delta.
+
         Args:
+            lap_number: Current lap number from sim
             current_distance: Current distance from lap start
             current_time: Current time from lap start
 
@@ -146,6 +163,11 @@ class DeltaToBestLapManager:
         best_lap = self.get_best_lap()
         if best_lap is None:
             return None
+
+        # Reset cache if lap number changed (new lap started)
+        if lap_number != self.current_lap_number:
+            self._last_query_distance = -1.0
+            self._cached_search_idx = 0
 
         # Optimize search index based on monotonically increasing distance
         search_start_idx = 0
@@ -196,4 +218,3 @@ class DeltaToBestLapManager:
             'current_lap_valid': current_lap.is_valid if current_lap else None,
             'total_laps': len(self.laps)
         }
-

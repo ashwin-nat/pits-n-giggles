@@ -35,7 +35,7 @@ from .tests_delta_base import TestF1DeltaBase
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestDeltaLap(TestF1DeltaBase):
-    """Test StreamOverlaySettings model"""
+    """Tests for the Lap class"""
 
     def setUp(self):
         self.lap = Lap(lap_number=1)
@@ -140,3 +140,4 @@ class TestDeltaLap(TestF1DeltaBase):
         self.assertTrue(self.lap.is_valid)
         self.lap.invalidate()
         self.assertFalse(self.lap.is_valid)
+
