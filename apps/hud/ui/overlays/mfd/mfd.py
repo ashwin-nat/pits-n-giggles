@@ -24,7 +24,7 @@
 
 import itertools
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
@@ -111,7 +111,7 @@ class MfdOverlay(BaseOverlay):
         self.pages.addWidget(widget_cls(self, self.logger))
 
     def _init_cmd_handlers(self):
-
+        """Register command handlers."""
         @self.on_event("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
             self.logger.debug(f"{self.overlay_id} | Switching to next page...")
@@ -126,7 +126,7 @@ class MfdOverlay(BaseOverlay):
             if not self.locked and next_index == 0:
                 next_index = 1
                 self.logger.debug(f"{self.overlay_id} | Unlocked mode. Skipping collapsed page in next_page")
-            self._switch_page(next_index)
+            self._switch_page(current_index, next_index)
 
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
@@ -155,19 +155,33 @@ class MfdOverlay(BaseOverlay):
             self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN METHOD] Setting config {self.config}")
             config = OverlaysConfig.fromJSON(data)
             self.setGeometry(config.x, config.y, config.width, config.height)
-            if self.pages.currentIndex != 0:
-                self._switch_page(0)
+            current_index = self.pages.currentIndex()
+            if current_index != 0:
+                self._switch_page(current_index, 0)
 
-    def _handle_event(self, event_type: str, data: Dict[str, Any]) -> None:
-        active_page: BasePage = self.pages.currentWidget()
+    def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
+        """Forward event to page.
+
+        Args:
+            event_type (str): Event type
+            data (Dict[str, Any]): Event data
+            dest_index (Optional[int]): Destination page index. If not specified, the current page is used.
+        """
+        if dest_index is None:
+            active_page: BasePage = self.pages.currentWidget()
+        else:
+            active_page = self.pages.widget(dest_index)
+            if not active_page:
+                self.logger.warning(f"{self.overlay_id} | Page {dest_index} not found")
+                return
         active_page._handle_event(event_type, data)
 
-    def _switch_page(self, index: int):
+    def _switch_page(self, old_index: int, new_index: int):
         """Switch page with animation and resize MFD based on open/closed state."""
-        target_height = self.mfdClosed if index == 0 else self.mfdOpen
+        target_height = self.mfdClosed if new_index == 0 else self.mfdOpen
 
         # First set the stacked widget height constraint
-        if index == 0:
+        if new_index == 0:
             self.pages.setFixedHeight(self.mfdClosed)
         else:
             # Remove fixed height constraint for expanded pages
@@ -175,13 +189,17 @@ class MfdOverlay(BaseOverlay):
             self.pages.setMinimumHeight(0)
 
         # Use animated transition instead of instant switch
-        self.pages.setCurrentIndexAnimated(index)
+        self.pages.setCurrentIndexAnimated(new_index)
 
         # Resize the window
         self.resize(self.width(), target_height)
 
-        page_name = "collapsed" if index == 0 else "expanded"
+        page_name = "collapsed" if new_index == 0 else "expanded"
         self.logger.debug(f"MFD: switched to {page_name} page (height={target_height})")
+
+        # Notify the new and old pages of the switch
+        self._handle_event("pace_active_status", {"active" : False}, old_index)
+        self._handle_event("pace_active_status", {"active" : True}, new_index)
 
     def _is_page_active(self, page: QWidget) -> bool:
         """Return True if the given page is currently active."""
