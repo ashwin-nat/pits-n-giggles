@@ -77,7 +77,7 @@ class LapTimerOverlay(BaseOverlay):
 
         font = QFont("Consolas", 20, QFont.Bold)
 
-        self.curr_label = QLabel(f"P{self._base_curr_str}{self._default_time_str}")
+        self.curr_label = QLabel(f"{self._base_curr_str}{self._default_time_str}")
         self.curr_label.setFont(font)
         self.curr_label.setStyleSheet("color: #00FFFF;")
 
