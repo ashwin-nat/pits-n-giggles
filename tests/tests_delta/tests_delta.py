@@ -29,12 +29,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.delta_new import LapDeltaManager
-from lib.delta_new.data import LapPoint
+from lib.delta import LapDeltaManager
+from lib.delta.data import LapPoint
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
+class TestF1Delta(F1TelemetryUnitTestsBase):
 
     def test_basic_recording_and_forward_only(self):
         mgr = LapDeltaManager()

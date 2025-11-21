@@ -83,9 +83,7 @@ from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 from tests.ipc import TestIpcParentChild, TestIpcSubscriber
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
-from tests.tests_delta import (TestDeltaLap, TestDeltaToBestLapManager,
-                               TestIntegrationScenarios)
-from tests.tests_delta_2 import TestF1DeltaBaseV2
+from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_wdt import TestWatchDogTimer
 

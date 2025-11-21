@@ -1,3 +1,5 @@
+
+
 # MIT License
 #
 # Copyright (c) [2025] [Ashwin Natarajan]
@@ -22,199 +24,288 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
-from typing import Optional, List, Any
-from .lap import Lap
+import bisect
+from typing import Dict, List, Optional, Tuple
+
+from .data import DeltaResult, LapPoint
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class DeltaToBestLapManager:
+class LapDeltaManager:
     """
-    Manages multiple laps and calculates delta to best lap.
+    Encapsulates recording lap points and computing delta vs a chosen 'best lap'.
+
+    Public API:
+      - record_data_point(lap_num: int, curr_distance: float, curr_time_ms: int)
+      - set_best_lap(lap_num: int)
+      - get_delta() -> Optional[DeltaResult]
+      - handle_flashback(lap_num: int, curr_distance: float)
     """
 
-    def __init__(self):
-        self.laps: dict[int, Lap] = {}  # lap_number -> Lap
-        self.current_lap_number: Optional[int] = None
-        self.best_lap_number: Optional[int] = None
+    def __init__(self) -> None:
+        # lap_num -> sorted list of LapPoint (sorted by distance_m ascending)
+        self._laps: Dict[int, List[LapPoint]] = {}
+        # quick caches of distances for bisecting: lap_num -> list of distances (monotonic)
+        self._lap_distances: Dict[int, List[float]] = {}
 
-        # Cache for delta calculation optimization
-        self._last_query_distance: float = -1.0
-        self._cached_search_idx: int = 0
+        # the lap number designated as the 'best lap' by caller (or None)
+        self._best_lap_num: Optional[int] = None
 
-    def start_lap(self, lap_number: int):
+        # the latest LapPoint recorded by record_data_point (or None)
+        self._last_recorded_point: Optional[LapPoint] = None
+
+    # -------------------------
+    # Public API
+    # -------------------------
+    def record_data_point(self, lap_num: int, curr_distance: float, curr_time_ms: int) -> None:
         """
-        Start a new lap (called automatically by record_data_point).
-        You typically don't need to call this directly unless you want to
-        pre-initialize a lap before receiving data.
+        Record a datapoint.
 
-        Args:
-            lap_number: Lap number from sim
+        - Automatically creates the lap bank if needed.
+        - Drops (ignores) points whose distance is <= last recorded distance for the same lap.
+          This handles backing-up/spin scenarios.
+        - Does not attempt to detect flashbacks (call handle_flashback if a rewind happened).
         """
-        self.current_lap_number = lap_number
-        self.laps[lap_number] = Lap(lap_number)
+        if lap_num not in self._laps:
+            self._laps[lap_num] = []
+            self._lap_distances[lap_num] = []
 
-        # Reset delta calculation cache for new lap
-        self._last_query_distance = -1.0
-        self._cached_search_idx = 0
+        last_for_lap = self._laps[lap_num][-1] if self._laps[lap_num] else None
 
-    def record_data_point(self, lap_number: int, distance: float, time: float) -> bool:
-        """
-        Record data point - automatically starts new lap if needed.
-
-        This is the main entry point for telemetry data. Simply pass each packet's
-        data and the manager handles lap transitions automatically.
-
-        Args:
-            lap_number: Current lap number from sim
-            distance: Distance from lap start in meters
-            time: Time from lap start in seconds
-
-        Returns:
-            bool: True if recorded, False if rejected (non-increasing distance)
-        """
-        # Auto-start new lap if lap number changed
-        if lap_number != self.current_lap_number:
-            self.start_lap(lap_number)
-
-        current_lap = self.laps.get(self.current_lap_number)
-        if current_lap is None:
-            return False
-
-        return current_lap.record_data_point(distance, time)
-
-    def handle_flashback(self, new_distance: float):
-        """
-        Handle flashback on current lap.
-
-        Args:
-            new_distance: Distance driver rewound to
-        """
-        if self.current_lap_number is None:
+        # Drop backwards motion on same lap: ignore new point if distance <= last distance.
+        if last_for_lap is not None and curr_distance <= last_for_lap.distance_m:
+            # intentional drop
             return
 
-        current_lap = self.laps.get(self.current_lap_number)
-        if current_lap:
-            current_lap.handle_flashback(new_distance)
+        point = LapPoint(lap_num=lap_num, distance_m=float(curr_distance), time_ms=int(curr_time_ms))
+        # preserve monotonic sorted distances by appending (we assume distance increases within a lap)
+        self._laps[lap_num].append(point)
+        self._lap_distances[lap_num].append(point.distance_m)
 
-            # Reset cache since we've removed data points
-            self._last_query_distance = -1.0
-            self._cached_search_idx = 0
+        self._last_recorded_point = point
 
-    def complete_current_lap(self, lap_time: float):
+    def set_best_lap(self, lap_num: int) -> None:
         """
-        Mark current lap as complete.
+        Set the lap number that should be used as the 'best lap' reference.
 
-        Args:
-            lap_time: Final lap time in seconds
+        The caller may set a lap for which we don't yet have data; that's allowed.
         """
-        if self.current_lap_number is None:
-            return
+        self._best_lap_num = int(lap_num)
 
-        current_lap = self.laps.get(self.current_lap_number)
-        if current_lap:
-            current_lap.complete_lap(lap_time)
-
-    def set_best_lap(self, lap_number: int):
+    def get_delta(self) -> Optional[DeltaResult]:
         """
-        Set a specific lap as the best lap (from sim's determination).
-        Handles case where best lap data may not be available yet.
+        Compute delta (current_time_ms - best_time_ms_at_same_distance) for the latest recorded point.
 
-        Args:
-            lap_number: Lap number to set as best
+        Returns None when:
+          - no best lap set
+          - no last recorded point
+          - best lap has no data or does not cover the distance of the current point
         """
-        # If lap doesn't exist yet, just record the number
-        # Delta calculation will handle missing data gracefully
-        self.best_lap_number = lap_number
-
-        # Reset cache when best lap changes
-        self._last_query_distance = -1.0
-        self._cached_search_idx = 0
-
-    def get_best_lap(self) -> Optional[Lap]:
-        """Get the best lap object, if available"""
-        if self.best_lap_number is None:
+        if self._best_lap_num is None:
             return None
-        return self.laps.get(self.best_lap_number)
-
-    @property
-    def current_lap(self) -> Optional[Lap]:
-        """Get the current lap object, if available"""
-        if self.current_lap_number is None:
-            return None
-        return self.laps.get(self.current_lap_number)
-
-    def get_delta(self, lap_number: int, current_distance: float, current_time: float) -> Optional[float]:
-        """
-        Calculate delta to best lap at current position with caching optimization.
-
-        This is the main entry point for delta queries. Simply pass each packet's
-        data and get the current delta.
-
-        Args:
-            lap_number: Current lap number from sim
-            current_distance: Current distance from lap start
-            current_time: Current time from lap start
-
-        Returns:
-            float: Delta in seconds (positive = slower, negative = faster)
-            None: If no best lap available or distance out of range
-        """
-        best_lap = self.get_best_lap()
-        if best_lap is None:
+        if self._last_recorded_point is None:
             return None
 
-        # Reset cache if lap number changed (new lap started)
-        if lap_number != self.current_lap_number:
-            self._last_query_distance = -1.0
-            self._cached_search_idx = 0
+        best_num = self._best_lap_num
+        if best_num not in self._laps or not self._laps[best_num]:
+            # we don't yet have data for the best lap
+            return None
 
-        # Optimize search index based on monotonically increasing distance
-        search_start_idx = 0
-        if current_distance > self._last_query_distance:
-            # Distance increased, start search from last position
-            search_start_idx = self._cached_search_idx
-        else:
-            # Distance reset (new lap) or decreased (shouldn't happen in normal flow)
-            search_start_idx = 0
+        curr = self._last_recorded_point
+        # find interpolated time on best lap at curr.distance_m
+        best_time = self._interpolated_time_for_distance(best_num, curr.distance_m)
+        if best_time is None:
+            # best lap doesn't have coverage for this distance (start/end missing)
+            return None
 
-        reference_time, new_idx = best_lap.get_time_at_distance(
-            current_distance,
-            search_start_idx
+        delta_ms = int(curr.time_ms) - int(best_time)
+        return DeltaResult(
+            delta_ms=delta_ms,
+            curr_point=curr,
+            best_lap_num=best_num,
+            best_time_ms_at_distance=int(best_time),
+            distance_m=curr.distance_m,
         )
 
-        if reference_time is None:
+    def handle_flashback(self, lap_num: int, curr_distance: float) -> None:
+        """
+        Handle a flashback (rewind) issued by the simulator.
+
+        Two different behaviors exist:
+
+        1. LAP REWIND (lap_num < previously recorded lap):
+            - Delete all recorded data for future laps.
+            - On the target lap, keep all points whose distance <= curr_distance.
+            (Because the rewind lands *on or after* that position in the past.)
+
+        2. SAME-LAP FLASHBACK (lap_num == current lap):
+            - We rewound to a point *before* curr_distance.
+            - All points whose distance >= curr_distance belong to the "future timeline"
+            and must be removed.
+            - Keep only points strictly less than curr_distance.
+            - The next record_data_point() call will insert a new point at exactly curr_distance.
+
+        After trimming, update _last_recorded_point to the last point in time order.
+        """
+
+        lap_num = int(lap_num)
+        curr_distance = float(curr_distance)
+
+        # --- Detect lap rewind: any lap greater than target must be removed ---
+        future_laps = [ln for ln in list(self._laps.keys()) if ln > lap_num]
+        is_lap_rewind = len(future_laps) > 0
+
+        for ln in future_laps:
+            del self._laps[ln]
+            del self._lap_distances[ln]
+
+        # Ensure lap storage exists
+        if lap_num not in self._laps:
+            self._laps[lap_num] = []
+            self._lap_distances[lap_num] = []
+
+        pts = self._laps[lap_num]
+        dists = self._lap_distances[lap_num]
+
+        if dists:
+
+            if is_lap_rewind:
+                # LAP REWIND:
+                # Keep points <= curr_distance
+                # LAP-REWIND FLASHBACK (lap number decreases)
+                # -------------------------------------------
+                #
+                # Suppose we have recorded:
+                #
+                #     Lap 1:   10 ---- 20 ---- 30 ---- 40 ---- 50
+                #                p1     p2     p3     p4     p5
+                #
+                #     Lap 2:   15 ---- 25 ---- 35
+                #                q1     q2     q3
+                #
+                # And the user flashbacks to:
+                #     lap_num = 1
+                #     curr_distance = 22
+                #
+                # Step 1: Remove all laps > 1, since they are "future timeline":
+                #     Lap 2 is deleted.
+                #
+                # Step 2: In lap 1, keep points whose distance <= 22.
+                #     10, 20 remain.
+                #     30, 40, 50 are removed.
+                #
+                # Final state after flashback:
+                #     Lap 1:   10 ---- 20
+                #                p1     p2
+                #
+                # Next telemetry update will continue from this rewound position.
+
+                idx = bisect.bisect_right(dists, curr_distance)
+                self._laps[lap_num] = pts[:idx]
+                self._lap_distances[lap_num] = dists[:idx]
+
+            else:
+                # SAME-LAP FLASHBACK:
+                # Discard points >= curr_distance
+                # SAME-LAP FLASHBACK (curr_distance = X)
+                # --------------------------------------
+                #
+                # We have a timeline of recorded points in a lap, sorted by distance:
+                #
+                #     Before flashback:
+                #         10 ---- 20 ---- 30 ---- 40 ---- 50
+                #          p1     p2     p3     p4     p5
+                #
+                # If the flashback happens at distance X = 25:
+                #
+                #     We drop ALL points whose distance >= 25:
+                #         - drop p3 (30)
+                #         - drop p4 (40)
+                #         - drop p5 (50)
+                #
+                #     Keep only points whose distance < 25:
+                #         10 ---- 20
+                #          p1     p2
+                #
+                # After the flashback, the next telemetry update from the sim will be:
+                #         distance = 25
+                # and record_data_point() will accept it because 25 > 20.
+                #
+                # Final state after flashback:
+                #         10 ---- 20
+                #          p1     p2
+
+                new_pts = []
+                new_dists = []
+                for p, d in zip(pts, dists):
+                    if d < curr_distance:
+                        new_pts.append(p)
+                        new_dists.append(d)
+                self._laps[lap_num] = new_pts
+                self._lap_distances[lap_num] = new_dists
+
+        # Refresh last recorded point
+        all_points = self._all_points_sorted_by_time_order()
+        self._last_recorded_point = all_points[-1] if all_points else None
+
+    # -------------------------
+    # Internal helpers (private)
+    # -------------------------
+    def _interpolated_time_for_distance(self, lap_num: int, distance: float) -> Optional[float]:
+        """
+        Return interpolated time (float ms) for given distance on lap_num.
+
+        Returns None if lap doesn't exist or doesn't cover the distance (i.e., distance outside recorded span).
+        """
+        if lap_num not in self._laps or not self._laps[lap_num]:
             return None
 
-        # Update cache
-        self._last_query_distance = current_distance
-        self._cached_search_idx = new_idx
+        distances = self._lap_distances[lap_num]
+        pts = self._laps[lap_num]
 
-        return current_time - reference_time
+        # If exactly matches first or last
+        if distance < distances[0] or distance > distances[-1]:
+            return None
 
-    def invalidate_lap(self, lap_number: int):
+        # bisect to find right index
+        idx = bisect.bisect_left(distances, distance)
+        if idx < len(distances) and distances[idx] == distance:
+            return float(pts[idx].time_ms)
+
+        # interpolate between idx-1 and idx
+        # after bisect_left, idx is insertion position, so idx>0 guaranteed because distance >= distances[0]
+        hi = idx
+        lo = idx - 1
+        d_lo = distances[lo]
+        d_hi = distances[hi]
+        t_lo = pts[lo].time_ms
+        t_hi = pts[hi].time_ms
+
+        # This cannot happen due to strict monotonic distances enforced in record_data_point,
+        # but we keep it as a safety fallback.
+        if d_hi == d_lo: # pragma: no cover
+            # degenerate; return lower time
+            return float(t_lo)
+
+        # linear interpolation
+        ratio = (distance - d_lo) / (d_hi - d_lo)
+        interp_time = t_lo + ratio * (t_hi - t_lo)
+        return float(interp_time)
+
+    def _all_points_sorted_by_time_order(self) -> List[LapPoint]:
         """
-        Invalidate a specific lap (track limits, contact, etc.)
-
-        Args:
-            lap_number: Lap number to invalidate
+        Returns a stable ordering for all points that reflects the order recorded.
+        We rely on the per-lap lists being appended in chronological order; combine them in ascending lap_num order.
+        Note: if the sim reports lap numbers out-of-order and caller didn't flashback, ordering is 'best-effort'.
         """
-        lap = self.laps.get(lap_number)
-        if lap:
-            lap.invalidate()
+        out: List[LapPoint] = []
+        for ln in sorted(self._laps.keys()):
+            out.extend(self._laps[ln])
+        return out
 
-    def get_status(self) -> dict:
-        """Get current status information"""
-        best_lap = self.get_best_lap()
-        current_lap = self.laps.get(self.current_lap_number) if self.current_lap_number else None
-
-        return {
-            'current_lap_number': self.current_lap_number,
-            'best_lap_number': self.best_lap_number,
-            'best_lap_available': best_lap is not None,
-            'best_lap_time': best_lap.lap_time if best_lap else None,
-            'best_lap_data_points': len(best_lap.data_points) if best_lap else 0,
-            'current_lap_data_points': len(current_lap.data_points) if current_lap else 0,
-            'current_lap_valid': current_lap.is_valid if current_lap else None,
-            'total_laps': len(self.laps)
-        }
+    # -------------------------
+    # Optional helpers for debugging / inspection (not part of 'required' API)
+    # -------------------------
+    def _dump_state(self) -> Dict[int, List[Tuple[float, int]]]:
+        """Return a serializable snapshot for debugging: lap_num -> list of (distance, time_ms)."""
+        return {ln: [(p.distance_m, p.time_ms) for p in pts] for ln, pts in self._laps.items()}

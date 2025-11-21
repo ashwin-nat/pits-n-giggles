@@ -26,9 +26,19 @@ from dataclasses import dataclass
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-@dataclass
-class LapDataPoint:
-    """Single telemetry data point"""
-    distance: float  # meters from start
-    time: float      # seconds from lap start
+@dataclass(frozen=True)
+class LapPoint:
+    """Single recorded datapoint."""
+    lap_num: int
+    distance_m: float  # distance from start line in metres
+    time_ms: int       # current lap time in milliseconds
 
+
+@dataclass(frozen=True)
+class DeltaResult:
+    """Result returned by get_delta(). Positive delta_ms => current is slower than best lap."""
+    delta_ms: int
+    curr_point: LapPoint
+    best_lap_num: int
+    best_time_ms_at_distance: int
+    distance_m: float

@@ -23,14 +23,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .tests_lap import TestDeltaLap
-from .tests_manager import TestDeltaToBestLapManager
-from .tests_integration import TestIntegrationScenarios
+from .tests_delta import TestF1Delta
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TestDeltaLap",
-    "TestDeltaToBestLapManager",
-    "TestIntegrationScenarios",
+    "TestF1Delta",
 ]

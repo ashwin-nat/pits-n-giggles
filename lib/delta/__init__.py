@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .manager import DeltaToBestLapManager
+from .manager import LapDeltaManager
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'DeltaToBestLapManager',
+    'LapDeltaManager',
 ]
