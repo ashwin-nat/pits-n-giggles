@@ -33,7 +33,10 @@ from .data import DeltaResult, LapPoint
 
 class LapDeltaManager:
     """
-    Encapsulates recording lap points and computing delta vs a chosen 'best lap'.
+    Maintains lap distance/time samples and computes delta relative to a chosen best lap.
+
+    HOLY PRINCIPLE: Distances within a lap are strictly monotonic. If a new data point arrives with
+    distance <= last distance, future samples are dropped and the new point replaces them.
 
     Public API:
       - record_data_point(lap_num: int, curr_distance: float, curr_time_ms: int)
@@ -43,46 +46,60 @@ class LapDeltaManager:
     """
 
     def __init__(self) -> None:
-        # lap_num -> sorted list of LapPoint (sorted by distance_m ascending)
         self._laps: Dict[int, List[LapPoint]] = {}
-        # quick caches of distances for bisecting: lap_num -> list of distances (monotonic)
         self._lap_distances: Dict[int, List[float]] = {}
 
-        # the lap number designated as the 'best lap' by caller (or None)
         self._best_lap_num: Optional[int] = None
-
-        # the latest LapPoint recorded by record_data_point (or None)
         self._last_recorded_point: Optional[LapPoint] = None
 
-    # -------------------------
+    # ---------------------------------------------------------------------
     # Public API
-    # -------------------------
+    # ---------------------------------------------------------------------
     def record_data_point(self, lap_num: int, curr_distance: float, curr_time_ms: int) -> None:
         """
-        Record a datapoint.
-
-        - Automatically creates the lap bank if needed.
-        - Drops (ignores) points whose distance is <= last recorded distance for the same lap.
-          This handles backing-up/spin scenarios.
-        - Does not attempt to detect flashbacks (call handle_flashback if a rewind happened).
+        Insert a new data point while maintining the HOLY PRINCIPLE.
+        - If curr_distance > last_distance: append normally.
+        - Else: drop all points with distance >= curr_distance and insert this point.
         """
+
+        # Setup lap if it doesn't exist
         if lap_num not in self._laps:
             self._laps[lap_num] = []
             self._lap_distances[lap_num] = []
 
-        last_for_lap = self._laps[lap_num][-1] if self._laps[lap_num] else None
+        pts = self._laps[lap_num]
+        dists = self._lap_distances[lap_num]
 
-        # Drop backwards motion on same lap: ignore new point if distance <= last distance.
-        if last_for_lap is not None and curr_distance <= last_for_lap.distance_m:
-            # intentional drop
+        if not pts:
+            # New lap, simple case
+            p = LapPoint(lap_num, curr_distance, curr_time_ms)
+            pts.append(p)
+            dists.append(curr_distance)
+            self._last_recorded_point = p
             return
 
-        point = LapPoint(lap_num=lap_num, distance_m=float(curr_distance), time_ms=int(curr_time_ms))
-        # preserve monotonic sorted distances by appending (we assume distance increases within a lap)
-        self._laps[lap_num].append(point)
-        self._lap_distances[lap_num].append(point.distance_m)
+        last_dist = dists[-1]
+        if curr_distance > last_dist:
+            # Normal case - incoming data point is after last recorded point
+            p = LapPoint(lap_num, curr_distance, curr_time_ms)
+            pts.append(p)
+            dists.append(curr_distance)
+            self._last_recorded_point = p
+            return
 
-        self._last_recorded_point = point
+        # -----------------------------------------------------------------
+        # Timeline rewrite block - incoming data is violating the HOLY PRINCIPLE
+        # Drop all points with dist >= curr_distance and insert replacement.
+        # -----------------------------------------------------------------
+        drop_idx = bisect.bisect_left(dists, curr_distance)
+
+        del pts[drop_idx:]
+        del dists[drop_idx:]
+
+        p = LapPoint(lap_num, curr_distance, curr_time_ms)
+        pts.append(p)
+        dists.append(curr_distance)
+        self._last_recorded_point = p
 
     def set_best_lap(self, lap_num: int) -> None:
         """
@@ -90,7 +107,7 @@ class LapDeltaManager:
 
         The caller may set a lap for which we don't yet have data; that's allowed.
         """
-        self._best_lap_num = int(lap_num)
+        self._best_lap_num = lap_num
 
     def get_delta(self) -> Optional[DeltaResult]:
         """
@@ -106,206 +123,107 @@ class LapDeltaManager:
         if self._last_recorded_point is None:
             return None
 
-        best_num = self._best_lap_num
-        if best_num not in self._laps or not self._laps[best_num]:
-            # we don't yet have data for the best lap
+        best = self._best_lap_num
+        if best not in self._laps or not self._laps[best]:
             return None
 
         curr = self._last_recorded_point
-        # find interpolated time on best lap at curr.distance_m
-        best_time = self._interpolated_time_for_distance(best_num, curr.distance_m)
+        best_time = self._interpolated_time_for_distance(best, curr.distance_m)
         if best_time is None:
-            # best lap doesn't have coverage for this distance (start/end missing)
             return None
-
-        delta_ms = int(curr.time_ms) - int(best_time)
         return DeltaResult(
-            delta_ms=delta_ms,
+            delta_ms=(curr.time_ms - best_time),
             curr_point=curr,
-            best_lap_num=best_num,
-            best_time_ms_at_distance=int(best_time),
+            best_lap_num=best,
+            best_time_ms_at_distance=best_time,
             distance_m=curr.distance_m,
         )
 
     def handle_flashback(self, lap_num: int, curr_distance: float) -> None:
         """
-        Handle a flashback (rewind) issued by the simulator.
+        Handle a simulator flashback (rewind) event. This cleans up the old outdated data because
+        they will certainly violate the HOLY PRINCIPLE.
 
-        Two different behaviors exist:
+        Behavior:
+        - All laps with numbers greater than `lap_num` are deleted. These laps
+            represent a future timeline that no longer exists after the rewind.
+        - The target lap (`lap_num`) is trimmed so that only points with
+            distance < `curr_distance` remain. Any point at or beyond this distance
+            belongs to the discarded future timeline.
+        - A synthetic point `(curr_distance, time_ms=0)` is appended to the
+            trimmed lap to represent the new rewind position. The next real
+            telemetry update will overwrite or advance from this anchor point.
+        - `_last_recorded_point` is updated to this newly inserted synthetic
+            point.
 
-        1. LAP REWIND (lap_num < previously recorded lap):
-            - Delete all recorded data for future laps.
-            - On the target lap, keep all points whose distance <= curr_distance.
-            (Because the rewind lands *on or after* that position in the past.)
-
-        2. SAME-LAP FLASHBACK (lap_num == current lap):
-            - We rewound to a point *before* curr_distance.
-            - All points whose distance >= curr_distance belong to the "future timeline"
-            and must be removed.
-            - Keep only points strictly less than curr_distance.
-            - The next record_data_point() call will insert a new point at exactly curr_distance.
-
-        After trimming, update _last_recorded_point to the last point in time order.
+        This method performs direct mutation of lap storage and does not use
+        `record_data_point()`, because record_data_point applies its own rewrite
+        semantics intended only for forward telemetry flow.
         """
+        # remove future laps
+        for ln in list(self._laps.keys()):
+            if ln > lap_num:
+                del self._laps[ln]
+                del self._lap_distances[ln]
 
-        lap_num = int(lap_num)
-        curr_distance = float(curr_distance)
-
-        # --- Detect lap rewind: any lap greater than target must be removed ---
-        future_laps = [ln for ln in list(self._laps.keys()) if ln > lap_num]
-        is_lap_rewind = len(future_laps) > 0
-
-        for ln in future_laps:
-            del self._laps[ln]
-            del self._lap_distances[ln]
-
-        # Ensure lap storage exists
+        # ensure lap exists
         if lap_num not in self._laps:
             self._laps[lap_num] = []
             self._lap_distances[lap_num] = []
 
+        # trim current lap
         pts = self._laps[lap_num]
         dists = self._lap_distances[lap_num]
+        idx = bisect.bisect_left(dists, curr_distance)
+        del pts[idx:]
+        del dists[idx:]
 
-        if dists:
+        # insert flashback point directly
+        p = LapPoint(lap_num, curr_distance, 0)
+        pts.append(p)
+        dists.append(curr_distance)
+        self._last_recorded_point = p
 
-            if is_lap_rewind:
-                # LAP REWIND:
-                # Keep points <= curr_distance
-                # LAP-REWIND FLASHBACK (lap number decreases)
-                # -------------------------------------------
-                #
-                # Suppose we have recorded:
-                #
-                #     Lap 1:   10 ---- 20 ---- 30 ---- 40 ---- 50
-                #                p1     p2     p3     p4     p5
-                #
-                #     Lap 2:   15 ---- 25 ---- 35
-                #                q1     q2     q3
-                #
-                # And the user flashbacks to:
-                #     lap_num = 1
-                #     curr_distance = 22
-                #
-                # Step 1: Remove all laps > 1, since they are "future timeline":
-                #     Lap 2 is deleted.
-                #
-                # Step 2: In lap 1, keep points whose distance <= 22.
-                #     10, 20 remain.
-                #     30, 40, 50 are removed.
-                #
-                # Final state after flashback:
-                #     Lap 1:   10 ---- 20
-                #                p1     p2
-                #
-                # Next telemetry update will continue from this rewound position.
-
-                idx = bisect.bisect_right(dists, curr_distance)
-                self._laps[lap_num] = pts[:idx]
-                self._lap_distances[lap_num] = dists[:idx]
-
-            else:
-                # SAME-LAP FLASHBACK:
-                # Discard points >= curr_distance
-                # SAME-LAP FLASHBACK (curr_distance = X)
-                # --------------------------------------
-                #
-                # We have a timeline of recorded points in a lap, sorted by distance:
-                #
-                #     Before flashback:
-                #         10 ---- 20 ---- 30 ---- 40 ---- 50
-                #          p1     p2     p3     p4     p5
-                #
-                # If the flashback happens at distance X = 25:
-                #
-                #     We drop ALL points whose distance >= 25:
-                #         - drop p3 (30)
-                #         - drop p4 (40)
-                #         - drop p5 (50)
-                #
-                #     Keep only points whose distance < 25:
-                #         10 ---- 20
-                #          p1     p2
-                #
-                # After the flashback, the next telemetry update from the sim will be:
-                #         distance = 25
-                # and record_data_point() will accept it because 25 > 20.
-                #
-                # Final state after flashback:
-                #         10 ---- 20
-                #          p1     p2
-
-                new_pts = []
-                new_dists = []
-                for p, d in zip(pts, dists):
-                    if d < curr_distance:
-                        new_pts.append(p)
-                        new_dists.append(d)
-                self._laps[lap_num] = new_pts
-                self._lap_distances[lap_num] = new_dists
-
-        # Refresh last recorded point
-        all_points = self._all_points_sorted_by_time_order()
-        self._last_recorded_point = all_points[-1] if all_points else None
-
-    # -------------------------
-    # Internal helpers (private)
-    # -------------------------
+    # ---------------------------------------------------------------------
+    # Internal helpers
+    # ---------------------------------------------------------------------
     def _interpolated_time_for_distance(self, lap_num: int, distance: float) -> Optional[float]:
         """
         Return interpolated time (float ms) for given distance on lap_num.
 
         Returns None if lap doesn't exist or doesn't cover the distance (i.e., distance outside recorded span).
         """
-        if lap_num not in self._laps or not self._laps[lap_num]:
+        dists = self._lap_distances.get(lap_num)
+        pts = self._laps.get(lap_num)
+
+        if not dists:
             return None
 
-        distances = self._lap_distances[lap_num]
-        pts = self._laps[lap_num]
-
-        # If exactly matches first or last
-        if distance < distances[0] or distance > distances[-1]:
+        if distance < dists[0] or distance > dists[-1]:
             return None
 
-        # bisect to find right index
-        idx = bisect.bisect_left(distances, distance)
-        if idx < len(distances) and distances[idx] == distance:
-            return float(pts[idx].time_ms)
+        idx = bisect.bisect_left(dists, distance)
 
-        # interpolate between idx-1 and idx
-        # after bisect_left, idx is insertion position, so idx>0 guaranteed because distance >= distances[0]
-        hi = idx
+        if idx < len(dists) and dists[idx] == distance:
+            return pts[idx].time_ms
+
         lo = idx - 1
-        d_lo = distances[lo]
-        d_hi = distances[hi]
+        hi = idx
+
+        d_lo = dists[lo]
+        d_hi = dists[hi]
         t_lo = pts[lo].time_ms
         t_hi = pts[hi].time_ms
 
-        # This cannot happen due to strict monotonic distances enforced in record_data_point,
-        # but we keep it as a safety fallback.
-        if d_hi == d_lo: # pragma: no cover
-            # degenerate; return lower time
-            return float(t_lo)
+        if d_hi == d_lo:
+            return t_lo
 
-        # linear interpolation
         ratio = (distance - d_lo) / (d_hi - d_lo)
-        interp_time = t_lo + ratio * (t_hi - t_lo)
-        return float(interp_time)
+        return t_lo + ratio * (t_hi - t_lo)
 
-    def _all_points_sorted_by_time_order(self) -> List[LapPoint]:
-        """
-        Returns a stable ordering for all points that reflects the order recorded.
-        We rely on the per-lap lists being appended in chronological order; combine them in ascending lap_num order.
-        Note: if the sim reports lap numbers out-of-order and caller didn't flashback, ordering is 'best-effort'.
-        """
-        out: List[LapPoint] = []
-        for ln in sorted(self._laps.keys()):
-            out.extend(self._laps[ln])
-        return out
-
-    # -------------------------
-    # Optional helpers for debugging / inspection (not part of 'required' API)
-    # -------------------------
     def _dump_state(self) -> Dict[int, List[Tuple[float, int]]]:
         """Return a serializable snapshot for debugging: lap_num -> list of (distance, time_ms)."""
-        return {ln: [(p.distance_m, p.time_ms) for p in pts] for ln, pts in self._laps.items()}
+        return {
+            lap_num: [(p.distance_m, p.time_ms) for p in pts]
+            for lap_num, pts in self._laps.items()
+        }

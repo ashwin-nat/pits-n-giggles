@@ -48,17 +48,18 @@ class TestF1Delta(F1TelemetryUnitTestsBase):
         self.assertEqual(state[1][0], (10.0, 1000))
         self.assertEqual(state[1][1], (20.0, 2000))
 
-    def test_backwards_movement_ignored(self):
+    def test_backwards_movement_rewrites(self):
         mgr = LapDeltaManager()
 
         mgr.record_data_point(1, 50.0, 3000)
-        mgr.record_data_point(1, 49.0, 3100)  # backwards --> should be ignored
+        mgr.record_data_point(1, 49.0, 3100)  # backwards --> rewrite timeline
         mgr.record_data_point(1, 70.0, 3500)
 
         state = mgr._dump_state()[1]
 
+        # now: 49 replaces 50, so timeline is [49, 70]
         self.assertEqual(len(state), 2)
-        self.assertEqual(state[0], (50.0, 3000))
+        self.assertEqual(state[0], (49.0, 3100))
         self.assertEqual(state[1], (70.0, 3500))
 
     def test_start_mid_lap(self):
@@ -132,35 +133,30 @@ class TestF1Delta(F1TelemetryUnitTestsBase):
         mgr.record_data_point(1, 20.0, 2000)
         mgr.record_data_point(1, 30.0, 3000)
 
-        # flashback to 18 m — keep < 18, drop >= 18
         mgr.handle_flashback(1, 18.0)
 
         state = mgr._dump_state()[1]
 
-        self.assertEqual(len(state), 1)
-        self.assertEqual(state[0], (10.0, 1000))
+        self.assertEqual(state, [(10.0, 1000), (18.0, 0)])
 
     def test_flashback_to_previous_lap(self):
         mgr = LapDeltaManager()
 
-        # Lap 1
         mgr.record_data_point(1, 10.0, 1000)
         mgr.record_data_point(1, 50.0, 3000)
 
-        # Lap 2
         mgr.record_data_point(2, 10.0, 1200)
         mgr.record_data_point(2, 60.0, 4000)
 
-        # flashback to lap 1 at 20m
         mgr.handle_flashback(1, 20.0)
 
         state = mgr._dump_state()
 
-        # lap 2 should be wiped entirely
+        # lap 2 must be wiped
         self.assertNotIn(2, state)
 
-        # lap 1 should be trimmed
-        self.assertEqual(state[1], [(10.0, 1000)])
+        # lap 1 is trimmed then rewritten with flashback point
+        self.assertEqual(state[1], [(10.0, 1000), (20.0, 0)])
 
     def test_last_recorded_point_updates_after_flashback(self):
         mgr = LapDeltaManager()
@@ -171,9 +167,8 @@ class TestF1Delta(F1TelemetryUnitTestsBase):
 
         mgr.handle_flashback(1, 15.0)
 
-        # only distance < 15 survives --> 10.0
-        self.assertEqual(mgr._last_recorded_point.distance_m, 10.0)
-        self.assertEqual(mgr._last_recorded_point.time_ms, 1000)
+        self.assertEqual(mgr._last_recorded_point.distance_m, 15.0)
+        self.assertEqual(mgr._last_recorded_point.time_ms, 0)
 
     def test_get_delta_no_best_lap(self):
         mgr = LapDeltaManager()
@@ -198,16 +193,13 @@ class TestF1Delta(F1TelemetryUnitTestsBase):
     def test_flashback_creates_missing_lap_entry(self):
         mgr = LapDeltaManager()
 
-        # no lap 5 exists
         mgr.handle_flashback(5, 50.0)
 
-        # coverage target: this tests the branch:
-        #   if lap_num not in self._laps:
-        #       create empty entries
         state = mgr._dump_state()
 
         self.assertIn(5, state)
-        self.assertEqual(state[5], [])  # empty lap created
+        # flashback inserts the point (distance=50, time=0)
+        self.assertEqual(state[5], [(50.0, 0)])
 
     # ---------------------------------------------------------
     # handle_flashback(): SAME-LAP flashback that keeps "next > curr_distance"
@@ -219,12 +211,11 @@ class TestF1Delta(F1TelemetryUnitTestsBase):
         mgr.record_data_point(1, 30.0, 3000)
         mgr.record_data_point(1, 60.0, 6000)
 
-        # SAME-LAP flashback: drop >= 25 --> only 10 remains
         mgr.handle_flashback(1, 25.0)
 
         state = mgr._dump_state()[1]
 
-        self.assertEqual(state, [(10.0, 1000)])
+        self.assertEqual(state, [(10.0, 1000), (25.0, 0)])
 
     # ---------------------------------------------------------
     # _interpolated_time_for_distance(): lap missing
