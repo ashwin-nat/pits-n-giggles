@@ -471,7 +471,7 @@ class DriversListRsp(BaseAPI):
             "driver-status" : str(driver_data.m_lap_info.m_curr_status),
             "sector-status" : driver_data.getCurrLapSectorStatus(self.m_fastest_s1_ms, self.m_fastest_s2_ms),
             "lap-num" : driver_data.m_lap_info.m_current_lap,
-            "delta" : delta
+            "delta-ms" : delta
         }
 
     def _getWarningsPenaltiesJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:

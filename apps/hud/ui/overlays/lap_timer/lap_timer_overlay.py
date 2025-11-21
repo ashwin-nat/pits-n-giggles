@@ -137,7 +137,7 @@ class LapTimerOverlay(BaseOverlay):
             self._update_last_lap(last_lap["lap-time-ms"])
             self._update_best_lap(best_lap["lap-time-ms"])
 
-            delta = curr_lap["delta"]
+            delta = curr_lap["delta-ms"]
             if delta is not None:
                 estimated_lap_time = F1Utils.millisecondsToMinutesSecondsMilliseconds(best_lap["lap-time-ms"] + delta)
             else:

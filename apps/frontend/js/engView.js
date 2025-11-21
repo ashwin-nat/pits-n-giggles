@@ -343,7 +343,7 @@ class EngViewRaceTable {
         return (params) => {
             const driverInfo = params.data;
             const currLapInfo = driverInfo["lap-info"]["curr-lap"];
-            const delta = currLapInfo["delta"];
+            const delta = currLapInfo["delta-ms"];
             const formattedTime = (delta) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
             return this.createSingleLineCell(formattedTime);
         };
@@ -651,11 +651,11 @@ class EngViewRaceTable {
                         colId: "curr-lap-delta",
                         context: {displayName: "Delta", },
                         field: `lap-info`,
-                        cellRenderer: this.createDeltaCellRendererCurrLap('delta', 'delta'),
+                        cellRenderer: this.createDeltaCellRendererCurrLap(),
                         sortable: false,
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
-                        equals: this.createSectorTimeEqualsComparator('curr-lap', null, 'delta'),
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', null, 'delta-ms'),
                     },
                 ]
             },
