@@ -555,7 +555,7 @@ class SessionState:
 
         # Delta
         if flashback_occurred:
-            driver_obj.m_delta_mgr.handle_flashback(lap_data.m_lapDistance)
+            driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
         driver_obj.m_delta_mgr.record_data_point(
             lap_num=lap_data.m_currentLapNum,
             curr_distance=lap_data.m_lapDistance,
@@ -882,6 +882,9 @@ class SessionState:
             if packet.m_carIdx == self.m_fastest_index:
                 self.m_fastest_index = None
                 self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
+
+        if packet.m_bestLapTimeLapNum:
+            obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
 
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
