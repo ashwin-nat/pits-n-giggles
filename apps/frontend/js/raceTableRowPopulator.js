@@ -491,8 +491,6 @@ class RaceTableRowPopulator {
             message.textContent = "Driver has telemetry set to Restricted";
             message.style.fontStyle = "italic"; // Make the text italic
             cell.appendChild(message);
-        } else {
-            this.createMultiLineCell(["Telemetry", "Restricted"]);
         }
 
         return this;
