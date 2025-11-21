@@ -187,11 +187,13 @@ class LapDeltaManager:
     # ---------------------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------------------
-    def _interpolated_time_for_distance(self, lap_num: int, distance: float) -> Optional[float]:
+    def _interpolated_time_for_distance(self, lap_num: int, distance: float) -> Optional[int]:
         """
-        Return interpolated time (float ms) for given distance on lap_num.
+        Return interpolated time at a given distance on lap_num, in integer ms.
 
-        Returns None if lap doesn't exist or doesn't cover the distance (i.e., distance outside recorded span).
+        Performs linear interpolation when the distance falls between two known
+        samples. All returned values are ints to match the unit of incoming telemetry.
+        Returns None if the lap has no data or does not cover the requested distance.
         """
         dists = self._lap_distances.get(lap_num)
         pts = self._laps.get(lap_num)
@@ -204,8 +206,9 @@ class LapDeltaManager:
 
         idx = bisect.bisect_left(dists, distance)
 
+        # exact match
         if idx < len(dists) and dists[idx] == distance:
-            return pts[idx].time_ms
+            return pts[idx].time_ms  # already int
 
         lo = idx - 1
         hi = idx
@@ -215,11 +218,15 @@ class LapDeltaManager:
         t_lo = pts[lo].time_ms
         t_hi = pts[hi].time_ms
 
+        # degenerate case: identical distances
         if d_hi == d_lo:
             return t_lo
 
+        # linear interpolation -> convert to int
         ratio = (distance - d_lo) / (d_hi - d_lo)
-        return t_lo + ratio * (t_hi - t_lo)
+        interp = t_lo + ratio * (t_hi - t_lo)
+
+        return int(interp)
 
     def _dump_state(self) -> Dict[int, List[Tuple[float, int]]]:
         """Return a serializable snapshot for debugging: lap_num -> list of (distance, time_ms)."""
