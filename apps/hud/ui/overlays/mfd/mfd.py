@@ -91,8 +91,7 @@ class MfdOverlay(BaseOverlay):
                     "cls": self.PAGE_CLS_BY_KEY[key],
                     "position": settings.position
                 }
-                for key, settings in self.settings.HUD.mfd_settings.pages.items()
-                if settings.enabled
+                for key, settings in self.settings.HUD.mfd_settings.sorted_enabled_pages()
             ]
         ]
 
