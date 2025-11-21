@@ -914,10 +914,10 @@ class SettingsWindow(QDialog):
             error_msg = "\n".join([f"• {err['loc']}: {err['msg']}" for err in e.errors()])
             QMessageBox.critical(
                 self,
-                "Validation Error",
-                f"Settings validation failed:\n\n{error_msg}"
+                "Settings validation failed",
+                f"{error_msg}"
             )
-            self.parent_window.error_log(f"Settings validation failed: {e}")
+            self.parent_window.debug_log(f"Settings validation failed: {e}")
         except Exception as e: # pylint: disable=broad-exception-caught
             QMessageBox.critical(
                 self,
