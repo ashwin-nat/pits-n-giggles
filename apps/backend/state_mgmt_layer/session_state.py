@@ -554,7 +554,9 @@ class SessionState:
         driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
 
         # Delta - not supported in time trial
-        if self.m_session_info.m_session_type and not self.m_session_info.m_session_type.isTimeTrialTypeSession():
+        if self.m_session_info.m_session_type and \
+            not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
+                lap_data.m_driverStatus in {LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.ON_TRACK}:
             if flashback_occurred:
                 driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
             driver_obj.m_delta_mgr.record_data_point(
