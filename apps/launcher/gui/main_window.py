@@ -541,7 +541,6 @@ class PngLauncherWindow(QMainWindow):
     def _write_log_child(self, message: str, src: str):
         """Write log to console and file. These log messages are from child processes"""
 
-        # Unless its from some 3rd party lib, this will definitely be jsonl
         try:
             obj = json.loads(message)
             timestamp = obj['time']
@@ -550,19 +549,42 @@ class PngLauncherWindow(QMainWindow):
             lineno = obj['lineno']
             text = obj['message']
 
-            console_msg = self.format_log_message_colored_child(timestamp, text, level, src)
-            log_msg = self.format_log_message_plain_child(timestamp, text, level, filename, lineno, src)
+            stack = obj.get("stack")   # stacktrace may or may not be present
+
+            # --- console message (NO STACKTRACE) ---
+            if stack:
+                console_text = f"{text} (stack trace written to log file)"
+            else:
+                console_text = text
+
+            console_msg = self.format_log_message_colored_child(
+                timestamp, console_text, level, src
+            )
+
+            # --- file log message (WITH STACKTRACE if present) ---
+            if stack:
+                file_text = f"{text}\n{stack}"
+            else:
+                file_text = text
+
+            log_msg = self.format_log_message_plain_child(
+                timestamp, file_text, level, filename, lineno, src
+            )
 
         except json.JSONDecodeError:
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-            console_msg = self.format_log_unknown_message_colored_child(timestamp, message, src)
-            log_msg = self.format_log_unknown_message_plain_child(timestamp, message, src)
+            console_msg = self.format_log_unknown_message_colored_child(
+                timestamp, message, src
+            )
+            log_msg = self.format_log_unknown_message_plain_child(
+                timestamp, message, src
+            )
 
-        # Write to console widget
+        # Write to console widget (short message)
         if self.console:
             self.console.append_log(console_msg)
 
-        # Write to rotating file logger
+        # Write to rotating file logger (full message)
         self.logger.info(log_msg)
 
     def _write_log_self(self, message: str, level: str):
