@@ -457,8 +457,7 @@ class DriversListRsp(BaseAPI):
 
     def _getCurrLapSubsection(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Create current lap subsection."""
-        delta_obj = driver_data.m_delta_mgr.get_delta()
-        if delta_obj:
+        if delta_obj := driver_data.m_delta_mgr.get_delta():
             delta = delta_obj.delta_ms
         else:
             delta = None

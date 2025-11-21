@@ -344,7 +344,7 @@ class EngViewRaceTable {
             const driverInfo = params.data;
             const currLapInfo = driverInfo["lap-info"]["curr-lap"];
             const delta = currLapInfo["delta-ms"];
-            const formattedTime = (delta) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
+            const formattedTime = (delta !== null) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
             return this.createSingleLineCell(formattedTime);
         };
     }

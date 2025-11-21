@@ -549,10 +549,8 @@ class PngLauncherWindow(QMainWindow):
             lineno = obj['lineno']
             text = obj['message']
 
-            stack = obj.get("stack")   # stacktrace may or may not be present
-
             # --- console message (NO STACKTRACE) ---
-            if stack:
+            if stack := obj.get("stack"):
                 console_text = f"{text} (stack trace written to log file)"
             else:
                 console_text = text
