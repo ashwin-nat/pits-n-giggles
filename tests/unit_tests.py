@@ -31,63 +31,63 @@ from colorama import init
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# from f1_types import (TestF1BaseEnum, TestF1PacketBase, TestF1SubPacketBase,
-#                       TestPacketCarDamageData, TestPacketCarMotionData,
-#                       TestPacketCarSetupData, TestPacketCarStatusData,
-#                       TestPacketCarTelemetryData, TestPacketEventData,
-#                       TestPacketFinalClassificationData, TestPacketLapData,
-#                       TestPacketLapPositionsData, TestPacketLobbyInfoData,
-#                       TestPacketMotionExData, TestPacketParticipantsData,
-#                       TestPacketSessionData, TestPacketSessionHistoryData,
-#                       TestPacketTimeTrialData, TestPacketTyreSetsData,
-#                       TestSessionType23, TestSessionType24)
+from f1_types import (TestF1BaseEnum, TestF1PacketBase, TestF1SubPacketBase,
+                      TestPacketCarDamageData, TestPacketCarMotionData,
+                      TestPacketCarSetupData, TestPacketCarStatusData,
+                      TestPacketCarTelemetryData, TestPacketEventData,
+                      TestPacketFinalClassificationData, TestPacketLapData,
+                      TestPacketLapPositionsData, TestPacketLobbyInfoData,
+                      TestPacketMotionExData, TestPacketParticipantsData,
+                      TestPacketSessionData, TestPacketSessionHistoryData,
+                      TestPacketTimeTrialData, TestPacketTyreSetsData,
+                      TestSessionType23, TestSessionType24)
 # pylint: disable=unused-import wrong-import-position
 # sourcery skip: dont-import-test-modules
 from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
-# from tests_collision_analyzer import (TestCollisionAnalyzer,
-#                                       TestCollisionPairKey,
-#                                       TestCollisionRecord)
-# from tests_config import (TestCaptureSettings, TestConfigMigration,
-#                           TestDisplaySettings, TestEdgeCases, TestFilePathStr,
-#                           TestForwardingSettings, TestHttpsSettings,
-#                           TestHudSettings, TestLoadConfigFromIni,
-#                           TestLoadConfigFromJson, TestMissingSectionsAndKeys,
-#                           TestNetworkSettings, TestPitTimeLossF1,
-#                           TestPitTimeLossF2, TestPngSettings,
-#                           TestPrivacySettings, TestSampleSettingsFixture,
-#                           TestStreamOverlaySettings, TestSubSysCtrl)
-# from tests_custom_markers import (TestCustomMarkerEntry,
-#                                   TestCustomMarkersHistory)
-# from tests_data_per_driver import (TestTyreSetHistoryEntry,
-#                                    TestTyreSetHistoryManager, TestTyreSetInfo)
-# from tests_debouncer import TestMultiButtonDebouncer
-# from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
-#                                     TestFuelRateRecommenderRemove,
-#                                     TestFuelRemainingPerLap)
-# from tests_itc import TestAsyncInterTaskCommunicator
-# from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
-#                                      TestOvertakeAnalyzerFileCsv,
-#                                      TestOvertakeAnalyzerInvalidData,
-#                                      TestOvertakeAnalyzerListCsv,
-#                                      TestOvertakeAnalyzerListObj)
-# from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
-#                         TestF1PacketCaptureHeader)
-# from tests_race_analyzer import TestGetFastestTimesJson
-# from tests_save_to_disk import TestSaveRaceInfo
-# from tests_tyre_wear_extrapolator import (
-#     TestSimpleLinearRegression, TestTyreWearExtrapolator,
-#     TestTyreWearExtrapolatorWithMissingLaps,
-#     TestTyreWearExtrapolatorWithNonRacingLaps)
-# from tests_udp_forwarder import TestAsyncUDPForwarder
-# from tests_version import TestGetVersion, TestIsUpdateAvailable
+from tests_collision_analyzer import (TestCollisionAnalyzer,
+                                      TestCollisionPairKey,
+                                      TestCollisionRecord)
+from tests_config import (TestCaptureSettings, TestConfigMigration,
+                          TestDisplaySettings, TestEdgeCases, TestFilePathStr,
+                          TestForwardingSettings, TestHttpsSettings,
+                          TestHudSettings, TestLoadConfigFromIni,
+                          TestLoadConfigFromJson, TestMissingSectionsAndKeys,
+                          TestNetworkSettings, TestPitTimeLossF1,
+                          TestPitTimeLossF2, TestPngSettings,
+                          TestPrivacySettings, TestSampleSettingsFixture,
+                          TestStreamOverlaySettings, TestSubSysCtrl)
+from tests_custom_markers import (TestCustomMarkerEntry,
+                                  TestCustomMarkersHistory)
+from tests_data_per_driver import (TestTyreSetHistoryEntry,
+                                   TestTyreSetHistoryManager, TestTyreSetInfo)
+from tests_debouncer import TestMultiButtonDebouncer
+from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
+                                    TestFuelRateRecommenderRemove,
+                                    TestFuelRemainingPerLap)
+from tests_itc import TestAsyncInterTaskCommunicator
+from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
+                                     TestOvertakeAnalyzerFileCsv,
+                                     TestOvertakeAnalyzerInvalidData,
+                                     TestOvertakeAnalyzerListCsv,
+                                     TestOvertakeAnalyzerListObj)
+from tests_pcap import (FullPCapTests, TestF1PacketCaptureCompression,
+                        TestF1PacketCaptureHeader)
+from tests_race_analyzer import TestGetFastestTimesJson
+from tests_save_to_disk import TestSaveRaceInfo
+from tests_tyre_wear_extrapolator import (
+    TestSimpleLinearRegression, TestTyreWearExtrapolator,
+    TestTyreWearExtrapolatorWithMissingLaps,
+    TestTyreWearExtrapolatorWithNonRacingLaps)
+from tests_udp_forwarder import TestAsyncUDPForwarder
+from tests_version import TestGetVersion, TestIsUpdateAvailable
 
-# from tests.ipc import TestIpcParentChild, TestIpcSubscriber
-# from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
+from tests.ipc import TestIpcParentChild, TestIpcSubscriber
+from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
 from tests.tests_delta import (TestDeltaLap, TestDeltaToBestLapManager,
                                TestIntegrationScenarios)
 from tests.tests_delta_2 import TestF1DeltaBaseV2
-# from tests.tests_race_ctrl import TestRaceControlMessages
-# from tests.tests_wdt import TestWatchDogTimer
+from tests.tests_race_ctrl import TestRaceControlMessages
+from tests.tests_wdt import TestWatchDogTimer
 
 # Initialize colorama
 init(autoreset=True)

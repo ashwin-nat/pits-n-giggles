@@ -201,7 +201,9 @@ class LapDeltaManager:
         t_lo = pts[lo].time_ms
         t_hi = pts[hi].time_ms
 
-        if d_hi == d_lo:
+        # This cannot happen due to strict monotonic distances enforced in record_data_point,
+        # but we keep it as a safety fallback.
+        if d_hi == d_lo: # pragma: no cover
             # degenerate; return lower time
             return float(t_lo)
 
@@ -227,28 +229,3 @@ class LapDeltaManager:
     def _dump_state(self) -> Dict[int, List[Tuple[float, int]]]:
         """Return a serializable snapshot for debugging: lap_num -> list of (distance, time_ms)."""
         return {ln: [(p.distance_m, p.time_ms) for p in pts] for ln, pts in self._laps.items()}
-
-if __name__ == '__main__':
-    mgr = LapDeltaManager()
-
-    # sim started in lap 3, mid-lap:
-    mgr.record_data_point(3, 540.0, 62000)   # meters, ms
-    mgr.record_data_point(3, 545.2, 62500)
-
-    # later, user finished lap 3 and completed lap 4; we collected data for lap 4 too
-    mgr.record_data_point(4, 10.0, 1200)
-    mgr.record_data_point(4, 50.0, 5200)
-
-    # set best lap (driver decides lap 2 is best)
-    mgr.set_best_lap(2)
-
-    # get delta (returns None if best lap data missing or not covering current distance)
-    delta = mgr.get_delta()
-    if delta:
-        print(f"Delta {delta.delta_ms} ms at {delta.distance_m} m vs lap {delta.best_lap_num}")
-    else:
-        print("No delta")
-
-    # If user uses flashback to lap 3 at 530.0 m:
-    mgr.handle_flashback(3, 530.0)
-    # now points beyond 530 m in lap 3 are removed and any later lap data cleared

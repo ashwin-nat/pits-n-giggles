@@ -30,6 +30,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tests_base import F1TelemetryUnitTestsBase
 
 from lib.delta_new import LapDeltaManager
+from lib.delta_new.data import LapPoint
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -175,3 +176,86 @@ class TestF1DeltaBaseV2(F1TelemetryUnitTestsBase):
         self.assertEqual(mgr._last_recorded_point.distance_m, 20.0)
         self.assertEqual(mgr._last_recorded_point.time_ms, 2000)
 
+
+    def test_get_delta_no_best_lap(self):
+        mgr = LapDeltaManager()
+        # record one point
+        mgr.record_data_point(1, 10.0, 1000)
+
+        # best lap was never set → should hit "if self._best_lap_num is None"
+        self.assertIsNone(mgr.get_delta())
+
+    # ---------------------------------------------------------
+    # get_delta() missing last point branch
+    # ---------------------------------------------------------
+    def test_get_delta_no_last_point(self):
+        mgr = LapDeltaManager()
+        mgr.set_best_lap(1)
+        # no points ever recorded → _last_recorded_point is None
+        self.assertIsNone(mgr.get_delta())
+
+    # ---------------------------------------------------------
+    # handle_flashback(): ensure-lap-entry branch
+    # ---------------------------------------------------------
+    def test_flashback_creates_missing_lap_entry(self):
+        mgr = LapDeltaManager()
+
+        # no lap 5 exists
+        mgr.handle_flashback(5, 50.0)
+
+        # coverage target: this tests the branch:
+        #   if lap_num not in self._laps:
+        #       create empty entries
+        state = mgr._dump_state()
+
+        self.assertIn(5, state)
+        self.assertEqual(state[5], [])  # empty lap created
+
+    # ---------------------------------------------------------
+    # handle_flashback(): SAME-LAP flashback that keeps "next > curr_distance"
+    # ---------------------------------------------------------
+    def test_same_lap_flashback_keeps_next_point(self):
+        mgr = LapDeltaManager()
+
+        # record points in lap 1
+        mgr.record_data_point(1, 10.0, 1000)
+        mgr.record_data_point(1, 30.0, 3000)
+        mgr.record_data_point(1, 60.0, 6000)
+
+        # SAME-LAP flashback (no future laps exist)
+        mgr.handle_flashback(1, 25.0)
+
+        # Should keep:
+        #   <=25 → (10)
+        #   + next above distance → (30)
+        state = mgr._dump_state()[1]
+
+        self.assertEqual(state, [(10.0, 1000), (30.0, 3000)])
+
+    # ---------------------------------------------------------
+    # _interpolated_time_for_distance(): lap missing
+    # ---------------------------------------------------------
+    def test_interpolated_time_missing_lap(self):
+        mgr = LapDeltaManager()
+
+        # No laps recorded at all
+        res = mgr._interpolated_time_for_distance(10, 50.0)
+        self.assertIsNone(res)
+
+    # ---------------------------------------------------------
+    # _interpolated_time_for_distance(): degenerate case (d_hi == d_lo)
+    # ---------------------------------------------------------
+    def test_interpolated_time_degenerate_case(self):
+        mgr = LapDeltaManager()
+
+        # Two points with same distance but different time — degenerate interval
+        mgr.record_data_point(1, 100.0, 5000)
+        # force-add another with the same distance
+        mgr._laps[1].append(LapPoint(1, 100.0, 9000))
+        mgr._lap_distances[1].append(100.0)
+
+        # ask for exactly this distance → bisect will find the later one,
+        # but degenerate branch should return t_lo (5000).
+        res = mgr._interpolated_time_for_distance(1, 100.0)
+
+        self.assertEqual(res, 5000.0)
