@@ -235,7 +235,7 @@ class TyreInfoPage(BasePage):
         grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Store reference to count labels for each tyre compound
-        self.tyre_count_labels = {}
+        self.tyre_count_labels: Dict[str, QLabel] = {}
 
         # Define tyre order for grid: top row (Soft, Medium, Hard), bottom row (Super Soft, Inters, Wet)
         tyre_rows = [
@@ -455,7 +455,7 @@ class TyreInfoPage(BasePage):
             groupings_by_comp (Dict[str, Dict[str, Any]]): Dictionary of tyre counts by visual compound.
         """
         # Reset all counts to 0 first
-        for compound, label in self.tyre_count_labels.items():
+        for label in self.tyre_count_labels.values():
             label.setText("x0")
             label.setStyleSheet("color: #666; background: transparent; padding-left: 2px;")
 
