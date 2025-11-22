@@ -38,7 +38,7 @@ class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
 
     KEY = "collapsed"
-    FONT_FACE = "Montserrat"
+    FONT_FACE = "Formula1 Display"
     FONT_SIZE = 13
 
     def __init__(self, parent: BasePage, logger: logging.Logger, scale_factor: float):
@@ -49,7 +49,7 @@ class CollapsedPage(BasePage):
             logger (logging.Logger): Logger
             scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, scale_factor, "mfd.collapsed")
+        super().__init__(parent, logger, "mfd.collapsed", scale_factor)
 
         icon_base = Path("assets")
         icon_path = icon_base / "logo.png"
@@ -71,7 +71,7 @@ class CollapsedPage(BasePage):
 
             # Text
             text_label = QLabel(page_text, self)
-            font = QFont(self.FONT_FACE, self.FONT_SIZE)
+            font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor))
             text_label.setFont(font)
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
@@ -83,7 +83,7 @@ class CollapsedPage(BasePage):
 
         else:
             label = QLabel(page_text, self)
-            font = QFont(self.FONT_FACE, self.FONT_SIZE)
+            font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor))
             label.setFont(font)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.page_layout.addWidget(label)
