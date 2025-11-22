@@ -325,6 +325,8 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_ui_scale",
             ],
         }):
+
+            # TODO: figure out how to display status message in a message box, indicating that user will need to resize
             self.debug_log(f"UI scale changed. Diff: {json.dumps(diff, indent=2)}")
             key_to_oid: Dict[str, str] = {
                 "lap_timer_ui_scale": "lap_timer",
