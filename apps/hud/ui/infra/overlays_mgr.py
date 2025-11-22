@@ -32,6 +32,7 @@ from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
                                   TimingTowerOverlay)
+from lib.assets_loader import load_fonts
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -81,6 +82,7 @@ class OverlaysMgr:
         """
         self.app = QApplication()
         self.logger = logger
+        load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         self.config_file = resolve_user_file(config_file)
         self.debouncer = ButtonDebouncer(debounce_time=1.0)
         self.debug_mode = debug
