@@ -132,10 +132,12 @@ class TestHudSettings(TestF1ConfigBase):
         # Boundary value: minimum (0.5)
         with self.assertRaises(ValidationError):
             HudSettings(lap_timer_ui_scale=0.4)
+        HudSettings(lap_timer_ui_scale=0.5)
 
         # Boundary value: maximum (2.0)
         with self.assertRaises(ValidationError):
             HudSettings(lap_timer_ui_scale=2.1)
+        HudSettings(lap_timer_ui_scale=2.0)
 
     def test_show_timing_tower_validation(self):
         """Test valid and invalid show_timing_tower values"""
@@ -172,10 +174,12 @@ class TestHudSettings(TestF1ConfigBase):
         # Boundary value: minimum (0.5)
         with self.assertRaises(ValidationError):
             HudSettings(timing_tower_ui_scale=0.4)
+        HudSettings(timing_tower_ui_scale=0.5)
 
         # Boundary value: maximum (2.0)
         with self.assertRaises(ValidationError):
             HudSettings(timing_tower_ui_scale=2.1)
+        HudSettings(timing_tower_ui_scale=2.0)
 
     def test_overlays_opacity_validation(self):
         """Test valid and invalid overlays_opacity values"""
@@ -242,10 +246,12 @@ class TestHudSettings(TestF1ConfigBase):
         # Boundary value: minimum (0.5)
         with self.assertRaises(ValidationError):
             HudSettings(mfd_ui_scale=0.4)
+        HudSettings(mfd_ui_scale=0.5)
 
         # Boundary value: maximum (2.0)
         with self.assertRaises(ValidationError):
             HudSettings(mfd_ui_scale=2.1)
+        HudSettings(mfd_ui_scale=2.0)
 
     def test_cycle_mfd_udp_action_code_validation(self):
         """Test valid and invalid cycle_mfd_udp_action_code values"""

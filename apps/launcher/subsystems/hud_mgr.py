@@ -296,7 +296,7 @@ class HudAppMgr(PngAppMgrBase):
         """
 
         # Enabling/disabling overlays requires subsystem restart
-        settings_requiring_restart = self.curr_settings.diff(new_settings, {
+        if settings_requiring_restart := self.curr_settings.diff(new_settings, {
             "HUD": [
                 "enabled",
                 "show_lap_timer",
@@ -304,8 +304,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_mfd",
                 "mfd_settings",
             ],
-        })
-        if settings_requiring_restart:
+        }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")
             self.enabled = new_settings.HUD.enabled

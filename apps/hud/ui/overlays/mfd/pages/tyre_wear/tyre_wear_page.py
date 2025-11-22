@@ -124,6 +124,25 @@ class TyreInfoPage(BasePage):
         top_layout.setSpacing(10)
 
         # LEFT HALF: Current tyre info
+        left_widget = self._create_current_tyre_section()
+        top_layout.addWidget(left_widget, stretch=1)
+
+        # Vertical divider
+        v_divider = QFrame()
+        v_divider.setFrameShape(QFrame.Shape.VLine)
+        v_divider.setStyleSheet("background-color: #333333;")
+        v_divider.setFixedWidth(1)
+        top_layout.addWidget(v_divider)
+
+        # RIGHT HALF: Available fresh tyres
+        right_widget = self._create_available_tyres_section()
+        top_layout.addWidget(right_widget, stretch=1)
+
+        parent_layout.addWidget(top_widget)
+
+
+    def _create_current_tyre_section(self) -> QWidget:
+        """Create the left section showing current tyre information."""
         left_widget = QWidget()
         left_widget.setStyleSheet("background: transparent;")
         left_main_layout = QVBoxLayout(left_widget)
@@ -132,6 +151,18 @@ class TyreInfoPage(BasePage):
         left_main_layout.setSpacing(4)
 
         # TOP ROW: Icon, Compound, Age
+        top_row_widget = self._create_top_info_row()
+        left_main_layout.addWidget(top_row_widget)
+
+        # BOTTOM ROW: Wear rate
+        bottom_row_widget = self._create_wear_rate_row()
+        left_main_layout.addWidget(bottom_row_widget)
+
+        return left_widget
+
+
+    def _create_top_info_row(self) -> QWidget:
+        """Create the top row with tyre icon, compound name, and age."""
         top_row_widget = QWidget()
         top_row_widget.setStyleSheet("background: transparent;")
         top_row_layout = QHBoxLayout(top_row_widget)
@@ -158,20 +189,16 @@ class TyreInfoPage(BasePage):
         top_row_layout.addWidget(divider)
 
         # Age stat
-        age_label = QLabel("Age:")
-        age_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
-        age_label.setStyleSheet("color: #888; background: transparent;")
-        top_row_layout.addWidget(age_label)
-
-        self.tyre_age_label = QLabel("—")
-        self.tyre_age_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold))
-        self.tyre_age_label.setStyleSheet("color: #00D4FF; background: transparent;")
-        top_row_layout.addWidget(self.tyre_age_label)
+        self.tyre_age_label = self._create_stat_pair(
+            top_row_layout, "Age:", "#888", "#00D4FF"
+        )
 
         top_row_layout.addStretch()
-        left_main_layout.addWidget(top_row_widget)
+        return top_row_widget
 
-        # BOTTOM ROW: Wear rate
+
+    def _create_wear_rate_row(self) -> QWidget:
+        """Create the bottom row with wear rate information."""
         bottom_row_widget = QWidget()
         bottom_row_widget.setStyleSheet("background: transparent;")
         bottom_row_layout = QHBoxLayout(bottom_row_widget)
@@ -180,29 +207,47 @@ class TyreInfoPage(BasePage):
         bottom_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Wear rate stat
-        wear_rate_label = QLabel("Rate:")
-        wear_rate_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
-        wear_rate_label.setStyleSheet("color: #888; background: transparent;")
-        bottom_row_layout.addWidget(wear_rate_label)
-
-        self.wear_rate_value = QLabel("—")
-        self.wear_rate_value.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold))
-        self.wear_rate_value.setStyleSheet("color: #00D4FF; background: transparent;")
-        bottom_row_layout.addWidget(self.wear_rate_value)
+        self.wear_rate_value = self._create_stat_pair(
+            bottom_row_layout, "Rate:", "#888", "#00D4FF"
+        )
 
         bottom_row_layout.addStretch()
-        left_main_layout.addWidget(bottom_row_widget)
+        return bottom_row_widget
 
-        top_layout.addWidget(left_widget, stretch=1)
 
-        # Vertical divider
-        v_divider = QFrame()
-        v_divider.setFrameShape(QFrame.Shape.VLine)
-        v_divider.setStyleSheet("background-color: #333333;")
-        v_divider.setFixedWidth(1)
-        top_layout.addWidget(v_divider)
+    def _create_stat_pair(
+        self,
+        layout: QHBoxLayout,
+        label_text: str,
+        label_color: str,
+        value_color: str
+    ) -> QLabel:
+        """Create a label-value pair for displaying stats.
 
-        # RIGHT HALF: Available fresh tyres
+        Args:
+            layout: The layout to add widgets to
+            label_text: Text for the label (e.g., "Age:")
+            label_color: Color for the label text
+            value_color: Color for the value text
+
+        Returns:
+            The value QLabel for later updates
+        """
+        label = QLabel(label_text)
+        label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
+        label.setStyleSheet(f"color: {label_color}; background: transparent;")
+        layout.addWidget(label)
+
+        value_label = QLabel("—")
+        value_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold))
+        value_label.setStyleSheet(f"color: {value_color}; background: transparent;")
+        layout.addWidget(value_label)
+
+        return value_label
+
+
+    def _create_available_tyres_section(self) -> QWidget:
+        """Create the right section showing available fresh tyres."""
         right_widget = QWidget()
         right_widget.setStyleSheet("background: transparent;")
         right_main_layout = QVBoxLayout(right_widget)
@@ -217,12 +262,9 @@ class TyreInfoPage(BasePage):
         right_main_layout.addWidget(unused_title)
 
         # Create tyre grid
-        tyres_container = self._create_tyre_grid()
-        right_main_layout.addWidget(tyres_container)
+        right_main_layout.addWidget(self._create_tyre_grid())
 
-        top_layout.addWidget(right_widget, stretch=1)
-
-        parent_layout.addWidget(top_widget)
+        return right_widget
 
     def _create_tyre_grid(self) -> QWidget:
         """Create a 2x3 grid of tyre icons with count labels.

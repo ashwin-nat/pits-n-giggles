@@ -50,7 +50,7 @@ class TestIpcParentChild(TestIPC):
         def handler(msg):
             if msg['cmd'] == 'ping':
                 return {'reply': 'pong'}
-            return {'error': 'unknown'}
+            return {'message': 'unknown'}
 
         child = IpcChildSync(self.port)
         child_thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
@@ -72,7 +72,7 @@ class TestIpcParentChild(TestIPC):
         async def handler(msg):
             if msg['cmd'] == 'ping':
                 return {'reply': 'pong-async'}
-            return {'error': 'unknown'}
+            return {'message': 'unknown'}
 
         child = IpcChildAsync(self.port, name=self.id())
 
@@ -97,7 +97,7 @@ class TestIpcParentChild(TestIPC):
     def test_unknown_command(self):
         """Test: Child returns error for unknown command"""
         def handler(msg):
-            return {'error': 'unknown'}
+            return {'message': 'unknown'}
 
         child = IpcChildSync(self.port)
         thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
@@ -106,7 +106,7 @@ class TestIpcParentChild(TestIPC):
         time.sleep(0.1)
         parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('invalid_command')
-        self.assertEqual(resp.get('error'), 'unknown')
+        self.assertEqual(resp.get('message'), 'unknown')
         parent.terminate_child()
         parent.close()
         thread.join(timeout=2)
@@ -129,7 +129,7 @@ class TestIpcParentChild(TestIPC):
         time.sleep(0.1)
         parent = IpcParent(self.port, timeout_ms=500)
         resp = parent.request('ping')
-        self.assertIn('error', resp)
+        self.assertIn('message', resp)
         parent.close()
         thread.join(timeout=2)
 
@@ -137,9 +137,9 @@ class TestIpcParentChild(TestIPC):
         """Test: Parent attempts to connect but child was never started"""
         parent = IpcParent(get_free_tcp_port(), timeout_ms=500)
         resp = parent.request('ping')
-        self.assertIn('error', resp)
+        self.assertIn('message', resp)
 
-        error_msg = str(resp['error']).lower()
+        error_msg = str(resp['message']).lower()
         self.assertTrue(
             any(msg in error_msg for msg in [
                 'timed out', 'resource temporarily unavailable', 'connection refused'
@@ -167,7 +167,7 @@ class TestIpcParentChild(TestIPC):
 
         # This should trigger timeout immediately
         resp = parent.request('ping')
-        self.assertIn('error', resp)  # Expect timeout error
+        self.assertIn('message', resp)  # Expect timeout error
 
         # Clean up
         parent.close()
@@ -201,7 +201,7 @@ class TestIpcParentChild(TestIPC):
         resp = parent.request("ping")
 
         # Expect timeout error
-        self.assertIn("error", resp)
+        self.assertIn("message", resp)
 
         parent.close()
         thread.join(timeout=1)
@@ -354,7 +354,7 @@ class TestIpcParentChild(TestIPC):
         def handler(msg):
             if msg.get('cmd') == 'ping':
                 return {'reply': 'pong'}
-            return {'error': 'unknown'}
+            return {'message': 'unknown'}
 
         def on_missed(count):
             cb_triggered["count"] = count
