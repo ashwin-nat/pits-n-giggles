@@ -39,13 +39,13 @@ class PitRejoinPredictionPage(BasePage):
     """Pit rejoin position prediction page."""
     KEY = "pit_rejoin"
 
-    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: int):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the pit rejoin prediction page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
-            scale_factor (int): Scale factor
+            scale_factor (float): Scale factor
         """
         # Overlay specific fields
         self.num_adjacent_cars = 2
