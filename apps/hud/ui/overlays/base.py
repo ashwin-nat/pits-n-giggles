@@ -263,6 +263,7 @@ class BaseOverlay(QWidget):
     def rebuild_ui(self):
         """Cleanly destroy current UI and rebuild it."""
         for w in self.findChildren(QWidget):
+            self.logger.debug(f"{self.overlay_id} | Cleaning widget: {w.__class__.__name__}")
             w.setParent(None)
             w.deleteLater()
 
