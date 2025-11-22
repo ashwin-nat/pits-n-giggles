@@ -25,7 +25,7 @@
 import json
 import sys
 import threading
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from PySide6.QtWidgets import QPushButton
 
@@ -295,7 +295,8 @@ class HudAppMgr(PngAppMgrBase):
         :return: True if the app needs to be restarted
         """
 
-        diff = self.curr_settings.diff(new_settings, {
+        # Enabling/disabling overlays requires subsystem restart
+        settings_requiring_restart = self.curr_settings.diff(new_settings, {
             "HUD": [
                 "enabled",
                 "show_lap_timer",
@@ -304,10 +305,11 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_settings",
             ],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
-        should_restart = bool(diff)
-        if should_restart:
+        if settings_requiring_restart:
+            self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
+                settings_requiring_restart, indent=2)}")
             self.enabled = new_settings.HUD.enabled
+            return True
 
         if self.curr_settings.diff(new_settings, {
             "HUD": [
@@ -315,4 +317,39 @@ class HudAppMgr(PngAppMgrBase):
             ],
         }):
             self._send_overlays_opacity_change(new_settings)
-        return should_restart
+
+        if diff := self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "lap_timer_ui_scale",
+                "timing_tower_ui_scale",
+                "mfd_ui_scale",
+            ],
+        }):
+            self.debug_log(f"UI scale changed. Diff: {json.dumps(diff, indent=2)}")
+            key_to_oid: Dict[str, str] = {
+                "lap_timer_ui_scale": "lap_timer",
+                "timing_tower_ui_scale": "timing_tower",
+                "mfd_ui_scale": "mfd",
+            }
+            for key, data in diff["HUD"].items():
+                oid = key_to_oid[key]
+                self._send_ui_scale_change_cmd(oid, data)
+
+        return False
+
+    def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
+        """Send UI scale change command to HUD app
+
+        Args:
+            oid (str): Overlay ID
+            data (Dict[str, Any]): UI scale data
+        """
+        self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
+        rsp = IpcParent(self.ipc_port).request(command=f"set-ui-scale", args={
+            "oid": oid,
+            **data
+        })
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to set {oid} UI scale: {rsp}")
+        else:
+            self.debug_log(f"Set {oid} UI scale response: {rsp}")

@@ -122,3 +122,18 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
     logger.info("Received reset-overlays command. args: %s", msg)
     overlays_mgr.reset_overlays()
     return {"status": "success", "message": "reset-overlays handler executed."}
+
+def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received set-ui-scale command. args: %s", msg)
+    return {"status": "success", "message": "set-ui-scale handler executed."}
