@@ -23,11 +23,26 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from copy import deepcopy
 from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field, model_validator
 
 from .diff import ConfigDiffMixin
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+_UI_META_UI_SCALE = {
+    "ui": {
+        "type": "slider",
+        "visible": True,
+        "min_ui": 50,
+        "max_ui": 200,
+        "convert": "percent",
+        "unit": "%"
+    }
+}
+
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -110,6 +125,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+
     show_lap_timer: bool = Field(
         default=True,
         description="Show lap timer overlay",
@@ -120,6 +136,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    lap_timer_ui_scale: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description="Lap Timer UI scale",
+        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
+    )
+
+
     show_timing_tower: bool = Field(
         default=True,
         description="Show timing tower overlay",
@@ -130,6 +155,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    timing_tower_ui_scale: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description="Timing tower UI scale",
+        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
+    )
+
     show_mfd: bool = Field(
         default=True,
         description="Show MFD overlay",
@@ -139,6 +172,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "visible": True
             }
         }
+    )
+    mfd_ui_scale: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description="MFD UI scale",
+        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
     )
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
@@ -150,6 +190,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+
+
     toggle_overlays_udp_action_code: int = Field(
         default=10,
         ge=1,
