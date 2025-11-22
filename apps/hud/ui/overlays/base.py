@@ -259,3 +259,11 @@ class BaseOverlay(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self._drag_pos = None
         event.accept()
+
+    def rebuild_ui(self):
+        """Cleanly destroy current UI and rebuild it."""
+        for w in self.findChildren(QWidget):
+            w.setParent(None)
+            w.deleteLater()
+
+        self.build_ui()
