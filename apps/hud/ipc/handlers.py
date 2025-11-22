@@ -24,8 +24,6 @@
 
 import logging
 
-from pydantic import TypeAdapter, ValidationError, conint
-
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -124,7 +122,7 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.
 
     Args:
-        args (dict): IPC command msg
+        msg (dict): IPC command msg
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
