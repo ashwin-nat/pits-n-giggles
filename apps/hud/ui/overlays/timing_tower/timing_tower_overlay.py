@@ -41,6 +41,7 @@ from .race_table import RaceTimingTable
 class TimingTowerOverlay(BaseOverlay):
 
     OVERLAY_ID: str = "timing_tower"
+    SCALE_FACTOR = 1.25
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
 
@@ -49,7 +50,6 @@ class TimingTowerOverlay(BaseOverlay):
         self.total_rows = (self.num_adjacent_cars * 2) + 1
 
         # UI components
-        self.header_label: Optional[QLabel] = None
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[RaceTimingTable] = None
 
@@ -63,7 +63,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         content_width = self._calculate_content_width()
 
-        header_widget = self._create_header_section(content_width)
+        header_widget = self._create_header_section(int(content_width * self.SCALE_FACTOR))
         main_layout.addWidget(header_widget)
 
         # Create and attach the timing table
@@ -72,7 +72,7 @@ class TimingTowerOverlay(BaseOverlay):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=1.25
+            scale_factor=self.SCALE_FACTOR
         )
 
         self._apply_overall_style()
@@ -96,34 +96,20 @@ class TimingTowerOverlay(BaseOverlay):
         header_layout.setContentsMargins(0, 5, 0, 5)
         header_layout.setSpacing(3)
 
-        self.header_label = QLabel("TIMING TOWER")
-        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.header_label.setStyleSheet("""
-            QLabel {
-                background-color: rgba(200, 0, 0, 220);
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 6px;
-                border-radius: 4px;
-            }
-        """)
-
         self.session_info_label = QLabel("-- / --")
         self.session_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.session_info_label.setStyleSheet("""
             QLabel {
                 background-color: rgba(40, 40, 40, 200);
                 color: #00ff00;
-                font-size: 13px;
+                font-size: 18px;
                 font-weight: bold;
-                font-family: 'Courier New', monospace;
+                font-family: 'Formula1 Display';
                 padding: 5px;
                 border-radius: 3px;
             }
         """)
 
-        header_layout.addWidget(self.header_label)
         header_layout.addWidget(self.session_info_label)
 
         header_widget.setStyleSheet("""
@@ -155,7 +141,6 @@ class TimingTowerOverlay(BaseOverlay):
             """
             session_type = data["event-type"]
             if is_tt_session(session_type):
-                self.header_label.setText("TIME TRIAL")
                 self.session_info_label.setText("-- / --")
                 self.timing_table.show_error("TIME TRIAL NOT YET SUPPORTED")
                 return
@@ -188,23 +173,19 @@ class TimingTowerOverlay(BaseOverlay):
 
             # Update session info (lap or time)
             if session_type == 'None':
-                self.header_label.setText("TIMING TOWER")
                 self.session_info_label.setText("----")
             elif self._should_show_lap_number(session_type):
-                self.header_label.setText(session_type)
                 current_lap = data.get("current-lap", 0)
                 total_laps = data.get("total-laps", 0)
-                self.session_info_label.setText(f"LAP {current_lap} / {total_laps}")
+                self.session_info_label.setText(f"{session_type.upper()} | LAP {current_lap} / {total_laps}")
             else:
                 time_remaining_sec = data.get("session-time-left", 0)
                 minutes = int(time_remaining_sec // 60)
                 seconds = int(time_remaining_sec % 60)
-                self.header_label.setText(session_type)
-                self.session_info_label.setText(f"TIME: {minutes:02d}:{seconds:02d}")
+                self.session_info_label.setText(f"{session_type.upper()} | TIME: {minutes:02d}:{seconds:02d}")
 
     def clear(self):
         """Clear all timing data"""
-        self.header_label.setText("TIMING TOWER")
         self.session_info_label.setText("-- / --")
         self.timing_table.clear()
 
@@ -232,3 +213,25 @@ class TimingTowerOverlay(BaseOverlay):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    def update_window_flags(self):
+        """Override resize behavior: allow move, disallow resize."""
+        super_flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
+
+        if self.locked:
+            flags = (
+                super_flags
+                | Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.WindowTransparentForInput
+            )
+        else:
+            # Window is unlocked: allow moving but forbid resizing
+            flags = (
+                super_flags
+                | Qt.WindowType.Window
+                | Qt.WindowType.CustomizeWindowHint
+                | Qt.WindowType.MSWindowsFixedSizeDialogHint   # <--- THIS prevents resizing
+            )
+
+        self.setWindowFlags(flags)
+        self.show()
