@@ -148,7 +148,7 @@ class HudAppMgr(PngAppMgrBase):
         rsp = IpcParent(self.ipc_port).request(command="reset-overlays", args={})
         self.info_log(str(rsp))
 
-    def next_page_callback(self): # TODO - remove
+    def next_page_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending next page command to HUD...")
         rsp = IpcParent(self.ipc_port).request(

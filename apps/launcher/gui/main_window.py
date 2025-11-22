@@ -130,7 +130,6 @@ class PngLauncherWindow(QMainWindow):
         }
 
         self.ver_str = ver_str
-        self.ver_str = 'v2.10.0' # TODO: undo
         self.debug_mode = debug_mode
 
         self.console = None
