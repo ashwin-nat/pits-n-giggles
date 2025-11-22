@@ -220,6 +220,7 @@ class SettingsWindow(QDialog):
         # Category list on the left
         self.category_list = QListWidget()
         self.category_list.setMaximumWidth(200)
+        self.category_list.setFont(QFont("Formula1 Display"))
         self.category_list.currentRowChanged.connect(self.on_category_changed)
 
         # Stacked widget for category content on the right
@@ -280,7 +281,7 @@ class SettingsWindow(QDialog):
 
         # Category title
         title_label = QLabel(category_name)
-        title_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        title_label.setFont(QFont("Roboto", 14, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(title_label)
 
@@ -353,6 +354,7 @@ class SettingsWindow(QDialog):
         if ui_type == "check_box":
             # Checkbox
             checkbox = QCheckBox(description)
+            checkbox.setFont(QFont("Roboto", 10))
             checkbox.setChecked(field_value)
             checkbox.stateChanged.connect(
                 lambda state, path=field_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
@@ -363,6 +365,7 @@ class SettingsWindow(QDialog):
         elif ui_type == "slider":
             # Slider with label
             label = QLabel(description)
+            label.setFont(QFont("Roboto", 10))
             layout.addWidget(label)
 
             slider_container = QWidget()
@@ -378,6 +381,7 @@ class SettingsWindow(QDialog):
             slider.setMaximumWidth(300)  # Fixed width for sliders
 
             value_label = QLabel(str(field_value))
+            value_label.setFont(QFont("Formula1 Display"))
             value_label.setMinimumWidth(40)
             value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -396,9 +400,11 @@ class SettingsWindow(QDialog):
         elif ui_type == "text_box":
             # Text box with label
             label = QLabel(description)
+            label.setFont(QFont("Roboto", 10))
             layout.addWidget(label)
 
             text_box = QLineEdit(str(field_value))
+            text_box.setFont(QFont("Formula1 Display", 8))
             text_box.setMaximumWidth(300)  # Fixed width for text boxes
             text_box.textChanged.connect(
                 lambda text, path=field_path: self._on_text_changed(path, text, field_info)
@@ -595,7 +601,7 @@ class SettingsWindow(QDialog):
 
         # Add a label for the key
         key_label = QLabel(key.replace("_", " ").title())
-        key_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        key_label.setFont(QFont("Exo 2", 10, QFont.Weight.Bold))
         layout.addWidget(key_label)
 
         # Add fields from the value
@@ -646,6 +652,7 @@ class SettingsWindow(QDialog):
         item_path = f"{parent_path}.{item_name}"
         enabled_path = f"{item_path}.{collection_meta.enabled_field}"
         enabled_cb = QCheckBox(item_name.replace("_", " ").title())
+        enabled_cb.setFont(QFont("Exo 2", 10))
         enabled_cb.setChecked(collection_meta.get_enabled(item_settings))
         enabled_cb.stateChanged.connect(
             lambda state, path=enabled_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
