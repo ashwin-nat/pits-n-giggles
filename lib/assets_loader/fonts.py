@@ -36,8 +36,6 @@ _DEFAULT_FONTS = [
     "f1-bold.ttf",
     "Roboto-Regular.ttf",
     "Roboto-Bold.ttf",
-    "JetBrainsMono-Bold.ttf",
-    "JetBrainsMono-Regular.ttf",
     "Exo2-Bold.ttf",
     "Exo2-Regular.ttf",
     "B612Mono-Bold.ttf",
