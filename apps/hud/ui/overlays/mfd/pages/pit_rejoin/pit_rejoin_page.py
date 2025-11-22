@@ -79,7 +79,7 @@ class PitRejoinPredictionPage(BasePage):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=1.25
+            scale_factor=1.0
         )
 
         self._apply_overall_style()
