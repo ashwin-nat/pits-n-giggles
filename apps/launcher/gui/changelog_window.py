@@ -138,7 +138,7 @@ class ChangelogWindow(QDialog):
             header_layout.addWidget(icon_label)
 
         title_label = QLabel("New Updates Available")
-        title_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        title_label.setFont(QFont("Formula1 Display", 14, QFont.Weight.Bold))
         header_layout.addWidget(title_label)
         header_layout.addStretch()
 
@@ -151,7 +151,7 @@ class ChangelogWindow(QDialog):
             info_text = f"There are {len(self.newer_versions)} new versions available:"
 
         info_label = QLabel(info_text)
-        info_label.setFont(QFont("Arial", 10))
+        info_label.setFont(QFont("Roboto", 10))
         info_label.setStyleSheet("color: #cccccc;")
         main_layout.addWidget(info_label)
 
