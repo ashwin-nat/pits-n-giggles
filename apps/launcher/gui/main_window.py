@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QCloseEvent, QFont, QIcon
+from PySide6.QtGui import QCloseEvent, QFont, QFontDatabase, QIcon
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)
@@ -60,6 +60,7 @@ class ShutdownDialog(QDialog):
 
         layout = QVBoxLayout(self)
         label = QLabel("Shutting down ...")
+        label.setFont(QFont("Formula1 Display"))
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
@@ -132,6 +133,7 @@ class PngLauncherWindow(QMainWindow):
         self.subsystems_short_names = set()
 
         self.init_icons()
+        self.init_fonts()
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
@@ -183,6 +185,47 @@ class PngLauncherWindow(QMainWindow):
             self.subsystems_short_names.add(subsystem.short_name)
 
         self.setup_ui()
+
+    def init_fonts(self) -> None:
+        """
+        Load and register fonts with the QT font database.
+        """
+        fonts_path_base = Path("assets") / "fonts"
+        self._load_font(str(fonts_path_base / "f1-regular.ttf"))
+        self._load_font(str(fonts_path_base / "f1-bold.ttf"))
+
+    def _load_font(self, relative_path: str) -> bool:
+        """
+        Load fonts that work in both dev and PyInstaller builds.
+
+        Args:
+            relative_path: Path to the font file, relative to the project root or build bundle.
+
+        Returns:
+            bool: True if the font was loaded successfully, False otherwise.
+        """
+        try:
+            if hasattr(sys, "_MEIPASS"):
+                # Running inside a PyInstaller bundle
+                base_path = sys._MEIPASS
+            else:
+                # Running from source
+                base_path = os.path.abspath(".")
+
+            full_path = os.path.join(base_path, relative_path)
+            font_id = QFontDatabase.addApplicationFont(full_path)
+
+            assert(font_id != -1)
+            if font_id == -1:
+                self.debug_log(f"Failed to load font from {full_path}")
+                return False
+            else:
+                self.debug_log(f"Loaded font from {full_path}")
+                return True
+
+        except Exception as e:  # pylint: disable=broad-except
+            self.error_log(f"Failed to load font from {relative_path}: {e}")
+            return False
 
     def _load_icon(self, relative_path: str) -> QIcon:
         """
@@ -283,7 +326,7 @@ class PngLauncherWindow(QMainWindow):
 
         # App name and version
         app_title_label = QLabel(f"{APP_NAME} - {self.ver_str}")
-        app_title_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        app_title_label.setFont(QFont("Formula1 Display", 11, QFont.Weight.Bold))
         app_title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         app_info_layout.addWidget(app_title_label)
 
@@ -364,7 +407,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Header
         header_label = QLabel("Subsystems")
-        header_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        header_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
         header_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(header_label)
 
@@ -402,7 +445,7 @@ class PngLauncherWindow(QMainWindow):
         header_layout = QHBoxLayout()
 
         console_label = QLabel("Console Log")
-        console_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        console_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
         console_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         header_layout.addWidget(console_label)
 
