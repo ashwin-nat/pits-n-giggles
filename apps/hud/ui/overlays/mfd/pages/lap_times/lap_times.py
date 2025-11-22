@@ -88,7 +88,7 @@ class LapTimesPage(BasePage):
         self.table.setShowGrid(True)
 
         # Apply font to table
-        table_font = QFont(self.FONT_FAMILY, int(self.FONT_SIZE * self.scale_factor))
+        table_font = QFont(self.FONT_FAMILY, self.font_size)
         self.table.setFont(table_font)
 
         # Cleaned-up stylesheet
@@ -102,7 +102,7 @@ class LapTimesPage(BasePage):
             QTableWidget::item {{
                 padding: 4px;
                 font-family: {self.FONT_FAMILY};
-                font-size: {int(self.FONT_SIZE * self.scale_factor)}pt;
+                font-size: {self.font_size}pt;
             }}
             QTableWidget::item:alternate {{
                 background-color: #252525;
@@ -113,7 +113,7 @@ class LapTimesPage(BasePage):
                 padding: 6px;
                 border: 1px solid #3a3a3a;
                 font-family: {self.FONT_FAMILY};
-                font-size: {int(self.FONT_SIZE * self.scale_factor)}pt;
+                font-size: {self.font_size}pt;
                 font-weight: bold;
             }}
         """)
@@ -225,3 +225,8 @@ class LapTimesPage(BasePage):
         if not isValid:
             return CellColour.RED
         return CellColour.NONE
+
+    @property
+    def font_size(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE * self.scale_factor)

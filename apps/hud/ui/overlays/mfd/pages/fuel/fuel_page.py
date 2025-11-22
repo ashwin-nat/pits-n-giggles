@@ -47,7 +47,7 @@ class FuelInfoPage(BasePage):
     FONT_SIZE_VALUE = 14
     FONT_SIZE_UNIT = 13
     FONT_SIZE_LABEL = 8
-    SURPLUS_FONT_SIZE = 13
+    FONT_SIZE_SURPLUS = 13
 
     # Color scheme
     COLOR_BG = "#1a1a1a"
@@ -122,7 +122,7 @@ class FuelInfoPage(BasePage):
 
         # --- SURPLUS LABEL -----------------------------------------------
         self.surplus_label = QLabel("Surplus: 0 laps")
-        s_font = QFont(self.SURPLUS_FONT_FACE, int(self.SURPLUS_FONT_SIZE * self.scale_factor))
+        s_font = QFont(self.SURPLUS_FONT_FACE, self.font_size_surplus)
         s_font.setWeight(QFont.Medium)
         self.surplus_label.setFont(s_font)
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT};")
@@ -148,7 +148,7 @@ class FuelInfoPage(BasePage):
 
         # Label
         label_widget = QLabel(label)
-        label_font = QFont(self.FONT_FACE, int(self.FONT_SIZE_LABEL * self.scale_factor))
+        label_font = QFont(self.FONT_FACE, self.font_size_label)
         label_font.setWeight(QFont.Medium)
         label_widget.setFont(label_font)
         label_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
@@ -161,14 +161,14 @@ class FuelInfoPage(BasePage):
         value_layout.setContentsMargins(0, 0, 0, 0)
 
         value_widget = QLabel(value)
-        v_font = QFont(self.FONT_FACE, int(self.FONT_SIZE_VALUE * self.scale_factor))
+        v_font = QFont(self.FONT_FACE, self.font_size_value)
         v_font.setWeight(QFont.Bold)
         value_widget.setFont(v_font)
         value_widget.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
         value_layout.addWidget(value_widget)
 
         unit_widget = QLabel(unit)
-        u_font = QFont(self.FONT_FACE, int(self.FONT_SIZE_UNIT * self.scale_factor))
+        u_font = QFont(self.FONT_FACE, self.font_size_unit)
         u_font.setWeight(QFont.Medium)
         unit_widget.setFont(u_font)
         unit_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
@@ -254,3 +254,23 @@ class FuelInfoPage(BasePage):
 
         self.surplus_label.setText("Surplus: ---")
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM};")
+
+    @property
+    def font_size_value(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_VALUE * self.scale_factor)
+
+    @property
+    def font_size_label(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_LABEL * self.scale_factor)
+
+    @property
+    def font_size_unit(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_UNIT * self.scale_factor)
+
+    @property
+    def font_size_surplus(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_SURPLUS * self.scale_factor)

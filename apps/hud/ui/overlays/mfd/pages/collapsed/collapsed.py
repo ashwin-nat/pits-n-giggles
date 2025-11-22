@@ -71,7 +71,7 @@ class CollapsedPage(BasePage):
 
             # Text
             text_label = QLabel(page_text, self)
-            font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor))
+            font = QFont(self.FONT_FACE, self.font_size)
             text_label.setFont(font)
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
@@ -83,7 +83,12 @@ class CollapsedPage(BasePage):
 
         else:
             label = QLabel(page_text, self)
-            font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor))
+            font = QFont(self.FONT_FACE, self.font_size)
             label.setFont(font)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.page_layout.addWidget(label)
+
+    @property
+    def font_size(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE * self.scale_factor)
