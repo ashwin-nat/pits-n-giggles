@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QWidget
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QWidget, QHeaderView
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
@@ -64,12 +64,12 @@ class LapTimesPage(BasePage):
         self._last_processed_data: List[Dict[str, Any]] = []
 
         # Font configuration
-        FONT_SIZE = 13
-        FONT_FAMILY = "Formula1 Display"  # Clean, modern font (falls back gracefully)
+        FONT_SIZE = 12
+        FONT_FAMILY = "Formula1 Display"
 
-        self.table = QTableWidget(5, 5, self)
+        self.table = QTableWidget(self.NUM_ROWS, len(self.HEADERS), self)
+        self.table.setHorizontalHeaderLabels(self.HEADERS)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setVisible(False)
 
         # Disable mouse interaction
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -91,7 +91,7 @@ class LapTimesPage(BasePage):
         table_font = QFont(FONT_FAMILY, FONT_SIZE)
         self.table.setFont(table_font)
 
-        # Cleaned-up and fixed stylesheet
+        # Cleaned-up stylesheet
         self.table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: #1e1e1e;
@@ -100,21 +100,29 @@ class LapTimesPage(BasePage):
                 border: 1px solid #3a3a3a;
             }}
             QTableWidget::item {{
-                padding: 0px 2px;
-                margin: 0px;
+                padding: 4px;
                 font-family: {FONT_FAMILY};
                 font-size: {FONT_SIZE}pt;
             }}
             QTableWidget::item:alternate {{
                 background-color: #252525;
             }}
+            QHeaderView::section {{
+                background-color: #2a2a2a;
+                color: #ffffff;
+                padding: 6px;
+                border: 1px solid #3a3a3a;
+                font-family: {FONT_FAMILY};
+                font-size: {FONT_SIZE}pt;
+                font-weight: bold;
+            }}
         """)
 
-        self.table.setColumnWidth(0, 20)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(2, 100)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 150)
+        # Set equal column widths to fill available space
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # Set row heights to fill vertical space
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
@@ -137,12 +145,10 @@ class LapTimesPage(BasePage):
             if not history_data:
                 return
 
-
             # Get the last 5 laps (if fewer exist, it's fine)
             recent_laps = history_data[-self.NUM_ROWS:]
             if not recent_laps:
                 return
-
 
             # Clear old contents but keep headers
             self.table.clearContents()
@@ -178,7 +184,7 @@ class LapTimesPage(BasePage):
 
                 # Create data tuples: (value, time_ms, pb_lap_num, global_best_ms, is_valid)
                 cell_data = [
-                    (lap_num, None, None, None, True),  # Lap number column (no coloring)
+                    (lap_num, None, None, None, True),
                     (s1_time_str, s1_time_ms, pb_s1_lap_num, glob_best_s1_ms, s1_valid),
                     (s2_time_str, s2_time_ms, pb_s2_lap_num, glob_best_s2_ms, s2_valid),
                     (s3_time_str, s3_time_ms, pb_s3_lap_num, glob_best_s3_ms, s3_valid),
@@ -186,10 +192,10 @@ class LapTimesPage(BasePage):
                 ]
 
                 for col, (value, time_ms, pb_lap, global_best, is_valid) in enumerate(cell_data):
-                    if col == 0: # lap num
+                    if col == 0:
                         content = str(value)
                     else:
-                        content = value if value not in ["0.000", "00:00.000"]  else "---"
+                        content = value if value not in ["0.000", "00:00.000"] else "---"
 
                     item = QTableWidgetItem(content)
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -212,9 +218,9 @@ class LapTimesPage(BasePage):
     def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
                               pb_lap_num: int, isValid: bool) -> CellColour:
         """Get the text colour for a cell"""
-        if (global_best_time_ms and (time_ms == global_best_time_ms)):
+        if global_best_time_ms and (time_ms == global_best_time_ms):
             return CellColour.PURPLE
-        if (pb_lap_num and (lap_num == pb_lap_num)):
+        if pb_lap_num and (lap_num == pb_lap_num):
             return CellColour.GREEN
         if not isValid:
             return CellColour.RED
