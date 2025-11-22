@@ -43,7 +43,6 @@ _UI_META_UI_SCALE = {
     }
 }
 
-
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class MfdPageSettings(ConfigDiffMixin, BaseModel):
