@@ -186,7 +186,6 @@ class OverlaysMgr:
 
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
         self.window_manager.unicast_data(oid, 'set_scale_factor', {'scale_factor': scale_factor})
-        # self.window_manager.broadcast_data('set_scale_factor', {'scale_factor': scale_factor})
 
     def stop(self):
         """Stop the overlays manager"""

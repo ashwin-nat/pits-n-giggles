@@ -143,5 +143,9 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     if not scale_factor:
         return {"status": "error", "message": "Missing scale_factor in set-ui-scale command."}
 
-    overlays_mgr.set_scale_factor(oid, scale_factor)
-    return {"status": "success", "message": "set-ui-scale handler executed."}
+    try:
+        overlays_mgr.set_scale_factor(oid, scale_factor)
+        return {"status": "success", "message": "set-ui-scale handler executed."}
+    except Exception as e: # pylint: disable=broad-exception-caught
+        logger.exception(f"Error handling set-ui-scale command: {e}")
+        return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
