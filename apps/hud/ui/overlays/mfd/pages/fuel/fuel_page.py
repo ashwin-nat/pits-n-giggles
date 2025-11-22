@@ -31,8 +31,9 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout, QWidget)
 
-from apps.hud.common import get_ref_row, load_icon
+from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+from lib.assets_loader import load_icon
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -71,7 +72,7 @@ class FuelInfoPage(BasePage):
         # Load fuel icon
         icon_base = Path("assets")
         icon_path = icon_base / "overlays" / "fuel-pump.svg"
-        self.fuel_icon = load_icon(str(icon_path))
+        self.fuel_icon = load_icon(icon_path, self.logger.debug, self.logger.error)
         if self.fuel_icon and not self.fuel_icon.isNull():
             self.logger.debug(f"{self.overlay_id} | Fuel icon loaded")
         else:

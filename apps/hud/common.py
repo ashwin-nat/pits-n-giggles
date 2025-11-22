@@ -23,38 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-import os
-import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtGui import QIcon
-
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def load_icon(relative_path: str) -> QIcon:
-    """
-    Load an icon that works in both dev and PyInstaller builds.
-
-    Args:
-        relative_path: Path to the icon file, relative to the project root or build bundle.
-
-    Returns:
-        QIcon: The loaded icon, or an empty QIcon if loading fails.
-    """
-    try:
-        if hasattr(sys, "_MEIPASS"):
-            # Running inside a PyInstaller bundle
-            base_path = sys._MEIPASS
-        else:
-            # Running from source
-            base_path = os.path.abspath(".")
-
-        full_path = os.path.join(base_path, relative_path)
-        icon = QIcon(full_path)
-        return icon
-
-    except Exception:  # pylint: disable=broad-except
-        return QIcon()
 
 # ------------------------------------------------
 # Session type helpers

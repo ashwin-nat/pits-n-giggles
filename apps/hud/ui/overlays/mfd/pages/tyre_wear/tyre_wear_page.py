@@ -32,8 +32,9 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
-from apps.hud.common import get_ref_row, load_icon
+from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+from lib.assets_loader import load_icon
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -65,12 +66,12 @@ class TyreInfoPage(BasePage):
         """Load tyre icons."""
         icon_base_tyres = Path("assets") / "tyre-icons"
         self.tyre_icon_mappings = {
-            "Soft": load_icon(str(icon_base_tyres / "soft_tyre.svg")),
-            "Super Soft": load_icon(str(icon_base_tyres / "super_soft_tyre.svg")),
-            "Medium": load_icon(str(icon_base_tyres / "medium_tyre.svg")),
-            "Hard": load_icon(str(icon_base_tyres / "hard_tyre.svg")),
-            "Inters": load_icon(str(icon_base_tyres / "intermediate_tyre.svg")),
-            "Wet": load_icon(str(icon_base_tyres / "wet_tyre.svg")),
+            "Soft": load_icon(icon_base_tyres / "soft_tyre.svg", self.logger.debug, self.logger.error),
+            "Super Soft": load_icon(icon_base_tyres / "super_soft_tyre.svg", self.logger.debug, self.logger.error),
+            "Medium": load_icon(icon_base_tyres / "medium_tyre.svg", self.logger.debug, self.logger.error),
+            "Hard": load_icon(icon_base_tyres / "hard_tyre.svg", self.logger.debug, self.logger.error),
+            "Inters": load_icon(icon_base_tyres / "intermediate_tyre.svg", self.logger.debug, self.logger.error),
+            "Wet": load_icon(icon_base_tyres / "wet_tyre.svg", self.logger.debug, self.logger.error),
         }
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():

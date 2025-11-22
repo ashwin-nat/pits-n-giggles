@@ -31,7 +31,7 @@ from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
 
-from apps.hud.common import load_icon
+from lib.assets_loader import load_icon
 from lib.f1_types import F1Utils
 
 from .border_delegate import BorderDelegate
@@ -82,12 +82,12 @@ class RaceTimingTable:
         """Initialize tyre and team icons."""
         icon_base_tyres = Path("assets") / "tyre-icons"
         self.tyre_icon_mappings = {
-            "Soft": load_icon(str(icon_base_tyres / "soft_tyre.svg")),
-            "Super Soft": load_icon(str(icon_base_tyres / "super_soft_tyre.svg")),
-            "Medium": load_icon(str(icon_base_tyres / "medium_tyre.svg")),
-            "Hard": load_icon(str(icon_base_tyres / "hard_tyre.svg")),
-            "Inters": load_icon(str(icon_base_tyres / "intermediate_tyre.svg")),
-            "Wet": load_icon(str(icon_base_tyres / "wet_tyre.svg")),
+            "Soft": load_icon(icon_base_tyres / "soft_tyre.svg", self.logger.debug, self.logger.error),
+            "Super Soft": load_icon(icon_base_tyres / "super_soft_tyre.svg", self.logger.debug, self.logger.error),
+            "Medium": load_icon(icon_base_tyres / "medium_tyre.svg", self.logger.debug, self.logger.error),
+            "Hard": load_icon(icon_base_tyres / "hard_tyre.svg", self.logger.debug, self.logger.error),
+            "Inters": load_icon(icon_base_tyres / "intermediate_tyre.svg", self.logger.debug, self.logger.error),
+            "Wet": load_icon(icon_base_tyres / "wet_tyre.svg", self.logger.debug, self.logger.error),
         }
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
@@ -97,23 +97,23 @@ class RaceTimingTable:
 
         icon_base_teams = Path("assets") / "team-logos"
         self.team_logo_mappings = {
-            "Alpine": load_icon(str(icon_base_teams / "alpine.svg")),
-            "Aston Martin": load_icon(str(icon_base_teams / "aston_martin.svg")),
-            "Ferrari": load_icon(str(icon_base_teams / "ferrari.svg")),
-            "Haas": load_icon(str(icon_base_teams / "haas.svg")),
-            "McLaren": load_icon(str(icon_base_teams / "mclaren.svg")),
-            "Mclaren": load_icon(str(icon_base_teams / "mclaren.svg")),
-            "Mercedes": load_icon(str(icon_base_teams / "mercedes.svg")),
-            "RB": load_icon(str(icon_base_teams / "rb.svg")),
-            "VCARB": load_icon(str(icon_base_teams / "rb.svg")),
-            "Alpha Tauri": load_icon(str(icon_base_teams / "rb.svg")),
-            "Red Bull": load_icon(str(icon_base_teams / "red_bull.svg")),
-            "Red Bull Racing": load_icon(str(icon_base_teams / "red_bull.svg")),
-            "Sauber": load_icon(str(icon_base_teams / "sauber.svg")),
-            "Alfa Romeo": load_icon(str(icon_base_teams / "sauber.svg")),
-            "Williams": load_icon(str(icon_base_teams / "williams.svg"))
+            "Alpine": load_icon(icon_base_teams / "alpine.svg", self.logger.debug, self.logger.error),
+            "Aston Martin": load_icon(icon_base_teams / "aston_martin.svg", self.logger.debug, self.logger.error),
+            "Ferrari": load_icon(icon_base_teams / "ferrari.svg", self.logger.debug, self.logger.error),
+            "Haas": load_icon(icon_base_teams / "haas.svg", self.logger.debug, self.logger.error),
+            "McLaren": load_icon(icon_base_teams / "mclaren.svg", self.logger.debug, self.logger.error),
+            "Mclaren": load_icon(icon_base_teams / "mclaren.svg", self.logger.debug, self.logger.error),
+            "Mercedes": load_icon(icon_base_teams / "mercedes.svg", self.logger.debug, self.logger.error),
+            "RB": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
+            "VCARB": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
+            "Alpha Tauri": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
+            "Red Bull": load_icon(icon_base_teams / "red_bull.svg", self.logger.debug, self.logger.error),
+            "Red Bull Racing": load_icon(icon_base_teams / "red_bull.svg", self.logger.debug, self.logger.error),
+            "Sauber": load_icon(icon_base_teams / "sauber.svg", self.logger.debug, self.logger.error),
+            "Alfa Romeo": load_icon(icon_base_teams / "sauber.svg", self.logger.debug, self.logger.error),
+            "Williams": load_icon(icon_base_teams / "williams.svg", self.logger.debug, self.logger.error),
         }
-        self.default_team_logo = load_icon(str(icon_base_teams / "default.svg"))
+        self.default_team_logo = load_icon(icon_base_teams / "default.svg", self.logger.debug, self.logger.error)
 
         for name, icon in self.team_logo_mappings.items():
             if icon.isNull():
