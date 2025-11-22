@@ -58,12 +58,13 @@ class MfdOverlay(BaseOverlay):
                  settings: PngSettings,
                  logger: logging.Logger,
                  locked: bool,
-                 opacity: int):
+                 opacity: int,
+                 scale_factor: float):
 
         self.mfdClosed = 40
         self.settings = settings
         self.mfdOpen = config.height
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
 
         # Always start collapsed, but keep width & position
         geo = self.geometry()
@@ -107,7 +108,7 @@ class MfdOverlay(BaseOverlay):
 
     def _register_page(self, widget_cls: BasePage) -> None:
         """Register an MFD page"""
-        self.pages.addWidget(widget_cls(self, self.logger))
+        self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
 
     def _init_cmd_handlers(self):
         """Register command handlers."""

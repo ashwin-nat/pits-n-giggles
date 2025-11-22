@@ -42,11 +42,12 @@ class FuelInfoPage(BasePage):
 
     KEY = "fuel_info"
 
-    FONT_FACE = "Montserrat"
-    FONT_SIZE_TITLE = 16
-    FONT_SIZE_VALUE = 13
+    FONT_FACE = "Formula1 Display"
+    SURPLUS_FONT_FACE = "B612 Mono"
+    FONT_SIZE_VALUE = 14
     FONT_SIZE_UNIT = 13
     FONT_SIZE_LABEL = 8
+    FONT_SIZE_SURPLUS = 13
 
     # Color scheme
     COLOR_BG = "#1a1a1a"
@@ -60,14 +61,16 @@ class FuelInfoPage(BasePage):
     # Fuel constants
     MIN_FUEL = 0.2  # Minimum fuel threshold in laps
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the fuel info page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="FUEL INFO")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="FUEL INFO")
 
         # Load fuel icon
         icon_base = Path("assets")
@@ -119,7 +122,7 @@ class FuelInfoPage(BasePage):
 
         # --- SURPLUS LABEL -----------------------------------------------
         self.surplus_label = QLabel("Surplus: 0 laps")
-        s_font = QFont(self.FONT_FACE, 11)
+        s_font = QFont(self.SURPLUS_FONT_FACE, self.font_size_surplus)
         s_font.setWeight(QFont.Medium)
         self.surplus_label.setFont(s_font)
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT};")
@@ -145,7 +148,7 @@ class FuelInfoPage(BasePage):
 
         # Label
         label_widget = QLabel(label)
-        label_font = QFont(self.FONT_FACE, self.FONT_SIZE_LABEL)
+        label_font = QFont(self.FONT_FACE, self.font_size_label)
         label_font.setWeight(QFont.Medium)
         label_widget.setFont(label_font)
         label_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
@@ -158,14 +161,14 @@ class FuelInfoPage(BasePage):
         value_layout.setContentsMargins(0, 0, 0, 0)
 
         value_widget = QLabel(value)
-        v_font = QFont(self.FONT_FACE, 14)
+        v_font = QFont(self.FONT_FACE, self.font_size_value)
         v_font.setWeight(QFont.Bold)
         value_widget.setFont(v_font)
         value_widget.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
         value_layout.addWidget(value_widget)
 
         unit_widget = QLabel(unit)
-        u_font = QFont(self.FONT_FACE, self.FONT_SIZE_UNIT)
+        u_font = QFont(self.FONT_FACE, self.font_size_unit)
         u_font.setWeight(QFont.Medium)
         unit_widget.setFont(u_font)
         unit_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
@@ -251,3 +254,23 @@ class FuelInfoPage(BasePage):
 
         self.surplus_label.setText("Surplus: ---")
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM};")
+
+    @property
+    def font_size_value(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_VALUE * self.scale_factor)
+
+    @property
+    def font_size_label(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_LABEL * self.scale_factor)
+
+    @property
+    def font_size_unit(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_UNIT * self.scale_factor)
+
+    @property
+    def font_size_surplus(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_SURPLUS * self.scale_factor)

@@ -26,6 +26,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
@@ -41,9 +42,10 @@ from .race_table import RaceTimingTable
 class TimingTowerOverlay(BaseOverlay):
 
     OVERLAY_ID: str = "timing_tower"
-    SCALE_FACTOR = 1.25
+    FONT_FACE = "Formula1 Display"
+    FONT_SIZE = 15
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
 
         # Overlay specific fields
         self.num_adjacent_cars = 2
@@ -53,7 +55,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[RaceTimingTable] = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
         self._init_event_handlers()
 
     def build_ui(self):
@@ -63,7 +65,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         content_width = self._calculate_content_width()
 
-        header_widget = self._create_header_section(int(content_width * self.SCALE_FACTOR))
+        header_widget = self._create_header_section(int(content_width * self.scale_factor))
         main_layout.addWidget(header_widget)
 
         # Create and attach the timing table
@@ -72,7 +74,7 @@ class TimingTowerOverlay(BaseOverlay):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=self.SCALE_FACTOR
+            scale_factor=self.scale_factor
         )
 
         self._apply_overall_style()
@@ -88,36 +90,51 @@ class TimingTowerOverlay(BaseOverlay):
         return 40 + 30 + 160 + 90 + 75 + 75 + 50
 
     def _create_header_section(self, content_width: int) -> QWidget:
-        """Create the header section with title and session info."""
+        """Create the header section with proper scaling (no extra vertical gap)."""
+
+        scale = self.scale_factor
+        font_px = int(self.FONT_SIZE * scale)
+        padding = int(3 * scale)
+        margin = int(3 * scale)    # <-- scale margins!
+        spacing = int(2 * scale)   # <-- scale spacing!
+
         header_widget = QWidget()
         header_widget.setFixedWidth(content_width)
 
+        header_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: rgba(15, 15, 15, 200);
+                border-radius: {int(5 * scale)}px;
+            }}
+        """)
+
         header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 5, 0, 5)
-        header_layout.setSpacing(3)
+        header_layout.setContentsMargins(0, margin, 0, margin)
+        header_layout.setSpacing(spacing)
+
+        font = QFont(self.FONT_FACE)
+        font.setPixelSize(font_px)
+
+        fm = QFontMetrics(font)
+        text_height = fm.height()
+        total_height = text_height + (padding * 2)
 
         self.session_info_label = QLabel("-- / --")
+        self.session_info_label.setFont(font)
         self.session_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.session_info_label.setStyleSheet("""
-            QLabel {
+        self.session_info_label.setFixedHeight(total_height)
+
+        self.session_info_label.setStyleSheet(f"""
+            QLabel {{
                 background-color: rgba(40, 40, 40, 200);
                 color: #00ff00;
-                font-size: 18px;
                 font-weight: bold;
-                font-family: 'Formula1 Display';
-                padding: 5px;
-                border-radius: 3px;
-            }
+                padding: {padding}px 0px;
+                border-radius: {int(3 * scale)}px;
+            }}
         """)
 
         header_layout.addWidget(self.session_info_label)
-
-        header_widget.setStyleSheet("""
-            QWidget {
-                background-color: rgba(15, 15, 15, 200);
-                border-radius: 5px;
-            }
-        """)
 
         return header_widget
 
@@ -213,25 +230,3 @@ class TimingTowerOverlay(BaseOverlay):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
-
-    def update_window_flags(self):
-        """Override resize behavior: allow move, disallow resize."""
-        super_flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
-
-        if self.locked:
-            flags = (
-                super_flags
-                | Qt.WindowType.FramelessWindowHint
-                | Qt.WindowType.WindowTransparentForInput
-            )
-        else:
-            # Window is unlocked: allow moving but forbid resizing
-            flags = (
-                super_flags
-                | Qt.WindowType.Window
-                | Qt.WindowType.CustomizeWindowHint
-                | Qt.WindowType.MSWindowsFixedSizeDialogHint   # <--- THIS prevents resizing
-            )
-
-        self.setWindowFlags(flags)
-        self.show()

@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ValidationError
@@ -372,15 +373,25 @@ class SettingsWindow(QDialog):
             slider_layout = QHBoxLayout()
             slider_layout.setContentsMargins(0, 0, 0, 0)
 
-            slider = QSlider(Qt.Orientation.Horizontal)
-            slider.setMinimum(ui_config.get("min", 0))
-            slider.setMaximum(ui_config.get("max", 100))
-            slider.setValue(field_value)
-            slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-            slider.setTickInterval(10)
-            slider.setMaximumWidth(300)  # Fixed width for sliders
+            # Determine slider value based on conversion type
+            if ui_config.get("convert") == "percent":
+                slider_min = ui_config.get("min_ui", 50)
+                slider_max = ui_config.get("max_ui", 200)
+                slider_value = int(field_value * 100)
+                label_text = f"{slider_value}%"
+            else:
+                slider_min = ui_config.get("min", 0)
+                slider_max = ui_config.get("max", 100)
+                slider_value = field_value
+                label_text = str(field_value)
 
-            value_label = QLabel(str(field_value))
+            slider = QSlider(Qt.Orientation.Horizontal)
+            slider.setMinimum(slider_min)
+            slider.setMaximum(slider_max)
+            slider.setValue(slider_value)
+
+            value_label = QLabel(label_text)
+
             value_label.setFont(QFont("Formula1 Display"))
             value_label.setMinimumWidth(40)
             value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -804,9 +815,25 @@ class SettingsWindow(QDialog):
             self.parent_window.error_log(f"Error updating field {field_path}: {e}")
 
     def _on_slider_changed(self, field_path: str, value: int, label: QLabel):
-        """Handle slider value change"""
-        label.setText(str(value))
-        self._on_field_changed(field_path, value)
+        # find field_info from path
+        field_info = self._get_field_info_from_path(field_path)
+        ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+
+        if ui_config.get("convert") == "percent":
+            label.setText(f"{value}%")
+            new_value = value / 100.0           # convert percent -> multiplier
+        else:
+            label.setText(str(value))
+            new_value = value
+
+        self._on_field_changed(field_path, new_value)
+
+    def _get_field_info_from_path(self, path: str) -> FieldInfo:
+        parts = path.split(".")
+        model = self.working_settings
+        for p in parts[:-1]:
+            model = getattr(model, p)
+        return type(model).model_fields[parts[-1]]
 
     def _on_text_changed(self, field_path: str, text: str, field_info: FieldInfo):
         """Handle text box change with type conversion"""
@@ -880,7 +907,13 @@ class SettingsWindow(QDialog):
                 if isinstance(widget, QCheckBox):
                     widget.setChecked(value)
                 elif isinstance(widget, QSlider):
-                    widget.setValue(value)
+                    field_info = self._get_field_info_from_path(field_path)
+                    ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+
+                    if ui_config.get("convert") == "percent":
+                        widget.setValue(int(value * 100))
+                    else:
+                        widget.setValue(value)
                 elif isinstance(widget, QLineEdit):
                     widget.setText(str(value))
             except Exception as e: # pylint: disable=broad-exception-caught
@@ -906,11 +939,13 @@ class SettingsWindow(QDialog):
         try:
             # Validate the working settings
             validated_settings = PngSettings.model_validate(self.working_settings.model_dump())
-            if not self.original_settings.has_changed(validated_settings):
+            diff = self.original_settings.diff(validated_settings)
+            if not diff:
                 self.parent_window.debug_log("Settings unchanged, not saving")
                 return
 
             # Call the callback if provided
+            self.parent_window.debug_log(f"Settings changed: {json.dumps(diff, indent=2)}")
             if self.on_settings_change:
                 self.on_settings_change(validated_settings)
 

@@ -52,20 +52,20 @@ class LapTimesPage(BasePage):
     S1_VALID_MASK = 2
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
+    FONT_SIZE = 12
+    FONT_FAMILY = "Formula1 Display"
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialize lap times page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", "RECENT LAP TIMES")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="RECENT LAP TIMES")
         self._last_processed_data: List[Dict[str, Any]] = []
-
-        # Font configuration
-        FONT_SIZE = 12
-        FONT_FAMILY = "Formula1 Display"
 
         self.table = QTableWidget(self.NUM_ROWS, len(self.HEADERS), self)
         self.table.setHorizontalHeaderLabels(self.HEADERS)
@@ -88,7 +88,7 @@ class LapTimesPage(BasePage):
         self.table.setShowGrid(True)
 
         # Apply font to table
-        table_font = QFont(FONT_FAMILY, FONT_SIZE)
+        table_font = QFont(self.FONT_FAMILY, self.font_size)
         self.table.setFont(table_font)
 
         # Cleaned-up stylesheet
@@ -101,8 +101,8 @@ class LapTimesPage(BasePage):
             }}
             QTableWidget::item {{
                 padding: 4px;
-                font-family: {FONT_FAMILY};
-                font-size: {FONT_SIZE}pt;
+                font-family: {self.FONT_FAMILY};
+                font-size: {self.font_size}pt;
             }}
             QTableWidget::item:alternate {{
                 background-color: #252525;
@@ -112,8 +112,8 @@ class LapTimesPage(BasePage):
                 color: #ffffff;
                 padding: 6px;
                 border: 1px solid #3a3a3a;
-                font-family: {FONT_FAMILY};
-                font-size: {FONT_SIZE}pt;
+                font-family: {self.FONT_FAMILY};
+                font-size: {self.font_size}pt;
                 font-weight: bold;
             }}
         """)
@@ -225,3 +225,8 @@ class LapTimesPage(BasePage):
         if not isValid:
             return CellColour.RED
         return CellColour.NONE
+
+    @property
+    def font_size(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE * self.scale_factor)

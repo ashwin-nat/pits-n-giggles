@@ -34,7 +34,7 @@ from lib.ipc import IpcChildSync
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 from .handlers import (handle_lock_widgets, handle_next_page,
-                       handle_reset_overlays, handle_set_opacity,
+                       handle_reset_overlays, handle_set_opacity, handle_set_ui_scale,
                        handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -49,6 +49,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "set-overlays-opacity": handle_set_opacity,
     "next-page": handle_next_page,
     "reset-overlays": handle_reset_overlays,
+    "set-ui-scale": handle_set_ui_scale,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -96,7 +97,9 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
         return {"status": "error", "message": "Missing command name"}
 
     if (handler := COMMAND_HANDLERS.get(cmd)):
-        return handler(msg, logger, overlays_mgr)
+        if 'args' not in msg:
+            return {"status": "error", "message": f"Missing args in {cmd} command."}
+        return handler(msg['args'], logger, overlays_mgr)
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 

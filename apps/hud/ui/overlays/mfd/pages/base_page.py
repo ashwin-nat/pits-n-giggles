@@ -41,10 +41,17 @@ class BasePage(QWidget):
     KEY = "mfd"
 
     # Class variables for title customization
-    TITLE_FONT_FACE = "Montserrat"
+    TITLE_FONT_FACE = "Formula1 Display"
     TITLE_FONT_SIZE = 13
 
-    def __init__(self, parent: QWidget, logger: logging.Logger, overlay_id: str, title: Optional[str] = None):
+    def __init__(self,
+                 parent: QWidget,
+                 logger: logging.Logger,
+                 overlay_id: str,
+                 scale_factor: float,
+                 title: Optional[str] = None):
+        """Initialise the base page."""
+        self.scale_factor = scale_factor
         super().__init__(parent)
 
         # Main layout for the entire page
@@ -103,7 +110,7 @@ class BasePage(QWidget):
 
         title_label = QLabel(title, title_frame)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setFont(QFont(self.TITLE_FONT_FACE, self.TITLE_FONT_SIZE))
+        title_label.setFont(QFont(self.TITLE_FONT_FACE, int(self.TITLE_FONT_SIZE * self.scale_factor)))
         title_label.setStyleSheet("color: #FF0000; font-weight: bold; background: transparent; border: none;")
 
         title_layout.addWidget(title_label)

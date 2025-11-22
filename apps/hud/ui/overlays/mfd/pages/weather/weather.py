@@ -48,20 +48,21 @@ class WeatherForecastPage(BasePage):
     }
 
     FONT_FACE = "Montserrat"
-    TIME_FONT_SIZE = 13
-    RAIN_FONT_SIZE = 13
+    TEXT_FONT_SIZE = 13
     EMOJI_FONT_FACE = "Montserrat"
     EMOJI_FONT_SIZE = 22
     MAX_SAMPLES = 5
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the weather forecast page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="Weather Forecast")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
 
         # Compact horizontal layout filling available width
@@ -123,7 +124,7 @@ class WeatherForecastPage(BasePage):
         time_text = f"+{time_offset}m" if time_offset > 0 else "Now"
         time_label = QLabel(time_text, card)
         time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        time_label.setFont(QFont(self.FONT_FACE, self.TIME_FONT_SIZE))
+        time_label.setFont(QFont(self.FONT_FACE, self.text_font_size))
         time_label.setStyleSheet("color: #EEE; font-weight: 600;")
         layout.addWidget(time_label)
 
@@ -132,14 +133,14 @@ class WeatherForecastPage(BasePage):
         emoji = self.WEATHER_EMOJIS.get(weather_type, "☀️")
         emoji_label = QLabel(emoji, card)
         emoji_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        emoji_label.setFont(QFont(self.EMOJI_FONT_FACE, self.EMOJI_FONT_SIZE))
+        emoji_label.setFont(QFont(self.EMOJI_FONT_FACE, self.emoji_font_size))
         layout.addWidget(emoji_label)
 
         # Rain probability
         rain_prob = str(data.get("rain-probability", "0")).strip()
         rain_label = QLabel(f"💧{rain_prob}%", card)
         rain_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        rain_label.setFont(QFont(self.FONT_FACE, self.RAIN_FONT_SIZE))
+        rain_label.setFont(QFont(self.FONT_FACE, self.text_font_size))
         rain_label.setStyleSheet("color: #7dafff; font-weight: bold;")
         layout.addWidget(rain_label)
 
@@ -149,6 +150,16 @@ class WeatherForecastPage(BasePage):
         self._clear_forecast()
         label = QLabel("No forecast data", self)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setFont(QFont(self.FONT_FACE, 8))
+        label.setFont(QFont(self.FONT_FACE, self.text_font_size))
         label.setStyleSheet("color: #777; font-style: italic;")
         self.forecast_container.addWidget(label)
+
+    @property
+    def text_font_size(self) -> int:
+        """Font size based on scale factor."""
+        return int(self.TEXT_FONT_SIZE * self.scale_factor)
+
+    @property
+    def emoji_font_size(self) -> int:
+        """Font size based on scale factor."""
+        return int(self.EMOJI_FONT_SIZE * self.scale_factor)
