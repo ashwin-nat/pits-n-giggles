@@ -445,6 +445,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
             self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+            self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
             """

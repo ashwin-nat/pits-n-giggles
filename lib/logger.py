@@ -103,14 +103,21 @@ def _clearFileIfRequired(file_name: str, max_size: int) -> None:
 
 class JsonlFormatter(logging.Formatter):
     def format(self, record):
+        # Base log data
+        log = {
+            "time": datetime.fromtimestamp(record.created).isoformat(timespec="milliseconds"),
+            "level": record.levelname,
+            "logger": record.name,
+            "filename": record.filename,
+            "lineno": record.lineno,
+            "func": record.funcName,
+            "message": record.getMessage(),
+        }
 
-        return json.dumps(
-            {
-                "time": datetime.fromtimestamp(record.created).isoformat(timespec="milliseconds"),
-                "level": record.levelname,
-                "logger": record.name,
-                "filename": record.filename,
-                "lineno": record.lineno,
-                "func": record.funcName,
-                "message": record.getMessage(),
-            }, ensure_ascii=False)
+        # Add exception info if present
+        if record.exc_info:
+            log["exc_type"] = record.exc_info[0].__name__
+            log["exc_message"] = str(record.exc_info[1])
+            log["stack"] = self.formatException(record.exc_info)
+
+        return json.dumps(log, ensure_ascii=False)

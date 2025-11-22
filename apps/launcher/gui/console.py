@@ -37,6 +37,9 @@ class LogSignals(QObject):
 class ConsoleWidget(QTextEdit):
     """Custom console widget with copy support and scroll lock"""
 
+    # Maximum number of lines to keep in the console
+    MAX_LINES = 1000
+
     # Signal emitted when scroll lock state changes
     scroll_lock_changed = Signal(bool)  # True = locked, False = auto-scroll
 
@@ -89,6 +92,18 @@ class ConsoleWidget(QTextEdit):
         """Append a log message with color coding"""
 
         self.append(message)
+
+        # Enforce line limit
+        doc = self.document()
+        if doc.blockCount() > self.MAX_LINES:
+            # Remove excess lines from the top
+            cursor = QTextCursor(doc)
+            cursor.movePosition(QTextCursor.MoveOperation.Start)
+            for _ in range(doc.blockCount() - self.MAX_LINES):
+                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
+                cursor.movePosition(QTextCursor.MoveOperation.NextBlock,
+                                  QTextCursor.MoveMode.KeepAnchor)
+                cursor.removeSelectedText()
 
         # Only auto-scroll if enabled
         if self._auto_scroll:
