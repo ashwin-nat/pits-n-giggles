@@ -49,6 +49,8 @@ from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
 
+from lib.assets_loader import load_fonts
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class ShutdownDialog(QDialog):
@@ -122,6 +124,7 @@ class PngLauncherWindow(QMainWindow):
         }
 
         self.ver_str = ver_str
+        self.ver_str = 'v2.10.0' # TODO: undo
         self.debug_mode = debug_mode
 
         self.console = None
@@ -133,7 +136,7 @@ class PngLauncherWindow(QMainWindow):
         self.subsystems_short_names = set()
 
         self.init_icons()
-        self.init_fonts()
+        load_fonts(debug_log_printer=self.debug_log, error_log_printer=self.error_log)
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
@@ -185,47 +188,6 @@ class PngLauncherWindow(QMainWindow):
             self.subsystems_short_names.add(subsystem.short_name)
 
         self.setup_ui()
-
-    def init_fonts(self) -> None:
-        """
-        Load and register fonts with the QT font database.
-        """
-        fonts_path_base = Path("assets") / "fonts"
-        self._load_font(str(fonts_path_base / "f1-regular.ttf"))
-        self._load_font(str(fonts_path_base / "f1-bold.ttf"))
-
-    def _load_font(self, relative_path: str) -> bool:
-        """
-        Load fonts that work in both dev and PyInstaller builds.
-
-        Args:
-            relative_path: Path to the font file, relative to the project root or build bundle.
-
-        Returns:
-            bool: True if the font was loaded successfully, False otherwise.
-        """
-        try:
-            if hasattr(sys, "_MEIPASS"):
-                # Running inside a PyInstaller bundle
-                base_path = sys._MEIPASS
-            else:
-                # Running from source
-                base_path = os.path.abspath(".")
-
-            full_path = os.path.join(base_path, relative_path)
-            font_id = QFontDatabase.addApplicationFont(full_path)
-
-            assert(font_id != -1)
-            if font_id == -1:
-                self.debug_log(f"Failed to load font from {full_path}")
-                return False
-            else:
-                self.debug_log(f"Loaded font from {full_path}")
-                return True
-
-        except Exception as e:  # pylint: disable=broad-except
-            self.error_log(f"Failed to load font from {relative_path}: {e}")
-            return False
 
     def _load_icon(self, relative_path: str) -> QIcon:
         """
