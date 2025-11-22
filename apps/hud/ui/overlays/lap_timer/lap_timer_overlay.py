@@ -47,6 +47,9 @@ class LapTimerOverlay(BaseOverlay):
     DEFAULT_TIME = "--:--.---"
     DEFAULT_DELTA = "---"
     DISPLAY_TIMER_MS = 5000
+    SCALE_FACTOR = 1.25
+    FONT_FACE = "Formula1 Display"
+    FONT_SIZE = 16
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
         """Initialize lap timer overlay.
@@ -76,8 +79,8 @@ class LapTimerOverlay(BaseOverlay):
         grid_layout.setHorizontalSpacing(10)
         grid_layout.setVerticalSpacing(5)
 
-        label_font = QFont("Formula1 Display", 20, QFont.Bold)
-        value_font = QFont("Formula1 Display", 20, QFont.Bold)
+        label_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.SCALE_FACTOR), QFont.Bold)
+        value_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.SCALE_FACTOR), QFont.Bold)
 
         # Create fixed labels (left column)
         curr_label_fixed = self._create_label("Curr:", label_font, "#FFFFFF")
