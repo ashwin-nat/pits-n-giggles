@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ValidationError
@@ -938,11 +939,13 @@ class SettingsWindow(QDialog):
         try:
             # Validate the working settings
             validated_settings = PngSettings.model_validate(self.working_settings.model_dump())
-            if not self.original_settings.has_changed(validated_settings):
+            diff = self.original_settings.diff(validated_settings)
+            if not diff:
                 self.parent_window.debug_log("Settings unchanged, not saving")
                 return
 
             # Call the callback if provided
+            self.parent_window.debug_log(f"Settings changed: {json.dumps(diff, indent=2)}")
             if self.on_settings_change:
                 self.on_settings_change(validated_settings)
 
