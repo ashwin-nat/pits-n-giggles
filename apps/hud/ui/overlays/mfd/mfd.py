@@ -108,7 +108,7 @@ class MfdOverlay(BaseOverlay):
 
     def _register_page(self, widget_cls: BasePage) -> None:
         """Register an MFD page"""
-        self.pages.addWidget(widget_cls(self, self.logger))
+        self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
 
     def _init_cmd_handlers(self):
         """Register command handlers."""

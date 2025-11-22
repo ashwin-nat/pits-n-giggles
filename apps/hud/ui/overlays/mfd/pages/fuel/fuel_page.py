@@ -60,14 +60,16 @@ class FuelInfoPage(BasePage):
     # Fuel constants
     MIN_FUEL = 0.2  # Minimum fuel threshold in laps
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the fuel info page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="FUEL INFO")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="FUEL INFO")
 
         # Load fuel icon
         icon_base = Path("assets")

@@ -53,14 +53,16 @@ class LapTimesPage(BasePage):
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialize lap times page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", "RECENT LAP TIMES")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="RECENT LAP TIMES")
         self._last_processed_data: List[Dict[str, Any]] = []
 
         # Font configuration

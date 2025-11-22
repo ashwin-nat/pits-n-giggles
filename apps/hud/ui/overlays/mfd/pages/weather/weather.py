@@ -54,14 +54,16 @@ class WeatherForecastPage(BasePage):
     EMOJI_FONT_SIZE = 22
     MAX_SAMPLES = 5
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the weather forecast page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="Weather Forecast")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
 
         # Compact horizontal layout filling available width

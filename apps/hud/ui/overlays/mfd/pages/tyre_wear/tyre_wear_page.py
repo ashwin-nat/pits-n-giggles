@@ -49,14 +49,16 @@ class TyreInfoPage(BasePage):
     MED_WEAR = 50
     DANGER_WEAR = 75
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the tyre wear page.
 
         Args:
             parent (QWidget): Parent widget
             logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="TYRE WEAR INFO")
+        self.scale_factor = scale_factor
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="TYRE WEAR INFO")
 
         self._init_icons()
         self._build_ui()
@@ -566,3 +568,4 @@ class TyreInfoPage(BasePage):
         """Check if wear prediction is supported for this event."""
         event_type: str = data.get("event-type", "")
         return event_type and "Race" in event_type
+
