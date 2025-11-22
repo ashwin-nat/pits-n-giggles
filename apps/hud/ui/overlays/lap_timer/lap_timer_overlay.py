@@ -204,7 +204,7 @@ class LapTimerOverlay(BaseOverlay):
         # Check for lap number change
         if self.curr_lap_num and self.curr_lap_num != incoming_lap_num:
             self.logger.debug(
-                f'{self.overlay_id} Lap change: {self.curr_lap_num} → {incoming_lap_num}'
+                f'{self.overlay_id} Lap change: {self.curr_lap_num} -> {incoming_lap_num}'
             )
             self._start_display_timer()
             return {
