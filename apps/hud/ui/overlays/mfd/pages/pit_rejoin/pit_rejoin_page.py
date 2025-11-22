@@ -47,7 +47,6 @@ class PitRejoinPredictionPage(BasePage):
             logger (logging.Logger): Logger
             scale_factor (int): Scale factor
         """
-        self.scale_factor = scale_factor
         # Overlay specific fields
         self.num_adjacent_cars = 2
         self.total_rows = (self.num_adjacent_cars * 2) + 1
@@ -87,7 +86,7 @@ class PitRejoinPredictionPage(BasePage):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=1.0
+            scale_factor=self.scale_factor
         )
 
         self._apply_overall_style()
