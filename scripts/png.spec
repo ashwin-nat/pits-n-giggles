@@ -143,6 +143,8 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "Roboto-Bold.ttf"), "assets/fonts"),
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "JetBrainsMono-Bold.ttf"), "assets/fonts"),
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "JetBrainsMono-Regular.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Regular.ttf"), "assets/fonts"),
 
 ]
 
