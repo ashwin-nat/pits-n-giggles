@@ -91,6 +91,14 @@ class PngLauncherWindow(QMainWindow):
             border-color: #2d2d2d;
             opacity: 0.4;
         }
+        QToolTip {
+            font-family: 'Roboto';
+            font-size: 10pt;
+            color: white;
+            background-color: #202020;
+            border: 1px solid #444;
+            padding: 3px;
+        }
     """
     UPDATE_BLINK_STYLESHEET = """
         QPushButton#updates_btn {
