@@ -181,6 +181,12 @@ class OverlaysMgr:
         """Handle the stream overlay update event"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
 
+    def set_scale_factor(self, oid: str, scale_factor: float):
+        """Set overlays scale factor to specified overlay"""
+
+        self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
+        # self.window_manager.broadcast_data('set_scale_factor', {'scale_factor': scale_factor})
+
     def stop(self):
         """Stop the overlays manager"""
         self.running = False

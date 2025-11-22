@@ -97,7 +97,9 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
         return {"status": "error", "message": "Missing command name"}
 
     if (handler := COMMAND_HANDLERS.get(cmd)):
-        return handler(msg, logger, overlays_mgr)
+        if 'args' not in msg:
+            return {"status": "error", "message": f"Missing args in {cmd} command."}
+        return handler(msg['args'], logger, overlays_mgr)
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 

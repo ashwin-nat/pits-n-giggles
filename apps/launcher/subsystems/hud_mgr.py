@@ -347,7 +347,7 @@ class HudAppMgr(PngAppMgrBase):
         self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
         rsp = IpcParent(self.ipc_port).request(command=f"set-ui-scale", args={
             "oid": oid,
-            **data
+            "scale_factor": data["new_value"]
         })
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to set {oid} UI scale: {rsp}")
