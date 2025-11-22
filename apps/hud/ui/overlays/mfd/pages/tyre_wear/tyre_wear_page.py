@@ -42,7 +42,8 @@ class TyreInfoPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
     KEY = "tyre_info"
-    FONT_FACE = "Montserrat"
+    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_NUMBERS = "JetBrains Mono"
     FONT_SIZE = 13
     NUM_DECIMAL_PLACES = 2
     MED_WEAR = 50
@@ -97,7 +98,7 @@ class TyreInfoPage(BasePage):
 
         # Telemetry disabled message (hidden by default)
         self.telemetry_message = QLabel("Telemetry disabled - Wear data unavailable")
-        self.telemetry_message.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        self.telemetry_message.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE))
         self.telemetry_message.setStyleSheet("color: #FF6B6B;")
         self.telemetry_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.telemetry_message.hide()
@@ -121,58 +122,73 @@ class TyreInfoPage(BasePage):
         # LEFT HALF: Current tyre info
         left_widget = QWidget()
         left_widget.setStyleSheet("background: transparent;")
-        left_layout = QHBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(8)
-        left_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        left_main_layout = QVBoxLayout(left_widget)
+        left_main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        left_main_layout.setContentsMargins(0, 0, 0, 0)
+        left_main_layout.setSpacing(4)
+
+        # TOP ROW: Icon, Compound, Age
+        top_row_widget = QWidget()
+        top_row_widget.setStyleSheet("background: transparent;")
+        top_row_layout = QHBoxLayout(top_row_widget)
+        top_row_layout.setContentsMargins(0, 0, 0, 0)
+        top_row_layout.setSpacing(8)
+        top_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Tyre icon
         self.tyre_icon_label = QLabel()
         self.tyre_icon_label.setFixedSize(28, 28)
         self.tyre_icon_label.setScaledContents(True)
-        left_layout.addWidget(self.tyre_icon_label)
+        top_row_layout.addWidget(self.tyre_icon_label)
 
         # Compound name
         self.compound_label = QLabel("—")
-        self.compound_label.setFont(QFont(self.FONT_FACE, 10, QFont.Weight.Bold))
+        self.compound_label.setFont(QFont(self.FONT_FACE_TEXT, 10, QFont.Weight.Bold))
         self.compound_label.setStyleSheet("color: #FFFFFF; background: transparent;")
-        left_layout.addWidget(self.compound_label)
+        top_row_layout.addWidget(self.compound_label)
 
         # Divider
         divider = QLabel("•")
-        divider.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
+        divider.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1))
         divider.setStyleSheet("color: #444; background: transparent;")
-        left_layout.addWidget(divider)
+        top_row_layout.addWidget(divider)
 
         # Age stat
         age_label = QLabel("Age:")
-        age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
+        age_label.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1))
         age_label.setStyleSheet("color: #888; background: transparent;")
-        left_layout.addWidget(age_label)
+        top_row_layout.addWidget(age_label)
 
         self.tyre_age_label = QLabel("—")
-        self.tyre_age_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
+        self.tyre_age_label.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1, QFont.Weight.Bold))
         self.tyre_age_label.setStyleSheet("color: #00D4FF; background: transparent;")
-        left_layout.addWidget(self.tyre_age_label)
+        top_row_layout.addWidget(self.tyre_age_label)
 
-        # Divider
-        divider2 = QLabel("•")
-        divider2.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
-        divider2.setStyleSheet("color: #444; background: transparent;")
-        left_layout.addWidget(divider2)
+        top_row_layout.addStretch()
+        left_main_layout.addWidget(top_row_widget)
+
+        # BOTTOM ROW: Wear rate
+        bottom_row_widget = QWidget()
+        bottom_row_widget.setStyleSheet("background: transparent;")
+        bottom_row_layout = QHBoxLayout(bottom_row_widget)
+        bottom_row_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_row_layout.setSpacing(8)
+        bottom_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Wear rate stat
         wear_rate_label = QLabel("Rate:")
-        wear_rate_label.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
+        wear_rate_label.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1))
         wear_rate_label.setStyleSheet("color: #888; background: transparent;")
-        left_layout.addWidget(wear_rate_label)
+        bottom_row_layout.addWidget(wear_rate_label)
 
         self.wear_rate_value = QLabel("—")
-        self.wear_rate_value.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
+        self.wear_rate_value.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1, QFont.Weight.Bold))
         self.wear_rate_value.setStyleSheet("color: #00D4FF; background: transparent;")
-        left_layout.addWidget(self.wear_rate_value)
+        bottom_row_layout.addWidget(self.wear_rate_value)
 
-        left_layout.addStretch()
+        bottom_row_layout.addStretch()
+        left_main_layout.addWidget(bottom_row_widget)
+
         top_layout.addWidget(left_widget, stretch=1)
 
         # Vertical divider
@@ -191,38 +207,99 @@ class TyreInfoPage(BasePage):
 
         # Title for unused tyres
         unused_title = QLabel("Unused Tyres")
-        unused_title.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 2))
+        unused_title.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 2))
         unused_title.setStyleSheet("color: #888; background: transparent;")
-        unused_title.setAlignment(Qt.AlignmentFlag.AlignRight)
+        unused_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_main_layout.addWidget(unused_title)
 
-        # Container for tyre icons
-        tyres_container = QWidget()
-        tyres_container.setStyleSheet("background: transparent;")
-        self.right_layout = QHBoxLayout(tyres_container)
-        self.right_layout.setContentsMargins(0, 0, 0, 0)
-        self.right_layout.setSpacing(12)
-        self.right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        # Placeholder text (will be replaced when data is available)
-        self.available_tyres_placeholder = QLabel("No fresh tyres")
-        self.available_tyres_placeholder.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 2))
-        self.available_tyres_placeholder.setStyleSheet("color: #666; background: transparent;")
-        self.right_layout.addWidget(self.available_tyres_placeholder)
-
+        # Create tyre grid
+        tyres_container = self._create_tyre_grid()
         right_main_layout.addWidget(tyres_container)
-
-        # Store reference to available tyre widgets for updates
-        self.available_tyre_widgets = []
 
         top_layout.addWidget(right_widget, stretch=1)
 
         parent_layout.addWidget(top_widget)
 
+    def _create_tyre_grid(self) -> QWidget:
+        """Create a 2x3 grid of tyre icons with count labels.
+
+        Returns:
+            QWidget: Container widget with tyre grid.
+        """
+        # Container for tyre icons in 2x3 grid
+        tyres_container = QWidget()
+        tyres_container.setStyleSheet("background: transparent;")
+        grid_layout = QVBoxLayout(tyres_container)
+        grid_layout.setContentsMargins(0, 0, 0, 0)
+        grid_layout.setSpacing(4)
+        grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Store reference to count labels for each tyre compound
+        self.tyre_count_labels = {}
+
+        # Define tyre order for grid: top row (Soft, Medium, Hard), bottom row (Super Soft, Inters, Wet)
+        tyre_rows = [
+            ["Soft", "Medium", "Hard"],
+            ["Super Soft", "Inters", "Wet"]
+        ]
+
+        # Create 2 rows
+        for row_compounds in tyre_rows:
+            row_widget = QWidget()
+            row_widget.setStyleSheet("background: transparent;")
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(12)
+            row_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+            for compound in row_compounds:
+                # Create container for icon + count
+                tyre_container = QWidget()
+                tyre_container.setStyleSheet("background: transparent;")
+                tyre_container_layout = QVBoxLayout(tyre_container)
+                tyre_container_layout.setContentsMargins(0, 0, 0, 0)
+                tyre_container_layout.setSpacing(0)
+                tyre_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                # Icon and count in horizontal layout
+                icon_count_widget = QWidget()
+                icon_count_widget.setStyleSheet("background: transparent;")
+                icon_count_layout = QHBoxLayout(icon_count_widget)
+                icon_count_layout.setContentsMargins(0, 0, 0, 0)
+                icon_count_layout.setSpacing(0)
+                icon_count_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                # Icon
+                icon_label = QLabel()
+                icon_label.setFixedSize(24, 24)
+                icon_label.setScaledContents(True)
+                icon = self.tyre_icon_mappings.get(compound)
+                if icon and not icon.isNull():
+                    pixmap = icon.pixmap(24, 24)
+                    icon_label.setPixmap(pixmap)
+                icon_count_layout.addWidget(icon_label)
+
+                # Count label (bottom right of icon)
+                count_label = QLabel("x0")
+                count_label.setFont(QFont(self.FONT_FACE_TEXT, 9, QFont.Weight.Bold))
+                count_label.setStyleSheet("color: #666; background: transparent; padding-left: 2px;")
+                count_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+                icon_count_layout.addWidget(count_label)
+
+                # Store reference to count label
+                self.tyre_count_labels[compound] = count_label
+
+                tyre_container_layout.addWidget(icon_count_widget)
+                row_layout.addWidget(tyre_container)
+
+            grid_layout.addWidget(row_widget)
+
+        return tyres_container
+
     def _create_stat_divider(self) -> QLabel:
         """Create a vertical divider for stats."""
         divider = QLabel("•")
-        divider.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        divider.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE))
         divider.setStyleSheet("color: #444444; background: transparent;")
         return divider
 
@@ -241,7 +318,7 @@ class TyreInfoPage(BasePage):
         self.wear_table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         # Style the table
-        self.wear_table.setFont(QFont(self.FONT_FACE, self.FONT_SIZE))
+        self.wear_table.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE))
         self.wear_table.setStyleSheet("""
             QTableWidget {
                 background-color: #1a1a1a;
@@ -377,58 +454,19 @@ class TyreInfoPage(BasePage):
         Args:
             groupings_by_comp (Dict[str, Dict[str, Any]]): Dictionary of tyre counts by visual compound.
         """
-        # Clear existing widgets
-        for widget in self.available_tyre_widgets:
-            widget.deleteLater()
-        self.available_tyre_widgets.clear()
+        # Reset all counts to 0 first
+        for compound, label in self.tyre_count_labels.items():
+            label.setText("x0")
+            label.setStyleSheet("color: #666; background: transparent; padding-left: 2px;")
 
-        if not groupings_by_comp:
-            self.available_tyres_placeholder.show()
-            return
-
-        self.available_tyres_placeholder.hide()
-
-        # Add tyre icons with counts
+        # Update counts for available tyres
         for visual_compound, stats in groupings_by_comp.items():
             count = stats['count']
-
-            # Create container for icon + count
-            tyre_container = QWidget()
-            tyre_container.setStyleSheet("background: transparent;")
-            tyre_container_layout = QVBoxLayout(tyre_container)
-            tyre_container_layout.setContentsMargins(0, 0, 0, 0)
-            tyre_container_layout.setSpacing(0)
-            tyre_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            # Icon and count in horizontal layout
-            icon_count_widget = QWidget()
-            icon_count_widget.setStyleSheet("background: transparent;")
-            icon_count_layout = QHBoxLayout(icon_count_widget)
-            icon_count_layout.setContentsMargins(0, 0, 0, 0)
-            icon_count_layout.setSpacing(0)
-            icon_count_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            # Icon
-            icon_label = QLabel()
-            icon_label.setFixedSize(24, 24)
-            icon_label.setScaledContents(True)
-            icon = self.tyre_icon_mappings.get(visual_compound)
-            if icon and not icon.isNull():
-                pixmap = icon.pixmap(24, 24)
-                icon_label.setPixmap(pixmap)
-            icon_count_layout.addWidget(icon_label)
-
-            # Count label (bottom right of icon)
-            count_label = QLabel(f"x{count}")
-            count_label.setFont(QFont(self.FONT_FACE, 9, QFont.Weight.Bold))
-            count_label.setStyleSheet("color: #00D4FF; background: transparent; padding-left: 2px;")
-            count_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
-            icon_count_layout.addWidget(count_label)
-
-            tyre_container_layout.addWidget(icon_count_widget)
-
-            self.right_layout.addWidget(tyre_container)
-            self.available_tyre_widgets.append(tyre_container)
+            if visual_compound in self.tyre_count_labels:
+                label = self.tyre_count_labels[visual_compound]
+                label.setText(f"x{count}")
+                # Highlight available tyres
+                label.setStyleSheet("color: #00D4FF; background: transparent; padding-left: 2px;")
 
     def _update_compound_display(self, visual_compound: str, actual_compound: str) -> None:
         """Update the tyre compound icon and label."""
@@ -486,7 +524,7 @@ class TyreInfoPage(BasePage):
         for row_idx, row_data in enumerate(rows_data):
             # Label column
             label_item = QTableWidgetItem(row_data['label'])
-            label_item.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1, QFont.Weight.Bold))
+            label_item.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1, QFont.Weight.Bold))
             label_item.setForeground(Qt.GlobalColor.white)
             label_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.wear_table.setItem(row_idx, 0, label_item)
@@ -495,7 +533,7 @@ class TyreInfoPage(BasePage):
             for col_idx, tyre in enumerate(['fl', 'fr', 'rl', 'rr'], start=1):
                 value = row_data[tyre]
                 item = QTableWidgetItem(f"{value:.{self.NUM_DECIMAL_PLACES}f}%")
-                item.setFont(QFont(self.FONT_FACE, self.FONT_SIZE - 1))
+                item.setFont(QFont(self.FONT_FACE_TEXT, self.FONT_SIZE - 1))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 # Color code based on wear level
