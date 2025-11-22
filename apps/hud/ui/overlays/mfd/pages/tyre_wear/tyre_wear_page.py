@@ -43,7 +43,7 @@ class TyreInfoPage(BasePage):
 
     KEY = "tyre_info"
     FONT_FACE_TEXT = "Formula1 Display"
-    FONT_FACE_NUMBERS = "JetBrains Mono"
+    FONT_FACE_NUMBERS = "B612 Mono"
     FONT_SIZE = 13
     NUM_DECIMAL_PLACES = 2
     MED_WEAR = 50

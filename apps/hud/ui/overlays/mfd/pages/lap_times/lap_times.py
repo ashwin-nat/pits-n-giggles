@@ -65,7 +65,7 @@ class LapTimesPage(BasePage):
 
         # Font configuration
         FONT_SIZE = 13
-        FONT_FAMILY = "Montserrat"  # Clean, modern font (falls back gracefully)
+        FONT_FAMILY = "Formula1 Display"  # Clean, modern font (falls back gracefully)
 
         self.table = QTableWidget(5, 5, self)
         self.table.verticalHeader().setVisible(False)
