@@ -47,7 +47,8 @@ class RaceTimingTable:
         parent_layout: QVBoxLayout,
         logger: logging.Logger,
         overlay_id: str,
-        num_rows: int = 5
+        num_rows: int = 5,
+        scale_factor: float = 1.0
     ):
         """
         Initialize the race timing table.
@@ -56,12 +57,13 @@ class RaceTimingTable:
             parent_layout: The layout to attach this table to
             logger: Logger instance
             overlay_id: Identifier for logging purposes
-            icon_loader: Function to load icons
             num_rows: Number of rows in the table
+            scale_factor: Scaling factor for the table size (default 1.5 = 50% larger)
         """
         self.logger = logger
         self.overlay_id = overlay_id
         self.num_rows = num_rows
+        self.scale_factor = scale_factor
 
         # UI components
         self.timing_table: Optional[QTableWidget] = None
@@ -137,7 +139,8 @@ class RaceTimingTable:
 
     def _calculate_content_width(self) -> int:
         """Return total content width based on column sizes."""
-        return 40 + 30 + 160 + 90 + 75 + 75 + 50
+        base_width = 40 + 30 + 160 + 90 + 75 + 75 + 50
+        return int(base_width * self.scale_factor)
 
     def _create_timing_table(self, content_width: int) -> QTableWidget:
         """Create and configure the timing table."""
@@ -180,14 +183,17 @@ class RaceTimingTable:
 
     def _set_table_dimensions(self, table: QTableWidget, content_width: int) -> None:
         """Set column widths, row heights, and overall table size."""
-        column_widths = [40, 30, 160, 90, 75, 75, 50]
-        for i, width in enumerate(column_widths):
+        base_column_widths = [40, 30, 160, 90, 75, 75, 50]
+        scaled_column_widths = [int(w * self.scale_factor) for w in base_column_widths]
+
+        for i, width in enumerate(scaled_column_widths):
             table.setColumnWidth(i, width)
 
+        row_height = int(32 * self.scale_factor)
         for i in range(self.num_rows):
-            table.setRowHeight(i, 32)
+            table.setRowHeight(i, row_height)
 
-        table_height = 32 * self.num_rows + 4
+        table_height = row_height * self.num_rows + 4
         table.setFixedSize(content_width, table_height)
         table.setFrameShape(QFrame.Shape.NoFrame)
         table.setContentsMargins(0, 0, 0, 0)
@@ -223,8 +229,7 @@ class RaceTimingTable:
         text: str,
         alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter,
         color: Optional[QColor] = None,
-        font_family: str = None,
-        bold: bool = False
+        font_family: str = "Formula1 Display"
     ) -> QTableWidgetItem:
         """Helper to create styled table items."""
         item = QTableWidgetItem(text)
@@ -233,15 +238,12 @@ class RaceTimingTable:
         if color:
             item.setForeground(QBrush(color))
 
-        if font_family or bold:
-            font = QFont()
-            if font_family:
-                font.setFamily(font_family)
-            if bold:
-                font.setBold(True)
-            font.setPointSize(11)
-            item.setFont(font)
+        font = QFont()
+        font.setFamily(font_family)
+        font.setPointSize(int(12 * self.scale_factor))
+        font.setWeight(QFont.Weight.Normal)
 
+        item.setFont(font)
         return item
 
     def update_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int) -> None:
@@ -356,7 +358,7 @@ class RaceTimingTable:
             position: Position of the driver
         """
         pos_item = self._create_table_item(
-            str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), bold=True
+            str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_family="Formula1 Display"
         )
         self.timing_table.setItem(row_idx, 0, pos_item)
 
@@ -373,7 +375,7 @@ class RaceTimingTable:
         elif self.default_team_logo and not self.default_team_logo.isNull():
             team_item = QTableWidgetItem(self.default_team_logo, "")
         else:
-            team_item = self._create_table_item("??", Qt.AlignmentFlag.AlignCenter, bold=True)
+            team_item = self._create_table_item("??", Qt.AlignmentFlag.AlignCenter)
 
         team_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timing_table.setItem(row_idx, 1, team_item)
@@ -389,7 +391,7 @@ class RaceTimingTable:
             name,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             QColor("#ffffff"),
-            bold=True,
+            font_family="Formula1 Display"
         )
         self.timing_table.setItem(row_idx, 2, name_item)
 
@@ -407,7 +409,7 @@ class RaceTimingTable:
             delta_text = f"{F1Utils.formatFloat(delta / 1000, precision=3, signed=True)}"
 
         delta_item = self._create_table_item(
-            delta_text, Qt.AlignmentFlag.AlignCenter, QColor("#00ff99"), font_family="Courier New"
+            delta_text, Qt.AlignmentFlag.AlignCenter, QColor("#00ff99"), font_family="Consolas"
         )
         self.timing_table.setItem(row_idx, 3, delta_item)
 
@@ -423,14 +425,14 @@ class RaceTimingTable:
         if tyre_icon and not tyre_icon.isNull():
             tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
             font = tyre_item.font()
-            font.setPointSize(11)
+            font.setPointSize(int(11 * self.scale_factor))
             tyre_item.setFont(font)
         else:
             tyre_display = (
                 f"{tyre_compound[:1]}({max_tyre_wear_str})" if tyre_compound else "--"
             )
             tyre_item = self._create_table_item(
-                tyre_display, Qt.AlignmentFlag.AlignCenter, bold=True
+                tyre_display, Qt.AlignmentFlag.AlignCenter
             )
 
         tyre_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -445,7 +447,7 @@ class RaceTimingTable:
             ers_mode: ERS mode of the driver
             drs: Is the driver in DRS
         """
-        ers_item = self._create_table_item(ers, Qt.AlignmentFlag.AlignCenter)
+        ers_item = self._create_table_item(ers, Qt.AlignmentFlag.AlignCenter, font_family="Formula1 Display")
         ers_item.setData(
             Qt.ItemDataRole.UserRole,
             {"ers-mode": ers_mode, "drs": drs},
@@ -461,7 +463,7 @@ class RaceTimingTable:
         """
         pens_str = f"+{pens_sec}s" if pens_sec > 0 else ""
         pens_item = self._create_table_item(
-            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), bold=True
+            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), font_family="Formula1 Display"
         )
         self.timing_table.setItem(row_idx, 6, pens_item)
 
@@ -517,7 +519,7 @@ class RaceTimingTable:
         msg_item = QTableWidgetItem(message)
         msg_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         font = QFont()
-        font.setPointSize(12)
+        font.setPointSize(int(12 * self.scale_factor))
         font.setBold(True)
         msg_item.setFont(font)
         msg_item.setForeground(QBrush(QColor("#ffb86b")))  # orange-ish warning color
