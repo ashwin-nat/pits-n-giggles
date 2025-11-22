@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-import os
 import sys
 import webbrowser
 from datetime import datetime
@@ -31,7 +30,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QCloseEvent, QFont, QFontDatabase, QIcon
+from PySide6.QtGui import QCloseEvent, QFont, QIcon
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)

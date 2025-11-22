@@ -76,10 +76,10 @@ def _load_font(
             if debug_log_printer:
                 debug_log_printer(f"Failed to load font from {full_path}")
             return False
-        else:
-            if debug_log_printer:
-                debug_log_printer(f"Loaded font from {full_path}")
-            return True
+
+        if debug_log_printer:
+            debug_log_printer(f"Loaded font from {full_path}")
+        return True
 
     except Exception as e:  # pylint: disable=broad-except
         if error_log_printer:
@@ -89,7 +89,7 @@ def _load_font(
 
 def load_fonts(
         base_path: Path = _DEFAULT_BASE,
-        fonts_list: List[str] = _DEFAULT_FONTS,
+        fonts_list: List[str] = None,
         debug_log_printer: Optional[Callable[[str], None]] = None,
         error_log_printer: Optional[Callable[[str], None]] = None) -> None:
     """
@@ -101,6 +101,8 @@ def load_fonts(
         debug_log_printer: Optional function to print debug messages.
         error_log_printer: Optional function to print error messages.
     """
+    if not fonts_list:
+        fonts_list = _DEFAULT_FONTS
     for font in fonts_list:
         font_path = base_path / font
         _load_font(font_path, debug_log_printer, error_log_printer)
