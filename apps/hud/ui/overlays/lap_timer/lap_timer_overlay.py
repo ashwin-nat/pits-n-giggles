@@ -70,6 +70,8 @@ class LapTimerOverlay(BaseOverlay):
 
     def build_ui(self):
         """Build the overlay UI components."""
+        self.logger.debug(f'{self.overlay_id} | Building UI')
+
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(5)
