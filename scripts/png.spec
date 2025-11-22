@@ -136,6 +136,9 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "updates.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "website.svg"), "assets/launcher-icons"),
 
+    # Fonts
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-regular.ttf"), "assets/fonts"),
 ]
 
 # --------------------------------------------------------------------------------------------------
