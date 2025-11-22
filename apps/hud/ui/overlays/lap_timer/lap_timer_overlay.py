@@ -25,9 +25,9 @@
 import logging
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QLabel, QVBoxLayout
+from PySide6.QtWidgets import QGridLayout, QLabel, QVBoxLayout
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.config import OverlaysConfig
@@ -67,31 +67,57 @@ class LapTimerOverlay(BaseOverlay):
 
     def build_ui(self):
         """Build the overlay UI components."""
-        layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(5)
 
-        font = QFont("Consolas", 20, QFont.Bold)
+        # Create grid layout for labels
+        grid_layout = QGridLayout()
+        grid_layout.setHorizontalSpacing(10)
+        grid_layout.setVerticalSpacing(5)
 
-        # Create labels
-        self.curr_label = self._create_label(f"Curr:   {self.DEFAULT_TIME}", font, "#00FFFF")
-        self.last_label = self._create_label(f"Last:   {self.DEFAULT_TIME}", font, "#FFFFFF")
-        self.best_label = self._create_label(f"Best:   {self.DEFAULT_TIME}", font, "#00FF00")
-        self.delta_label = self._create_label(f"Delta:  {self.DEFAULT_DELTA}", font, "#FFFFFF")
-        self.estimated_label = self._create_label(f"Est:    {self.DEFAULT_TIME}", font, "#FFFFFF")
+        label_font = QFont("Formula1 Display", 20, QFont.Bold)
+        value_font = QFont("Formula1 Display", 20, QFont.Bold)
 
-        # Add to layout
-        layout.addWidget(self.curr_label)
-        layout.addWidget(self.last_label)
-        layout.addWidget(self.best_label)
-        layout.addWidget(self.estimated_label)
-        layout.addWidget(self.delta_label)
+        # Create fixed labels (left column)
+        curr_label_fixed = self._create_label("Curr:", label_font, "#FFFFFF")
+        last_label_fixed = self._create_label("Last:", label_font, "#FFFFFF")
+        best_label_fixed = self._create_label("Best:", label_font, "#FFFFFF")
+        est_label_fixed = self._create_label("Est:", label_font, "#FFFFFF")
+        delta_label_fixed = self._create_label("Delta:", label_font, "#FFFFFF")
 
+        # Create value labels (right column) with fixed width
+        self.curr_value = self._create_fixed_width_label(self.DEFAULT_TIME, value_font, "#00FFFF")
+        self.last_value = self._create_fixed_width_label(self.DEFAULT_TIME, value_font, "#FFFFFF")
+        self.best_value = self._create_fixed_width_label(self.DEFAULT_TIME, value_font, "#00FF00")
+        self.estimated_value = self._create_fixed_width_label(self.DEFAULT_TIME, value_font, "#FFFFFF")
+        self.delta_value = self._create_fixed_width_label(self.DEFAULT_DELTA, value_font, "#FFFFFF")
+
+        # Add to grid: row, column
+        grid_layout.addWidget(curr_label_fixed, 0, 0, Qt.AlignRight)
+        grid_layout.addWidget(self.curr_value, 0, 1, Qt.AlignLeft)
+
+        grid_layout.addWidget(last_label_fixed, 1, 0, Qt.AlignRight)
+        grid_layout.addWidget(self.last_value, 1, 1, Qt.AlignLeft)
+
+        grid_layout.addWidget(best_label_fixed, 2, 0, Qt.AlignRight)
+        grid_layout.addWidget(self.best_value, 2, 1, Qt.AlignLeft)
+
+        grid_layout.addWidget(est_label_fixed, 3, 0, Qt.AlignRight)
+        grid_layout.addWidget(self.estimated_value, 3, 1, Qt.AlignLeft)
+
+        grid_layout.addWidget(delta_label_fixed, 4, 0, Qt.AlignRight)
+        grid_layout.addWidget(self.delta_value, 4, 1, Qt.AlignLeft)
+
+        # Add grid to main layout
+        main_layout.addLayout(grid_layout)
+
+        # Add sector bar
         self.sector_bar = SectorStatusBar()
-        layout.addWidget(self.sector_bar)
+        main_layout.addWidget(self.sector_bar)
 
-        self.setLayout(layout)
-        self.resize(220, 140)
+        self.setLayout(main_layout)
+        self.resize(260, 160)
 
     def _create_label(self, text: str, font: QFont, color: str) -> QLabel:
         """Create a styled label.
@@ -107,6 +133,33 @@ class LapTimerOverlay(BaseOverlay):
         label = QLabel(text)
         label.setFont(font)
         label.setStyleSheet(f"color: {color};")
+        return label
+
+    def _create_fixed_width_label(self, text: str, font: QFont, color: str) -> QLabel:
+        """Create a styled label with fixed minimum width to prevent resizing.
+
+        Args:
+            text: Label text
+            font: Font to use
+            color: Text color in hex format
+
+        Returns:
+            Configured QLabel instance with fixed width
+        """
+        label = QLabel(text)
+        label.setFont(font)
+        label.setStyleSheet(f"color: {color};")
+
+        # Calculate width based on the widest possible content
+        # Using a string of "8" characters as they tend to be widest in most fonts
+        metrics = label.fontMetrics()
+        max_width = metrics.horizontalAdvance("88:88.888")  # Widest time format
+        delta_width = metrics.horizontalAdvance("+8.888")    # Widest delta format
+
+        # Add padding on both sides (10 pixels on each side = 20 total)
+        padding = 20
+        label.setMinimumWidth(max(max_width, delta_width) + padding)
+
         return label
 
     def _init_event_handlers(self):
@@ -261,7 +314,7 @@ class LapTimerOverlay(BaseOverlay):
             sector_status: Sector status information
         """
         # Display driver status in current lap field
-        self.curr_label.setText(f"Curr:   {driver_status}")
+        self.curr_value.setText(driver_status)
         self.sector_bar.set_sector_status(sector_status)
 
         # Clear delta and estimated time
@@ -269,12 +322,13 @@ class LapTimerOverlay(BaseOverlay):
 
     def clear(self):
         """Reset all display fields to default values."""
-        self.curr_label.setText(f"Curr:   {self.DEFAULT_TIME}")
-        self.last_label.setText(f"Last:   {self.DEFAULT_TIME}")
-        self.best_label.setText(f"Best:   {self.DEFAULT_TIME}")
-        self.delta_label.setText(f"Delta:  {self.DEFAULT_DELTA}")
-        self.delta_label.setStyleSheet("color: #FFFFFF;")
-        self.estimated_label.setText(f"Est:    {self.DEFAULT_TIME}")
+        self.curr_value.setText(self.DEFAULT_TIME)
+        self.curr_value.setStyleSheet("color: #00FFFF;")
+        self.last_value.setText(self.DEFAULT_TIME)
+        self.best_value.setText(self.DEFAULT_TIME)
+        self.delta_value.setText(self.DEFAULT_DELTA)
+        self.delta_value.setStyleSheet("color: #FFFFFF;")
+        self.estimated_value.setText(self.DEFAULT_TIME)
         self.sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
         self.curr_session_uid = None
         self.curr_lap_num = None
@@ -289,7 +343,7 @@ class LapTimerOverlay(BaseOverlay):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(last_lap_ms)
             if last_lap_ms else self.DEFAULT_TIME
         )
-        self.last_label.setText(f"Last:   {time_str}")
+        self.last_value.setText(time_str)
 
     def _update_best_lap(self, best_lap_ms: Optional[int]):
         """Update best lap time display.
@@ -301,7 +355,7 @@ class LapTimerOverlay(BaseOverlay):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(best_lap_ms)
             if best_lap_ms else self.DEFAULT_TIME
         )
-        self.best_label.setText(f"Best:   {time_str}")
+        self.best_value.setText(time_str)
 
     def _update_curr_lap(self, curr_lap_ms: Optional[int]):
         """Update current lap time display.
@@ -313,7 +367,8 @@ class LapTimerOverlay(BaseOverlay):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(curr_lap_ms)
             if curr_lap_ms else self.DEFAULT_TIME
         )
-        self.curr_label.setText(f"Curr:   {time_str}")
+        self.curr_value.setText(time_str)
+        self.curr_value.setStyleSheet("color: #00FFFF;")
 
     def _update_delta(self, delta: float):
         """Update delta display with appropriate color.
@@ -323,7 +378,7 @@ class LapTimerOverlay(BaseOverlay):
         """
         delta_s = delta / 1000
         text = F1Utils.formatFloat(delta_s, precision=3, signed=True)
-        self.delta_label.setText(f"Delta:  {text}")
+        self.delta_value.setText(text)
 
         # Set color based on delta value
         if delta_s < 0:
@@ -333,7 +388,7 @@ class LapTimerOverlay(BaseOverlay):
         else:
             color = "#FFFFFF"  # Neutral (white)
 
-        self.delta_label.setStyleSheet(f"color: {color};")
+        self.delta_value.setStyleSheet(f"color: {color};")
 
     def _update_estimated(self, est: str):
         """Update estimated lap time display.
@@ -341,13 +396,13 @@ class LapTimerOverlay(BaseOverlay):
         Args:
             est: Formatted estimated time string
         """
-        self.estimated_label.setText(f"Est:    {est}")
+        self.estimated_value.setText(est)
 
     def _clear_delta_and_estimated(self):
         """Clear delta and estimated time fields."""
-        self.delta_label.setText(f"Delta:  {self.DEFAULT_DELTA}")
-        self.delta_label.setStyleSheet("color: #FFFFFF;")
-        self.estimated_label.setText(f"Est:    {self.DEFAULT_TIME}")
+        self.delta_value.setText(self.DEFAULT_DELTA)
+        self.delta_value.setStyleSheet("color: #FFFFFF;")
+        self.estimated_value.setText(self.DEFAULT_TIME)
 
     def _is_timer_active(self) -> bool:
         """Check if lap display timer is currently active.
