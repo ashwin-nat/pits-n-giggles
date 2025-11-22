@@ -347,7 +347,7 @@ class HudAppMgr(PngAppMgrBase):
             data (Dict[str, Any]): UI scale data
         """
         self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
-        rsp = IpcParent(self.ipc_port).request(command=f"set-ui-scale", args={
+        rsp = IpcParent(self.ipc_port).request(command="set-ui-scale", args={
             "oid": oid,
             "scale_factor": data["new_value"]
         })

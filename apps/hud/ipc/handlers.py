@@ -70,7 +70,7 @@ def handle_set_opacity(args: dict, logger: logging.Logger, overlays_mgr: Overlay
     """Handle the 'set-opacity' IPC command to set HUD widgets opacity.
 
     Args:
-        msg (dict): IPC command args
+        args (dict): IPC command args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -94,7 +94,7 @@ def handle_next_page(args: dict, logger: logging.Logger, overlays_mgr: OverlaysM
     """Handle the 'next-page' IPC command to show next page of HUD widgets.
 
     Args:
-        msg (dict): IPC command args
+        args (dict): IPC command args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -107,11 +107,11 @@ def handle_next_page(args: dict, logger: logging.Logger, overlays_mgr: OverlaysM
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
-def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_reset_overlays(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'reset-overlays' IPC command to reset HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -119,7 +119,7 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
         dict: IPC response
     """
 
-    logger.info("Received reset-overlays command. args: %s", msg)
+    logger.info("Received reset-overlays command. args: %s", args)
     overlays_mgr.reset_overlays()
     return {"status": "success", "message": "reset-overlays handler executed."}
 
