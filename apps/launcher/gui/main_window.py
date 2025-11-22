@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
                                       SaveViewerAppMgr)
+from lib.assets_loader import load_fonts, load_icon
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
 from meta.meta import APP_NAME
@@ -48,8 +49,6 @@ from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
-
-from lib.assets_loader import load_fonts
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -189,7 +188,7 @@ class PngLauncherWindow(QMainWindow):
 
         self.setup_ui()
 
-    def _load_icon(self, relative_path: str) -> QIcon:
+    def _load_icon(self, relative_path: Path) -> QIcon:
         """
         Load an icon that works in both dev and PyInstaller builds.
 
@@ -199,22 +198,7 @@ class PngLauncherWindow(QMainWindow):
         Returns:
             QIcon: The loaded icon, or an empty QIcon if loading fails.
         """
-        try:
-            if hasattr(sys, "_MEIPASS"):
-                # Running inside a PyInstaller bundle
-                base_path = sys._MEIPASS
-            else:
-                # Running from source
-                base_path = os.path.abspath(".")
-
-            full_path = os.path.join(base_path, relative_path)
-            icon = QIcon(full_path)
-            self.debug_log(f"Loaded icon from {full_path}")
-            return icon
-
-        except Exception as e:  # pylint: disable=broad-except
-            self.error_log(f"Failed to load icon from {relative_path}: {e}")
-            return QIcon()
+        return load_icon(relative_path, self.debug_log, self.error_log)
 
     def init_icons(self):
         """Init the dict of icons"""
@@ -243,7 +227,6 @@ class PngLauncherWindow(QMainWindow):
     def get_icon(self, key: str) -> Optional[QIcon]:
         """Get icon by key"""
         return self.icons.get(key)
-
 
     def setup_ui(self):
         """Setup the main UI"""
