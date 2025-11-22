@@ -42,11 +42,10 @@ from .race_table import RaceTimingTable
 class TimingTowerOverlay(BaseOverlay):
 
     OVERLAY_ID: str = "timing_tower"
-    SCALE_FACTOR = 1.0
     FONT_FACE = "Formula1 Display"
     FONT_SIZE = 15
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
 
         # Overlay specific fields
         self.num_adjacent_cars = 2
@@ -56,7 +55,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[RaceTimingTable] = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
         self._init_event_handlers()
 
     def build_ui(self):
@@ -66,7 +65,7 @@ class TimingTowerOverlay(BaseOverlay):
 
         content_width = self._calculate_content_width()
 
-        header_widget = self._create_header_section(int(content_width * self.SCALE_FACTOR))
+        header_widget = self._create_header_section(int(content_width * self.scale_factor))
         main_layout.addWidget(header_widget)
 
         # Create and attach the timing table
@@ -75,7 +74,7 @@ class TimingTowerOverlay(BaseOverlay):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=self.SCALE_FACTOR
+            scale_factor=self.scale_factor
         )
 
         self._apply_overall_style()
@@ -93,7 +92,7 @@ class TimingTowerOverlay(BaseOverlay):
     def _create_header_section(self, content_width: int) -> QWidget:
         """Create the header section with proper scaling (no extra vertical gap)."""
 
-        scale = self.SCALE_FACTOR
+        scale = self.scale_factor
         font_px = int(self.FONT_SIZE * scale)
         padding = int(3 * scale)
         margin = int(3 * scale)    # <-- scale margins!

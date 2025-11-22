@@ -47,11 +47,10 @@ class LapTimerOverlay(BaseOverlay):
     DEFAULT_TIME = "--:--.---"
     DEFAULT_DELTA = "---"
     DISPLAY_TIMER_MS = 5000
-    SCALE_FACTOR = 1.25
     FONT_FACE = "Formula1 Display"
     FONT_SIZE = 16
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
         """Initialize lap timer overlay.
 
         Args:
@@ -59,12 +58,13 @@ class LapTimerOverlay(BaseOverlay):
             logger (logging.Logger): Logger object
             locked (bool): Locked state
             opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
         """
         # Session state
         self.curr_session_uid = None
         self.curr_lap_num: Optional[int] = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
         self._init_event_handlers()
         self.curr_lap_display_timer: QTimer = QTimer(self)
 
@@ -79,8 +79,8 @@ class LapTimerOverlay(BaseOverlay):
         grid_layout.setHorizontalSpacing(10)
         grid_layout.setVerticalSpacing(5)
 
-        label_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.SCALE_FACTOR), QFont.Bold)
-        value_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.SCALE_FACTOR), QFont.Bold)
+        label_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor), QFont.Bold)
+        value_font = QFont(self.FONT_FACE, int(self.FONT_SIZE * self.scale_factor), QFont.Bold)
 
         # Create fixed labels (left column)
         curr_label_fixed = self._create_label("Curr:", label_font, "#FFFFFF")

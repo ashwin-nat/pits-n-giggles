@@ -43,7 +43,13 @@ class BaseOverlay(QWidget):
     # Add signal for responses
     response_signal = Signal(str, object)  # request_type, response_data
 
-    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self,
+                 overlay_id: str,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float):
         """Initialize base overlay.
 
         Args:
@@ -52,6 +58,7 @@ class BaseOverlay(QWidget):
             logger (logging.Logger): Logger object
             locked (bool): Locked state
             opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
         """
         super().__init__()
         self.overlay_id = overlay_id
@@ -59,6 +66,7 @@ class BaseOverlay(QWidget):
         self.locked = locked
         self.logger = logger
         self.opacity = opacity
+        self.scale_factor = scale_factor
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers

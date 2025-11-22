@@ -97,7 +97,8 @@ class OverlaysMgr:
                 self.config[LapTimerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.lap_timer_ui_scale,
             ))
         else:
             self.logger.debug("Lap timer overlay is disabled")
@@ -107,7 +108,8 @@ class OverlaysMgr:
                 self.config[TimingTowerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.timing_tower_ui_scale
             ))
         else:
             self.logger.debug("Timing tower overlay is disabled")
@@ -118,7 +120,8 @@ class OverlaysMgr:
                 settings,
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.mfd_ui_scale
             ))
         else:
             self.logger.debug("MFD overlay is disabled")
