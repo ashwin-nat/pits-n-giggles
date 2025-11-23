@@ -75,8 +75,8 @@ class LapTimerOverlay(BaseOverlay):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(8)
 
-        label_font = QFont(self.FONT_FACE, int(self.FONT_SIZE_LABEL * self.scale_factor))
-        value_font = QFont(self.FONT_FACE, int(self.FONT_SIZE_VALUE * self.scale_factor), QFont.Bold)
+        label_font = QFont(self.FONT_FACE, self.font_size_label)
+        value_font = QFont(self.FONT_FACE, self.font_size_value, QFont.Bold)
 
         # 2x2 Grid of cards
         grid = QGridLayout()
@@ -210,7 +210,10 @@ class LapTimerOverlay(BaseOverlay):
                 if delta is not None:
                     self._update_delta(delta)
                     estimated_ms = best_lap["lap-time-ms"] + delta if best_lap["lap-time-ms"] else None
-                    estimated_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
+                    if estimated_ms:
+                        estimated_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
+                    else:
+                        estimated_str = self.DEFAULT_TIME
                     self._update_estimated(estimated_str)
                 else:
                     self._clear_delta_and_estimated()
@@ -314,3 +317,13 @@ class LapTimerOverlay(BaseOverlay):
         self.delta_value.setText(self.DEFAULT_DELTA)
         self.delta_value.setStyleSheet("color: #FFFFFF; border: none;")
         self.estimated_value.setText(self.DEFAULT_TIME)
+
+    @property
+    def font_size_label(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_LABEL * self.scale_factor)
+
+    @property
+    def font_size_value(self) -> int:
+        """Get the font size based on the scale factor."""
+        return int(self.FONT_SIZE_VALUE * self.scale_factor)

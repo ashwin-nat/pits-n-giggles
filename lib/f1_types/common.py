@@ -1099,7 +1099,7 @@ class F1Utils:
             str: The formatted time string.
         """
         if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
+            raise ValueError(f"Input must be an integer representing milliseconds. val={milliseconds}")
 
         if milliseconds < 0:
             raise ValueError("Input must be a non-negative integer")
@@ -1121,7 +1121,7 @@ class F1Utils:
             str: The formatted time string.
         """
         if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
+            raise ValueError(f"Input must be an integer representing milliseconds. val={milliseconds}")
 
         if milliseconds < 0:
             raise ValueError("Input must be a non-negative integer")
