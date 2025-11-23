@@ -120,11 +120,6 @@ def get_relevant_race_table_rows(
     lower_index = lower_bound - 1
     result = sorted_table_entries[lower_index:upper_bound]
 
-    if total_cars >= 5:
-        assert len(result) == 5
-    else:
-        assert len(result) == total_cars
-
     return result
 
 def get_adjacent_positions(position: int, total_cars: int, num_adjacent_cars: int) -> Optional[Tuple[int, int]]:

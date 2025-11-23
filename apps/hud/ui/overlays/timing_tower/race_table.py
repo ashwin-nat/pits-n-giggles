@@ -364,7 +364,7 @@ class RaceTimingTable:
         else:
             pos_str = f"{position}"
         pos_item = self._create_table_item(
-            pos_str, Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_size_unscaled=10,
+            pos_str, Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_size_unscaled=9,
         )
         self.timing_table.setItem(row_idx, 0, pos_item)
 

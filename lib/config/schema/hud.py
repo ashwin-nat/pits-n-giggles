@@ -26,7 +26,7 @@ import copy
 from copy import deepcopy
 from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
 
@@ -161,6 +161,18 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Timing tower UI scale",
         json_schema_extra=deepcopy(_UI_META_UI_SCALE)
     )
+    timing_tower_max_rows: int = Field(
+        default=5,
+        ge=1,
+        le=22,
+        description="Max number of rows to show in timing tower (must be odd number or 22)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
 
     show_mfd: bool = Field(
         default=True,
@@ -240,3 +252,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 raise ValueError("HUD cannot be enabled while all overlays are disabled")
             if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
                 raise ValueError("HUD cannot be enabled while all MFD pages are disabled")
+
+    @field_validator("timing_tower_max_rows")
+    def must_be_odd(cls, v): # pylint: disable=no-self-argument
+        if (v != 22) and ((v % 2) == 0):
+            raise ValueError("Timing tower max rows must be an odd number")
+        return v
+
+    @property
+    def timing_tower_num_adjacent_cars(self) -> int:
+        # Max rows already validated to be odd
+        if self.timing_tower_max_rows == 22:
+            return 11
+        return (self.timing_tower_max_rows - 1) // 2

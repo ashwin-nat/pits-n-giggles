@@ -48,6 +48,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.lap_timer_ui_scale, 1.0)
         self.assertEqual(settings.show_timing_tower, True)
         self.assertEqual(settings.timing_tower_ui_scale, 1.0)
+        self.assertEqual(settings.timing_tower_max_rows, 5)
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.cycle_mfd_udp_action_code, 9)
@@ -180,6 +181,46 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(timing_tower_ui_scale=2.1)
         HudSettings(timing_tower_ui_scale=2.0)
+
+    def test_timing_tower_max_rows_validation(self):
+        """Test valid and invalid timing_tower_max_rows values"""
+        # Valid value
+        max_rows = 3
+        hud_settings = HudSettings(timing_tower_max_rows=max_rows)
+        self.assertEqual(hud_settings.timing_tower_max_rows, max_rows)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 1)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows="invalid")
+
+        # Even number within acceptable range
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=16)
+
+        # Odd number within acceptable range
+        HudSettings(timing_tower_max_rows=17)
+
+        # Well out of boundary
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=-10)
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=420)
+
+        # Boundary - valid
+        hud_settings = HudSettings(timing_tower_max_rows=1)
+        self.assertEqual(hud_settings.timing_tower_max_rows, 1)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 0)
+
+        hud_settings = HudSettings(timing_tower_max_rows=21)
+        self.assertEqual(hud_settings.timing_tower_max_rows, 21)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 10)
+
+        hud_settings = HudSettings(timing_tower_max_rows=22)
+        self.assertEqual(hud_settings.timing_tower_max_rows, 22)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 11)
 
     def test_overlays_opacity_validation(self):
         """Test valid and invalid overlays_opacity values"""

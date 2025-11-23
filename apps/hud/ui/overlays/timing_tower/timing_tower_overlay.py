@@ -45,11 +45,30 @@ class TimingTowerOverlay(BaseOverlay):
     FONT_FACE = "Formula1 Display"
     FONT_SIZE = 15
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
+    MAX_SUPPORTED_CARS = 22
+
+    def __init__(self,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float,
+                 num_adjacent_cars: int
+                 ):
+        """Initialize timing tower overlay.
+
+        Args:
+            config (OverlaysConfig): Overlay config
+            logger (logging.Logger): Logger object
+            locked (bool): Locked state
+            opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
+            num_adjacent_cars (int): Number of adjacent cars
+        """
 
         # Overlay specific fields
-        self.num_adjacent_cars = 2
-        self.total_rows = (self.num_adjacent_cars * 2) + 1
+        self.num_adjacent_cars = num_adjacent_cars
+        self.total_rows = min(((self.num_adjacent_cars * 2) + 1, self.MAX_SUPPORTED_CARS))
 
         # UI components
         self.session_info_label: Optional[QLabel] = None
