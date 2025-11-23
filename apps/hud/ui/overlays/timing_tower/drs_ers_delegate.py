@@ -32,13 +32,15 @@ from PySide6.QtWidgets import (QStyledItemDelegate, QStyleOptionViewItem,
 class DrsErsDelegate(QStyledItemDelegate):
     """Custom delegate to paint ERS cell with vertical color bar"""
 
-    def __init__(self, parent: QTableWidget):
+    def __init__(self, parent: QTableWidget, scale_factor: float):
         """Initialise the delegate
 
         Args:
             parent (QTableWidget): Table widget
+            scale_factor (float): Scale factor
         """
         super().__init__(parent)
+        self.scale_factor = scale_factor
         self.ers_colors = {
             "None": QColor("#888888"),
             "Medium": QColor("#ffff00"),
@@ -72,7 +74,7 @@ class DrsErsDelegate(QStyledItemDelegate):
         painter.setPen(QColor("white"))
         if not font:
             font = QFont()
-        font.setPointSize(11)
+        font.setPointSize(int(11 * self.scale_factor))
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, text)

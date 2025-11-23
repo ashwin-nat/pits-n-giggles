@@ -172,7 +172,7 @@ class RaceTimingTable:
         header.setStretchLastSection(False)
 
         # Create ERS delegate with border support
-        self.drs_ers_delegate = DrsErsDelegate(table)
+        self.drs_ers_delegate = DrsErsDelegate(table, self.scale_factor)
         table.setItemDelegateForColumn(5, self.drs_ers_delegate)
 
         # Create border delegate for all other columns to handle reference row highlighting
@@ -229,7 +229,8 @@ class RaceTimingTable:
         text: str,
         alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter,
         color: Optional[QColor] = None,
-        font_family: str = "Formula1 Display"
+        font_family: str = "Formula1 Display",
+        font_size_unscaled: int = 12
     ) -> QTableWidgetItem:
         """Helper to create styled table items."""
         item = QTableWidgetItem(text)
@@ -240,7 +241,7 @@ class RaceTimingTable:
 
         font = QFont()
         font.setFamily(font_family)
-        font.setPointSize(int(12 * self.scale_factor))
+        font.setPointSize(int(font_size_unscaled * self.scale_factor))
         font.setWeight(QFont.Weight.Normal)
 
         item.setFont(font)
@@ -278,6 +279,7 @@ class RaceTimingTable:
                 name = driver_info.get("name", "UNKNOWN")
                 team = driver_info.get("team", "UNKNOWN")
                 driver_idx = driver_info.get("index", -1)
+                is_pitting = driver_info.get("is_pitting", False)
 
                 delta = delta_info.get("relative-delta", 0)
 
@@ -299,11 +301,9 @@ class RaceTimingTable:
                     ers_text = "N/A"
                 drs = driver_info.get("drs", False)
 
-                time_pens_sec = warns_pens_info.get("time-penalties", 0)
-
                 self._update_row(
                     idx, position, team, name, delta, tyre_compound, tyre_wear_age_str,
-                    ers_mode, ers_text, (driver_idx == ref_index), drs, time_pens_sec
+                    ers_mode, ers_text, (driver_idx == ref_index), drs, warns_pens_info, is_pitting
                 )
 
             # Hide remaining empty rows
@@ -323,7 +323,8 @@ class RaceTimingTable:
         ers: str,
         is_ref: bool,
         drs: bool,
-        pens_sec: int
+        warns_pens_info: Dict[str, int],
+        is_pitting: bool
     ):
         """Update a specific row in the timing table.
 
@@ -339,15 +340,16 @@ class RaceTimingTable:
             ers: ERS percentage of the driver
             is_ref: Is the driver the reference driver
             drs: Is the driver in DRS
-            pens_sec: Time penalties of the driver
+            warns_pens_info: Warns and penalties of the driver
+            is_pitting: Is the driver in pit lane
         """
         self._update_position_cell(row_idx, position)
         self._update_team_cell(row_idx, team)
         self._update_name_cell(row_idx, name)
-        self._update_delta_cell(row_idx, delta, is_ref)
+        self._update_delta_cell(row_idx, delta, is_ref, is_pitting)
         self._update_tyre_cell(row_idx, tyre_compound, max_tyre_wear_str)
         self._update_ers_cell(row_idx, ers, ers_mode, drs)
-        self._update_pens_cell(row_idx, pens_sec)
+        self._update_pens_cell(row_idx, warns_pens_info)
         self._update_reference_highlight(row_idx, is_ref)
 
     def _update_position_cell(self, row_idx: int, position: int) -> None:
@@ -357,8 +359,12 @@ class RaceTimingTable:
             row_idx: Index of the row to update
             position: Position of the driver
         """
+        if position < 10:
+            pos_str = f"{position} "
+        else:
+            pos_str = f"{position}"
         pos_item = self._create_table_item(
-            str(position), Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_family="Formula1 Display"
+            pos_str, Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_size_unscaled=10,
         )
         self.timing_table.setItem(row_idx, 0, pos_item)
 
@@ -395,18 +401,20 @@ class RaceTimingTable:
         )
         self.timing_table.setItem(row_idx, 2, name_item)
 
-    def _update_delta_cell(self, row_idx: int, delta: Optional[float], is_ref: bool) -> None:
+    def _update_delta_cell(self, row_idx: int, delta: Optional[float], is_ref: bool, is_pitting: bool) -> None:
         """Update delta cell (column 3).
 
         Args:
             row_idx: Index of the row to update
             delta: Relative delta of the driver
             is_ref: Is the driver the reference driver
+            is_pitting: Is the driver in pit lane
         """
-        if is_ref or delta == 0 or delta is None:
-            delta_text = "---"
-        else:
-            delta_text = f"{F1Utils.formatFloat(delta / 1000, precision=3, signed=True)}"
+        delta_text = (
+            "PIT" if is_pitting else
+            "---" if is_ref or not delta else
+            F1Utils.formatFloat(delta / 1000, precision=3, signed=True)
+        )
 
         delta_item = self._create_table_item(
             delta_text, Qt.AlignmentFlag.AlignCenter, QColor("#00ff99"), font_family="Consolas"
@@ -454,16 +462,24 @@ class RaceTimingTable:
         )
         self.timing_table.setItem(row_idx, 5, ers_item)
 
-    def _update_pens_cell(self, row_idx: int, pens_sec: int) -> None:
+    def _update_pens_cell(self, row_idx: int, warns_pens_info: Dict[str, int]) -> None:
         """Update penalties cell (column 6).
 
         Args:
             row_idx: Index of the row to update
-            pens_sec: Penalties in seconds
+            warns_pens_info: Warns and penalties of the driver
         """
-        pens_str = f"+{pens_sec}s" if pens_sec > 0 else ""
+        pens_sec    = warns_pens_info.get("time-penalties", 0)
+        num_dt      = warns_pens_info.get("num-dt", 0)
+        pens_str = (
+            f"{num_dt}DT" if num_dt else
+            f"+{pens_sec}sec" if pens_sec else
+            ""
+        )
+
         pens_item = self._create_table_item(
-            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), font_family="Formula1 Display"
+            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), font_family="Formula1 Display",
+            font_size_unscaled=10
         )
         self.timing_table.setItem(row_idx, 6, pens_item)
 
