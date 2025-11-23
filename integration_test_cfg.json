@@ -38,8 +38,12 @@
     "HUD": {
         "enabled": true,
         "show_lap_timer": true,
+        "lap_timer_ui_scale": 1.0,
         "show_timing_tower": true,
+        "timing_tower_ui_scale": 1.0,
+        "timing_tower_max_rows": 11,
         "show_mfd": true,
+        "mfd_ui_scale": 1.0,
         "mfd_settings": {
             "pages": {
                 "lap_times": {
