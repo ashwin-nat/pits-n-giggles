@@ -30,7 +30,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import (QEasingCurve, QParallelAnimationGroup, QPoint,
                             QPropertyAnimation, Qt)
-from PySide6.QtGui import QFont, QIcon
+from PySide6.QtGui import QCloseEvent, QFont, QIcon
 from PySide6.QtWidgets import (QCheckBox, QDialog, QFrame, QGroupBox,
                                QHBoxLayout, QLabel, QLineEdit, QListWidget,
                                QMessageBox, QPushButton, QScrollArea, QSlider,
@@ -964,21 +964,85 @@ class SettingsWindow(QDialog):
             if self.on_settings_change:
                 self.on_settings_change(validated_settings)
 
+            # Update original_settings to the newly saved settings
+            self.original_settings = validated_settings.model_copy(deep=True)
+
             self.parent_window.info_log("Settings saved successfully")
-            self.accept()
+
+            QMessageBox.information(
+                self,
+                "Settings Saved",
+                "Settings saved successfully."
+            )
 
         except ValidationError as e:
-            error_msg = "\n".join([f"• {err['loc']}: {err['msg']}" for err in e.errors()])
+            # Format error messages in a user-friendly way
+            error_lines = []
+            for err in e.errors():
+                # Convert location tuple to readable field path using descriptions
+                # pylint: disable=unsupported-membership-test, unsubscriptable-object
+                field_path_parts = []
+                current_model = PngSettings
+                for loc in err['loc']:
+                    model_fields = current_model.model_fields
+                    if str(loc) in model_fields:
+                        field_info = current_model.model_fields[str(loc)]
+                        field_path_parts.append(field_info.description)
+                        # Update current_model for nested fields
+                        if hasattr(field_info.annotation, 'model_fields'):
+                            current_model = field_info.annotation
+                    else:
+                        field_path_parts.append(str(loc))
+
+                field_path = " → ".join(field_path_parts)
+
+                # Clean up the error message (remove "Value error, " prefix if present)
+                msg = err['msg']
+                if msg.startswith("Value error, "):
+                    msg = msg[13:]  # Remove "Value error, " prefix
+                error_lines.append(f"• {field_path}:\n  {msg}")
+
+            error_msg = "\n\n".join(error_lines)
             QMessageBox.critical(
                 self,
-                "Settings validation failed",
-                f"{error_msg}"
+                "Validation Error",
+                f"Please fix the following issues:\n\n{error_msg}"
             )
             self.parent_window.debug_log(f"Settings validation failed: {e}")
-        except Exception as e: # pylint: disable=broad-exception-caught
-            QMessageBox.critical(
+
+    def _has_unsaved_changes(self) -> bool:
+        """Check if there are unsaved changes"""
+        return self.original_settings.has_changed(self.working_settings)
+
+    def reject(self):
+        """Handle cancel/close with confirmation if there are unsaved changes"""
+        if self._has_unsaved_changes():
+            reply = QMessageBox.question(
                 self,
-                "Error",
-                f"Failed to save settings:\n\n{str(e)}"
+                "Unsaved Changes",
+                "You have unsaved changes. Are you sure you want to close without saving?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
             )
-            self.parent_window.error_log(f"Failed to save settings: {e}")
+
+            if reply == QMessageBox.StandardButton.No:
+                return
+
+        super().reject()
+
+    def closeEvent(self, event: QCloseEvent):
+        """Handle window close event (X button)"""
+        if self._has_unsaved_changes():
+            reply = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes. Are you sure you want to close without saving?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+
+        event.accept()
