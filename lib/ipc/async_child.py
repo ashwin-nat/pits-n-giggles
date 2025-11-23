@@ -177,7 +177,10 @@ class IpcChildAsync:
                         response = await handler_fn(msg)
 
                 except Exception as e: # pylint: disable=broad-except
-                    response = {"error": str(e)}
+                    response = {
+                        "status" : "error",
+                        "message": str(e)
+                    }
 
                 # 3) always send back one JSON
                 await self.sock.send_json(response)

@@ -45,10 +45,14 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.enabled, False)
         self.assertEqual(settings.toggle_overlays_udp_action_code, 10)
         self.assertEqual(settings.show_lap_timer, True)
+        self.assertEqual(settings.lap_timer_ui_scale, 1.0)
         self.assertEqual(settings.show_timing_tower, True)
+        self.assertEqual(settings.timing_tower_ui_scale, 1.0)
         self.assertEqual(settings.show_mfd, True)
+        self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.cycle_mfd_udp_action_code, 9)
         self.assertEqual(settings.overlays_opacity, 100)
+        # MFD pages has its own test case because the structure is a bit more complex
 
     def test_enabled_validation(self):
         """Test valid and invalid log_file_size values"""
@@ -109,6 +113,32 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(show_lap_timer=420)
 
+    def test_lap_timer_ui_scale_validation(self):
+        """Test valid and invalid lap_timer_ui_scale values"""
+        # Valid value
+        lap_timer_ui_scale = 1.5
+        hud_settings = HudSettings(lap_timer_ui_scale=lap_timer_ui_scale)
+        self.assertEqual(hud_settings.lap_timer_ui_scale, lap_timer_ui_scale)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_ui_scale=0.4)
+        HudSettings(lap_timer_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_ui_scale=2.1)
+        HudSettings(lap_timer_ui_scale=2.0)
+
     def test_show_timing_tower_validation(self):
         """Test valid and invalid show_timing_tower values"""
         # Valid value
@@ -124,6 +154,32 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_timing_tower=420)
+
+    def test_timing_tower_ui_scale_validation(self):
+        """Test valid and invalid timing_tower_ui_scale values"""
+        # Valid value
+        timing_tower_ui_scale = 1.5
+        hud_settings = HudSettings(timing_tower_ui_scale=timing_tower_ui_scale)
+        self.assertEqual(hud_settings.timing_tower_ui_scale, timing_tower_ui_scale)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_ui_scale=0.4)
+        HudSettings(timing_tower_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_ui_scale=2.1)
+        HudSettings(timing_tower_ui_scale=2.0)
 
     def test_overlays_opacity_validation(self):
         """Test valid and invalid overlays_opacity values"""
@@ -170,6 +226,32 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_mfd=420)
+
+    def test_mfd_ui_scale_validation(self):
+        """Test valid and invalid mfd_ui_scale values"""
+        # Valid value
+        mfd_ui_scale = 1.5
+        hud_settings = HudSettings(mfd_ui_scale=mfd_ui_scale)
+        self.assertEqual(hud_settings.mfd_ui_scale, mfd_ui_scale)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_ui_scale=0.4)
+        HudSettings(mfd_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_ui_scale=2.1)
+        HudSettings(mfd_ui_scale=2.0)
 
     def test_cycle_mfd_udp_action_code_validation(self):
         """Test valid and invalid cycle_mfd_udp_action_code values"""

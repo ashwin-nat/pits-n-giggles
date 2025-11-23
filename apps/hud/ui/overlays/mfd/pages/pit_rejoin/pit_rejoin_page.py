@@ -39,7 +39,14 @@ class PitRejoinPredictionPage(BasePage):
     """Pit rejoin position prediction page."""
     KEY = "pit_rejoin"
 
-    def __init__(self, parent: QWidget, logger: logging.Logger):
+    def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
+        """Initialise the pit rejoin prediction page.
+
+        Args:
+            parent (QWidget): Parent widget
+            logger (logging.Logger): Logger
+            scale_factor (float): Scale factor
+        """
         # Overlay specific fields
         self.num_adjacent_cars = 2
         self.total_rows = (self.num_adjacent_cars * 2) + 1
@@ -48,7 +55,7 @@ class PitRejoinPredictionPage(BasePage):
         self.timing_table: Optional[RaceTimingTable] = None
         self.pit_time_loss_label: Optional[QLabel] = None
 
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", title="PIT REJOIN PREDICTION")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="PIT REJOIN PREDICTION")
         self._build_ui()
         self._init_event_handlers()
 
@@ -79,7 +86,7 @@ class PitRejoinPredictionPage(BasePage):
             logger=self.logger,
             overlay_id=self.overlay_id,
             num_rows=self.total_rows,
-            scale_factor=1.0
+            scale_factor=self.scale_factor
         )
 
         self._apply_overall_style()

@@ -97,7 +97,8 @@ class OverlaysMgr:
                 self.config[LapTimerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.lap_timer_ui_scale,
             ))
         else:
             self.logger.debug("Lap timer overlay is disabled")
@@ -107,7 +108,8 @@ class OverlaysMgr:
                 self.config[TimingTowerOverlay.OVERLAY_ID],
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.timing_tower_ui_scale
             ))
         else:
             self.logger.debug("Timing tower overlay is disabled")
@@ -118,7 +120,8 @@ class OverlaysMgr:
                 settings,
                 self.logger,
                 locked=True,
-                opacity=settings.HUD.overlays_opacity
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.mfd_ui_scale
             ))
         else:
             self.logger.debug("MFD overlay is disabled")
@@ -177,6 +180,12 @@ class OverlaysMgr:
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
+
+    def set_scale_factor(self, oid: str, scale_factor: float):
+        """Set overlays scale factor to specified overlay"""
+
+        self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
+        self.window_manager.unicast_data(oid, 'set_scale_factor', {'scale_factor': scale_factor})
 
     def stop(self):
         """Stop the overlays manager"""

@@ -24,8 +24,6 @@
 
 import logging
 
-from pydantic import TypeAdapter, ValidationError, conint
-
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -82,13 +80,10 @@ def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: Overlays
     logger.info("Received set-opacity command. args: %s", msg)
 
     args = msg.get("args", {})
-    opacity = args.get("opacity")
-    try:
-        opacity = TypeAdapter(conint(ge=0, le=100)).validate_python(opacity)
+    if opacity := args.get("opacity"):
         overlays_mgr.set_overlays_opacity(opacity)
         return {"status": "success", "message": "set-opacity handler executed."}
-    except ValidationError as e:
-        return {"status": "error", "message": f"Invalid or missing opacity value in set-opacity command. {e}"}
+    return {"status": "error", "message": "Missing opacity value in set-opacity command."}
 
 def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'next-page' IPC command to show next page of HUD widgets.
@@ -122,3 +117,33 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
     logger.info("Received reset-overlays command. args: %s", msg)
     overlays_mgr.reset_overlays()
     return {"status": "success", "message": "reset-overlays handler executed."}
+
+def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.
+
+    Args:
+        msg (dict): IPC command msg
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received set-ui-scale command. args: %s", msg)
+    args = msg.get("args", {})
+
+    oid = args.get('oid')
+    if not oid:
+        return {"status": "error", "message": "Missing overlay id in set-ui-scale command."}
+
+    scale_factor = args.get('scale_factor')
+    if not scale_factor:
+        return {"status": "error", "message": "Missing scale_factor in set-ui-scale command."}
+
+    try:
+        overlays_mgr.set_scale_factor(oid, scale_factor)
+        return {"status": "success", "message": "set-ui-scale handler executed."}
+    except Exception as e: # pylint: disable=broad-exception-caught
+        logger.exception(f"Error handling set-ui-scale command: {e}")
+        return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}

@@ -43,7 +43,13 @@ class BaseOverlay(QWidget):
     # Add signal for responses
     response_signal = Signal(str, object)  # request_type, response_data
 
-    def __init__(self, overlay_id: str, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int):
+    def __init__(self,
+                 overlay_id: str,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float):
         """Initialize base overlay.
 
         Args:
@@ -52,6 +58,7 @@ class BaseOverlay(QWidget):
             logger (logging.Logger): Logger object
             locked (bool): Locked state
             opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
         """
         super().__init__()
         self.overlay_id = overlay_id
@@ -59,6 +66,7 @@ class BaseOverlay(QWidget):
         self.locked = locked
         self.logger = logger
         self.opacity = opacity
+        self.scale_factor = scale_factor
         self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
@@ -187,6 +195,13 @@ class BaseOverlay(QWidget):
             self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
             self.setGeometry(config.x, config.y, config.width, config.height)
 
+        @self.on_event("set_scale_factor")
+        def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
+            """Set UI scale factor"""
+            self.scale_factor = data["scale_factor"]
+            self.logger.debug(f"{self.overlay_id} | Setting UI scale to {self.scale_factor}")
+            self.rebuild_ui()
+
     def on_request(self, request_type: str):
         """Flask-style Decorator for registering request handlers that return responses."""
         def decorator(func: Callable[[dict], Any]):
@@ -259,3 +274,40 @@ class BaseOverlay(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self._drag_pos = None
         event.accept()
+
+    def rebuild_ui(self):
+        """
+        Completely rebuild the overlay UI.
+
+        This removes:
+            - All child widgets (QLabel, QPushButton, QStackedWidget pages, etc.)
+            - The existing layout object attached to this overlay
+
+        Why this is required:
+            Qt does NOT allow calling setLayout() on a widget that already has a layout.
+            Our cleanup removes child widgets, but layouts are NOT widgets, so they remain
+            attached unless removed explicitly. Without removing the old layout, the new
+            layout assigned inside build_ui() would be ignored, leaving the window blank.
+
+        Steps performed:
+            1. Detach and delete all child widgets using setParent(None) + deleteLater().
+            2. Detach and delete the existing layout via the QWidget().setLayout(...) idiom.
+            3. Call build_ui() to construct a fresh widget tree.
+
+        This ensures the overlay fully regenerates correctly (e.g., after scale changes).
+        """
+
+        # 1. Remove all child widgets (covers entire widget tree)
+        for w in self.findChildren(QWidget):
+            self.logger.debug(f"{self.overlay_id} | Cleaning widget: {w.__class__.__name__}")
+            w.setParent(None)
+            w.deleteLater()
+
+        # 2. Remove the existing layout if present.
+        old_layout = self.layout()
+        if old_layout is not None:
+            # Reparenting the layout to a temporary QWidget forces Qt to delete it.
+            QWidget().setLayout(old_layout)
+
+        # 3. Rebuild UI fresh
+        self.build_ui()
