@@ -32,7 +32,7 @@ from .diff import ConfigDiffMixin
 
 class PitTimeLossF1(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
-        "visible" : False,
+        "visible" : True,
     }
 
     # Not adding field level metadata since whole section is hidden in UI

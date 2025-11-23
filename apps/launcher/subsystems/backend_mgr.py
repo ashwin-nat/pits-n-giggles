@@ -135,7 +135,9 @@ class BackendAppMgr(PngAppMgrBase):
             "StreamOverlay" : [],
             "HUD": [
                 "toggle_overlays_udp_action_code",
-            ]
+            ],
+            "TimeLossInPitsF1": [],
+            "TimeLossInPitsF2": [],
         })
         self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
 

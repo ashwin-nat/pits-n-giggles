@@ -40,17 +40,17 @@ from .subsys_ctrl import SubSysCtrl
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngSettings(ConfigDiffMixin, BaseModel):
-    Network: NetworkSettings = Field(default_factory=NetworkSettings)
-    Capture: CaptureSettings = Field(default_factory=CaptureSettings)
-    Display: DisplaySettings = Field(default_factory=DisplaySettings)
-    Privacy: PrivacySettings = Field(default_factory=PrivacySettings)
-    Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings)
-    StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings)
-    HTTPS: HttpsSettings = Field(default_factory=HttpsSettings)
-    HUD: HudSettings = Field(default_factory=HudSettings)
-    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1)
-    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2)
-    SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl)
+    Network: NetworkSettings = Field(default_factory=NetworkSettings, description="Network")
+    Capture: CaptureSettings = Field(default_factory=CaptureSettings, description="Capture")
+    Display: DisplaySettings = Field(default_factory=DisplaySettings, description="Display")
+    Privacy: PrivacySettings = Field(default_factory=PrivacySettings, description="Privacy")
+    Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings, description="UDP Forwarding")
+    StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings, description="Stream Overlay")
+    HTTPS: HttpsSettings = Field(default_factory=HttpsSettings, description="HTTPS")
+    HUD: HudSettings = Field(default_factory=HudSettings, description="Overlays")
+    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")
+    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")
+    SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl, description="Subsys Control")
     class Config:
         str_strip_whitespace = True
 

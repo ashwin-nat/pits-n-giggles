@@ -23,7 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    Union, get_args, get_origin)
 
 from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
@@ -232,7 +233,11 @@ class SettingsWindow(QDialog):
             if not self._is_visible(category_model):
                 continue
 
-            self.category_list.addItem(category_name)
+            # Get the field info to access the description
+            field_info = self._get_field_info_from_path(category_name)
+            display_name = field_info.description
+
+            self.category_list.addItem(display_name)
             category_widget = self._build_category_content(category_name, category_model)
             self.stacked_widget.addWidget(category_widget)
 
@@ -414,7 +419,7 @@ class SettingsWindow(QDialog):
             label.setFont(QFont("Roboto", 10))
             layout.addWidget(label)
 
-            text_box = QLineEdit(str(field_value))
+            text_box = QLineEdit(str(field_value) if field_value is not None else "")
             text_box.setFont(QFont("Formula1 Display", 8))
             text_box.setMaximumWidth(300)  # Fixed width for text boxes
             text_box.textChanged.connect(
@@ -836,16 +841,26 @@ class SettingsWindow(QDialog):
         return type(model).model_fields[parts[-1]]
 
     def _on_text_changed(self, field_path: str, text: str, field_info: FieldInfo):
-        """Handle text box change with type conversion"""
+        """Handle text box change with type conversion that supports Optional types."""
         try:
-            # Try to convert to appropriate type
+            # Type may be optional
             annotation = field_info.annotation
-            if annotation == int:
-                value = int(text) if text else 0
-            elif annotation == float:
-                value = float(text) if text else 0.0
+
+            # Unwrap Optional[T]
+            origin = get_origin(annotation)
+            if origin is Union:
+                args = get_args(annotation)
+                if len(args) == 2 and type(None) in args:
+                    # Optional[T]
+                    annotation = args[0] if args[0] is not type(None) else args[1]
+
+            # Convert according to actual type
+            if annotation is int:
+                value = int(text) if text else None
+            elif annotation is float:
+                value = float(text) if text else None
             else:
-                value = text
+                value = text or None
 
             self._on_field_changed(field_path, value)
         except ValueError:
@@ -915,7 +930,7 @@ class SettingsWindow(QDialog):
                     else:
                         widget.setValue(value)
                 elif isinstance(widget, QLineEdit):
-                    widget.setText(str(value))
+                    widget.setText(str(value) if value is not None else "")
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
 
