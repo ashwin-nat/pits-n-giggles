@@ -196,8 +196,8 @@ class MfdOverlay(BaseOverlay):
         self.logger.debug(f"MFD: switched to {page_name} page")
 
         # Notify the new and old pages of the switch
-        self._handle_event("pace_active_status", {"active" : False}, old_index)
-        self._handle_event("pace_active_status", {"active" : True}, new_index)
+        self._handle_event("page_active_status", {"active" : False}, old_index)
+        self._handle_event("page_active_status", {"active" : True}, new_index)
 
     def _is_page_active(self, page: QWidget) -> bool:
         """Return True if the given page is currently active."""

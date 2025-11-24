@@ -120,6 +120,6 @@ class BasePage(QWidget):
     def _register_default_handlers(self) -> None:
         """Register default event handlers for the page."""
 
-        @self.on_event("pace_active_status")
-        def _handle_pace_active_status(data: Dict[str, Any]):
+        @self.on_event("page_active_status")
+        def _handle_page_active_status(data: Dict[str, Any]):
             self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}")
