@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import PngSettings, HudSettings
+from lib.config import PngSettings, HudSettings, save_config_to_json
 from lib.ipc import IpcParent
 
 from ..base_mgr import PngAppMgrBase
@@ -411,20 +411,7 @@ class HudAppMgr(PngAppMgrBase):
 
         # Rebuild popup UI
         self.scale_popup.set_items(items)
-
-        # Attach the confirm callback
-        def on_confirm(values: dict[str, int]):
-            """
-            values is like:
-            {
-                "lap_timer": 120,
-                "timing_tower": 110,
-                "mfd": 130
-            }
-            """
-            self.debug_log(f"Scale confirm callback with values: {values}")
-
-        self.scale_popup.set_confirm_callback(on_confirm)
+        self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
 
         # Position below button
         btn = self.scale_button
@@ -432,3 +419,38 @@ class HudAppMgr(PngAppMgrBase):
         self.scale_popup.move(gpos)
 
         self.scale_popup.show()
+
+    def _scale_popup_on_confirm(self, values: dict[str, int]):
+        """Scale confirm callback. No guarantee that values have been changed"""
+
+        new_settings = self.curr_settings.model_copy(deep=True)
+        new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
+        new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
+        new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
+
+        diff = self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "lap_timer_ui_scale",
+                "timing_tower_ui_scale",
+                "mfd_ui_scale",
+            ],
+        })
+        self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
+        if diff:
+            key_to_oid: Dict[str, str] = {
+                "lap_timer_ui_scale": "lap_timer",
+                "timing_tower_ui_scale": "timing_tower",
+                "mfd_ui_scale": "mfd",
+            }
+            for key, data in diff["HUD"].items():
+                oid = key_to_oid[key]
+                self._send_ui_scale_change_cmd(oid, data)
+
+            # Update current settings and save to disk
+            self.curr_settings = new_settings
+            try:
+                save_config_to_json(new_settings, self.window.config_file_new)
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.error_log(f"Failed to save settings to {self.window.config_file_new}: {e}")
+
+            self.debug_log("Settings saved successfully")
