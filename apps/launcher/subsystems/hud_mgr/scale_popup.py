@@ -96,8 +96,11 @@ class ScalePopup(QWidget):
             }
 
             QWidget#ScalePopupInner {
-                background-color: rgba(32, 32, 32, 255);  /* Opaque now */
+                background-color: rgba(32, 32, 32, 255);
                 border-radius: 8px;
+
+                /* soft inner glow */
+                border: 1px solid rgba(255,255,255,40);
             }
 
             QLabel {
