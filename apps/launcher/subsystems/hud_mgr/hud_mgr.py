@@ -375,47 +375,58 @@ class HudAppMgr(PngAppMgrBase):
             self.debug_log(f"Set {oid} UI scale response: {rsp}")
 
     def scale_callback(self):
-        """Show/hide the scale popup and update slider values."""
-
         self.debug_log("Scale button pressed")
 
-        # Toggle visibility
+        # Toggle
         if self.scale_popup.isVisible():
             self.scale_popup.hide()
             return
 
-        # Build slider items using latest settings
         hud_settings = self.curr_settings.HUD
-        lap_timer_meta = HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]
 
+        # Build items (NO per-slider callback)
         items = [
             SliderItem(
+                key="lap_timer",
                 label="Lap Timer Scale",
                 min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.lap_timer_ui_scale * 100),
-                callback=lambda val: self._send_ui_scale_change_cmd("lap_timer", {"old_value" : 0, "new_value" : val / 100}),
             ),
             SliderItem(
+                key="timing_tower",
                 label="Timing Tower Scale",
                 min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(self.curr_settings.HUD.timing_tower_ui_scale * 100),
-                callback=lambda val: self._send_ui_scale_change_cmd("timing_tower", {"old_value" : 0, "new_value" : val / 100}),
+                value=int(hud_settings.timing_tower_ui_scale * 100),
             ),
             SliderItem(
+                key="mfd",
                 label="MFD Scale",
                 min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(self.curr_settings.HUD.mfd_ui_scale * 100),
-                callback=lambda val: self._send_ui_scale_change_cmd("mfd", {"old_value" : 0, "new_value" : val / 100}),
+                value=int(hud_settings.mfd_ui_scale * 100),
             ),
         ]
 
-        # Rebuild slider rows with current values
+        # Rebuild popup UI
         self.scale_popup.set_items(items)
 
-        # Position below the Scale button
+        # Attach the confirm callback
+        def on_confirm(values: dict[str, int]):
+            """
+            values is like:
+            {
+                "lap_timer": 120,
+                "timing_tower": 110,
+                "mfd": 130
+            }
+            """
+            self.debug_log(f"Scale confirm callback with values: {values}")
+
+        self.scale_popup.set_confirm_callback(on_confirm)
+
+        # Position below button
         btn = self.scale_button
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
         self.scale_popup.move(gpos)

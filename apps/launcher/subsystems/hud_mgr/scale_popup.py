@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QLabel, QPushButton, QSlider, QVBoxLayout,
+from PySide6.QtWidgets import (QLabel, QPushButton, QSlider, QVBoxLayout, QHBoxLayout,
                                QWidget)
 
 from lib.button_debouncer import ButtonDebouncer
@@ -46,33 +46,30 @@ if TYPE_CHECKING:
 
 @dataclass
 class SliderItem:
+    key: str
     label: str
     min: int
     max: int
     value: int
-    callback: Callable[[int], None]
 
 class ScalePopup(QWidget):
     """
     Generic floating popup for label+slider items.
-    Items are provided via set_items(), using SliderItem dataclass.
+    Confirm-button-based architecture.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setObjectName("ScalePopup")
-        self.setWindowFlags(
-            Qt.Tool |
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground)
-
-        self._items: list[SliderItem] = []
+        self.confirm_callback = None
+        self._items = []
         self._slider_rows = []
 
-        # ---- Outer border ----
+        self.setObjectName("ScalePopup")
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+        # ---- Outer wrapper ----
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
 
@@ -83,11 +80,15 @@ class ScalePopup(QWidget):
 
         self.inner_layout = QVBoxLayout(self.inner)
         self.inner_layout.setContentsMargins(12, 12, 12, 12)
-        self.inner_layout.setSpacing(10)
+        self.inner_layout.setSpacing(12)
 
-        self.setFixedWidth(250)
+        self.setFixedWidth(300)
 
-        # ---- Styles ----
+        # ---- Confirm button ----
+        self.confirm_btn = QPushButton("Confirm")
+        self.confirm_btn.clicked.connect(self.on_confirm)
+
+        # ---- Styles (updated) ----
         self.setStyleSheet("""
             QWidget#ScalePopup {
                 border: 2px solid rgba(180,180,180,200);
@@ -95,62 +96,113 @@ class ScalePopup(QWidget):
             }
 
             QWidget#ScalePopupInner {
-                background-color: rgba(32, 32, 32, 230);
+                background-color: rgba(32, 32, 32, 255);  /* Opaque now */
                 border-radius: 8px;
             }
 
             QLabel {
                 color: white;
-                font-size: 12px;
+                font-size: 14px;
+                font-family: "Formula1 Display";
                 background: transparent;
             }
 
-            QSlider {
-                background: transparent;
-            }
+            /* === SLIDER STYLING (matching settings page) === */
 
             QSlider::groove:horizontal {
-                height: 4px;
-                background: rgba(255,255,255,50);
-                border-radius: 2px;
+                border: 1px solid #3e3e3e;
+                height: 6px;
+                background-color: #1e1e1e;
+                border-radius: 3px;
             }
 
             QSlider::handle:horizontal {
-                width: 12px;
-                background: lightgray;
-                border-radius: 6px;
+                background-color: #0e639c;
+                border: 1px solid #0e639c;
+                width: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }
+
+            QSlider::handle:horizontal:hover {
+                background-color: #1177bb;
             }
         """)
 
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------
     def set_items(self, items: list[SliderItem]):
-        """Rebuild sliders from a strongly typed list."""
-
-        # Remove old rows
+        # ---- Remove old rows cleanly ----
         for row in self._slider_rows:
-            row["label"].deleteLater()
-            row["slider"].deleteLater()
+            row["row_widget"].setParent(None)
+            row["row_widget"].deleteLater()
         self._slider_rows.clear()
 
         self._items = items
 
-        # Recreate rows
+        # ---- Rebuild ----
         for item in items:
-            # Label
-            lbl = QLabel(item.label)
-            self.inner_layout.addWidget(lbl)
+            row_widget = QWidget(self.inner)
+            row_layout = QVBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(4)
 
-            # Slider
-            slider = QSlider(Qt.Horizontal)
+            # Label
+            label = QLabel(item.label, row_widget)
+            row_layout.addWidget(label)
+
+            # Slider + value
+            h = QHBoxLayout()
+            h.setContentsMargins(0, 0, 0, 0)
+            h.setSpacing(8)
+
+            slider = QSlider(Qt.Horizontal, row_widget)
             slider.setMinimum(item.min)
             slider.setMaximum(item.max)
             slider.setValue(item.value)
-            slider.valueChanged.connect(item.callback)
 
-            self.inner_layout.addWidget(slider)
+            value_label = QLabel(str(item.value), row_widget)
+            value_label.setMinimumWidth(40)
+            value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            value_label.setFont(QFont("Formula1 Display"))
+
+            slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(str(v)))
+
+            h.addWidget(slider, 1)
+            h.addWidget(value_label)
+
+            row_layout.addLayout(h)
+
+            self.inner_layout.addWidget(row_widget)
 
             self._slider_rows.append({
-                "label": lbl,
+                "item": item,
                 "slider": slider,
-                "item": item
+                "label": label,
+                "value_label": value_label,
+                "row_widget": row_widget,   # <-- IMPORTANT
             })
+
+        # Add confirm button at end
+        self.inner_layout.addWidget(self.confirm_btn)
+
+
+    # ---------------------------------------------------------
+    def set_confirm_callback(self, callback):
+        self.confirm_callback = callback
+
+    # ---------------------------------------------------------
+    def on_confirm(self):
+        values = {
+            row["item"].key: row["slider"].value()
+            for row in self._slider_rows
+        }
+        if self.confirm_callback:
+            self.confirm_callback(values)
+        self.hide()
+
+    # ---------------------------------------------------------
+    def get_values(self):
+        return {
+            row["item"].key: row["slider"].value()
+            for row in self._slider_rows
+        }
