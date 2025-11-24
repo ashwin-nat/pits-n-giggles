@@ -93,7 +93,7 @@ class HudAppMgr(PngAppMgrBase):
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
-        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Lock Overlays")
+        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
         self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
 
@@ -217,12 +217,13 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.next_page_button, True)
 
     def set_lock_button_icon(self):
+        """Set the icon and tooltip for the lock button based on state"""
         if self.locked:
             self.set_button_icon(self.lock_button, self.get_icon("unlock"))
-            self.set_button_tooltip(self.lock_button, "Unlock")
+            self.set_button_tooltip(self.lock_button, "Unlock Overlays")
         else:
             self.set_button_icon(self.lock_button, self.get_icon("lock"))
-            self.set_button_tooltip(self.lock_button, "Lock")
+            self.set_button_tooltip(self.lock_button, "Lock Overlays")
 
     def process_enabled_change(self):
         """
