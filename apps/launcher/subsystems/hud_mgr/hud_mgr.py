@@ -424,6 +424,7 @@ class HudAppMgr(PngAppMgrBase):
         """Scale confirm callback. No guarantee that values have been changed"""
 
         new_settings = self.curr_settings.model_copy(deep=True)
+        self.info_log(f"Mgr cb. cfg obj ID = {id(self.curr_settings)} New id={id(new_settings)}")
         new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
         new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
         new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
@@ -447,10 +448,4 @@ class HudAppMgr(PngAppMgrBase):
                 self._send_ui_scale_change_cmd(oid, data)
 
             # Update current settings and save to disk
-            self.curr_settings = new_settings
-            try:
-                save_config_to_json(new_settings, self.window.config_file_new)
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.error_log(f"Failed to save settings to {self.window.config_file_new}: {e}")
-
-            self.debug_log("Settings saved successfully")
+            self.window.update_settings(new_settings)
