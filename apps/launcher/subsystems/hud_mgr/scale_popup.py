@@ -203,7 +203,6 @@ class ScalePopup(QWidget):
         }
         if self.confirm_callback:
             self.confirm_callback(values)
-        self.hide()
 
     # ---------------------------------------------------------
     def get_values(self):
