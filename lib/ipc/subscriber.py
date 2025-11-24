@@ -48,9 +48,14 @@ class IpcSubscriber:
         Args:
             url: Socket.IO server URL.
             logger: Optional logger; if None, logging is disabled.
-            msg_packed: Whether to use msgpack for message de-serialization.
+            msg_packed: Whether to use msgpack for message decoding
         """
         self.url = url
+
+    # If no logger provided, create a no-op logger
+        if logger is None:
+            logger = logging.getLogger(f"IpcSubscriber:{id(self)}")
+            logger.addHandler(logging.NullHandler())
         self.logger = logger
         self._stop_event = threading.Event()
         self._connected = False
@@ -95,7 +100,7 @@ class IpcSubscriber:
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
                     except Exception as e: # pylint: disable=broad-exception-caught
-                        self._log(logging.ERROR, f"Failed to decode msgpack for event '{event_name}': {e}")
+                        self.logger.exception("Failed to decode msgpack for event %s: %s", event_name, e)
                         return  # consistently returns None
                     func(decoded)  # call handler without returning its value
             else:
@@ -123,22 +128,22 @@ class IpcSubscriber:
     def _handle_connect(self):
         """Post connect callback."""
         self._connected = True
-        self._log(logging.DEBUG, "Connected to server")
+        self.logger.debug("Connected to server")
         if self._connect_callback:
             try:
                 self._connect_callback()
             except Exception as e: # pylint: disable=broad-except
-                self._log(logging.ERROR, f"Error in on_connect callback: {e}")
+                self.logger.exception("Error in on_connect callback: %s", e)
 
     def _handle_disconnect(self):
         """Post disconnect callback."""
         self._connected = False
-        self._log(logging.DEBUG, "Disconnected from server")
+        self.logger.debug("Disconnected from server")
         if self._disconnect_callback:
             try:
                 self._disconnect_callback()
             except Exception as e: # pylint: disable=broad-except
-                self._log(logging.ERROR, f"Error in on_disconnect callback: {e}")
+                self.logger.exception("Error in on_disconnect callback: %s", e)
 
     # ------------------- Public API -------------------
 
@@ -146,19 +151,19 @@ class IpcSubscriber:
         """[BLOCKING] Run the client in a loop and reconnect on failure."""
         while not self._stop_event.is_set():
             try:
-                self._log(logging.DEBUG, f"Connecting to {self.url} ...")
+                self.logger.debug("Connecting to %s ...", self.url)
                 self._sio.connect(self.url, wait=True, transports=["websocket", "polling"])
                 self._connected = True
-                self._log(logging.DEBUG, "Connection established")
+                self.logger.debug("Connection established")
 
                 while not self._stop_event.is_set() and self._connected:
                     self._sio.sleep(0.1)
 
             except socketio.exceptions.ConnectionError:
-                self._log(logging.WARNING, "Connection failed, retrying...")
+                self.logger.warning("Connection failed, retrying...")
                 time.sleep(1)
             except Exception as e: # pylint: disable=broad-except
-                self._log(logging.ERROR, f"Unexpected error: {e}")
+                self.logger.exception("Unexpected error: %s", e)
                 time.sleep(2)
             finally:
                 # Full cleanup to avoid WebSocket session stuck state
@@ -173,26 +178,19 @@ class IpcSubscriber:
                 if not self._stop_event.is_set():
                     self._setup_sio()
 
-        self._log(logging.DEBUG, "IPC subscriber. Finished run loop")
+        self.logger.debug("IPC subscriber. Finished run loop")
 
     def stop(self) -> None:
         """Thread-safe stop method."""
         if self._stop_event.is_set():
             return
-        self._log(logging.DEBUG, "Stopping IPC subscriber...")
+        self.logger.debug("Stopping IPC subscriber...")
         self._stop_event.set()
         if self._connected:
-            self._log(logging.DEBUG, "Disconnecting from server...")
+            self.logger.debug("Disconnecting from server...")
             try:
                 self._sio.disconnect()
             except Exception as e: # pylint: disable=broad-except
-                self._log(logging.ERROR, f"Error during disconnect: {e}")
+                self.logger.exception("Error during disconnect: %s", e)
             finally:
                 self._connected = False
-
-    # ------------------- Internal logging -------------------
-
-    def _log(self, level: int, msg: str) -> None:
-        """Log a message, using the logger if available."""
-        if self.logger:
-            self.logger.log(level, msg, stacklevel=2)

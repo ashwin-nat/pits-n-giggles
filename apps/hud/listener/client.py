@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import time
 
 from lib.ipc import IpcSubscriber
 from ..ui.infra import OverlaysMgr
@@ -43,14 +44,14 @@ class HudClient(IpcSubscriber):
         # optional connect/disconnect hooks
         @self.on_connect
         def connected():
-            self._log(logging.INFO, "[HudClient] Connected")
+            self.logger.info("[HudClient] Connected")
             # Slightly delay the client registration to ensure the connection is fully established
             self._sio.start_background_task(self._register)
 
         @self.on_disconnect
         def disconnected():
             """Post disconnection callback."""
-            self._log(logging.INFO, "[HudClient] Disconnected")
+            self.logger.info("[HudClient] Disconnected")
 
         # custom event handler
         @self.on('race-table-update')
@@ -61,13 +62,13 @@ class HudClient(IpcSubscriber):
         @self.on('hud-toggle-notification')
         def handle_hud_toggle_notification(_data):
             """HUD toggle notification handler."""
-            self.logger.debug(f"[HudClient] Received HUD toggle notification: {_data}")
+            self.logger.debug("[HudClient] Received HUD toggle notification")
             self.m_overlays_mgr.toggle_overlays_visibility()
 
         @self.on('hud-cycle-mfd-notification')
         def handle_hud_cycle_mfd_notification(_data):
             """Cycle MFD notification handler."""
-            self.logger.debug(f"[HudClient] Received Cycle MFD notification: {_data}")
+            self.logger.debug("[HudClient] Received Cycle MFD notification")
             self.m_overlays_mgr.next_page()
 
         @self.on('stream-overlay-update')
@@ -77,9 +78,12 @@ class HudClient(IpcSubscriber):
 
     def _register(self):
         """Register the client."""
-        self._log(logging.DEBUG, "[HudClient] Registering client")
-        self._sio.sleep(0)
-        self._sio.emit('register-client', {
-            'type': 'hud',
-            'id': 'hud-mgr',
-        })
+        time.sleep(0.5)
+        self.logger.debug("[HudClient] Registering client")
+        try:
+            self._sio.emit('register-client', {
+                'type': 'hud',
+                'id': 'hud-mgr',
+            })
+        except Exception as e: # pylint: disable=broad-except
+            self.logger.exception("[HudClient] Failed to register client: %s", e)
