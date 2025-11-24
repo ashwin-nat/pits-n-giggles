@@ -91,13 +91,6 @@ class BaseOverlay(QWidget):
 
     def apply_config(self):
         """Apply initial geometry from config."""
-        # self.setGeometry(
-        #     self.config.x,
-        #     self.config.y,
-        #     self.config.width,
-        #     self.config.height
-        # )
-        # TODO: finalise
         self.move(self.config.x, self.config.y)
         self.set_opacity(self.opacity)
 
@@ -115,17 +108,22 @@ class BaseOverlay(QWidget):
         flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
 
         if self.locked:
+            # Locked = frameless + click-through
             flags |= Qt.WindowType.FramelessWindowHint
             self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
+
         else:
+            # Unlocked = normal window, movable, NOT resizable
             flags |= (
                 Qt.WindowType.Window
                 | Qt.WindowType.CustomizeWindowHint
+                | Qt.WindowType.MSWindowsFixedSizeDialogHint  # ⛔ disable resizing
             )
             self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
 
         self.setWindowFlags(flags)
         self.show()
+
 
     def set_locked_state(self, locked: bool):
         """Set locked state dynamically."""
@@ -138,8 +136,6 @@ class BaseOverlay(QWidget):
         return OverlaysConfig(
             x=geo.x(),
             y=geo.y(),
-            width=geo.width(),
-            height=geo.height()
         )
 
     # --------------------------------------------------------------------------
@@ -196,7 +192,7 @@ class BaseOverlay(QWidget):
             """Set window config."""
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
-            self.setGeometry(config.x, config.y, config.width, config.height)
+            self.move(config.x, config.y)
 
         @self.on_event("set_scale_factor")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:

@@ -31,16 +31,12 @@ from typing import Dict
 class OverlaysConfig:
     x: int
     y: int
-    width: int
-    height: int
 
     def toJSON(self) -> Dict[str, int]:
         """Convert this object to a JSON serializable dictionary."""
         return {
             "x": self.x,
             "y": self.y,
-            "width": self.width,
-            "height": self.height
         }
 
     @classmethod
@@ -49,6 +45,4 @@ class OverlaysConfig:
         return cls(
             x=json_dict["x"],
             y=json_dict["y"],
-            width=json_dict["width"],
-            height=json_dict["height"],
         )
