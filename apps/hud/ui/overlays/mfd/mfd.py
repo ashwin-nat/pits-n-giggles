@@ -26,6 +26,8 @@ import itertools
 import logging
 from typing import Any, Dict, List, Optional, override
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
@@ -39,6 +41,69 @@ from lib.config import PngSettings
 from .animation import AnimatedStackedWidget
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class PageIndicatorFooter(QWidget):
+    """Footer widget that displays page indicators as circles."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(45)  # Increased height for more padding
+        self.total_pages = 0
+        self.active_page = 0
+        self.circle_radius = 6  # Radius of each circle
+        self.circle_spacing = 30  # Space between circle centers
+
+    def set_page_count(self, count: int):
+        """Set the total number of pages."""
+        self.total_pages = count
+        self.update()
+
+    def set_active_page(self, index: int):
+        """Set which page is currently active (0-indexed)."""
+        self.active_page = index
+        self.update()
+
+    def paintEvent(self, _event):
+        """Draw the page indicator circles and border."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Draw top border
+        painter.setPen(QPen(QColor(255, 255, 255), 0.4))
+        painter.drawLine(0, 1, self.width(), 1)
+
+        # Draw background
+        painter.fillRect(0, 2, self.width(), self.height() - 2, QColor(0, 0, 0, 76))
+
+        if self.total_pages == 0:
+            return
+
+        # Calculate total width needed for all circles
+        total_width = (self.total_pages - 1) * self.circle_spacing + 2 * self.circle_radius
+
+        # Start position (centered horizontally)
+        start_x = (self.width() - total_width) // 2
+        center_y = self.height() // 2
+
+        # Draw each circle
+        for i in range(self.total_pages):
+            center_x = start_x + self.circle_radius + i * self.circle_spacing
+
+            if i == self.active_page:
+                # Filled white circle for active page
+                painter.setPen(QPen(QColor(245, 236, 235), 1))
+                painter.setBrush(QBrush(QColor(245, 236, 235)))
+            else:
+                # Unfilled white outline for inactive pages
+                painter.setPen(QPen(QColor(245, 236, 235), 1))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+
+            painter.drawEllipse(
+                center_x - self.circle_radius,
+                center_y - self.circle_radius,
+                self.circle_radius * 2,
+                self.circle_radius * 2
+            )
 
 class MfdOverlay(BaseOverlay):
 
@@ -73,13 +138,19 @@ class MfdOverlay(BaseOverlay):
         self._init_cmd_handlers()
 
     def build_ui(self):
-        """Set up stacked pages and layout."""
+        """Set up stacked pages and layout with footer."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)  # No spacing between pages and footer
 
         self.pages = AnimatedStackedWidget(self)
         self.pages.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout.addWidget(self.pages)
+
+        # Add footer with page indicators
+        self.footer = PageIndicatorFooter(self)
+        layout.addWidget(self.footer)
+
         # Re-apply height rules after every animated page change
         self.pages.currentChanged.connect(self._on_page_changed)
 
@@ -102,9 +173,12 @@ class MfdOverlay(BaseOverlay):
         self.page_cycle = itertools.cycle(range(self.pages.count()))
         self.pages.setCurrentIndex(0)
 
+        # Initialize footer with page count
+        self.footer.set_page_count(self.pages.count())
+        self.footer.set_active_page(0)
+
         # Apply initial height constraint for collapsed page
         self.pages.setFixedHeight(self.mfdClosed)
-
     def _register_page(self, widget_cls: BasePage) -> None:
         """Register an MFD page"""
         self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
@@ -205,10 +279,13 @@ class MfdOverlay(BaseOverlay):
 
     def _on_page_changed(self, index: int):
         """Ensure correct MFD height when a page changes (after animation)."""
+        # Update footer indicator
+        self.footer.set_active_page(index)
+
         if index == 0:
             # Collapsed state
             self.pages.setFixedHeight(self.mfdClosed)
-            self.resize(self.width(), self.mfdClosed)
+            self.resize(self.width(), self.mfdClosed + self.footer.height())
             self.logger.debug(f"{self.overlay_id} | Page changed -> collapsed (height={self.mfdClosed})")
         else:
             # Expanded state
