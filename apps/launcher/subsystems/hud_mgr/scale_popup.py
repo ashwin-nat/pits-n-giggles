@@ -142,6 +142,8 @@ class ScalePopup(QWidget):
         # ---- Rebuild ----
         for item in items:
             row_widget = QWidget(self.inner)
+            row_widget.setAttribute(Qt.WA_StyledBackground, False)
+            row_widget.setStyleSheet("background: transparent; border: none;")
             row_layout = QVBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(4)
