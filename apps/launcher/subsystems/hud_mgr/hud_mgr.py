@@ -30,13 +30,20 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import PngSettings
+from lib.config import PngSettings, HudSettings
 from lib.ipc import IpcParent
 
-from .base_mgr import PngAppMgrBase
+from ..base_mgr import PngAppMgrBase
+
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
+
+from .scale_popup import ScalePopup, SliderItem
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
+
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -85,6 +92,9 @@ class HudAppMgr(PngAppMgrBase):
             self._update_status("Disabled")
         elif not self.supported:
             self._update_status("Unsupported")
+
+        self.scale_popup = ScalePopup(self.window)
+        self.scale_popup.hide()
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -365,5 +375,49 @@ class HudAppMgr(PngAppMgrBase):
             self.debug_log(f"Set {oid} UI scale response: {rsp}")
 
     def scale_callback(self):
-        """Scale callback"""
+        """Show/hide the scale popup and update slider values."""
+
         self.debug_log("Scale button pressed")
+
+        # Toggle visibility
+        if self.scale_popup.isVisible():
+            self.scale_popup.hide()
+            return
+
+        # Build slider items using latest settings
+        hud_settings = self.curr_settings.HUD
+        lap_timer_meta = HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]
+
+        items = [
+            SliderItem(
+                label="Lap Timer Scale",
+                min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.lap_timer_ui_scale * 100),
+                callback=lambda val: self._send_ui_scale_change_cmd("lap_timer", {"old_value" : 0, "new_value" : val / 100}),
+            ),
+            SliderItem(
+                label="Timing Tower Scale",
+                min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(self.curr_settings.HUD.timing_tower_ui_scale * 100),
+                callback=lambda val: self._send_ui_scale_change_cmd("timing_tower", {"old_value" : 0, "new_value" : val / 100}),
+            ),
+            SliderItem(
+                label="MFD Scale",
+                min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(self.curr_settings.HUD.mfd_ui_scale * 100),
+                callback=lambda val: self._send_ui_scale_change_cmd("mfd", {"old_value" : 0, "new_value" : val / 100}),
+            ),
+        ]
+
+        # Rebuild slider rows with current values
+        self.scale_popup.set_items(items)
+
+        # Position below the Scale button
+        btn = self.scale_button
+        gpos = btn.mapToGlobal(btn.rect().bottomLeft())
+        self.scale_popup.move(gpos)
+
+        self.scale_popup.show()
