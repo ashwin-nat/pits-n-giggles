@@ -43,12 +43,9 @@ class HudClient(IpcSubscriber):
         # optional connect/disconnect hooks
         @self.on_connect
         def connected():
-            """Post connection callback."""
             self._log(logging.INFO, "[HudClient] Connected")
-            self._sio.emit('register-client', {
-                'type': 'hud',
-                'id': 'hud-mgr',
-            })
+            # Slightly delay the client registration to ensure the connection is fully established
+            self._sio.start_background_task(self._register)
 
         @self.on_disconnect
         def disconnected():
@@ -77,3 +74,12 @@ class HudClient(IpcSubscriber):
         def handle_stream_overlay_update(data):
             """Stream overlay data update handler."""
             self.m_overlays_mgr.stream_overlays_update(data)
+
+    def _register(self):
+        """Register the client."""
+        self._log(logging.DEBUG, "[HudClient] Registering client")
+        self._sio.sleep(0)
+        self._sio.emit('register-client', {
+            'type': 'hud',
+            'id': 'hud-mgr',
+        })
