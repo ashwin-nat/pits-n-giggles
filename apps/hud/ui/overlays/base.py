@@ -201,6 +201,7 @@ class BaseOverlay(QWidget):
             self.scale_factor = data["scale_factor"]
             self.logger.debug(f"{self.overlay_id} | Setting UI scale to {self.scale_factor}")
             self.rebuild_ui()
+            self.adjustSize()
 
     def on_request(self, request_type: str):
         """Flask-style Decorator for registering request handlers that return responses."""
