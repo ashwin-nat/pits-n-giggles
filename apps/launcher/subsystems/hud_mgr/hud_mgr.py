@@ -99,7 +99,7 @@ class HudAppMgr(PngAppMgrBase):
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
         self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
-        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
+        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays Positions")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
 
         if not self.enabled:
@@ -388,7 +388,6 @@ class HudAppMgr(PngAppMgrBase):
         """Scale confirm callback. No guarantee that values have been changed"""
 
         new_settings = self.curr_settings.model_copy(deep=True)
-        self.info_log(f"Mgr cb. cfg obj ID = {id(self.curr_settings)} New id={id(new_settings)}")
         new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
         new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
         new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
