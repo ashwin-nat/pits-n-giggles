@@ -64,7 +64,7 @@ class TyreInfoPage(BasePage):
 
         self._init_icons()
         self._build_ui()
-        self.logger.info(f"{self.overlay_id} | Tyre info widget initialized")
+        self.logger.debug(f"{self.overlay_id} | Tyre info widget initialized")
         self._init_event_handlers()
 
     def _init_icons(self):

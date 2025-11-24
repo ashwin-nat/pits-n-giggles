@@ -133,7 +133,7 @@ class IpcSubscriber:
     def _handle_disconnect(self):
         """Post disconnect callback."""
         self._connected = False
-        self._log(logging.INFO, "Disconnected from server")
+        self._log(logging.DEBUG, "Disconnected from server")
         if self._disconnect_callback:
             try:
                 self._disconnect_callback()
@@ -146,10 +146,10 @@ class IpcSubscriber:
         """[BLOCKING] Run the client in a loop and reconnect on failure."""
         while not self._stop_event.is_set():
             try:
-                self._log(logging.INFO, f"Connecting to {self.url} ...")
+                self._log(logging.DEBUG, f"Connecting to {self.url} ...")
                 self._sio.connect(self.url, wait=True, transports=["websocket", "polling"])
                 self._connected = True
-                self._log(logging.INFO, "Connection established")
+                self._log(logging.DEBUG, "Connection established")
 
                 while not self._stop_event.is_set() and self._connected:
                     self._sio.sleep(0.1)
@@ -179,7 +179,7 @@ class IpcSubscriber:
         """Thread-safe stop method."""
         if self._stop_event.is_set():
             return
-        self._log(logging.INFO, "Stopping IPC subscriber...")
+        self._log(logging.DEBUG, "Stopping IPC subscriber...")
         self._stop_event.set()
         if self._connected:
             self._log(logging.DEBUG, "Disconnecting from server...")
