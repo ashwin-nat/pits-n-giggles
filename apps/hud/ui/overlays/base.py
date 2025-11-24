@@ -105,25 +105,21 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
-        flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
+        flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
 
         if self.locked:
-            # Locked = frameless + click-through
-            flags |= Qt.WindowType.FramelessWindowHint
             self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
 
         else:
-            # Unlocked = normal window, movable, NOT resizable
             flags |= (
                 Qt.WindowType.Window
                 | Qt.WindowType.CustomizeWindowHint
-                | Qt.WindowType.MSWindowsFixedSizeDialogHint  # ⛔ disable resizing
+                | Qt.WindowType.MSWindowsFixedSizeDialogHint
             )
             self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
 
         self.setWindowFlags(flags)
         self.show()
-
 
     def set_locked_state(self, locked: bool):
         """Set locked state dynamically."""
@@ -159,7 +155,7 @@ class BaseOverlay(QWidget):
         """Register built-in request handlers."""
         @self.on_request("get_window_info")
         def _handle_get_window_info(_data: Dict[str, Any]) -> str:
-            """Return current geometry as an OverlaysConfig."""
+            """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
