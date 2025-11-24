@@ -105,10 +105,15 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
-        flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+        flags = (
+            Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+        )
 
         if self.locked:
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
+            # Locked = click-through
+            flags |= Qt.WindowType.WindowTransparentForInput
 
         else:
             flags |= (
@@ -116,7 +121,9 @@ class BaseOverlay(QWidget):
                 | Qt.WindowType.CustomizeWindowHint
                 | Qt.WindowType.MSWindowsFixedSizeDialogHint
             )
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
+            # Unlocked = interactive
+            # Do NOT call setWindowFlag(False), the bit will be excluded
+            # simply by not adding it to flags.
 
         self.setWindowFlags(flags)
         self.show()

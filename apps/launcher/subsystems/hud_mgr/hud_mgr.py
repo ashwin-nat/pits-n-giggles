@@ -147,7 +147,7 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.error_log("Failed to toggle lock state.")
 
-        if self.locked and self.scale_popup.isVisible():
+        if self.locked:
             self.scale_popup.hide()
         else:
             self.show_scale_popup()

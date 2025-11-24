@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -40,6 +40,14 @@ class SliderItem:
     max: int
     value: int
 
+@dataclass
+class SliderRow:
+    item: SliderItem
+    slider: QSlider
+    label: QLabel
+    value_label: QLabel
+    row_widget: QWidget
+
 class ScalePopup(QWidget):
     """
     Generic floating popup for label+slider items.
@@ -51,7 +59,7 @@ class ScalePopup(QWidget):
 
         self.confirm_callback: Optional[Callable[[Dict[str, int]], None]] = None
         self._items: List[SliderItem] = []
-        self._slider_rows: List[Dict[str, Any]] = []
+        self._slider_rows: list[SliderRow] = []
 
         self.setObjectName("ScalePopup")
         self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
@@ -126,14 +134,13 @@ class ScalePopup(QWidget):
     def set_items(self, items: list[SliderItem]):
         # ---- Remove old rows cleanly ----
         for row in self._slider_rows:
-            row_widget: QWidget = row["row_widget"]
+            row_widget = row.row_widget
             row_widget.setParent(None)
             row_widget.deleteLater()
         self._slider_rows.clear()
 
-        self._items = items
-
         # ---- Rebuild ----
+        self._items = items
         for item in items:
             row_widget = QWidget(self.inner)
             row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
@@ -167,16 +174,15 @@ class ScalePopup(QWidget):
             h.addWidget(value_label)
 
             row_layout.addLayout(h)
-
             self.inner_layout.addWidget(row_widget)
 
-            self._slider_rows.append({
-                "item": item,
-                "slider": slider,
-                "label": label,
-                "value_label": value_label,
-                "row_widget": row_widget,   # <-- IMPORTANT
-            })
+            self._slider_rows.append(SliderRow(
+                item=item,
+                slider=slider,
+                label=label,
+                value_label=value_label,
+                row_widget=row_widget,
+            ))
 
         # Add confirm button at end
         self.inner_layout.addWidget(self.confirm_btn)
@@ -189,15 +195,8 @@ class ScalePopup(QWidget):
     # ---------------------------------------------------------
     def on_confirm(self):
         values: Dict[str, int] = {
-            row["item"].key: row["slider"].value()
+            row.item.key: row.slider.value()
             for row in self._slider_rows
         }
         if self.confirm_callback:
             self.confirm_callback(values)
-
-    # ---------------------------------------------------------
-    def get_values(self):
-        return {
-            row["item"].key: row["slider"].value()
-            for row in self._slider_rows
-        }
