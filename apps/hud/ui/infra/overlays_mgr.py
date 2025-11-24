@@ -47,20 +47,14 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     LapTimerOverlay.OVERLAY_ID: OverlaysConfig(
         x=600,
         y=60,
-        width=250,
-        height=150,
     ),
     TimingTowerOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=55,
-        width=450,
-        height=270,
     ),
     MfdOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=355,
-        width=450,
-        height=270,
     ),
 }
 

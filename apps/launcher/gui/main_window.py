@@ -722,12 +722,7 @@ class PngLauncherWindow(QMainWindow):
 
     def on_settings_changed(self, new_settings: PngSettings):
         """Handle settings changed event"""
-        try:
-            save_config_to_json(new_settings, self.config_file_new)
-        except Exception as e: # pylint: disable=broad-exception-caught
-            self.error_log(f"Failed to save settings to {self.config_file_new}: {e}")
 
-        self.info_log("Settings saved successfully")
 
         pool = QThreadPool.globalInstance()
         tasks = []
@@ -740,9 +735,23 @@ class PngLauncherWindow(QMainWindow):
 
         pool.waitForDone()
         self.show_success("Settings Changed", "The settings have been saved and applied successfully.")
+        self.update_settings(new_settings)
 
-
+    def update_settings(self, new_settings: PngSettings, save_to_disk: bool = True):
+        """Update the config file with the new settings"""
         self.settings = new_settings
+        for subsystem in self.subsystems:
+            subsystem.curr_settings = self.settings
+
+        if not save_to_disk:
+            return
+
+        try:
+            save_config_to_json(new_settings, self.config_file_new)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.error_log(f"Failed to save settings to {self.config_file_new}: {e}")
+
+        self.info_log("Settings saved successfully")
 
     def mark_update_button_available(self):
         """Mark the update button as available"""

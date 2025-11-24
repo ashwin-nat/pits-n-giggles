@@ -63,7 +63,6 @@ class MfdOverlay(BaseOverlay):
 
         self.mfdClosed = 40
         self.settings = settings
-        self.mfdOpen = config.height
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
 
         # Always start collapsed, but keep width & position
@@ -178,7 +177,6 @@ class MfdOverlay(BaseOverlay):
 
     def _switch_page(self, old_index: int, new_index: int):
         """Switch page with animation and resize MFD based on open/closed state."""
-        target_height = self.mfdClosed if new_index == 0 else self.mfdOpen
 
         # First set the stacked widget height constraint
         if new_index == 0:
@@ -192,10 +190,10 @@ class MfdOverlay(BaseOverlay):
         self.pages.setCurrentIndexAnimated(new_index)
 
         # Resize the window
-        self.resize(self.width(), target_height)
+        self.adjustSize()
 
         page_name = "collapsed" if new_index == 0 else "expanded"
-        self.logger.debug(f"MFD: switched to {page_name} page (height={target_height})")
+        self.logger.debug(f"MFD: switched to {page_name} page")
 
         # Notify the new and old pages of the switch
         self._handle_event("pace_active_status", {"active" : False}, old_index)
@@ -216,8 +214,7 @@ class MfdOverlay(BaseOverlay):
             # Expanded state
             self.pages.setMaximumHeight(16777215)  # Qt::QWIDGETSIZE_MAX
             self.pages.setMinimumHeight(0)
-            self.resize(self.width(), self.mfdOpen)
-            self.logger.debug(f"{self.overlay_id} | Page changed -> expanded (height={self.mfdOpen})")
+            self.adjustSize()
 
     @override
     def rebuild_ui(self):

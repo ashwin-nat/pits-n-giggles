@@ -62,8 +62,6 @@ class BaseOverlay(QWidget):
         """
         super().__init__()
         self.overlay_id = overlay_id
-        self.setObjectName(self.overlay_id)
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.config = config
         self.locked = locked
         self.logger = logger
@@ -93,13 +91,6 @@ class BaseOverlay(QWidget):
 
     def apply_config(self):
         """Apply initial geometry from config."""
-        # self.setGeometry(
-        #     self.config.x,
-        #     self.config.y,
-        #     self.config.width,
-        #     self.config.height
-        # )
-        # TODO: finalise
         self.move(self.config.x, self.config.y)
         self.set_opacity(self.opacity)
 
@@ -114,29 +105,27 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
-        # Click-through when locked, normal interaction when unlocked
-        if self.locked:
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
-            # Remove border when locked
-            self.setStyleSheet(f"""
-                QWidget#{self.overlay_id} {{
-                    border: none;
-                }}
-            """)
-        else:
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
-            # Add border when unlocked
-            self.setStyleSheet(f"""
-                QWidget#{self.overlay_id} {{
-                    border: 2px solid rgba(255, 255, 255, 0.9);
-                }}
-            """)
-
-        self.setWindowFlags(
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.FramelessWindowHint
+        flags = (
+            Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
         )
+
+        if self.locked:
+            # Locked = click-through
+            flags |= Qt.WindowType.WindowTransparentForInput
+
+        else:
+            flags |= (
+                Qt.WindowType.Window
+                | Qt.WindowType.CustomizeWindowHint
+                | Qt.WindowType.MSWindowsFixedSizeDialogHint
+            )
+            # Unlocked = interactive
+            # Do NOT call setWindowFlag(False), the bit will be excluded
+            # simply by not adding it to flags.
+
+        self.setWindowFlags(flags)
         self.show()
 
     def set_locked_state(self, locked: bool):
@@ -150,8 +139,6 @@ class BaseOverlay(QWidget):
         return OverlaysConfig(
             x=geo.x(),
             y=geo.y(),
-            width=geo.width(),
-            height=geo.height()
         )
 
     # --------------------------------------------------------------------------
@@ -175,7 +162,7 @@ class BaseOverlay(QWidget):
         """Register built-in request handlers."""
         @self.on_request("get_window_info")
         def _handle_get_window_info(_data: Dict[str, Any]) -> str:
-            """Return current geometry as an OverlaysConfig."""
+            """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
@@ -208,7 +195,7 @@ class BaseOverlay(QWidget):
             """Set window config."""
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
-            self.setGeometry(config.x, config.y, config.width, config.height)
+            self.move(config.x, config.y)
 
         @self.on_event("set_scale_factor")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:

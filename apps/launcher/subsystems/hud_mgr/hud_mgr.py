@@ -30,13 +30,15 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import PngSettings
+from lib.config import HudSettings, PngSettings
 from lib.ipc import IpcParent
 
-from .base_mgr import PngAppMgrBase
+from ..base_mgr import PngAppMgrBase
+from .scale_popup import ScalePopup, SliderItem
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
+
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -86,6 +88,9 @@ class HudAppMgr(PngAppMgrBase):
         elif not self.supported:
             self._update_status("Unsupported")
 
+        self.scale_popup = ScalePopup(self.window)
+        self.scale_popup.hide()
+
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
         :return: List of button objects
@@ -94,7 +99,7 @@ class HudAppMgr(PngAppMgrBase):
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
         self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
-        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
+        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays Positions")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
 
         if not self.enabled:
@@ -107,9 +112,9 @@ class HudAppMgr(PngAppMgrBase):
         return [
             self.start_stop_button,
             self.hide_show_button,
-            self.lock_button,
-            self.reset_button,
             self.next_page_button,
+            self.reset_button,
+            self.lock_button,
         ]
 
     def hide_show_callback(self):
@@ -141,6 +146,11 @@ class HudAppMgr(PngAppMgrBase):
             self.set_lock_button_icon()
         else:
             self.error_log("Failed to toggle lock state.")
+
+        if self.locked:
+            self.scale_popup.hide()
+        else:
+            self.show_scale_popup()
 
     def reset_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -319,25 +329,6 @@ class HudAppMgr(PngAppMgrBase):
         }):
             self._send_overlays_opacity_change(new_settings)
 
-        if diff := self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "lap_timer_ui_scale",
-                "timing_tower_ui_scale",
-                "mfd_ui_scale",
-            ],
-        }):
-
-            # TODO: figure out how to display status message in a message box, indicating that user will need to resize
-            self.debug_log(f"UI scale changed. Diff: {json.dumps(diff, indent=2)}")
-            key_to_oid: Dict[str, str] = {
-                "lap_timer_ui_scale": "lap_timer",
-                "timing_tower_ui_scale": "timing_tower",
-                "mfd_ui_scale": "mfd",
-            }
-            for key, data in diff["HUD"].items():
-                oid = key_to_oid[key]
-                self._send_ui_scale_change_cmd(oid, data)
-
         return False
 
     def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
@@ -356,3 +347,68 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to set {oid} UI scale: {rsp}")
         else:
             self.debug_log(f"Set {oid} UI scale response: {rsp}")
+
+    def show_scale_popup(self):
+        """Show the scale popup"""
+        hud_settings = self.curr_settings.HUD
+
+        # pylint: disable=unsubscriptable-object
+        self.scale_popup.set_items([
+            SliderItem(
+                key="lap_timer",
+                label="Lap Timer Scale",
+                min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.lap_timer_ui_scale * 100),
+            ),
+            SliderItem(
+                key="timing_tower",
+                label="Timing Tower Scale",
+                min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.timing_tower_ui_scale * 100),
+            ),
+            SliderItem(
+                key="mfd",
+                label="MFD Scale",
+                min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.mfd_ui_scale * 100),
+            ),
+        ])
+        self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
+
+        # Position below button
+        btn = self.lock_button
+        gpos = btn.mapToGlobal(btn.rect().bottomLeft())
+        self.scale_popup.move(gpos)
+        self.scale_popup.show()
+
+    def _scale_popup_on_confirm(self, values: dict[str, int]):
+        """Scale confirm callback. No guarantee that values have been changed"""
+
+        new_settings = self.curr_settings.model_copy(deep=True)
+        new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
+        new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
+        new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
+
+        diff = self.curr_settings.diff(new_settings, {
+            "HUD": [
+                "lap_timer_ui_scale",
+                "timing_tower_ui_scale",
+                "mfd_ui_scale",
+            ],
+        })
+        self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
+        if diff:
+            key_to_oid: Dict[str, str] = {
+                "lap_timer_ui_scale": "lap_timer",
+                "timing_tower_ui_scale": "timing_tower",
+                "mfd_ui_scale": "mfd",
+            }
+            for key, data in diff["HUD"].items():
+                oid = key_to_oid[key]
+                self._send_ui_scale_change_cmd(oid, data)
+
+            # Update current settings and save to disk
+            self.window.update_settings(new_settings)

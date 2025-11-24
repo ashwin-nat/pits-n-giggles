@@ -22,27 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
-from typing import Dict
+from .hud_mgr import HudAppMgr
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-@dataclass
-class OverlaysConfig:
-    x: int
-    y: int
-
-    def toJSON(self) -> Dict[str, int]:
-        """Convert this object to a JSON serializable dictionary."""
-        return {
-            "x": self.x,
-            "y": self.y,
-        }
-
-    @classmethod
-    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlaysConfig":
-        """Create an OverlaysConfig object from a JSON dictionary."""
-        return cls(
-            x=json_dict["x"],
-            y=json_dict["y"],
-        )
+__all__ = [
+    "HudAppMgr",
+]
