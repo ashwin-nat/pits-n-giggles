@@ -149,7 +149,7 @@ class ScalePopup(QWidget):
             h.setContentsMargins(0, 0, 0, 0)
             h.setSpacing(8)
 
-            slider = QSlider(Qt.WidgetAttribute.Horizontal, row_widget)
+            slider = QSlider(Qt.Orientation.Horizontal, row_widget)
             slider.setMinimum(item.min)
             slider.setMaximum(item.max)
             slider.setValue(item.value)

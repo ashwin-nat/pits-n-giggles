@@ -35,7 +35,7 @@ from .diff import ConfigDiffMixin
 _UI_META_UI_SCALE = {
     "ui": {
         "type": "slider",
-        "visible": True,
+        "visible": False,
         "min_ui": 50,
         "max_ui": 200,
         "convert": "percent",
