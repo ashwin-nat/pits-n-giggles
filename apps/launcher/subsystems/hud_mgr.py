@@ -96,6 +96,7 @@ class HudAppMgr(PngAppMgrBase):
         self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
         self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
+        self.scale_button = self.build_button(self.get_icon("aspect-ratio"), self.scale_callback, "Scale Overlays")
 
         if not self.enabled:
             self.set_button_state(self.start_stop_button, False)
@@ -103,6 +104,7 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.lock_button, False)
             self.set_button_state(self.reset_button, False)
             self.set_button_state(self.next_page_button, False)
+            self.set_button_state(self.scale_button, False)
 
         return [
             self.start_stop_button,
@@ -110,6 +112,7 @@ class HudAppMgr(PngAppMgrBase):
             self.lock_button,
             self.reset_button,
             self.next_page_button,
+            self.scale_button,
         ]
 
     def hide_show_callback(self):
@@ -176,6 +179,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, True)
         self.set_button_state(self.reset_button, True)
         self.set_button_state(self.next_page_button, True)
+        self.set_button_state(self.scale_button, True)
 
         # Start integration test thread if in integration test mode
         if self.integration_test_mode:
@@ -194,6 +198,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
+        self.set_button_state(self.scale_button, False)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
@@ -203,6 +208,7 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
+        self.set_button_state(self.scale_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")
@@ -215,6 +221,7 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.lock_button, True)
             self.set_button_state(self.reset_button, True)
             self.set_button_state(self.next_page_button, True)
+            self.set_button_state(self.scale_button, True)
 
     def set_lock_button_icon(self):
         """Set the icon and tooltip for the lock button based on state"""
@@ -356,3 +363,7 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to set {oid} UI scale: {rsp}")
         else:
             self.debug_log(f"Set {oid} UI scale response: {rsp}")
+
+    def scale_callback(self):
+        """Scale callback"""
+        self.debug_log("Scale button pressed")
