@@ -22,25 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
-import sys
-import threading
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QLabel, QPushButton, QSlider, QVBoxLayout, QHBoxLayout,
                                QWidget)
-
-from lib.button_debouncer import ButtonDebouncer
-from lib.config import PngSettings
-from lib.ipc import IpcParent
-
-from ..base_mgr import PngAppMgrBase
-
-if TYPE_CHECKING:
-    from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -61,13 +49,13 @@ class ScalePopup(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.confirm_callback = None
-        self._items = []
-        self._slider_rows = []
+        self.confirm_callback: Optional[Callable[[Dict[str, int]], None]] = None
+        self._items: List[SliderItem] = []
+        self._slider_rows: List[Dict[str, Any]] = []
 
         self.setObjectName("ScalePopup")
-        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # ---- Outer wrapper ----
         outer = QVBoxLayout(self)
@@ -136,8 +124,9 @@ class ScalePopup(QWidget):
     def set_items(self, items: list[SliderItem]):
         # ---- Remove old rows cleanly ----
         for row in self._slider_rows:
-            row["row_widget"].setParent(None)
-            row["row_widget"].deleteLater()
+            row_widget: QWidget = row["row_widget"]
+            row_widget.setParent(None)
+            row_widget.deleteLater()
         self._slider_rows.clear()
 
         self._items = items
@@ -145,7 +134,7 @@ class ScalePopup(QWidget):
         # ---- Rebuild ----
         for item in items:
             row_widget = QWidget(self.inner)
-            row_widget.setAttribute(Qt.WA_StyledBackground, False)
+            row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
             row_widget.setStyleSheet("background: transparent; border: none;")
             row_layout = QVBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
@@ -160,14 +149,14 @@ class ScalePopup(QWidget):
             h.setContentsMargins(0, 0, 0, 0)
             h.setSpacing(8)
 
-            slider = QSlider(Qt.Horizontal, row_widget)
+            slider = QSlider(Qt.WidgetAttribute.Horizontal, row_widget)
             slider.setMinimum(item.min)
             slider.setMaximum(item.max)
             slider.setValue(item.value)
 
             value_label = QLabel(str(item.value), row_widget)
             value_label.setMinimumWidth(40)
-            value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             value_label.setFont(QFont("Formula1 Display"))
 
             slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(str(v)))
@@ -197,7 +186,7 @@ class ScalePopup(QWidget):
 
     # ---------------------------------------------------------
     def on_confirm(self):
-        values = {
+        values: Dict[str, int] = {
             row["item"].key: row["slider"].value()
             for row in self._slider_rows
         }
