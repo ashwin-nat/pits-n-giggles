@@ -62,8 +62,6 @@ class BaseOverlay(QWidget):
         """
         super().__init__()
         self.overlay_id = overlay_id
-        self.setObjectName(self.overlay_id)
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.config = config
         self.locked = locked
         self.logger = logger
@@ -114,29 +112,19 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
-        # Click-through when locked, normal interaction when unlocked
-        if self.locked:
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
-            # Remove border when locked
-            self.setStyleSheet(f"""
-                QWidget#{self.overlay_id} {{
-                    border: none;
-                }}
-            """)
-        else:
-            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
-            # Add border when unlocked
-            self.setStyleSheet(f"""
-                QWidget#{self.overlay_id} {{
-                    border: 2px solid rgba(255, 255, 255, 0.9);
-                }}
-            """)
+        flags = Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
 
-        self.setWindowFlags(
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.FramelessWindowHint
-        )
+        if self.locked:
+            flags |= Qt.WindowType.FramelessWindowHint
+            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, True)
+        else:
+            flags |= (
+                Qt.WindowType.Window
+                | Qt.WindowType.CustomizeWindowHint
+            )
+            self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
+
+        self.setWindowFlags(flags)
         self.show()
 
     def set_locked_state(self, locked: bool):
