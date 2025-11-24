@@ -24,7 +24,7 @@
 
 import itertools
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, override
 
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
@@ -139,7 +139,7 @@ class MfdOverlay(BaseOverlay):
         @self.on_event("set_locked_state")
         def _handle_set_locked_state(data: Dict[str, Any]):
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN METHOD] Setting locked state to {locked}')
+            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
 
             # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
             # width to configure.
@@ -152,7 +152,7 @@ class MfdOverlay(BaseOverlay):
         @self.on_event("set_config")
         def _handle_set_config(data: Dict[str, Any]):
             config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN METHOD] Setting config {self.config}")
+            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {self.config}")
             config = OverlaysConfig.fromJSON(data)
             self.setGeometry(config.x, config.y, config.width, config.height)
             current_index = self.pages.currentIndex()
@@ -219,3 +219,15 @@ class MfdOverlay(BaseOverlay):
             self.resize(self.width(), self.mfdOpen)
             self.logger.debug(f"{self.overlay_id} | Page changed -> expanded (height={self.mfdOpen})")
 
+    @override
+    def rebuild_ui(self):
+        # Capture index only if pages already exists
+        current_index = self.pages.currentIndex() if self.pages is not None else None
+
+        # Reuse the existing rebuild
+        super().rebuild_ui()
+
+        # Restore page if valid
+        if current_index is not None and 0 <= current_index < self.pages.count():
+            self.pages.setCurrentIndex(current_index)
+            self._on_page_changed(current_index)
