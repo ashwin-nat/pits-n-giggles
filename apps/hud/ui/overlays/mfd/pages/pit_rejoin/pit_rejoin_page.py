@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtGui import QFont, QFontMetrics
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
@@ -63,20 +64,35 @@ class PitRejoinPredictionPage(BasePage):
         """Build the timing tower UI"""
         self._configure_main_layout(self.page_layout)
 
+        # Match the styling approach from TimingTowerOverlay
+        scale = self.scale_factor
+        font_size = 12  # Base font size for pit time loss label
+        font_px = int(font_size * scale)
+        padding = int(3 * scale)
+
+        # Create font and metrics to calculate proper height
+        font = QFont("Formula1 Display")
+        font.setPixelSize(font_px)
+        font.setBold(True)
+
+        fm = QFontMetrics(font)
+        text_height = fm.height()
+        total_height = text_height + (padding * 2)
+
         # Create pit time loss header
         self.pit_time_loss_label = QLabel("PIT TIME LOSS: --")
+        self.pit_time_loss_label.setFont(font)
         self.pit_time_loss_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.pit_time_loss_label.setStyleSheet("""
-            QLabel {
+        self.pit_time_loss_label.setFixedHeight(total_height)
+        self.pit_time_loss_label.setStyleSheet(f"""
+            QLabel {{
                 background-color: rgba(20, 20, 20, 180);
                 color: #FFFFFF;
-                font-size: 12px;
-                font-family: "Montserrat";
                 font-weight: bold;
-                padding: 4px;
-                border-radius: 4px;
-                margin-bottom: 2px;
-            }
+                padding: {padding}px 0px;
+                border-radius: {int(4 * scale)}px;
+                margin-bottom: {int(2 * scale)}px;
+            }}
         """)
         self.page_layout.addWidget(self.pit_time_loss_label)
 
