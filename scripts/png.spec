@@ -119,7 +119,6 @@ datas = [
     # Launcher icons
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-up.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "aspect-ratio.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "discord.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "download.svg"), "assets/launcher-icons"),

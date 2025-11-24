@@ -101,7 +101,6 @@ class HudAppMgr(PngAppMgrBase):
         self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
         self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
-        self.scale_button = self.build_button(self.get_icon("aspect-ratio"), self.scale_callback, "Scale Overlays")
 
         if not self.enabled:
             self.set_button_state(self.start_stop_button, False)
@@ -109,15 +108,13 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.lock_button, False)
             self.set_button_state(self.reset_button, False)
             self.set_button_state(self.next_page_button, False)
-            self.set_button_state(self.scale_button, False)
 
         return [
             self.start_stop_button,
             self.hide_show_button,
-            self.lock_button,
-            self.reset_button,
             self.next_page_button,
-            self.scale_button,
+            self.reset_button,
+            self.lock_button,
         ]
 
     def hide_show_callback(self):
@@ -149,6 +146,11 @@ class HudAppMgr(PngAppMgrBase):
             self.set_lock_button_icon()
         else:
             self.error_log("Failed to toggle lock state.")
+
+        if self.locked and self.scale_popup.isVisible():
+            self.scale_popup.hide()
+        else:
+            self.show_scale_popup()
 
     def reset_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -184,7 +186,6 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, True)
         self.set_button_state(self.reset_button, True)
         self.set_button_state(self.next_page_button, True)
-        self.set_button_state(self.scale_button, True)
 
         # Start integration test thread if in integration test mode
         if self.integration_test_mode:
@@ -203,7 +204,6 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
-        self.set_button_state(self.scale_button, False)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
@@ -213,7 +213,6 @@ class HudAppMgr(PngAppMgrBase):
         self.set_button_state(self.lock_button, False)
         self.set_button_state(self.reset_button, False)
         self.set_button_state(self.next_page_button, False)
-        self.set_button_state(self.scale_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")
@@ -226,7 +225,6 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.lock_button, True)
             self.set_button_state(self.reset_button, True)
             self.set_button_state(self.next_page_button, True)
-            self.set_button_state(self.scale_button, True)
 
     def set_lock_button_icon(self):
         """Set the icon and tooltip for the lock button based on state"""
@@ -331,25 +329,6 @@ class HudAppMgr(PngAppMgrBase):
         }):
             self._send_overlays_opacity_change(new_settings)
 
-        if diff := self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "lap_timer_ui_scale",
-                "timing_tower_ui_scale",
-                "mfd_ui_scale",
-            ],
-        }):
-
-            # TODO: figure out how to display status message in a message box, indicating that user will need to resize
-            self.debug_log(f"UI scale changed. Diff: {json.dumps(diff, indent=2)}")
-            key_to_oid: Dict[str, str] = {
-                "lap_timer_ui_scale": "lap_timer",
-                "timing_tower_ui_scale": "timing_tower",
-                "mfd_ui_scale": "mfd",
-            }
-            for key, data in diff["HUD"].items():
-                oid = key_to_oid[key]
-                self._send_ui_scale_change_cmd(oid, data)
-
         return False
 
     def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
@@ -369,14 +348,8 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"Set {oid} UI scale response: {rsp}")
 
-    def scale_callback(self):
-        self.debug_log("Scale button pressed")
-
-        # Toggle
-        if self.scale_popup.isVisible():
-            self.scale_popup.hide()
-            return
-
+    def show_scale_popup(self):
+        """Show the scale popup"""
         hud_settings = self.curr_settings.HUD
 
         # pylint: disable=unsubscriptable-object
@@ -406,7 +379,7 @@ class HudAppMgr(PngAppMgrBase):
         self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
 
         # Position below button
-        btn = self.scale_button
+        btn = self.lock_button
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
         self.scale_popup.move(gpos)
         self.scale_popup.show()

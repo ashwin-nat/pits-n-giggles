@@ -212,7 +212,6 @@ class PngLauncherWindow(QMainWindow):
         self.icons: Dict[str, QIcon] = {
             "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
             "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
-            "aspect-ratio" : self._load_icon(icons_path_base / "aspect-ratio.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
             "download" : self._load_icon(icons_path_base / "download.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
