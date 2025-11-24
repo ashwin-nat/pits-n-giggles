@@ -23,12 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QLabel, QPushButton, QSlider, QVBoxLayout, QHBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QSlider,
+                               QVBoxLayout, QWidget)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -75,6 +75,8 @@ class ScalePopup(QWidget):
         # ---- Confirm button ----
         self.confirm_btn = QPushButton("Confirm")
         self.confirm_btn.clicked.connect(self.on_confirm)
+        self.confirm_btn.setFixedHeight(36)
+        self.confirm_btn.setFont(QFont("Formula1 Display"))
 
         # ---- Styles (updated) ----
         self.setStyleSheet("""

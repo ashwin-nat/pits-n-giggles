@@ -30,15 +30,10 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import PngSettings, HudSettings, save_config_to_json
+from lib.config import HudSettings, PngSettings
 from lib.ipc import IpcParent
 
 from ..base_mgr import PngAppMgrBase
-
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
-
 from .scale_popup import ScalePopup, SliderItem
 
 if TYPE_CHECKING:
@@ -384,8 +379,8 @@ class HudAppMgr(PngAppMgrBase):
 
         hud_settings = self.curr_settings.HUD
 
-        # Build items (NO per-slider callback)
-        items = [
+        # pylint: disable=unsubscriptable-object
+        self.scale_popup.set_items([
             SliderItem(
                 key="lap_timer",
                 label="Lap Timer Scale",
@@ -407,17 +402,13 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
             ),
-        ]
-
-        # Rebuild popup UI
-        self.scale_popup.set_items(items)
+        ])
         self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
 
         # Position below button
         btn = self.scale_button
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
         self.scale_popup.move(gpos)
-
         self.scale_popup.show()
 
     def _scale_popup_on_confirm(self, values: dict[str, int]):
