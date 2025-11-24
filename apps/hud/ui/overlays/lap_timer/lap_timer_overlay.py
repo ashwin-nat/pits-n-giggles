@@ -72,16 +72,16 @@ class LapTimerOverlay(BaseOverlay):
         self.logger.debug(f'{self.overlay_id} | Building UI')
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
+        main_layout.setSpacing(self.spacing)
 
         label_font = QFont(self.FONT_FACE, self.font_size_label)
         value_font = QFont(self.FONT_FACE, self.font_size_value, QFont.Bold)
 
         # 2x2 Grid of cards
         grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
+        grid.setHorizontalSpacing(self.card_spacing)
+        grid.setVerticalSpacing(self.card_spacing)
 
         # Create cards: Current (top-left), Delta (top-right), Last (bottom-left), Best (bottom-right)
         self.curr_value = self._create_card(grid, "CURRENT", self.DEFAULT_TIME,
@@ -97,10 +97,15 @@ class LapTimerOverlay(BaseOverlay):
 
         # Estimated time (full width bar with horizontal layout)
         est_container = QFrame()
-        est_container.setMinimumHeight(42)
+        est_container.setMinimumHeight(self.est_container_min_height)
         est_layout = QHBoxLayout(est_container)
-        est_layout.setContentsMargins(8, 5, 8, 5)
-        est_layout.setSpacing(5)
+        est_layout.setContentsMargins(
+            self.est_container_padding,
+            self.est_container_padding_vertical,
+            self.est_container_padding,
+            self.est_container_padding_vertical
+        )
+        est_layout.setSpacing(self.est_container_spacing)
 
         est_label = QLabel("ESTIMATED:")
         est_label.setFont(label_font)
@@ -141,13 +146,18 @@ class LapTimerOverlay(BaseOverlay):
             The value QLabel
         """
         card = QFrame()
-        card.setMinimumSize(165, 52)
+        card.setMinimumSize(self.card_min_width, self.card_min_height)
         card.setFrameStyle(QFrame.Box)
         card.setStyleSheet("QFrame { border: 1px solid #333333; background-color: #1a1a1a; }")
 
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(6, 5, 6, 5)
-        card_layout.setSpacing(2)
+        card_layout.setContentsMargins(
+            self.card_padding,
+            self.card_padding_vertical,
+            self.card_padding,
+            self.card_padding_vertical
+        )
+        card_layout.setSpacing(self.card_content_spacing)
 
         label = QLabel(label_text)
         label.setFont(label_font)
@@ -327,3 +337,72 @@ class LapTimerOverlay(BaseOverlay):
     def font_size_value(self) -> int:
         """Get the font size based on the scale factor."""
         return int(self.FONT_SIZE_VALUE * self.scale_factor)
+
+# Add these helper properties after the existing font_size properties
+    @property
+    def scaled(self) -> int:
+        """Scale an integer value by scale_factor."""
+        def scale_value(value: int) -> int:
+            return int(value * self.scale_factor)
+        return scale_value
+
+    # Or create specific scaled properties:
+    @property
+    def margin(self) -> int:
+        """Get scaled margin."""
+        return int(10 * self.scale_factor)
+
+    @property
+    def spacing(self) -> int:
+        """Get scaled spacing."""
+        return int(8 * self.scale_factor)
+
+    @property
+    def card_spacing(self) -> int:
+        """Get scaled card spacing."""
+        return int(8 * self.scale_factor)
+
+    @property
+    def card_min_width(self) -> int:
+        """Get scaled card minimum width."""
+        return int(165 * self.scale_factor)
+
+    @property
+    def card_min_height(self) -> int:
+        """Get scaled card minimum height."""
+        return int(52 * self.scale_factor)
+
+    @property
+    def card_padding(self) -> int:
+        """Get scaled card padding."""
+        return int(6 * self.scale_factor)
+
+    @property
+    def card_padding_vertical(self) -> int:
+        """Get scaled card vertical padding."""
+        return int(5 * self.scale_factor)
+
+    @property
+    def card_content_spacing(self) -> int:
+        """Get scaled card content spacing."""
+        return int(2 * self.scale_factor)
+
+    @property
+    def est_container_min_height(self) -> int:
+        """Get scaled estimated container minimum height."""
+        return int(42 * self.scale_factor)
+
+    @property
+    def est_container_padding(self) -> int:
+        """Get scaled estimated container padding."""
+        return int(8 * self.scale_factor)
+
+    @property
+    def est_container_padding_vertical(self) -> int:
+        """Get scaled estimated container vertical padding."""
+        return int(5 * self.scale_factor)
+
+    @property
+    def est_container_spacing(self) -> int:
+        """Get scaled estimated container spacing."""
+        return int(5 * self.scale_factor)
