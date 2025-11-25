@@ -118,6 +118,18 @@ class SessionType(F1BaseEnum):
         """
         pass
 
+    def __str__(self):
+        """
+        Return a string representation of the SessionType with spaces.
+
+        Returns:
+            str: String representation of the SessionType.
+        """
+        return self.name.replace('_', ' ').title()
+
+    def __repr__(self):
+        return self.__str__()
+
 class SessionType23(SessionType):
     """
     Enum class representing F1 session types.
@@ -136,14 +148,6 @@ class SessionType23(SessionType):
     RACE_2 = 11
     RACE_3 = 12
     TIME_TRIAL = 13
-
-    def __str__(self) -> str:
-        """String representation
-
-        Returns:
-            str: String representation
-        """
-        return self.name.title()
 
     def isFpTypeSession(self) -> bool:
         """
@@ -216,15 +220,6 @@ class SessionType24(SessionType):
     RACE_2 = 16
     RACE_3 = 17
     TIME_TRIAL = 18
-
-    def __str__(self):
-        """
-        Return a string representation of the SessionType24 with spaces.
-
-        Returns:
-            str: String representation of the SessionType24.
-        """
-        return self.name.replace('_', ' ').title()
 
     def isFpTypeSession(self) -> bool:
         """
