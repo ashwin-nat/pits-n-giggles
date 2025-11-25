@@ -164,10 +164,17 @@ class WeatherForecastCard:
         rain_prob = str(data.get("rain-percentage", "0")).strip()
         self.rain_label.setText(f"💧 {rain_prob}%")
 
-        self.widget.show()
+        # Show rows + emoji when data is present
+        self.emoji_label.show()
+        self.track_row["widget"].show()
+        self.air_row["widget"].show()
+        self.rain_label.show()
 
+        self.widget.show()
     def clear(self) -> None:
-        """Clear all data and hide card."""
+        """Clear all data but keep the card visible with fixed size."""
+
+        # Clear text
         self.time_label.setText("")
         self.emoji_label.setText("")
         self.track_temp_label.setText("")
@@ -175,7 +182,15 @@ class WeatherForecastCard:
         self.air_temp_label.setText("")
         self.air_change_label.setText("")
         self.rain_label.setText("")
-        self.widget.hide()
+
+        # Hide rows & emoji so empty cards look blank
+        self.emoji_label.hide()
+        self.track_row["widget"].hide()
+        self.air_row["widget"].hide()
+        self.rain_label.hide()
+
+        # Keep card visible to preserve layout spacing
+        self.widget.show()
 
     @staticmethod
     def _get_temp_arrow(change: str) -> str:
@@ -291,7 +306,7 @@ class WeatherForecastPage(BasePage):
             # Update separator visibility - show separator only between visible cards
             for i, separator in enumerate(self._separators):
                 # Show separator if both adjacent cards are visible
-                if i < len(forecast_data) - 1:
+                if forecast_data:
                     separator.show()
                 else:
                     separator.hide()
