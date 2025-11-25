@@ -369,6 +369,10 @@ class ActualTyreCompound(F1BaseEnum):
             ActualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
+    @classmethod
+    def safeCast(cls, value: int) -> "ActualTyreCompound":
+        return super().safeCast(value, ActualTyreCompound.UNKNOWN)
+
 class VisualTyreCompound(F1BaseEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
@@ -424,6 +428,10 @@ class VisualTyreCompound(F1BaseEnum):
             VisualTyreCompound.WET_F2: "Wet",
             VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
+
+    @classmethod
+    def safeCast(cls, value: int) -> "VisualTyreCompound":
+        return super().safeCast(value, VisualTyreCompound.UNKNOWN)
 
 class SafetyCarType(F1CompareableEnum):
     """

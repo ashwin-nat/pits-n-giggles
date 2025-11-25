@@ -80,8 +80,8 @@ class TestPacketTyreSetsData(F1TypesTest):
             "car-index": 14,
             "tyre-set-data": [
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -91,8 +91,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -102,8 +102,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -113,8 +113,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -124,8 +124,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -135,8 +135,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -146,8 +146,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -157,8 +157,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -168,8 +168,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -179,8 +179,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -190,8 +190,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -201,8 +201,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -212,8 +212,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -223,8 +223,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -234,8 +234,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -245,8 +245,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -256,8 +256,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -267,8 +267,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -278,8 +278,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",
@@ -289,8 +289,8 @@ class TestPacketTyreSetsData(F1TypesTest):
                     "fitted": False
                 },
                 {
-                    "actual-tyre-compound": "0",
-                    "visual-tyre-compound": "0",
+                    "actual-tyre-compound": "Unknown",
+                    "visual-tyre-compound": "Unknown",
                     "wear": 0,
                     "available": False,
                     "recommended-session": "Unknown",

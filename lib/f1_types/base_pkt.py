@@ -25,7 +25,8 @@
 from abc import abstractmethod
 from enum import Enum
 from functools import total_ordering
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (Any, Dict, List, Optional, Tuple, Type, TypeVar, Union,
+                    overload)
 
 from .errors import PacketCountValidationError, PacketParsingError
 from .header import PacketHeader
@@ -55,13 +56,35 @@ class F1BaseEnum(Enum):
         except (ValueError, TypeError):
             return False
 
+    @overload
     @classmethod
-    def safeCast(cls: Type[T_Enum], value: Union[int, T_Enum]) -> Union[T_Enum, int]:
+    def safeCast(
+        cls: Type[T_Enum],
+        _value: Union[int, T_Enum],
+    ) -> Union[T_Enum, int]:
+        ...
+
+    @overload
+    @classmethod
+    def safeCast(
+        cls: Type[T_Enum],
+        _value: Union[int, T_Enum],
+        _default: T_Enum,
+    ) -> T_Enum:
+        ...
+
+    @classmethod
+    def safeCast(
+        cls: Type[T_Enum],
+        value: Union[int, T_Enum],
+        default: Optional[T_Enum] = None,
+    ) -> Union[T_Enum, int]:
         """
         Safely cast a value to the enum type.
 
         Args:
             value (int): The value to cast.
+            default (Optional[T_Enum]): The default value to return if casting fails.
 
         Returns:
             Optional[F1BaseEnum]: The cast enum value.
@@ -69,7 +92,7 @@ class F1BaseEnum(Enum):
         try:
             return cls(value)
         except ValueError:
-            return value
+            return default if default is not None else value
 
     def __str__(self):
         """Return the string representation of this object
