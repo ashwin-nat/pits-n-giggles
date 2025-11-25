@@ -236,7 +236,7 @@ class PngLauncherWindow(QMainWindow):
 
     def setup_ui(self):
         """Setup the main UI"""
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle(f"{APP_NAME} {self.ver_str}")
         self.thread_pool = QThreadPool.globalInstance()
         self.setMinimumSize(1000, 700)
 
