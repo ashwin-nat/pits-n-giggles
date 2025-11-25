@@ -364,7 +364,8 @@ class RaceTimingTable:
         else:
             pos_str = f"{position}"
         pos_item = self._create_table_item(
-            pos_str, Qt.AlignmentFlag.AlignCenter, QColor("#ddd"), font_size_unscaled=9,
+            pos_str, Qt.AlignmentFlag.AlignCenter, QColor("#ddd"),
+            font_family="Consolas", font_size_unscaled=11
         )
         self.timing_table.setItem(row_idx, 0, pos_item)
 
@@ -434,6 +435,7 @@ class RaceTimingTable:
             tyre_item = QTableWidgetItem(tyre_icon, max_tyre_wear_str)
             font = tyre_item.font()
             font.setPointSize(int(11 * self.scale_factor))
+            font.setFamily("Consolas")
             tyre_item.setFont(font)
         else:
             tyre_display = (
