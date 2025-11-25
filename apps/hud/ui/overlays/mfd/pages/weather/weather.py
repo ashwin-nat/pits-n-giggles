@@ -110,7 +110,7 @@ class WeatherForecastCard:
         # Temperature value
         temp_label = QLabel("", row_widget)
         temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        temp_label.setFont(QFont(self.font_face, int(12 * self.scale_factor)))
+        temp_label.setFont(QFont(self.font_face, int(11 * self.scale_factor)))
         temp_label.setStyleSheet("color: #EEE; font-weight: bold;")
 
         # Change indicator
@@ -185,7 +185,7 @@ class WeatherForecastCard:
         elif change == "Temperature Down":
             return "▼"
         else:
-            return "━"
+            return "─"
 
     @staticmethod
     def _get_temp_color(change: str) -> str:
@@ -226,6 +226,7 @@ class WeatherForecastPage(BasePage):
         super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
         self._cards: List[WeatherForecastCard] = []
+        self._separators: List[QLabel] = []
 
         # Load icons
         icon_base_tyres = Path("assets") / "overlays"
@@ -259,6 +260,8 @@ class WeatherForecastPage(BasePage):
                 separator.setFixedWidth(1)
                 separator.setFixedHeight(int(120 * self.scale_factor))
                 separator.setStyleSheet("background-color: #444444;")
+                separator.hide()  # Start hidden
+                self._separators.append(separator)
                 self.forecast_container.addWidget(separator, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         # Add stretch before and after to center vertically
@@ -285,10 +288,20 @@ class WeatherForecastPage(BasePage):
                 else:
                     card.clear()
 
+            # Update separator visibility - show separator only between visible cards
+            for i, separator in enumerate(self._separators):
+                # Show separator if both adjacent cards are visible
+                if i < len(forecast_data) - 1:
+                    separator.show()
+                else:
+                    separator.hide()
+
             self._last_processed_samples = forecast_data
 
     def _clear_all_cards(self) -> None:
         """Clear and hide all cards."""
         for card in self._cards:
             card.clear()
+        for separator in self._separators:
+            separator.hide()
         self._last_processed_samples = []
