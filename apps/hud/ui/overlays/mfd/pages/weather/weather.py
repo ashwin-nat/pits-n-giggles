@@ -245,14 +245,23 @@ class WeatherForecastPage(BasePage):
         self.forecast_container.setContentsMargins(4, 4, 4, 4)
         self.forecast_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Create MAX_SAMPLES cards
-        for _ in range(self.MAX_SAMPLES):
+        # Create MAX_SAMPLES cards with separators
+        for i in range(self.MAX_SAMPLES):
             card = WeatherForecastCard(self, self.scale_factor, self.FONT_FACE,
                                       self.track_temp_icon, self.air_temp_icon, self.logger)
             card.clear()  # Start hidden
             self._cards.append(card)
             self.forecast_container.addWidget(card.widget)
 
+            # Add separator after each card except the last one
+            if i < self.MAX_SAMPLES - 1:
+                separator = QLabel(self)
+                separator.setFixedWidth(1)
+                separator.setFixedHeight(int(120 * self.scale_factor))
+                separator.setStyleSheet("background-color: #444444;")
+                self.forecast_container.addWidget(separator, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # Add stretch before and after to center vertically
         self.page_layout.addStretch()
         self.page_layout.addLayout(self.forecast_container)
         self.page_layout.addStretch()
