@@ -67,8 +67,8 @@ class BackendAppMgr(PngAppMgrBase):
         super().__init__(
             window=window,
             module_path="apps.backend",
-            display_name="Server",
-            short_name="SRVR",
+            display_name="Core",
+            short_name="CORE",
             settings=settings,
             start_by_default=True,
             args=temp_args,

@@ -68,7 +68,7 @@ class SubsystemCard(QFrame):
         header_layout.setSpacing(12)
 
         # Name
-        name_label = QLabel(self.manager.display_name)
+        name_label = QLabel(self.manager.display_name.upper())
         name_label.setFont(QFont("Formula1 Display", 11, QFont.Weight.Bold))
         name_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
         header_layout.addWidget(name_label)

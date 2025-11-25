@@ -65,7 +65,7 @@ class HudAppMgr(PngAppMgrBase):
         self.integration_test_interval = 2.0
         self.args = args + ["--debug"] if debug_mode else (args or [])
         self.locked = True # HUD starts locked by default
-        self.debouncer = ButtonDebouncer(debounce_time=1.5)
+        self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
         super().__init__(
