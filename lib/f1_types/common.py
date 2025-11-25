@@ -119,10 +119,10 @@ class SessionType(F1BaseEnum):
 
     def __str__(self):
         """
-        Return a string representation of the SessionType24 with spaces.
+        Return a string representation of the SessionType with spaces.
 
         Returns:
-            str: String representation of the SessionType24.
+            str: String representation of the SessionType.
         """
         return self.name.replace('_', ' ').title()
 
