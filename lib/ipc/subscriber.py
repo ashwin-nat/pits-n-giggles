@@ -100,7 +100,7 @@ class IpcSubscriber:
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
                     except Exception as e: # pylint: disable=broad-exception-caught
-                        self.logger.exception("Failed to decode msgpack for event %s: %s", event_name, e)
+                        self.logger.exception("Failed to decode msgpack for event %s: %s %s", event_name, e, data)
                         return  # consistently returns None
                     func(decoded)  # call handler without returning its value
             else:

@@ -115,6 +115,8 @@ datas = [
 
     # Overlay icons
     (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "road.svg"), "assets/overlay"),
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "thermometer-half.svg"), "assets/overlay"),
 
     # Launcher icons
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
