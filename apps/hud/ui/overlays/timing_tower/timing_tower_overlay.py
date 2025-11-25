@@ -114,8 +114,8 @@ class TimingTowerOverlay(BaseOverlay):
         scale = self.scale_factor
         font_px = int(self.FONT_SIZE * scale)
         padding = int(3 * scale)
-        margin = int(3 * scale)    # <-- scale margins!
-        spacing = int(2 * scale)   # <-- scale spacing!
+        margin = int(3 * scale)
+        spacing = int(2 * scale)
 
         header_widget = QWidget()
         header_widget.setFixedWidth(content_width)
@@ -146,8 +146,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label.setStyleSheet(f"""
             QLabel {{
                 background-color: rgba(40, 40, 40, 200);
-                color: #00ff00;
-                font-weight: bold;
+                color: #ffffff;
                 padding: {padding}px 0px;
                 border-radius: {int(3 * scale)}px;
             }}
@@ -213,12 +212,12 @@ class TimingTowerOverlay(BaseOverlay):
             elif self._should_show_lap_number(session_type):
                 current_lap = data.get("current-lap", 0)
                 total_laps = data.get("total-laps", 0)
-                self.session_info_label.setText(f"{session_type.upper()} | LAP {current_lap} / {total_laps}")
+                self.session_info_label.setText(f"{session_type.upper()}    |    LAP {current_lap} / {total_laps}")
             else:
                 time_remaining_sec = data.get("session-time-left", 0)
                 minutes = int(time_remaining_sec // 60)
                 seconds = int(time_remaining_sec % 60)
-                self.session_info_label.setText(f"{session_type.upper()} | TIME: {minutes:02d}:{seconds:02d}")
+                self.session_info_label.setText(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
 
     def clear(self):
         """Clear all timing data"""

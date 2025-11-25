@@ -75,7 +75,6 @@ class DrsErsDelegate(QStyledItemDelegate):
         if not font:
             font = QFont()
         font.setPointSize(int(11 * self.scale_factor))
-        font.setBold(True)
         painter.setFont(font)
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, text)
 
