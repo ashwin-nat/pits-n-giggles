@@ -67,6 +67,7 @@ DEFAULT_PAGES = {
     "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
     "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
     "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
+    "tyre_delta": MfdPageSettings(enabled=True, position=6, description="Tyre Delta"),
 }
 
 
@@ -101,6 +102,24 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
                 )
             pos_map[page.position] = name
 
+        return self
+
+    @model_validator(mode="after")
+    def add_missing_pages(self):
+        """
+        Ensure all DEFAULT_PAGES exist.
+        New pages are added as disabled by default.
+        """
+        merged = dict(self.pages)
+
+        for key, default_page in DEFAULT_PAGES.items():
+            if key not in merged:
+                # Add new page, but disabled so UI does not break
+                new_page = default_page.model_copy(deep=True)
+                new_page.enabled = False
+                merged[key] = new_page
+
+        self.pages = merged
         return self
 
     def sorted_enabled_pages(self):
