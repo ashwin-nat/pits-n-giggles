@@ -24,12 +24,11 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QGridLayout,
-                               QWidget)
+from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QWidget
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 from lib.assets_loader import load_icon
