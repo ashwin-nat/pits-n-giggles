@@ -23,23 +23,187 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout,
                                QWidget)
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+from lib.assets_loader import load_icon
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class WeatherForecastCard:
+    """Individual forecast card containing all labels."""
+
+    def __init__(self, parent: QWidget, scale_factor: float, font_face: str,
+                 track_temp_icon: QIcon, air_temp_icon: QIcon, logger: logging.Logger):
+        self.scale_factor = scale_factor
+        self.font_face = font_face
+        self.logger = logger
+        self.track_icon = track_temp_icon
+        self.air_icon = air_temp_icon
+
+        # Create card container
+        self.widget = QWidget(parent)
+        self.widget.setFixedWidth(int(100 * scale_factor))
+        self.widget.setMinimumHeight(int(180 * scale_factor))
+        self.widget.setStyleSheet("background: transparent;")
+
+        # Vertical layout for card
+        self.layout = QVBoxLayout(self.widget)
+        self.layout.setContentsMargins(4, 6, 4, 6)
+        self.layout.setSpacing(4)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Create time and emoji labels
+        self.time_label = self._create_label(int(12 * scale_factor), "color: #EEE; font-weight: 600;")
+        self.emoji_label = self._create_label(int(24 * scale_factor), "")
+
+        # Track temperature row (icon + temp + change)
+        self.track_row = self._create_temp_row(self.track_icon, int(16 * scale_factor))
+        self.track_temp_label = self.track_row["temp_label"]
+        self.track_change_label = self.track_row["change_label"]
+
+        # Air temperature row (icon + temp + change)
+        self.air_row = self._create_temp_row(self.air_icon, int(16 * scale_factor))
+        self.air_temp_label = self.air_row["temp_label"]
+        self.air_change_label = self.air_row["change_label"]
+
+        # Rain label
+        self.rain_label = self._create_label(int(11 * scale_factor), "color: #7dafff; font-weight: bold;")
+
+        # Add to layout
+        self.layout.addWidget(self.time_label)
+        self.layout.addWidget(self.emoji_label)
+        self.layout.addWidget(self.track_row["widget"])
+        self.layout.addWidget(self.air_row["widget"])
+        self.layout.addWidget(self.rain_label)
+        self.layout.addStretch()
+
+    def _create_label(self, font_size: int, style: str) -> QLabel:
+        """Create a centered label with styling."""
+        label = QLabel("", self.widget)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setFont(QFont(self.font_face, font_size))
+        if style:
+            label.setStyleSheet(style)
+        return label
+
+    def _create_temp_row(self, icon: QIcon, icon_size: int) -> Dict[str, Any]:
+        """Create a horizontal row with icon, temperature, and change indicator."""
+        row_widget = QWidget(self.widget)
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(4)
+        row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Icon
+        icon_label = QLabel(row_widget)
+        pixmap = icon.pixmap(icon_size, icon_size)
+        icon_label.setPixmap(pixmap)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Temperature value
+        temp_label = QLabel("", row_widget)
+        temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        temp_label.setFont(QFont(self.font_face, int(11 * self.scale_factor)))
+        temp_label.setStyleSheet("color: #EEE; font-weight: bold;")
+
+        # Change indicator
+        change_label = QLabel("", row_widget)
+        change_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        change_label.setFont(QFont(self.font_face, int(14 * self.scale_factor)))
+
+        row_layout.addWidget(icon_label)
+        row_layout.addWidget(temp_label)
+        row_layout.addWidget(change_label)
+
+        return {
+            "widget": row_widget,
+            "temp_label": temp_label,
+            "change_label": change_label
+        }
+
+    def update_data(self, data: Dict[str, Any], weather_emojis: Dict[str, str]) -> None:
+        """Update card with forecast data."""
+        # Time
+        time_offset = int(data.get("time-offset", 0))
+        time_text = f"+{time_offset}m" if time_offset > 0 else "Now"
+        self.time_label.setText(time_text)
+
+        # Weather emoji
+        weather_type = data.get("weather", "Clear")
+        emoji = weather_emojis.get(weather_type, "☀️")
+        self.emoji_label.setText(emoji)
+
+        # Track temperature
+        track_temp = data.get("track-temperature", "N/A")
+        self.track_temp_label.setText(f"{track_temp}°C")
+
+        # Track temperature change
+        track_change = data.get("track-temperature-change", "No Temperature Change")
+        track_arrow = self._get_temp_arrow(track_change)
+        self.track_change_label.setText(track_arrow)
+        self.track_change_label.setStyleSheet(self._get_temp_color(track_change))
+
+        # Air temperature
+        air_temp = data.get("air-temperature", "N/A")
+        self.air_temp_label.setText(f"{air_temp}°C")
+
+        # Air temperature change
+        air_change = data.get("air-temperature-change", "No Temperature Change")
+        air_arrow = self._get_temp_arrow(air_change)
+        self.air_change_label.setText(air_arrow)
+        self.air_change_label.setStyleSheet(self._get_temp_color(air_change))
+
+        # Rain probability
+        rain_prob = str(data.get("rain-percentage", "0")).strip()
+        self.rain_label.setText(f"💧 {rain_prob}%")
+
+        self.widget.show()
+
+    def clear(self) -> None:
+        """Clear all data and hide card."""
+        self.time_label.setText("")
+        self.emoji_label.setText("")
+        self.track_temp_label.setText("")
+        self.track_change_label.setText("")
+        self.air_temp_label.setText("")
+        self.air_change_label.setText("")
+        self.rain_label.setText("")
+        self.widget.hide()
+
+    @staticmethod
+    def _get_temp_arrow(change: str) -> str:
+        """Get arrow indicator for temperature change."""
+        if change == "Temperature Up":
+            return "▲"
+        elif change == "Temperature Down":
+            return "▼"
+        else:
+            return "━"
+
+    @staticmethod
+    def _get_temp_color(change: str) -> str:
+        """Get color style for temperature change."""
+        if change == "Temperature Up":
+            return "color: #ff6666; font-weight: bold;"
+        elif change == "Temperature Down":
+            return "color: #6699ff; font-weight: bold;"
+        else:
+            return "color: #999999; font-weight: bold;"
+
+
 class WeatherForecastPage(BasePage):
-    """Ultra-compact weather forecast widget showing time, emoji, and rain %."""
+    """Weather forecast widget showing detailed forecast data."""
     KEY = "weather_forecast"
     WEATHER_EMOJIS = {
         "Clear": "☀️",
-        "Light Cloud": "☁️",
+        "Light Cloud": "🌤️",
         "Overcast": "☁️",
         "Light Rain": "🌦️",
         "Heavy Rain": "🌧️",
@@ -48,9 +212,6 @@ class WeatherForecastPage(BasePage):
     }
 
     FONT_FACE = "Montserrat"
-    TEXT_FONT_SIZE = 13
-    EMOJI_FONT_FACE = "Montserrat"
-    EMOJI_FONT_SIZE = 22
     MAX_SAMPLES = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
@@ -64,160 +225,59 @@ class WeatherForecastPage(BasePage):
         self.scale_factor = scale_factor
         super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="Weather Forecast")
         self._last_processed_samples: List[Dict[str, Any]] = []
+        self._cards: List[WeatherForecastCard] = []
 
-        # Compact horizontal layout filling available width
-        self.forecast_container = QHBoxLayout()
-        self.forecast_container.setSpacing(6)
-        self.forecast_container.setContentsMargins(4, 4, 4, 4)
-        self.forecast_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.page_layout.addLayout(self.forecast_container)
+        # Load icons
+        icon_base_tyres = Path("assets") / "overlays"
+        self.track_temp_icon = load_icon(icon_base_tyres / "road.svg", self.logger.debug, self.logger.error)
+        self.air_temp_icon = load_icon(icon_base_tyres / "thermometer-half.svg", self.logger.debug, self.logger.error)
+
+        self._build_ui()
         self._init_event_handlers()
 
         self.logger.debug(f"{self.overlay_id} | Weather forecast widget initialized")
+
+    def _build_ui(self) -> None:
+        """Build the UI with pre-created cards."""
+        # Horizontal layout for cards
+        self.forecast_container = QHBoxLayout()
+        self.forecast_container.setSpacing(8)
+        self.forecast_container.setContentsMargins(4, 4, 4, 4)
+        self.forecast_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Create MAX_SAMPLES cards
+        for _ in range(self.MAX_SAMPLES):
+            card = WeatherForecastCard(self, self.scale_factor, self.FONT_FACE,
+                                      self.track_temp_icon, self.air_temp_icon, self.logger)
+            card.clear()  # Start hidden
+            self._cards.append(card)
+            self.forecast_container.addWidget(card.widget)
+
+        self.page_layout.addLayout(self.forecast_container)
 
     def _init_event_handlers(self) -> None:
         @self.on_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             forecast_data = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
+
             if not forecast_data:
-                self.set_no_data_message()
+                self._clear_all_cards()
                 return
 
             if forecast_data == self._last_processed_samples:
                 return
 
-            self._clear_forecast()
-
-            for item_data in forecast_data:
-                card = self._create_forecast_item(item_data)
-                card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                self.forecast_container.addWidget(card, 1)
+            # Update cards with data
+            for i, card in enumerate(self._cards):
+                if i < len(forecast_data):
+                    card.update_data(forecast_data[i], self.WEATHER_EMOJIS)
+                else:
+                    card.clear()
 
             self._last_processed_samples = forecast_data
 
-    def _clear_forecast(self) -> None:
-        while self.forecast_container.count():
-            item = self.forecast_container.takeAt(0)
-            if widget := item.widget():
-                widget.deleteLater()
-    def _create_forecast_item(self, data: Dict[str, Any]) -> QWidget:
-        """
-        Card layout:
-            [time]
-            [ emoji ]
-            [rain %]
-        """
-        card = self._create_card_widget()
-        layout = self._create_card_layout(card)
-
-        # Time
-        time_label = self._create_time_label(data, card)
-        layout.addWidget(time_label)
-
-        # Emoji (icon)
-        emoji_label = self._create_emoji_label(data, card)
-        layout.addWidget(emoji_label)
-
-        # Rain probability
-        rain_label = self._create_rain_label(data, card)
-        layout.addWidget(rain_label)
-
-        return card
-
-    def _create_card_widget(self) -> QWidget:
-        """Create and configure the card widget container."""
-        card = QWidget(self)
-        card.setMinimumWidth(70)
-        card.setMaximumWidth(200)
-        card.setFixedHeight(70)
-        card.setStyleSheet("background: transparent;")
-        return card
-
-    def _create_card_layout(self, parent: QWidget) -> QVBoxLayout:
-        """Create and configure the card's vertical layout."""
-        layout = QVBoxLayout(parent)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return layout
-
-    def _create_time_label(self, data: Dict[str, Any], parent: QWidget) -> QLabel:
-        """Create the time offset label."""
-        time_offset = int(data.get("time-offset", 0))
-        time_text = f"+{time_offset}m" if time_offset > 0 else "Now"
-        return self._create_styled_label(
-            text=time_text,
-            parent=parent,
-            font_size=self.text_font_size,
-            style="color: #EEE; font-weight: 600;"
-        )
-
-    def _create_emoji_label(self, data: Dict[str, Any], parent: QWidget) -> QLabel:
-        """Create the weather emoji label."""
-        weather_type = data.get("weather", "Clear")
-        emoji = self.WEATHER_EMOJIS.get(weather_type, "☀️")
-        return self._create_styled_label(
-            text=emoji,
-            parent=parent,
-            font_size=self.emoji_font_size,
-            font_face=self.EMOJI_FONT_FACE
-        )
-
-    def _create_rain_label(self, data: Dict[str, Any], parent: QWidget) -> QLabel:
-        """Create the rain probability label."""
-        rain_prob = str(data.get("rain-probability", "0")).strip()
-        return self._create_styled_label(
-            text=f"💧{rain_prob}%",
-            parent=parent,
-            font_size=self.text_font_size,
-            style="color: #7dafff; font-weight: bold;"
-        )
-
-    def _create_styled_label(
-        self,
-        text: str,
-        parent: QWidget,
-        font_size: int,
-        font_face: str = None,
-        style: str = ""
-    ) -> QLabel:
-        """Create a centered label with custom styling.
-
-        Args:
-            text: Label text
-            parent: Parent widget
-            font_size: Font size
-            font_face: Font face (defaults to self.FONT_FACE)
-            style: Additional CSS style string
-
-        Returns:
-            Configured QLabel instance
-        """
-        label = QLabel(text, parent)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        face = font_face if font_face is not None else self.FONT_FACE
-        label.setFont(QFont(face, font_size))
-
-        if style:
-            label.setStyleSheet(style)
-
-        return label
-
-    def set_no_data_message(self) -> None:
-        self._clear_forecast()
-        label = QLabel("No forecast data", self)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setFont(QFont(self.FONT_FACE, self.text_font_size))
-        label.setStyleSheet("color: #777; font-style: italic;")
-        self.forecast_container.addWidget(label)
-
-    @property
-    def text_font_size(self) -> int:
-        """Font size based on scale factor."""
-        return int(self.TEXT_FONT_SIZE * self.scale_factor)
-
-    @property
-    def emoji_font_size(self) -> int:
-        """Font size based on scale factor."""
-        return int(self.EMOJI_FONT_SIZE * self.scale_factor)
+    def _clear_all_cards(self) -> None:
+        """Clear and hide all cards."""
+        for card in self._cards:
+            card.clear()
+        self._last_processed_samples = []
