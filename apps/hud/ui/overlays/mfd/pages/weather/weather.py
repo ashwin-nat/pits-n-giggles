@@ -253,7 +253,9 @@ class WeatherForecastPage(BasePage):
             self._cards.append(card)
             self.forecast_container.addWidget(card.widget)
 
+        self.page_layout.addStretch()
         self.page_layout.addLayout(self.forecast_container)
+        self.page_layout.addStretch()
 
     def _init_event_handlers(self) -> None:
         @self.on_event("race_table_update")
