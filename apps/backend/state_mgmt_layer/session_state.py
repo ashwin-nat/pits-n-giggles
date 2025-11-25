@@ -1133,37 +1133,14 @@ class SessionState:
         if not tyre_sets :
             return []
 
-        # Fitted index needs to be valid
         fitted_tyre = tyre_sets.m_fitted_tyre_set
         if not fitted_tyre:
             self.m_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
 
         # First find the fitted tyre
-        wet_tyre_compounds = {
-            ActualTyreCompound.WET,
-            ActualTyreCompound.WET_CLASSIC,
-            ActualTyreCompound.WET_F2
-        }
-        inter_tyre_compounds = {
-            ActualTyreCompound.INTER,
-        }
-        slick_tyre_compounds = {
-            ActualTyreCompound.C6,
-            ActualTyreCompound.C5,
-            ActualTyreCompound.C4,
-            ActualTyreCompound.C3,
-            ActualTyreCompound.C2,
-            ActualTyreCompound.C1,
-            ActualTyreCompound.C0,
-            ActualTyreCompound.DRY,
-            ActualTyreCompound.SUPER_SOFT,
-            ActualTyreCompound.SOFT,
-            ActualTyreCompound.MEDIUM,
-            ActualTyreCompound.HARD,
-        }
-        if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
+        if fitted_tyre.m_visualTyreCompound.isWets():
             curr_tyre_type = TyreDeltaMessage.TyreType.WET
-        elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
+        elif fitted_tyre.m_visualTyreCompound.isInters():
             curr_tyre_type = TyreDeltaMessage.TyreType.INTER
         else:
             curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
@@ -1171,34 +1148,34 @@ class SessionState:
         if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
             # Search for the first wet tyre
             other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isWets()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
             # Search for the first inter tyre
             other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isInters()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
         elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
             # Search for the first wet tyre
             other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isWets()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
             # Search for the first slick tyre
             other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isSlicks()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
 
         else:
             # Search for the first slick tyre
             other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isSlicks()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
 
             # Search for the first inter tyre
             other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isInters()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
         assert other_tyre_1
