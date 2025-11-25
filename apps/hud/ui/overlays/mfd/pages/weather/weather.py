@@ -110,7 +110,7 @@ class WeatherForecastCard:
         # Temperature value
         temp_label = QLabel("", row_widget)
         temp_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        temp_label.setFont(QFont(self.font_face, int(11 * self.scale_factor)))
+        temp_label.setFont(QFont(self.font_face, int(12 * self.scale_factor)))
         temp_label.setStyleSheet("color: #EEE; font-weight: bold;")
 
         # Change indicator
@@ -211,7 +211,7 @@ class WeatherForecastPage(BasePage):
         "Thunderstorm": "⛈️"
     }
 
-    FONT_FACE = "Montserrat"
+    FONT_FACE = "Consolas"
     MAX_SAMPLES = 5
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
