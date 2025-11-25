@@ -83,9 +83,8 @@ class PeriodicUpdateData(BaseAPI):
             "pit-speed-limit": self._getValueOrDefaultValue(self.m_session_info.m_pit_speed_limit, default_value=0),
             "weather-forecast-samples": [
                 {
-                    "time-offset": str(sample.m_timeOffset),
-                    "weather": str(sample.m_weather),
-                    "rain-probability": str(sample.m_rainPercentage)
+                    "rain-probability": str(sample.m_rainPercentage), # backward compatibility
+                    **sample.toJSON(),
                 } for sample in self.m_session_info.m_weather_forecast_samples
             ],
             "race-ended" : self.m_session_info.session_ended,
