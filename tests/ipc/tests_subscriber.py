@@ -127,29 +127,6 @@ class TestIpcSubscriber(TestIPC):
         subscriber.logger.info("test message")
         self.logger.info.assert_called_with("test message")
 
-    def test_run_reconnect_on_connection_error(self):
-        """Ensure that run() retries on ConnectionError."""
-        subscriber = IpcSubscriber(self.url, self.logger)
-
-        # Patch _setup_sio to keep self._sio as the mock
-        with patch.object(subscriber, "_setup_sio", return_value=None):
-            # Raise ConnectionError on first connect, succeed on second
-            subscriber._sio.connect.side_effect = [
-                socketio.exceptions.ConnectionError("fail"),
-                None
-            ]
-
-            # Patch _sio.sleep to stop loop after second call
-            def stop_loop(seconds):
-                subscriber._stop_event.set()
-
-            subscriber._sio.sleep.side_effect = stop_loop
-
-            subscriber.run()
-
-            self.assertEqual(subscriber._sio.connect.call_count, 2)
-            self.logger.warning.assert_any_call("Connection failed, retrying...")
-
     def test_run_connects_and_sleeps(self):
         """Test that run() calls connect and sleeps once, then exits."""
         subscriber = IpcSubscriber(self.url, self.logger)
@@ -167,38 +144,3 @@ class TestIpcSubscriber(TestIPC):
             subscriber._sio.connect.assert_called_with(
                 self.url, wait=True, transports=["websocket", "polling"]
             )
-
-    def test_run_recreates_client_after_disconnect(self):
-        """Ensure run() recreates _sio after disconnect."""
-        subscriber = IpcSubscriber(self.url, self.logger)
-
-        # Patch _setup_sio to track calls but still do the real method
-        with patch.object(subscriber, "_setup_sio", wraps=subscriber._setup_sio) as mock_setup:
-
-            # Simulate connect that triggers immediate disconnect
-            def fake_connect(*args, **kwargs):
-                subscriber._connected = True
-                subscriber._handle_disconnect()  # sets _connected False
-
-            subscriber._sio.connect.side_effect = fake_connect
-
-            # Patch _sio.sleep to stop loop after first recreation attempt
-            loop_iterations = 0
-            original_sleep = subscriber._sio.sleep
-
-            def sleep_side_effect(seconds):
-                nonlocal loop_iterations
-                loop_iterations += 1
-                # Only stop after _setup_sio has been called once
-                if mock_setup.call_count > 0:
-                    subscriber._stop_event.set()
-                else:
-                    original_sleep(0)  # call original to allow loop to continue
-
-            subscriber._sio.sleep.side_effect = sleep_side_effect
-
-            subscriber.run()
-
-            # _setup_sio should have been called at least once to recreate client
-            self.assertTrue(mock_setup.called)
-

@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import time
 
 from lib.ipc import IpcSubscriber
 from ..ui.infra import OverlaysMgr
@@ -44,9 +43,15 @@ class HudClient(IpcSubscriber):
         # optional connect/disconnect hooks
         @self.on_connect
         def connected():
-            self.logger.info("[HudClient] Connected")
-            # Slightly delay the client registration to ensure the connection is fully established
-            self._sio.start_background_task(self._register)
+            self.logger.info("HUD subsytem connected to Core subsystem")
+            self.logger.debug("[HudClient] Registering client. SID=%s", self._sio.sid)
+            try:
+                self._sio.emit('register-client', {
+                    'type': 'hud',
+                    'id': 'hud-mgr',
+                })
+            except Exception as e: # pylint: disable=broad-except
+                self.logger.exception("[HudClient] Failed to register client: %s", e)
 
         @self.on_disconnect
         def disconnected():
@@ -79,15 +84,3 @@ class HudClient(IpcSubscriber):
         def handle_stream_overlay_update(data):
             """Stream overlay data update handler."""
             self.m_overlays_mgr.stream_overlays_update(data)
-
-    def _register(self):
-        """Register the client."""
-        time.sleep(0.5)
-        self.logger.debug("[HudClient] Registering client")
-        try:
-            self._sio.emit('register-client', {
-                'type': 'hud',
-                'id': 'hud-mgr',
-            })
-        except Exception as e: # pylint: disable=broad-except
-            self.logger.exception("[HudClient] Failed to register client: %s", e)

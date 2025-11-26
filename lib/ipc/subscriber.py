@@ -24,7 +24,6 @@
 
 import logging
 import threading
-import time
 from typing import Callable, Optional
 
 import msgpack
@@ -99,6 +98,13 @@ class IpcSubscriber:
                 def wrapped_handler(data):
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
+                    except (TypeError, ValueError) as e:
+                        # Likely a Socket.IO internal packet, just ignore
+                        self.logger.warning(
+                            "Skipping non-msgpack data for event %s (likely internal packet): %s. Error: %s",
+                            event_name, str(data), e
+                        )
+                        return
                     except Exception as e: # pylint: disable=broad-exception-caught
                         self.logger.exception("Failed to decode msgpack for event %s: %s %s", event_name, e, data)
                         return  # consistently returns None
@@ -148,35 +154,24 @@ class IpcSubscriber:
     # ------------------- Public API -------------------
 
     def run(self) -> None:
-        """[BLOCKING] Run the client in a loop and reconnect on failure."""
-        while not self._stop_event.is_set():
-            try:
-                self.logger.debug("Connecting to %s ...", self.url)
-                self._sio.connect(self.url, wait=True, transports=["websocket", "polling"])
-                self._connected = True
-                self.logger.debug("Connection established")
+        """[BLOCKING] Run the client in a loop."""
+        try:
+            self.logger.debug("Connecting to %s ...", self.url)
+            self._sio.connect(self.url, wait=True, transports=["websocket", "polling"])
+            self.logger.debug("Connection established")
 
-                while not self._stop_event.is_set() and self._connected:
-                    self._sio.sleep(0.1)
+            # Just wait - let Socket.IO handle reconnection automatically
+            while not self._stop_event.is_set():
+                self._sio.sleep(0.1)
 
-            except socketio.exceptions.ConnectionError:
-                self.logger.warning("Connection failed, retrying...")
-                time.sleep(1)
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception("Unexpected error: %s", e)
-                time.sleep(2)
-            finally:
-                # Full cleanup to avoid WebSocket session stuck state
-                if self._connected:
-                    try:
-                        self._sio.disconnect()
-                    except Exception: # pylint: disable=broad-except
-                        pass
-                    self._connected = False
-
-                # fully recreate client and rebind all events
-                if not self._stop_event.is_set():
-                    self._setup_sio()
+        except Exception as e: # pylint: disable=broad-except
+            self.logger.exception("Connection error: %s", e)
+        finally:
+            if self._sio.connected:
+                try:
+                    self._sio.disconnect()
+                except Exception: # pylint: disable=broad-except
+                    pass
 
         self.logger.debug("IPC subscriber. Finished run loop")
 
