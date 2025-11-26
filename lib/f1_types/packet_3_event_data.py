@@ -1172,18 +1172,16 @@ class PacketEventData(F1PacketBase):
         def __str__(self) -> str:
             """
             Returns a string representation of the buttons pressed in the packet.
-
-            Returns:
-                str: A string listing the buttons pressed.
-
-            Example:
-                button_string = str(button_packet)
-                print(button_string)
             """
 
-            pressed_buttons = [button_name for button_name in dir(self) if isinstance(getattr(self, button_name), int) and
-                            self.isButtonPressed(getattr(self, button_name))]
-            return "Pressed Buttons: " + ", ".join(pressed_buttons) + " " + str(self.buttonStatus)
+            pressed_buttons = [
+                name
+                for name, value in vars(self.__class__).items()
+                if name.isupper() and isinstance(value, int) and self.isButtonPressed(value)
+            ]
+
+            # 32-bit output: 0x + 8 hex digits
+            return f"Pressed Buttons: [{', '.join(pressed_buttons)}] Raw = (0x{self.buttonStatus:08X})"
 
         def toJSON(self) -> Dict[str, Any]:
             """

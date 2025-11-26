@@ -43,8 +43,8 @@ class TestHttpsSettings(TestF1ConfigBase):
         """Test that default values are set correctly"""
         settings = HttpsSettings()
         self.assertFalse(settings.enabled)
-        self.assertEqual("", settings.key_file_path)
-        self.assertEqual("", settings.cert_file_path)
+        self.assertEqual(None, settings.key_file_path)
+        self.assertEqual(None, settings.cert_file_path)
         self.assertEqual("http", settings.proto)
         self.assertEqual(None, settings.key_path)
         self.assertEqual(None, settings.cert_path)

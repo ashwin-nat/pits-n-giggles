@@ -60,10 +60,14 @@ class HudClient(IpcSubscriber):
             self.m_overlays_mgr.race_table_update(data)
 
         @self.on('hud-toggle-notification')
-        def handle_hud_toggle_notification(_data):
+        def handle_hud_toggle_notification(data):
             """HUD toggle notification handler."""
-            self.logger.debug("[HudClient] Received HUD toggle notification")
-            self.m_overlays_mgr.toggle_overlays_visibility()
+            self.logger.debug("[HudClient] Received HUD toggle notification. data=%s", data)
+            oid = data.get('message', {}).get('oid')
+            if oid is None:
+                self.logger.warning("[HudClient] Received HUD toggle notification with no overlay ID. Ignoring.")
+            else:
+                self.m_overlays_mgr.toggle_overlays_visibility(oid)
 
         @self.on('hud-cycle-mfd-notification')
         def handle_hud_cycle_mfd_notification(_data):

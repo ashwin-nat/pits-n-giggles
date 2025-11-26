@@ -24,11 +24,12 @@
 
 import copy
 from copy import deepcopy
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
+from .utils import udp_action_field
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -146,7 +147,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     show_lap_timer: bool = Field(
         default=True,
-        description="Show lap timer overlay",
+        description="Enable lap timer overlay",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
@@ -161,11 +162,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Lap Timer UI scale",
         json_schema_extra=deepcopy(_UI_META_UI_SCALE)
     )
+    lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle lap timer overlay UDP action code")
 
 
     show_timing_tower: bool = Field(
         default=True,
-        description="Show timing tower overlay",
+        description="Enable timing tower overlay",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
@@ -192,10 +195,12 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    timing_tower_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle timing tower overlay UDP action code")
 
     show_mfd: bool = Field(
         default=True,
-        description="Show MFD overlay",
+        description="Enable MFD overlay",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
@@ -220,34 +225,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle MFD overlay UDP action code")
 
+    toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
+        "The UDP custom action code to show/hide overlays")
+    cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
+        "The UDP custom action code to cycle MFD pages")
 
-    toggle_overlays_udp_action_code: int = Field(
-        default=10,
-        ge=1,
-        le=12,
-        description="The UDP custom action code to show/hide overlays",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            },
-            "udp_action_code" : True
-        }
-    )
-    cycle_mfd_udp_action_code: int = Field(
-        default=9,
-        ge=1,
-        le=12,
-        description="The UDP custom action code to cycle MFD pages",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            },
-            "udp_action_code" : True
-        }
-    )
     overlays_opacity: int = Field(
         default=100,
         ge=0,

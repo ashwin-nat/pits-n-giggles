@@ -19,33 +19,29 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# pylint: skip-file
 
-import os
-import sys
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from pydantic import ValidationError
+from typing import Optional
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pydantic import Field
 
-from lib.config import FilePathStr
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-from .tests_config_base import TestF1ConfigBase
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-class TestFilePathStr(TestF1ConfigBase):
-
-    def test_validate_accepts_valid_string(self):
-        # Just a normal string input should be accepted
-        input_value = "some/path/to/file.txt"
-        # validate currently does not check existence, so this passes
-        result = FilePathStr.validate(input_value)
-        self.assertEqual(result, input_value)
-
-    def test_validate_rejects_non_string(self):
-        # Non-string input should raise TypeError
-        for invalid_value in [123, 45.6, [], {}, True]:
-            with self.assertRaises(TypeError):
-                FilePathStr.validate(invalid_value)
+def udp_action_field(description: str, *, default: Optional[int] = None):
+    """
+    Create a UDP action code field with standard bounds and schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=default,
+        ge=1,
+        le=12,
+        validate_default=False,  # allow None
+        strict=False,
+        description=description,
+        json_schema_extra={
+            "ui": {"type": "text_box", "visible": True},
+            "udp_action_code": True,
+        },
+    )

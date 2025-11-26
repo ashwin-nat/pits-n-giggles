@@ -44,15 +44,18 @@ class TestHudSettings(TestF1ConfigBase):
         """Test default values"""
         settings = HudSettings()
         self.assertEqual(settings.enabled, False)
-        self.assertEqual(settings.toggle_overlays_udp_action_code, 10)
+        self.assertEqual(settings.toggle_overlays_udp_action_code, None)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.lap_timer_ui_scale, 1.0)
         self.assertEqual(settings.show_timing_tower, True)
+        self.assertEqual(settings.lap_timer_toggle_udp_action_code, None)
         self.assertEqual(settings.timing_tower_ui_scale, 1.0)
         self.assertEqual(settings.timing_tower_max_rows, 5)
+        self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_ui_scale, 1.0)
-        self.assertEqual(settings.cycle_mfd_udp_action_code, 9)
+        self.assertEqual(settings.mfd_toggle_udp_action_code, None)
+        self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.overlays_opacity, 100)
         # MFD pages has its own test case because the structure is a bit more complex
 
@@ -73,31 +76,36 @@ class TestHudSettings(TestF1ConfigBase):
             HudSettings(enabled=420)
 
     def test_udp_action_code_validation(self):
-        """Test valid and invalid log_file_size values"""
-        # Valid value
-        action_code = 2
-        hud_settings = HudSettings(toggle_overlays_udp_action_code=action_code)
-        self.assertEqual(hud_settings.toggle_overlays_udp_action_code, action_code)
+        """Ensure all UDP toggle fields validate correctly."""
 
-        with self.assertRaises(ValidationError):
-            HudSettings(toggle_overlays_udp_action_code=None)  # type: ignore
+        udp_action_code_fields = [
+            "toggle_overlays_udp_action_code",
+            "lap_timer_toggle_udp_action_code",
+            "timing_tower_toggle_udp_action_code",
+            "mfd_toggle_udp_action_code",
+            "cycle_mfd_udp_action_code",
+        ]
+        for field in udp_action_code_fields:
+            with self.subTest(field=field):
+                # 1. Valid integer
+                settings = HudSettings(**{field: 2})
+                self.assertEqual(getattr(settings, field), 2)
 
-        with self.assertRaises(ValidationError):
-            HudSettings(toggle_overlays_udp_action_code="invalid")
+                # 2. Invalid string
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: "invalid"})
 
-        with self.assertRaises(ValidationError):
-            HudSettings(toggle_overlays_udp_action_code=420)
+                # 3. Invalid out-of-range
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: 420})
 
-        # Boundary value: minimum (1)
-        min_action_code = 1
-        hud_settings_min = HudSettings(toggle_overlays_udp_action_code=min_action_code)
-        self.assertEqual(hud_settings_min.toggle_overlays_udp_action_code, min_action_code)
-        # Boundary value: maximum (12)
-        max_action_code = 12
-        hud_settings_max = HudSettings(toggle_overlays_udp_action_code=max_action_code)
-        self.assertEqual(hud_settings_max.toggle_overlays_udp_action_code, max_action_code)
-        with self.assertRaises(ValidationError):
-            HudSettings(toggle_overlays_udp_action_code=None)  # type: ignore
+                # 4. Boundary: min
+                settings_min = HudSettings(**{field: 1})
+                self.assertEqual(getattr(settings_min, field), 1)
+
+                # 5. Boundary: max
+                settings_max = HudSettings(**{field: 12})
+                self.assertEqual(getattr(settings_max, field), 12)
 
     def test_show_lap_timer_validation(self):
         """Test valid and invalid show_lap_timer values"""
@@ -294,37 +302,6 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(mfd_ui_scale=2.1)
         HudSettings(mfd_ui_scale=2.0)
-
-    def test_cycle_mfd_udp_action_code_validation(self):
-        """Test valid and invalid cycle_mfd_udp_action_code values"""
-        # Valid value
-        action_code = 2
-        hud_settings = HudSettings(cycle_mfd_udp_action_code=action_code)
-        self.assertEqual(hud_settings.cycle_mfd_udp_action_code, action_code)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(cycle_mfd_udp_action_code=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(cycle_mfd_udp_action_code="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(cycle_mfd_udp_action_code=420)
-
-        # Boundary value: minimum (1)
-        min_action_code = 1
-        hud_settings_min = HudSettings(cycle_mfd_udp_action_code=min_action_code)
-        self.assertEqual(hud_settings_min.cycle_mfd_udp_action_code, min_action_code)
-        # Boundary value: maximum (12)
-        max_action_code = 12
-        hud_settings_max = HudSettings(cycle_mfd_udp_action_code=max_action_code)
-        self.assertEqual(hud_settings_max.cycle_mfd_udp_action_code, max_action_code)
-        with self.assertRaises(ValidationError):
-            HudSettings(cycle_mfd_udp_action_code=None)  # type: ignore
-
-        # Non-integer float value should raise ValidationError
-        with self.assertRaises(ValidationError):
-            HudSettings(cycle_mfd_udp_action_code=5.5)
 
     def test_hud_enabled_dependency(self):
         """Test hud_enabled dependency on show_lap_timer, show_timing_tower values, show_mfd"""
