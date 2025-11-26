@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
@@ -34,7 +33,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
-from lib.assets_loader import load_icon
+from lib.assets_loader import load_tyre_icons_dict
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -69,15 +68,8 @@ class TyreInfoPage(BasePage):
 
     def _init_icons(self):
         """Load tyre icons."""
-        icon_base_tyres = Path("assets") / "tyre-icons"
-        self.tyre_icon_mappings = {
-            "Soft": load_icon(icon_base_tyres / "soft_tyre.svg", self.logger.debug, self.logger.error),
-            "Super Soft": load_icon(icon_base_tyres / "super_soft_tyre.svg", self.logger.debug, self.logger.error),
-            "Medium": load_icon(icon_base_tyres / "medium_tyre.svg", self.logger.debug, self.logger.error),
-            "Hard": load_icon(icon_base_tyres / "hard_tyre.svg", self.logger.debug, self.logger.error),
-            "Inters": load_icon(icon_base_tyres / "intermediate_tyre.svg", self.logger.debug, self.logger.error),
-            "Wet": load_icon(icon_base_tyres / "wet_tyre.svg", self.logger.debug, self.logger.error),
-        }
+        self.tyre_icon_mappings = load_tyre_icons_dict(
+            debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
                 self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")

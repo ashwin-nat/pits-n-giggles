@@ -31,7 +31,7 @@ from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
 
-from lib.assets_loader import load_icon
+from lib.assets_loader import load_icon, load_tyre_icons_dict
 from lib.f1_types import F1Utils
 
 from .border_delegate import BorderDelegate
@@ -82,15 +82,8 @@ class RaceTimingTable:
 
     def _init_icons(self):
         """Initialize tyre and team icons."""
-        icon_base_tyres = Path("assets") / "tyre-icons"
-        self.tyre_icon_mappings = {
-            "Soft": load_icon(icon_base_tyres / "soft_tyre.svg", self.logger.debug, self.logger.error),
-            "Super Soft": load_icon(icon_base_tyres / "super_soft_tyre.svg", self.logger.debug, self.logger.error),
-            "Medium": load_icon(icon_base_tyres / "medium_tyre.svg", self.logger.debug, self.logger.error),
-            "Hard": load_icon(icon_base_tyres / "hard_tyre.svg", self.logger.debug, self.logger.error),
-            "Inters": load_icon(icon_base_tyres / "intermediate_tyre.svg", self.logger.debug, self.logger.error),
-            "Wet": load_icon(icon_base_tyres / "wet_tyre.svg", self.logger.debug, self.logger.error),
-        }
+        self.tyre_icon_mappings = load_tyre_icons_dict(
+            debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
                 self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
