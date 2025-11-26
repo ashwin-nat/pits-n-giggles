@@ -3,8 +3,8 @@
         "telemetry_port": 20778,
         "server_port": 4768,
         "save_viewer_port": 4769,
-        "udp_tyre_delta_action_code": 11,
-        "udp_custom_action_code": 12,
+        "udp_tyre_delta_action_code": null,
+        "udp_custom_action_code": null,
         "wdt_interval_sec": 30
     },
     "Capture": {
@@ -39,9 +39,11 @@
         "enabled": true,
         "show_lap_timer": true,
         "lap_timer_ui_scale": 1.0,
+        "lap_timer_toggle_udp_action_code": null,
         "show_timing_tower": true,
         "timing_tower_ui_scale": 1.0,
         "timing_tower_max_rows": 11,
+        "timing_tower_toggle_udp_action_code": null,
         "show_mfd": true,
         "mfd_ui_scale": 1.0,
         "mfd_settings": {
@@ -65,9 +67,14 @@
                 "pit_rejoin": {
                     "enabled": true,
                     "position": 3
+                },
+                "tyre_sets": {
+                    "enabled": true,
+                    "position": 6
                 }
             }
         },
+        "mfd_toggle_udp_action_code": null,
         "toggle_overlays_udp_action_code": 10,
         "cycle_mfd_udp_action_code": 9,
         "overlays_opacity": 100
