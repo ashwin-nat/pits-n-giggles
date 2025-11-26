@@ -56,7 +56,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
 
     @model_validator(mode="after")
     def check_udp_action_codes(self) -> "PngSettings":
-        """Ensure all UDP action code fields across subsettings are unique."""
+        """Ensure all configured (non-None) UDP action code fields across subsettings are unique."""
         udp_fields = []
 
         # Walk through submodels
@@ -69,9 +69,12 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                         value = getattr(section, field_name)
                         udp_fields.append((f"{section_name}.{field_name}", value))
 
-        # Check for duplicates
+        # Check for duplicates among configured (non-None) values
         seen = {}
         for name, val in udp_fields:
+            if val is None:
+                continue  # <---- THIS IS THE BEHAVIOUR CHANGE
+
             if val in seen:
                 raise ValueError(
                     f"Duplicate UDP action code {val} between {seen[val]} and {name}"
