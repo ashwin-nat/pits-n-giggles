@@ -390,6 +390,42 @@ cert_file_path = {cert_path}
         self.assertEqual(config.Forwarding.target_1, "")  # fallback default
         self.assertTrue(os.path.exists(self.ini_path + ".invalid"))
 
+    def test_empty_ini_values_are_cleaned_to_none(self):
+        """
+        Explicitly empty INI values (e.g. 'cert_file_path=') should
+        be converted to None in the resulting PngSettings model.
+        """
+        ini_content = """
+[HTTPS]
+enabled = false
+cert_file_path =
+key_file_path =
+
+[Network]
+udp_tyre_delta_action_code =
+""".lstrip()
+
+        temp_fd, temp_path = tempfile.mkstemp(suffix=".ini")
+        os.close(temp_fd)
+        try:
+            with open(temp_path, "w", encoding="utf-8") as f:
+                f.write(ini_content)
+
+            settings = load_config_from_ini(temp_path)
+
+            # HTTPS empty values should be cleaned to None
+            self.assertEqual(settings.HTTPS.enabled, False)
+            self.assertEqual(settings.HTTPS.cert_file_path, None)
+            self.assertEqual(settings.HTTPS.key_file_path, None)
+
+            # One UDP action code with an empty value should also be cleaned to None.
+            # Adjust these attribute names to match your PngSettings/UDP model.
+            self.assertEqual(settings.Network.udp_tyre_delta_action_code, None)
+
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
 class TestLoadConfigFromJson(TestConfigIO):
 
     def setUp(self):
