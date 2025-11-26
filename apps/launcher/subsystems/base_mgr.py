@@ -284,7 +284,7 @@ class PngAppMgrBase(QObject):
                 self.debug_log(f"{self.display_name} is not running")
                 return
 
-            self.info_log(f"Stopping {self.display_name}...")
+            self.debug_log(f"Inside Stopping {self.display_name}... Reason: {reason}")
             self._is_stopping.set()
             self._update_status("Stopping")
 

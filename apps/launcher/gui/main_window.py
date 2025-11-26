@@ -615,14 +615,15 @@ class PngLauncherWindow(QMainWindow):
         tasks = []
 
         for subsystem in self.subsystems:
-            self.info_log(f"Stopping {subsystem.display_name}...")
+            self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
             task = StopTask(subsystem, "Launcher shutting down")
             tasks.append(task)
             pool.start(task)
             self.process_events()
 
-        self.process_events()
-        pool.waitForDone()
+        while not pool.waitForDone(100):
+            # kick the event loop to keep the app responsive
+            self.process_events()
         event.accept()
 
     def run(self):
