@@ -187,14 +187,14 @@ class SessionChangeNotification:
         }
 
 class HudToggleNotification:
-    def __init__(self) -> None:
+    def __init__(self, oid: str) -> None:
         """Initialize the HudToggleNotification object.
         """
-        pass
+        self.m_oid = oid
 
     def __repr__(self) -> str:
         """Return a string representation of the HudToggleNotification object."""
-        return "HudToggleNotification()"
+        return f"HudToggleNotification(oid={self.m_oid})"
 
     def __str__(self) -> str:
         """Return a string representation of the HudToggleNotification object."""
@@ -207,7 +207,7 @@ class HudToggleNotification:
             Dict[str, Any]: The JSON representation of this object.
         """
         return {
-            "dummy": "dummy"
+            "oid": self.m_oid
         }
 
 class HudCycleMfdNotification:

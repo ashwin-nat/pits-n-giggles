@@ -26,6 +26,7 @@ SOFTWARE.
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
@@ -47,7 +48,18 @@ from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimer
 
-# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
+# -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
+
+@dataclass
+class UdpActionCodes:
+    """Dataclass to hold UDP action codes."""
+    custom_marker: Optional[int] = None
+    tyre_delta: Optional[int] = None
+    toggle_all_overlays: Optional[int] = None
+    mfd_next_page: Optional[int] = None
+    toggle_lap_timer_overlay: Optional[int] = None
+    toggle_timing_tower_overlay: Optional[int] = None
+    toggle_mfd_overlay: Optional[int] = None
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -125,7 +137,7 @@ class F1TelemetryHandler:
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-        self.m_udp_custom_action_code: Optional[int] = settings.Network.udp_custom_action_code
+        self.m_udp_custom_marker: Optional[int] = settings.Network.udp_custom_action_code
         self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
         self.m_hud_toggle_udp_action_code: Optional[int] = settings.HUD.toggle_overlays_udp_action_code
         self.m_cycle_mfd_udp_action_code: Optional[int] = settings.HUD.cycle_mfd_udp_action_code
@@ -139,6 +151,17 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
+
+        self.m_udp_action_codes = UdpActionCodes(
+            custom_marker=settings.Network.udp_custom_action_code,
+            tyre_delta=settings.Network.udp_tyre_delta_action_code,
+            toggle_all_overlays=settings.HUD.toggle_overlays_udp_action_code,
+            mfd_next_page=self.m_cycle_mfd_udp_action_code,
+            toggle_lap_timer_overlay=settings.HUD.lap_timer_toggle_udp_action_code,
+            toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
+            toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
+        )
+
         self.m_manager_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
@@ -421,21 +444,37 @@ class F1TelemetryHandler:
             """
 
             buttons: PacketEventData.Buttons = packet.mEventDetails
-            if self._isUdpActionButtonPressed(buttons, self.m_udp_custom_action_code):
-                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_custom_action_code)
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.custom_marker):
+                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_action_codes.custom_marker)
                 await self._processCustomMarkerCreate()
 
-            if self._isUdpActionButtonPressed(buttons, self.m_udp_tyre_delta_action_code):
-                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_tyre_delta_action_code)
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.tyre_delta):
+                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_action_codes.tyre_delta)
                 await self._processTyreDeltaSound()
 
-            if self._isUdpActionButtonPressed(buttons, self.m_hud_toggle_udp_action_code):
-                self.m_logger.debug('UDP action %d pressed - HUD toggle', self.m_hud_toggle_udp_action_code)
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_all_overlays):
+                self.m_logger.debug('UDP action %d pressed - Toggle all overlays',
+                                    self.m_udp_action_codes.toggle_all_overlays)
                 await self._processToggleHud()
 
-            if self._isUdpActionButtonPressed(buttons, self.m_cycle_mfd_udp_action_code):
-                self.m_logger.debug('UDP action %d pressed - Cycle MFD', self.m_cycle_mfd_udp_action_code)
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.mfd_next_page):
+                self.m_logger.debug('UDP action %d pressed - Cycle MFD', self.m_udp_action_codes.mfd_next_page)
                 await self._processCycleMFD()
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_lap_timer_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle lap timer overlay',
+                                    self.m_udp_action_codes.toggle_lap_timer_overlay)
+                await self._processToggleHud('lap_timer')
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_timing_tower_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle timing tower overlay',
+                                    self.m_udp_action_codes.toggle_timing_tower_overlay)
+                await self._processToggleHud('timing_tower')
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_mfd_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle MFD overlay',
+                                    self.m_udp_action_codes.toggle_mfd_overlay)
+                await self._processToggleHud('mfd')
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -612,13 +651,17 @@ class F1TelemetryHandler:
                 )
             )
 
-    async def _processToggleHud(self) -> None:
-        """Send the toggle HUD notification to the HUD manager."""
+    async def _processToggleHud(self, oid: Optional[str] = '') -> None:
+        """Send the toggle HUD notification to the HUD manager.
+
+        Args:
+            oid (Optional[str]): The overlay ID to toggle.
+        """
         await AsyncInterTaskCommunicator().send(
             "hud-notifier",
             ITCMessage(
                 m_message_type=ITCMessage.MessageType.HUD_TOGGLE_NOTIFICATION,
-                m_message=HudToggleNotification()
+                m_message=HudToggleNotification(oid)
             )
         )
 
