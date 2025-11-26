@@ -354,7 +354,7 @@ class TestHudSettings(TestF1ConfigBase):
             "fuel_info",
             "tyre_info",
             "pit_rejoin",
-            "tyre_delta",
+            "tyre_sets",
         }
 
         for page in expected_pages:
@@ -388,7 +388,7 @@ class TestHudSettings(TestF1ConfigBase):
         for key in DEFAULT_PAGES:
             self.assertIn(key, mfd.pages)
 
-        assert mfd.pages["tyre_delta"].enabled is False
+        assert mfd.pages["tyre_sets"].enabled is False
 
     #
     # ------------------------------------------------------------

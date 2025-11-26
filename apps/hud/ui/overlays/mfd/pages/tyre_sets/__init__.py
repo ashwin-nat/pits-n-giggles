@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .tyre_delta_page import TyreDeltaPage
+from .tyre_sets_page import TyreSetsPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TyreDeltaPage",
+    "TyreSetsPage",
 ]

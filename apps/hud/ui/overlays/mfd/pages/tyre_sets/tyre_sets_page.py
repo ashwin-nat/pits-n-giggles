@@ -35,10 +35,10 @@ from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TyreDeltaPage(BasePage):
+class TyreSetsPage(BasePage):
     """Tyre Delta page showing tyre set predictions and compound mappings."""
 
-    KEY = "tyre_delta"
+    KEY = "tyre_sets"
 
     FONT_FACE = "Formula1 Display"
     MONO_FONT_FACE = "B612 Mono"
@@ -70,7 +70,7 @@ class TyreDeltaPage(BasePage):
             logger (logging.Logger): Logger
             scale_factor (float): Scale factor
         """
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="TYRE DELTA")
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="TYRE SETS")
         self.scale_factor = scale_factor
         self._init_icons()
         self._build_ui()

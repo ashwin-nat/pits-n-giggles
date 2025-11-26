@@ -67,7 +67,7 @@ DEFAULT_PAGES = {
     "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
     "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
     "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
-    "tyre_delta": MfdPageSettings(enabled=True, position=6, description="Tyre Delta"),
+    "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
 }
 
 

@@ -27,7 +27,7 @@ from .collapsed import CollapsedPage
 from .fuel import FuelInfoPage
 from .lap_times import LapTimesPage
 from .pit_rejoin import PitRejoinPredictionPage
-from .tyre_delta import TyreDeltaPage
+from .tyre_sets import TyreSetsPage
 from .tyre_wear import TyreInfoPage
 from .weather import WeatherForecastPage
 
@@ -39,7 +39,7 @@ __all__ = [
     "FuelInfoPage",
     "LapTimesPage",
     "PitRejoinPredictionPage",
-    "TyreDeltaPage",
+    "TyreSetsPage",
     "TyreInfoPage",
     "WeatherForecastPage",
 ]

@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
-                                            FuelInfoPage, LapTimesPage, TyreDeltaPage,
+                                            FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, WeatherForecastPage)
 from lib.config import PngSettings
@@ -115,7 +115,7 @@ class MfdOverlay(BaseOverlay):
         PitRejoinPredictionPage,
         TyreInfoPage,
         WeatherForecastPage,
-        TyreDeltaPage,
+        TyreSetsPage,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
