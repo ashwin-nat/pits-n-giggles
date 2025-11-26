@@ -22,13 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
 from meta.meta import APP_NAME
 
 from .diff import ConfigDiffMixin
+from .utils import udp_action_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -74,28 +75,9 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    udp_tyre_delta_action_code: int = Field(
-        default=11,
-        ge=1,
-        le=12, description="Tyre Delta Marker: UDP Action Code", json_schema_extra={
-        "ui": {
-            "type" : "text_box",
-            "visible": True
-        },
-        "udp_action_code" : True
-    })
-    udp_custom_action_code: int = Field(
-        default=12,
-        ge=1,
-        le=12,
-        description="Custom Marker: UDP Action Code",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box"
-            },
-            "udp_action_code" : True
-        }
-    )
+    udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker: UDP Action Code")
+    udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker: UDP Action Code")
+
     wdt_interval_sec: int = Field(
         default=30,
         ge=1,

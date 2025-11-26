@@ -24,11 +24,12 @@
 
 import copy
 from copy import deepcopy
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
+from .utils import udp_action_field
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -221,33 +222,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
+        "The UDP custom action code to show/hide overlays")
+    cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
+        "The UDP custom action code to cycle MFD pages")
 
-    toggle_overlays_udp_action_code: int = Field(
-        default=10,
-        ge=1,
-        le=12,
-        description="The UDP custom action code to show/hide overlays",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            },
-            "udp_action_code" : True
-        }
-    )
-    cycle_mfd_udp_action_code: int = Field(
-        default=9,
-        ge=1,
-        le=12,
-        description="The UDP custom action code to cycle MFD pages",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            },
-            "udp_action_code" : True
-        }
-    )
     overlays_opacity: int = Field(
         default=100,
         ge=0,
