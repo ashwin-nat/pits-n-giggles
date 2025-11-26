@@ -78,7 +78,6 @@ class OverlaysMgr:
         self.logger = logger
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         self.config_file = resolve_user_file(config_file)
-        self.debouncer = ButtonDebouncer(debounce_time=1.0)
         self.debug_mode = debug
         self._init_config()
         self.running = False
@@ -150,13 +149,14 @@ class OverlaysMgr:
         """Handle race table update"""
         self.window_manager.broadcast_data('race_table_update', data)
 
-    def toggle_overlays_visibility(self):
+    def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
-        if self.debouncer.onButtonPress("toggle_overlays_visibility"):
-            self.logger.debug("Toggling overlays visibility")
-            self.window_manager.broadcast_data('toggle_visibility', {})
+
+        self.logger.debug("Toggling overlays visibility. oid=%s" % (oid))
+        if oid:
+            self.window_manager.unicast_data(oid, 'toggle_visibility', {})
         else:
-            self.logger.debug("Not toggling overlays visibility. Reason: debounce")
+            self.window_manager.broadcast_data('toggle_visibility', {})
 
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
