@@ -134,7 +134,13 @@ class BackendAppMgr(PngAppMgrBase):
             "Forwarding" : [],
             "StreamOverlay" : [],
             "HUD": [
+                "lap_timer_toggle_udp_action_code",
+                "timing_tower_toggle_udp_action_code",
+                "timing_tower_toggle_udp_action_code",
+                "mfd_toggle_udp_action_code",
                 "toggle_overlays_udp_action_code",
+                "cycle_mfd_udp_action_code",
+
             ],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
