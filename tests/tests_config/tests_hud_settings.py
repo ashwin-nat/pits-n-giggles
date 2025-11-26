@@ -31,6 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pydantic import ValidationError
 
 from lib.config import HudSettings, MfdSettings, MfdPageSettings
+from lib.config.schema.hud import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -353,11 +354,15 @@ class TestHudSettings(TestF1ConfigBase):
             "fuel_info",
             "tyre_info",
             "pit_rejoin",
+            "tyre_sets",
         }
 
         for page in expected_pages:
             self.assertIn(page, mfd.pages)
             self.assertIsInstance(mfd.pages[page], MfdPageSettings)
+
+        for page in mfd.pages.keys():
+            self.assertIn(page, expected_pages)
 
     def test_mfd_default_positions_unique(self):
         """All default enabled pages must have unique positions"""
@@ -370,6 +375,20 @@ class TestHudSettings(TestF1ConfigBase):
         ]
 
         self.assertEqual(len(positions), len(set(positions)))
+
+    def test_model_validator_adds_missing_pages(self):
+        data = {
+            "pages": {
+                "lap_times": {"enabled": True, "position": 1}
+            }
+        }
+
+        mfd = MfdSettings.model_validate(data)
+
+        for key in DEFAULT_PAGES:
+            self.assertIn(key, mfd.pages)
+
+        assert mfd.pages["tyre_sets"].enabled is False
 
     #
     # ------------------------------------------------------------

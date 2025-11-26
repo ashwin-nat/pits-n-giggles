@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
-                                            FuelInfoPage, LapTimesPage,
+                                            FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, WeatherForecastPage)
 from lib.config import PngSettings
@@ -115,6 +115,7 @@ class MfdOverlay(BaseOverlay):
         PitRejoinPredictionPage,
         TyreInfoPage,
         WeatherForecastPage,
+        TyreSetsPage,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -181,6 +182,7 @@ class MfdOverlay(BaseOverlay):
         self.pages.setFixedHeight(self.mfdClosed)
     def _register_page(self, widget_cls: BasePage) -> None:
         """Register an MFD page"""
+        self.logger.debug(f"{self.overlay_id} | Registering MFD page {widget_cls.KEY}")
         self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
 
     def _init_cmd_handlers(self):

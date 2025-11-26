@@ -22,13 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .fonts import load_fonts
-from .icons import load_icon, load_tyre_icons_dict
+from .tyre_sets_page import TyreSetsPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "load_fonts",
-    "load_icon",
-    "load_tyre_icons_dict",
+    "TyreSetsPage",
 ]

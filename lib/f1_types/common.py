@@ -369,6 +369,10 @@ class ActualTyreCompound(F1BaseEnum):
             ActualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
+    @classmethod
+    def safeCast(cls, value: int) -> "ActualTyreCompound":
+        return super().safeCast(value, ActualTyreCompound.UNKNOWN)
+
 class VisualTyreCompound(F1BaseEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
@@ -424,6 +428,49 @@ class VisualTyreCompound(F1BaseEnum):
             VisualTyreCompound.WET_F2: "Wet",
             VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
+
+    @classmethod
+    def safeCast(cls, value: int) -> "VisualTyreCompound":
+        return super().safeCast(value, VisualTyreCompound.UNKNOWN)
+
+    def isSlicks(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is slicks.
+
+        Returns:
+            bool: True if the visual tyre compound is slicks, False otherwise.
+        """
+        return self in {
+            VisualTyreCompound.SOFT,
+            VisualTyreCompound.MEDIUM,
+            VisualTyreCompound.HARD,
+            VisualTyreCompound.SUPER_SOFT,
+            VisualTyreCompound.SOFT_F2,
+            VisualTyreCompound.MEDIUM_F2,
+            VisualTyreCompound.HARD_F2
+        }
+
+    def isWets(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is wet.
+
+        Returns:
+            bool: True if the visual tyre compound is wet, False otherwise.
+        """
+        return self in {
+            VisualTyreCompound.WET,
+            VisualTyreCompound.WET_CLASSIC,
+            VisualTyreCompound.WET_F2
+        }
+
+    def isInters(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is inters.
+
+        Returns:
+            bool: True if the visual tyre compound is inters, False otherwise.
+        """
+        return self == VisualTyreCompound.INTER
 
 class SafetyCarType(F1CompareableEnum):
     """
