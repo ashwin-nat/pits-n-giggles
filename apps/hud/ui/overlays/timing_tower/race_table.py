@@ -26,7 +26,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
@@ -159,6 +159,9 @@ class RaceTimingTable:
         table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        icon_size = int(20 * self.scale_factor)
+        table.setIconSize(QSize(icon_size, icon_size))
 
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
