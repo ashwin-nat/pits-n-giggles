@@ -99,7 +99,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             desc2 = fields_map["save_viewer_port"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.server_port})")
 
-        if self.udp_tyre_delta_action_code == self.udp_custom_action_code:
+        if (self.udp_custom_action_code and self.udp_tyre_delta_action_code) and \
+                (self.udp_tyre_delta_action_code == self.udp_custom_action_code):
             desc1 = fields_map["udp_tyre_delta_action_code"].description # pylint: disable=unsubscriptable-object
             desc2 = fields_map["udp_custom_action_code"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")

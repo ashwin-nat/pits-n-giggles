@@ -47,7 +47,7 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
         }
     )
     key_file_path: FilePathStr = Field(
-        default="",
+        default=None,
         description="Path to SSL private key file",
         json_schema_extra={
             "ui": {
@@ -57,7 +57,7 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
         }
     )
     cert_file_path: FilePathStr = Field(
-        default="",
+        default=None,
         description="Path to SSL certificate file",
         json_schema_extra={
             "ui": {
@@ -70,9 +70,9 @@ class HttpsSettings(ConfigDiffMixin, BaseModel):
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         if self.enabled:
-            if not self.key_file_path.strip() or not os.path.isfile(self.key_file_path): # pylint: disable=no-member
+            if not self.key_file_path or not os.path.isfile(self.key_file_path):
                 raise ValueError("Key file is required and must exist when HTTPS is enabled")
-            if not self.cert_file_path.strip() or not os.path.isfile(self.cert_file_path): # pylint: disable=no-member
+            if not self.cert_file_path or not os.path.isfile(self.cert_file_path):
                 raise ValueError("Certificate file is required and must exist when HTTPS is enabled")
 
     @property

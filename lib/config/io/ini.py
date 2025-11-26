@@ -52,11 +52,12 @@ def load_config_from_ini(path: str, logger: Optional[Logger] = None, should_writ
     """
     if os.path.exists(path):
         raw = _load_raw_ini(path)
-        validated, restored, updated = _validate_sections(raw, logger)
+        cleaned = _clean_empty_strings(raw)
+        validated, restored, updated = _validate_sections(cleaned, logger)
         model = PngSettings(**validated)
         if should_write:
-            _maybe_update_config(raw, model, path, logger, updated, restored)
-        _log_invalid_keys(raw, model, logger, restored)
+            _maybe_update_config(cleaned, model, path, logger, updated, restored)
+        _log_invalid_keys(cleaned, model, logger, restored)
         return model
 
     # No config file found → create one with defaults
@@ -143,6 +144,27 @@ def _load_raw_ini(path: str) -> Dict[str, Dict[str, str]]:
     cp.read(path)
     return {section: dict(cp.items(section)) for section in cp.sections()}
 
+def _clean_empty_strings(obj):
+    """
+    Recursively convert empty-string leaves ("") to None
+    in a nested dict/list structure.
+
+    Used to sanitize raw INI data where empty = unset.
+    """
+    # If it's a dict, recurse into values
+    if isinstance(obj, dict):
+        return {k: _clean_empty_strings(v) for k, v in obj.items()}
+
+    # If it's a list, recurse into elements
+    if isinstance(obj, list):
+        return [_clean_empty_strings(v) for v in obj]
+
+    # Leaf value: replace empty string
+    if obj == "":
+        return None
+
+    return obj
+
 def _validate_sections(
     raw: Dict[str, Dict[str, str]],
     logger: Optional[Logger],
@@ -164,7 +186,7 @@ def _validate_sections(
         section_data = raw.get(field_name, {})
 
         try:
-            section_model = section_model_cls.model_validate(section_data)
+            section_model = section_model_cls(**section_data)
         except ValidationError as e:
             section_model = model_field.default_factory()
             restored.add(field_name)

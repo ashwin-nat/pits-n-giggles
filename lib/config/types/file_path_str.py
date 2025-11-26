@@ -63,6 +63,6 @@ class FilePathStr(str):
         Raises:
             TypeError: If the input is not a string.
         """
-        if not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise TypeError("Expected a string for file path")
         return value

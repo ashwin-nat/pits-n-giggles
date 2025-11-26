@@ -38,6 +38,7 @@ def udp_action_field(description: str, *, default: Optional[int] = None):
         ge=1,
         le=12,
         validate_default=False,  # allow None
+        strict=False,
         description=description,
         json_schema_extra={
             "ui": {"type": "text_box", "visible": True},

@@ -126,8 +126,8 @@ target_1 = localhost:8080
             self.assertTrue(settings.Privacy.process_car_setup)
             self.assertEqual(settings.Forwarding.target_1, "localhost:8080")
             self.assertEqual(settings.HTTPS.enabled, False)
-            self.assertEqual(settings.HTTPS.cert_file_path, "")
-            self.assertEqual(settings.HTTPS.key_file_path, "")
+            self.assertEqual(settings.HTTPS.cert_file_path, None)
+            self.assertEqual(settings.HTTPS.key_file_path, None)
 
         finally:
             if os.path.exists(temp_path):
