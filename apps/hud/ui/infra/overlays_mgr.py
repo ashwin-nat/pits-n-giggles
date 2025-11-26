@@ -33,7 +33,6 @@ from PySide6.QtWidgets import QApplication
 from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
                                   TimingTowerOverlay)
 from lib.assets_loader import load_fonts
-from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.file_path import resolve_user_file
@@ -152,7 +151,7 @@ class OverlaysMgr:
     def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
 
-        self.logger.debug("Toggling overlays visibility. oid=%s" % (oid))
+        self.logger.debug("Toggling overlays visibility. oid=%s", oid)
         if oid:
             self.window_manager.unicast_data(oid, 'toggle_visibility', {})
         else:
