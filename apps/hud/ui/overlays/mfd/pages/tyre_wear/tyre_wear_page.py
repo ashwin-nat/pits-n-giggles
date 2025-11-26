@@ -88,7 +88,7 @@ class TyreInfoPage(BasePage):
         """Build the complete UI structure."""
         main_container = QWidget(self)
         main_layout = QVBoxLayout(main_container)
-        main_layout.setSpacing(8)
+        main_layout.setSpacing(6)
         main_layout.setContentsMargins(10, 5, 10, 10)
 
         # Top section: Compound info and stats
@@ -245,7 +245,6 @@ class TyreInfoPage(BasePage):
 
         return value_label
 
-
     def _create_available_tyres_section(self) -> QWidget:
         """Create the right section showing available fresh tyres."""
         right_widget = QWidget()
@@ -256,7 +255,7 @@ class TyreInfoPage(BasePage):
 
         # Title for unused tyres
         unused_title = QLabel("Unused Tyres")
-        unused_title.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
+        unused_title.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc - 2))
         unused_title.setStyleSheet("color: #888; background: transparent;")
         unused_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_main_layout.addWidget(unused_title)
@@ -373,7 +372,7 @@ class TyreInfoPage(BasePage):
                 color: #FFFFFF;
             }
             QTableWidget::item {
-                padding: 3px;
+                padding: 6px;
             }
             QTableWidget::item:hover {
                 background-color: #1a1a1a;
@@ -381,7 +380,7 @@ class TyreInfoPage(BasePage):
             QHeaderView::section {
                 background-color: #2a2a2a;
                 color: #00D4FF;
-                padding: 4px;
+                padding: 6px;
                 border: 1px solid #333;
                 font-weight: bold;
             }
@@ -397,9 +396,12 @@ class TyreInfoPage(BasePage):
         self.wear_table.setShowGrid(True)
 
         # Set fixed height for compact display
-        self.wear_table.setMaximumHeight(120)
+        self.wear_table.setMaximumHeight(140)
 
         parent_layout.addWidget(self.wear_table)
+
+        # Add small margin below table
+        parent_layout.addSpacing(6)
 
     def _add_separator(self, parent_layout: QVBoxLayout) -> None:
         """Add a horizontal separator line."""
