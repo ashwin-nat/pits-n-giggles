@@ -103,14 +103,14 @@ class TyreDeltaPage(BasePage):
         self.stats_grid.setSpacing(8)
         self.stats_grid.setContentsMargins(0, 0, 0, 0)
 
-        # Create 6 card widgets (reserve space for all possible compounds)
-        self.tyre_cards = {}
-        for idx, compound in enumerate(self.ALL_COMPOUNDS):
-            card = self._create_tyre_card(compound)
+        # Create exactly 6 blank cards (2 rows x 3 cols) - reserve space
+        self.tyre_cards = []
+        for idx in range(6):
+            card = self._create_tyre_card("")
             row = idx // 3
             col = idx % 3
             self.stats_grid.addWidget(card, row, col)
-            self.tyre_cards[compound] = card
+            self.tyre_cards.append(card)
 
         main_layout.addLayout(self.stats_grid)
 
@@ -150,7 +150,7 @@ class TyreDeltaPage(BasePage):
         """Create a compact card for displaying tyre delta.
 
         Args:
-            compound: The tyre compound name
+            compound: The tyre compound name (or empty string for blank card)
 
         Returns:
             QFrame: The styled card widget
@@ -163,7 +163,7 @@ class TyreDeltaPage(BasePage):
                 border-radius: 6px;
             }}
         """)
-        card.setFixedHeight(70)  # Reduced height
+        card.setFixedHeight(70)  # Fixed height for all cards
 
         layout = QHBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -173,8 +173,6 @@ class TyreDeltaPage(BasePage):
         icon_label = QLabel()
         icon_label.setFixedSize(self.scaled_icon_size, self.scaled_icon_size)
         icon_label.setScaledContents(True)
-        if compound in self.tyre_icons:
-            icon_label.setPixmap(self.tyre_icons[compound].pixmap(self.scaled_icon_size, self.scaled_icon_size))
         layout.addWidget(icon_label)
 
         # Delta stats on the right
@@ -186,7 +184,7 @@ class TyreDeltaPage(BasePage):
         # Delta value (big, bright)
         delta_value = QLabel("---")
         delta_value.setFont(QFont(self.MONO_FONT_FACE, self.font_size_value))
-        delta_value.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
+        delta_value.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
         delta_value.setAlignment(Qt.AlignCenter)
         delta_layout.addWidget(delta_value)
 
@@ -203,7 +201,7 @@ class TyreDeltaPage(BasePage):
         # Store references
         card.icon_label = icon_label
         card.delta_value = delta_value
-        card.visible = True
+        card.compound = None  # Will be set when populated
 
         return card
 
@@ -291,28 +289,53 @@ class TyreDeltaPage(BasePage):
         Args:
             tyre_set_data: List of tyre set information
         """
+        # First, clear all cards
+        for card in self.tyre_cards:
+            self._clear_card(card)
+
+        # Find best sets for each compound in order
+        available_sets = []
         for compound in self.ALL_COMPOUNDS:
-            card = self.tyre_cards[compound]
             best_set = self._find_best_avlb_set_of_comp(tyre_set_data, compound)
-
             if best_set:
-                # Show card and update values
-                card.setVisible(True)
+                available_sets.append((compound, best_set))
 
-                # Lap delta (convert from ms to seconds)
-                delta_ms = best_set.get("lap-delta-time")
-                if delta_ms is not None:
-                    delta_s = delta_ms / 1000.0  # Convert ms to seconds
-                    sign = "+" if delta_s > 0 else ""
-                    color = self._get_delta_color(delta_s)
-                    card.delta_value.setText(f"{sign}{delta_s:.3f}")
-                    card.delta_value.setStyleSheet(f"color: {color}; border: none;")
-                else:
-                    card.delta_value.setText("---")
-                    card.delta_value.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
+        # Populate cards with available data
+        for idx, (compound, best_set) in enumerate(available_sets):
+            if idx >= 6:  # Safety check - only 6 cards available
+                break
+
+            card = self.tyre_cards[idx]
+            card.compound = compound
+
+            # Set icon
+            if compound in self.tyre_icons:
+                card.icon_label.setPixmap(
+                    self.tyre_icons[compound].pixmap(self.scaled_icon_size, self.scaled_icon_size)
+                )
+
+            # Lap delta (convert from ms to seconds)
+            delta_ms = best_set.get("lap-delta-time")
+            if delta_ms is not None:
+                delta_s = delta_ms / 1000.0  # Convert ms to seconds
+                sign = "+" if delta_s > 0 else ""
+                color = self._get_delta_color(delta_s)
+                card.delta_value.setText(f"{sign}{delta_s:.3f}")
+                card.delta_value.setStyleSheet(f"color: {color}; border: none;")
             else:
-                # Hide card if no data available
-                card.setVisible(False)
+                card.delta_value.setText("---")
+                card.delta_value.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
+
+    def _clear_card(self, card: QFrame):
+        """Clear a card to blank state.
+
+        Args:
+            card: The card to clear
+        """
+        card.compound = None
+        card.icon_label.clear()
+        card.delta_value.setText("---")
+        card.delta_value.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
 
     def _update_compound_mappings(self, tyre_set_data: List[Dict[str, Any]]):
         """Update the actual compound mappings.
@@ -390,9 +413,8 @@ class TyreDeltaPage(BasePage):
 
     def _show_no_data(self):
         """Show placeholder state when no data available."""
-        for card in self.tyre_cards.values():
-            card.delta_value.setText("---")
-            card.delta_value.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
+        for card in self.tyre_cards:
+            self._clear_card(card)
 
         for widget in self.mapping_labels.values():
             widget.actual_label.setText("---")
