@@ -138,7 +138,6 @@ class HudAppMgr(PngAppMgrBase):
             "new-value": not self.locked,
         })
         self.locked = not self.locked
-        self.info_log(str(rsp))
 
         self.set_button_state(self.lock_button, True)
         status = rsp.get("status", None)

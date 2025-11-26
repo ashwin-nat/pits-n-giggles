@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from pathlib import Path
 from typing import Any, Dict
 
 from PySide6.QtCore import Qt
@@ -33,7 +32,7 @@ from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
-from lib.assets_loader import load_icon
+from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -71,15 +70,6 @@ class FuelInfoPage(BasePage):
         """
         self.scale_factor = scale_factor
         super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="FUEL INFO")
-
-        # Load fuel icon
-        icon_base = Path("assets")
-        icon_path = icon_base / "overlays" / "fuel-pump.svg"
-        self.fuel_icon = load_icon(icon_path, self.logger.debug, self.logger.error)
-        if self.fuel_icon and not self.fuel_icon.isNull():
-            self.logger.debug(f"{self.overlay_id} | Fuel icon loaded")
-        else:
-            self.logger.warning(f"{self.overlay_id} | Failed to load fuel icon")
 
         # Widget references
         self.curr_rate_widget = None
@@ -121,7 +111,7 @@ class FuelInfoPage(BasePage):
         main_layout.addLayout(grid)
 
         # --- SURPLUS LABEL -----------------------------------------------
-        self.surplus_label = QLabel("Surplus: 0 laps")
+        self.surplus_label = QLabel("Surplus: +0 laps")
         s_font = QFont(self.SURPLUS_FONT_FACE, self.font_size_surplus)
         s_font.setWeight(QFont.Medium)
         self.surplus_label.setFont(s_font)
@@ -218,7 +208,7 @@ class FuelInfoPage(BasePage):
             # Surplus label
             if surplus is not None:
                 color = self._get_surplus_color(surplus)
-                self.surplus_label.setText(f"Surplus: {surplus:.3f} laps")
+                self.surplus_label.setText(f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps")
                 self.surplus_label.setStyleSheet(f"color: {color};")
             else:
                 self.surplus_label.setText("Surplus: ---")

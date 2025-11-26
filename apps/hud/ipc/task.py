@@ -91,7 +91,7 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
     Returns:
         dict: IPC response
     """
-    logger.info(f"Received IPC message: {msg}")
+    logger.debug(f"Received IPC message: {msg}")
 
     if not (cmd := msg.get("cmd")):
         return {"status": "error", "message": "Missing command name"}
@@ -111,10 +111,8 @@ def _shutdown_handler(args: dict, logger: logging.Logger, overlays_mgr: Overlays
         receiver_client (HudClient): Receiver client obj
     """
 
-    logger.info("Shutdown command received via IPC. Before thread creation")
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, receiver_client,),
                      name="Shutdown tasks").start()
-    logger.info("Shutdown command received via IPC. Stopping all tasks...")
     return {"status": "success", "message": "Shutting down HUD manager"}
 
 def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:

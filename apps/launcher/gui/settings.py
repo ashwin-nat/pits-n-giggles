@@ -966,14 +966,7 @@ class SettingsWindow(QDialog):
 
             # Update original_settings to the newly saved settings
             self.original_settings = validated_settings.model_copy(deep=True)
-
-            self.parent_window.info_log("Settings saved successfully")
-
-            QMessageBox.information(
-                self,
-                "Settings Saved",
-                "Settings saved successfully."
-            )
+            self.parent_window.debug_log("Settings saved successfully")
 
         except ValidationError as e:
             # Format error messages in a user-friendly way

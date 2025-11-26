@@ -227,7 +227,8 @@ class PngAppMgrBase(QObject):
                 self.debug_log(f"{self.display_name} is already running")
                 return
 
-            self.info_log(f"Starting {self.display_name}... Reason: {reason}")
+            if reason != "Initial auto-start":
+                self.info_log(f"Starting {self.display_name}... Reason: {reason}")
             self._update_status("Starting")
 
             self.ipc_port = get_free_tcp_port()
@@ -319,7 +320,7 @@ class PngAppMgrBase(QObject):
     def restart(self, reason: str):
         """Restart the subsystem"""
         self._is_restarting.set()
-        self.info_log(f"Restarting {self.display_name}...")
+        self.debug_log(f"Restarting {self.display_name}...")
         _reason = f"Restarting: {reason}"
 
         if self.is_running:

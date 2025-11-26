@@ -40,7 +40,7 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         dict: IPC response
     """
 
-    logger.info("Received lock-widgets command. args: %s", msg)
+    logger.debug("Received lock-widgets command. args: %s", msg)
 
     args = msg.get("args", {})
     if args:
@@ -60,7 +60,7 @@ def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: Ov
         dict: IPC response
     """
 
-    logger.info("Received toggle-visibility command. args: %s", msg)
+    logger.debug("Received toggle-visibility command. args: %s", msg)
 
     overlays_mgr.toggle_overlays_visibility()
     return {"status": "success", "message": "toggle-visibility handler executed."}
@@ -77,7 +77,7 @@ def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: Overlays
         dict: IPC response
     """
 
-    logger.info("Received set-opacity command. args: %s", msg)
+    logger.debug("Received set-opacity command. args: %s", msg)
 
     args = msg.get("args", {})
     if opacity := args.get("opacity"):
@@ -114,7 +114,7 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
         dict: IPC response
     """
 
-    logger.info("Received reset-overlays command. args: %s", msg)
+    logger.debug("Received reset-overlays command. args: %s", msg)
     overlays_mgr.reset_overlays()
     return {"status": "success", "message": "reset-overlays handler executed."}
 
@@ -130,7 +130,7 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         dict: IPC response
     """
 
-    logger.info("Received set-ui-scale command. args: %s", msg)
+    logger.debug("Received set-ui-scale command. args: %s", msg)
     args = msg.get("args", {})
 
     oid = args.get('oid')
