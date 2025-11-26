@@ -136,8 +136,8 @@ class TyreDeltaPage(BasePage):
         self.mapping_labels = {}
         for idx, compound in enumerate(self.SLICK_COMPOUNDS):
             mapping_widget = self._create_mapping_widget(compound)
-            row = idx // 2
-            col = idx % 2
+            row = 0
+            col = idx
             self.mapping_grid.addWidget(mapping_widget, row, col)
             self.mapping_labels[compound] = mapping_widget
 
@@ -159,8 +159,6 @@ class TyreDeltaPage(BasePage):
         card.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.COLOR_BG};
-                border: 1px solid {self.COLOR_BORDER};
-                border-radius: 6px;
             }}
         """)
         card.setFixedHeight(70)  # Fixed height for all cards
@@ -218,8 +216,6 @@ class TyreDeltaPage(BasePage):
         widget.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.COLOR_BG};
-                border: 1px solid {self.COLOR_BORDER};
-                border-radius: 4px;
             }}
         """)
 
@@ -237,17 +233,6 @@ class TyreDeltaPage(BasePage):
                 self.tyre_icons[visual_compound].pixmap(icon_size, icon_size)
             )
         layout.addWidget(icon_label)
-
-        visual_label = QLabel(visual_compound)
-        visual_label.setFont(QFont(self.FONT_FACE, self.font_size_compound))
-        visual_label.setStyleSheet(f"color: {self.COLOR_TEXT}; border: none;")
-        layout.addWidget(visual_label)
-
-        # Arrow
-        arrow_label = QLabel("→")
-        arrow_label.setFont(QFont(self.FONT_FACE, self.font_size_compound))
-        arrow_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
-        layout.addWidget(arrow_label)
 
         # Actual compound
         actual_label = QLabel("---")
