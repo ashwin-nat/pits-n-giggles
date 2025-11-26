@@ -26,12 +26,12 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout, QWidget)
-from PySide6.QtGui import QFont, QPixmap
 
-from lib.assets_loader import load_tyre_icons_dict
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+from lib.assets_loader import load_tyre_icons_dict
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ class TyreSetsPage(BasePage):
         # Create exactly 6 blank cards (2 rows x 3 cols) - reserve space
         self.tyre_cards = []
         for idx in range(6):
-            card = self._create_tyre_card("")
+            card = self._create_tyre_card()
             row = idx // 3
             col = idx % 3
             self.stats_grid.addWidget(card, row, col)
@@ -146,11 +146,8 @@ class TyreSetsPage(BasePage):
         main_layout.addStretch()
         self.page_layout.addWidget(content_widget)
 
-    def _create_tyre_card(self, compound: str) -> QFrame:
+    def _create_tyre_card(self) -> QFrame:
         """Create a compact card for displaying tyre delta.
-
-        Args:
-            compound: The tyre compound name (or empty string for blank card)
 
         Returns:
             QFrame: The styled card widget
@@ -389,12 +386,11 @@ class TyreSetsPage(BasePage):
         """
         if delta < -0.5:
             return self.COLOR_PRIMARY  # Much faster
-        elif delta < 0:
+        if delta < 0:
             return self.COLOR_TEXT  # Slightly faster
-        elif delta < 0.5:
+        if delta < 0.5:
             return self.COLOR_WARNING  # Slightly slower
-        else:
-            return self.COLOR_DANGER  # Much slower
+        return self.COLOR_DANGER  # Much slower
 
     def _show_no_data(self):
         """Show placeholder state when no data available."""
