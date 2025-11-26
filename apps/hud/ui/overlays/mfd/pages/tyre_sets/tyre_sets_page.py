@@ -132,8 +132,8 @@ class TyreSetsPage(BasePage):
         self.mapping_grid.setSpacing(8)
         self.mapping_grid.setContentsMargins(0, 0, 0, 0)
 
-        # Create 2x2 grid for slick compounds
-        self.mapping_labels = {}
+        # Create 1x4 grid for slick compounds
+        self.mapping_labels: Dict[str, QWidget] = {}
         for idx, compound in enumerate(self.SLICK_COMPOUNDS):
             mapping_widget = self._create_mapping_widget(compound)
             row = 0
@@ -247,7 +247,6 @@ class TyreSetsPage(BasePage):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             """Update the page with new data."""
-            self.logger.debug(f"{self.overlay_id} | Received stream overlay update")
 
             tyre_sets_info = data.get("tyre-sets")
             if not tyre_sets_info:
@@ -276,11 +275,11 @@ class TyreSetsPage(BasePage):
             self._clear_card(card)
 
         # Find best sets for each compound in order
-        available_sets = []
-        for compound in self.ALL_COMPOUNDS:
-            best_set = self._find_best_avlb_set_of_comp(tyre_set_data, compound)
-            if best_set:
-                available_sets.append((compound, best_set))
+        available_sets = [
+            (compound, best_set)
+            for compound in self.ALL_COMPOUNDS
+            if (best_set := self._find_best_avlb_set_of_comp(tyre_set_data, compound))
+        ]
 
         # Populate cards with available data
         for idx, (compound, best_set) in enumerate(available_sets):
@@ -327,9 +326,8 @@ class TyreSetsPage(BasePage):
         """
         for visual_comp in self.SLICK_COMPOUNDS:
             widget = self.mapping_labels[visual_comp]
-            actual_comp = self._get_actual_comp_for_visual_comp(tyre_set_data, visual_comp)
 
-            if actual_comp:
+            if actual_comp := self._get_actual_comp_for_visual_comp(tyre_set_data, visual_comp):
                 widget.actual_label.setText(actual_comp)
                 widget.actual_label.setStyleSheet(f"color: {self.COLOR_PRIMARY};")
             else:
@@ -352,7 +350,7 @@ class TyreSetsPage(BasePage):
         available_sets = [
             tyre_set for tyre_set in tyre_sets_data
             if tyre_set.get("visual-tyre-compound") == compound
-            and tyre_set.get("available", False)
+                and tyre_set.get("available", False)
         ]
 
         return min(available_sets, key=lambda s: s.get("wear", 100), default=None)

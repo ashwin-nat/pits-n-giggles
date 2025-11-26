@@ -75,7 +75,6 @@ def load_tyre_icons_dict(
         ) -> dict[str, QIcon]:
     """Get a dictionary of tyre icons.
 
-    A
     Args:
         relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
         debug_log_printer: Optional callable for debug logging. Defaults to no-op.
