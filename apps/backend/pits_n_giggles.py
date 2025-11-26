@@ -187,12 +187,12 @@ class PngRunner:
 
         self.m_logger.debug("Tasks stopped. Exiting...")
 
-    async def _start_event_loop_monitor(self, threshold: float = 0.05) -> None:
+    async def _start_event_loop_monitor(self, threshold: float = 0.1) -> None:
         """
         Logs a warning whenever the event loop is blocked
         longer than `threshold` seconds.
 
-        Default threshold = 50ms (0.05s).
+        Default threshold = 100ms (0.1s).
         """
 
         last = time.perf_counter()
