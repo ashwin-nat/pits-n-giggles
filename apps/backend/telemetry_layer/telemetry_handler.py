@@ -137,10 +137,6 @@ class F1TelemetryHandler:
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-        self.m_udp_custom_marker: Optional[int] = settings.Network.udp_custom_action_code
-        self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
-        self.m_hud_toggle_udp_action_code: Optional[int] = settings.HUD.toggle_overlays_udp_action_code
-        self.m_cycle_mfd_udp_action_code: Optional[int] = settings.HUD.cycle_mfd_udp_action_code
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
@@ -156,7 +152,7 @@ class F1TelemetryHandler:
             custom_marker=settings.Network.udp_custom_action_code,
             tyre_delta=settings.Network.udp_tyre_delta_action_code,
             toggle_all_overlays=settings.HUD.toggle_overlays_udp_action_code,
-            mfd_next_page=self.m_cycle_mfd_udp_action_code,
+            mfd_next_page=settings.HUD.cycle_mfd_udp_action_code,
             toggle_lap_timer_overlay=settings.HUD.lap_timer_toggle_udp_action_code,
             toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
             toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
