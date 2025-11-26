@@ -67,3 +67,28 @@ def load_icon(
     except Exception as e:  # pylint: disable=broad-except
         error_log(f"Failed to load icon from {relative_path}: {e}")
         return QIcon()
+
+def load_tyre_icons_dict(
+        relative_path: Optional[Path] = Path("assets") / "tyre-icons",
+        debug_log_printer: Optional[Callable[[str], None]] = None,
+        error_log_printer: Optional[Callable[[str], None]] = None
+        ) -> dict[str, QIcon]:
+    """Get a dictionary of tyre icons.
+
+    A
+    Args:
+        relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
+        debug_log_printer: Optional callable for debug logging. Defaults to no-op.
+        error_log_printer: Optional callable for error logging. Defaults to no-op.
+
+    Returns:
+        dict[str, QIcon]: A dictionary mapping visual compound names to their corresponding icons.
+    """
+    return {
+        "Soft": load_icon(relative_path / "soft_tyre.svg", debug_log_printer, error_log_printer),
+        "Super Soft": load_icon(relative_path / "super_soft_tyre.svg", debug_log_printer, error_log_printer),
+        "Medium": load_icon(relative_path / "medium_tyre.svg", debug_log_printer, error_log_printer),
+        "Hard": load_icon(relative_path / "hard_tyre.svg", debug_log_printer, error_log_printer),
+        "Inters": load_icon(relative_path / "intermediate_tyre.svg", debug_log_printer, error_log_printer),
+        "Wet": load_icon(relative_path / "wet_tyre.svg", debug_log_printer, error_log_printer),
+    }
