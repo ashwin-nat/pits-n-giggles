@@ -411,3 +411,4 @@ class HudAppMgr(PngAppMgrBase):
 
             # Update current settings and save to disk
             self.window.update_settings(new_settings)
+            self.window.save_settings_to_disk(new_settings)

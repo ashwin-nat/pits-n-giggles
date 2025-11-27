@@ -611,17 +611,12 @@ class PngLauncherWindow(QMainWindow):
         self.shutdown_dialog.show()
         self.process_events()
 
-        pool = QThreadPool.globalInstance()
-        tasks = []
-
         for subsystem in self.subsystems:
             self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
             task = StopTask(subsystem, "Launcher shutting down")
-            tasks.append(task)
-            pool.start(task)
-            self.process_events()
+            self.thread_pool.start(task)
 
-        while not pool.waitForDone(100):
+        while not self.thread_pool.waitForDone(100):
             # kick the event loop to keep the app responsive
             self.process_events()
         event.accept()
@@ -724,35 +719,37 @@ class PngLauncherWindow(QMainWindow):
     def on_settings_changed(self, new_settings: PngSettings):
         """Handle settings changed event"""
 
-
-        pool = QThreadPool.globalInstance()
-        tasks = []
+        # Save to disk before restarting subsystems so that the new settings are available
+        self.save_settings_to_disk(new_settings)
 
         for subsystem in self.subsystems:
             self.debug_log(f"On settings change for {subsystem.display_name}...")
             task = SettingsChangeTask(subsystem, new_settings)
-            tasks.append(task)
-            pool.start(task)
+            self.thread_pool.start(task)
 
-        pool.waitForDone()
-        self.show_success("Settings Changed", "The settings have been saved and applied successfully.")
+        while not self.thread_pool.waitForDone(100):
+            # kick the event loop to keep the app responsive
+            self.process_events()
+
         self.update_settings(new_settings)
+        self.show_success("Settings Changed", "The settings have been saved and applied successfully.")
 
-    def update_settings(self, new_settings: PngSettings, save_to_disk: bool = True):
-        """Update the config file with the new settings"""
+    def update_settings(self, new_settings: PngSettings):
+        """Update the local settings and propagate to all subsystems"""
         self.settings = new_settings
         for subsystem in self.subsystems:
             subsystem.curr_settings = self.settings
 
-        if not save_to_disk:
-            return
-
+    def save_settings_to_disk(self, settings: PngSettings, path: Optional[str] = None):
+        """Save the settings to disk"""
+        if not path:
+            path = self.config_file_new
         try:
-            save_config_to_json(new_settings, self.config_file_new)
+            save_config_to_json(settings, path)
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.error_log(f"Failed to save settings to {self.config_file_new}: {e}")
+            self.error_log(f"Failed to save settings to {path}: {e}")
 
-        self.info_log("Settings saved successfully")
+        self.info_log("Settings saved successfully to disk")
 
     def mark_update_button_available(self):
         """Mark the update button as available"""
