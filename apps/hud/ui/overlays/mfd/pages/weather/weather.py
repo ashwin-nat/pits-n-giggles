@@ -38,6 +38,23 @@ from lib.assets_loader import load_icon
 class WeatherForecastCard:
     """Individual forecast card containing fixed-grid aligned UI elements."""
 
+    # Font size constants
+    TIME_FONT_SIZE = 15
+    EMOJI_FONT_SIZE = 24
+    TEMP_FONT_SIZE = 13
+    CHANGE_FONT_SIZE = 14
+    RAIN_FONT_SIZE = 13
+
+    # Icon size constants
+    ICON_SIZE = 16
+
+    # Layout constants
+    CARD_WIDTH = 100
+    CARD_MIN_HEIGHT = 180
+    ICON_COLUMN_WIDTH = 16
+    TEMP_COLUMN_WIDTH = 30
+    ARROW_COLUMN_WIDTH = 12
+
     def __init__(self, parent: QWidget, scale_factor: float, font_face: str,
                  track_temp_icon: QIcon, air_temp_icon: QIcon, logger: logging.Logger):
         self.scale_factor = scale_factor
@@ -48,15 +65,15 @@ class WeatherForecastCard:
 
         # Card container
         self.widget = QWidget(parent)
-        self.widget.setFixedWidth(int(100 * scale_factor))
-        self.widget.setMinimumHeight(int(180 * scale_factor))
+        self.widget.setFixedWidth(self.card_width)
+        self.widget.setMinimumHeight(self.card_min_height)
         self.widget.setStyleSheet("background: transparent;")
 
         # Use grid layout for perfect alignment
         self.layout = QGridLayout(self.widget)
-        self.layout.setColumnMinimumWidth(0, int(16 * scale_factor))
-        self.layout.setColumnMinimumWidth(1, int(30 * scale_factor))
-        self.layout.setColumnMinimumWidth(2, int(12 * scale_factor))
+        self.layout.setColumnMinimumWidth(0, self.icon_column_width)
+        self.layout.setColumnMinimumWidth(1, self.temp_column_width)
+        self.layout.setColumnMinimumWidth(2, self.arrow_column_width)
         self.layout.setContentsMargins(4, 6, 4, 6)
         self.layout.setHorizontalSpacing(4)
         self.layout.setVerticalSpacing(6)
@@ -67,16 +84,16 @@ class WeatherForecastCard:
         self.layout.setColumnStretch(2, 1)  # arrow column
 
         # Create labels
-        self.time_label = self._create_label(int(12 * scale_factor), "color: #EEE; font-weight: 600;")
-        self.emoji_label = self._create_label(int(24 * scale_factor), "")
+        self.time_label = self._create_label(self.time_font_size, "color: #EEE; font-weight: 600;")
+        self.emoji_label = self._create_label(self.emoji_font_size, "")
 
         # Track temp row
-        self.track_row = self._create_temp_row(self.track_icon, int(16 * scale_factor))
+        self.track_row = self._create_temp_row(self.track_icon, self.icon_size)
         # Air temp row
-        self.air_row = self._create_temp_row(self.air_icon, int(16 * scale_factor))
+        self.air_row = self._create_temp_row(self.air_icon, self.icon_size)
 
         # Rain label
-        self.rain_label = self._create_label(int(11 * scale_factor), "color: #7dafff; font-weight: bold;")
+        self.rain_label = self._create_label(self.rain_font_size, "color: #7dafff; font-weight: bold;")
 
         # Add widgets to fixed rows & columns
         self.layout.addWidget(self.time_label, 0, 0, 1, 3, Qt.AlignmentFlag.AlignCenter)
@@ -99,6 +116,53 @@ class WeatherForecastCard:
         self.clear()
 
     # ----------------------------------------------------------------------
+    # Properties for scaled sizes
+
+    @property
+    def time_font_size(self) -> int:
+        return int(self.TIME_FONT_SIZE * self.scale_factor)
+
+    @property
+    def emoji_font_size(self) -> int:
+        return int(self.EMOJI_FONT_SIZE * self.scale_factor)
+
+    @property
+    def temp_font_size(self) -> int:
+        return int(self.TEMP_FONT_SIZE * self.scale_factor)
+
+    @property
+    def change_font_size(self) -> int:
+        return int(self.CHANGE_FONT_SIZE * self.scale_factor)
+
+    @property
+    def rain_font_size(self) -> int:
+        return int(self.RAIN_FONT_SIZE * self.scale_factor)
+
+    @property
+    def icon_size(self) -> int:
+        return int(self.ICON_SIZE * self.scale_factor)
+
+    @property
+    def card_width(self) -> int:
+        return int(self.CARD_WIDTH * self.scale_factor)
+
+    @property
+    def card_min_height(self) -> int:
+        return int(self.CARD_MIN_HEIGHT * self.scale_factor)
+
+    @property
+    def icon_column_width(self) -> int:
+        return int(self.ICON_COLUMN_WIDTH * self.scale_factor)
+
+    @property
+    def temp_column_width(self) -> int:
+        return int(self.TEMP_COLUMN_WIDTH * self.scale_factor)
+
+    @property
+    def arrow_column_width(self) -> int:
+        return int(self.ARROW_COLUMN_WIDTH * self.scale_factor)
+
+    # ----------------------------------------------------------------------
 
     def _create_label(self, font_size: int, style: str) -> QLabel:
         label = QLabel("", self.widget)
@@ -114,12 +178,12 @@ class WeatherForecastCard:
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         temp_label = QLabel("", self.widget)
-        temp_label.setFont(QFont(self.font_face, int(11 * self.scale_factor)))
+        temp_label.setFont(QFont(self.font_face, self.temp_font_size))
         temp_label.setStyleSheet("color: #EEE; font-weight: bold;")
         temp_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         change_label = QLabel("", self.widget)
-        change_label.setFont(QFont(self.font_face, int(14 * self.scale_factor)))
+        change_label.setFont(QFont(self.font_face, self.change_font_size))
 
         temp_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         change_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -236,6 +300,9 @@ class WeatherForecastPage(BasePage):
     FONT_FACE = "Consolas"
     MAX_SAMPLES = 5
 
+    # Separator size constant
+    SEPARATOR_HEIGHT = 120
+
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the weather forecast page.
 
@@ -260,6 +327,15 @@ class WeatherForecastPage(BasePage):
 
         self.logger.debug(f"{self.overlay_id} | Weather forecast widget initialized")
 
+    # ----------------------------------------------------------------------
+    # Properties for scaled sizes
+
+    @property
+    def separator_height(self) -> int:
+        return int(self.SEPARATOR_HEIGHT * self.scale_factor)
+
+    # ----------------------------------------------------------------------
+
     def _build_ui(self) -> None:
         """Build the UI with pre-created cards."""
         # Horizontal layout for cards
@@ -280,7 +356,7 @@ class WeatherForecastPage(BasePage):
             if i < self.MAX_SAMPLES - 1:
                 separator = QLabel(self)
                 separator.setFixedWidth(1)
-                separator.setFixedHeight(int(120 * self.scale_factor))
+                separator.setFixedHeight(self.separator_height)
                 separator.setStyleSheet("background-color: #444444;")
                 separator.hide()  # Start hidden
                 self._separators.append(separator)
