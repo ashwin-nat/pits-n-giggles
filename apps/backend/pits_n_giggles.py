@@ -95,7 +95,7 @@ class PngRunner:
             debug_mode=debug_mode
         )
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
-        self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
+        # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -235,10 +235,10 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     """
 
     try:
-        if args.debug:
-            loop = asyncio.get_running_loop()
-            loop.set_debug(True)
-            loop.slow_callback_duration = 0.1   # 100 ms
+        # if args.debug:
+        #     loop = asyncio.get_running_loop()
+        #     loop.set_debug(True)
+        #     loop.slow_callback_duration = 0.1   # 100 ms
         app = PngRunner(
             logger=logger,
             config_file=args.config_file,

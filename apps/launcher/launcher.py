@@ -191,18 +191,15 @@ def entry_point() -> None:
             heartbeat_timeout=5.0,
         )
 
+        def ipc_shutdown_callback(_args: dict) -> dict:
+            app.request_shutdown()
+            return {"status": "success"}
+
         # shutdown handler (__shutdown__)
-        ipc.register_shutdown_callback(
-            lambda _args: (
-                app.on_closing("ipc_shutdown"),
-                {"status": "success"}
-            )[1]
-        )
+        ipc.register_shutdown_callback(ipc_shutdown_callback)
 
         # heartbeat missed callback
-        ipc.register_heartbeat_missed_callback(
-            lambda missed: app.on_closing("heartbeat_missed")
-        )
+        ipc.register_heartbeat_missed_callback(ipc_shutdown_callback)
 
         # minimal generic handler
         def launcher_handler(request: dict) -> dict:

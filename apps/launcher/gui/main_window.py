@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QMetaObject, QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
@@ -619,6 +619,8 @@ class PngLauncherWindow(QMainWindow):
         while not self.thread_pool.waitForDone(100):
             # kick the event loop to keep the app responsive
             self.process_events()
+
+        self.info_log(f"{APP_NAME} {self.ver_str} has shut down successfully.")
         event.accept()
 
     def run(self):
@@ -764,3 +766,8 @@ class PngLauncherWindow(QMainWindow):
         else:
             self.updates_btn.setStyleSheet(self.BUTTON_STYLESHEET)
 
+    def request_shutdown(self):
+        """
+        Thread-safe request to shutdown by injecting a close event
+        """
+        QMetaObject.invokeMethod(self, "close", Qt.ConnectionType.QueuedConnection)
