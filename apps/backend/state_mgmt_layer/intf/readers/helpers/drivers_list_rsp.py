@@ -461,6 +461,10 @@ class DriversListRsp(BaseAPI):
             delta = delta_obj.delta_ms
         else:
             delta = None
+        if driver_data.m_packet_copies.m_packet_lap_data:
+            sc_delta = driver_data.m_packet_copies.m_packet_lap_data.m_safetyCarDelta
+        else:
+            sc_delta = None
         return {
             "lap-time-ms": driver_data.m_lap_info.m_curr_lap_ms,
             "s1-time-ms": driver_data.m_lap_info.m_curr_lap_s1_ms,
@@ -470,7 +474,8 @@ class DriversListRsp(BaseAPI):
             "driver-status" : str(driver_data.m_lap_info.m_curr_status),
             "sector-status" : driver_data.getCurrLapSectorStatus(self.m_fastest_s1_ms, self.m_fastest_s2_ms),
             "lap-num" : driver_data.m_lap_info.m_current_lap,
-            "delta-ms" : delta
+            "delta-ms" : delta,
+            "delta-sc-sec": sc_delta,
         }
 
     def _getWarningsPenaltiesJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:

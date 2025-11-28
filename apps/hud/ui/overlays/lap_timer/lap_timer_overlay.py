@@ -180,9 +180,7 @@ class LapTimerOverlay(BaseOverlay):
         @self.on_event("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
-            # Validate session type
-            session_type = data["event-type"]
-            if session_type == 'None':
+            if data["event-type"] == "None":
                 return
 
             ref_row = get_ref_row(data)
@@ -192,11 +190,9 @@ class LapTimerOverlay(BaseOverlay):
             # Handle session changes
             incoming_session_uid = data["session-uid"]
             assert incoming_session_uid is not None
-
             if self.curr_session_uid != incoming_session_uid:
                 self._handle_new_session(incoming_session_uid)
 
-            # Extract lap information
             lap_info = ref_row["lap-info"]
             last_lap = lap_info["last-lap"]
             best_lap = lap_info["best-lap"]
@@ -205,35 +201,63 @@ class LapTimerOverlay(BaseOverlay):
             # Update static fields
             self._update_last_lap(last_lap["lap-time-ms"])
             self._update_best_lap(best_lap["lap-time-ms"])
-
-            # Update display based on driver status
-            driver_status = curr_lap["driver-status"]
-            delta = curr_lap["delta-ms"]
-
             self.sector_bar.set_sector_status(curr_lap["sector-status"])
 
-            if driver_status in {"FLYING_LAP", "ON_TRACK"}:
-                # Update current lap time
-                self._update_curr_lap(curr_lap["lap-time-ms"])
+            # Dispatch to clean sub-handlers
+            self._handle_current_lap_display(curr_lap)
+            self._handle_delta_and_estimated(data, curr_lap, best_lap)
 
-                # Update delta and estimated time
-                if delta is not None:
-                    self._update_delta(delta)
-                    estimated_ms = best_lap["lap-time-ms"] + delta if best_lap["lap-time-ms"] else None
-                    if estimated_ms:
-                        estimated_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
-                    else:
-                        estimated_str = self.DEFAULT_TIME
-                    self._update_estimated(estimated_str)
-                else:
-                    self._clear_delta_and_estimated()
+    def _handle_current_lap_display(self, curr_lap: Dict[str, Any]) -> None:
+        """Handle current lap display.
+        If on flying lap, display curr lap time, else display status
+        """
+        driver_status = curr_lap["driver-status"]
+
+        if driver_status in {"FLYING_LAP", "ON_TRACK"}:
+            self._update_curr_lap(curr_lap["lap-time-ms"])
+        else:
+            self.curr_value.setText(driver_status)
+            self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
+
+    def _handle_delta_and_estimated(
+        self,
+        data: Dict[str, Any],
+        curr_lap: Dict[str, Any],
+        best_lap: Dict[str, Any],
+    ) -> None:
+
+        is_sc = data["safety-car-status"] in {
+            "FULL_SAFETY_CAR",
+            "VIRTUAL_SAFETY_CAR",
+        }
+
+        best_ms = best_lap["lap-time-ms"] or 0
+        delta_ms_for_estimated = None
+
+        # --- SC delta takes priority ---
+        if is_sc:
+            delta_sc = curr_lap["delta-sc-sec"]
+            if delta_sc is not None:
+                self._update_delta_sec(delta_sc)
+                delta_ms_for_estimated = int(delta_sc * 1000)
             else:
-                # Display driver status in current lap field
-                self.curr_value.setText(driver_status)
-                self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
+                self._clear_delta()
+        else:
+            # --- Normal racing delta ---
+            delta_ms = curr_lap["delta-ms"]
+            if delta_ms is not None:
+                self._update_delta_ms(delta_ms)
+                delta_ms_for_estimated = delta_ms
+            else:
+                self._clear_delta()
 
-                # Clear delta and estimated for non-flying laps
-                self._clear_delta_and_estimated()
+        # --- Always update estimated time ---
+        if best_ms and delta_ms_for_estimated is not None:
+            estimated_ms = best_ms + delta_ms_for_estimated
+            est_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
+        else:
+            est_str = self.DEFAULT_TIME
+        self._update_estimated(est_str)
 
     def _handle_new_session(self, session_uid: str):
         """Handle new session detection.
@@ -294,20 +318,28 @@ class LapTimerOverlay(BaseOverlay):
         self.curr_value.setText(time_str)
         self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
 
-    def _update_delta(self, delta: float):
+    def _update_delta_ms(self, delta_ms: int):
         """Update delta display with appropriate color.
 
         Args:
-            delta: Delta time in milliseconds
+            delta_ms: Delta time in milliseconds
         """
-        delta_s = delta / 1000
-        text = F1Utils.formatFloat(delta_s, precision=3, signed=True)
+        delta_s = delta_ms / 1000
+        self._update_delta_sec(delta_s)
+
+    def _update_delta_sec(self, delta_sec: float):
+        """Update delta display with appropriate color.
+
+        Args:
+            delta_sec: Delta time in seconds
+        """
+        text = F1Utils.formatFloat(delta_sec, precision=3, signed=True)
         self.delta_value.setText(text)
 
         # Set color based on delta value
-        if delta_s < 0:
+        if delta_sec < 0:
             color = "#00FF00"  # Faster (green)
-        elif delta_s > 0:
+        elif delta_sec > 0:
             color = "#FF5555"  # Slower (red)
         else:
             color = "#FFFFFF"  # Neutral (white)
@@ -326,6 +358,15 @@ class LapTimerOverlay(BaseOverlay):
         """Clear delta and estimated time fields."""
         self.delta_value.setText(self.DEFAULT_DELTA)
         self.delta_value.setStyleSheet("color: #FFFFFF; border: none;")
+        self.estimated_value.setText(self.DEFAULT_TIME)
+
+    def _clear_delta(self):
+        """Clear delta field."""
+        self.delta_value.setText(self.DEFAULT_DELTA)
+        self.delta_value.setStyleSheet("color: #FFFFFF; border: none;")
+
+    def _clear_estimated(self):
+        """Clear estimated field."""
         self.estimated_value.setText(self.DEFAULT_TIME)
 
     @property
