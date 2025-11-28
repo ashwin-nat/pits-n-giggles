@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum, auto
-from typing import Any, Callable, Set, Dict
+from typing import Callable, Set
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -68,21 +68,16 @@ class PendingEventsManager:
         """
         self._pending_events: Set[DriverPendingEvents] = set()
         self._callback: Callable[..., None] = callback
-        self._callback_kwargs: Dict[str, Any] = {}
-        self._opt_data: Any = None
 
     def register(self,
-                 events: Set[DriverPendingEvents],
-                 **kwargs: Any) -> None:
+                 events: Set[DriverPendingEvents]) -> None:
         """
         Registers the set of events to wait for and optional keyword arguments for the callback.
 
         Args:
             events (Set[DriverPendingEvents]): Events that must occur before the callback is triggered.
-            **kwargs (Any): Keyword arguments to pass to the callback.
         """
         self._pending_events = set(events)
-        self._callback_kwargs = kwargs
 
     def onEvent(self, event: DriverPendingEvents) -> None:
         """
@@ -98,8 +93,7 @@ class PendingEventsManager:
 
         self._pending_events.remove(event)
         if not self._pending_events:
-            self._callback(**self._callback_kwargs)
-            self._opt_data = None
+            self._callback()
 
     def areEventsPending(self) -> bool:
         """
@@ -109,13 +103,3 @@ class PendingEventsManager:
             bool: True if there are pending events, False otherwise.
         """
         return bool(self._pending_events)
-
-    @property
-    def data(self) -> Any:
-        """Getter for the optional data."""
-        return self._opt_data
-
-    @data.setter
-    def data(self, data: Any):
-        """Setter for the optional data. The optional data will be cleared after the callback is triggered."""
-        self._opt_data = data
