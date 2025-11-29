@@ -71,7 +71,8 @@ entry_script = os.path.join(PROJECT_ROOT, "apps", "launcher", "__main__.py")
 hiddenimports = (
     collect_submodules("apps.launcher") +
     collect_submodules("apps.backend") +
-    collect_submodules("apps.save_viewer")
+    collect_submodules("apps.save_viewer") +
+    collect_submodules("apps.hud")
 )
 
 datas = [
@@ -92,6 +93,55 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "wet_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "intermediate_tyre.svg"), "assets/tyre-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "super_soft_tyre.svg"), "assets/tyre-icons"),
+
+    # Team icons
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "alpine.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "aston_martin.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "ferrari.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "haas.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mclaren.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mercedes.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "rb.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "red_bull.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "sauber.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "williams.svg"), "assets/team-logos"),
+    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "default.svg"), "assets/team-logos"),
+
+    # Overlay icons
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "road.svg"), "assets/overlay"),
+    (os.path.join(PROJECT_ROOT, "assets", "overlays", "thermometer-half.svg"), "assets/overlay"),
+
+    # Launcher icons
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-up.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "discord.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "download.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "lock.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "next-page.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "open-file.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "reset.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "save.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "settings.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "show-hide.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "start.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "stop.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "twitch.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "unlock.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "updates.svg"), "assets/launcher-icons"),
+    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "website.svg"), "assets/launcher-icons"),
+
+    # Fonts
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-regular.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Roboto-Regular.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Roboto-Bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Regular.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Bold.ttf"), "assets/fonts"),
+    (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Regular.ttf"), "assets/fonts"),
+
 ]
 
 # --------------------------------------------------------------------------------------------------

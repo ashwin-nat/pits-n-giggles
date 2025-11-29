@@ -47,15 +47,15 @@ from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
-from tests_config import (TestCaptureSettings, TestConfigIO,
+from tests_config import (TestCaptureSettings, TestConfigMigration,
                           TestDisplaySettings, TestEdgeCases, TestFilePathStr,
                           TestForwardingSettings, TestHttpsSettings,
-                          TestLoadConfigFromIni, TestLoggingSettings,
-                          TestMissingSectionsAndKeys, TestNetworkSettings,
-                          TestPitTimeLossF1, TestPitTimeLossF2,
-                          TestPngSettings, TestPrivacySettings,
-                          TestSampleSettingsFixture, TestStreamOverlaySettings,
-                          TestSubSysCtrl)
+                          TestHudSettings, TestLoadConfigFromIni,
+                          TestLoadConfigFromJson, TestMissingSectionsAndKeys,
+                          TestNetworkSettings, TestPitTimeLossF1,
+                          TestPitTimeLossF2, TestPngSettings,
+                          TestPrivacySettings, TestSampleSettingsFixture,
+                          TestStreamOverlaySettings, TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,
@@ -64,7 +64,6 @@ from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
                                     TestFuelRemainingPerLap)
-from tests_ipc import TestIPC
 from tests_itc import TestAsyncInterTaskCommunicator
 from tests_overtake_analyzer import (TestOvertakeAnalyzerEmptyInput,
                                      TestOvertakeAnalyzerFileCsv,
@@ -82,7 +81,9 @@ from tests_tyre_wear_extrapolator import (
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
+from tests.ipc import TestIpcParentChild, TestIpcSubscriber
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
+from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_wdt import TestWatchDogTimer
 

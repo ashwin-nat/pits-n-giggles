@@ -40,7 +40,7 @@ class TestSimpleLinearRegression(TestTyreWearPrediction):
         model.fit(x, y)
 
         # Check if the model's slope (m) and intercept (c) match the expected values
-        self.assertEqual(model.m, 2.0)
+        self.assertEqual(model.slope, 2.0)
         self.assertEqual(model.c, 0.0)
 
     def test_fit_with_single_point(self):
@@ -50,7 +50,7 @@ class TestSimpleLinearRegression(TestTyreWearPrediction):
         model.fit(x, y)
 
         # With only one point, slope is assumed to be 0, and the intercept is the y value
-        self.assertEqual(model.m, 0)
+        self.assertEqual(model.slope, 0)
         self.assertEqual(model.c, 5)
 
     def test_fit_with_empty_lists(self):

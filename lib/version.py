@@ -22,6 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from typing import Dict, Any, Optional, List
+
 import json
 import os
 import requests
@@ -41,16 +43,30 @@ def get_version() -> str:
 
     return os.environ.get('PNG_VERSION', 'dev')
 
-def is_update_available(curr_version_str: str,
-                        timeout: float = 5.0,
-                        api_endpoint: str = PNG_RELEASES_API) -> bool:
+def get_releases_info(timeout: float = 5.0, api_endpoint: str = PNG_RELEASES_API) -> Optional[List[Dict[str, Any]]]:
+    """Get releases info from GitHub
+
+    Args:
+        timeout (float): Timeout for the request in seconds
+        api_endpoint (str): GitHub releases API endpoint. Defaults to the official Pits n' Giggles releases API.
+
+    Returns:
+        List[Dict[str, Any]]: List of releases
+    """
+    try:
+        response = requests.get(api_endpoint, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except (requests.exceptions.RequestException, json.JSONDecodeError):
+        return None
+
+def is_update_available(curr_version_str: str, releases: List[Dict[str, Any]]) -> bool:
     """
     Checks if a newer stable version is available on GitHub.
 
     Args:
-        curr_version_str (str): Current version of the app (e.g. '1.2.3')
-        timeout (float): Timeout for the request in seconds
-        api_endpoint (str): GitHub releases API endpoint. Defaults to the official Pits n' Giggles releases API.
+        curr_version_str (str): Current version string.
+        releases (List[Dict[str, Any]]): List of releases from GitHub API response.
 
     Returns:
         bool: True if update is available, False otherwise or on error.
@@ -61,11 +77,8 @@ def is_update_available(curr_version_str: str,
         If older versions are published *after* newer ones, this may return incorrect results.
     """
     try:
-        response = requests.get(api_endpoint, timeout=timeout)
-        response.raise_for_status()
-        releases = response.json()
-        curr_version = version.parse(curr_version_str)
 
+        curr_version = version.parse(curr_version_str)
         for release in releases:
             if release.get("prerelease", False):
                 continue
@@ -74,5 +87,46 @@ def is_update_available(curr_version_str: str,
 
         return False
 
-    except (requests.exceptions.RequestException, json.JSONDecodeError, version.InvalidVersion):
+    except (version.InvalidVersion):
         return False
+
+def get_newer_stable_releases(
+    curr_version_str: str,
+    releases: List[Dict[str, Any]]
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Return a list of stable (non-prerelease) releases that are newer than
+    the given version.
+
+    Args:
+        curr_version_str (str): Current version string.
+        releases (List[Dict[str, Any]]): GitHub releases list.
+
+    Returns:
+        Optional[List[Dict[str, Any]]]: List of newer stable releases
+        or None on error.
+    """
+    try:
+        curr_version = version.parse(curr_version_str)
+        newer: List[Dict[str, Any]] = []
+
+        for rel in releases:
+            if rel.get("prerelease", False):
+                continue
+
+            tag = rel.get("tag_name", "").lstrip("v")
+            if not tag:
+                continue
+
+            try:
+                rel_version = version.parse(tag)
+            except version.InvalidVersion:
+                continue
+
+            if rel_version > curr_version:
+                newer.append(rel)
+
+        return newer
+
+    except version.InvalidVersion:
+        return None

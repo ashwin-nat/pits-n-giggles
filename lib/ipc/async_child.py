@@ -23,14 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import os
 import time
 from typing import Awaitable, Callable, Optional
 
 import zmq
 import zmq.asyncio
-
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -180,7 +177,10 @@ class IpcChildAsync:
                         response = await handler_fn(msg)
 
                 except Exception as e: # pylint: disable=broad-except
-                    response = {"error": str(e)}
+                    response = {
+                        "status" : "error",
+                        "message": str(e)
+                    }
 
                 # 3) always send back one JSON
                 await self.sock.send_json(response)
@@ -197,11 +197,12 @@ class IpcChildAsync:
             self.close()
             self._running = False
 
-    def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
         """Default heartbeat missed callback. Hard kills the app"""
-        os._exit(PNG_LOST_CONN_TO_PARENT)
+        return
 
     def close(self) -> None:
         """Closes the socket."""
+        self._running = False
         self.sock.close()
         self.ctx.term()

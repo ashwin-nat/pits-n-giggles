@@ -26,6 +26,7 @@ import asyncio
 import logging
 from typing import List
 
+from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 from lib.error_status import PngTelemetryPortInUseError, is_port_in_use_error
 
@@ -40,6 +41,7 @@ def initTelemetryLayer(
         logger: logging.Logger,
         ver_str: str,
         shutdown_event: asyncio.Event,
+        session_state: SessionState,
         tasks: List[asyncio.Task]) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
@@ -49,6 +51,7 @@ def initTelemetryLayer(
         logger (logging.Logger): Logger instance
         ver_str (str): Version string
         shutdown_event (asyncio.Event): Shutdown event
+        session_state (SessionState): Handle to the session state
         tasks (List[asyncio.Task]): List of tasks to be executed
 
     Returns:
@@ -59,6 +62,7 @@ def initTelemetryLayer(
         handler = setupTelemetryTask(
             settings=settings,
             replay_server=replay_server,
+            session_state=session_state,
             logger=logger,
             ver_str=ver_str,
             tasks=tasks

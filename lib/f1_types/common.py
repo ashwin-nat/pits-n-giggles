@@ -29,8 +29,9 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import math
 from abc import abstractmethod
-from typing import List, Optional, Set, Union
+from typing import Any, Dict, List, Set
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
 
@@ -368,6 +369,10 @@ class ActualTyreCompound(F1BaseEnum):
             ActualTyreCompound.UNKNOWN: "Unknown",
         }[self]
 
+    @classmethod
+    def safeCast(cls, value: int) -> "ActualTyreCompound":
+        return super().safeCast(value, ActualTyreCompound.UNKNOWN)
+
 class VisualTyreCompound(F1BaseEnum):
     """
     Enumeration representing different visual tyre compounds used in Formula 1 and Formula 2.
@@ -423,6 +428,49 @@ class VisualTyreCompound(F1BaseEnum):
             VisualTyreCompound.WET_F2: "Wet",
             VisualTyreCompound.UNKNOWN: "Unknown",
         }[self]
+
+    @classmethod
+    def safeCast(cls, value: int) -> "VisualTyreCompound":
+        return super().safeCast(value, VisualTyreCompound.UNKNOWN)
+
+    def isSlicks(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is slicks.
+
+        Returns:
+            bool: True if the visual tyre compound is slicks, False otherwise.
+        """
+        return self in {
+            VisualTyreCompound.SOFT,
+            VisualTyreCompound.MEDIUM,
+            VisualTyreCompound.HARD,
+            VisualTyreCompound.SUPER_SOFT,
+            VisualTyreCompound.SOFT_F2,
+            VisualTyreCompound.MEDIUM_F2,
+            VisualTyreCompound.HARD_F2
+        }
+
+    def isWets(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is wet.
+
+        Returns:
+            bool: True if the visual tyre compound is wet, False otherwise.
+        """
+        return self in {
+            VisualTyreCompound.WET,
+            VisualTyreCompound.WET_CLASSIC,
+            VisualTyreCompound.WET_F2
+        }
+
+    def isInters(self) -> bool:
+        """
+        Returns a boolean indicating whether the visual tyre compound is inters.
+
+        Returns:
+            bool: True if the visual tyre compound is inters, False otherwise.
+        """
+        return self == VisualTyreCompound.INTER
 
 class SafetyCarType(F1CompareableEnum):
     """
@@ -1093,7 +1141,7 @@ class F1Utils:
             str: The formatted time string.
         """
         if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
+            raise ValueError(f"Input must be an integer representing milliseconds. val={milliseconds}")
 
         if milliseconds < 0:
             raise ValueError("Input must be a non-negative integer")
@@ -1115,7 +1163,7 @@ class F1Utils:
             str: The formatted time string.
         """
         if not isinstance(milliseconds, int):
-            raise ValueError("Input must be an integer representing milliseconds")
+            raise ValueError(f"Input must be an integer representing milliseconds. val={milliseconds}")
 
         if milliseconds < 0:
             raise ValueError("Input must be a non-negative integer")
@@ -1209,19 +1257,25 @@ class F1Utils:
         return int(minutes) * 60 * 1000 + seconds * 1000 + milliseconds
 
     @staticmethod
-    def floatToStr(float_val : float, num_dec_places : Optional[int] = 2) -> str:
+    def formatFloat(float_number: float, precision: int = 2, signed: bool = False) -> str:
         """
-        Convert a float to a string with a specified number of decimal places.
+        Format a float with given precision and optional sign.
 
-        Parameters:
-        - float_val (float): The float value to convert.
-        - num_dec_places (Optional[int]): Number of decimal places (default is 2).
-
-        Returns:
-        - str: The formatted string.
+        Returns "N/A" if the input is not a valid number.
+        Normalizes -0.0 to 0.0 and ensures very small values near zero are formatted as 0.00 (or appropriate precision).
         """
-        format_string = "{:." + str(num_dec_places) + "f}"
-        return format_string.format(float_val)
+        if not isinstance(float_number, (int, float)) or isinstance(float_number, bool):
+            return "N/A"
+
+        if math.isnan(float_number):
+            return "N/A"
+
+        # Normalize -0.0 to 0.0 and very small values near zero to 0.0
+        if abs(float_number) < 1e-12:
+            float_number = 0.0
+
+        float_str = f"{float_number:.{precision}f}"
+        return f"+{float_str}" if signed and float_number >= 0 else float_str
 
     @staticmethod
     def getLapTimeStrSplit(minutes_part: int, milliseconds_part: int) -> str:
@@ -1281,29 +1335,6 @@ class F1Utils:
         return (track_id in F1Utils.TRACKS_WHERE_FINISH_LINE_AFTER_PIT_GARAGE)
 
     @staticmethod
-    def isPracticeSession(session_type: Union[SessionType23, SessionType24]) -> bool:
-        """Is this a practice session?
-
-        Args:
-            session_type (Union[SessionType23, SessionType24]): The session type enum
-
-        Returns:
-            bool: True if practice session, else False
-        """
-
-        return session_type in [
-            SessionType23.PRACTICE_1,
-            SessionType23.PRACTICE_2,
-            SessionType23.PRACTICE_3,
-            SessionType23.SHORT_PRACTICE,
-
-            SessionType24.PRACTICE_1,
-            SessionType24.PRACTICE_2,
-            SessionType24.PRACTICE_3,
-            SessionType24.SHORT_PRACTICE,
-        ]
-
-    @staticmethod
     def transposeLapPositions(lap_major: List[List[int]]) -> List[List[int]]:
         """
         Transpose a 2D list of lap position data from lap-major to car-major order.
@@ -1337,3 +1368,28 @@ class F1Utils:
         """
         # Transpose using zip and map. zip(*lap_major) groups values per car index.
         return [list(car_lap_positions) for car_lap_positions in zip(*lap_major)]
+
+    @staticmethod
+    def getMaxTyreWear(wear_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Get the maximum tyre wear from the given dictionary of tyre wear data."""
+        relevant_keys = {
+            "front-left-wear": "FL",
+            "front-right-wear": "FR",
+            "rear-left-wear": "RL",
+            "rear-right-wear": "RR"
+        }
+
+        max_key = None
+        max_value = float("-inf")
+
+        # Iterate only through relevant keys
+        for key, short_key in relevant_keys.items():
+            if key in wear_data and wear_data[key] > max_value:
+                max_value = wear_data[key]
+                max_key = short_key
+
+        # Return the result as a dictionary
+        return {
+            "max-key": max_key,
+            "max-wear": max_value
+        }

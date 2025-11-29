@@ -71,7 +71,7 @@ class ConditionalTimestampFormatter(logging.Formatter):
 def get_rotating_logger(
     name: str = "png_logger",
     log_file_path: str = DEFAULT_LOG_FILE,
-    max_bytes: int = 3 * 1024 * 1024,
+    max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 3,
     debug_mode: bool = False
 ) -> Tuple[logging.Logger, str]:
@@ -97,7 +97,12 @@ def get_rotating_logger(
     logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
 
     if not logger.handlers:
-        handler = RotatingFileHandler(log_file_path, maxBytes=max_bytes, backupCount=backup_count)
+        handler = RotatingFileHandler(
+            log_file_path,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding='utf-8'
+        )
         handler.setFormatter(ConditionalTimestampFormatter())
         logger.addHandler(handler)
 
@@ -107,5 +112,4 @@ def get_rotating_logger(
         if isinstance(handler, logging.FileHandler):
             file_path = os.path.abspath(handler.baseFilename)
             break
-
     return logger, file_path

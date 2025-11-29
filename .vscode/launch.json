@@ -11,7 +11,7 @@
             "module": "apps.launcher",
             "console": "integratedTerminal",
             "args": [
-                "--debug"
+                "--debug", "--replay-server"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -22,6 +22,7 @@
             "module": "apps.launcher",
             "console": "integratedTerminal",
             "args": [
+                "--debug"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -38,6 +39,28 @@
             "env": {
                 "PNG_VERSION": "2.8.0"
             }
+        },
+        {
+            "name": "Launcher (replay)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher",
+            "console": "integratedTerminal",
+            "args": [
+                "--replay-server"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Launcher (live)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.launcher",
+            "console": "integratedTerminal",
+            "args": [
+
+            ],
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "App - Module",

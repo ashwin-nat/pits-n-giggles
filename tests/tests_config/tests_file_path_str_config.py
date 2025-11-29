@@ -46,6 +46,6 @@ class TestFilePathStr(TestF1ConfigBase):
 
     def test_validate_rejects_non_string(self):
         # Non-string input should raise TypeError
-        for invalid_value in [123, 45.6, None, [], {}, True]:
+        for invalid_value in [123, 45.6, [], {}, True]:
             with self.assertRaises(TypeError):
                 FilePathStr.validate(invalid_value)

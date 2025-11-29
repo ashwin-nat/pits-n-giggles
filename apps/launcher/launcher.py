@@ -29,10 +29,10 @@ import os
 import shutil
 import sys
 import tempfile
-import tkinter as tk
 
-from apps.launcher.png_launcher import PngLauncher
+from apps.launcher.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
+from lib.ipc import IpcChildSync
 from lib.version import get_version
 from meta.meta import APP_NAME
 
@@ -66,6 +66,27 @@ def parse_args() -> argparse.Namespace:
         "--debug",
         action="store_true",
         help="Enable debug mode"
+    )
+
+    # Replay server is an optional boolean flag
+    parser.add_argument(
+        "--replay-server",
+        action="store_true",
+        help="Enable replay mode"
+    )
+
+    # If integration test IPC port is specified, start an IPC server
+    parser.add_argument(
+        "--ipc-port",
+        type=int,
+        default=None,
+        help="Port to enable synchronous IPC server for integration testing."
+    )
+
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Enable coverage mode"
     )
 
     return parser.parse_args()
@@ -151,17 +172,47 @@ def entry_point() -> None:
         except Exception: # pylint: disable=broad-except
             pass
 
-    root: tk.Tk = tk.Tk()
-    root.title(APP_NAME)
-    root.iconbitmap(load_icon_safely("assets/favicon.ico"))
-
-    app = PngLauncher(
-        root=root,
+    app = PngLauncherWindow(
         ver_str=get_version(),
         logo_path=APP_ICON_PATH,
         settings_icon_path=SETTINGS_ICON_PATH,
-        debug_mode=args.debug
+        debug_mode=args.debug,
+        replay_mode=args.replay_server,
+        integration_test_mode=args.ipc_port is not None,
+        coverage_enabled=args.coverage
     )
-    root.protocol("WM_DELETE_WINDOW", app.on_closing)
-    root.createcommand("::tk::mac::Quit", app.on_closing)
-    root.mainloop()
+
+    ipc = None
+    if args.ipc_port is not None:
+        ipc = IpcChildSync(
+            port=args.ipc_port,
+            name="launcher_ipc",
+            max_missed_heartbeats=3,
+            heartbeat_timeout=5.0,
+        )
+
+        def ipc_shutdown_callback(_args: dict) -> dict:
+            app.request_shutdown()
+            return {"status": "success"}
+
+        # shutdown handler (__shutdown__)
+        ipc.register_shutdown_callback(ipc_shutdown_callback)
+
+        # heartbeat missed callback
+        ipc.register_heartbeat_missed_callback(ipc_shutdown_callback)
+
+        # minimal generic handler
+        def launcher_handler(request: dict) -> dict:
+            return {
+                "status": "error",
+                "message": f"Launcher does not support IPC requests. Unknown command {request['cmd']}",
+            }
+
+        ipc.serve_in_thread(handler_fn=launcher_handler, timeout=0.25)
+
+    # main loop
+    try:
+        app.run()
+    finally:
+        if ipc:
+            ipc.close()

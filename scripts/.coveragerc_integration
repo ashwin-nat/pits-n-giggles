@@ -1,0 +1,37 @@
+[run]
+branch = True
+parallel = True
+concurrency =
+    multiprocessing
+    thread
+omit =
+    */__init__.py
+    */tests/*
+    apps/backend/state_mgmt_layer/intf/writers/manual_save.py
+    apps/launcher/gui/changelog_window.py
+    lib/button_debouncer.py
+    lib/config/io/*
+    lib/config/schema/diff.py
+    lib/packet_cap.py
+    lib/packet_forwarder.py
+    lib/socket_receiver/udp_receiver.py
+    lib/version.py
+
+source =
+    lib
+    apps/backend
+    apps/hud
+
+sigterm = True
+
+[report]
+show_missing = True
+skip_empty = True
+precision = 1
+fail_under = 75
+exclude_also =
+    ^\s*def __repr__\(self.*\)\s*(->.*)?:$
+    ^\s*def __eq__\(self.*\)\s*(->.*)?:$
+    ^\s*def __hash__\(self.*\)\s*(->.*)?:$
+    ^\s*def __str__\(self.*\)\s*(->.*)?:$
+    ^\s*def __repr__\(self.*\)\s*(->.*)?:$

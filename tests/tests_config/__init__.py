@@ -26,12 +26,12 @@
 from .tests_capture_settings import TestCaptureSettings
 from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
                                 TestSampleSettingsFixture)
-from .tests_config_io import TestConfigIO, TestLoadConfigFromIni
+from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
 from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
 from .tests_https_settings import TestHttpsSettings
-from .tests_logging_settings import TestLoggingSettings
+from .tests_hud_settings import TestHudSettings
 from .tests_network_settings import TestNetworkSettings
 from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
 from .tests_png_settings import TestPngSettings
@@ -46,11 +46,11 @@ __all__ = [
     "TestEdgeCases",
     "TestMissingSectionsAndKeys",
     "TestSampleSettingsFixture",
-    "TestConfigIO",
     "TestLoadConfigFromIni",
+    "TestLoadConfigFromJson",
+    "TestConfigMigration",
     "TestDisplaySettings",
     "TestForwardingSettings",
-    "TestLoggingSettings",
     "TestNetworkSettings",
     "TestPngSettings",
     "TestPrivacySettings",
@@ -59,6 +59,7 @@ __all__ = [
     "TestPitTimeLossF1",
     "TestPitTimeLossF2",
     "TestSubSysCtrl",
+    "TestHudSettings",
 
     "TestFilePathStr",
 ]

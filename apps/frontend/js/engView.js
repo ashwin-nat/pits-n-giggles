@@ -325,7 +325,7 @@ class EngViewRaceTable {
             }
 
             let timeClass = '';
-            if (sectorStatus && sectorKey !== 'lap') {
+            if (sectorStatus && sectorKey !== 'lap' && sectorKey !== 'delta') {
                   const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
                   if (sectorStatus[sectorIndex] === this.GREEN_SECTOR) {
                       timeClass = 'green-time';
@@ -336,6 +336,16 @@ class EngViewRaceTable {
                   }
             }
             return this.createSingleLineCell(cellText, {className: timeClass});
+        };
+    }
+
+    createDeltaCellRendererCurrLap() {
+        return (params) => {
+            const driverInfo = params.data;
+            const currLapInfo = driverInfo["lap-info"]["curr-lap"];
+            const delta = currLapInfo["delta-ms"];
+            const formattedTime = (delta !== null) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
+            return this.createSingleLineCell(formattedTime);
         };
     }
 
@@ -635,6 +645,17 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
                         equals: this.createSectorTimeEqualsComparator('curr-lap', 's3', 's3-time-ms'),
+                    },
+                    {
+                        headerName: "Delta",
+                        colId: "curr-lap-delta",
+                        context: {displayName: "Delta", },
+                        field: `lap-info`,
+                        cellRenderer: this.createDeltaCellRendererCurrLap(),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
+                        equals: this.createSectorTimeEqualsComparator('curr-lap', null, 'delta-ms'),
                     },
                 ]
             },
@@ -1365,6 +1386,10 @@ class EngViewRaceTable {
                 return false;
             }
 
+            if (!sectorKey) {
+                return true;
+            }
+
             // If sector status changed, re-render
             const sectorIndex = parseInt(sectorKey.slice(1)) - 1;
             const oldSectorStatus = oldLapInfo["sector-status"] ? oldLapInfo["sector-status"][sectorIndex] : null;
@@ -1583,32 +1608,7 @@ function initDashboard() {
     const raceStatsModal = true;
     window.modalManager = new ModalManager(driverModal, settingsModal, raceStatsModal);
 
-    const connectStart = Date.now();
-    const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 500,
-        reconnectionDelayMax: 3000,
-        randomizationFactor: 0.3,
-        timeout: 7000,
-        transports: ['websocket', 'polling'],
-        upgrade: true,
-        rememberUpgrade: true,
-        secure: location.protocol === 'https:',
-    });
-
-    socketio.on('connect', () => {
-        socketio.emit('register-client', { type: 'race-table' });
-        console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
-    });
-
-    socketio.on('connect_error', (err) => {
-        console.warn('❌ Socket connection error:', err.message);
-    });
-
-    socketio.on('reconnect_attempt', attempt => {
-        console.log(`🔁 Reconnection attempt ${attempt}`);
-    });
+    const socketio = initializeSocketIO('race-table', 'eng-view');
 
     socketio.on('race-table-update', (binaryData) => {
         let data;

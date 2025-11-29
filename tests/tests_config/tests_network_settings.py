@@ -44,8 +44,8 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.telemetry_port, 20777)
         self.assertEqual(settings.server_port, 4768)
         self.assertEqual(settings.save_viewer_port, 4769)
-        self.assertEqual(settings.udp_tyre_delta_action_code, 11)
-        self.assertEqual(settings.udp_custom_action_code, 12)
+        self.assertEqual(settings.udp_tyre_delta_action_code, None)
+        self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
 
     def test_invalid_port_ranges(self):

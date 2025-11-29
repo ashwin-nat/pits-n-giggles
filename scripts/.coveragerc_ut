@@ -1,0 +1,16 @@
+[run]
+branch = True
+omit =
+    */__init__.py
+    */tests/*
+source =
+    lib
+
+[report]
+show_missing = True
+skip_empty = True
+precision = 1
+fail_under = 75
+exclude_also =
+    ^\s*def __repr__\(self.*\)\s*(->.*)?:$
+    ^\s*def __str__\(self.*\)\s*(->.*)?:$

@@ -27,7 +27,7 @@ import os
 import platform
 import socket
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
+from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union, List
 
 import msgpack
 import socketio
@@ -52,6 +52,7 @@ class BaseWebServer:
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  debug_mode: bool = False):
@@ -62,6 +63,7 @@ class BaseWebServer:
             port (int): The port number to run the server on.
             ver_str (str): The version string.
             logger (logging.Logger): The logger instance.
+            client_event_mappings (Dict[ClientType, str], optional): A dictionary mapping client types to event names.
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
@@ -72,6 +74,10 @@ class BaseWebServer:
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
+        if client_event_mappings:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
+        else:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = {}
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 
@@ -163,22 +169,38 @@ class BaseWebServer:
         @self.m_sio.on('register-client')
         async def handleClientRegistration(sid: str, data: Dict[str, str]) -> None:
             """
-            Handle client registration for specific client types.
+            Handle client registration for specific client types. Add client to room named after client type.
+            Also add client to room named after events it is interested in (if client event mappings are defined).
 
             Args:
                 sid (str): Session ID of the registering client.
                 data (Dict[str, str]): Registration data containing client type.
             """
-            self.m_logger.debug('Client registered. SID = %s Type = %s', sid, data['type'])
-            if (client_type := data['type']) in {'player-stream-overlay', 'race-table'}:
+            self.m_logger.debug('[CLIENT_REG] Client registered. SID = %s Type = %s ID=%s',
+                                sid, data['type'], data.get('id', 'N/A'))
+            client_type = data.get('type')
+            if not client_type:
+                return
+
+            if client_type in {'player-stream-overlay', 'race-table'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_connect_callback:
                     await self._on_client_connect_callback(ClientType(client_type), sid)
                 if self.m_debug_mode:
-                    self.m_logger.debug('Client %s joined room %s', sid, client_type)
+                    self.m_logger.debug('[CLIENT_REG] Client %s joined room %s', sid, client_type)
 
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
-                    self.m_logger.debug(f'Current members of {client_type}: {room}')
+                    self.m_logger.debug(f'[CLIENT_REG] Current members of {client_type}: {room}')
+
+            interested_events = self.m_client_event_mappings.get(ClientType(client_type))
+            if interested_events:
+                for event in interested_events:
+                    await self.m_sio.enter_room(sid, event)
+                    if self.m_debug_mode:
+                        self.m_logger.debug('Client %s joined room %s', sid, event)
+
+                        room = self.m_sio.manager.rooms.get('/', {}).get(event)
+                        self.m_logger.debug(f'[CLIENT_REG] Current members of {event}: {room}')
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
         """
@@ -191,6 +213,17 @@ class BaseWebServer:
         """
         packed = msgpack.packb(data, use_bin_type=True)
         await self.m_sio.emit(event, packed, room=str(client_type))
+
+    async def send_to_clients_interested_in_event(self, event: str, data: Dict[str, Any]) -> None:
+        """
+        Send data to all clients interested in a particular event, based on given client_event_mappings.
+
+        Args:
+            event (str): The event name to send.
+            data (Dict[str, Any]): The data to send with the event.
+        """
+        packed = msgpack.packb(data, use_bin_type=True)
+        await self.m_sio.emit(event, packed, room=event)
 
     async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
         """
@@ -213,7 +246,18 @@ class BaseWebServer:
         Returns:
             bool: True if a client of the specified type is connected
         """
-        return self._is_room_empty(str(client_type))
+        return not self._is_room_empty(str(client_type))
+
+    def is_any_client_interested_in_event(self, event: str) -> bool:
+        """Check if any client is interested in an event
+
+        Args:
+            event (str): The event to check
+
+        Returns:
+            bool: True if any client is interested in the event
+        """
+        return not self._is_room_empty(event)
 
     def _is_room_empty(self, room_name: str, namespace: Optional[str] = '/') -> bool:
         """Check if a room is empty"""

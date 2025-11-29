@@ -28,18 +28,20 @@ import logging
 import os
 import socket
 import sys
+import time
 from typing import List, Optional, Set
 
 import psutil
 
-from apps.backend.common.png_logger import initLogger
-from apps.backend.state_mgmt_layer import initStateManagementLayer
+from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
+from apps.backend.state_mgmt_layer import (SessionState,
+                                           initStateManagementLayer)
 from apps.backend.telemetry_layer import initTelemetryLayer
-from apps.backend.ui_intf_layer import TelemetryWebServer, initUiIntfLayer
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import load_config_from_ini
+from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
 
@@ -65,14 +67,13 @@ class PngRunner:
             ipc_port (Optional[int], optional): IPC port. Defaults to None.
         """
         self.m_logger: logging.Logger = logger
-        self.m_config = load_config_from_ini(config_file, logger)
+        self.m_config = load_config_from_json(config_file, logger)
         self.m_tasks: List[asyncio.Task] = []
         self.m_version: str = get_version()
 
-        self.m_logger.debug(self.m_config)
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
-        initStateManagementLayer(
+        self.m_session_state: SessionState = initStateManagementLayer(
             logger=self.m_logger,
             settings=self.m_config,
             ver_str=self.m_version,
@@ -86,6 +87,7 @@ class PngRunner:
             logger=self.m_logger,
             ver_str=self.m_version,
             shutdown_event=self.m_shutdown_event,
+            session_state=self.m_session_state,
             tasks=self.m_tasks
         )
         self.m_web_server = self._setupUiIntfLayer(
@@ -93,6 +95,7 @@ class PngRunner:
             debug_mode=debug_mode
         )
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
+        # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
         # Run all tasks concurrently
         self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
@@ -131,6 +134,7 @@ class PngRunner:
         return initUiIntfLayer(
             settings=self.m_config,
             logger=self.m_logger,
+            session_state=self.m_session_state,
             debug_mode=debug_mode,
             tasks=self.m_tasks,
             ver_str=self.m_version,
@@ -183,6 +187,23 @@ class PngRunner:
 
         self.m_logger.debug("Tasks stopped. Exiting...")
 
+    async def _start_event_loop_monitor(self, threshold: float = 0.1) -> None:
+        """
+        Logs a warning whenever the event loop is blocked
+        longer than `threshold` seconds.
+
+        Default threshold = 100ms (0.1s).
+        """
+
+        last = time.perf_counter()
+        while not self.m_shutdown_event.is_set():
+            await asyncio.sleep(0)  # yield to let loop run
+            now = time.perf_counter()
+            diff = now - last
+            if diff > threshold:
+                self.m_logger.warning(f"[HOGGING] Event loop blocked for {diff:.4f} seconds")
+            last = now
+
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
 
 def parseArgs() -> argparse.Namespace:
@@ -196,7 +217,7 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=f"{APP_NAME} Realtime Telemetry Server")
 
     # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
@@ -214,6 +235,10 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     """
 
     try:
+        # if args.debug:
+        #     loop = asyncio.get_running_loop()
+        #     loop.set_debug(True)
+        #     loop.slow_callback_duration = 0.1   # 100 ms
         app = PngRunner(
             logger=logger,
             config_file=args.config_file,
@@ -235,10 +260,11 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
-    png_logger = initLogger(
-        file_name=args_obj.log_file_name,
-        max_size=100000,
-        debug_mode=args_obj.debug
+    png_logger = get_logger(
+        name="backend",
+        debug_mode=args_obj.debug,
+        file_path=args_obj.log_file_name,
+        jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
     )
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -282,10 +308,11 @@ def entry_point():
 
 #     report_pid_from_child()
 #     args_obj = parseArgs()
-#     png_logger = initLogger(
-#         file_name=args_obj.log_file_name,
-#         max_size=100000,
-#         debug_mode=args_obj.debug
+#     png_logger = get_logger(
+#         name="backend",
+#         debug_mode=args_obj.debug,
+#         file_path=args_obj.log_file_name,
+#         jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
 #     )
 #     if sys.platform == 'win32':
 #         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

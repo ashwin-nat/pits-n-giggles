@@ -1,72 +1,148 @@
-%%{ init : { "theme" : "default", "themeVariables": {
-    "background": "#ffffff",
+%%{ init : { "theme" : "base", "themeVariables": {
+    "background": "#f9fafc",
+    "fontFamily": "Inter, sans-serif",
+    "fontSize": "15px",
     "primaryColor": "#4ECDC4",
-    "primaryTextColor": "#1A535C",
-    "primaryBorderColor": "#1A535C",
-    "lineColor": "#1A535C",
-    "fontSize": "16px"
+    "primaryTextColor": "#003049",
+    "lineColor": "#003049",
+    "edgeLabelBackground":"#ffffff"
 }} }%%
 
-flowchart TD
-    %% Main components
-    F1_SIM["🏎️ F1 Sim"]
-    EXT_TGT["🌐 External Targets"]
+flowchart LR
 
-    %% Event Loop with revised layout - UI and Telemetry on same level, State Management below
-    subgraph EVENT_LOOP["🔄 Event Loop"]
+%% ---------------------------------------------------------------------------
+%% External Systems
+%% ---------------------------------------------------------------------------
+subgraph EXTERNAL[" External Systems"]
+    direction TB
+    F1_SIM["  F1 Simulator"]
+    EXT_TGT["  External Targets"]
+end
+
+%% ---------------------------------------------------------------------------
+%% Launcher and Process Manager
+%% ---------------------------------------------------------------------------
+subgraph PNG_LAUNCHER["Pits n' Giggles"]
+    direction TB
+        subgraph PROC_MGR[" Process Manager"]
+            BACKEND_PROC_MGR[" Backend"]
+            HUD_PROC_MGR[" HUD"]
+            SAVE_VIEWER_PROC_MGR[" Save Viewer"]
+        end
+
+
+    %% -------------------------------------------------------------------------
+    %% Backend
+    %% -------------------------------------------------------------------------
+    subgraph BACKEND["Main Server"]
+    direction TB
+        subgraph TELEMETRY[" Telemetry Layer"]
+            UDP_RECV[" UDP Receiver"]
+            PARSERS[" Parsers"]
+            PACKET_FWD[" Packet Forwarder"]
+        end
+
+        subgraph INTF[" Interface Layer"]
+            HTTP[" HTTP Server"]
+            SOCKETIO[" Socket.IO"]
+            IPC[" ZMQ IPC Server"]
+        end
+
+        subgraph STATE[" State Management Layer"]
+            COMP_ENGINE[" Computation Engine"]
+            SHARED_STATE[" Shared State"]
+            API_INTF[" API Interface"]
+        end
+    end
+
+    %% -------------------------------------------------------------------------
+    %% HUD Subsystem
+    %% -------------------------------------------------------------------------
+    subgraph HUD[" HUD Subsystem"]
         direction TB
-
-        subgraph TELEMETRY_LAYER["📡 Telemetry Layer"]
-            direction LR
-            UDP_RECV["📶 UDP Receiver"]
-            PARSERS["🔍 Parsers"]
-            PACKET_FWD["📤 Packet Forwarder"]
-        end
-
-        subgraph UI_INTF_LAYER["🖥️ UI Interface Layer"]
-            direction LR
-            QUART["🌐 Quart HTTP Server"]
-            SOCKETIO["⚡ SocketIO"]
-        end
-
-        subgraph STATE_MGMT_LAYER["🧠 State Mgmt Layer"]
-            direction LR
-            COMP_ENGINE["⚙️ Computations Engine"]
-            SHARED_STATE["💾 Shared State"]
-            API_INTF["🔌 API Interface"]
-        end
+        HUD_IPC[" IPC Server"]
+        HUD_CLIENT[" Socket.IO Client"]
+        HUD_QT[" Qt Overlays"]
     end
 
-    subgraph UI_CLIENTS["UI Clients"]
-        STREAM_OVERLAY["🎥 Stream Overlay"]
-        DRV_VIEW["🧑🏎️ Driver Dashboard"]
-        ENG_VIEW["🧑‍🔧 Engineer Dashboard"]
+    %% -------------------------------------------------------------------------
+    %% Save Viewer Subsystem
+    %% -------------------------------------------------------------------------
+    subgraph SAVE_VIEWER[" Save Viewer Subsystem"]
+        direction TB
+        SV_IPC[" IPC Server"]
+        SV_HTTP[" HTTP Server"]
+        SV_SOCKETIO[" Socket.IO Server"]
+        SV_STATE[" State "]
     end
+end
 
-    %% External connections
-    F1_SIM -->|"Telemetry Data"| UDP_RECV
-    UDP_RECV -->|"Raw Packets"| PARSERS
-    UDP_RECV -->|"Raw Packets"| PACKET_FWD
-    PACKET_FWD -->|"Raw Packets"| EXT_TGT
-    PARSERS -->|"Telemetry Objects"| COMP_ENGINE
-    COMP_ENGINE -->|"Compute & Update"| SHARED_STATE
-    API_INTF -->|"Read"| SHARED_STATE
-    QUART -->|"Request"| API_INTF
-    API_INTF -->|"Response"| QUART
-    SOCKETIO -->|"Request"| API_INTF
-    API_INTF -->|"Response"| SOCKETIO
-    SOCKETIO -->|"Periodic Updates"| STREAM_OVERLAY
-    SOCKETIO -->|"Periodic Updates"| DRV_VIEW
-    SOCKETIO -->|"Periodic Updates"| ENG_VIEW
-    UI_CLIENTS -->|"Page Request"| QUART
-    QUART -->|"Page Response"| UI_CLIENTS
+%% ---------------------------------------------------------------------------
+%% UI Clients
+%% ---------------------------------------------------------------------------
+subgraph UI_CLIENTS[" UI Clients"]
+    direction TB
+    STREAM_OVERLAY[" Stream Overlay"]
+    DRV_VIEW[" Driver Dashboard"]
+    ENG_VIEW[" Engineer Dashboard"]
+end
 
+%% ---------------------------------------------------------------------------
+%% Connections
+%% ---------------------------------------------------------------------------
+F1_SIM -->|"Telemetry Data"| UDP_RECV
+UDP_RECV --> PARSERS
+UDP_RECV --> PACKET_FWD --> EXT_TGT
+PARSERS --> COMP_ENGINE --> SHARED_STATE
+API_INTF <-->|Read/Write| SHARED_STATE
+HTTP -->|"Request"| API_INTF
+SOCKETIO <-->|"Read / Fetch"| API_INTF
 
-    %% Classes for styles
-    classDef external fill:#FF6B6B,stroke:#BA181B,color:#ffffff,font-weight:bold
-    classDef layer fill:#FFDD67,stroke:#F3722C,stroke-width:2px,color:#000000,font-weight:bold
-    classDef component fill:#C0FDFB,stroke:#0077B6,stroke-width:2px,color:#03045E,rounded
+SOCKETIO -->|"Periodic Updates"| STREAM_OVERLAY & DRV_VIEW & ENG_VIEW
+HTTP -->|"Serve Pages"| UI_CLIENTS
+SV_HTTP -->|"Serve Pages"| UI_CLIENTS
+SV_SOCKETIO -->|"Updates"| DRV_VIEW
+SOCKETIO -->|"HUD Feed"| HUD_CLIENT
 
-    class F1_SIM,EXT_TGT external
-    class TELEMETRY_LAYER,STATE_MGMT_LAYER,UI_INTF_LAYER layer
-    class UDP_RECV,PARSERS,PACKET_FWD,COMP_ENGINE,API_INTF,SHARED_STATE,QUART,SOCKETIO component
+BACKEND_PROC_MGR -->|"Manage / Heartbeat"| IPC
+HUD_PROC_MGR -->|"Manage / Heartbeat"| HUD_IPC
+SAVE_VIEWER_PROC_MGR -->|"Manage / Heartbeat"| SV_IPC
+
+BACKEND -->|"stdout"| BACKEND_PROC_MGR
+HUD -->|"stdout"| HUD_PROC_MGR
+SAVE_VIEWER -->|"stdout"| SAVE_VIEWER_PROC_MGR
+
+HUD_CLIENT --> |"Data Feed"| HUD_QT
+HUD_IPC --> |"Comamnds"| HUD_QT
+HUD_QT --> |"Responses"| HUD_IPC
+
+SV_IPC --> |"Save file path"| SV_STATE
+SV_SOCKETIO --> |"Read"| SV_STATE
+SV_STATE --> |"Notify"| SV_SOCKETIO
+
+%% ---------------------------------------------------------------------------
+%% Styles
+%% ---------------------------------------------------------------------------
+
+%% High-level sections
+classDef external fill:#ff6b6b,stroke:#9b2226,color:#fff,font-weight:bold
+classDef launcher fill:#ffe66d,stroke:#f77f00,stroke-width:2px,color:#000,font-weight:bold
+classDef backend fill:#c0fdff,stroke:#00b4d8,stroke-width:2px,color:#03045e,font-weight:bold
+classDef hud fill:#caffbf,stroke:#2a9d8f,stroke-width:2px,color:#1b4332,font-weight:bold
+classDef save fill:#ffd6a5,stroke:#f48c06,stroke-width:2px,color:#78350f,font-weight:bold
+classDef ui fill:#dabfff,stroke:#7209b7,stroke-width:2px,color:#240046,font-weight:bold
+
+%% Backend sublayers
+classDef telemetry fill:#ade8f4,stroke:#0077b6,stroke-width:2px,color:#03045e,font-weight:bold
+classDef interface fill:#b7efc5,stroke:#2d6a4f,stroke-width:2px,color:#081c15,font-weight:bold
+classDef state fill:#ffd6a5,stroke:#e85d04,stroke-width:2px,color:#78290f,font-weight:bold
+
+class F1_SIM,EXT_TGT external
+class PNG_LAUNCHER,PROC_MGR launcher
+class BACKEND backend
+class TELEMETRY telemetry
+class INTF interface
+class STATE state
+class HUD hud
+class SAVE_VIEWER save
+class UI_CLIENTS ui

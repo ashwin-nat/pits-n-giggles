@@ -1,6 +1,7 @@
 launch.json
 *.pyc
 *.log
+*.log*
 *.bin
 *.csv
 *.tar.xz
@@ -20,3 +21,8 @@ png-venv/
 .invalid
 *.pem
 .DS_Store
+.coverage
+.coverage_*
+.coverage.*
+htmlcov/
+coverage_reports/

@@ -26,10 +26,11 @@ SOFTWARE.
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Coroutine
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
-import apps.backend.state_mgmt_layer.telemetry_state as TelState
+from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
@@ -39,20 +40,33 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketMotionData, PacketParticipantsData,
                           PacketSessionData, PacketSessionHistoryData,
                           PacketTimeTrialData, PacketTyreSetsData)
-from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                         FinalClassificationNotification,
-                                         ITCMessage)
+from lib.inter_task_communicator import (
+    AsyncInterTaskCommunicator, FinalClassificationNotification,
+    HudCycleMfdNotification, HudToggleNotification, ITCMessage,
+    TyreDeltaNotificationMessageCollection)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimer
 
-# -------------------------------------- TYPE DEFINITIONS --------------------------------------------------------------
+# -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
+
+@dataclass
+class UdpActionCodes:
+    """Dataclass to hold UDP action codes."""
+    custom_marker: Optional[int] = None
+    tyre_delta: Optional[int] = None
+    toggle_all_overlays: Optional[int] = None
+    mfd_next_page: Optional[int] = None
+    toggle_lap_timer_overlay: Optional[int] = None
+    toggle_timing_tower_overlay: Optional[int] = None
+    toggle_mfd_overlay: Optional[int] = None
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
         settings: PngSettings,
         replay_server: bool,
+        session_state: SessionState,
         logger: logging.Logger,
         ver_str: str,
         tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
@@ -61,6 +75,7 @@ def setupTelemetryTask(
     Args:
         settings (PngSettings): App settings
         replay_server (bool): Whether to enable the TCP replay debug server.
+        session_state (SessionState): Handle to the session state
         logger (logging.Logger): Logger instance
         ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
@@ -72,6 +87,7 @@ def setupTelemetryTask(
     telemetry_server = F1TelemetryHandler(
         settings=settings,
         logger=logger,
+        session_state=session_state,
         replay_server=replay_server,
         ver_str=ver_str,
     )
@@ -93,6 +109,7 @@ class F1TelemetryHandler:
     def __init__(self,
         settings: PngSettings,
         logger: logging.Logger,
+        session_state: SessionState,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
         """
@@ -116,12 +133,10 @@ class F1TelemetryHandler:
             replay_server=replay_server
         )
         self.m_logger: logging.Logger = logger
-        self.m_session_state_ref: TelState.SessionState = TelState.getSessionStateRef()
+        self.m_session_state_ref: SessionState = session_state
 
         self.m_last_session_uid: Optional[int] = None
         self.m_data_cleared_this_session: bool = False
-        self.m_udp_custom_action_code: Optional[int] = settings.Network.udp_custom_action_code
-        self.m_udp_tyre_delta_action_code: Optional[int] = settings.Network.udp_tyre_delta_action_code
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
@@ -132,6 +147,17 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
+
+        self.m_udp_action_codes = UdpActionCodes(
+            custom_marker=settings.Network.udp_custom_action_code,
+            tyre_delta=settings.Network.udp_tyre_delta_action_code,
+            toggle_all_overlays=settings.HUD.toggle_overlays_udp_action_code,
+            mfd_next_page=settings.HUD.cycle_mfd_udp_action_code,
+            toggle_lap_timer_overlay=settings.HUD.lap_timer_toggle_udp_action_code,
+            toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
+            toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
+        )
+
         self.m_manager_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
@@ -188,6 +214,7 @@ class F1TelemetryHandler:
                 packet (List[bytes]): The raw telemetry packet.
             """
             self.m_wdt.kick()
+            self.m_session_state_ref.m_pkt_count += 1
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
@@ -412,17 +439,38 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the button status packet's contents.
             """
 
-            if (self.m_udp_custom_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.m_udp_custom_action_code)) and \
-            (self.m_button_debouncer.onButtonPress(self.m_udp_custom_action_code)):
-                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_custom_action_code)
-                await TelState.processCustomMarkerCreate()
+            buttons: PacketEventData.Buttons = packet.mEventDetails
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.custom_marker):
+                self.m_logger.debug('UDP action %d pressed - Custom Marker', self.m_udp_action_codes.custom_marker)
+                await self._processCustomMarkerCreate()
 
-            if (self.m_udp_tyre_delta_action_code is not None) and \
-            (packet.mEventDetails.isUDPActionPressed(self.m_udp_tyre_delta_action_code)) and \
-            (self.m_button_debouncer.onButtonPress(self.m_udp_tyre_delta_action_code)):
-                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_tyre_delta_action_code)
-                await TelState.processTyreDeltaSound()
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.tyre_delta):
+                self.m_logger.debug('UDP action %d pressed - Tyre Delta', self.m_udp_action_codes.tyre_delta)
+                await self._processTyreDeltaSound()
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_all_overlays):
+                self.m_logger.debug('UDP action %d pressed - Toggle all overlays',
+                                    self.m_udp_action_codes.toggle_all_overlays)
+                await self._processToggleHud()
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.mfd_next_page):
+                self.m_logger.debug('UDP action %d pressed - Cycle MFD', self.m_udp_action_codes.mfd_next_page)
+                await self._processCycleMFD()
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_lap_timer_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle lap timer overlay',
+                                    self.m_udp_action_codes.toggle_lap_timer_overlay)
+                await self._processToggleHud('lap_timer')
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_timing_tower_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle timing tower overlay',
+                                    self.m_udp_action_codes.toggle_timing_tower_overlay)
+                await self._processToggleHud('timing_tower')
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_mfd_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle MFD overlay',
+                                    self.m_udp_action_codes.toggle_mfd_overlay)
+                await self._processToggleHud('mfd')
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -432,6 +480,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
             self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+            self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
             """
@@ -514,13 +563,27 @@ class F1TelemetryHandler:
         if not event_str:
             return
 
+        now = datetime.now().astimezone()
         # Save the JSON data
         # Get timestamp in the format - year_month_day_hour_minute_second
-        timestamp_str = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
         final_json_file_name = event_str + timestamp_str + '.json'
+
+        # Insert extra debug info
+        final_json["debug"] = final_json.get("debug", {})
+        final_json["debug"].update({
+            "session-uid" : self.m_session_state_ref.m_session_info.m_session_uid,
+            "timestamp" : now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+            "timezone" : now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
+            "utc-offset-seconds" : int(now.utcoffset().total_seconds()),
+            "reason": "Auto-save after final classification",
+            "packet-count": self.m_session_state_ref.m_pkt_count,
+            "file-name": final_json_file_name,
+        })
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s", final_json_file_name)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name,
+                               self.m_session_state_ref.m_pkt_count)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
@@ -547,3 +610,63 @@ class F1TelemetryHandler:
         if curr_session_type.isTimeTrialTypeSession() and self.m_capture_settings.post_tt_data_autosave:
             return True
         return False # movie or story mode
+
+    def _isUdpActionButtonPressed(self,
+                                       buttons_event: PacketEventData.Buttons,
+                                       action_code: Optional[int]
+                                       ) -> bool:
+        """Check if the UDP action button is pressed.
+
+        Args:
+            buttons_event (PacketEventData.Buttons): The buttons event packet.
+            action_code (Optional[int]): The UDP action code to check.
+        """
+        return (
+            action_code is not None
+            and buttons_event.isUDPActionPressed(action_code)
+            and self.m_button_debouncer.onButtonPress(action_code)
+        )
+
+    async def _processCustomMarkerCreate(self) -> None:
+        """Update the data structures with custom marker information
+        """
+
+        if custom_marker_obj := self.m_session_state_ref.getInsertCustomMarkerEntryObj():
+            await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
+                m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
+                m_message=custom_marker_obj))
+
+    async def _processTyreDeltaSound(self) -> None:
+        """Send the tyre delta notification to the frontend."""
+        if messages := self.m_session_state_ref.getTyreDeltaNotificationMessages():
+            await AsyncInterTaskCommunicator().send(
+                "frontend-update",
+                ITCMessage(
+                    m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
+                    m_message=TyreDeltaNotificationMessageCollection(messages)
+                )
+            )
+
+    async def _processToggleHud(self, oid: Optional[str] = '') -> None:
+        """Send the toggle HUD notification to the HUD manager.
+
+        Args:
+            oid (Optional[str]): The overlay ID to toggle.
+        """
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_TOGGLE_NOTIFICATION,
+                m_message=HudToggleNotification(oid)
+            )
+        )
+
+    async def _processCycleMFD(self) -> None:
+        """Send the cycle MFD notification to the HUD manager."""
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_CYCLE_MFD_NOTIFICATION,
+                m_message=HudCycleMfdNotification()
+            )
+        )

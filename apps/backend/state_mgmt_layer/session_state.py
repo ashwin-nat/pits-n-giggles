@@ -278,42 +278,25 @@ class SessionInfo:
 
 class SessionState:
     """
-    Class that models the data for multiple race drivers.
+    Enter ye this holy state,
+    Where only the CPU may operate.
+    Do thy deeds with fervent rate.
+    For in this realm, none dare await.
 
-    Attributes:
-        m_driver_data (Dict[int, DataPerDriver]): A dictionary mapping driver IDs (int) to their
-                            corresponding DataPerDriver instances.
-        m_player_index (Optional[int]): The index of the player driver
-        m_fastest_index (Optional[int]): The index of the driver who achieved the fastest lap
-        m_num_active_cars (Optional[int]): The number of active cars in the race
-        m_num_dnf_cars (Optional[int]): The number of cars that did not finish the race
-        m_race_completed (Optional[bool]): Indicates whether the race has been completed
-        m_is_player_dnf (Optional[bool]): Indicates whether the player has not finished the race
-        m_ideal_pit_stop_window (Optional[int]): The ideal pit stop window for the player, according to the selected strategy
-        m_collision_records (List[CollisionRecord]): A list of collision records; empty if no collisions occurred.
-        m_fastest_s1_ms (Optional[int]): The fastest sector 1 time in milliseconds
-        m_fastest_s2_ms (Optional[int]): The fastest sector 2 time in milliseconds
-        m_fastest_s3_ms (Optional[int]): The fastest sector 3 time in milliseconds
-        m_time_trial_packet (Optional[PacketTimeTrialData]): A packet containing time trial data
-        m_overtakes_history (OvertakesHistory): An instance tracking overtakes history.
-        m_session_info (SessionInfo): An instance of SessionInfo containing global race data.
-        m_post_race_autosave (bool): Flag indicating whether to save data to file after race.
-        m_udp_custom_marker_action_code (Optional[int]): The UDP action code for custom marker
-        m_udp_tyre_delta_action_code (Optional[int]): The UDP action code for tyre delta notification
-        m_process_car_setups (bool): Flag indicating whether to process car setups packets.
-        m_save_race_ctrl_msgs (bool): Flag indicating whether to save race control messages to file
-                (will still be processed regardless)
-        m_custom_markers_history (CustomMarkersHistory): An instance tracking custom markers history.
-        m_first_session_update_received (bool): Flag indicating whether the first session update packet has been received.
-        m_version (str): Version string
-        m_connected_to_sim (bool): Flag indicating whether the client is connected to the simulator
-        m_race_ctrl (RaceCtrl): The session race control messages manager
+    No I/O, nor DB, nor HTTP,
+    Shall stain this land of purity.
+    Should such burdens tempt thy fate,
+    Cast them forth - communicate.
+
+    TLDR: only CPU bound operations allowed here. If you need to perform any I/O bound operation,
+    offload it to a separate task via the inter task communicator
     """
 
     MAX_DRIVERS: int = 22
 
     __slots__ = (
         'm_logger',
+        'm_pkt_count',
         'm_driver_data',
         'm_player_index',
         'm_fastest_index',
@@ -336,6 +319,7 @@ class SessionState:
         'm_version',
         'm_connected_to_sim',
         'm_race_ctrl',
+        'm_flashback_occurred',
     )
 
     def __init__(self,
@@ -351,6 +335,7 @@ class SessionState:
         """
 
         self.m_logger = logger
+        self.m_pkt_count: int = 0
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
@@ -377,6 +362,7 @@ class SessionState:
         self.m_connected_to_sim: bool = False
 
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
+        self.m_flashback_occurred: bool = False
 
     ####### Control Methods ########
 
@@ -403,6 +389,9 @@ class SessionState:
         self.m_session_info.clear()
         self.m_custom_markers_history.clear()
         self.m_race_ctrl.clear()
+        self.m_flashback_occurred = False
+
+        self.m_pkt_count = 0
 
         # No need to clear config params
 
@@ -466,7 +455,7 @@ class SessionState:
                 self._handleLapChangeLogic(driver_obj, lap_data)
 
             # Update current lap and process driver status
-            self._updateDriverStatus(driver_obj, lap_data, index)
+            self._updateDriverStatus(driver_obj, lap_data, index, self.m_flashback_occurred)
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
@@ -475,6 +464,7 @@ class SessionState:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
 
         self.m_num_active_cars = num_active_cars
+        self.m_flashback_occurred = False # Reset flashback flag since it must've been processed by now
 
         if should_recompute_fastest_lap:
             self._recomputeFastestLap()
@@ -525,14 +515,18 @@ class SessionState:
             driver_obj.m_lap_info.m_current_lap = new_lap
             driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
-
-    def _updateDriverStatus(self, driver_obj: DataPerDriver, lap_data: LapData, driver_index: int) -> None:
+    def _updateDriverStatus(self,
+                            driver_obj: DataPerDriver,
+                            lap_data: LapData,
+                            driver_index: int,
+                            flashback_occurred: bool) -> None:
         """Update driver's current status including DNF status
 
         Args:
             driver_obj: Driver object to update
             lap_data: Lap data containing status information
             driver_index: Index of the driver in the race
+            flashback_occurred: Whether a flashback occurred
         """
         RESULT_STATUS_MAP = {
             ResultStatus.DID_NOT_FINISH: "DNF",
@@ -558,6 +552,18 @@ class SessionState:
 
         # Speed trap
         driver_obj.m_lap_info.m_speed_trap_record = lap_data.m_speedTrapFastestSpeed
+
+        # Delta - not supported in time trial
+        if self.m_session_info.m_session_type and \
+            not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
+                lap_data.m_driverStatus in {LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.ON_TRACK}:
+            if flashback_occurred:
+                driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
+            driver_obj.m_delta_mgr.record_data_point(
+                lap_num=lap_data.m_currentLapNum,
+                curr_distance=lap_data.m_lapDistance,
+                curr_time_ms=lap_data.m_currentLapTimeInMS
+            )
 
     def processFastestLapUpdate(self, packet: PacketEventData.FastestLap) -> None:
         """Process the fastest lap update event notification
@@ -724,6 +730,7 @@ class SessionState:
         final_json = {
             "classification-data" : []
         }
+
         speed_trap_records = []
         driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
 
@@ -813,8 +820,10 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
+
+            # Update delayed tyre change data if events are pending
             if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
-                obj_to_be_updated.m_pending_events_mgr.data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
+                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
                 obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
@@ -879,6 +888,11 @@ class SessionState:
                 self.m_fastest_index = None
                 self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
 
+        if self.m_session_info.m_session_type and \
+            not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
+                packet.m_bestLapTimeLapNum:
+            obj_to_be_updated.m_delta_mgr.set_best_lap(packet.m_bestLapTimeLapNum)
+
     def processTyreSetsUpdate(self, packet: PacketTyreSetsData) -> None:
         """Process the tyre sets update packet and update the necessary fields
 
@@ -939,7 +953,6 @@ class SessionState:
             if obj_to_be_updated := self._getObjectByIndex(index, create=False):
                 obj_to_be_updated.processPositionsHistoryUpdate(packet, position_hist)
 
-
     def processSessionStarted(self, reason: str) -> None:
         """
         Reset the data structures when SESSION_STARTED has been received
@@ -965,7 +978,6 @@ class SessionState:
             await self._notifyExternalApiTask()
         return should_clear
 
-
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
 
@@ -989,6 +1001,11 @@ class SessionState:
         if (overtake_obj := self._getOvertakeObj(record.overtakingVehicleIdx,
                                                  record.beingOvertakenVehicleIdx)):
             self.m_overtakes_history.insert(overtake_obj)
+
+    def processFlashbackEvent(self) -> None:
+        """Record that a flashback has happened"""
+
+        self.m_flashback_occurred = True
 
     def handleEvent(self, packet: PacketEventData):
         """Handle the event packet
@@ -1118,37 +1135,14 @@ class SessionState:
         if not tyre_sets :
             return []
 
-        # Fitted index needs to be valid
         fitted_tyre = tyre_sets.m_fitted_tyre_set
         if not fitted_tyre:
             self.m_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
 
         # First find the fitted tyre
-        wet_tyre_compounds = {
-            ActualTyreCompound.WET,
-            ActualTyreCompound.WET_CLASSIC,
-            ActualTyreCompound.WET_F2
-        }
-        inter_tyre_compounds = {
-            ActualTyreCompound.INTER,
-        }
-        slick_tyre_compounds = {
-            ActualTyreCompound.C6,
-            ActualTyreCompound.C5,
-            ActualTyreCompound.C4,
-            ActualTyreCompound.C3,
-            ActualTyreCompound.C2,
-            ActualTyreCompound.C1,
-            ActualTyreCompound.C0,
-            ActualTyreCompound.DRY,
-            ActualTyreCompound.SUPER_SOFT,
-            ActualTyreCompound.SOFT,
-            ActualTyreCompound.MEDIUM,
-            ActualTyreCompound.HARD,
-        }
-        if fitted_tyre.m_actualTyreCompound in wet_tyre_compounds:
+        if fitted_tyre.m_visualTyreCompound.isWets():
             curr_tyre_type = TyreDeltaMessage.TyreType.WET
-        elif fitted_tyre.m_actualTyreCompound in inter_tyre_compounds:
+        elif fitted_tyre.m_visualTyreCompound.isInters():
             curr_tyre_type = TyreDeltaMessage.TyreType.INTER
         else:
             curr_tyre_type = TyreDeltaMessage.TyreType.SLICK
@@ -1156,34 +1150,34 @@ class SessionState:
         if TyreDeltaMessage.TyreType.SLICK == curr_tyre_type:
             # Search for the first wet tyre
             other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isWets()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
             # Search for the first inter tyre
             other_tyre_2 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isInters()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
         elif TyreDeltaMessage.TyreType.INTER == curr_tyre_type:
             # Search for the first wet tyre
             other_tyre_1 = next((tyre_set for tyre_set in reversed(tyre_sets.m_tyreSetData) \
-                                if tyre_set.m_actualTyreCompound in wet_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isWets()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.WET
 
             # Search for the first slick tyre
             other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isSlicks()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.SLICK
 
         else:
             # Search for the first slick tyre
             other_tyre_1 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in slick_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isSlicks()), None)
             other_tyre_1_type = TyreDeltaMessage.TyreType.SLICK
 
             # Search for the first inter tyre
             other_tyre_2 = next((tyre_set for tyre_set in tyre_sets.m_tyreSetData \
-                                if tyre_set.m_actualTyreCompound in inter_tyre_compounds), None)
+                                if tyre_set.m_visualTyreCompound.isInters()), None)
             other_tyre_2_type = TyreDeltaMessage.TyreType.INTER
 
         assert other_tyre_1
@@ -1229,7 +1223,7 @@ class SessionState:
             track = str(self.m_session_info.m_track)
             event_type = str(self.m_session_info.m_session_type)
             curr_lap_percent = (
-                f"{F1Utils.floatToStr(float(curr_lap_dist) / float(self.m_session_info.m_track_len) * 100.0)}%"
+                f"{F1Utils.formatFloat(float(curr_lap_dist) / float(self.m_session_info.m_track_len) * 100.0)}%"
                 if curr_lap_dist is not None
                 else None
             )
@@ -1350,6 +1344,21 @@ class SessionState:
         if not driver_info_dict:
             driver_info_dict = self._getRaceCtrlHelperDict()
         return self.m_race_ctrl.toJSON(driver_info_dict)
+
+    ##### Utils #####
+
+    def isIndexValid(self, index: int) -> bool:
+        """Check if the given index is a valid driver index
+
+        Args:
+            index (int): Index of the driver
+
+        Returns:
+            bool: True if valid
+        """
+
+        return  (0 <= index < len(self.m_driver_data)) and \
+                (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
 
     ##### Internal Helpers #####
 
@@ -1543,7 +1552,6 @@ class SessionState:
         driver_info_dict = self._getRaceCtrlHelperDict()
         return [driver_data.toJSON(index, include_race_ctrl_msgs=True, driver_info_dict=driver_info_dict) \
                 for index, driver_data in enumerate(self.m_driver_data) if driver_data and driver_data.is_valid]
-
 
     def _safeMin(self, arg1: int, arg2: Optional[int]) -> int:
         """

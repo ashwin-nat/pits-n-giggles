@@ -29,11 +29,12 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
+from lib.delta import LapDeltaManager
 from lib.f1_types import (CarDamageData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
-from lib.race_ctrl import (CarDamageRaceControlMessage, DriverPittingRaceCtrlMsg,
-                           DriverRaceControlManager,
+from lib.race_ctrl import (CarDamageRaceControlMessage,
+                           DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -67,7 +68,9 @@ class DataPerDriver:
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
         m_position_history (List[int]): List of positions of the driver
         m_pending_events_mgr (PendingEventsManager): Manager for pending events involving the driver.
-        m_driver_race_ctrl_mgr (DriverRaceControlManager): Manager for race control messages specific to the driver.
+        m_delayed_tyre_change_data (TyreSetHistoryEntry): Delayed tyre change data
+        m_race_ctrl (DriverRaceControlManager): Manager for race control messages specific to the driver.
+        m_delta_mgr (LapDeltaManager): Lap delta manager
     """
 
     __slots__ = (
@@ -83,7 +86,9 @@ class DataPerDriver:
         "m_per_lap_snapshots",
         "m_position_history",
         "m_pending_events_mgr",
+        "m_delayed_tyre_change_data",
         "m_race_ctrl",
+        "m_delta_mgr",
     )
 
     CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
@@ -152,9 +157,13 @@ class DataPerDriver:
         self.m_pending_events_mgr: PendingEventsManager = PendingEventsManager(
             callback=self._delayedTyreSetsChange
         )
+        self.m_delayed_tyre_change_data: Optional[TyreWearPerLap] = None
 
         # Race control manager
         self.m_race_ctrl: DriverRaceControlManager = DriverRaceControlManager(index)
+
+        # Lap delta
+        self.m_delta_mgr: LapDeltaManager = LapDeltaManager()
 
     @property
     def is_valid(self) -> bool:
@@ -260,17 +269,26 @@ class DataPerDriver:
             List[Dict[str, Any]]: List of JSON objects, each containing tyre wear predictions for a specific lap
         """
 
+        tyre_wear_rate = {
+            "front-left" : self.m_tyre_info.m_tyre_wear_extrapolator.fl_rate,
+            "front-right" : self.m_tyre_info.m_tyre_wear_extrapolator.fr_rate,
+            "rear-left" : self.m_tyre_info.m_tyre_wear_extrapolator.rl_rate,
+            "rear-right" : self.m_tyre_info.m_tyre_wear_extrapolator.rr_rate,
+        }
+
         if self.m_tyre_info.m_tyre_wear_extrapolator.isDataSufficient():
             return {
                 "status" : True,
                 "desc" : "Data is sufficient for extrapolation",
                 "predictions": [item.toJSON() for item in self.m_tyre_info.m_tyre_wear_extrapolator.predicted_tyre_wear],
+                "rate" : tyre_wear_rate,
                 "selected-pit-stop-lap": selected_pit_stop_lap
             }
         return {
             "status" : False,
             "desc" : "Insufficient data for extrapolation",
             "predictions": [],
+            "rate" : tyre_wear_rate,
             "selected-pit-stop-lap": None
         }
 
@@ -537,7 +555,7 @@ class DataPerDriver:
 
         # Handle flashbacks/retry practice programmes
         # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
-        if is_flashback and not F1Utils.isPracticeSession(session_type):
+        if is_flashback and session_type and session_type.isRaceTypeSession():
             self._handleFlashBack(old_lap_number)
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
@@ -689,10 +707,11 @@ class DataPerDriver:
                     if not self.m_pending_events_mgr.areEventsPending():
                         self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
+
+                        # Store current tyre wear in instance variable
+                        self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
                         self.m_pending_events_mgr.register(
-                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT},
-                            initial_tyre_wear=self.m_pending_events_mgr.data)
-                        self.m_pending_events_mgr.data = None
+                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT})
                 else:
                     initial_tyre_wear = TyreWearPerLap(
                         fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -767,7 +786,7 @@ class DataPerDriver:
             if F1Utils.isFinishLineAfterPitGarage(track):
                 # note down curr tyre wear for delayed tyre set change handling
                 # take a deepcopy since this obj is volatile
-                self.m_pending_events_mgr.data = deepcopy(self.m_tyre_info.tyre_wear)
+                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
             self.m_race_ctrl.add_message(DriverPittingRaceCtrlMsg(
                 timestamp=time.time(),
                 driver_index=self.m_index,
@@ -780,14 +799,27 @@ class DataPerDriver:
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
         self.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
 
-    def _delayedTyreSetsChange(self, initial_tyre_wear: TyreWearPerLap) -> None:
+    def _delayedTyreSetsChange(self) -> None:
         """Process the delayed tyre set change
-
-        Args:
-            initial_tyre_wear (TyreWearPerLap): The initial tyre wear data
         """
 
+        if not self.m_delayed_tyre_change_data:
+            self.m_logger.error(
+                "Driver %s - delayed tyre set change called but no data available. "
+                "Current tyre wear: %s, No pending events but data wasn't captured.",
+                str(self),
+                self.m_tyre_info.tyre_wear
+            )
+            # Fall back to current tyre wear as best effort
+            if self.m_tyre_info.tyre_wear:
+                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
+            else:
+                self.m_logger.critical("Driver %s - Cannot process delayed tyre change, no tyre data available at all", str(self))
+                return
+
         self.m_logger.debug("Driver %s - processing delayed tyre set change", str(self))
+
+        initial_tyre_wear = self.m_delayed_tyre_change_data
         initial_tyre_wear.lap_number = self.m_lap_info.m_current_lap - 1
         tyre_set_key = self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey()
         initial_tyre_wear.desc = f"Delayed tyre set change. old tyre val. key={tyre_set_key}"
@@ -800,7 +832,7 @@ class DataPerDriver:
             fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
             rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
             rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-            lap_number=self.m_lap_info.m_current_lap-1, # -1 because this is the end of last lap value
+            lap_number=self.m_lap_info.m_current_lap-1,
             is_racing_lap=True,
             desc=f"Delayed tyre set change. new tyre val. key={str(self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey())}"
         )
@@ -810,6 +842,9 @@ class DataPerDriver:
             lap_number=self.m_lap_info.m_current_lap,
             initial_tyre_wear=initial_tyre_wear
         )
+
+        # Clear the data after use
+        self.m_delayed_tyre_change_data = None
 
     def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set

@@ -51,7 +51,7 @@ unsafe-load-any-extension=no
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-allow-list=
+extension-pkg-allow-list=win32gui,win32con
 
 # Minimum supported python version
 py-version = 3.8.0
@@ -121,7 +121,8 @@ disable=
     too-many-boolean-expressions,
     redefined-variable-type,
     unnecessary-pass,
-    too-many-return-statements
+    too-many-return-statements,
+    no-member
 
 [REPORTS]
 
