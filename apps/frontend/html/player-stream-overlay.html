@@ -313,6 +313,7 @@
 
     <!-- Include Bootstrap JS (optional, for interactive components) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/weatherUI.js') }}"></script>
     <script src="{{ url_for('static', filename='js/iconCache.js') }}"></script>
@@ -326,20 +327,7 @@
     <script>
         const sampleStreamOverlayJSON = getDefaultOverlayData();
         let firstDataReceived = false;
-        const connectStart = Date.now();
-        const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-            reconnection: true,
-            reconnectionAttempts: 5,         // increased for flakier networks
-            reconnectionDelay: 500,          // base delay
-            reconnectionDelayMax: 3000,      // allow more time for retries
-            randomizationFactor: 0.3,        // more jitter helps on bad links
-            timeout: 7000,                   // wait a bit longer before timing out
-            transports: ['websocket', 'polling'], // try WS, fallback to polling
-            upgrade: true,
-            rememberUpgrade: true,
-            secure: location.protocol === 'https:', // optional: makes intent explicit
-        });
-        console.log("SocketIO initialized");
+        const socketio = initializeSocketIO('player-stream-overlay', 'stream-overlay');
         const iconCache = new IconCache();
         const carTelemetryWidget = new CarTelemetryWidget();
         const gForceDisplayWidget = new GForceDisplay('gforce-display');
@@ -349,19 +337,6 @@
         const paceComparisonWidget = new PaceComparison();
 
         const maxWeatherSamples = 5;
-        // Emit a custom event to register client type upon connection
-        socketio.on('connect', function () {
-            socketio.emit('register-client', { type: 'player-stream-overlay', id: 'stream-overlay' });
-            console.log(`⏱️ Socket connected in ${Date.now() - connectStart}ms`);
-        });
-
-        socketio.on('connect_error', (err) => {
-            console.warn('❌ Socket connection error:', err.message);
-        });
-
-        socketio.on('reconnect_attempt', attempt => {
-            console.log(`🔁 Reconnection attempt ${attempt}`);
-        });
 
         socketio.on('stream-overlay-update', function (binaryData) {
             let data = window.msgpack.decode(new Uint8Array(binaryData));
