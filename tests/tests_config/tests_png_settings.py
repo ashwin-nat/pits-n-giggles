@@ -126,7 +126,7 @@ class TestPngSettings(TestF1ConfigBase):
                 },
                 "Display" : {
                     "refresh_interval" : {
-                        "old_value" : 200,
+                        "old_value" : 100,
                         "new_value" : 1000
                     }
                 }
@@ -143,7 +143,7 @@ class TestPngSettings(TestF1ConfigBase):
                 },
                 "Display" : {
                     "refresh_interval" : {
-                        "old_value" : 200,
+                        "old_value" : 100,
                         "new_value" : 1000
                     }
                 }
