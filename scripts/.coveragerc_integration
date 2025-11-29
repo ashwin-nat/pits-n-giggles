@@ -21,7 +21,6 @@ source =
     lib
     apps/backend
     apps/hud
-    apps/launcher
 
 sigterm = True
 
