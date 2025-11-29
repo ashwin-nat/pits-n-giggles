@@ -97,10 +97,7 @@ See **[RUNNING.md](docs/RUNNING.md)**.
 
 ## Screenshots
 
-### In-Game HUD Overlay
-![HUD Overlay](screenshots/hud.png)
-
-### Main Interface
+### Main Dashboard
 ![Main UI](screenshots/main-ui.png)
 
 ### Lap Times
