@@ -1,137 +1,119 @@
-# Pits n' Giggles 🏎️💨
+# Pits n' Giggles
+**Real-time in-game overlays + advanced F1 telemetry dashboards.**
+*(Because racing fast is good. Racing smart is better.)*
 
-A real-time F1 telemetry dashboard for enhancing your racing experience.
-*(Because knowing why you crashed is almost as fun as not crashing!)*
-
-![Main UI](screenshots/main-ui.png)
+![HUD Overlay](screenshots/hud.png)
 
 ## Overview
 
-Pits n' Giggles provides live telemetry data during F1 races, giving you valuable insights to make informed decisions on track. While it can't replace that gaming chair you desperately need to catch the competition (seriously, it's always the chair, right? 🪑✨), it offers comprehensive race analytics in an intuitive interface.
+Pits n' Giggles is a lightweight F1 telemetry companion that brings two major capabilities together:
 
-### The Problem We Solve 🔧
+1. **In-game, always-on-top racing overlays** - lightweight HUD widgets you use *while driving*.
+2. **Deep-dive telemetry dashboards** - advanced analysis for tyre wear, lap times, fuel modelling, and more.
 
-Most F1 telemetry applications require extensive mouse interaction to access critical data - a major challenge when you're focused on driving. Try clicking precisely while taking Eau Rouge at 300 km/h... we'll wait. ⏱️
+Whether you're racing, streaming, analysing performance, or coaching remotely, Pits n' Giggles provides real-time insights without ever slowing you down.
 
-Pits n' Giggles solves this by:
+---
 
-- Displaying essential information without requiring active navigation (your hands thank you 🙌)
-- Using a clean, glanceable interface that minimizes distraction (eyes on the road, hotshot!)
-- Implementing a distributed client/server architecture that allows:
-  - Remote monitoring by team members in different geographic locations (backseat drivers, but useful! 🌎)
-  - Separation of display and data collection for flexible setups
-  - Performance analysis without interrupting your driving flow
+## In-Game Overlays (Primary Feature)
 
-## Supported Games 🎮
+Traditional telemetry tools expect you to click around mid-race. Ever tried navigating menus while taking Eau Rouge flat? Exactly.
 
-- F1 2023
-- F1 2024
-- F1 2025
+Pits n' Giggles overlays:
 
-## Features
+- Stay **always on top** of your game window
+- Require **zero mouse interaction**
+- Are **high-contrast and glanceable**
+- Work seamlessly with streaming setups (OBS-friendly)
+- Are designed for wheel users, VR-style driving, and minimal distraction
 
-### Core Functionality 🏁
-- Real-time telemetry data visualization designed for at-a-glance reading while driving
-- Minimal interaction required - critical data is always visible without clicking (no more "hold my steering wheel" moments)
-- Two specialized view modes:
-  - **Driver Mode**: Streamlined for when you're racing
-  - **Engineer Mode**: Comprehensive when supporting a driver
-- Support for both player and spectator modes (spy on your friends' driving mistakes! 👀)
-- Configurable display (up to 5 rows including player in player mode)
-- Comprehensive driver information:
-  - Track position (for when you need proof you're not last)
-  - Driver name and team
-  - ERS percentage (use it or lose it! ⚡)
-  - Best and last lap times
-  - Detailed tyre information (compound, age, degradation) (tyre whisperer mode activated 🔮)
-  - Fuel status (how many laps until you're pushing your car to the finish line?)
-  - Linear regression-based tyre wear predictions based on your actual driving style
-  - Personalized fuel consumption models that adapt to your driving patterns
-  - Unlike the game's static calculations, our predictions use your real-time data!
+### Overlay Features
+- **Lap deltas** & **estimated lap times** & **dynamic sector color updates**
+- **Tyre compound, age, wear, and predictions**
+- **ERS usage** & deployment mode indicators
+- **Fuel load + live consumption model**
+- **Weather & track conditions**
 
-### Detailed Driver Analytics 📊
-Click on any driver's name to access (when you're safely in the pits, of course):
-- Car damage breakdown (find out exactly what you hit this time!)
-- Tyre wear statistics and predictions:
-  - Linear regression models based on your actual driving data
-  - More accurate than the game's static calculations
-  - Personalized to your driving style and track conditions
-- Current lap data (during races)
-- Complete lap history (receipts for when your friend claims they were "always faster")
-- ERS deployment history
-- Fuel consumption trends with predictive modeling:
-  - Dynamic calculations based on your throttle patterns
-  - Adapts to your driving style instead of using the game's default estimates
-  - Helps make strategic decisions about fuel saving or pushing
-- Tyre stint history (prove your 40-lap stint on softs was actually genius)
+![HUD Overlay](screenshots/hud-collage.png)
 
-### Advanced Capabilities 🚀
-- **Two Specialized Modes**:
-  - Driver Mode: Focused data for racers at the wheel
-  - Engineer Mode: Comprehensive analysis for team support
-- **Predictive Analytics**:
-  - Custom tyre wear models using linear regression on your actual driving data
-  - Personalized fuel consumption predictions that adapt to your specific throttle/braking patterns
-  - Much more accurate than the game's default calculations which don't account for driving style
-- **Post-Race Data Autosave**: Automatically export race data to JSON (for when you need scientific proof of how unlucky you were)
-- **Stream Overlays**: Enhance your broadcasts with real-time data:
-  - Throttle/Brake/Steering inputs (show viewers your superhuman reflexes)
-  - Lap time history (visual representation of your consistency or lack thereof)
-  - Penalties, track/air temperature, speed trap records (F1 24 onwards)
-  - Live G-Force visualization (neck muscles not included 💪)
-  - Weather forecast (for dramatic "rain is coming" commentary)
-- **Data Forwarding**: Send telemetry to other applications or devices
-- **Distributed Architecture**:
-  - Connect with team members across different locations
-  - Separate telemetry collection from visualization for optimal performance
-  - Enable remote coaching and strategy support (hear "I told you so" from anywhere in the world! 🌍)
+---
 
-## Installation 🛠️
+## Telemetry Dashboards (Equal Focus)
 
-### Windows Users
-Download the executable directly from our [releases page](https://github.com/ashwin-nat/pits-n-giggles/releases).
+![Main UI](screenshots/main-ui.png)
 
-### Mac Users
-Mac executables are not yet available as they require building on macOS hardware.
-Follow the Python setup instructions below instead.
+Beyond the overlays, Pits n' Giggles includes a full browser-based telemetry suite.
 
-### Manual Setup (All Platforms)
-For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
+### Core Dashboard Features
+- Live race table with instant driver comparison
+- Player & spectator mode support
+- Configurable info density and row count
+- Surrounding-cars comparison (N ahead / N behind)
+- Distributed design: view telemetry from any device on your network
 
-## Building From Source
-To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md). (No PhD in computer science required.)
+### Driver Details
+Click any driver (preferably not during a fast lap):
 
-### Mac Users
-Mac executables are not yet available as they require building on macOS hardware.
-(Anyone want to donate a Mac? ...No? Worth a shot! 🍎)
+- **Lap-by-lap history**
+- **Tyre wear**, with regression-based prediction
+- **Car damage breakdown**
+- **ERS deployment patterns**
+- **Fuel consumption modelling** based on your actual driving
+- **Stint history & compound strategy analysis**
+- Autosaved session JSON for deeper review
 
-Follow the Python setup instructions below instead.
+---
 
-### Manual Setup (All Platforms)
-For detailed setup instructions including Python environment configuration, see [RUNNING.md](docs/RUNNING.md).
+## Supported Games
+- **F1 2023**
+- **F1 2024**
+- **F1 2025**
 
-## Setup
-[Detailed Steps in the Wiki](https://github.com/ashwin-nat/pits-n-giggles/wiki)
+---
 
-## Building From Source
-To compile the application from source code, follow the instructions in [BUILDING.md](docs/BUILDING.md).
+## Advanced Capabilities
+- **OBS-ready stream overlays**
+- **Distributed client/server architecture**
+- **Real-time data forwarding** to other apps
+- **Remote coaching** (engineers can watch from anywhere)
+- **Minimal interaction, maximum visibility** design philosophy
+
+---
+
+## Installation
+
+### Windows
+Download the EXE from the [Releases Page](https://github.com/ashwin-nat/pits-n-giggles/releases).
+
+### macOS
+Build from source (macOS executables require mac hardware).
+See **[RUNNING.md](docs/RUNNING.md)**.
+
+### Manual / Source Installation
+- How to run → **[RUNNING.md](docs/RUNNING.md)**
+- How to build → **[BUILDING.md](docs/BUILDING.md)**
+
+---
 
 ## Screenshots
+
+### In-Game HUD Overlay
+![HUD Overlay](screenshots/hud.png)
 
 ### Main Interface
 ![Main UI](screenshots/main-ui.png)
 
-### Driver Details - Lap Times
-![Driver Details - Lap times](screenshots/lap-times-modal-ss.png)
+### Lap Times
+![Lap Times](screenshots/lap-times-modal-ss.png)
 
-### Driver Details - Tyre Stint
-![Driver Details - Tyre Stint](screenshots/tyre-stint-modal-ss.png)
+### Tyre Stint
+![Tyre Stint](screenshots/tyre-stint-modal-ss.png)
 
 ### Stream Overlay Example
 ![Stream Overlay](screenshots/png-stream-overlay.png)
 
 ### Launcher
-![App Launcher](screenshots/launcher.png)
+![Launcher](screenshots/launcher.png)
 
 ### Position History
 ![Position History](screenshots/position-history.png)
@@ -139,20 +121,19 @@ To compile the application from source code, follow the instructions in [BUILDIN
 ### Tyre Stint History
 ![Tyre Stint History](screenshots/tyre-stint-history.png)
 
+---
+
 ## Architecture
 ![Architecture Diagram](docs/arch-diagram.png)
 
-## Documentation 📚
-For comprehensive documentation and usage guides, visit our [Wiki](https://github.com/ashwin-nat/pits-n-giggles/wiki).
-(It's like the F1 technical regulations, but actually readable!)
+## Documentation
+Full guides & documentation:
+  https://www.pitsngiggles.com/blog
 
-## Credits
-UI chart and visualization concepts inspired by [F1TelemetryData](https://x.com/F1TelemetryData) on Twitter.
+---
 
-## Contributing 🤝
-Contributions are welcome! Feel free to submit issues or pull requests to help improve Pits n' Giggles.
-(Just like F1, we believe in continuous development... minus the $145 million budget cap.)
+## Contributing
+Issues and PRs are welcome! Continuous development, minus the FIA politics.
 
-## License 📜
-[MIT License](LICENSE)
-(Unless you're the FIA, in which case, we have a completely different license... nevermind.)
+## License
+MIT License.

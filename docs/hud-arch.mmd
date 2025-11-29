@@ -1,0 +1,114 @@
+graph TD
+
+subgraph EXT["External Threads"]
+    direction TB
+    IPC["IPC Server Thread"]
+    SIO["Socket.IO Client Thread"]
+end
+
+subgraph OM["L1 - OverlaysManager"]
+    direction TB
+    OM_Cmd["handle_control_cmd()"]
+    OM_Data["handle_data_update()"]
+    OM_Req["perform_request()"]
+end
+
+subgraph WMALL["L2 - WindowManager"]
+    direction TB
+    subgraph WM["WindowManager API"]
+        direction TB
+        API_BC["broadcast_data()"]
+        API_UC["unicast_data()"]
+        API_REQ["request()"]
+    end
+
+    subgraph WMSIG["WindowManager Signals"]
+        direction TB
+        Sig_CMD["cmd_signal"]
+        Sig_REQ["request_signal"]
+        Sig_RESP["response_signal"]
+        RespStore["_response_data"]
+    end
+end
+
+subgraph BASE["L3 - Overlay Base Layer"]
+    direction TB
+    BaseOverlay["BaseOverlay<br/>Command Registry<br/>Request Registry"]
+end
+
+subgraph OVERLAYS["L4 - Implementation layer"]
+    direction TB
+    TimingTowerOverlay["Timing Tower Overlay"]
+    LapTimeOverlay["Lap Time Overlay"]
+
+    subgraph MFD[" "]
+        direction TB
+        MFDCommandRouter["MFD Overlay"]
+        subgraph MFDCTRL["MFD Control Path"]
+            MFDHandlers["Control Handler"]
+            SwitchPage["_switch_page()"]
+        end
+
+        subgraph MFDDATA["MFD Data Path"]
+            ForwardData["Forward to Page"]
+            ActivePage["Active Page"]
+        end
+    end
+end
+
+
+subgraph PAGES["L5 - MFD Page Events"]
+    direction TB
+    PageReg["Event Registry"]
+    UpdateUI["Update UI"]
+end
+
+%% ========= Top-Down Flows =========
+IPC -->|control cmd| OM_Cmd
+SIO -->|data update| OM_Data
+IPC -->|request| OM_Req
+
+OM_Cmd --> API_UC
+OM_Data --> API_BC
+OM_Req --> API_REQ
+
+API_BC --> Sig_CMD
+API_UC --> Sig_CMD
+API_REQ --> Sig_REQ
+
+Sig_CMD --> BaseOverlay
+Sig_REQ --> BaseOverlay
+
+BaseOverlay --> TimingTowerOverlay
+BaseOverlay --> LapTimeOverlay
+BaseOverlay --> MFDCommandRouter
+
+%% Response path (upward dotted)
+BaseOverlay -.->|emit response| Sig_RESP
+Sig_RESP --> RespStore
+RespStore --> OM_Req
+
+%% MFD-specific flows
+MFDCommandRouter -->|control| MFDHandlers
+MFDCommandRouter -->|data| ForwardData
+
+MFDHandlers --> SwitchPage
+ForwardData --> ActivePage
+
+ActivePage --> PageReg
+PageReg --> UpdateUI
+
+%% ========= Styles =========
+classDef thread fill:#ffcccb,stroke:#b71c1c,color:#000,stroke-width:1px
+classDef manager fill:#c8e6ff,stroke:#1565c0,color:#000,stroke-width:1px
+classDef overlay fill:#d2ffd9,stroke:#1b5e20,color:#000,stroke-width:1px
+classDef special fill:#d7e3ff,stroke:#0d47a1,color:#000,stroke-width:1px
+classDef signal fill:#ffe9b0,stroke:#ef6c00,color:#000,stroke-width:1px
+classDef page fill:#f3c6ff,stroke:#6a1b9a,color:#000,stroke-width:1px
+
+class IPC,SIO thread
+class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_REQ,RespStore manager
+class Sig_CMD,Sig_REQ,Sig_RESP signal
+class BaseOverlay,TimingTowerOverlay,LapTimeOverlay overlay
+class MFDCommandRouter,MFDHandlers,SwitchPage,ForwardData special
+class ActivePage,PageReg,UpdateUI page
