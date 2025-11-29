@@ -38,9 +38,9 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     }
 
     refresh_interval: int = Field(
-        default=200,
+        default=100,
         gt=0,
-        description=f"{APP_NAME} client update interval (ms)",
+        description=f"{APP_NAME} Display update interval (ms)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",

@@ -52,7 +52,7 @@ class StreamOverlaySettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
-                "visible": True
+                "visible": False
             }
         }
     )

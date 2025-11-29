@@ -24,6 +24,7 @@
 
 import asyncio
 import logging
+import random
 from typing import List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -79,7 +80,7 @@ def initUiIntfLayer(
                                                                logger,
                                                                shutdown_event),
                                      name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.StreamOverlay.stream_overlay_update_interval_ms,
+    tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.Display.refresh_interval,
                                                              settings.StreamOverlay.show_sample_data_at_start,
                                                              web_server, session_state, shutdown_event),
                                      name="Stream Overlay Update Task"))
@@ -106,6 +107,7 @@ async def raceTableClientUpdateTask(
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
+    await _initial_random_sleep()
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
         if server.is_any_client_interested_in_event('race-table-update'):
@@ -132,6 +134,7 @@ async def streamOverlayUpdateTask(
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
+    await _initial_random_sleep()
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
         if server.is_any_client_interested_in_event('stream-overlay-update'):
@@ -174,3 +177,9 @@ async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Ev
                 data=message.toJSON())
 
     server.m_logger.debug("Shutting down HUD notifier task")
+
+# -------------------------------------- UTILS -------------------------------------------------------------------------
+
+async def _initial_random_sleep() -> None:
+    """Sleep for a random amount of time to avoid bursty events"""
+    await asyncio.sleep(random.uniform(0, 0.2))
