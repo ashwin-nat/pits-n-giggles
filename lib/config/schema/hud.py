@@ -140,7 +140,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
-                "visible": True
+                "visible": True,
+                "ext_info": [
+                    'Recommended to also configure "Toggle all overlays UDP action code" and \n'
+                        '"Cycle MFD pages UDP action code" as well.'
+                ]
             }
         }
     )

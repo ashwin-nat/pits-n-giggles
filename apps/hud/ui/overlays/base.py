@@ -25,12 +25,12 @@
 import logging
 from typing import Any, Callable, Dict
 
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import QPropertyAnimation, Qt, Signal, Slot
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QWidget
 
+from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.common import serialise_data, deserialise_data
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -178,11 +178,11 @@ class BaseOverlay(QWidget):
             """Toggle visibility."""
             self.logger.debug(f'{self.overlay_id} | Toggling visibility')
             if self.isVisible():
-                self.logger.debug(f'{self.overlay_id} | Hiding overlay')
-                self.hide()
+                self.logger.debug(f'{self.overlay_id} | Fading out overlay')
+                self.animate_fade(show=False)
             else:
-                self.logger.debug(f'{self.overlay_id} | Showing overlay')
-                self.show()
+                self.logger.debug(f'{self.overlay_id} | Fading in overlay')
+                self.animate_fade(show=True)
 
         @self.on_event("set_opacity")
         def _handle_set_opacity(data: Dict[str, Any]):
@@ -315,3 +315,24 @@ class BaseOverlay(QWidget):
         # 3. Rebuild UI fresh
         self.build_ui()
         self.update_window_flags()
+
+    def animate_fade(self, show: bool):
+        """Animate fade-in or fade-out on a top-level window."""
+
+        start = 0.0 if show else 1.0
+        end   = 1.0 if show else 0.0
+
+        anim = QPropertyAnimation(self, b"windowOpacity")
+        anim.setDuration(250)
+        anim.setStartValue(start)
+        anim.setEndValue(end)
+        anim.finished.connect(lambda: self.hide() if not show else None)
+
+        # Prevent garbage collection
+        self._fade_anim = anim
+
+        if show:
+            self.setWindowOpacity(0.0)
+            self.show()
+
+        anim.start()

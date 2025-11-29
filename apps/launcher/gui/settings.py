@@ -351,6 +351,7 @@ class SettingsWindow(QDialog):
         ui_config = ui_meta.get("ui", {})
         ui_type = ui_config.get("type", "text_box")
         description = field_info.description or field_name
+        ext_info = ui_config.get("ext_info", [])  # Get extended info list for tooltips
 
         container = QWidget()
         layout = QVBoxLayout()
@@ -366,13 +367,25 @@ class SettingsWindow(QDialog):
                 lambda state, path=field_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
             )
             self.field_widgets[field_path] = checkbox
-            layout.addWidget(checkbox)
+
+            # Wrap checkbox with info icons if ext_info is provided
+            if ext_info:
+                checkbox_container = self._wrap_widget_with_info_icons(checkbox, ext_info)
+                layout.addWidget(checkbox_container)
+            else:
+                layout.addWidget(checkbox)
 
         elif ui_type == "slider":
             # Slider with label
             label = QLabel(description)
             label.setFont(QFont("Roboto", 10))
-            layout.addWidget(label)
+
+            # Wrap label with info icons if ext_info is provided
+            if ext_info:
+                label_widget = self._wrap_widget_with_info_icons(label, ext_info)
+                layout.addWidget(label_widget)
+            else:
+                layout.addWidget(label)
 
             slider_container = QWidget()
             slider_layout = QHBoxLayout()
@@ -417,7 +430,13 @@ class SettingsWindow(QDialog):
             # Text box with label
             label = QLabel(description)
             label.setFont(QFont("Roboto", 10))
-            layout.addWidget(label)
+
+            # Wrap label with info icons if ext_info is provided
+            if ext_info:
+                label_widget = self._wrap_widget_with_info_icons(label, ext_info)
+                layout.addWidget(label_widget)
+            else:
+                layout.addWidget(label)
 
             text_box = QLineEdit(str(field_value) if field_value is not None else "")
             text_box.setFont(QFont("Formula1 Display", 8))
@@ -1039,3 +1058,24 @@ class SettingsWindow(QDialog):
                 return
 
         event.accept()
+
+    def _wrap_widget_with_info_icons(self, widget: QWidget, ext_info_list: List[str]) -> QWidget:
+        """Add multiple ⓘ tooltip icons to the right of a widget, one for each ext_info item."""
+        container = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        layout.addWidget(widget)
+
+        # Add an info icon for each item in ext_info_list
+        for tooltip_text in ext_info_list:
+            info_label = QLabel("ⓘ")
+            info_label.setToolTip(tooltip_text)
+            info_label.setFixedWidth(20)
+            info_label.setCursor(Qt.CursorShape.WhatsThisCursor)  # Change cursor on hover
+            layout.addWidget(info_label)
+        layout.addStretch()
+
+        container.setLayout(layout)
+        return container

@@ -29,11 +29,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from PySide6.QtCore import QMetaObject, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import (QEvent, QMetaObject, QObject, QSize, Qt,
+                            QThreadPool, QTimer, Signal)
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
 from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QHBoxLayout, QLabel, QMainWindow, QMessageBox,
-                               QPushButton, QSplitter, QVBoxLayout, QWidget)
+                               QPushButton, QSplitter, QToolTip, QVBoxLayout,
+                               QWidget)
 
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
@@ -65,6 +67,14 @@ class ShutdownDialog(QDialog):
         layout.addWidget(label)
 
         self.setFixedSize(220, 80)
+
+class StableTooltipFilter(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ToolTip:
+            # Directly show the tooltip, bypassing Qt's hover timer
+            QToolTip.showText(event.globalPos(), obj.toolTip(), obj)
+            return True
+        return False
 
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
@@ -192,6 +202,7 @@ class PngLauncherWindow(QMainWindow):
             assert subsystem.short_name not in self.subsystems_short_names
             self.subsystems_short_names.add(subsystem.short_name)
 
+        self._tooltip_filter = StableTooltipFilter()
         self.setup_ui()
 
     def _load_icon(self, relative_path: Path) -> QIcon:
@@ -646,6 +657,7 @@ class PngLauncherWindow(QMainWindow):
 
         btn.clicked.connect(callback)
         self.set_button_tooltip(btn, tooltip)
+        btn.installEventFilter(self._tooltip_filter)
         return btn
 
     def set_button_tooltip(self, button: QPushButton, tooltip: str):
