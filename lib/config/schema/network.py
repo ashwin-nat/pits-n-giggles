@@ -75,8 +75,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker: UDP Action Code")
-    udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker: UDP Action Code")
+    udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
+    udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker UDP Action Code")
 
     wdt_interval_sec: int = Field(
         default=30,

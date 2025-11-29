@@ -229,9 +229,9 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Toggle MFD overlay UDP action code")
 
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
-        "The UDP custom action code to show/hide overlays")
+        "Toggle all overlays UDP action code")
     cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
-        "The UDP custom action code to cycle MFD pages")
+        "Cycle MFD pages UDP action code")
 
     overlays_opacity: int = Field(
         default=100,
@@ -241,7 +241,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "slider",
-                "visible": True,
+                "visible": False,
                 "min": 0,
                 "max": 100
             }

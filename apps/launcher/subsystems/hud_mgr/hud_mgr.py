@@ -98,7 +98,7 @@ class HudAppMgr(PngAppMgrBase):
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
-        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Unlock Overlays")
+        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Edit Overlays")
         self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays Positions")
         self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
 
@@ -229,7 +229,7 @@ class HudAppMgr(PngAppMgrBase):
         """Set the icon and tooltip for the lock button based on state"""
         if self.locked:
             self.set_button_icon(self.lock_button, self.get_icon("unlock"))
-            self.set_button_tooltip(self.lock_button, "Unlock Overlays")
+            self.set_button_tooltip(self.lock_button, "Edit Overlays")
         else:
             self.set_button_icon(self.lock_button, self.get_icon("lock"))
             self.set_button_tooltip(self.lock_button, "Lock Overlays")
@@ -256,15 +256,15 @@ class HudAppMgr(PngAppMgrBase):
             self.set_button_state(self.hide_show_button, False)
             self.set_button_state(self.lock_button, False)
 
-    def _send_overlays_opacity_change(self, new_settings: PngSettings) -> None:
+    def _send_overlays_opacity_change(self, opacity: int) -> None:
         """Send overlays opacity change to HUD app
 
         Args:
-            new_settings (PngSettings): New settings
+            opacity (int): New overlays opacity
         """
         self.debug_log("Sending set-overlays-opacity command to HUD...")
         rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
-            "opacity": new_settings.HUD.overlays_opacity,
+            "opacity": opacity,
         })
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
@@ -321,13 +321,6 @@ class HudAppMgr(PngAppMgrBase):
             self.enabled = new_settings.HUD.enabled
             return True
 
-        if self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "overlays_opacity",
-            ],
-        }):
-            self._send_overlays_opacity_change(new_settings)
-
         return False
 
     def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
@@ -374,6 +367,15 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
             ),
+
+            # Opacity at the bottom
+            SliderItem(
+                key="overlays_opacity",
+                label="Overlays Opacity",
+                min=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
+                value=hud_settings.overlays_opacity,
+            ),
         ])
         self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
 
@@ -390,25 +392,31 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
         new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
         new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
+        new_settings.HUD.overlays_opacity = values["overlays_opacity"]
 
-        diff = self.curr_settings.diff(new_settings, {
-            "HUD": [
-                "lap_timer_ui_scale",
-                "timing_tower_ui_scale",
-                "mfd_ui_scale",
-            ],
-        })
+        diff = self.curr_settings.diff(new_settings, [
+            "lap_timer_ui_scale",
+            "timing_tower_ui_scale",
+            "mfd_ui_scale",
+        ])
         self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
+
+        opacity_changed = self.curr_settings.HUD.overlays_opacity != new_settings
+        if opacity_changed:
+            self._send_overlays_opacity_change(new_settings.HUD.overlays_opacity)
+            pass
+
         if diff:
             key_to_oid: Dict[str, str] = {
                 "lap_timer_ui_scale": "lap_timer",
                 "timing_tower_ui_scale": "timing_tower",
                 "mfd_ui_scale": "mfd",
             }
-            for key, data in diff["HUD"].items():
+            for key, data in diff.items():
                 oid = key_to_oid[key]
                 self._send_ui_scale_change_cmd(oid, data)
 
+        if diff or opacity_changed:
             # Update current settings and save to disk
             self.window.update_settings(new_settings)
             self.window.save_settings_to_disk(new_settings)
