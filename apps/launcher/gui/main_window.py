@@ -80,6 +80,8 @@ class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
 
     update_available = Signal()
+    show_error_signal = Signal(str, str)
+    show_success_signal = Signal(str, str)
 
     BUTTON_STYLESHEET = """
         QPushButton {
@@ -201,6 +203,10 @@ class PngLauncherWindow(QMainWindow):
             assert subsystem.short_name
             assert subsystem.short_name not in self.subsystems_short_names
             self.subsystems_short_names.add(subsystem.short_name)
+
+
+        self.show_success_signal.connect(self._show_success_safe)
+        self.show_error_signal.connect(self._show_error_safe)
 
         self._tooltip_filter = StableTooltipFilter()
         self.setup_ui()
@@ -680,19 +686,11 @@ class PngLauncherWindow(QMainWindow):
 
     def show_success(self, title: str, message: str):
         """Display a success/info message box."""
-        QMessageBox.information(
-            self,
-            title,
-            message
-        )
+        self.show_success_signal.emit(title, message)
 
     def show_error(self, title: str, message: str):
         """Display an error message box."""
-        QMessageBox.critical(
-            self,
-            title,
-            message
-        )
+        self.show_error_signal.emit(title, message)
 
     def select_file(self, title="Select File", file_filter="All Files (*.*)"):
         """Open a file dialog and return path or None."""
@@ -777,6 +775,12 @@ class PngLauncherWindow(QMainWindow):
             self.updates_btn.setStyleSheet(self.UPDATE_BLINK_STYLESHEET)
         else:
             self.updates_btn.setStyleSheet(self.BUTTON_STYLESHEET)
+
+    def _show_error_safe(self, title: str, message: str):
+        QMessageBox.critical(self, title, message)
+
+    def _show_success_safe(self, title: str, message: str):
+        QMessageBox.information(self, title, message)
 
     def request_shutdown(self):
         """

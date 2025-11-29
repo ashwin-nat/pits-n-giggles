@@ -48,7 +48,7 @@ class SliderRow:
     value_label: QLabel
     row_widget: QWidget
 
-class ScalePopup(QWidget):
+class OverlaysAdjustPopup(QWidget):
     """
     Generic floating popup for label+slider items.
     Confirm-button-based architecture.

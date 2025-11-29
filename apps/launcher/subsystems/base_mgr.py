@@ -53,6 +53,7 @@ class PngAppMgrBase(QObject):
     status_changed = Signal(str)
     post_start_signal = Signal()
     post_stop_signal = Signal()
+    msg_window_signal = Signal()
 
     EXIT_ERRORS = {
         PNG_ERROR_CODE_HTTP_PORT_IN_USE: {
@@ -340,8 +341,25 @@ class PngAppMgrBase(QObject):
             self.debug_log(f"{self.display_name} Reset restart counter on manual stop")
             self.start(reason)
 
-    def _should_auto_restart(self) -> bool:
-        """Determine if auto-restart should be attempted"""
+    def _should_auto_restart(self, exit_code: int) -> bool:
+        """Determine if auto-restart should be attempted
+
+        Args:
+            exit_code (int): Exit code of the process
+        """
+
+        if exit_code == PNG_ERROR_CODE_HTTP_PORT_IN_USE:
+            self.show_error(f"{self.display_name} port in use",
+                            f"Please select an unused port in {self.http_port_conflict_field}")
+            self.error_log(f"{self.display_name} HTTP port in use")
+            return False
+
+        if exit_code == PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE:
+            self.show_error(f"{self.display_name} port in use",
+                            f"Please select an unused port in {self.udp_port_conflict_field}")
+            self.error_log(f"{self.display_name} UDP telemetry port in use")
+            return False
+
         if not self.auto_restart:
             return False
 
@@ -461,7 +479,7 @@ class PngAppMgrBase(QObject):
                 self.error_log(f"Post-stop hook error: {e}")
 
         # Attempt auto-restart if enabled
-        if self._should_auto_restart():
+        if self._should_auto_restart(ret_code):
             threading.Thread(
                 target=self._auto_restart,
                 daemon=True,

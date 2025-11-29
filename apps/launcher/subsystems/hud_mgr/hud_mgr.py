@@ -34,7 +34,7 @@ from lib.config import HudSettings, PngSettings
 from lib.ipc import IpcParent
 
 from ..base_mgr import PngAppMgrBase
-from .scale_popup import ScalePopup, SliderItem
+from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -88,8 +88,8 @@ class HudAppMgr(PngAppMgrBase):
         elif not self.supported:
             self._update_status("Unsupported")
 
-        self.scale_popup = ScalePopup(self.window)
-        self.scale_popup.hide()
+        self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
+        self.overlays_adj_popup.hide()
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -147,7 +147,7 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log("Failed to toggle lock state.")
 
         if self.locked:
-            self.scale_popup.hide()
+            self.overlays_adj_popup.hide()
         else:
             self.show_scale_popup()
 
@@ -345,7 +345,7 @@ class HudAppMgr(PngAppMgrBase):
         hud_settings = self.curr_settings.HUD
 
         # pylint: disable=unsubscriptable-object
-        self.scale_popup.set_items([
+        self.overlays_adj_popup.set_items([
             SliderItem(
                 key="lap_timer",
                 label="Lap Timer Scale",
@@ -377,15 +377,15 @@ class HudAppMgr(PngAppMgrBase):
                 value=hud_settings.overlays_opacity,
             ),
         ])
-        self.scale_popup.set_confirm_callback(self._scale_popup_on_confirm)
+        self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
         # Position below button
         btn = self.lock_button
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
-        self.scale_popup.move(gpos)
-        self.scale_popup.show()
+        self.overlays_adj_popup.move(gpos)
+        self.overlays_adj_popup.show()
 
-    def _scale_popup_on_confirm(self, values: dict[str, int]):
+    def _overlays_adj_popup_on_confirm(self, values: dict[str, int]):
         """Scale confirm callback. No guarantee that values have been changed"""
 
         new_settings = self.curr_settings.model_copy(deep=True)
@@ -394,17 +394,16 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
 
-        diff = self.curr_settings.diff(new_settings, [
+        diff = self.curr_settings.HUD.diff(new_settings.HUD, [
             "lap_timer_ui_scale",
             "timing_tower_ui_scale",
             "mfd_ui_scale",
         ])
         self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
 
-        opacity_changed = self.curr_settings.HUD.overlays_opacity != new_settings
+        opacity_changed = self.curr_settings.HUD.overlays_opacity != new_settings.HUD.overlays_opacity
         if opacity_changed:
             self._send_overlays_opacity_change(new_settings.HUD.overlays_opacity)
-            pass
 
         if diff:
             key_to_oid: Dict[str, str] = {
