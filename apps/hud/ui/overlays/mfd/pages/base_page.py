@@ -59,6 +59,7 @@ class BasePage(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
@@ -76,9 +77,8 @@ class BasePage(QWidget):
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(content_widget)
-        # self.setFixedWidth(self.scaled_width)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.setMinimumWidth(self.scaled_width)   # optional
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(self.scaled_width)
 
         self._event_handlers: Dict[str, EventCommandHandler] = {}
         self._register_default_handlers()

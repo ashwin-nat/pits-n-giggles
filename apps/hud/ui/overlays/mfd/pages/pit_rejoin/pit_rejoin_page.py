@@ -101,7 +101,6 @@ class PitRejoinPredictionPage(BasePage):
 
     def _build_ui(self):
         """Build the timing tower UI"""
-        # Remove center alignment from page layout
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Pit time loss label

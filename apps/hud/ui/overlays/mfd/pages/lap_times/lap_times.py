@@ -28,7 +28,8 @@ from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QWidget, QHeaderView
+from PySide6.QtWidgets import (QHeaderView, QSizePolicy, QTableWidget,
+                               QTableWidgetItem, QWidget)
 
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 
@@ -43,7 +44,7 @@ class CellColour(Enum):
     PURPLE = 3
 
 class LapTimesPage(BasePage):
-    """Elegant lap times table with modern styling."""
+    """Lap Times MFD Page."""
     KEY = "lap_times"
     HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
     NUM_ROWS = 5
@@ -54,6 +55,12 @@ class LapTimesPage(BasePage):
     S3_VALID_MASK = 8
     FONT_SIZE = 12
     FONT_FAMILY = "Formula1 Display"
+    BASE_ROW_HEIGHT = 40
+    BASE_HEADER_HEIGHT = 35
+    BASE_PADDING = 4
+
+    # basically max str len for each column
+    COLUMN_WIDTH_RATIOS = [4, 6, 6, 6, 9]
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialize lap times page.
@@ -91,7 +98,6 @@ class LapTimesPage(BasePage):
         table_font = QFont(self.FONT_FAMILY, self.font_size)
         self.table.setFont(table_font)
 
-        # Cleaned-up stylesheet
         self.table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: #1e1e1e;
@@ -100,7 +106,7 @@ class LapTimesPage(BasePage):
                 border: 1px solid #3a3a3a;
             }}
             QTableWidget::item {{
-                padding: 4px;
+                padding: {self.scaled_padding}px;
                 font-family: {self.FONT_FAMILY};
                 font-size: {self.font_size}pt;
             }}
@@ -110,7 +116,7 @@ class LapTimesPage(BasePage):
             QHeaderView::section {{
                 background-color: #2a2a2a;
                 color: #ffffff;
-                padding: 6px;
+                padding: {self.scaled_padding}px;
                 border: 1px solid #3a3a3a;
                 font-family: {self.FONT_FAMILY};
                 font-size: {self.font_size}pt;
@@ -118,16 +124,33 @@ class LapTimesPage(BasePage):
             }}
         """)
 
-        # Set equal column widths to fill available space
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(self.scaled_row_height)
+        self.table.horizontalHeader().setFixedHeight(self.scaled_header_height)
 
-        # Set row heights to fill vertical space
-        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Set size policy to expand and fill
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
+        self._apply_column_widths()
 
         self._init_event_handlers()
+
+    def _apply_column_widths(self):
+        """Apply proportional column widths based on content requirements."""
+
+        total_ratio = sum(self.COLUMN_WIDTH_RATIOS)
+        available_width = self.scaled_width
+
+        # First, set all columns to Interactive mode so we can set custom widths
+        for col in range(len(self.HEADERS)):
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
+
+        # Set proportional widths
+        for col, ratio in enumerate(self.COLUMN_WIDTH_RATIOS):
+            width = int((ratio / total_ratio) * available_width)
+            self.table.setColumnWidth(col, width)
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
@@ -230,3 +253,18 @@ class LapTimesPage(BasePage):
     def font_size(self) -> int:
         """Get the font size based on the scale factor."""
         return int(self.FONT_SIZE * self.scale_factor)
+
+    @property
+    def scaled_row_height(self) -> int:
+        """Get the scaled row height."""
+        return int(self.BASE_ROW_HEIGHT * self.scale_factor)
+
+    @property
+    def scaled_header_height(self) -> int:
+        """Get the scaled header height."""
+        return int(self.BASE_HEADER_HEIGHT * self.scale_factor)
+
+    @property
+    def scaled_padding(self) -> int:
+        """Get the scaled padding."""
+        return int(self.BASE_PADDING * self.scale_factor)
