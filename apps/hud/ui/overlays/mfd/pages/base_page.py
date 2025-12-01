@@ -27,7 +27,7 @@ from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget, QSizePolicy
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -76,7 +76,10 @@ class BasePage(QWidget):
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(content_widget)
-        self.setFixedWidth(self.scaled_width)
+        # self.setFixedWidth(self.scaled_width)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.setMinimumWidth(self.scaled_width)   # optional
+
         self._event_handlers: Dict[str, EventCommandHandler] = {}
         self._register_default_handlers()
 
@@ -124,7 +127,7 @@ class BasePage(QWidget):
 
         @self.on_event("page_active_status")
         def _handle_page_active_status(data: Dict[str, Any]):
-            self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}")
+            self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}. width={self.width()}")
 
     @property
     def scaled_width(self) -> int:
