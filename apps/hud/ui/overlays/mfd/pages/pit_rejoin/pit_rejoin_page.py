@@ -125,10 +125,6 @@ class PitRejoinPredictionPage(BasePage):
         self.table_layout.setSpacing(0)
         self.page_layout.addWidget(self.table_widget)
 
-        scaled_width = int(self.BASE_WIDTH * self.scale_factor)
-        self.setFixedWidth(scaled_width)
-        self.table_widget.setFixedWidth(scaled_width)
-
         # Store row widgets for updates
         self.table_rows: List[QFrame] = []
 
@@ -150,7 +146,6 @@ class PitRejoinPredictionPage(BasePage):
         """
         row_frame = QFrame(self)
         row_frame.setFixedHeight(self.row_height)
-        row_frame.setFixedWidth(int(self.BASE_WIDTH * self.scale_factor))
 
         # Add border styling
         border_width = int(2 * self.scale_factor)
@@ -204,7 +199,6 @@ class PitRejoinPredictionPage(BasePage):
         """Create an empty table row with no text or icons."""
         row_frame = QFrame(self)
         row_frame.setFixedHeight(self.row_height)
-        row_frame.setFixedWidth(int(self.BASE_WIDTH * self.scale_factor))
 
         # Match the visual style of normal rows
         row_frame.setStyleSheet(
