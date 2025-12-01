@@ -80,8 +80,13 @@ class TyreInfoPage(BasePage):
         """Build the complete UI structure."""
         main_container = QWidget(self)
         main_layout = QVBoxLayout(main_container)
-        main_layout.setSpacing(6)
-        main_layout.setContentsMargins(10, 5, 10, 10)
+        main_layout.setSpacing(self.scaled_spacing_medium)
+        main_layout.setContentsMargins(
+            self.scaled_spacing_large,
+            int(5 * self.scale_factor),
+            self.scaled_spacing_large,
+            self.scaled_spacing_large
+        )
 
         # Top section: Compound info and stats
         self._build_top_section(main_layout)
@@ -105,15 +110,20 @@ class TyreInfoPage(BasePage):
     def _build_top_section(self, parent_layout: QVBoxLayout) -> None:
         """Build a split top section with current tyre info (left) and available tyres (right)."""
         top_widget = QWidget()
-        top_widget.setStyleSheet("""
-            QWidget {
+        top_widget.setStyleSheet(f"""
+            QWidget {{
                 background: #1b1b1b;
-                border-radius: 6px;
-            }
+                border-radius: {self.scaled_border_radius}px;
+            }}
         """)
         top_layout = QHBoxLayout(top_widget)
-        top_layout.setContentsMargins(8, 4, 8, 4)
-        top_layout.setSpacing(10)
+        top_layout.setContentsMargins(
+            int(8 * self.scale_factor),
+            int(4 * self.scale_factor),
+            int(8 * self.scale_factor),
+            int(4 * self.scale_factor)
+        )
+        top_layout.setSpacing(self.scaled_spacing_large)
 
         # LEFT HALF: Current tyre info
         left_widget = self._create_current_tyre_section()
@@ -159,12 +169,15 @@ class TyreInfoPage(BasePage):
         top_row_widget.setStyleSheet("background: transparent;")
         top_row_layout = QHBoxLayout(top_row_widget)
         top_row_layout.setContentsMargins(0, 0, 0, 0)
-        top_row_layout.setSpacing(8)
+        top_row_layout.setSpacing(int(8 * self.scale_factor))
         top_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Tyre icon
         self.tyre_icon_label = QLabel()
-        self.tyre_icon_label.setFixedSize(28, 28)
+        self.tyre_icon_label.setFixedSize(
+            self.scaled_icon_size_large,
+            self.scaled_icon_size_large
+        )
         self.tyre_icon_label.setScaledContents(True)
         top_row_layout.addWidget(self.tyre_icon_label)
 
@@ -243,7 +256,7 @@ class TyreInfoPage(BasePage):
         right_widget.setStyleSheet("background: transparent;")
         right_main_layout = QVBoxLayout(right_widget)
         right_main_layout.setContentsMargins(0, 0, 0, 0)
-        right_main_layout.setSpacing(2)
+        right_main_layout.setSpacing(self.scaled_spacing_tiny)
 
         # Title for unused tyres
         unused_title = QLabel("Unused Tyres")
@@ -268,7 +281,7 @@ class TyreInfoPage(BasePage):
         tyres_container.setStyleSheet("background: transparent;")
         grid_layout = QVBoxLayout(tyres_container)
         grid_layout.setContentsMargins(0, 0, 0, 0)
-        grid_layout.setSpacing(4)
+        grid_layout.setSpacing(self.scaled_spacing_small)
         grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Store reference to count labels for each tyre compound
@@ -286,7 +299,7 @@ class TyreInfoPage(BasePage):
             row_widget.setStyleSheet("background: transparent;")
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(12)
+            row_layout.setSpacing(int(12 * self.scale_factor))
             row_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
             for compound in row_compounds:
@@ -308,19 +321,31 @@ class TyreInfoPage(BasePage):
 
                 # Icon
                 icon_label = QLabel()
-                icon_label.setFixedSize(24, 24)
+                icon_label.setFixedSize(
+                    self.scaled_icon_size_small,
+                    self.scaled_icon_size_small
+                )
                 icon_label.setScaledContents(True)
                 icon = self.tyre_icon_mappings.get(compound)
                 if icon and not icon.isNull():
-                    pixmap = icon.pixmap(24, 24)
+                    pixmap = icon.pixmap(
+                        self.scaled_icon_size_small,
+                        self.scaled_icon_size_small
+                    )
                     icon_label.setPixmap(pixmap)
                 icon_count_layout.addWidget(icon_label)
 
                 # Count label (bottom right of icon)
                 count_label = QLabel("x0")
-                count_label.setFont(QFont(self.FONT_FACE_TEXT, 9, QFont.Weight.Bold))
-                count_label.setStyleSheet("color: #666; background: transparent; padding-left: 2px;")
-                count_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+                count_label.setFont(QFont(
+                    self.FONT_FACE_TEXT,
+                    int(9 * self.scale_factor),
+                    QFont.Weight.Bold
+                ))
+                count_label.setStyleSheet(
+                    f"color: #666; background: transparent; "
+                    f"padding-left: {self.scaled_spacing_tiny}px;"
+                )
                 icon_count_layout.addWidget(count_label)
 
                 # Store reference to count label
@@ -388,12 +413,12 @@ class TyreInfoPage(BasePage):
         self.wear_table.setShowGrid(True)
 
         # Set fixed height for compact display
-        self.wear_table.setMaximumHeight(140)
+        self.wear_table.setMaximumHeight(self.scaled_table_height)
 
         parent_layout.addWidget(self.wear_table)
 
         # Add small margin below table
-        parent_layout.addSpacing(6)
+        parent_layout.addSpacing(self.scaled_spacing_medium)
 
     def _add_separator(self, parent_layout: QVBoxLayout) -> None:
         """Add a horizontal separator line."""
@@ -512,7 +537,10 @@ class TyreInfoPage(BasePage):
         """Update the tyre compound icon and label."""
         icon = self.tyre_icon_mappings.get(visual_compound)
         if icon and not icon.isNull():
-            pixmap = icon.pixmap(28, 28)
+            pixmap = icon.pixmap(
+                self.scaled_icon_size_large,
+                self.scaled_icon_size_large
+            )
             self.tyre_icon_label.setPixmap(pixmap)
         else:
             self.tyre_icon_label.clear()
@@ -621,3 +649,43 @@ class TyreInfoPage(BasePage):
     def font_size_hyphen(self) -> int:
         """Get the font size based on the scale factor."""
         return int(self.FONT_SIZE_HYPHEN * self.scale_factor)
+
+    @property
+    def scaled_icon_size_large(self) -> int:
+        """Get scaled large icon size (28px base)."""
+        return int(28 * self.scale_factor)
+
+    @property
+    def scaled_icon_size_small(self) -> int:
+        """Get scaled small icon size (24px base)."""
+        return int(24 * self.scale_factor)
+
+    @property
+    def scaled_spacing_large(self) -> int:
+        """Get scaled large spacing (10px base)."""
+        return int(10 * self.scale_factor)
+
+    @property
+    def scaled_spacing_medium(self) -> int:
+        """Get scaled medium spacing (6px base)."""
+        return int(6 * self.scale_factor)
+
+    @property
+    def scaled_spacing_small(self) -> int:
+        """Get scaled small spacing (4px base)."""
+        return int(4 * self.scale_factor)
+
+    @property
+    def scaled_spacing_tiny(self) -> int:
+        """Get scaled tiny spacing (2px base)."""
+        return int(2 * self.scale_factor)
+
+    @property
+    def scaled_table_height(self) -> int:
+        """Get scaled table max height (140px base)."""
+        return int(140 * self.scale_factor)
+
+    @property
+    def scaled_border_radius(self) -> int:
+        """Get scaled border radius (6px base)."""
+        return int(6 * self.scale_factor)
