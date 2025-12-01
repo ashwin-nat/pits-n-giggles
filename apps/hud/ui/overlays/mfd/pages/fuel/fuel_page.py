@@ -26,7 +26,7 @@ import logging
 from typing import Any, Dict
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout, QWidget)
 
@@ -43,10 +43,19 @@ class FuelInfoPage(BasePage):
 
     FONT_FACE = "Formula1 Display"
     SURPLUS_FONT_FACE = "B612 Mono"
-    FONT_SIZE_VALUE = 14
-    FONT_SIZE_UNIT = 13
-    FONT_SIZE_LABEL = 8
-    FONT_SIZE_SURPLUS = 13
+    FONT_SIZE_VALUE = 16
+    FONT_SIZE_UNIT = 11
+    FONT_SIZE_LABEL = 9
+    FONT_SIZE_SURPLUS = 14
+
+    # Spacing and padding
+    CARD_PADDING = 12
+    CARD_SPACING = 12
+    GRID_SPACING = 12
+    BORDER_RADIUS = 8
+    BORDER_WIDTH = 1
+    SURPLUS_MARGIN_TOP = 16
+    LABEL_VALUE_SPACING = 6
 
     # Color scheme
     COLOR_BG = "#1a1a1a"
@@ -90,51 +99,72 @@ class FuelInfoPage(BasePage):
         """Build the compact fuel info UI using a 2x2 grid + surplus text."""
         content_widget = QWidget()
         main_layout = QVBoxLayout(content_widget)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Add vertical centering
+        main_layout.addStretch()
+
+        # Container for the grid
+        grid_container = QWidget()
+        grid_layout = QVBoxLayout(grid_container)
+        grid_layout.setContentsMargins(self.scaled_card_padding, self.scaled_card_padding,
+                                      self.scaled_card_padding, self.scaled_card_padding)
+        grid_layout.setSpacing(0)
 
         # --- 2×2 GRID ---------------------------------------------------
         grid = QGridLayout()
-        grid.setSpacing(10)
+        grid.setSpacing(self.scaled_grid_spacing)
+        grid.setContentsMargins(0, 0, 0, 0)
 
         self.curr_rate_widget = self._create_stat_widget("CURRENT RATE", "0.000", "kg/lap")
         self.last_lap_widget = self._create_stat_widget("LAST LAP", "0.000", "kg")
-
         self.target_avg_widget = self._create_stat_widget("TARGET AVG", "0.000", "kg/lap")
         self.target_next_widget = self._create_stat_widget("TARGET NEXT", "0.000", "kg")
 
         grid.addWidget(self.curr_rate_widget, 0, 0)
-        grid.addWidget(self.last_lap_widget,  0, 1)
+        grid.addWidget(self.last_lap_widget, 0, 1)
         grid.addWidget(self.target_avg_widget, 1, 0)
         grid.addWidget(self.target_next_widget, 1, 1)
 
-        main_layout.addLayout(grid)
+        grid_layout.addLayout(grid)
 
         # --- SURPLUS LABEL -----------------------------------------------
+        surplus_container = QWidget()
+        surplus_layout = QVBoxLayout(surplus_container)
+        surplus_layout.setContentsMargins(0, self.scaled_surplus_margin, 0, 0)
+        surplus_layout.setSpacing(0)
+
         self.surplus_label = QLabel("Surplus: +0 laps")
         s_font = QFont(self.SURPLUS_FONT_FACE, self.font_size_surplus)
-        s_font.setWeight(QFont.Medium)
+        s_font.setWeight(QFont.Weight.Medium)
         self.surplus_label.setFont(s_font)
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT};")
-        main_layout.addWidget(self.surplus_label, alignment=Qt.AlignCenter)
+        self.surplus_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        surplus_layout.addWidget(self.surplus_label)
+        grid_layout.addWidget(surplus_container)
+
+        main_layout.addWidget(grid_container)
         main_layout.addStretch()
+
         self.page_layout.addWidget(content_widget)
 
     def _create_stat_widget(self, label: str, value: str, unit: str) -> QFrame:
-        """Create a styled stat display widget."""
+        """Create a styled stat display widget with proper scaling."""
         frame = QFrame()
         frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.COLOR_BG};
-                border: 1px solid {self.COLOR_BORDER};
-                border-radius: 6px;
+                border: {self.scaled_border_width}px solid {self.COLOR_BORDER};
+                border-radius: {self.scaled_border_radius}px;
             }}
         """)
 
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(4)
+        layout.setContentsMargins(self.scaled_card_padding, self.scaled_card_padding,
+                                 self.scaled_card_padding, self.scaled_card_padding)
+        layout.setSpacing(self.scaled_label_value_spacing)
 
         # Label
         label_widget = QLabel(label)
@@ -143,11 +173,16 @@ class FuelInfoPage(BasePage):
         label_widget.setFont(label_font)
         label_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
         label_widget.setAlignment(Qt.AlignLeft)
+
+        # Calculate minimum height based on font metrics
+        label_metrics = QFontMetrics(label_font)
+        label_widget.setMinimumHeight(int(label_metrics.height() * 1.2))
+
         layout.addWidget(label_widget)
 
         # VALUE ROW
         value_layout = QHBoxLayout()
-        value_layout.setSpacing(4)
+        value_layout.setSpacing(int(4 * self.scale_factor))
         value_layout.setContentsMargins(0, 0, 0, 0)
 
         value_widget = QLabel(value)
@@ -155,6 +190,11 @@ class FuelInfoPage(BasePage):
         v_font.setWeight(QFont.Bold)
         value_widget.setFont(v_font)
         value_widget.setStyleSheet(f"color: {self.COLOR_PRIMARY}; border: none;")
+
+        # Calculate minimum height for value
+        value_metrics = QFontMetrics(v_font)
+        value_widget.setMinimumHeight(int(value_metrics.height() * 1.2))
+
         value_layout.addWidget(value_widget)
 
         unit_widget = QLabel(unit)
@@ -162,11 +202,16 @@ class FuelInfoPage(BasePage):
         u_font.setWeight(QFont.Medium)
         unit_widget.setFont(u_font)
         unit_widget.setStyleSheet(f"color: {self.COLOR_TEXT_DIM}; border: none;")
-        unit_widget.setAlignment(Qt.AlignBottom)
-        value_layout.addWidget(unit_widget)
+        unit_widget.setAlignment(Qt.AlignBottom | Qt.AlignLeft)
 
+        # Calculate minimum height for unit
+        unit_metrics = QFontMetrics(u_font)
+        unit_widget.setMinimumHeight(int(unit_metrics.height() * 1.2))
+
+        value_layout.addWidget(unit_widget)
         value_layout.addStretch()
         layout.addLayout(value_layout)
+        layout.addStretch()
 
         frame.value_label = value_widget
         frame.unit_label = unit_widget
@@ -245,22 +290,56 @@ class FuelInfoPage(BasePage):
         self.surplus_label.setText("Surplus: ---")
         self.surplus_label.setStyleSheet(f"color: {self.COLOR_TEXT_DIM};")
 
+    # ---------------------------------------------------------
+    # SCALED PROPERTIES
+    # ---------------------------------------------------------
+
     @property
     def font_size_value(self) -> int:
-        """Get the font size based on the scale factor."""
+        """Get the scaled value font size."""
         return int(self.FONT_SIZE_VALUE * self.scale_factor)
 
     @property
     def font_size_label(self) -> int:
-        """Get the font size based on the scale factor."""
+        """Get the scaled label font size."""
         return int(self.FONT_SIZE_LABEL * self.scale_factor)
 
     @property
     def font_size_unit(self) -> int:
-        """Get the font size based on the scale factor."""
+        """Get the scaled unit font size."""
         return int(self.FONT_SIZE_UNIT * self.scale_factor)
 
     @property
     def font_size_surplus(self) -> int:
-        """Get the font size based on the scale factor."""
+        """Get the scaled surplus font size."""
         return int(self.FONT_SIZE_SURPLUS * self.scale_factor)
+
+    @property
+    def scaled_card_padding(self) -> int:
+        """Get the scaled card padding."""
+        return int(self.CARD_PADDING * self.scale_factor)
+
+    @property
+    def scaled_grid_spacing(self) -> int:
+        """Get the scaled grid spacing."""
+        return int(self.GRID_SPACING * self.scale_factor)
+
+    @property
+    def scaled_border_radius(self) -> int:
+        """Get the scaled border radius."""
+        return int(self.BORDER_RADIUS * self.scale_factor)
+
+    @property
+    def scaled_border_width(self) -> int:
+        """Get the scaled border width."""
+        return max(1, int(self.BORDER_WIDTH * self.scale_factor))
+
+    @property
+    def scaled_surplus_margin(self) -> int:
+        """Get the scaled surplus margin top."""
+        return int(self.SURPLUS_MARGIN_TOP * self.scale_factor)
+
+    @property
+    def scaled_label_value_spacing(self) -> int:
+        """Get the scaled spacing between label and value."""
+        return int(self.LABEL_VALUE_SPACING * self.scale_factor)
