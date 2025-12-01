@@ -43,6 +43,7 @@ class BasePage(QWidget):
     # Class variables for title customization
     TITLE_FONT_FACE = "Formula1 Display"
     TITLE_FONT_SIZE = 13
+    BASE_WIDTH = 400
 
     def __init__(self,
                  parent: QWidget,

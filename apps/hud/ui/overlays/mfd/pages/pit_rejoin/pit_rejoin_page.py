@@ -46,7 +46,6 @@ class PitRejoinPredictionPage(BasePage):
     FONT_FACE_VALUES = "B612 Mono"
     FONT_SIZE = 10
     HEADER_FONT_SIZE = 11
-    BASE_WIDTH = 400
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the pit rejoin prediction page.
