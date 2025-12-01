@@ -25,7 +25,7 @@
 import logging
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout)
@@ -65,6 +65,13 @@ class LapTimerOverlay(BaseOverlay):
         self.curr_session_uid = None
 
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
+
+        self.last_lap_num: Optional[int] = None
+        self.last_sector_display_timer = QTimer()
+        self.last_sector_display_timer.setSingleShot(True)
+        self.show_last_lap_sector_bar = False
+        self.last_sector_display_timer.timeout.connect(self._timer_clear_cb)
+
         self._init_event_handlers()
 
     def build_ui(self):
@@ -201,9 +208,20 @@ class LapTimerOverlay(BaseOverlay):
             # Update static fields
             self._update_last_lap(last_lap["lap-time-ms"])
             self._update_best_lap(best_lap["lap-time-ms"])
-            self.sector_bar.set_sector_status(curr_lap["sector-status"])
 
-            # Dispatch to clean sub-handlers
+            if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
+                self.logger.debug("{self.overlay_id} | Lap number changed from "
+                                  f"{self.last_lap_num} to {lap_info['current-lap']}")
+                # --- Start 5 sec last-lap sector bar window ---
+                self.show_last_lap_sector_bar = True
+                self.last_sector_display_timer.start(5000)
+
+            if self.show_last_lap_sector_bar:
+                self.sector_bar.set_sector_status(last_lap["sector-status"])
+            else:
+                self.sector_bar.set_sector_status(curr_lap["sector-status"])
+            self.last_lap_num = lap_info["current-lap"]
+
             self._handle_current_lap_display(curr_lap)
             self._handle_delta_and_estimated(data, curr_lap, best_lap)
 
@@ -280,6 +298,7 @@ class LapTimerOverlay(BaseOverlay):
         self.estimated_value.setText(self.DEFAULT_TIME)
         self.sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
         self.curr_session_uid = None
+        self.show_last_lap_sector_bar = False
 
     def _update_last_lap(self, last_lap_ms: Optional[int]):
         """Update last lap time display.
@@ -379,7 +398,6 @@ class LapTimerOverlay(BaseOverlay):
         """Get the font size based on the scale factor."""
         return int(self.FONT_SIZE_VALUE * self.scale_factor)
 
-# Add these helper properties after the existing font_size properties
     @property
     def scaled(self) -> int:
         """Scale an integer value by scale_factor."""
@@ -447,3 +465,7 @@ class LapTimerOverlay(BaseOverlay):
     def est_container_spacing(self) -> int:
         """Get scaled estimated container spacing."""
         return int(5 * self.scale_factor)
+
+    def _timer_clear_cb(self):
+        """Clear the last lap sector bar flag"""
+        self.show_last_lap_sector_bar = False
