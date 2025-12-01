@@ -30,7 +30,7 @@ from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout, QWidget)
 
-from apps.hud.common import get_ref_row
+from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
 from lib.f1_types import F1Utils
 
@@ -235,14 +235,22 @@ class FuelInfoPage(BasePage):
                 self._show_telemetry_disabled()
                 return
 
+            session_type = data["event-type"]
+
             fuel_info = ref_row["fuel-info"]
 
             # Extract values (may be None on first lap)
-            curr = fuel_info.get("curr-fuel-rate")
             last = fuel_info.get("last-lap-fuel-used")
-            surplus = fuel_info.get("surplus-laps-png")
-            tgt_avg = fuel_info.get("target-fuel-rate-average")
-            tgt_next = fuel_info.get("target-fuel-rate-next-lap")
+            if is_race_type_session(session_type):
+                curr = fuel_info.get("curr-fuel-rate")
+                surplus = fuel_info.get("surplus-laps-png")
+                tgt_avg = fuel_info.get("target-fuel-rate-average")
+                tgt_next = fuel_info.get("target-fuel-rate-next-lap")
+            else:
+                curr = None
+                tgt_avg = None
+                tgt_next = None
+                surplus = fuel_info.get("surplus-laps-game")
 
             # Update compact grid
             self._update_or_dim(self.curr_rate_widget, curr)
