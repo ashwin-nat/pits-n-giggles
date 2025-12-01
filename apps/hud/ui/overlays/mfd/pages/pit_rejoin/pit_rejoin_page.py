@@ -32,7 +32,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
-from lib.assets_loader import load_icon, load_team_icons_dict
+from lib.assets_loader import load_team_icons_dict
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -42,9 +42,11 @@ class PitRejoinPredictionPage(BasePage):
     KEY = "pit_rejoin"
 
     # Font configuration
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_VALUES = "B612 Mono"
     FONT_SIZE = 10
     HEADER_FONT_SIZE = 11
+    BASE_WIDTH = 400
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the pit rejoin prediction page.
@@ -78,7 +80,7 @@ class PitRejoinPredictionPage(BasePage):
     @property
     def row_height(self) -> int:
         """Get scaled row height based on font metrics."""
-        font = QFont(self.FONT_FACE, self.font_size)
+        font = QFont(self.FONT_FACE_TEXT, self.font_size)
         metrics = QFontMetrics(font)
         # Add padding (2x line height for comfortable spacing)
         return metrics.height() * 2
@@ -106,7 +108,7 @@ class PitRejoinPredictionPage(BasePage):
         # Pit time loss label
         self.pit_time_loss_label = QLabel("Pit Time Loss: --", self)
         self.pit_time_loss_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        font = QFont(self.FONT_FACE, self.header_font_size)
+        font = QFont(self.FONT_FACE_TEXT, self.header_font_size)
         font.setBold(True)
         self.pit_time_loss_label.setFont(font)
         self.pit_time_loss_label.setStyleSheet(
@@ -123,6 +125,10 @@ class PitRejoinPredictionPage(BasePage):
         self.table_layout.setContentsMargins(0, 0, 0, 0)
         self.table_layout.setSpacing(0)
         self.page_layout.addWidget(self.table_widget)
+
+        scaled_width = int(self.BASE_WIDTH * self.scale_factor)
+        self.setFixedWidth(scaled_width)
+        self.table_widget.setFixedWidth(scaled_width)
 
         # Store row widgets for updates
         self.table_rows: List[QFrame] = []
@@ -145,6 +151,7 @@ class PitRejoinPredictionPage(BasePage):
         """
         row_frame = QFrame(self)
         row_frame.setFixedHeight(self.row_height)
+        row_frame.setFixedWidth(int(self.BASE_WIDTH * self.scale_factor))
 
         # Add border styling
         border_width = int(2 * self.scale_factor)
@@ -162,7 +169,7 @@ class PitRejoinPredictionPage(BasePage):
         # Position label (10%)
         pos_label = QLabel(str(position), row_frame)
         pos_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        pos_label.setFont(QFont(self.FONT_FACE, self.font_size, QFont.Weight.Bold))
+        pos_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size, QFont.Weight.Bold))
         pos_label.setStyleSheet("color: white; background: transparent; border: none;")
         row_layout.addWidget(pos_label, 10)
 
@@ -181,23 +188,15 @@ class PitRejoinPredictionPage(BasePage):
         # Driver name (50%)
         name_label = QLabel(name, row_frame)
         name_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        name_label.setFont(QFont(self.FONT_FACE, self.font_size))
+        name_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size))
         name_label.setStyleSheet("color: white; background: transparent; border: none;")
         row_layout.addWidget(name_label, 50)
 
         # Delta (30%)
         delta_label = QLabel(delta, row_frame)
         delta_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        delta_label.setFont(QFont(self.FONT_FACE, self.font_size, QFont.Weight.Bold))
-
-        # Color code delta
-        delta_color = "white"
-        if delta.startswith("+"):
-            delta_color = "#FF4444"
-        elif delta.startswith("-"):
-            delta_color = "#44FF44"
-
-        delta_label.setStyleSheet(f"color: {delta_color}; background: transparent; border: none;")
+        delta_label.setFont(QFont(self.FONT_FACE_VALUES, self.font_size, QFont.Weight.Normal))
+        delta_label.setStyleSheet(f"background: transparent; border: none;")
         row_layout.addWidget(delta_label, 30)
 
         return row_frame
@@ -206,6 +205,7 @@ class PitRejoinPredictionPage(BasePage):
         """Create an empty table row with no text or icons."""
         row_frame = QFrame(self)
         row_frame.setFixedHeight(self.row_height)
+        row_frame.setFixedWidth(int(self.BASE_WIDTH * self.scale_factor))
 
         # Match the visual style of normal rows
         row_frame.setStyleSheet(
