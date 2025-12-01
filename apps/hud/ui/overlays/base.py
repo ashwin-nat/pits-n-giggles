@@ -87,6 +87,10 @@ class BaseOverlay(QWidget):
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
+        self.setStyleSheet("""
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        """)
         self.update_window_flags()
 
     def apply_config(self):
