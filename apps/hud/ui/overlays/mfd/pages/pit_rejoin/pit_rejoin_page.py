@@ -189,7 +189,7 @@ class PitRejoinPredictionPage(BasePage):
         delta_label = QLabel(delta, row_frame)
         delta_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         delta_label.setFont(QFont(self.FONT_FACE_VALUES, self.font_size, QFont.Weight.Normal))
-        delta_label.setStyleSheet(f"background: transparent; border: none;")
+        delta_label.setStyleSheet("background: transparent; border: none;")
         row_layout.addWidget(delta_label, 30)
 
         return row_frame
@@ -201,7 +201,7 @@ class PitRejoinPredictionPage(BasePage):
 
         # Match the visual style of normal rows
         row_frame.setStyleSheet(
-            f"background-color: rgba(0, 0, 0, 0.5); "
+            "background-color: rgba(0, 0, 0, 0.5); "
             "border-top: 1px solid #444;"
         )
 
