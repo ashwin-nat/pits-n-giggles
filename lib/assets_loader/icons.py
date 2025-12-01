@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+from collections import defaultdict
 import sys
 from pathlib import Path
 from typing import Callable, Optional
@@ -93,11 +94,11 @@ def load_tyre_icons_dict(
     }
 
 def load_team_icons_dict(
-        relative_path: Optional[Path] = Path("assets") / "team-logos",
-        debug_log_printer: Optional[Callable[[str], None]] = None,
-        error_log_printer: Optional[Callable[[str], None]] = None
-        ) -> dict[str, QIcon]:
-    """Get a dictionary of tyre icons.
+    relative_path: Optional[Path] = Path("assets") / "team-logos",
+    debug_log_printer: Optional[Callable[[str], None]] = None,
+    error_log_printer: Optional[Callable[[str], None]] = None
+) -> defaultdict[str, QIcon]:
+    """Get a dictionary of team icons with a default logo for unknown teams.
 
     Args:
         relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
@@ -108,7 +109,13 @@ def load_team_icons_dict(
         dict[str, QIcon]: A dictionary mapping visual compound names to their corresponding icons.
     """
 
-    return {
+    default_team_logo = load_icon(
+        relative_path / "default.svg",
+        debug_log_printer,
+        error_log_printer
+    )
+
+    return defaultdict(lambda: default_team_logo, {
         "Alpine": load_icon(relative_path / "alpine.svg", debug_log_printer, error_log_printer),
         "Aston Martin": load_icon(relative_path / "aston_martin.svg", debug_log_printer, error_log_printer),
         "Ferrari": load_icon(relative_path / "ferrari.svg", debug_log_printer, error_log_printer),
@@ -124,4 +131,4 @@ def load_team_icons_dict(
         "Sauber": load_icon(relative_path / "sauber.svg", debug_log_printer, error_log_printer),
         "Alfa Romeo": load_icon(relative_path / "sauber.svg", debug_log_printer, error_log_printer),
         "Williams": load_icon(relative_path / "williams.svg", debug_log_printer, error_log_printer),
-    }
+    })

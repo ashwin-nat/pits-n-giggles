@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QSize, Qt
@@ -31,7 +30,7 @@ from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (QFrame, QHeaderView, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
 
-from lib.assets_loader import load_icon, load_tyre_icons_dict
+from lib.assets_loader import load_team_icons_dict, load_tyre_icons_dict
 from lib.f1_types import F1Utils
 
 from .border_delegate import BorderDelegate
@@ -90,35 +89,8 @@ class RaceTimingTable:
             else:
                 self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
 
-        icon_base_teams = Path("assets") / "team-logos"
-        self.team_logo_mappings = {
-            "Alpine": load_icon(icon_base_teams / "alpine.svg", self.logger.debug, self.logger.error),
-            "Aston Martin": load_icon(icon_base_teams / "aston_martin.svg", self.logger.debug, self.logger.error),
-            "Ferrari": load_icon(icon_base_teams / "ferrari.svg", self.logger.debug, self.logger.error),
-            "Haas": load_icon(icon_base_teams / "haas.svg", self.logger.debug, self.logger.error),
-            "McLaren": load_icon(icon_base_teams / "mclaren.svg", self.logger.debug, self.logger.error),
-            "Mclaren": load_icon(icon_base_teams / "mclaren.svg", self.logger.debug, self.logger.error),
-            "Mercedes": load_icon(icon_base_teams / "mercedes.svg", self.logger.debug, self.logger.error),
-            "RB": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
-            "VCARB": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
-            "Alpha Tauri": load_icon(icon_base_teams / "rb.svg", self.logger.debug, self.logger.error),
-            "Red Bull": load_icon(icon_base_teams / "red_bull.svg", self.logger.debug, self.logger.error),
-            "Red Bull Racing": load_icon(icon_base_teams / "red_bull.svg", self.logger.debug, self.logger.error),
-            "Sauber": load_icon(icon_base_teams / "sauber.svg", self.logger.debug, self.logger.error),
-            "Alfa Romeo": load_icon(icon_base_teams / "sauber.svg", self.logger.debug, self.logger.error),
-            "Williams": load_icon(icon_base_teams / "williams.svg", self.logger.debug, self.logger.error),
-        }
-        self.default_team_logo = load_icon(icon_base_teams / "default.svg", self.logger.debug, self.logger.error)
-
-        for name, icon in self.team_logo_mappings.items():
-            if icon.isNull():
-                self.logger.warning(f"{self.overlay_id} | Failed to load team icon: {name}")
-            else:
-                self.logger.debug(f"{self.overlay_id} | Loaded team icon successfully: {name}")
-        if self.default_team_logo.isNull():
-            self.logger.warning(f"{self.overlay_id} | Failed to load default team icon")
-        else:
-            self.logger.debug(f"{self.overlay_id} | Loaded default team icon successfully")
+        self.team_logo_mappings = load_team_icons_dict(debug_log_printer=self.logger.debug,
+                                                       error_log_printer=self.logger.error)
 
     def _build_ui(self):
         """Build the timing table UI."""
@@ -372,11 +344,9 @@ class RaceTimingTable:
             row_idx: Index of the row to update
             team: Team of the driver
         """
-        team_icon = self.team_logo_mappings.get(team)
+        team_icon = self.team_logo_mappings[team]
         if team_icon and not team_icon.isNull():
             team_item = QTableWidgetItem(team_icon, "")
-        elif self.default_team_logo and not self.default_team_logo.isNull():
-            team_item = QTableWidgetItem(self.default_team_logo, "")
         else:
             team_item = self._create_table_item("??", Qt.AlignmentFlag.AlignCenter)
 

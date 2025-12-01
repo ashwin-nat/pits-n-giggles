@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
@@ -62,8 +61,6 @@ class PitRejoinPredictionPage(BasePage):
         self.total_rows = (self.num_adjacent_cars * 2) + 1
 
         self.team_icons = load_team_icons_dict(debug_log_printer=logger.debug, error_log_printer=logger.error)
-        icon_base_teams = Path("assets") / "team-logos"
-        self.default_team_logo = load_icon(icon_base_teams / "default.svg", self.logger.debug, self.logger.error)
 
         self._build_ui()
         self._init_event_handlers()
@@ -175,7 +172,7 @@ class PitRejoinPredictionPage(BasePage):
         team_icon_label.setStyleSheet("background: transparent; border: none;")
 
         # Load team icon if available
-        icon = self.team_icons.get(team, self.default_team_logo)
+        icon = self.team_icons[team]
         pixmap = icon.pixmap(self.icon_size, self.icon_size)
         team_icon_label.setPixmap(pixmap)
 
