@@ -91,3 +91,37 @@ def load_tyre_icons_dict(
         "Inters": load_icon(relative_path / "intermediate_tyre.svg", debug_log_printer, error_log_printer),
         "Wet": load_icon(relative_path / "wet_tyre.svg", debug_log_printer, error_log_printer),
     }
+
+def load_team_icons_dict(
+        relative_path: Optional[Path] = Path("assets") / "team-logos",
+        debug_log_printer: Optional[Callable[[str], None]] = None,
+        error_log_printer: Optional[Callable[[str], None]] = None
+        ) -> dict[str, QIcon]:
+    """Get a dictionary of tyre icons.
+
+    Args:
+        relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
+        debug_log_printer: Optional callable for debug logging. Defaults to no-op.
+        error_log_printer: Optional callable for error logging. Defaults to no-op.
+
+    Returns:
+        dict[str, QIcon]: A dictionary mapping visual compound names to their corresponding icons.
+    """
+
+    return {
+        "Alpine": load_icon(relative_path / "alpine.svg", debug_log_printer, error_log_printer),
+        "Aston Martin": load_icon(relative_path / "aston_martin.svg", debug_log_printer, error_log_printer),
+        "Ferrari": load_icon(relative_path / "ferrari.svg", debug_log_printer, error_log_printer),
+        "Haas": load_icon(relative_path / "haas.svg", debug_log_printer, error_log_printer),
+        "McLaren": load_icon(relative_path / "mclaren.svg", debug_log_printer, error_log_printer),
+        "Mclaren": load_icon(relative_path / "mclaren.svg", debug_log_printer, error_log_printer),
+        "Mercedes": load_icon(relative_path / "mercedes.svg", debug_log_printer, error_log_printer),
+        "RB": load_icon(relative_path / "rb.svg", debug_log_printer, error_log_printer),
+        "VCARB": load_icon(relative_path / "rb.svg", debug_log_printer, error_log_printer),
+        "Alpha Tauri": load_icon(relative_path / "rb.svg", debug_log_printer, error_log_printer),
+        "Red Bull": load_icon(relative_path / "red_bull.svg", debug_log_printer, error_log_printer),
+        "Red Bull Racing": load_icon(relative_path / "red_bull.svg", debug_log_printer, error_log_printer),
+        "Sauber": load_icon(relative_path / "sauber.svg", debug_log_printer, error_log_printer),
+        "Alfa Romeo": load_icon(relative_path / "sauber.svg", debug_log_printer, error_log_printer),
+        "Williams": load_icon(relative_path / "williams.svg", debug_log_printer, error_log_printer),
+    }
