@@ -59,9 +59,6 @@ class LapTimesPage(BasePage):
     BASE_HEADER_HEIGHT = 35
     BASE_PADDING = 4
 
-    # basically max str len for each column
-    COLUMN_WIDTH_RATIOS = [4, 6, 6, 6, 9]
-
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialize lap times page.
 
@@ -133,24 +130,9 @@ class LapTimesPage(BasePage):
 
         self.table.setItemDelegate(NoElideDelegate(self.table))
         self.page_layout.addWidget(self.table)
-        self._apply_column_widths()
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         self._init_event_handlers()
-
-    def _apply_column_widths(self):
-        """Apply proportional column widths based on content requirements."""
-
-        total_ratio = sum(self.COLUMN_WIDTH_RATIOS)
-        available_width = self.scaled_width
-
-        # First, set all columns to Interactive mode so we can set custom widths
-        for col in range(len(self.HEADERS)):
-            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.Interactive)
-
-        # Set proportional widths
-        for col, ratio in enumerate(self.COLUMN_WIDTH_RATIOS):
-            width = int((ratio / total_ratio) * available_width)
-            self.table.setColumnWidth(col, width)
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
