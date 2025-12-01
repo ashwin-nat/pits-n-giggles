@@ -26,8 +26,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
+from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel, QSizePolicy,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
                                QWidget)
 
@@ -66,6 +66,32 @@ class TyreInfoPage(BasePage):
         self.logger.debug(f"{self.overlay_id} | Tyre info widget initialized")
         self._init_event_handlers()
 
+    def _init_font_metrics(self):
+        """Initialize font metrics for text measurement."""
+        # Main text font
+        self.text_font = QFont(self.FONT_FACE_TEXT, self.font_size)
+        self.text_font_metrics = QFontMetrics(self.text_font)
+
+        # Bold text font
+        self.text_font_bold = QFont(self.FONT_FACE_TEXT, self.font_size, QFont.Weight.Bold)
+        self.text_font_bold_metrics = QFontMetrics(self.text_font_bold)
+
+        # Misc font
+        self.misc_font = QFont(self.FONT_FACE_TEXT, self.font_size_misc)
+        self.misc_font_metrics = QFontMetrics(self.misc_font)
+
+        # Misc bold font
+        self.misc_font_bold = QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold)
+        self.misc_font_bold_metrics = QFontMetrics(self.misc_font_bold)
+
+        # Small font for tyre counts
+        self.small_font = QFont(self.FONT_FACE_TEXT, max(7, int(9 * self.scale_factor)), QFont.Weight.Bold)
+        self.small_font_metrics = QFontMetrics(self.small_font)
+
+        # Title font (smaller)
+        self.title_font = QFont(self.FONT_FACE_TEXT, max(8, self.font_size_misc - 2))
+        self.title_font_metrics = QFontMetrics(self.title_font)
+
     def _init_icons(self):
         """Load tyre icons."""
         self.tyre_icon_mappings = load_tyre_icons_dict(
@@ -78,12 +104,13 @@ class TyreInfoPage(BasePage):
 
     def _build_ui(self) -> None:
         """Build the complete UI structure."""
+        self._init_font_metrics()
         main_container = QWidget(self)
         main_layout = QVBoxLayout(main_container)
         main_layout.setSpacing(self.scaled_spacing_medium)
         main_layout.setContentsMargins(
             self.scaled_spacing_large,
-            int(5 * self.scale_factor),
+            self.scaled_spacing_tiny,
             self.scaled_spacing_large,
             self.scaled_spacing_large
         )
@@ -99,7 +126,7 @@ class TyreInfoPage(BasePage):
 
         # Telemetry disabled message (hidden by default)
         self.telemetry_message = QLabel("Telemetry disabled - Wear data unavailable")
-        self.telemetry_message.setFont(QFont(self.FONT_FACE_TEXT, self.font_size))
+        self.telemetry_message.setFont(self.text_font)
         self.telemetry_message.setStyleSheet("color: #FF6B6B;")
         self.telemetry_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.telemetry_message.hide()
@@ -110,6 +137,7 @@ class TyreInfoPage(BasePage):
     def _build_top_section(self, parent_layout: QVBoxLayout) -> None:
         """Build a split top section with current tyre info (left) and available tyres (right)."""
         top_widget = QWidget()
+        top_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         top_widget.setStyleSheet(f"""
             QWidget {{
                 background: #1b1b1b;
@@ -118,10 +146,10 @@ class TyreInfoPage(BasePage):
         """)
         top_layout = QHBoxLayout(top_widget)
         top_layout.setContentsMargins(
-            int(8 * self.scale_factor),
-            int(4 * self.scale_factor),
-            int(8 * self.scale_factor),
-            int(4 * self.scale_factor)
+            self.scaled_spacing_medium,
+            self.scaled_spacing_tiny,
+            self.scaled_spacing_medium,
+            self.scaled_spacing_tiny
         )
         top_layout.setSpacing(self.scaled_spacing_large)
 
@@ -142,7 +170,6 @@ class TyreInfoPage(BasePage):
 
         parent_layout.addWidget(top_widget)
 
-
     def _create_current_tyre_section(self) -> QWidget:
         """Create the left section showing current tyre information."""
         left_widget = QWidget()
@@ -150,7 +177,7 @@ class TyreInfoPage(BasePage):
         left_main_layout = QVBoxLayout(left_widget)
         left_main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_main_layout.setContentsMargins(0, 0, 0, 0)
-        left_main_layout.setSpacing(4)
+        left_main_layout.setSpacing(self.scaled_spacing_tiny)
 
         # TOP ROW: Icon, Compound, Age
         top_row_widget = self._create_top_info_row()
@@ -162,14 +189,13 @@ class TyreInfoPage(BasePage):
 
         return left_widget
 
-
     def _create_top_info_row(self) -> QWidget:
         """Create the top row with tyre icon, compound name, and age."""
         top_row_widget = QWidget()
         top_row_widget.setStyleSheet("background: transparent;")
         top_row_layout = QHBoxLayout(top_row_widget)
         top_row_layout.setContentsMargins(0, 0, 0, 0)
-        top_row_layout.setSpacing(int(8 * self.scale_factor))
+        top_row_layout.setSpacing(self.scaled_spacing_small)
         top_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Tyre icon
@@ -183,13 +209,13 @@ class TyreInfoPage(BasePage):
 
         # Compound name
         self.compound_label = QLabel("—")
-        self.compound_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_hyphen, QFont.Weight.Bold))
+        self.compound_label.setFont(self.text_font_bold)
         self.compound_label.setStyleSheet("color: #FFFFFF; background: transparent;")
         top_row_layout.addWidget(self.compound_label)
 
         # Divider
         divider = QLabel("•")
-        divider.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
+        divider.setFont(self.misc_font)
         divider.setStyleSheet("color: #444; background: transparent;")
         top_row_layout.addWidget(divider)
 
@@ -201,14 +227,13 @@ class TyreInfoPage(BasePage):
         top_row_layout.addStretch()
         return top_row_widget
 
-
     def _create_wear_rate_row(self) -> QWidget:
         """Create the bottom row with wear rate information."""
         bottom_row_widget = QWidget()
         bottom_row_widget.setStyleSheet("background: transparent;")
         bottom_row_layout = QHBoxLayout(bottom_row_widget)
         bottom_row_layout.setContentsMargins(0, 0, 0, 0)
-        bottom_row_layout.setSpacing(8)
+        bottom_row_layout.setSpacing(self.scaled_spacing_small)
         bottom_row_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Wear rate stat
@@ -218,7 +243,6 @@ class TyreInfoPage(BasePage):
 
         bottom_row_layout.addStretch()
         return bottom_row_widget
-
 
     def _create_stat_pair(
         self,
@@ -239,12 +263,12 @@ class TyreInfoPage(BasePage):
             The value QLabel for later updates
         """
         label = QLabel(label_text)
-        label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
+        label.setFont(self.misc_font)
         label.setStyleSheet(f"color: {label_color}; background: transparent;")
         layout.addWidget(label)
 
         value_label = QLabel("—")
-        value_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold))
+        value_label.setFont(self.misc_font_bold)
         value_label.setStyleSheet(f"color: {value_color}; background: transparent;")
         layout.addWidget(value_label)
 
@@ -256,14 +280,20 @@ class TyreInfoPage(BasePage):
         right_widget.setStyleSheet("background: transparent;")
         right_main_layout = QVBoxLayout(right_widget)
         right_main_layout.setContentsMargins(0, 0, 0, 0)
-        right_main_layout.setSpacing(self.scaled_spacing_tiny)
+        right_main_layout.setSpacing(0)
 
         # Title for unused tyres
         unused_title = QLabel("Unused Tyres")
-        unused_title.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc - 2))
+        unused_title.setFont(self.title_font)
         unused_title.setStyleSheet("color: #888; background: transparent;")
         unused_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Calculate title height based on font metrics
+        title_height = self.title_font_metrics.height()
+        unused_title.setMaximumHeight(title_height + self.scaled_spacing_tiny)
+
         right_main_layout.addWidget(unused_title)
+        right_main_layout.addSpacing(self.scaled_spacing_tiny)
 
         # Create tyre grid
         right_main_layout.addWidget(self._create_tyre_grid())
@@ -281,7 +311,7 @@ class TyreInfoPage(BasePage):
         tyres_container.setStyleSheet("background: transparent;")
         grid_layout = QVBoxLayout(tyres_container)
         grid_layout.setContentsMargins(0, 0, 0, 0)
-        grid_layout.setSpacing(self.scaled_spacing_small)
+        grid_layout.setSpacing(self.scaled_spacing_tiny)
         grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Store reference to count labels for each tyre compound
@@ -299,7 +329,7 @@ class TyreInfoPage(BasePage):
             row_widget.setStyleSheet("background: transparent;")
             row_layout = QHBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
-            row_layout.setSpacing(int(12 * self.scale_factor))
+            row_layout.setSpacing(self.scaled_spacing_small)
             row_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
 
             for compound in row_compounds:
@@ -337,14 +367,10 @@ class TyreInfoPage(BasePage):
 
                 # Count label (bottom right of icon)
                 count_label = QLabel("x0")
-                count_label.setFont(QFont(
-                    self.FONT_FACE_TEXT,
-                    int(9 * self.scale_factor),
-                    QFont.Weight.Bold
-                ))
+                count_label.setFont(self.small_font)
                 count_label.setStyleSheet(
                     f"color: #666; background: transparent; "
-                    f"padding-left: {self.scaled_spacing_tiny}px;"
+                    f"padding-left: {max(1, self.scaled_spacing_tiny // 2)}px;"
                 )
                 icon_count_layout.addWidget(count_label)
 
@@ -361,7 +387,7 @@ class TyreInfoPage(BasePage):
     def _create_stat_divider(self) -> QLabel:
         """Create a vertical divider for stats."""
         divider = QLabel("•")
-        divider.setFont(QFont(self.FONT_FACE_TEXT, self.font_size))
+        divider.setFont(self.text_font)
         divider.setStyleSheet("color: #444444; background: transparent;")
         return divider
 
@@ -379,41 +405,52 @@ class TyreInfoPage(BasePage):
         self.wear_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.wear_table.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-        # Style the table
-        self.wear_table.setFont(QFont(self.FONT_FACE_TEXT, self.font_size))
-        self.wear_table.setStyleSheet("""
-            QTableWidget {
+        # Style the table with scaled padding
+        padding = max(2, self.scaled_spacing_small)
+        self.wear_table.setFont(self.misc_font)
+        self.wear_table.setStyleSheet(f"""
+            QTableWidget {{
                 background-color: #1a1a1a;
                 border: 1px solid #333;
                 gridline-color: #333;
                 color: #FFFFFF;
-            }
-            QTableWidget::item {
-                padding: 6px;
-            }
-            QTableWidget::item:hover {
+            }}
+            QTableWidget::item {{
+                padding: {padding}px;
+            }}
+            QTableWidget::item:hover {{
                 background-color: #1a1a1a;
-            }
-            QHeaderView::section {
+            }}
+            QHeaderView::section {{
                 background-color: #2a2a2a;
                 color: #00D4FF;
-                padding: 6px;
+                padding: {padding}px;
                 border: 1px solid #333;
                 font-weight: bold;
-            }
-            QHeaderView::section:hover {
+            }}
+            QHeaderView::section:hover {{
                 background-color: #2a2a2a;
-            }
+            }}
         """)
 
         # Configure headers
         self.wear_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.wear_table.horizontalHeader().setMinimumSectionSize(40)
+        self.wear_table.horizontalHeader().setMinimumSectionSize(int(30 * self.scale_factor))
         self.wear_table.verticalHeader().setVisible(False)
         self.wear_table.setShowGrid(True)
 
-        # Set fixed height for compact display
-        self.wear_table.setMaximumHeight(self.scaled_table_height)
+        # Calculate proper table height based on font metrics and expected rows
+        header_height = self.misc_font_metrics.height() + (padding * 2) + 2
+        row_height = self.misc_font_metrics.height() + (padding * 2)
+        max_rows = 3
+
+        min_height = header_height + (row_height * max_rows) + 6
+
+        self.wear_table.setMinimumHeight(min_height)
+        self.wear_table.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding
+        )
 
         parent_layout.addWidget(self.wear_table)
 
@@ -522,7 +559,8 @@ class TyreInfoPage(BasePage):
         # Reset all counts to 0 first
         for label in self.tyre_count_labels.values():
             label.setText("x0")
-            label.setStyleSheet("color: #666; background: transparent; padding-left: 2px;")
+            label.setStyleSheet(f"color: #666; background: transparent; "
+                                f"padding-left: {max(1, self.scaled_spacing_tiny // 2)}px;")
 
         # Update counts for available tyres
         for visual_compound, stats in groupings_by_comp.items():
@@ -531,7 +569,8 @@ class TyreInfoPage(BasePage):
                 label = self.tyre_count_labels[visual_compound]
                 label.setText(f"x{count}")
                 # Highlight available tyres
-                label.setStyleSheet("color: #00D4FF; background: transparent; padding-left: 2px;")
+                label.setStyleSheet(f"color: #00D4FF; background: transparent; "
+                                    f"padding-left: {max(1, self.scaled_spacing_tiny // 2)}px;")
 
     def _update_compound_display(self, visual_compound: str, actual_compound: str) -> None:
         """Update the tyre compound icon and label."""
@@ -592,7 +631,7 @@ class TyreInfoPage(BasePage):
         for row_idx, row_data in enumerate(rows_data):
             # Label column
             label_item = QTableWidgetItem(row_data['label'])
-            label_item.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc, QFont.Weight.Bold))
+            label_item.setFont(self.misc_font_bold)
             label_item.setForeground(Qt.GlobalColor.white)
             label_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.wear_table.setItem(row_idx, 0, label_item)
@@ -601,7 +640,7 @@ class TyreInfoPage(BasePage):
             for col_idx, tyre in enumerate(['fl', 'fr', 'rl', 'rr'], start=1):
                 value = row_data[tyre]
                 item = QTableWidgetItem(f"{value:.{self.NUM_DECIMAL_PLACES}f}%")
-                item.setFont(QFont(self.FONT_FACE_TEXT, self.font_size_misc))
+                item.setFont(self.misc_font)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 # Color code based on wear level
@@ -638,54 +677,55 @@ class TyreInfoPage(BasePage):
     @property
     def font_size(self) -> int:
         """Get the font size based on the scale factor."""
-        return int(self.FONT_SIZE * self.scale_factor)
+        return max(9, int(self.FONT_SIZE * self.scale_factor))
 
     @property
     def font_size_misc(self) -> int:
-        """Get the font size based on the scale factor."""
-        return int(self.FONT_SIZE_MISC * self.scale_factor)
+        """Get the misc font size based on the scale factor."""
+        return max(8, int(self.FONT_SIZE_MISC * self.scale_factor))
 
     @property
     def font_size_hyphen(self) -> int:
-        """Get the font size based on the scale factor."""
-        return int(self.FONT_SIZE_HYPHEN * self.scale_factor)
+        """Get the hyphen font size based on the scale factor."""
+        return max(8, int(self.FONT_SIZE_HYPHEN * self.scale_factor))
 
     @property
     def scaled_icon_size_large(self) -> int:
         """Get scaled large icon size (28px base)."""
-        return int(28 * self.scale_factor)
+        return max(20, int(28 * self.scale_factor))
 
     @property
     def scaled_icon_size_small(self) -> int:
         """Get scaled small icon size (24px base)."""
-        return int(24 * self.scale_factor)
+        return max(16, int(24 * self.scale_factor))
 
     @property
     def scaled_spacing_large(self) -> int:
         """Get scaled large spacing (10px base)."""
-        return int(10 * self.scale_factor)
+        return max(6, int(10 * self.scale_factor))
 
     @property
     def scaled_spacing_medium(self) -> int:
         """Get scaled medium spacing (6px base)."""
-        return int(6 * self.scale_factor)
+        return max(4, int(6 * self.scale_factor))
 
     @property
     def scaled_spacing_small(self) -> int:
         """Get scaled small spacing (4px base)."""
-        return int(4 * self.scale_factor)
+        return max(2, int(4 * self.scale_factor))
 
     @property
     def scaled_spacing_tiny(self) -> int:
         """Get scaled tiny spacing (2px base)."""
-        return int(2 * self.scale_factor)
+        return max(1, int(2 * self.scale_factor))
 
     @property
     def scaled_table_height(self) -> int:
-        """Get scaled table max height (140px base)."""
-        return int(140 * self.scale_factor)
+        """Get scaled table max height based on font metrics."""
+        # This is now calculated dynamically in _build_wear_table
+        return max(80, int(140 * self.scale_factor))
 
     @property
     def scaled_border_radius(self) -> int:
         """Get scaled border radius (6px base)."""
-        return int(6 * self.scale_factor)
+        return max(3, int(6 * self.scale_factor))
