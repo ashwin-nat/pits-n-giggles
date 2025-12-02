@@ -119,37 +119,53 @@ class BackendAppMgr(PngAppMgrBase):
         self.port = new_settings.Network.server_port
         self.proto = new_settings.HTTPS.proto
 
-        diff = self.curr_settings.diff(new_settings, {
+        # Update UDP action codes if required
+        udp_action_codes_diff = self.curr_settings.diff(new_settings, {
             "Network": [
-                "telemetry_port",
-                "server_port",
                 "udp_tyre_delta_action_code",
                 "udp_custom_action_code",
-                "wdt_interval_sec",
             ],
-            "Capture" : [],
-            "Display" : [],
-            "Logging" : [],
-            "Privacy" : [],
-            "Forwarding" : [],
-            "StreamOverlay" : [],
             "HUD": [
-                "udp_tyre_delta_action_code",
-                "udp_custom_action_code",
                 "toggle_overlays_udp_action_code",
                 "lap_timer_toggle_udp_action_code",
                 "timing_tower_toggle_udp_action_code",
                 "mfd_toggle_udp_action_code",
                 "cycle_mfd_udp_action_code",
-
             ],
+        })
+        if udp_action_codes_diff:
+            for fields_in_category in udp_action_codes_diff.values():
+                for field, diff in fields_in_category.items():
+                    new_value = diff["new_value"]
+                    self.send_udp_action_code_change(field, new_value)
+        else:
+            self.debug_log(f"{self.display_name} UDP action codes NO CHANGE")
+
+        restart_required_fields_diff = self.curr_settings.diff(new_settings, {
+            "Network": [
+                "telemetry_port",
+                "server_port",
+                "wdt_interval_sec",
+            ],
+            "Capture" : [],
+            "Display" : [
+                "refresh_interval",
+            ],
+            "Logging" : [],
+            "Privacy" : [],
+            "Forwarding" : [],
+            "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {json.dumps(diff, indent=2)}")
+        if restart_required_fields_diff:
+            self.debug_log(f"{self.display_name} Restart required fields change: "
+                           f"{json.dumps(restart_required_fields_diff, indent=2)}")
+        else:
+            self.debug_log(f"{self.display_name} Restart required fields NO CHANGE")
 
         # Restart if diff is not empty
-        return bool(diff)
+        return bool(restart_required_fields_diff)
 
     def post_start(self):
         """Update buttons after app start"""
@@ -190,6 +206,16 @@ class BackendAppMgr(PngAppMgrBase):
 
             error_details = "\n".join(filter(None, [error, message]))
             self.show_error("Manual Save Error", error_details)
+
+    def send_udp_action_code_change(self, action_code_field: str, value: int):
+        """Send a UDP action code change command to the backend."""
+        self.debug_log(f"Sending UDP action code change for {action_code_field} to backend...")
+        ipc_client = IpcParent(self.ipc_port)
+        rsp = ipc_client.request("udp-action-code-change", {"action_code_field": action_code_field, "value": value})
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to change UDP action code: {rsp}")
+        else:
+            self.debug_log(f"Change UDP action code response: {rsp}")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""

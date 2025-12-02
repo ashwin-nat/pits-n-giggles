@@ -52,7 +52,6 @@ from lib.wdt import WatchDogTimer
 
 @dataclass
 class UdpActionCodes:
-    """Dataclass to hold UDP action codes."""
     custom_marker: Optional[int] = None
     tyre_delta: Optional[int] = None
     toggle_all_overlays: Optional[int] = None
@@ -60,6 +59,25 @@ class UdpActionCodes:
     toggle_lap_timer_overlay: Optional[int] = None
     toggle_timing_tower_overlay: Optional[int] = None
     toggle_mfd_overlay: Optional[int] = None
+
+    _MAP = {
+        "udp_tyre_delta_action_code": "tyre_delta",
+        "udp_custom_action_code": "custom_marker",
+        "toggle_overlays_udp_action_code": "toggle_all_overlays",
+        "lap_timer_toggle_udp_action_code": "toggle_lap_timer_overlay",
+        "timing_tower_toggle_udp_action_code": "toggle_timing_tower_overlay",
+        "mfd_toggle_udp_action_code": "toggle_mfd_overlay",
+        "cycle_mfd_udp_action_code": "mfd_next_page",
+    }
+
+    def update(self, key: str, value: int):
+        """Update the value of a UDP action code.
+
+        Raises:
+            KeyError: If the key is not found
+        """
+        attr = self._MAP[key]
+        setattr(self, attr, value)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -173,6 +191,20 @@ class F1TelemetryHandler:
         """
         self.m_manager_task = asyncio.create_task(self.run(), name=name)
         return self.m_manager_task
+
+    def updateUdpActionCode(self, key: str, val: int) -> None:
+        """
+        Update UDP action code.
+
+        Args:
+            key (str): Action code key
+            val (int): Action code value
+
+        Raises:
+            KeyError: If the key is not found
+        """
+        self.m_udp_action_codes.update(key, val)
+        self.m_logger.debug(f"Updated UDP action code {key} to {val}")
 
     async def run(self):
         """
@@ -615,7 +647,7 @@ class F1TelemetryHandler:
                                        buttons_event: PacketEventData.Buttons,
                                        action_code: Optional[int]
                                        ) -> bool:
-        """Check if the UDP action button is pressed.
+        """Check if the UDP action button is pressed. (handles None action code and debouncing)
 
         Args:
             buttons_event (PacketEventData.Buttons): The buttons event packet.
