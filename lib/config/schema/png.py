@@ -41,7 +41,7 @@ from .subsys_ctrl import SubSysCtrl
 
 class PngSettings(ConfigDiffMixin, BaseModel):
     Network: NetworkSettings = Field(default_factory=NetworkSettings, description="Network")
-    Capture: CaptureSettings = Field(default_factory=CaptureSettings, description="Capture")
+    Capture: CaptureSettings = Field(default_factory=CaptureSettings, description="Save Data")
     Display: DisplaySettings = Field(default_factory=DisplaySettings, description="Display")
     Privacy: PrivacySettings = Field(default_factory=PrivacySettings, description="Privacy")
     Forwarding: ForwardingSettings = Field(default_factory=ForwardingSettings, description="UDP Forwarding")
