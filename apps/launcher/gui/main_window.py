@@ -624,7 +624,6 @@ class PngLauncherWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         self.info_log("Shutting down launcher...")
 
-        # show the small modal window
         self.shutdown_dialog = ShutdownDialog(self)
         self.shutdown_dialog.show()
         self.process_events()
@@ -634,11 +633,22 @@ class PngLauncherWindow(QMainWindow):
             task = StopTask(subsystem, "Launcher shutting down")
             self.thread_pool.start(task)
 
-        while not self.thread_pool.waitForDone(100):
+        MAX_TIME_MS = 10000
+        elapsed = 0
+        INTERVAL = 100
+        forced_shutdown = False
+
+        while not self.thread_pool.waitForDone(INTERVAL):
             # kick the event loop to keep the app responsive
             self.process_events()
+            elapsed += INTERVAL
 
-        self.info_log(f"{APP_NAME} {self.ver_str} has shut down successfully.")
+            if elapsed >= MAX_TIME_MS:
+                self.error_log("Shutdown timeout - continuing forcefully.")
+                forced_shutdown = True
+                break
+
+        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
         event.accept()
 
     def run(self):
