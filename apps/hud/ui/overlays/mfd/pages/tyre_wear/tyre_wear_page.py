@@ -442,6 +442,7 @@ class TyreInfoPage(BasePage):
         # Calculate proper table height based on font metrics and expected rows
         header_height = self.misc_font_metrics.height() + (padding * 2) + 2
         row_height = self.misc_font_metrics.height() + (padding * 2)
+        self.wear_table.setRowCount(3) # Pre-construct 3 rows
         max_rows = 3
 
         min_height = header_height + (row_height * max_rows) + 6
@@ -626,32 +627,37 @@ class TyreInfoPage(BasePage):
                 })
 
         # Update table
-        self.wear_table.setRowCount(len(rows_data))
+        # Always populate the first 3 rows and clear any excess
+        for row_idx in range(3): # Iterate for the 3 pre-constructed rows
+            if row_idx < len(rows_data):
+                row_data = rows_data[row_idx]
+                # Label column
+                label_item = QTableWidgetItem(row_data['label'])
+                label_item.setFont(self.misc_font_bold)
+                label_item.setForeground(Qt.GlobalColor.white)
+                label_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.wear_table.setItem(row_idx, 0, label_item)
 
-        for row_idx, row_data in enumerate(rows_data):
-            # Label column
-            label_item = QTableWidgetItem(row_data['label'])
-            label_item.setFont(self.misc_font_bold)
-            label_item.setForeground(Qt.GlobalColor.white)
-            label_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.wear_table.setItem(row_idx, 0, label_item)
+                # Wear values
+                for col_idx, tyre in enumerate(['fl', 'fr', 'rl', 'rr'], start=1):
+                    value = row_data[tyre]
+                    item = QTableWidgetItem(f"{value:.{self.NUM_DECIMAL_PLACES}f}%")
+                    item.setFont(self.misc_font)
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            # Wear values
-            for col_idx, tyre in enumerate(['fl', 'fr', 'rl', 'rr'], start=1):
-                value = row_data[tyre]
-                item = QTableWidgetItem(f"{value:.{self.NUM_DECIMAL_PLACES}f}%")
-                item.setFont(self.misc_font)
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    # Color code based on wear level
+                    if value < self.MED_WEAR:
+                        item.setForeground(Qt.GlobalColor.green)
+                    elif value < self.DANGER_WEAR:
+                        item.setForeground(Qt.GlobalColor.yellow)
+                    else:
+                        item.setForeground(Qt.GlobalColor.red)
 
-                # Color code based on wear level
-                if value < self.MED_WEAR:
-                    item.setForeground(Qt.GlobalColor.green)
-                elif value < self.DANGER_WEAR:
-                    item.setForeground(Qt.GlobalColor.yellow)
-                else:
-                    item.setForeground(Qt.GlobalColor.red)
-
-                self.wear_table.setItem(row_idx, col_idx, item)
+                    self.wear_table.setItem(row_idx, col_idx, item)
+            else:
+                # Clear excess rows
+                for col_idx in range(self.wear_table.columnCount()):
+                    self.wear_table.setItem(row_idx, col_idx, QTableWidgetItem(""))
 
     def _find_closest_prediction(self, predictions: List[Dict], target_lap: int) -> Optional[Dict]:
         """Find the prediction closest to the target lap."""
