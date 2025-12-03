@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
                                       SaveViewerAppMgr)
+from apps.hud.common import deserialise_data
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
@@ -79,7 +80,7 @@ class StableTooltipFilter(QObject):
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
 
-    update_available = Signal()
+    update_data = Signal(str)
     show_error_signal = Signal(str, str)
     show_success_signal = Signal(str, str)
 
@@ -169,7 +170,7 @@ class PngLauncherWindow(QMainWindow):
         self.update_blink_timer.setInterval(2000)
         self.update_blink_timer.timeout.connect(self._toggle_update_button_blink)
         self._update_blink_state = False
-        self.update_available.connect(self.mark_update_button_available)
+        self.update_data.connect(self.on_update_data)
         self.newer_versions: List[Dict[str, Any]] = []
 
         # Common args
@@ -718,6 +719,7 @@ class PngLauncherWindow(QMainWindow):
 
     def on_updates_clicked(self):
         """Handle updates button click"""
+        self.debug_log(f"Updates button clicked, newer_versions count: {len(self.newer_versions)}")
         if self.newer_versions:
             dialog = ChangelogWindow(self, self.newer_versions, self.icons)
             dialog.exec()
@@ -787,3 +789,8 @@ class PngLauncherWindow(QMainWindow):
         Thread-safe request to shutdown by injecting a close event
         """
         QMetaObject.invokeMethod(self, "close", Qt.ConnectionType.QueuedConnection)
+
+    def on_update_data(self, versions_serialised: str):
+        """Handle incoming updates event"""
+        self.newer_versions = deserialise_data(versions_serialised)
+        self.mark_update_button_available()

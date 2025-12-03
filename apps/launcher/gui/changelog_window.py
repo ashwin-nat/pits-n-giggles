@@ -28,37 +28,104 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 import markdown
-from PySide6.QtCore import QUrl, QEventLoop
-from PySide6.QtGui import QFont, QIcon, QTextDocument
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, Qt, QTimer, QUrl
+from PySide6.QtGui import QFont, QIcon, QImage, QPixmap, QTextDocument
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QPushButton,
                                QTextBrowser, QVBoxLayout)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class ImageLoadingTextBrowser(QTextBrowser):
-    """QTextBrowser subclass that loads external images"""
+    """QTextBrowser subclass that loads external images asynchronously"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.network_manager = QNetworkAccessManager(self)
+        self.pending_images = {}  # url -> reply mapping
+        self.loaded_images = []  # Queue of loaded images
+
+        # Timer to batch image updates
+        self.update_timer = QTimer(self)
+        self.update_timer.setSingleShot(True)
+        self.update_timer.timeout.connect(self._batch_update)
+        self.update_timer.setInterval(100)  # Wait 100ms after last image
 
     def loadResource(self, resource_type: int, url: QUrl) -> Any:
-        """Override to load external images"""
+        """Override to load external images asynchronously"""
         if resource_type == QTextDocument.ResourceType.ImageResource:
             # Load external images
             if url.scheme() in {'http', 'https'}:
-                request = QNetworkRequest(url)
-                reply = self.network_manager.get(request)
-                # Note: This is synchronous for simplicity, ideally should be async
-                loop = QEventLoop()
-                reply.finished.connect(loop.quit)
-                loop.exec()
+                url_string = url.toString()
 
-                if reply.error() == reply.NetworkError.NoError:
-                    return reply.readAll()
+                # Check if we already have this image cached
+                cached = super().loadResource(resource_type, url)
+                if cached:
+                    return cached
+
+                # Start async request if not already pending
+                if url_string not in self.pending_images:
+                    request = QNetworkRequest(url)
+                    reply = self.network_manager.get(request)
+                    reply.finished.connect(lambda: self._on_image_loaded(url, reply))
+                    self.pending_images[url_string] = reply
+
+                # Return empty data for now - will update when loaded
+                return b''
 
         return super().loadResource(resource_type, url)
+
+    def _on_image_loaded(self, url: QUrl, reply: QNetworkReply):
+        """Handle completed image download"""
+        url_string = url.toString()
+
+        if url_string in self.pending_images:
+            del self.pending_images[url_string]
+
+        if reply.error() == reply.NetworkError.NoError:
+            image_data = reply.readAll()
+
+            # Resize large images to improve performance
+            image = QImage.fromData(image_data)
+            if not image.isNull():
+                # Max width for images (adjust as needed)
+                max_width = 800
+                if image.width() > max_width:
+                    # Scale down large images
+                    image = image.scaledToWidth(
+                        max_width,
+                        Qt.TransformationMode.SmoothTransformation
+                    )
+                    # Convert back to bytes
+                    pixmap = QPixmap.fromImage(image)
+                    byte_array = QByteArray()
+                    buffer = QBuffer(byte_array)
+                    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                    pixmap.save(buffer, "PNG")
+                    image_data = byte_array
+
+            # Add the image to the document's resources
+            self.document().addResource(
+                QTextDocument.ResourceType.ImageResource,
+                url,
+                image_data
+            )
+
+            # Queue this image for batch update
+            self.loaded_images.append(url_string)
+
+            # Restart the timer (batches updates if multiple images load quickly)
+            self.update_timer.start()
+
+        reply.deleteLater()
+
+    def _batch_update(self):
+        """Batch update all loaded images at once"""
+        if self.loaded_images:
+            # Only reflow once for all loaded images
+            current_html = self.toHtml()
+            self.setHtml(current_html)
+            self.loaded_images.clear()
 
 class ChangelogWindow(QDialog):
     """Window to display version changelogs"""
