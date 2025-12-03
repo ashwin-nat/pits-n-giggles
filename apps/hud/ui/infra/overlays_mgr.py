@@ -91,6 +91,7 @@ class OverlaysMgr:
                 locked=True,
                 opacity=settings.HUD.overlays_opacity,
                 scale_factor=settings.HUD.lap_timer_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
             ))
         else:
             self.logger.debug("Lap timer overlay is disabled")
@@ -102,7 +103,8 @@ class OverlaysMgr:
                 locked=True,
                 opacity=settings.HUD.overlays_opacity,
                 scale_factor=settings.HUD.timing_tower_ui_scale,
-                num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars
+                num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+                windowed_overlay=settings.HUD.use_windowed_overlays
             ))
         else:
             self.logger.debug("Timing tower overlay is disabled")
@@ -114,7 +116,8 @@ class OverlaysMgr:
                 self.logger,
                 locked=True,
                 opacity=settings.HUD.overlays_opacity,
-                scale_factor=settings.HUD.mfd_ui_scale
+                scale_factor=settings.HUD.mfd_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
             ))
         else:
             self.logger.debug("MFD overlay is disabled")

@@ -51,7 +51,14 @@ class LapTimerOverlay(BaseOverlay):
     FONT_SIZE_LABEL = 12
     FONT_SIZE_VALUE = 14
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
+    def __init__(self,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float,
+                 windowed_overlay: bool,
+                 ):
         """Initialize lap timer overlay.
 
         Args:
@@ -60,11 +67,12 @@ class LapTimerOverlay(BaseOverlay):
             locked (bool): Locked state
             opacity (int): Window opacity
             scale_factor (float): UI Scale factor (multiplier)
+            windowed_overlay (bool): Windowed overlay
         """
         # Session state
         self.curr_session_uid = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
 
         self.last_lap_num: Optional[int] = None
         self.last_sector_display_timer = QTimer()

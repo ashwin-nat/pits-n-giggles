@@ -57,6 +57,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.overlays_opacity, 100)
+        self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_enabled_validation(self):
@@ -500,3 +501,17 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertIn("pages", diff["mfd_settings"])
         self.assertIn("tyre_info", diff["mfd_settings"]["pages"])
         self.assertIn("enabled", diff["mfd_settings"]["pages"]["tyre_info"])
+
+    def test_use_windowed_overlays(self):
+        windowed_overlays = True
+        hud_settings = HudSettings(windowed_overlays=windowed_overlays)
+        self.assertEqual(hud_settings.use_windowed_overlays, windowed_overlays)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(use_windowed_overlays=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(use_windowed_overlays="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(use_windowed_overlays=420)
