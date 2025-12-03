@@ -23,7 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+JSONType = Union[dict, list, str, int, float, bool, None]
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -197,19 +201,19 @@ def insert_relative_deltas_race(relevant_rows, ref_index) -> None:
 # Data exchange helpers
 # ------------------------------------------------
 
-def serialise_data(data: Dict[str, Any]) -> str:
+def serialise_data(data: JSONType) -> str:
     """Serialise nested dict data because the Qt CPP bindings don't work well with nested dicts.
     We use string as a serialiser
 
     Args:
-        data (Dict[str, Any]): The data to serialise
+        data (JSONType): The data to serialise
 
     Returns:
         str: The serialised data
     """
     return json.dumps(data,separators=(',', ':')) or {}
 
-def deserialise_data(data: str) -> Dict[str, Any]:
+def deserialise_data(data: str) -> JSONType:
     """Deserialise string data because the Qt CPP bindings don't work well with nested dicts.
     We use string as a serialiser
 
@@ -217,6 +221,6 @@ def deserialise_data(data: str) -> Dict[str, Any]:
         data (str): The data to deserialise
 
     Returns:
-        Dict[str, Any]: The deserialised data
+        JSONType: The deserialised data
     """
     return json.loads(data) or {}

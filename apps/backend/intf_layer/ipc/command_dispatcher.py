@@ -24,32 +24,40 @@
 
 import json
 import logging
-from typing import Callable, Awaitable, Dict
+from typing import Awaitable, Callable, Dict
 
 from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.telemetry_layer import F1TelemetryHandler
 
-from .command_handlers import handleManualSave
+from .command_handlers import handleManualSave, handleUdpActionCodeChange
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Define a type for async handler functions
-CommandHandler = Callable[[dict, logging.Logger, SessionState], Awaitable[dict]]
+CommandHandler = Callable[[dict, logging.Logger, SessionState, F1TelemetryHandler], Awaitable[dict]]
 
 
 # Registry of command handlers
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "manual-save": handleManualSave,
+    "udp-action-code-change": handleUdpActionCodeChange,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def processIpcCommand(msg: dict, logger: logging.Logger, session_state: SessionState) -> dict:
+async def processIpcCommand(
+        msg: dict,
+        logger: logging.Logger,
+        session_state: SessionState,
+        telemetry_handler: F1TelemetryHandler
+        ) -> dict:
     """Handle IPC commands from the parent process (launcher)
 
     Args:
         msg (dict): IPC command
         logger (logging.Logger): Logger
         session_state (SessionState): Handle to the session state object
+        telemetry_handler (F1TelemetryHandler): Handle to the telemetry handler
 
     Returns:
         dict: IPC response
@@ -57,14 +65,16 @@ async def processIpcCommand(msg: dict, logger: logging.Logger, session_state: Se
     logger.debug(f"Received IPC command: {json.dumps(msg, indent=2)}")
 
     if not (cmd := msg.get("cmd")):
+        logger.warning("Missing command name")
         return {"status": "error", "message": "Missing command name"}
 
     if not (handler := COMMAND_HANDLERS.get(cmd)):
+        logger.warning("Unknown command: %s", cmd)
         return {"status": "error", "message": f"Unknown command: {cmd}"}
 
     try:
         args = msg.get("args", {})
-        return await handler(args, logger, session_state)
+        return await handler(args, logger, session_state, telemetry_handler)
     except Exception as e: # pylint: disable=broad-except
         logger.exception(f"Error handling command '{cmd}': {e}")
         return {"status": "error", "message": f"Exception during command handling: {str(e)}"}

@@ -140,6 +140,7 @@ class PngRunner:
             ver_str=self.m_version,
             ipc_port=ipc_port,
             shutdown_event=self.m_shutdown_event,
+            telemetry_handler=self.m_telemetry_handler,
         )
 
     def _getLocalIpAddresses(self) -> Set[str]:

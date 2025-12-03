@@ -23,22 +23,29 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
-from apps.hud.ui.overlays.timing_tower.race_table import RaceTimingTable
+from lib.assets_loader import load_team_icons_dict
+from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PitRejoinPredictionPage(BasePage):
     """Pit rejoin position prediction page."""
     KEY = "pit_rejoin"
+
+    # Font configuration
+    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_VALUES = "B612 Mono"
+    FONT_SIZE = 10
+    HEADER_FONT_SIZE = 11
 
     def __init__(self, parent: QWidget, logger: logging.Logger, scale_factor: float):
         """Initialise the pit rejoin prediction page.
@@ -49,78 +56,227 @@ class PitRejoinPredictionPage(BasePage):
             scale_factor (float): Scale factor
         """
         # Overlay specific fields
+        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="PIT REJOIN PREDICTION")
+
         self.num_adjacent_cars = 2
         self.total_rows = (self.num_adjacent_cars * 2) + 1
 
-        # Timing table component (will be initialized after parent init)
-        self.timing_table: Optional[RaceTimingTable] = None
-        self.pit_time_loss_label: Optional[QLabel] = None
+        self.team_icons = load_team_icons_dict(debug_log_printer=logger.debug, error_log_printer=logger.error)
 
-        super().__init__(parent, logger, f"{super().KEY}.{self.KEY}", scale_factor, title="PIT REJOIN PREDICTION")
         self._build_ui()
         self._init_event_handlers()
 
+    @property
+    def font_size(self) -> int:
+        """Get scaled font size."""
+        return int(self.FONT_SIZE * self.scale_factor)
+
+    @property
+    def header_font_size(self) -> int:
+        """Get scaled header font size."""
+        return int(self.HEADER_FONT_SIZE * self.scale_factor)
+
+    @property
+    def row_height(self) -> int:
+        """Get scaled row height based on font metrics."""
+        font = QFont(self.FONT_FACE_TEXT, self.font_size)
+        metrics = QFontMetrics(font)
+        # Add padding (2x line height for comfortable spacing)
+        return metrics.height() * 2
+
+    @property
+    def icon_size(self) -> int:
+        """Get scaled icon size."""
+        return int(25 * self.scale_factor)
+
+    @property
+    def spacing(self) -> int:
+        """Get scaled spacing."""
+        return int(5 * self.scale_factor)
+
+    @property
+    def padding(self) -> int:
+        """Get scaled padding."""
+        return int(5 * self.scale_factor)
+
     def _build_ui(self):
         """Build the timing tower UI"""
-        self._configure_main_layout(self.page_layout)
+        self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Match the styling approach from TimingTowerOverlay
-        scale = self.scale_factor
-        font_size = 12  # Base font size for pit time loss label
-        font_px = int(font_size * scale)
-        padding = int(3 * scale)
-
-        # Create font and metrics to calculate proper height
-        font = QFont("Formula1 Display")
-        font.setPixelSize(font_px)
-        font.setBold(True)
-
-        fm = QFontMetrics(font)
-        text_height = fm.height()
-        total_height = text_height + (padding * 2)
-
-        # Create pit time loss header
-        self.pit_time_loss_label = QLabel("PIT TIME LOSS: --")
-        self.pit_time_loss_label.setFont(font)
+        # Pit time loss label
+        self.pit_time_loss_label = QLabel("Pit Time Loss: --", self)
         self.pit_time_loss_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.pit_time_loss_label.setFixedHeight(total_height)
-        self.pit_time_loss_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: rgba(20, 20, 20, 180);
-                color: #FFFFFF;
-                font-weight: bold;
-                padding: {padding}px 0px;
-                border-radius: {int(4 * scale)}px;
-                margin-bottom: {int(2 * scale)}px;
-            }}
-        """)
+        font = QFont(self.FONT_FACE_TEXT, self.header_font_size)
+        font.setBold(True)
+        self.pit_time_loss_label.setFont(font)
+        self.pit_time_loss_label.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 0.7); "
+            "color: white; "
+            f"padding: {self.padding}px; "
+            "border: 1px solid #444;"
+        )
         self.page_layout.addWidget(self.pit_time_loss_label)
 
-        # Create and attach the timing table
-        self.timing_table = RaceTimingTable(
-            parent_layout=self.page_layout,
-            logger=self.logger,
-            overlay_id=self.overlay_id,
-            num_rows=self.total_rows,
-            scale_factor=self.scale_factor
+        # Table container
+        self.table_widget = QWidget(self)
+        self.table_layout = QVBoxLayout(self.table_widget)
+        self.table_layout.setContentsMargins(0, 0, 0, 0)
+        self.table_layout.setSpacing(0)
+        self.page_layout.addWidget(self.table_widget)
+
+        # Store row widgets for updates
+        self.table_rows: List[QFrame] = []
+
+        # Initialize with empty rows
+        self._show_empty_table()
+
+    def _create_table_row(self, position: int, team: str, name: str, delta: str, is_ref: bool) -> QFrame:
+        """Create a single table row.
+
+        Args:
+            position (int): Position number
+            team (str): Team identifier
+            name (str): Driver name
+            delta (str): Delta time string
+            is_ref (bool): Whether this is the reference driver
+
+        Returns:
+            QFrame: The row widget
+        """
+        row_frame = QFrame(self)
+        row_frame.setFixedHeight(self.row_height)
+
+        # Add border styling
+        border_width = int(2 * self.scale_factor)
+        border_style = f"border: {border_width}px solid white;" if is_ref else "border: none;"
+        row_frame.setStyleSheet(
+            f"background-color: rgba(0, 0, 0, 0.5); "
+            f"border-top: 1px solid #444; "
+            f"{border_style}"
         )
 
-        self._apply_overall_style()
+        row_layout = QHBoxLayout(row_frame)
+        row_layout.setContentsMargins(self.spacing, 0, self.spacing, 0)
+        row_layout.setSpacing(self.spacing)
 
-    def _configure_main_layout(self, layout: QVBoxLayout) -> None:
-        """Configure main layout spacing, margins, and alignment."""
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Position label (10%)
+        pos_label = QLabel(str(position), row_frame)
+        pos_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pos_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size, QFont.Weight.Bold))
+        pos_label.setStyleSheet("color: white; background: transparent; border: none;")
+        row_layout.addWidget(pos_label, 10)
 
-    def _apply_overall_style(self) -> None:
-        """Apply background and border styling to the main widget."""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: rgba(10, 10, 10, 220);
-                border-radius: 8px;
-            }
-        """)
+        # Team logo (10%)
+        team_icon_label = QLabel(row_frame)
+        team_icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        team_icon_label.setStyleSheet("background: transparent; border: none;")
+
+        # Load team icon if available
+        icon = self.team_icons[team]
+        pixmap = icon.pixmap(self.icon_size, self.icon_size)
+        team_icon_label.setPixmap(pixmap)
+
+        row_layout.addWidget(team_icon_label, 10)
+
+        # Driver name (50%)
+        name_label = QLabel(name, row_frame)
+        name_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        name_label.setFont(QFont(self.FONT_FACE_TEXT, self.font_size))
+        name_label.setStyleSheet("color: white; background: transparent; border: none;")
+        row_layout.addWidget(name_label, 50)
+
+        # Delta (30%)
+        delta_label = QLabel(delta, row_frame)
+        delta_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        delta_label.setFont(QFont(self.FONT_FACE_VALUES, self.font_size, QFont.Weight.Normal))
+        delta_label.setStyleSheet("background: transparent; border: none;")
+        row_layout.addWidget(delta_label, 30)
+
+        return row_frame
+
+    def _create_blank_row(self) -> QFrame:
+        """Create an empty table row with no text or icons."""
+        row_frame = QFrame(self)
+        row_frame.setFixedHeight(self.row_height)
+
+        # Match the visual style of normal rows
+        row_frame.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 0.5); "
+            "border-top: 1px solid #444;"
+        )
+
+        row_layout = QHBoxLayout(row_frame)
+        row_layout.setContentsMargins(self.spacing, 0, self.spacing, 0)
+        row_layout.setSpacing(self.spacing)
+
+        # Add empty placeholders so layout proportions stay identical
+        # Position (10%)
+        pos = QLabel("", row_frame)
+        pos.setStyleSheet("background: transparent; border: none;")
+        row_layout.addWidget(pos, 10)
+
+        # Team icon placeholder (10%)
+        icon = QLabel("", row_frame)
+        icon.setStyleSheet("background: transparent; border: none;")
+        row_layout.addWidget(icon, 10)
+
+        # Driver name (50%)
+        name = QLabel("", row_frame)
+        name.setStyleSheet("background: transparent; border: none;")
+        row_layout.addWidget(name, 50)
+
+        # Delta (30%)
+        delta = QLabel("", row_frame)
+        delta.setStyleSheet("background: transparent; border: none;")
+        row_layout.addWidget(delta, 30)
+
+        return row_frame
+
+
+    def _clear_table(self):
+        """Clear all rows from the table."""
+        for row in self.table_rows:
+            self.table_layout.removeWidget(row)
+            row.deleteLater()
+        self.table_rows.clear()
+
+    def _show_empty_table(self):
+        """Display empty table with placeholder rows."""
+        self._clear_table()
+        for _ in range(self.total_rows):
+            row_widget = self._create_blank_row()
+            self.table_layout.addWidget(row_widget)
+            self.table_rows.append(row_widget)
+
+    def _update_table(self, rows_data: List[Dict[str, Any]], ref_index: int):
+        """Update the table with new data.
+
+        Args:
+            rows_data (List[Dict[str, Any]]): List of row data dictionaries
+            ref_index (int): Reference driver index
+        """
+        self._clear_table()
+
+        for row_data in rows_data:
+            driver_info: Dict[str, Any] = row_data.get("driver-info", {})
+            delta_info: Dict[str, Any] = row_data.get("delta-info", {})
+
+            position = driver_info.get("position", 0)
+            team = driver_info.get("team", "")
+            name = driver_info.get("name", "")
+            delta_value = delta_info.get("relative-delta", 0.0)
+            driver_idx = driver_info.get("index", -1)
+            is_ref = (driver_idx == ref_index)
+
+            # Format delta
+            if is_ref:
+                delta_str = '---'
+            else:
+                delta_str = F1Utils.formatFloat(delta_value / 1000, precision=3, signed=True)
+
+            row_widget = self._create_table_row(position, team, name, delta_str, is_ref)
+            self.table_layout.addWidget(row_widget)
+            self.table_rows.append(row_widget)
 
     def _init_event_handlers(self):
         @self.on_event("race_table_update")
@@ -132,36 +288,36 @@ class PitRejoinPredictionPage(BasePage):
             """
             session_type = data["event-type"]
             if not is_race_type_session(session_type):
-                self.timing_table.show_error("Only supported in Race/Sprint Sessions")
+                self._show_empty_table()
                 return
 
             table_entries = data["table-entries"]
             if not table_entries:
-                self.timing_table.clear()
+                self._show_empty_table()
                 return
 
             ref_row = get_ref_row(data)
             if not ref_row:
-                self.timing_table.show_error("ERROR: Please check the logs")
+                self._show_empty_table()
                 return
             ref_index = ref_row["driver-info"]["index"]
 
             pit_time_loss = data.get("pit-time-loss")
             if not pit_time_loss:
-                self.timing_table.show_error("Pit time loss not configured for this track")
-                self.pit_time_loss_label.setText("PIT TIME LOSS: N/A")
+                self._show_empty_table()
                 return
 
             # Update pit time loss header
-            self.pit_time_loss_label.setText(f"PIT TIME LOSS: {pit_time_loss:.1f}s")
+            pit_time_loss_str = f"Pit Time Loss: {pit_time_loss:.1f}s"
+            self.pit_time_loss_label.setText(pit_time_loss_str)
 
             table_entries.sort(key=lambda x: x["driver-info"]["position"])
             updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
             relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
             insert_relative_deltas_race(relevant_rows, ref_index)
 
-            # Use the timing table's update_data method
-            self.timing_table.update_data(relevant_rows, ref_index)
+            # Update the table
+            self._update_table(relevant_rows, ref_index)
 
     def _add_pit_time_loss(
         self,

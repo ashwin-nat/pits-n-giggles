@@ -27,7 +27,7 @@ from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget, QSizePolicy
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -43,6 +43,7 @@ class BasePage(QWidget):
     # Class variables for title customization
     TITLE_FONT_FACE = "Formula1 Display"
     TITLE_FONT_SIZE = 13
+    BASE_WIDTH = 400
 
     def __init__(self,
                  parent: QWidget,
@@ -58,6 +59,7 @@ class BasePage(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
@@ -75,6 +77,9 @@ class BasePage(QWidget):
         self.page_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(content_widget)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(self.scaled_width)
+
         self._event_handlers: Dict[str, EventCommandHandler] = {}
         self._register_default_handlers()
 
@@ -122,4 +127,8 @@ class BasePage(QWidget):
 
         @self.on_event("page_active_status")
         def _handle_page_active_status(data: Dict[str, Any]):
-            self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}")
+            self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}. width={self.width()}")
+
+    @property
+    def scaled_width(self) -> int:
+        return int(self.BASE_WIDTH * self.scale_factor)

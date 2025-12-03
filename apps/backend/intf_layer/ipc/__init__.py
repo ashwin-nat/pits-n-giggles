@@ -27,13 +27,12 @@ import logging
 from functools import partial
 from typing import List, Optional
 
+from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.ipc import IpcChildAsync
 
-from apps.backend.state_mgmt_layer import SessionState
-
 from .command_dispatcher import processIpcCommand
-from .command_handlers import handleShutdown
-from .command_handlers import handleHeartbeatMissed
+from .command_handlers import handleHeartbeatMissed, handleShutdown
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -41,6 +40,7 @@ def registerIpcTask(
         ipc_port: Optional[int],
         logger: logging.Logger,
         session_state: SessionState,
+        telemetry_handler: F1TelemetryHandler,
         tasks: List[asyncio.Task]
         ) -> None:
     """Register the IPC task
@@ -49,6 +49,7 @@ def registerIpcTask(
         ipc_port (Optional[int]): IPC port
         logger (logging.Logger): Logger
         session_state (SessionState): Handle to the session state object
+        telemetry_handler (F1TelemetryHandler): Telemetry handler
         tasks (List[asyncio.Task]): List of tasks
     """
 
@@ -59,7 +60,8 @@ def registerIpcTask(
         server.register_shutdown_callback(partial(handleShutdown, logger=logger))
         server.register_heartbeat_missed_callback(handleHeartbeatMissed)
         tasks.append(asyncio.create_task(server.run(partial(
-            processIpcCommand, logger=logger, session_state=session_state)), name="IPC Task"))
+            processIpcCommand, logger=logger, session_state=session_state, telemetry_handler=telemetry_handler)),
+                name="IPC Task"))
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
