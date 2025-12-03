@@ -77,7 +77,8 @@
         "mfd_toggle_udp_action_code": null,
         "toggle_overlays_udp_action_code": 10,
         "cycle_mfd_udp_action_code": 9,
-        "overlays_opacity": 100
+        "overlays_opacity": 100,
+        "use_windowed_overlays": false
     },
     "TimeLossInPitsF1": {
         "Melbourne": 18.0,
