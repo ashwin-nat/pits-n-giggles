@@ -53,7 +53,8 @@ class TimingTowerOverlay(BaseOverlay):
                  locked: bool,
                  opacity: int,
                  scale_factor: float,
-                 num_adjacent_cars: int
+                 num_adjacent_cars: int,
+                 windowed_overlay: bool
                  ):
         """Initialize timing tower overlay.
 
@@ -64,6 +65,7 @@ class TimingTowerOverlay(BaseOverlay):
             opacity (int): Window opacity
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
+            windowed_overlay (bool): Windowed overlay
         """
 
         # Overlay specific fields
@@ -74,7 +76,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[RaceTimingTable] = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
         self._init_event_handlers()
 
     def build_ui(self):

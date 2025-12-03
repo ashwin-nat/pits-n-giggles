@@ -22,7 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import ctypes
 import logging
+from pathlib import Path
 from typing import Any, Callable, Dict
 
 from PySide6.QtCore import QPropertyAnimation, Qt, Signal, Slot
@@ -31,6 +33,8 @@ from PySide6.QtWidgets import QWidget
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
+from lib.assets_loader import load_icon
+from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -49,7 +53,9 @@ class BaseOverlay(QWidget):
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,
-                 scale_factor: float):
+                 scale_factor: float,
+                 windowed_overlay: bool
+                 ):
         """Initialize base overlay.
 
         Args:
@@ -59,9 +65,11 @@ class BaseOverlay(QWidget):
             locked (bool): Locked state
             opacity (int): Window opacity
             scale_factor (float): UI Scale factor (multiplier)
+            windowed_overlay (bool): Windowed overlay
         """
         super().__init__()
         self.overlay_id = overlay_id
+        self.windowed_overlay = windowed_overlay
         self.config = config
         self.locked = locked
         self.logger = logger
@@ -84,9 +92,19 @@ class BaseOverlay(QWidget):
     # --------------------------------------------------------------------------
     def _setup_window(self):
         """Apply base window setup and initial flags."""
-        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
+        self.setWindowTitle(self.overlay_id)
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+        self.setWindowIcon(load_icon(
+            Path("assets") / "logo.png",
+            debug_log_printer=self.logger.debug,
+            error_log_printer=self.logger.error
+        ))
+        self.setStyleSheet("""
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        """)
+        if not self.windowed_overlay:
+            self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
         self.update_window_flags()
 
     def apply_config(self):
@@ -106,24 +124,25 @@ class BaseOverlay(QWidget):
     def update_window_flags(self):
         """Refresh window flags based on locked state."""
         flags = (
-            Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
-            | Qt.WindowType.FramelessWindowHint
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.FramelessWindowHint
         )
 
-        if self.locked:
-            # Locked = click-through
-            flags |= Qt.WindowType.WindowTransparentForInput
-
+        if self.windowed_overlay:
+            # Standalone OBS-capturable windows always behave like real top-level windows
+            flags |= Qt.WindowType.Window
         else:
-            flags |= (
-                Qt.WindowType.Window
-                | Qt.WindowType.CustomizeWindowHint
-                | Qt.WindowType.MSWindowsFixedSizeDialogHint
-            )
-            # Unlocked = interactive
-            # Do NOT call setWindowFlag(False), the bit will be excluded
-            # simply by not adding it to flags.
+            flags |= Qt.WindowType.Tool
+
+            if self.locked:
+                flags |= Qt.WindowType.WindowTransparentForInput
+            else:
+                # Interactive behavior for unlocked state
+                flags |= (
+                    Qt.WindowType.Window |
+                    Qt.WindowType.CustomizeWindowHint |
+                    Qt.WindowType.MSWindowsFixedSizeDialogHint
+                )
 
         self.setWindowFlags(flags)
         self.show()

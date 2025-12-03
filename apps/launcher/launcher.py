@@ -34,7 +34,7 @@ from apps.launcher.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
 from lib.ipc import IpcChildSync
 from lib.version import get_version
-from meta.meta import APP_NAME
+from meta.meta import APP_NAME, APP_NAME_SNAKE
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -167,8 +167,7 @@ def entry_point() -> None:
     # Set AppUserModelID to ensure correct taskbar icon in dev mode
     if os.name == "nt":  # Only on Windows
         try:
-            myappid = "png.launcher" # arbitrary unique string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
         except Exception: # pylint: disable=broad-except
             pass
 

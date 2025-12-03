@@ -252,6 +252,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    use_windowed_overlays: bool = Field(
+        default=False,
+        description="Use Windowed Overlays (Required for OBS window capture)",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         # Not allowed to enable HUD while all overlays are disabled

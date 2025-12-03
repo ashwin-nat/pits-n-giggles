@@ -125,11 +125,13 @@ class MfdOverlay(BaseOverlay):
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,
-                 scale_factor: float):
+                 scale_factor: float,
+                 windowed_overlay: bool
+                 ):
 
         self.mfdClosed = 40
         self.settings = settings
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
 
         # Always start collapsed, but keep width & position
         geo = self.geometry()

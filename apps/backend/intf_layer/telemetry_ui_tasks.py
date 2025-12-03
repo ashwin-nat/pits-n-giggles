@@ -30,6 +30,7 @@ from typing import List, Optional
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
                                                 StreamOverlayData)
+from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
@@ -47,7 +48,8 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     ipc_port: Optional[int],
-    shutdown_event: asyncio.Event) -> TelemetryWebServer:
+    shutdown_event: asyncio.Event,
+    telemetry_handler: F1TelemetryHandler) -> TelemetryWebServer:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -59,6 +61,7 @@ def initUiIntfLayer(
         ver_str (str): Version string
         ipc_port (Optional[int]): IPC port
         shutdown_event (asyncio.Event): Event to signal shutdown
+        telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
         TelemetryWebServer: The initialized web server
@@ -88,7 +91,7 @@ def initUiIntfLayer(
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudNotifierTask(web_server, shutdown_event), name="HUD Notifier Task"))
 
-    registerIpcTask(ipc_port, logger, session_state, tasks)
+    registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
     return web_server
 
 async def raceTableClientUpdateTask(

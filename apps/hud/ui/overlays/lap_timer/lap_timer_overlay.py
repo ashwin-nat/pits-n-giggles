@@ -25,7 +25,7 @@
 import logging
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout)
@@ -51,7 +51,14 @@ class LapTimerOverlay(BaseOverlay):
     FONT_SIZE_LABEL = 12
     FONT_SIZE_VALUE = 14
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float):
+    def __init__(self,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float,
+                 windowed_overlay: bool,
+                 ):
         """Initialize lap timer overlay.
 
         Args:
@@ -60,11 +67,19 @@ class LapTimerOverlay(BaseOverlay):
             locked (bool): Locked state
             opacity (int): Window opacity
             scale_factor (float): UI Scale factor (multiplier)
+            windowed_overlay (bool): Windowed overlay
         """
         # Session state
         self.curr_session_uid = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor)
+        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
+
+        self.last_lap_num: Optional[int] = None
+        self.last_sector_display_timer = QTimer()
+        self.last_sector_display_timer.setSingleShot(True)
+        self.show_last_lap_sector_bar = False
+        self.last_sector_display_timer.timeout.connect(self._timer_clear_cb)
+
         self._init_event_handlers()
 
     def build_ui(self):
@@ -88,10 +103,15 @@ class LapTimerOverlay(BaseOverlay):
                                             label_font, value_font, "#00FFFF", 0, 0)
         self.delta_value = self._create_card(grid, "DELTA", self.DEFAULT_DELTA,
                                               label_font, value_font, "#FFFFFF", 0, 1)
-        self.last_value = self._create_card(grid, "LAST", self.DEFAULT_TIME,
-                                             label_font, value_font, "#FFFFFF", 1, 0)
-        self.best_value = self._create_card(grid, "BEST", self.DEFAULT_TIME,
-                                             label_font, value_font, "#00FF00", 1, 1)
+        self.last_value, self.last_sector_bar = self._create_card_with_sector_bar(
+            grid, "LAST", self.DEFAULT_TIME,
+            label_font, value_font, "#FFFFFF", 1, 0
+        )
+
+        self.best_value, self.best_sector_bar = self._create_card_with_sector_bar(
+            grid, "BEST", self.DEFAULT_TIME,
+            label_font, value_font, "#00FF00", 1, 1
+        )
 
         main_layout.addLayout(grid)
 
@@ -122,7 +142,7 @@ class LapTimerOverlay(BaseOverlay):
         main_layout.addWidget(est_container)
 
         # Sector bar at bottom
-        self.sector_bar = SectorStatusBar()
+        self.sector_bar = SectorStatusBar(self.scale_factor)
         main_layout.addWidget(self.sector_bar)
 
         self.setLayout(main_layout)
@@ -175,6 +195,57 @@ class LapTimerOverlay(BaseOverlay):
         grid.addWidget(card, row, col)
         return value
 
+    def _create_card_with_sector_bar(
+        self,
+        grid: QGridLayout,
+        label_text: str,
+        default_value: str,
+        label_font: QFont,
+        value_font: QFont,
+        value_color: str,
+        row: int,
+        col: int
+    ):
+        card = QFrame()
+        card.setMinimumSize(self.card_min_width, self.card_min_height + int(20 * self.scale_factor))
+        card.setFrameStyle(QFrame.Box)
+        card.setStyleSheet("QFrame { border: 1px solid #333333; background-color: #1a1a1a; }")
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(
+            self.card_padding,
+            self.card_padding_vertical,
+            self.card_padding,
+            self.card_padding_vertical
+        )
+        layout.setSpacing(self.card_content_spacing)
+
+        # Label
+        label = QLabel(label_text)
+        label.setFont(label_font)
+        label.setStyleSheet("color: #888888; border: none;")
+        label.setAlignment(Qt.AlignCenter)
+
+        # Lap time value
+        value = QLabel(default_value)
+        value.setFont(value_font)
+        value.setStyleSheet(f"color: {value_color}; border: none;")
+        value.setAlignment(Qt.AlignCenter)
+
+        # Sector bar
+        sector_bar = SectorStatusBar(self.scale_factor * 0.75)
+        sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
+
+        # Add to layout
+        layout.addWidget(label)
+        layout.addWidget(value)
+        layout.addWidget(sector_bar)
+
+        # Add to grid
+        grid.addWidget(card, row, col)
+
+        return value, sector_bar
+
     def _init_event_handlers(self):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
@@ -201,9 +272,22 @@ class LapTimerOverlay(BaseOverlay):
             # Update static fields
             self._update_last_lap(last_lap["lap-time-ms"])
             self._update_best_lap(best_lap["lap-time-ms"])
-            self.sector_bar.set_sector_status(curr_lap["sector-status"])
+            self.last_sector_bar.set_sector_status(last_lap["sector-status"])
+            self.best_sector_bar.set_sector_status(best_lap["sector-status"])
 
-            # Dispatch to clean sub-handlers
+            if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
+                self.logger.debug(f"{self.overlay_id} | Lap number changed from "
+                                  f"{self.last_lap_num} to {lap_info['current-lap']}")
+                # --- Start 5 sec last-lap sector bar window ---
+                self.show_last_lap_sector_bar = True
+                self.last_sector_display_timer.start(5000)
+
+            if self.show_last_lap_sector_bar:
+                self.sector_bar.set_sector_status(last_lap["sector-status"])
+            else:
+                self.sector_bar.set_sector_status(curr_lap["sector-status"])
+            self.last_lap_num = lap_info["current-lap"]
+
             self._handle_current_lap_display(curr_lap)
             self._handle_delta_and_estimated(data, curr_lap, best_lap)
 
@@ -280,6 +364,9 @@ class LapTimerOverlay(BaseOverlay):
         self.estimated_value.setText(self.DEFAULT_TIME)
         self.sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
         self.curr_session_uid = None
+        self.show_last_lap_sector_bar = False
+        self.last_sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
+        self.best_sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
 
     def _update_last_lap(self, last_lap_ms: Optional[int]):
         """Update last lap time display.
@@ -379,7 +466,6 @@ class LapTimerOverlay(BaseOverlay):
         """Get the font size based on the scale factor."""
         return int(self.FONT_SIZE_VALUE * self.scale_factor)
 
-# Add these helper properties after the existing font_size properties
     @property
     def scaled(self) -> int:
         """Scale an integer value by scale_factor."""
@@ -447,3 +533,7 @@ class LapTimerOverlay(BaseOverlay):
     def est_container_spacing(self) -> int:
         """Get scaled estimated container spacing."""
         return int(5 * self.scale_factor)
+
+    def _timer_clear_cb(self):
+        """Clear the last lap sector bar flag"""
+        self.show_last_lap_sector_bar = False

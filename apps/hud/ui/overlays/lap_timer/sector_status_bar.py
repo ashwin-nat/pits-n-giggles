@@ -35,10 +35,14 @@ class SectorStatusBar(QWidget):
 
     DEFAULT_SECTOR_STATUS = [F1Utils.SECTOR_STATUS_NA] * 3
 
-    def __init__(self):
-        """Initialize sector status bar."""
+    def __init__(self, scale_factor: float):
+        """Initialize sector status bar.
+
+        Args:
+            scale_factor (float): UI Scale factor
+        """
         super().__init__(None)
-        self.setFixedHeight(15)
+        self.setFixedHeight(int(15 * scale_factor))
         self.sector_status = self.DEFAULT_SECTOR_STATUS
 
     def paintEvent(self, _event):
@@ -73,5 +77,7 @@ class SectorStatusBar(QWidget):
     def set_sector_status(self, status_list: List[int]):
         """Set the sector status."""
         assert len(status_list) == 3
-        self.sector_status = status_list
-        self.update()
+        # Update only if changed
+        if status_list != self.sector_status:
+            self.sector_status = status_list
+            self.update()

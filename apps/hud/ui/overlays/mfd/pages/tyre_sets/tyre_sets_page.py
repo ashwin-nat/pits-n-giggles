@@ -158,7 +158,7 @@ class TyreSetsPage(BasePage):
                 background-color: {self.COLOR_BG};
             }}
         """)
-        card.setFixedHeight(70)  # Fixed height for all cards
+        card.setMinimumHeight(int(70 * self.scale_factor))
 
         layout = QHBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
