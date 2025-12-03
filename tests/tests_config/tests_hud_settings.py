@@ -504,7 +504,7 @@ class TestHudSettings(TestF1ConfigBase):
 
     def test_use_windowed_overlays(self):
         windowed_overlays = True
-        hud_settings = HudSettings(windowed_overlays=windowed_overlays)
+        hud_settings = HudSettings(use_windowed_overlays=windowed_overlays)
         self.assertEqual(hud_settings.use_windowed_overlays, windowed_overlays)
 
         with self.assertRaises(ValidationError):
