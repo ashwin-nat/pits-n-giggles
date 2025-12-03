@@ -276,7 +276,7 @@ class LapTimerOverlay(BaseOverlay):
             self.best_sector_bar.set_sector_status(best_lap["sector-status"])
 
             if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
-                self.logger.debug("{self.overlay_id} | Lap number changed from "
+                self.logger.debug(f"{self.overlay_id} | Lap number changed from "
                                   f"{self.last_lap_num} to {lap_info['current-lap']}")
                 # --- Start 5 sec last-lap sector bar window ---
                 self.show_last_lap_sector_bar = True

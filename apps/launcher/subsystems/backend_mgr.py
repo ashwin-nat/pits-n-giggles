@@ -120,7 +120,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.proto = new_settings.HTTPS.proto
 
         # Update UDP action codes if required
-        udp_action_codes_diff = self.curr_settings.diff(new_settings, {
+        if udp_action_codes_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "udp_tyre_delta_action_code",
                 "udp_custom_action_code",
@@ -132,8 +132,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "mfd_toggle_udp_action_code",
                 "cycle_mfd_udp_action_code",
             ],
-        })
-        if udp_action_codes_diff:
+        }):
             for fields_in_category in udp_action_codes_diff.values():
                 for field, diff in fields_in_category.items():
                     new_value = diff["new_value"]
@@ -141,7 +140,7 @@ class BackendAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"{self.display_name} UDP action codes NO CHANGE")
 
-        restart_required_fields_diff = self.curr_settings.diff(new_settings, {
+        if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "telemetry_port",
                 "server_port",
@@ -157,8 +156,7 @@ class BackendAppMgr(PngAppMgrBase):
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
-        })
-        if restart_required_fields_diff:
+        }):
             self.debug_log(f"{self.display_name} Restart required fields change: "
                            f"{json.dumps(restart_required_fields_diff, indent=2)}")
         else:

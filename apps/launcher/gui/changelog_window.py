@@ -53,25 +53,22 @@ class ImageLoadingTextBrowser(QTextBrowser):
 
     def loadResource(self, resource_type: int, url: QUrl) -> Any:
         """Override to load external images asynchronously"""
-        if resource_type == QTextDocument.ResourceType.ImageResource:
-            # Load external images
-            if url.scheme() in {'http', 'https'}:
-                url_string = url.toString()
+        if (resource_type == QTextDocument.ResourceType.ImageResource) and (url.scheme() in {'http', 'https'}):
+            url_string = url.toString()
 
-                # Check if we already have this image cached
-                cached = super().loadResource(resource_type, url)
-                if cached:
-                    return cached
+            # Check if we already have this image cached
+            if cached := super().loadResource(resource_type, url):
+                return cached
 
-                # Start async request if not already pending
-                if url_string not in self.pending_images:
-                    request = QNetworkRequest(url)
-                    reply = self.network_manager.get(request)
-                    reply.finished.connect(lambda: self._on_image_loaded(url, reply))
-                    self.pending_images[url_string] = reply
+            # Start async request if not already pending
+            if url_string not in self.pending_images:
+                request = QNetworkRequest(url)
+                reply = self.network_manager.get(request)
+                reply.finished.connect(lambda: self._on_image_loaded(url, reply))
+                self.pending_images[url_string] = reply
 
-                # Return empty data for now - will update when loaded
-                return b''
+            # Return empty data for now - will update when loaded
+            return b''
 
         return super().loadResource(resource_type, url)
 
