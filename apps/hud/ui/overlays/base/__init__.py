@@ -22,10 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlayWidget
+from .base import BaseOverlay
+from .base_widget import BaseOverlayWidget
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    "BaseOverlay",
     "BaseOverlayWidget",
 ]

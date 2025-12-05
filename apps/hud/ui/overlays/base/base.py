@@ -22,19 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import ctypes
-import logging
-from pathlib import Path
+from __future__ import annotations
 from typing import Any, Callable, Dict
+import logging
 
-from PySide6.QtCore import QPropertyAnimation, Qt, Signal, Slot
-from PySide6.QtGui import QIcon, QMouseEvent
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import QObject, Signal, Slot
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
-from lib.assets_loader import load_icon
-from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -43,9 +38,8 @@ OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, return
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseOverlayWidget(QWidget):
-    # Add signal for responses
-    response_signal = Signal(str, object)  # request_type, response_data
+class BaseOverlay():
+    response_signal = Signal(str, object)   # request_type, response_data
 
     def __init__(self,
                  overlay_id: str,
@@ -54,20 +48,8 @@ class BaseOverlayWidget(QWidget):
                  locked: bool,
                  opacity: int,
                  scale_factor: float,
-                 windowed_overlay: bool
-                 ):
-        """Initialize base overlay.
+                 windowed_overlay: bool):
 
-        Args:
-            overlay_id (str): Overlay ID
-            config (OverlaysConfig): Overlay config
-            logger (logging.Logger): Logger object
-            locked (bool): Locked state
-            opacity (int): Window opacity
-            scale_factor (float): UI Scale factor (multiplier)
-            windowed_overlay (bool): Windowed overlay
-        """
-        super().__init__()
         self.overlay_id = overlay_id
         self.windowed_overlay = windowed_overlay
         self.config = config
@@ -75,118 +57,99 @@ class BaseOverlayWidget(QWidget):
         self.logger = logger
         self.opacity = opacity
         self.scale_factor = scale_factor
-        self._drag_pos = None
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
-        self._request_handlers: Dict[str, OverlayRequestHandler] = {}  # New: request handlers
-        self._icon_cache: Dict[str, QIcon] = {}
+        self._request_handlers: Dict[str, OverlayRequestHandler] = {}
+
+        # Create the actual window backend (widget or QML)
         self._setup_window()
         self.build_ui()
         self.apply_config()
-        self.adjustSize()
 
-        # Register default request handlers
+        # Register default handlers
         self._register_default_handlers()
 
-    # --------------------------------------------------------------------------
-    # Setup
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # Abstract interface — implemented by QWidget and QML subclasses
+    # ----------------------------------------------------------------------
     def _setup_window(self):
-        """Apply base window setup and initial flags."""
-        self.setWindowTitle(self.overlay_id)
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
-        self.setWindowIcon(load_icon(
-            Path("assets") / "logo.png",
-            debug_log_printer=self.logger.debug,
-            error_log_printer=self.logger.error
-        ))
-        self.setStyleSheet("""
-            background-color: #1e1e1e;
-            color: #e0e0e0;
-        """)
-        if not self.windowed_overlay:
-            self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
-        self.update_window_flags()
+        raise NotImplementedError
+
+    def build_ui(self):
+        raise NotImplementedError
+
+    def rebuild_ui(self):
+        raise NotImplementedError
+
 
     def apply_config(self):
-        """Apply initial geometry from config."""
-        self.move(self.config.x, self.config.y)
-        self.set_opacity(self.opacity)
+        raise NotImplementedError
+
+    def update_window_flags(self):
+        raise NotImplementedError
 
     def set_opacity(self, opacity: int):
-        """Set window opacity (0-100)."""
-        self.opacity = opacity
-        self.logger.debug(f"{self.overlay_id} | Setting opacity to {opacity}%")
-        self.setWindowOpacity(self.opacity / 100.0)
+        raise NotImplementedError
 
-    # --------------------------------------------------------------------------
-    # Window State
-    # --------------------------------------------------------------------------
-    def update_window_flags(self):
-        """Refresh window flags based on locked state."""
-        flags = (
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.FramelessWindowHint
-        )
-
-        if self.windowed_overlay:
-            # Standalone OBS-capturable windows always behave like real top-level windows
-            flags |= Qt.WindowType.Window
-        else:
-            flags |= Qt.WindowType.Tool
-
-            if self.locked:
-                flags |= Qt.WindowType.WindowTransparentForInput
-            else:
-                # Interactive behavior for unlocked state
-                flags |= (
-                    Qt.WindowType.Window |
-                    Qt.WindowType.CustomizeWindowHint |
-                    Qt.WindowType.MSWindowsFixedSizeDialogHint
-                )
-
-        self.setWindowFlags(flags)
-        self.show()
 
     def set_locked_state(self, locked: bool):
-        """Set locked state dynamically."""
-        self.locked = locked
-        self.update_window_flags()
+        raise NotImplementedError
 
+    def animate_fade(self, show: bool):
+        raise NotImplementedError
+
+
+    # def move(self, x: int, y: int):
+    #     raise NotImplementedError
+
+
+    # def geometry(self):
+    #     raise NotImplementedError
+
+    # def show(self):
+    #     raise NotImplementedError
+
+    # def hide(self):
+    #     raise NotImplementedError
+
+    # def is_visible(self) -> bool:
+    #     raise NotImplementedError
+
+    # ----------------------------------------------------------------------
+    # Shared logic
+    # ----------------------------------------------------------------------
     def get_window_info(self) -> OverlaysConfig:
         """Return current geometry as an OverlaysConfig."""
         geo = self.geometry()
-        return OverlaysConfig(
-            x=geo.x(),
-            y=geo.y(),
-        )
+        return OverlaysConfig(x=geo.x(), y=geo.y())
 
-    # --------------------------------------------------------------------------
-    # Subclass hooks
-    # --------------------------------------------------------------------------
-    def build_ui(self):
-        """Subclasses must implement this to build their layout."""
-        raise NotImplementedError
-
-    # --------------------------------------------------------------------------
-    # Command infra
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
+    # Command/Request handler registration
+    # ----------------------------------------------------------------------
     def on_event(self, cmd_name: str):
-        """Flask-style decorator for registering command handlers."""
         def decorator(func: OverlayCommandHandler):
             self._command_handlers[cmd_name] = func
             return func
         return decorator
 
+    def on_request(self, request_type: str):
+        def decorator(func: OverlayRequestHandler):
+            self._request_handlers[request_type] = func
+            return func
+        return decorator
+
+    # ----------------------------------------------------------------------
+    # Default handlers (same as before)
+    # ----------------------------------------------------------------------
     def _register_default_handlers(self):
         """Register built-in request handlers."""
         @self.on_request("get_window_info")
-        def _handle_get_window_info(_data: Dict[str, Any]) -> str:
+        def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
         @self.on_event("set_locked_state")
-        def _handle_set_locked_state(data: Dict[str, Any]):
+        def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
             self.logger.debug(f'{self.overlay_id} | Setting locked state to {locked}')
@@ -222,14 +185,20 @@ class BaseOverlayWidget(QWidget):
             self.scale_factor = data["scale_factor"]
             self.logger.debug(f"{self.overlay_id} | Setting UI scale to {self.scale_factor}")
             self.rebuild_ui()
-            self.adjustSize()
 
-    def on_request(self, request_type: str):
-        """Flask-style Decorator for registering request handlers that return responses."""
-        def decorator(func: Callable[[dict], Any]):
-            self._request_handlers[request_type] = func
-            return func
-        return decorator
+    # ----------------------------------------------------------------------
+    # IPC — Signals/Slots
+    # ----------------------------------------------------------------------
+    @Slot(str, str, str)
+    def _handle_cmd(self, recipient: str, cmd: str, data: str):
+        if recipient and recipient != self.overlay_id:
+            return
+        handler = self._command_handlers.get(cmd)
+        if not handler:
+            self.logger.warning(f"{self.overlay_id} | No handler for command '{cmd}'")
+            return
+        parsed = deserialise_data(data)
+        handler(parsed)
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
@@ -257,101 +226,3 @@ class BaseOverlayWidget(QWidget):
                 self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
         else:
             self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
-
-    # Existing _handle_cmd method stays the same
-    @Slot(str, str, str)
-    def _handle_cmd(self, recipient: str, cmd: str, data: str):
-        """Internal command dispatcher for overlays.
-
-        Args:
-            recipient (str): Overlay ID that sent the command
-            cmd (str): Command
-            data (str): Command data JSON serialized as a string
-        """
-        if recipient and recipient != self.overlay_id:
-            return  # Not for this overlay
-
-        if handler := self._command_handlers.get(cmd):
-            parsed_data = deserialise_data(data)
-            try:
-                handler(parsed_data)
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
-        else:
-            self.logger.warning(f"{self.overlay_id} | No handler registered for command '{cmd}'")
-
-    # --------------------------------------------------------------------------
-    # Mouse interactions (dragging + resizing only)
-    # --------------------------------------------------------------------------
-    def mousePressEvent(self, event: QMouseEvent):
-        if not self.locked and event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event: QMouseEvent):
-        if not self.locked and event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
-            event.accept()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        self._drag_pos = None
-        event.accept()
-
-    def rebuild_ui(self):
-        """
-        Completely rebuild the overlay UI.
-
-        This removes:
-            - All child widgets (QLabel, QPushButton, QStackedWidget pages, etc.)
-            - The existing layout object attached to this overlay
-
-        Why this is required:
-            Qt does NOT allow calling setLayout() on a widget that already has a layout.
-            Our cleanup removes child widgets, but layouts are NOT widgets, so they remain
-            attached unless removed explicitly. Without removing the old layout, the new
-            layout assigned inside build_ui() would be ignored, leaving the window blank.
-
-        Steps performed:
-            1. Detach and delete all child widgets using setParent(None) + deleteLater().
-            2. Detach and delete the existing layout via the QWidget().setLayout(...) idiom.
-            3. Call build_ui() to construct a fresh widget tree.
-
-        This ensures the overlay fully regenerates correctly (e.g., after scale changes).
-        """
-
-        # 1. Remove all child widgets (covers entire widget tree)
-        for w in self.findChildren(QWidget):
-            self.logger.debug(f"{self.overlay_id} | Cleaning widget: {w.__class__.__name__}")
-            w.setParent(None)
-            w.deleteLater()
-
-        # 2. Remove the existing layout if present.
-        old_layout = self.layout()
-        if old_layout is not None:
-            # Reparenting the layout to a temporary QWidget forces Qt to delete it.
-            QWidget().setLayout(old_layout)
-
-        # 3. Rebuild UI fresh
-        self.build_ui()
-        self.update_window_flags()
-
-    def animate_fade(self, show: bool):
-        """Animate fade-in or fade-out on a top-level window."""
-
-        start = 0.0 if show else 1.0
-        end   = 1.0 if show else 0.0
-
-        anim = QPropertyAnimation(self, b"windowOpacity")
-        anim.setDuration(250)
-        anim.setStartValue(start)
-        anim.setEndValue(end)
-        anim.finished.connect(lambda: self.hide() if not show else None)
-
-        # Prevent garbage collection
-        self._fade_anim = anim
-
-        if show:
-            self.setWindowOpacity(0.0)
-            self.show()
-
-        anim.start()
