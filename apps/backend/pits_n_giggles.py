@@ -32,6 +32,7 @@ import time
 from typing import List, Optional, Set
 
 import psutil
+from wsproto.connection import LocalProtocolError
 
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
 from apps.backend.state_mgmt_layer import (SessionState,
@@ -274,6 +275,8 @@ def entry_point():
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
+        png_logger.info("Program shutdown gracefully.")
+    except LocalProtocolError: # race condition that occurs occasionally during shutdown. safe to ignore
         png_logger.info("Program shutdown gracefully.")
     except Exception as e: # pylint: disable=broad-exception-caught
         png_logger.exception("Error in main: %s", e)
