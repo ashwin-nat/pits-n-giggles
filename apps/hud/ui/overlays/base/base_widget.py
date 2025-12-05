@@ -26,11 +26,12 @@ import ctypes
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QPropertyAnimation
-from PySide6.QtGui import QIcon, QMouseEvent
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QWidget
 
 from lib.assets_loader import load_icon
 from meta.meta import APP_NAME_SNAKE
+from typing import override
 
 from .base import BaseOverlay
 
@@ -176,5 +177,5 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         if not self.locked and event.buttons() & Qt.LeftButton and self._drag_pos:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
 
-    def mouseReleaseEvent(self, event: QMouseEvent):
+    def mouseReleaseEvent(self, _event: QMouseEvent):
         self._drag_pos = None

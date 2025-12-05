@@ -22,11 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from __future__ import annotations
+# from __future__ import annotations
 from typing import Any, Callable, Dict
 import logging
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig

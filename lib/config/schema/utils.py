@@ -46,13 +46,13 @@ def udp_action_field(description: str, *, default: Optional[int] = None):
         },
     )
 
-def ui_scale_field(description: str, *, default: Optional[float] = None):
+def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
     """
     Create a UI scale field with standard bounds and schema extras.
     Only the description varies per leaf.
     """
     return Field(
-        default=1.0,
+        default=default,
         ge=0.5,
         le=2.0,
         description=description,

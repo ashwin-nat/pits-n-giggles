@@ -30,7 +30,7 @@ from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays import BaseOverlayWidget
+from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ class WindowManager(QObject):
         """
         super().__init__()
         self.logger = logger
-        self.overlays: Dict[str, BaseOverlayWidget] = {}
+        self.overlays: Dict[str, BaseOverlay] = {}
 
         # Request/response infrastructure
         self._response_mutex = QMutex()
@@ -64,7 +64,7 @@ class WindowManager(QObject):
             # Will be called once the event loop is running
             QTimer.singleShot(0, post_init_cb)
 
-    def register_overlay(self, overlay_id: str, overlay: BaseOverlayWidget):
+    def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
         self.logger.debug(f"Registering overlay {overlay_id}")
         self.overlays[overlay_id] = overlay
