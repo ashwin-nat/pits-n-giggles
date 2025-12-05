@@ -26,7 +26,7 @@ import logging
 from pathlib import Path
 from typing import Optional, override
 
-from PySide6.QtCore import QPropertyAnimation, Qt, QUrl
+from PySide6.QtCore import QPropertyAnimation, Qt, QUrl, QObject
 from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
@@ -37,7 +37,7 @@ from .base import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseOverlayQML(BaseOverlay):
+class BaseOverlayQML(BaseOverlay, QObject):
     """
     Base class for all QML-based overlays.
 
@@ -71,7 +71,7 @@ class BaseOverlayQML(BaseOverlay):
         - Connections in QML to C++/Python slots
     """
 
-    QML_FILE: str = ""  # Derived classes MUST set this
+    QML_FILE: Path = ""  # Derived classes MUST set this
 
     def __init__(
         self,
@@ -85,6 +85,7 @@ class BaseOverlayQML(BaseOverlay):
     ):
         assert self.QML_FILE, "Derived classes must define QML_FILE"
 
+        QObject.__init__(self)
         self._engine = QQmlApplicationEngine()
         self._root: Optional[QQuickWindow] = None
         self._fade_anim = None
@@ -108,7 +109,7 @@ class BaseOverlayQML(BaseOverlay):
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
 
-        qml_path = Path(self.QML_FILE).resolve()
+        qml_path = self.QML_FILE.resolve()
         self._engine.load(QUrl.fromLocalFile(str(qml_path)))
 
         if not self._engine.rootObjects():
@@ -141,7 +142,7 @@ class BaseOverlayQML(BaseOverlay):
     def rebuild_ui(self):
         """Reloads the QML file entirely when scale factor changes."""
 
-        qml_path = Path(self.QML_FILE).resolve()
+        qml_path = self.QML_FILE.resolve()
         self.logger.debug(f"{self.overlay_id} | Rebuilding QML UI ({qml_path})")
 
         self._engine.clearComponentCache()
