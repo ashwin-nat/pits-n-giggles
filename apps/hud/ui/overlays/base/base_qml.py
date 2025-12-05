@@ -107,7 +107,6 @@ class BaseOverlayQML(BaseOverlay):
     @override
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
-        super()._setup_window()
 
         qml_path = Path(self.QML_FILE).resolve()
         self._engine.load(QUrl.fromLocalFile(str(qml_path)))
@@ -122,6 +121,7 @@ class BaseOverlayQML(BaseOverlay):
             )
 
         self._root = root
+        super()._setup_window()
         self.update_window_flags()
         self._root.setVisible(True)
 
