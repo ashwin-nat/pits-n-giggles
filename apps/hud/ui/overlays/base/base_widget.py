@@ -22,40 +22,67 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import ctypes
-from pathlib import Path
+import logging
 from typing import override
 
 from PySide6.QtCore import QPropertyAnimation, Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QWidget
 
-from lib.assets_loader import load_icon
-from meta.meta import APP_NAME_SNAKE
+from apps.hud.ui.infra.config import OverlaysConfig
 
 from .base import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class BaseOverlayWidget(BaseOverlay, QWidget):
+    """
+    Base class for all QWidget-based overlays.
 
+    This class provides the full QWidget implementation of the UI/windowing
+    behaviors expected by `BaseOverlay`. It acts as the concrete backend for
+    overlays that render their UI using Qt Widgets. Any overlay that uses
+    QWidget layouts, labels, and other standard widget components should derive
+    from this class.
+
+    --------------------------------------------------------------------------
+    WHAT THIS CLASS IMPLEMENTS
+    --------------------------------------------------------------------------
+    - Construction of a top-level QWidget window (frameless, always-on-top,
+      optionally click-through depending on locked/unlocked state).
+    - Applying window flags and updating them when the overlay's locked state
+      changes.
+    - Window sizing via `adjustSize()` after UI construction or rebuilds.
+    - Position and opacity management (`move()`, `setWindowOpacity()`).
+    - Fade-in / fade-out animation using `QPropertyAnimation` on the window
+      opacity.
+    - Mouse-based dragging when unlocked (left-drag to reposition the overlay).
+    - Layout teardown and recreation on scale-factor changes (`rebuild_ui()`).
+    - Standard QWidget geometry/visibility methods (`geometry`, `isVisible`,
+      `show`, `hide`).
+
+    --------------------------------------------------------------------------
+    WHAT DERIVED CLASSES MUST IMPLEMENT
+    --------------------------------------------------------------------------
+    - build_ui(self):
+        Construct all widget children and layouts that make up the overlay's
+        visible UI. This is called on startup and any time the overlay is
+        rebuilt (e.g., when the scale factor changes).
+
+    Derived overlays do NOT need to implement window setup, window flags,
+    geometry logic, positioning, dragging, opacity, or animation—these are
+    fully handled here.
+    """
     def __init__(self,
-                 overlay_id,
-                 config,
-                 logger,
-                 locked,
-                 opacity,
-                 scale_factor,
-                 windowed_overlay):
+                 overlay_id: str,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float,
+                 windowed_overlay: bool):
 
-        logger.debug(f"{overlay_id} | Initializing QWidget")
-
-        # Initialize QWidget first (no args needed)
         QWidget.__init__(self)
-
-        logger.debug(f"{overlay_id} | QWidget initialized. Before init of BaseOverlay")
-
-        # Then initialize BaseOverlay with all required args
         BaseOverlay.__init__(
             self,
             overlay_id,
@@ -78,16 +105,17 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     @override
     def _setup_window(self):
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
-
-        self.setWindowTitle(self.overlay_id)
-        self.setWindowIcon(load_icon(Path("assets") / "logo.png",
-                                     debug_log_printer=self.logger.debug,
-                                     error_log_printer=self.logger.error))
+        super()._setup_window()
 
         self.setStyleSheet("background-color: #1e1e1e; color: #e0e0e0;")
         self.update_window_flags()
         self.adjustSize()
+
+    def set_window_title(self, title: str):
+        self.setWindowTitle(title)
+
+    def set_window_icon(self, icon: QIcon):
+        self.setWindowIcon(icon)
 
     # ------------------------------------------------------------------
     # UI build + rebuild
@@ -102,33 +130,91 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
 
     @override
     def rebuild_ui(self):
+        """
+        Completely rebuild the overlay UI.
+
+        This removes:
+            - All child widgets (QLabel, QPushButton, QStackedWidget pages, etc.)
+            - The existing layout object attached to this overlay
+
+        Why this is required:
+            Qt does NOT allow calling setLayout() on a widget that already has a layout.
+            Our cleanup removes child widgets, but layouts are NOT widgets, so they remain
+            attached unless removed explicitly. Without removing the old layout, the new
+            layout assigned inside build_ui() would be ignored, leaving the window blank.
+
+        Steps performed:
+            1. Detach and delete all child widgets using setParent(None) + deleteLater().
+            2. Detach and delete the existing layout via the QWidget().setLayout(...) idiom.
+            3. Call build_ui() to construct a fresh widget tree.
+
+        This ensures the overlay fully regenerates correctly (e.g., after scale changes).
+        """
+
+        # 1. Remove all child widgets (covers entire widget tree)
         for w in self.findChildren(QWidget):
+            self.logger.debug(f"{self.overlay_id} | Cleaning widget: {w.__class__.__name__}")
             w.setParent(None)
             w.deleteLater()
 
-        layout = self.layout()
-        if layout:
-            QWidget().setLayout(layout)
+        # 2. Remove the existing layout if present.
+        old_layout = self.layout()
+        if old_layout is not None:
+            # Reparenting the layout to a temporary QWidget forces Qt to delete it.
+            QWidget().setLayout(old_layout)
 
+        # 3. Rebuild UI fresh
         self.build_ui()
         self.update_window_flags()
-        self.adjustSize()
+
+    @override
+    def get_window_info(self) -> OverlaysConfig:
+        """Return current geometry as an OverlaysConfig."""
+        geo = self.geometry()
+        return OverlaysConfig(x=geo.x(), y=geo.y())
+
+    @override
+    def set_window_position(self, config: OverlaysConfig):
+        self.move(config.x, config.y)
+        self.config = config
+
+    @override
+    def toggle_visibility(self):
+
+        self.logger.debug(f'{self.overlay_id} | Toggling visibility')
+        if self.isVisible():
+            self.logger.debug(f'{self.overlay_id} | Fading out overlay')
+            self.animate_fade(show=False)
+        else:
+            self.logger.debug(f'{self.overlay_id} | Fading in overlay')
+            self.animate_fade(show=True)
 
     # ------------------------------------------------------------------
     # Window flag logic
     # ------------------------------------------------------------------
     @override
     def update_window_flags(self):
-        flags = Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
+        """Refresh window flags based on locked state."""
+        flags = (
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.FramelessWindowHint
+        )
 
         if self.windowed_overlay:
-            flags |= Qt.Window
+            # Standalone OBS-capturable windows always behave like real top-level windows
+            flags |= Qt.WindowType.Window
         else:
-            flags |= Qt.Tool
+            flags |= Qt.WindowType.Tool
+
             if self.locked:
-                flags |= Qt.WindowTransparentForInput
+                flags |= Qt.WindowType.WindowTransparentForInput
             else:
-                flags |= Qt.Window | Qt.CustomizeWindowHint | Qt.MSWindowsFixedSizeDialogHint
+                # Interactive behavior for unlocked state
+                flags |= (
+                    Qt.WindowType.Window |
+                    Qt.WindowType.CustomizeWindowHint |
+                    Qt.WindowType.MSWindowsFixedSizeDialogHint
+                )
 
         self.setWindowFlags(flags)
         self.show()
@@ -168,23 +254,15 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         anim.start()
 
     # ------------------------------------------------------------------
-    # Geometry + visibility
-    # ------------------------------------------------------------------
-    def geometry(self):
-        return QWidget.geometry(self)
-
-    def is_visible(self) -> bool:
-        return self.isVisible()
-
-    # ------------------------------------------------------------------
     # Dragging
     # ------------------------------------------------------------------
+
     def mousePressEvent(self, event: QMouseEvent):
-        if not self.locked and event.button() == Qt.LeftButton:
+        if not self.locked and event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        if not self.locked and event.buttons() & Qt.LeftButton and self._drag_pos:
+        if not self.locked and event.buttons() & Qt.MouseButton.LeftButton and self._drag_pos:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
 
     def mouseReleaseEvent(self, _event: QMouseEvent):

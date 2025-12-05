@@ -22,13 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Callable, Dict
+import ctypes
 import logging
+from pathlib import Path
+from typing import Any, Callable, Dict
 
 from PySide6.QtCore import Signal, Slot
+from PySide6.QtGui import QIcon
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
+from lib.assets_loader import load_icon
+from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -38,7 +43,64 @@ OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, return
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class BaseOverlay():
-    response_signal = Signal(str, object)   # request_type, response_data
+    """
+    Framework-agnostic overlay base class providing the core overlay lifecycle,
+    configuration handling, and inter-process command/request infrastructure.
+
+    This class contains *no* UI toolkit assumptions. It does not depend on
+    QWidget or QML. Instead, it defines the high-level behavior shared by all
+    overlay types (Widget or QML), while delegating rendering and windowing to
+    derived classes.
+
+    Responsibilities provided by BaseOverlay:
+    -----------------------------------------
+    - Stores overlay identity, configuration, and runtime state.
+    - Defines the IPC mechanism for overlay commands and requests.
+      Derived overlays automatically gain:
+        - `on_event()` decorator for command handlers
+        - `on_request()` decorator for request/response handlers
+        - Automatic dispatch via `_handle_cmd()` and `_handle_request()`
+    - Manages default commands such as:
+        - toggling visibility (fade in/out)
+        - updating locked state
+        - setting opacity
+        - applying new configuration
+        - returning geometry/position (`get_window_info`)
+    - Drives UI lifecycle by calling:
+        - `_setup_window()`     (implemented by UI subclass)
+        - `build_ui()`          (implemented by UI subclass)
+        - `apply_config()`      (UI-specific geometry/opacity)
+    - Ensures UI rebuilds occur when scale factor changes.
+
+    What derived classes must implement:
+    ------------------------------------
+    Derived classes (e.g., BaseOverlayWidget or BaseOverlayQML) must implement:
+        - `set_window_title()`   - set window title
+        - `set_window_icon()`    - set window icon
+        - `build_ui()`           - construct the UI
+        - `rebuild_ui()`         - rebuild UI after scale factor change
+        - `apply_config()`       - apply geometry and opacity
+        - `update_window_flags()`- locked mode / windowed overlay behavior
+        - `set_opacity()`        - apply opacity to the backend window
+        - `set_locked_state()`   - enable/disable interaction
+        - `animate_fade()`       - fade in/out using toolkit-specific animation
+        - `is_visible()`         - return visibility state
+        - `get_window_info()`    - return window geometry
+        - `set_window_position()`- set window position and update self.config
+        - `toggle_visibility()`  - fade in/out
+
+    When to subclass BaseOverlay:
+    ------------------------------
+    Do not subclass BaseOverlay directly for new overlays. Instead subclass one of:
+        - BaseOverlayWidget  - for QWidget-based overlays
+        - BaseOverlayQML     - for QML-based overlays
+
+    BaseOverlay deliberately contains no UI behavior so that multiple rendering
+    technologies can coexist and share the same command/IPC infrastructure.
+
+    Subclass BaseOverlay only if you need to add new UI-specific behavior.
+    """
+    response_signal = Signal(str, str)   # request_type, response_data (serialised JSON)
 
     def __init__(self,
                  overlay_id: str,
@@ -71,6 +133,16 @@ class BaseOverlay():
     # Abstract interface — implemented by QWidget and QML subclasses
     # ----------------------------------------------------------------------
     def _setup_window(self):
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+        self.set_window_title(self.overlay_id)
+        self.set_window_icon(load_icon(Path("assets") / "logo.png",
+                                     debug_log_printer=self.logger.debug,
+                                     error_log_printer=self.logger.error))
+
+    def set_window_title(self, title: str):
+        raise NotImplementedError
+
+    def set_window_icon(self, icon: QIcon):
         raise NotImplementedError
 
     def build_ui(self):
@@ -94,13 +166,14 @@ class BaseOverlay():
     def animate_fade(self, show: bool):
         raise NotImplementedError
 
-    # ----------------------------------------------------------------------
-    # Shared logic
-    # ----------------------------------------------------------------------
     def get_window_info(self) -> OverlaysConfig:
-        """Return current geometry as an OverlaysConfig."""
-        geo = self.geometry()
-        return OverlaysConfig(x=geo.x(), y=geo.y())
+        raise NotImplementedError
+
+    def set_window_position(self, config: OverlaysConfig):
+        raise NotImplementedError
+
+    def toggle_visibility(self):
+        raise NotImplementedError
 
     # ----------------------------------------------------------------------
     # Command/Request handler registration
@@ -138,13 +211,7 @@ class BaseOverlay():
         @self.on_event("toggle_visibility")
         def _handle_toggle_visibility(_data: Dict[str, Any]):
             """Toggle visibility."""
-            self.logger.debug(f'{self.overlay_id} | Toggling visibility')
-            if self.isVisible():
-                self.logger.debug(f'{self.overlay_id} | Fading out overlay')
-                self.animate_fade(show=False)
-            else:
-                self.logger.debug(f'{self.overlay_id} | Fading in overlay')
-                self.animate_fade(show=True)
+            self.toggle_visibility()
 
         @self.on_event("set_opacity")
         def _handle_set_opacity(data: Dict[str, Any]):
@@ -157,7 +224,7 @@ class BaseOverlay():
             """Set window config."""
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
-            self.move(config.x, config.y)
+            self.set_window_position(config)
 
         @self.on_event("set_scale_factor")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
