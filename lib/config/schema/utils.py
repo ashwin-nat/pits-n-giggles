@@ -45,3 +45,25 @@ def udp_action_field(description: str, *, default: Optional[int] = None):
             "udp_action_code": True,
         },
     )
+
+def ui_scale_field(description: str, *, default: Optional[float] = None):
+    """
+    Create a UI scale field with standard bounds and schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": False,
+                "min_ui": 50,
+                "max_ui": 200,
+                "convert": "percent",
+                "unit": "%"
+            }
+        },
+    )

@@ -23,26 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
-from copy import deepcopy
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
-from .utils import udp_action_field
-
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-_UI_META_UI_SCALE = {
-    "ui": {
-        "type": "slider",
-        "visible": False,
-        "min_ui": 50,
-        "max_ui": 200,
-        "convert": "percent",
-        "unit": "%"
-    }
-}
+from .utils import udp_action_field, ui_scale_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -159,13 +145,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    lap_timer_ui_scale: float = Field(
-        default=1.0,
-        ge=0.5,
-        le=2.0,
-        description="Lap Timer UI scale",
-        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
-    )
+    lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
     lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle lap timer overlay UDP action code")
 
@@ -180,13 +160,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    timing_tower_ui_scale: float = Field(
-        default=1.0,
-        ge=0.5,
-        le=2.0,
-        description="Timing tower UI scale",
-        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
-    )
+    timing_tower_ui_scale: float = ui_scale_field(description="Timing tower UI scale")
     timing_tower_max_rows: int = Field(
         default=5,
         ge=1,
@@ -212,13 +186,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    mfd_ui_scale: float = Field(
-        default=1.0,
-        ge=0.5,
-        le=2.0,
-        description="MFD UI scale",
-        json_schema_extra=deepcopy(_UI_META_UI_SCALE)
-    )
+    mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
         description="MFD overlay settings",
@@ -231,6 +199,20 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle MFD overlay UDP action code")
+
+    show_track_map: bool = Field(
+        default=True,
+        description="Enable track map overlay",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True
+            }
+        }
+    )
+    track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
+    track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle track map overlay UDP action code")
 
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
         "Toggle all overlays UDP action code")
