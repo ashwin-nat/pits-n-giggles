@@ -80,7 +80,6 @@ class BaseOverlay():
     def rebuild_ui(self):
         raise NotImplementedError
 
-
     def apply_config(self):
         raise NotImplementedError
 
@@ -90,29 +89,11 @@ class BaseOverlay():
     def set_opacity(self, opacity: int):
         raise NotImplementedError
 
-
     def set_locked_state(self, locked: bool):
         raise NotImplementedError
 
     def animate_fade(self, show: bool):
         raise NotImplementedError
-
-
-    # def move(self, x: int, y: int):
-    #     raise NotImplementedError
-
-
-    # def geometry(self):
-    #     raise NotImplementedError
-
-    # def show(self):
-    #     raise NotImplementedError
-
-    # def hide(self):
-    #     raise NotImplementedError
-
-    # def is_visible(self) -> bool:
-    #     raise NotImplementedError
 
     # ----------------------------------------------------------------------
     # Shared logic

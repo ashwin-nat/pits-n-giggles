@@ -24,14 +24,14 @@
 
 import ctypes
 from pathlib import Path
+from typing import override
 
-from PySide6.QtCore import Qt, QPropertyAnimation
+from PySide6.QtCore import QPropertyAnimation, Qt
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QWidget
 
 from lib.assets_loader import load_icon
 from meta.meta import APP_NAME_SNAKE
-from typing import override
 
 from .base import BaseOverlay
 
@@ -76,6 +76,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # Window setup
     # ------------------------------------------------------------------
+    @override
     def _setup_window(self):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
 
@@ -91,10 +92,15 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # UI build + rebuild
     # ------------------------------------------------------------------
+    @override
     def apply_config(self):
         self.move(self.config.x, self.config.y)
         self.set_opacity(self.opacity)
 
+    def build_ui(self):
+        raise NotImplementedError
+
+    @override
     def rebuild_ui(self):
         for w in self.findChildren(QWidget):
             w.setParent(None)
@@ -111,6 +117,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # Window flag logic
     # ------------------------------------------------------------------
+    @override
     def update_window_flags(self):
         flags = Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
 
@@ -129,10 +136,12 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # Opacity / Locked State
     # ------------------------------------------------------------------
+    @override
     def set_opacity(self, opacity: int):
         self.opacity = opacity
         self.setWindowOpacity(opacity / 100.0)
 
+    @override
     def set_locked_state(self, locked: bool):
         self.locked = locked
         self.update_window_flags()
@@ -140,6 +149,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # Fade
     # ------------------------------------------------------------------
+    @override
     def animate_fade(self, show: bool):
         start, end = (0, 1) if show else (1, 0)
 
