@@ -241,7 +241,6 @@ class BaseOverlay():
             return
         handler = self._command_handlers.get(cmd)
         if not handler:
-            self.logger.warning(f"{self.overlay_id} | No handler for command '{cmd}'")
             return
         parsed = deserialise_data(data)
         handler(parsed)
