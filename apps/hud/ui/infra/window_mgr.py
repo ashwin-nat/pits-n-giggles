@@ -151,3 +151,5 @@ class WindowManager(QObject):
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
         self.mgmt_cmd_signal.emit(overlay_id, event, serialise_data(data))
+
+    # TODO: add multicast

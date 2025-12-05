@@ -31,7 +31,7 @@ from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
-                                  TimingTowerOverlay)
+                                  TimingTowerOverlay, TrackMapOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
@@ -54,6 +54,10 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     MfdOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=355,
+    ),
+    TrackMapOverlay.OVERLAY_ID: OverlaysConfig(
+        x=10,
+        y=600,
     ),
 }
 
@@ -122,6 +126,20 @@ class OverlaysMgr:
         else:
             self.logger.debug("MFD overlay is disabled")
 
+        if settings.HUD.show_track_map:
+            self.window_manager.register_overlay(TrackMapOverlay.OVERLAY_ID, TrackMapOverlay(
+                self.config[TrackMapOverlay.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.track_map_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
+            ))
+        else:
+            self.logger.debug("Track map overlay is disabled")
+
+        self.logger.debug("Overlays manager initialized")
+
     def run(self):
         """Start the overlays manager"""
         self.running = True
@@ -177,6 +195,7 @@ class OverlaysMgr:
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
+        self.window_manager.unicast_data(TrackMapOverlay.OVERLAY_ID, 'stream_overlay_update', data)
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
