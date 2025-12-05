@@ -229,9 +229,8 @@ class MfdOverlay(BaseOverlayWidget):
         @self.on_event("set_config")
         def _handle_set_config(data: Dict[str, Any]):
             config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {self.config}")
-            config = OverlaysConfig.fromJSON(data)
-            self.move(config.x, config.y)
+            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {config}")
+            self.set_window_position(config)
             current_index = self.pages.currentIndex()
             if current_index != 0:
                 self._switch_page(current_index, 0)
