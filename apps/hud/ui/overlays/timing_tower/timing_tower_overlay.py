@@ -33,13 +33,13 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base import BaseOverlayWidget
 
 from .race_table import RaceTimingTable
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TimingTowerOverlay(BaseOverlay):
+class TimingTowerOverlay(BaseOverlayWidget):
 
     OVERLAY_ID: str = "timing_tower"
     FONT_FACE = "Formula1 Display"

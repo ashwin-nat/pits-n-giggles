@@ -31,7 +31,7 @@ from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base import BaseOverlayWidget
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
                                             FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
@@ -105,7 +105,7 @@ class PageIndicatorFooter(QWidget):
                 self.circle_radius * 2
             )
 
-class MfdOverlay(BaseOverlay):
+class MfdOverlay(BaseOverlayWidget):
 
     OVERLAY_ID = "mfd"
     PAGES: List[BasePage] = [

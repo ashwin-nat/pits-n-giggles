@@ -43,7 +43,7 @@ OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, return
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseOverlay(QWidget):
+class BaseOverlayWidget(QWidget):
     # Add signal for responses
     response_signal = Signal(str, object)  # request_type, response_data
 

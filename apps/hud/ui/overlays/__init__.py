@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
+from .base import BaseOverlayWidget
 from .lap_timer import LapTimerOverlay
 from .mfd import MfdOverlay
 from .timing_tower import TimingTowerOverlay
@@ -30,7 +30,7 @@ from .timing_tower import TimingTowerOverlay
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
+    "BaseOverlayWidget",
     "LapTimerOverlay",
     "TimingTowerOverlay",
     "MfdOverlay",
