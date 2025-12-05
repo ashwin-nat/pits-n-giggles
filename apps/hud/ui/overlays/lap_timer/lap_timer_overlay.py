@@ -32,14 +32,14 @@ from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base import BaseOverlayWidget
 from lib.f1_types import F1Utils
 
 from .sector_status_bar import SectorStatusBar
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class LapTimerOverlay(BaseOverlay):
+class LapTimerOverlay(BaseOverlayWidget):
     """Overlay displaying lap timing information for racing sessions."""
 
     OVERLAY_ID: str = "lap_timer"
