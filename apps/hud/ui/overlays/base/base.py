@@ -84,7 +84,6 @@ class BaseOverlay():
         - `set_opacity()`        - apply opacity to the backend window
         - `set_locked_state()`   - enable/disable interaction
         - `animate_fade()`       - fade in/out using toolkit-specific animation
-        - `is_visible()`         - return visibility state
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
         - `toggle_visibility()`  - fade in/out

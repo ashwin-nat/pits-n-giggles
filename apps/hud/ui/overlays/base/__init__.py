@@ -23,11 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base import BaseOverlay
+from .base_qml import BaseOverlayQML
 from .base_widget import BaseOverlayWidget
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "BaseOverlay",
+    "BaseOverlayQML",
     "BaseOverlayWidget",
 ]
