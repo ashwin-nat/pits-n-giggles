@@ -231,7 +231,7 @@ class MfdOverlay(BaseOverlay):
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {self.config}")
             config = OverlaysConfig.fromJSON(data)
-            self.setGeometry(config.x, config.y, config.width, config.height)
+            self.move(config.x, config.y)
             current_index = self.pages.currentIndex()
             if current_index != 0:
                 self._switch_page(current_index, 0)
