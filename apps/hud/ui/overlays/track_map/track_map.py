@@ -22,11 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from lib.assets_loader import load_icon
 import logging
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
@@ -39,33 +40,125 @@ import logging
 from apps.hud.ui.infra.config import OverlaysConfig
 from pathlib import Path
 
+from collections import defaultdict
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TrackMapOverlay(BaseOverlayQML):
     """
-    The smallest possible functional QML overlay.
+    Track map overlay that displays an SVG representation of the current circuit.
 
-    - Provides a QML file
-    - Implements build_ui() (required by BaseOverlay)
-    - Does NOT display anything
-    - Prevents crashes during startup
+    - Loads appropriate SVG based on circuit name
+    - Displays the track map in the QML window
+    - Updates when circuit changes
     """
 
     QML_FILE = Path(__file__).parent / "track_map.qml"
     OVERLAY_ID = "track_map"
+
+    TEAM_COLOURS_HEX = defaultdict(
+        lambda: '#FFFFFF',
+        {
+            'Red Bull Racing': '#3671C6',
+            'Red Bull': '#3671C6',
+
+            'VCARB': '#6692FF',
+            'RB': '#6692FF',
+
+            'Mercedes': '#27F4D2',
+            'Ferrari': '#E8002D',
+            'McLaren': '#FF8000',
+            'Mclaren': '#FF8000',
+            'Aston Martin': '#229971',
+            'Alpine': '#FF87BC',
+
+            'Alpha Tauri': '#1E2850',
+            'Alfa Romeo': '#9B0000',
+            'Haas': '#B6BABD',
+            'Williams': '#64C4FF',
+            'Sauber': '#52E252',
+        }
+    )
 
     def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float, windowed_overlay: bool):
         logger.debug(f"{self.OVERLAY_ID} | TrackMapOverlay initialized. Path={self.QML_FILE}. exists={self.QML_FILE.is_file()}")
         super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
         self._init_handlers()
 
+        self.curr_circuit_name: Optional[str] = None
+        self.circuit_svg_path: Optional[str] = None
+
     def build_ui(self):
-        """Nothing to build yet – just required by abstract class."""
-        pass
+        """Initialize QML connection after window is set up."""
+        if self._root:
+            self.logger.debug(f"{self.OVERLAY_ID} | QML root window ready")
 
     def _init_handlers(self):
 
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
 
-            self.logger.debug(f"{self.OVERLAY_ID} | Received stream_overlay_update event")
+            circuit = data["circuit-enum-name"]
+            if not circuit and self.curr_circuit_name:
+                # Clear map if no circuit
+                self._clear_track_map()
+                return
+
+            motion_list = data["motion"]
+            if not motion_list:
+                return
+
+            # Load new circuit if changed
+            if circuit != self.curr_circuit_name:
+                self.curr_circuit_name = circuit
+                self.circuit_svg_path = self._get_circuit_svg_path(circuit)
+                self._update_qml_track_map()
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded new circuit: {circuit}")
+
+            # TODO: Process car positions from motion_list
+            # for car in motion_list:
+            #     name = car["name"]
+            #     team = car["team"]
+            #     index = car["index"]
+            #     motion_data = car["motion"]
+            #     if not motion_data:
+            #         continue
+            #     world_pos = motion_data["world-position"]
+            #     world_vel = motion_data["world-velocity"]
+            #     world_fwd_dir = motion_data["world-forward-dir"]
+            #     world_right_dir = motion_data["world-right-dir"]
+            #     orientation = motion_data["orientation"]
+
+    def _get_circuit_svg_path(self, circuit_name: str) -> Optional[str]:
+        """
+        Get the absolute file path to the circuit SVG.
+        Returns the path as a string suitable for QML Image source.
+        """
+        suffix = "_Reverse"
+        base_path = Path("assets") / "track-maps"
+        svg_name = f"{(circuit_name[:-len(suffix)] if circuit_name.endswith(suffix) else circuit_name)}.svg"
+
+        svg_path = base_path / svg_name
+
+        if not svg_path.exists():
+            self.logger.error(f"{self.OVERLAY_ID} | SVG not found: {svg_path}")
+            return None
+
+        # Return absolute path as file URL for QML
+        abs_path = svg_path.resolve()
+        return abs_path.as_uri()
+
+    def _update_qml_track_map(self):
+        """Update the QML window with the new track map."""
+        if self._root and self.circuit_svg_path:
+            self._root.setProperty("svgPath", self.circuit_svg_path)
+            self.logger.debug(f"{self.OVERLAY_ID} | Updated QML with SVG: {self.circuit_svg_path}")
+        else:
+            self.logger.warning(f"{self.OVERLAY_ID} | Cannot update QML - root={self._root}, path={self.circuit_svg_path}")
+
+    def _clear_track_map(self):
+        """Clear the track map from the QML window."""
+        self._root.setProperty("svgPath", "")
+        self.curr_circuit_name = None
+        self.circuit_svg_path = None
+        self.logger.debug(f"{self.OVERLAY_ID} | Cleared track map")
