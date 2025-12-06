@@ -230,6 +230,7 @@ class StreamOverlayData(BaseAPI):
                 "name": driver.m_driver_info.name,
                 "team": str(driver.m_driver_info.team),
                 "track-position": driver.m_driver_info.position,
+                "index": driver.m_index,
                 "motion": (
                     driver.m_packet_copies.m_packet_motion.toJSON()
                         if driver.m_packet_copies.m_packet_motion
@@ -286,6 +287,7 @@ class StreamOverlayData(BaseAPI):
             "event-type" : str(self.m_session_type),
             "formula-type" : str(self.m_formula_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
+            "circuit-enum-name" : self.m_circuit.name if self.m_circuit else None,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,
