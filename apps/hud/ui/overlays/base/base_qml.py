@@ -26,8 +26,9 @@ import logging
 from pathlib import Path
 from typing import Optional, override
 
-from PySide6.QtCore import QPropertyAnimation, Qt, QUrl, QObject
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
+                            QUrl)
+from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
@@ -89,6 +90,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._engine = QQmlApplicationEngine()
         self._root: Optional[QQuickWindow] = None
         self._fade_anim = None
+        self._drag_pos: Optional[QPoint] = None
 
         super().__init__(
             overlay_id,
@@ -122,6 +124,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
             )
 
         self._root = root
+        self._root.installEventFilter(self)
+
         super()._setup_window()
         self.update_window_flags()
         self._root.setVisible(True)
@@ -226,3 +230,33 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_window_position(self, config: OverlaysConfig):
         self.config = config
         self._root.setPosition(config.x, config.y)
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+
+        if obj is self._root and not self.locked:
+
+            if event.type() == QEvent.Type.MouseButtonPress:
+                mouse_event: QMouseEvent = event
+                if mouse_event.button() == Qt.MouseButton.LeftButton:
+                    self._drag_pos = (
+                        mouse_event.globalPosition().toPoint()
+                        - self._root.position()
+                    )
+                    return True
+
+            elif event.type() == QEvent.Type.MouseMove:
+                mouse_event: QMouseEvent = event
+                if (
+                    mouse_event.buttons() & Qt.MouseButton.LeftButton
+                    and self._drag_pos
+                ):
+                    self._root.setPosition(
+                        mouse_event.globalPosition().toPoint() - self._drag_pos
+                    )
+                    return True
+
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                self._drag_pos = None
+                return True
+
+        return super().eventFilter(obj, event)
