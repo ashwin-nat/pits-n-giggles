@@ -138,7 +138,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def build_ui(self):
         raise NotImplementedError
 
-    @override
     def rebuild_ui(self):
         """Reloads the QML file entirely when scale factor changes."""
 
@@ -186,6 +185,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_locked_state(self, locked: bool):
         self.locked = locked
         self.update_window_flags()
+
+    @override
+    def set_ui_scale(self, ui_scale):
+        pass
 
     @override
     def animate_fade(self, show: bool):

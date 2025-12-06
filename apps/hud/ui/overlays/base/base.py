@@ -78,7 +78,6 @@ class BaseOverlay():
         - `set_window_title()`   - set window title
         - `set_window_icon()`    - set window icon
         - `build_ui()`           - construct the UI
-        - `rebuild_ui()`         - rebuild UI after scale factor change
         - `apply_config()`       - apply geometry and opacity
         - `update_window_flags()`- locked mode / windowed overlay behavior
         - `set_opacity()`        - apply opacity to the backend window
@@ -87,6 +86,7 @@ class BaseOverlay():
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
         - `toggle_visibility()`  - fade in/out
+        - `set_ui_scale()`       - set scale factor
 
     When to subclass BaseOverlay:
     ------------------------------
@@ -147,9 +147,6 @@ class BaseOverlay():
     def build_ui(self):
         raise NotImplementedError
 
-    def rebuild_ui(self):
-        raise NotImplementedError
-
     def apply_config(self):
         raise NotImplementedError
 
@@ -172,6 +169,9 @@ class BaseOverlay():
         raise NotImplementedError
 
     def toggle_visibility(self):
+        raise NotImplementedError
+
+    def set_ui_scale(self, ui_scale: float):
         raise NotImplementedError
 
     # ----------------------------------------------------------------------
@@ -243,7 +243,13 @@ class BaseOverlay():
         if not handler:
             return
         parsed = deserialise_data(data)
-        handler(parsed)
+        try:
+            handler(parsed)
+        except AssertionError:
+            self.logger.exception(f"{self.overlay_id} | Assertion error handling command '{cmd}'")
+            raise # We want to crash on assertions for debugging
+        except Exception as e: # pylint: disable=broad-except
+            self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):

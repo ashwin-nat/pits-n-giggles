@@ -128,7 +128,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     def build_ui(self):
         raise NotImplementedError
 
-    @override
     def rebuild_ui(self):
         """
         Completely rebuild the overlay UI.
@@ -231,6 +230,11 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     def set_locked_state(self, locked: bool):
         self.locked = locked
         self.update_window_flags()
+
+    @override
+    def set_ui_scale(self, ui_scale):
+        self.scale_factor = ui_scale
+        self.rebuild_ui()
 
     # ------------------------------------------------------------------
     # Fade
