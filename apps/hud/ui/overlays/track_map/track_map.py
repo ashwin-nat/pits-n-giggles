@@ -116,18 +116,20 @@ class TrackMapOverlay(BaseOverlayQML):
                 self.logger.debug(f"{self.OVERLAY_ID} | Loaded new circuit: {circuit}")
 
             # TODO: Process car positions from motion_list
-            # for car in motion_list:
-            #     name = car["name"]
-            #     team = car["team"]
-            #     index = car["index"]
-            #     motion_data = car["motion"]
-            #     if not motion_data:
-            #         continue
-            #     world_pos = motion_data["world-position"]
-            #     world_vel = motion_data["world-velocity"]
-            #     world_fwd_dir = motion_data["world-forward-dir"]
-            #     world_right_dir = motion_data["world-right-dir"]
-            #     orientation = motion_data["orientation"]
+            for car in motion_list:
+                name = car["name"]
+                team = car["team"]
+                index = car["index"]
+                ers_mode = car["ers"]["mode"]
+                motion_data = car["motion"]
+                if not motion_data:
+                    continue
+
+                world_pos = motion_data["world-position"]
+                world_vel = motion_data["world-velocity"]
+                world_fwd_dir = motion_data["world-forward-dir"]
+                world_right_dir = motion_data["world-right-dir"]
+                orientation = motion_data["orientation"]
 
     def _get_circuit_svg_path(self, circuit_name: str) -> Optional[str]:
         """

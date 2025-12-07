@@ -236,6 +236,17 @@ class StreamOverlayData(BaseAPI):
                         if driver.m_packet_copies.m_packet_motion
                         else None
                 ),
+                "ers" : {
+                    "ers-percent" : self._getValueOrDefaultValue(driver.m_car_info.m_ers_perc),
+                    "ers-mode" : self._getValueOrDefaultValue(str(driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                                    if driver.m_packet_copies.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                    if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((driver.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                            if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
+                }
             }
             for driver in drivers_data
             if driver and driver.is_valid
