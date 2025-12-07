@@ -63,6 +63,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     - A QML file path passed into constructor or via subclass default
     - Optional extra integration with QML root object
     - QML should expose a root Window {} or Item {} inside a Window {}
+    - QML should contain `property real scaleFactor`
 
     This class does NOT assume anything about the UI structure. Derived classes
     may communicate with QML using:
@@ -125,6 +126,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
         self._root = root
         self._root.installEventFilter(self)
+        self._root.setProperty("scaleFactor", self.scale_factor)
 
         super()._setup_window()
         self.update_window_flags()
@@ -142,7 +144,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def build_ui(self):
         raise NotImplementedError
 
-    def rebuild_ui(self):
+    def rebuild_ui(self): # TODO: do we need this?
         """Reloads the QML file entirely when scale factor changes."""
 
         qml_path = self.QML_FILE.resolve()
@@ -192,7 +194,29 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     @override
     def set_ui_scale(self, ui_scale):
-        pass
+        """
+        Update the UI scale factor at runtime.
+
+        This updates the scaleFactor property in QML if it exists,
+        allowing the QML UI to dynamically resize all scaled elements.
+
+        Args:
+            ui_scale: New scale factor (e.g., 1.0, 1.5, 2.0)
+        """
+        self.scale_factor = ui_scale
+
+        if self._root:
+            # Check if the QML root has a scaleFactor property
+            if self._root.property("scaleFactor") is not None:
+                self._root.setProperty("scaleFactor", ui_scale)
+                self.logger.debug(f"{self.overlay_id} | UI scale updated to {ui_scale}")
+            else:
+                self.logger.warning(
+                    f"{self.overlay_id} | QML root does not have 'scaleFactor' property. "
+                    "Add 'property real scaleFactor: 1.0' to your QML Window."
+                )
+        else:
+            self.logger.warning(f"{self.overlay_id} | Cannot set UI scale - root window not initialized")
 
     @override
     def animate_fade(self, show: bool):

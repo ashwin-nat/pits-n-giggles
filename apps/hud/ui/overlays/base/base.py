@@ -217,6 +217,7 @@ class BaseOverlay():
             """Set opacity."""
             opacity = data["opacity"]
             self.set_opacity(opacity)
+            self.opacity = opacity
 
         @self.on_event("set_config")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
@@ -228,9 +229,10 @@ class BaseOverlay():
         @self.on_event("set_scale_factor")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
             """Set UI scale factor"""
-            self.scale_factor = data["scale_factor"]
-            self.logger.debug(f"{self.overlay_id} | Setting UI scale to {self.scale_factor}")
-            self.rebuild_ui()
+            scale_factor = data["scale_factor"]
+            self.logger.debug(f"{self.overlay_id} | Setting UI scale to {scale_factor}")
+            self.set_ui_scale(scale_factor)
+            self.scale_factor = scale_factor
 
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
