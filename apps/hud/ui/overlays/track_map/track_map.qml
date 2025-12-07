@@ -4,9 +4,15 @@ import QtQuick.Window
 Window {
     id: root
     visible: false          // BaseOverlayQML will turn it visible
-    width: 400
-    height: 400
-    color: "transparent"        // Dark background for track visibility
+
+    // Base dimensions that will be scaled
+    property real baseWidth: 400
+    property real baseHeight: 400
+    property real scaleFactor: 1.0 // will be updated/set in ctor
+
+    width: baseWidth * scaleFactor
+    height: baseHeight * scaleFactor
+    color: "transparent"
 
     // Property to receive SVG path from Python
     property string svgPath: ""
@@ -38,9 +44,9 @@ Window {
         // Placeholder text when no track is loaded
         Text {
             anchors.centerIn: parent
-            text: "Waiting for session"
+            text: "No Track Loaded"
             color: "#666666"
-            font.pixelSize: 16
+            font.pixelSize: 16 * root.scaleFactor
             visible: root.svgPath === ""
         }
     }
