@@ -30,7 +30,7 @@ from typing import Dict, Optional
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
+from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay, InputTelemetryOverlay,
                                   TimingTowerOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -59,6 +59,10 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     #     x=10,
     #     y=600,
     # ),
+    InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
+        x=10,
+        y=600,
+    ),
 }
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -137,6 +141,18 @@ class OverlaysMgr:
         #     ))
         # else:
         #     self.logger.debug("Track map overlay is disabled")
+
+        if settings.HUD.show_input_overlay:
+            self.window_manager.register_overlay(InputTelemetryOverlay.OVERLAY_ID, InputTelemetryOverlay(
+                self.config[InputTelemetryOverlay.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.input_overlay_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
+            ))
+        else:
+            self.logger.debug("Input telemetry overlay is disabled")
 
         self.logger.debug("Overlays manager initialized")
 
