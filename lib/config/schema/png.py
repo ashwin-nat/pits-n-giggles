@@ -73,7 +73,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
         seen = {}
         for name, val in udp_fields:
             if val is None:
-                continue  # <---- THIS IS THE BEHAVIOUR CHANGE
+                continue
 
             if val in seen:
                 raise ValueError(

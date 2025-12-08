@@ -67,3 +67,20 @@ def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
             }
         },
     )
+
+def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True):
+    """
+    Create an overlay enable field with standard schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=default,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": visible,
+                "overlay_enable": True
+            }
+        }
+    )

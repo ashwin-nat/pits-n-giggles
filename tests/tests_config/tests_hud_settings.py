@@ -311,7 +311,7 @@ class TestHudSettings(TestF1ConfigBase):
 
         # Disable all overlays and enable HUD
         with self.assertRaises(ValidationError):
-            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False)
+            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False, show_track_map=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False, show_mfd=False)

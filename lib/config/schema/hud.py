@@ -28,7 +28,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
-from .utils import udp_action_field, ui_scale_field
+from .utils import udp_action_field, ui_scale_field, overlay_enable_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -135,31 +135,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    show_lap_timer: bool = Field(
-        default=True,
-        description="Enable lap timer overlay",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay")
     lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
     lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle lap timer overlay UDP action code")
 
 
-    show_timing_tower: bool = Field(
-        default=True,
-        description="Enable timing tower overlay",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay")
     timing_tower_ui_scale: float = ui_scale_field(description="Timing tower UI scale")
     timing_tower_max_rows: int = Field(
         default=5,
@@ -176,16 +158,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     timing_tower_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle timing tower overlay UDP action code")
 
-    show_mfd: bool = Field(
-        default=True,
-        description="Enable MFD overlay",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay")
     mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
@@ -200,16 +173,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle MFD overlay UDP action code")
 
-    show_track_map: bool = Field(
-        default=True,
-        description="Enable track map overlay",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True
-            }
-        }
-    )
+    show_track_map: bool = overlay_enable_field(description="Enable track map overlay", default=False, visible=False)
     track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track map overlay UDP action code")
@@ -248,11 +212,18 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         # Not allowed to enable HUD while all overlays are disabled
-        if self.enabled:
-            if not self.show_lap_timer and not self.show_timing_tower and not self.show_mfd:
-                raise ValueError("HUD cannot be enabled while all overlays are disabled")
-            if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
-                raise ValueError("HUD cannot be enabled while all MFD pages are disabled")
+        if not self.enabled:
+            return
+
+        if not any(
+            getattr(self, field_name)
+            for field_name, field in type(self).model_fields.items()
+            if field.json_schema_extra.get("ui", {}).get("overlay_enable", False)
+        ):
+            raise ValueError("HUD cannot be enabled while all overlays are disabled")
+
+        if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
+            raise ValueError("HUD cannot be enabled while all MFD pages are disabled")
 
     @field_validator("timing_tower_max_rows")
     def must_be_odd(cls, v): # pylint: disable=no-self-argument
