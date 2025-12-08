@@ -178,6 +178,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track map overlay UDP action code", visible=False)
 
+    show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay")
+    input_overlay_ui_scale: float = ui_scale_field(description="Input telemetry overlay UI scale")
+    input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle input telemetry overlay UDP action code")
+
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
         "Toggle all overlays UDP action code")
     cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
