@@ -210,7 +210,7 @@ class OverlaysMgr:
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
+        self.window_manager.multicast_data({MfdOverlay.OVERLAY_ID, InputTelemetryOverlay.OVERLAY_ID}, 'stream_overlay_update', data)
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
