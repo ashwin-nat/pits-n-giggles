@@ -157,6 +157,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
             raise RuntimeError("Failed to rebuild QML UI")
 
         self._root = self._engine.rootObjects()[0]
+        self._root.installEventFilter(self)
+        self._root.setProperty("scaleFactor", self.scale_factor)
         self.update_window_flags()
         self.apply_config()
 

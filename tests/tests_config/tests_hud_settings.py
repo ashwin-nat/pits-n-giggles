@@ -56,7 +56,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
-        self.assertEqual(settings.show_track_map, True)
+        self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
