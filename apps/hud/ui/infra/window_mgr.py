@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Set
 
 from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
                             QWaitCondition, Signal, Slot)
@@ -36,7 +36,7 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
 
-    mgmt_cmd_signal = Signal(str, str, str)  # recipient, event, data (serialised into string)
+    mgmt_cmd_signal = Signal(set, str, str)  # recipients, event, data (serialised into string)
     mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
@@ -138,7 +138,7 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
         """
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit('', cmd, serialise_data(data))
+        self.mgmt_cmd_signal.emit(set(), cmd, serialise_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any]):
         """Unicast event data to a specific overlay using signal.
@@ -150,6 +150,16 @@ class WindowManager(QObject):
         """
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit(overlay_id, event, serialise_data(data))
+        self.mgmt_cmd_signal.emit({overlay_id}, event, serialise_data(data))
 
-    # TODO: add multicast
+    def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any]):
+        """Multicast event data to multiple overlays using signal.
+
+        Args:
+            overlay_ids (Set[str]): Overlay IDs
+            event (str): Command
+            data (Dict[str, Any]): Command data
+        """
+        assert overlay_ids
+        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
+        self.mgmt_cmd_signal.emit(overlay_ids, event, serialise_data(data))

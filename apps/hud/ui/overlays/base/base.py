@@ -25,7 +25,7 @@
 import ctypes
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Set
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
@@ -237,9 +237,9 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(str, str, str)
-    def _handle_cmd(self, recipient: str, cmd: str, data: str):
-        if recipient and recipient != self.overlay_id:
+    @Slot(set, str, str)
+    def _handle_cmd(self, recipients: Set[str], cmd: str, data: str):
+        if recipients and self.overlay_id not in recipients:
             return
         handler = self._command_handlers.get(cmd)
         if not handler:
