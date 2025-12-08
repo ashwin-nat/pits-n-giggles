@@ -368,13 +368,13 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
             ),
-            SliderItem(
-                key="track_map",
-                label="Track Map Scale",
-                min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.track_map_ui_scale * 100),
-            ),
+            # SliderItem(
+            #     key="track_map",
+            #     label="Track Map Scale",
+            #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
+            #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
+            #     value=int(hud_settings.track_map_ui_scale * 100),
+            # ),
 
             # Opacity at the bottom
             SliderItem(

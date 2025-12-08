@@ -28,7 +28,7 @@ from pydantic import Field
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def udp_action_field(description: str, *, default: Optional[int] = None):
+def udp_action_field(description: str, *, default: Optional[int] = None, visible: Optional[bool] = True):
     """
     Create a UDP action code field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -41,7 +41,10 @@ def udp_action_field(description: str, *, default: Optional[int] = None):
         strict=False,
         description=description,
         json_schema_extra={
-            "ui": {"type": "text_box", "visible": True},
+            "ui": {
+                "type": "text_box",
+                "visible": visible
+            },
             "udp_action_code": True,
         },
     )

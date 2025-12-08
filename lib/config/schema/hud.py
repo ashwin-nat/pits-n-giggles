@@ -176,7 +176,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay", default=False, visible=False)
     track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle track map overlay UDP action code")
+        description="Toggle track map overlay UDP action code", visible=False)
 
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
         "Toggle all overlays UDP action code")
