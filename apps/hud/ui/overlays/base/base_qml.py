@@ -193,7 +193,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self.update_window_flags()
 
     @override
-    def set_ui_scale(self, ui_scale):
+    def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.
 
