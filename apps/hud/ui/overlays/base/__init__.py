@@ -23,17 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base import BaseOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
+from .base_qml import BaseOverlayQML
+from .base_widget import BaseOverlayWidget
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "BaseOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
+    "BaseOverlayQML",
+    "BaseOverlayWidget",
 ]

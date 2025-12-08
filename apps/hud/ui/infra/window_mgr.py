@@ -83,7 +83,7 @@ class WindowManager(QObject):
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, _request_type: str, _request_data: Dict[str, Any]):
+    def _handle_request(self, recipient: str, _request_type: str, _request_data: str):
         """Handle requests on GUI thread - manager-level requests only."""
         if recipient:
             return  # Overlay-specific requests handled by overlay
@@ -151,3 +151,5 @@ class WindowManager(QObject):
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
         self.mgmt_cmd_signal.emit(overlay_id, event, serialise_data(data))
+
+    # TODO: add multicast

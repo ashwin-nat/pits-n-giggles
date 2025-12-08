@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.session_state import SessionState
@@ -83,6 +83,7 @@ class StreamOverlayData(BaseAPI):
         self.__initPenalties(player_data)
         self.__initGForce(player_data)
         self.__initPaceComparison(player_data, prev_data, next_data)
+        self.__initMotion(session_state.m_driver_data)
 
     def __initCarTelemetry(self, player_data: Optional[DataPerDriver]) -> None:
         """Prepares the car telemetry data.
@@ -222,6 +223,35 @@ class StreamOverlayData(BaseAPI):
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["prev"], prev_data)
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["next"], next_data)
 
+    def __initMotion(self, drivers_data: List[DataPerDriver]) -> None:
+        """Prepares and updates the motion/position data of all cars"""
+        self.m_motion_json = [
+            {
+                "name": driver.m_driver_info.name,
+                "team": str(driver.m_driver_info.team),
+                "track-position": driver.m_driver_info.position,
+                "index": driver.m_index,
+                "motion": (
+                    driver.m_packet_copies.m_packet_motion.toJSON()
+                        if driver.m_packet_copies.m_packet_motion
+                        else None
+                ),
+                "ers" : {
+                    "ers-percent" : self._getValueOrDefaultValue(driver.m_car_info.m_ers_perc),
+                    "ers-mode" : self._getValueOrDefaultValue(str(driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                                    if driver.m_packet_copies.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                    if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((driver.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                            if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
+                }
+            }
+            for driver in drivers_data
+            if driver and driver.is_valid
+        ]
+
     def __populatePaceCompDataForDriver(self,
                                         json_dict: Dict[str, any],
                                         driver_obj: Optional[DataPerDriver]) -> None:
@@ -268,6 +298,7 @@ class StreamOverlayData(BaseAPI):
             "event-type" : str(self.m_session_type),
             "formula-type" : str(self.m_formula_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
+            "circuit-enum-name" : self.m_circuit.name if self.m_circuit else None,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,
@@ -302,4 +333,5 @@ class StreamOverlayData(BaseAPI):
                 "long": self.m_g_force_long
             },
             "pace-comparison" : self.m_pace_comp_json,
+            "motion" : self.m_motion_json,
         }

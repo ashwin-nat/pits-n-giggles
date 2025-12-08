@@ -56,6 +56,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
+        self.assertEqual(settings.show_track_map, False)
+        self.assertEqual(settings.track_map_ui_scale, 1.0)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -309,7 +311,7 @@ class TestHudSettings(TestF1ConfigBase):
 
         # Disable all overlays and enable HUD
         with self.assertRaises(ValidationError):
-            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False)
+            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False, show_track_map=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False, show_mfd=False)
@@ -515,3 +517,41 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(use_windowed_overlays=420)
+
+    def test_show_track_map(self):
+        show_track_map = True
+        hud_settings = HudSettings(show_track_map=show_track_map)
+        self.assertEqual(hud_settings.show_track_map, show_track_map)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_track_map=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_track_map="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_track_map=420)
+
+    def test_track_map_ui_scale(self):
+        track_map_ui_scale = 1.1
+        hud_settings = HudSettings(track_map_ui_scale=track_map_ui_scale)
+        self.assertEqual(hud_settings.track_map_ui_scale, track_map_ui_scale)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_map_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_map_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_map_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_map_ui_scale=0.4)
+        HudSettings(track_map_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_map_ui_scale=2.1)
+        HudSettings(track_map_ui_scale=2.0)

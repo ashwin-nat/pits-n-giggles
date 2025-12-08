@@ -28,7 +28,7 @@ from pydantic import Field
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def udp_action_field(description: str, *, default: Optional[int] = None):
+def udp_action_field(description: str, *, default: Optional[int] = None, visible: Optional[bool] = True):
     """
     Create a UDP action code field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -41,7 +41,49 @@ def udp_action_field(description: str, *, default: Optional[int] = None):
         strict=False,
         description=description,
         json_schema_extra={
-            "ui": {"type": "text_box", "visible": True},
+            "ui": {
+                "type": "text_box",
+                "visible": visible
+            },
             "udp_action_code": True,
         },
+    )
+
+def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
+    """
+    Create a UI scale field with standard bounds and schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=default,
+        ge=0.5,
+        le=2.0,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": False,
+                "min_ui": 50,
+                "max_ui": 200,
+                "convert": "percent",
+                "unit": "%"
+            }
+        },
+    )
+
+def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True):
+    """
+    Create an overlay enable field with standard schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=default,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": visible,
+                "overlay_enable": True
+            }
+        }
     )

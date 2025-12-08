@@ -31,7 +31,7 @@ from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base import BaseOverlayWidget
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
                                             FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
@@ -105,7 +105,7 @@ class PageIndicatorFooter(QWidget):
                 self.circle_radius * 2
             )
 
-class MfdOverlay(BaseOverlay):
+class MfdOverlay(BaseOverlayWidget):
 
     OVERLAY_ID = "mfd"
     PAGES: List[BasePage] = [
@@ -229,9 +229,8 @@ class MfdOverlay(BaseOverlay):
         @self.on_event("set_config")
         def _handle_set_config(data: Dict[str, Any]):
             config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {self.config}")
-            config = OverlaysConfig.fromJSON(data)
-            self.move(config.x, config.y)
+            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {config}")
+            self.set_window_position(config)
             current_index = self.pages.currentIndex()
             if current_index != 0:
                 self._switch_page(current_index, 0)
