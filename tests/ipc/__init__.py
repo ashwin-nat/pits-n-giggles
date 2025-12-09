@@ -24,11 +24,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_parent_child import TestIpcParentChild
+from .tests_shm_lower_layer import TestSharedMemoryIPC
 from .tests_subscriber import TestIpcSubscriber
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestIpcParentChild",
+    "TestSharedMemoryIPC",
     "TestIpcSubscriber",
 ]
