@@ -30,7 +30,8 @@ import threading
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.ipc import SharedMemoryReceiver, SharedMemorySender
+from lib.ipc.shm.writer import ShmTransportWriter
+from lib.ipc.shm.reader import ShmTransportReader
 
 from .base import TestIPC
 
@@ -39,7 +40,7 @@ if sys.platform == 'win32':
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestSharedMemoryIPC(TestIPC):
+class TestShmTransport(TestIPC):
     SHM_NAME = "test_ipc_shm"
     MAX_MSG_SIZE = 1024
 
@@ -62,7 +63,7 @@ class TestSharedMemoryIPC(TestIPC):
         def callback(payload: bytes):
             self.received.append(payload)
 
-        self.receiver = SharedMemoryReceiver(
+        self.receiver = ShmTransportReader(
             read_interval_ms=interval_ms,
             on_payload=callback,
             shm_name=self.SHM_NAME,
@@ -79,7 +80,7 @@ class TestSharedMemoryIPC(TestIPC):
     # Basic send/receive
     # -----------------------------
     async def test_basic_binary_payload(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=self.MAX_MSG_SIZE,
         )
@@ -100,7 +101,7 @@ class TestSharedMemoryIPC(TestIPC):
     # Latest-frame-wins behavior
     # -----------------------------
     async def test_latest_frame_wins(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=self.MAX_MSG_SIZE,
         )
@@ -124,7 +125,7 @@ class TestSharedMemoryIPC(TestIPC):
     # CRC corruption rejection
     # -----------------------------
     async def test_crc_corruption_is_dropped(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=self.MAX_MSG_SIZE,
         )
@@ -170,7 +171,7 @@ class TestSharedMemoryIPC(TestIPC):
     # Oversized payload rejection
     # -----------------------------
     async def test_oversized_payload_raises(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=16,
         )
@@ -186,7 +187,7 @@ class TestSharedMemoryIPC(TestIPC):
     # Writer faster than reader
     # -----------------------------
     async def test_fast_writer_slow_reader(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=self.MAX_MSG_SIZE,
         )
@@ -208,7 +209,7 @@ class TestSharedMemoryIPC(TestIPC):
     # Reader faster than writer
     # -----------------------------
     async def test_slow_writer_fast_reader(self):
-        sender = SharedMemorySender(
+        sender = ShmTransportWriter(
             shm_name=self.SHM_NAME,
             max_msg_size=self.MAX_MSG_SIZE,
         )

@@ -22,15 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-"""
-Shared Memory IPC Sender (Async, Binary Payload, CRC Protected)
-
-- Writes raw bytes only (no JSON, no event/type).
-- Upper layers handle serialization/presentation.
-- Double-buffered, latest-frame-wins.
-- CRC32 used for integrity verification.
-"""
-
 import struct
 import logging
 import zlib
@@ -39,7 +30,15 @@ from typing import Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class SharedMemorySender:
+class ShmTransportWriter:
+    """
+    Shared Memory IPC Sender (Async, Binary Payload, CRC Protected)
+
+    - Writes raw bytes only (no JSON, no event/type).
+    - Upper layers handle serialization/presentation.
+    - Double-buffered, latest-frame-wins.
+    - CRC32 used for integrity verification.
+    """
     DEFAULT_SHM_NAME = "png_ipc_atomic"
     DEFAULT_MAX_MSG_SIZE = 128 * 1024  # bytes per buffer
 

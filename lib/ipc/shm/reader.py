@@ -31,7 +31,7 @@ from typing import Optional, Callable
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class SharedMemoryReceiver:
+class ShmTransportReader:
     """
     Shared Memory IPC Receiver (Sync, Binary Payload, CRC Protected)
 

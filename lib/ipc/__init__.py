@@ -24,7 +24,6 @@
 
 from .async_child import IpcChildAsync
 from .parent import IpcParent
-from .shm import SharedMemoryReceiver, SharedMemorySender
 from .subscriber import IpcSubscriber
 from .sync_child import IpcChildSync
 from .utils import get_free_tcp_port
@@ -36,8 +35,6 @@ __all__ = [
     'IpcChildAsync',
     'IpcChildSync',
     'IpcSubscriber',
-    'SharedMemoryReceiver',
-    'SharedMemorySender',
 
     'get_free_tcp_port',
 ]

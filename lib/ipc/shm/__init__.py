@@ -22,12 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .receiver import SharedMemoryReceiver
-from .sender import SharedMemorySender
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'SharedMemoryReceiver',
-    'SharedMemorySender',
+
 ]
