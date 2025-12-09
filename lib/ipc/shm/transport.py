@@ -243,6 +243,9 @@ class ShmTransportReader:
         self._running = False
 
     def _read_latest(self) -> Optional[bytes]:
+        if self.shm is None or self.shm.buf is None: # if writer shuts down
+            return None
+
         seq, active_index = struct.unpack_from(self.HEADER_FMT, self.shm.buf, 0)
 
         if seq == self.last_seq:
