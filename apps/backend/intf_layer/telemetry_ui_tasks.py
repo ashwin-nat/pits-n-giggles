@@ -34,6 +34,7 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
+from lib.ipc import PngShmWriter
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -76,6 +77,8 @@ def initUiIntfLayer(
         debug_mode=debug_mode,
     )
 
+    shm = PngShmWriter(logger) # TODO: pass shutdown event
+
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
@@ -89,7 +92,8 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudNotifierTask(web_server, shutdown_event), name="HUD Notifier Task"))
+    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
+    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state), name="HUD Update Task"))
 
     registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
     return web_server
@@ -165,7 +169,7 @@ async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asynci
 
     server.m_logger.debug("Shutting down front end message task")
 
-async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
+async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
@@ -180,6 +184,22 @@ async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Ev
                 data=message.toJSON())
 
     server.m_logger.debug("Shutting down HUD notifier task")
+
+
+async def hudUpdateTask(shm: PngShmWriter, session_state: SessionState) -> None:
+    """Task to update HUD clients with telemetry data
+
+    Args:
+        logger (logging.Logger): Logger handle
+        session_state (SessionState): Handle to the session state data structure
+        shutdown_event (asyncio.Event): Event to signal shutdown
+    """
+    await _initial_random_sleep()
+    while True:
+        shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
+        shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
+        await shm.write()
+        await asyncio.sleep(0.2) # TODO: Make configurable
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 
