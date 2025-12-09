@@ -35,7 +35,8 @@ from .client import HudClient
 def run_hud_update_threads(
         port: int,
         logger: logging.Logger,
-        overlays_mgr: OverlaysMgr
+        overlays_mgr: OverlaysMgr,
+        shm_read_interval_ms: int
         ) -> HudClient:
     """Creates, runs and returns the HUD update thread.
 
@@ -43,11 +44,12 @@ def run_hud_update_threads(
         port: Port number of the Socket.IO server.
         logger: Logger instance.
         overlays_mgr: Overlays manager
+        shm_read_interval_ms: Shared memory read interval
 
     Returns:
         HudClient - the incoming data receiver client obj
     """
-    return _run_socketio_thread(port, logger, overlays_mgr), _run_shm_thread(logger, overlays_mgr)
+    return _run_socketio_thread(port, logger, overlays_mgr), _run_shm_thread(logger, overlays_mgr, shm_read_interval_ms)
 
 def _run_socketio_thread(
         port: int,
@@ -67,15 +69,17 @@ def _run_socketio_thread(
 
 def _run_shm_thread(
         logger: logging.Logger,
-        overlays_mgr: OverlaysMgr
+        overlays_mgr: OverlaysMgr,
+        shm_read_interval_ms: int
         ) -> None:
     """Thread target to run the shared memory listener for HUD updates.
 
     Args:
         logger: Logger instance.
         overlays_mgr: Overlays manager
+        shm_read_interval_ms: Shared memory read interval
     """
-    shm = PngShmReader(logger)
+    shm = PngShmReader(logger, read_interval_ms=shm_read_interval_ms)
 
     @shm.on("race-table-update")
     def _handle_race_table_update(data):

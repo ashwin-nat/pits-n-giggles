@@ -70,7 +70,8 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode:
     socketio_client, shm_reader = run_hud_update_threads(
         logger=logger,
         overlays_mgr=overlays_mgr,
-        port=config.Network.server_port)
+        port=config.Network.server_port,
+        shm_read_interval_ms=config.Display.hud_refresh_interval)
 
     run_ipc_task(
         port=ipc_port,

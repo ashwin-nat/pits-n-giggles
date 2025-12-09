@@ -92,7 +92,9 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
-    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state, shutdown_event), name="HUD Update Task"))
+    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
+                                                   write_interval_ms=settings.Display.hud_refresh_interval,
+                                                   shutdown_event=shutdown_event), name="HUD Update Task"))
 
     registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
     return web_server, shm
@@ -185,20 +187,26 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
     server.m_logger.debug("Shutting down HUD notifier task")
 
 
-async def hudUpdateTask(shm: PngShmWriter, session_state: SessionState, shutdown_event: asyncio.Event) -> None:
+async def hudUpdateTask(
+        shm: PngShmWriter,
+        session_state: SessionState,
+        write_interval_ms: int,
+        shutdown_event: asyncio.Event) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
         shm (PngShmWriter): Shared memory writer
         session_state (SessionState): Handle to the session state data structure
+        write_interval_ms (int): Write interval in milliseconds
         shutdown_event (async.Event): Event to signal shutdown
     """
     await _initial_random_sleep()
+    sleep_duration = write_interval_ms / 1000
     while not shutdown_event.is_set():
         shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
         shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
         await shm.write()
-        await asyncio.sleep(0.2) # TODO: Make configurable
+        await asyncio.sleep(sleep_duration)
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 
