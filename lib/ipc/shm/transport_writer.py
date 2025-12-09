@@ -72,16 +72,20 @@ class ShmTransportWriter:
         self.TOTAL_SIZE = self.HEADER_SIZE + (2 * self.BUF_TOTAL_SIZE)
 
         try:
+            # Normal case: first writer
             self.shm = shared_memory.SharedMemory(
-                name=self.shm_name, create=True, size=self.TOTAL_SIZE
+                name=self.shm_name,
+                create=True,
+                size=self.TOTAL_SIZE,
             )
-            self.logger.info("Created shared memory IPC region")
-        except FileExistsError:
-            self.shm = shared_memory.SharedMemory(name=self.shm_name)
-            self.logger.info("Attached to existing shared memory IPC region")
 
-        # Hard reset header on startup
+        except FileExistsError:
+            # Restart case: stale SHM exists → just re-attach
+            self.shm = shared_memory.SharedMemory(name=self.shm_name)
+
+        # Always reset header
         struct.pack_into(self.HEADER_FMT, self.shm.buf, 0, 0, 0)
+        self.logger.debug("Created and initialized shared memory IPC region")
 
     async def write(self, payload: bytes) -> None:
         """

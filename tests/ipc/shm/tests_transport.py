@@ -158,7 +158,6 @@ class TestShmTransport(TestShm):
 
         await asyncio.sleep(0.05)
 
-        # ✅ ASSERTIONS THAT MATCH YOUR IPC SEMANTICS:
         # - At least one valid payload must exist
         # - Corrupted payload must NEVER reach callback
         self.assertIn(good_payload, self.received)

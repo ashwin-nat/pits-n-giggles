@@ -74,23 +74,59 @@ class ShmTransportReader:
         self.BUF_HEADER_SIZE = struct.calcsize(self.BUF_HEADER_FMT)
         self.BUF_TOTAL_SIZE = self.BUF_HEADER_SIZE + self.max_msg_size
 
-        self.shm = shared_memory.SharedMemory(name=self.shm_name)
-        self.logger.info("Shared memory receiver attached")
+        self.shm = None
+        self.logger.debug("Shared memory receiver attached")
 
     def run(self) -> None:
         """
-        Blocking polling loop.
+        Blocking polling loop with automatic re-attach if writer restarts.
         """
         self.logger.info("Shared memory receiver run loop started")
 
         while self._running:
-            payload = self._read_latest()
-            if payload is not None:
-                self.callback(payload)
+
+            # ----------------------------------
+            # 1) ATTACH PHASE (wait forever)
+            # ----------------------------------
+            if self.shm is None:
+                self.logger.info("Waiting for shared memory IPC region...")
+                while self._running:
+                    try:
+                        self.shm = shared_memory.SharedMemory(name=self.shm_name)
+                        self.logger.info("Shared memory receiver attached")
+                        break
+                    except FileNotFoundError:
+                        time.sleep(0.01)
+
+            # ----------------------------------
+            # 2) READ PHASE (normal operation)
+            # ----------------------------------
+            try:
+                payload = self._read_latest()
+                if payload is not None:
+                    self.callback(payload)
+
+            # ----------------------------------
+            # 3) CRASH / RESTART DETECTION
+            # ----------------------------------
+            except (BufferError, ValueError, OSError):
+                # Writer crashed and likely unlinked SHM
+                self.logger.warning(
+                    "Shared memory lost — waiting for writer to restart"
+                )
+
+                try:
+                    self.shm.close()
+                except Exception:
+                    pass
+
+                # Force a clean re-attach on next loop
+                self.shm = None
 
             time.sleep(self.read_interval_sec)
 
         self.logger.info("Shared memory receiver stopped")
+
 
     def stop(self) -> None:
         """
