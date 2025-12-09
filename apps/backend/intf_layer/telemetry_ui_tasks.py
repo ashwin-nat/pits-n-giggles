@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -50,7 +50,7 @@ def initUiIntfLayer(
     ver_str: str,
     ipc_port: Optional[int],
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> TelemetryWebServer:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -65,7 +65,7 @@ def initUiIntfLayer(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        TelemetryWebServer: The initialized web server
+        Tuple[TelemetryWebServer, PngShmWriter]: Web server and shm writer instances
     """
 
     # First, create the server instance
@@ -76,8 +76,7 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-
-    shm = PngShmWriter(logger) # TODO: pass shutdown event
+    shm = PngShmWriter(logger)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
@@ -93,10 +92,10 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
-    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state), name="HUD Update Task"))
+    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state, shutdown_event), name="HUD Update Task"))
 
     registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
-    return web_server
+    return web_server, shm
 
 async def raceTableClientUpdateTask(
         update_interval_ms: int,
@@ -186,15 +185,16 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
     server.m_logger.debug("Shutting down HUD notifier task")
 
 
-async def hudUpdateTask(shm: PngShmWriter, session_state: SessionState) -> None:
+async def hudUpdateTask(shm: PngShmWriter, session_state: SessionState, shutdown_event: asyncio.Event) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
         shm (PngShmWriter): Shared memory writer
         session_state (SessionState): Handle to the session state data structure
+        shutdown_event (async.Event): Event to signal shutdown
     """
     await _initial_random_sleep()
-    while True:
+    while not shutdown_event.is_set():
         shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
         shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
         await shm.write()

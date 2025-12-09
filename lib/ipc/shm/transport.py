@@ -26,6 +26,7 @@ import logging
 import struct
 import time
 import zlib
+import asyncio
 from multiprocessing import shared_memory
 from typing import Callable, Optional
 
@@ -66,6 +67,7 @@ class ShmTransportWriter:
 
         self.seq: int = 0
         self.active_index: int = 0
+        self.running = True
 
         self.HEADER_SIZE = struct.calcsize(self.HEADER_FMT)
         self.BUF_HEADER_SIZE = struct.calcsize(self.BUF_HEADER_FMT)
@@ -94,6 +96,10 @@ class ShmTransportWriter:
 
         :param payload: Raw bytes.
         """
+
+        if (not self.running) or (not self.shm) or (not self.shm.buf):
+            return  # Silently drop during shutdown
+
         self.seq += 1
         self.active_index = self.seq & 1  # toggle 0/1
 
@@ -122,10 +128,16 @@ class ShmTransportWriter:
         )
 
     def close(self) -> None:
+        self.running = False
+
         try:
-            self.shm.close()
+            if self.shm is not None:
+                self.shm.close()
         except Exception:
             pass
+
+        self.shm = None
+        self.logger.debug("Shared memory writer marked for shutdown")
 
 class ShmTransportReader:
     """
