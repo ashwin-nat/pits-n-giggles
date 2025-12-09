@@ -24,11 +24,10 @@
 
 import json
 import logging
-from typing import Dict, Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
-from ._contracts import WriterTransport, ReaderTransport
-
-from .transport import ShmTransportWriter, ShmTransportReader
+from ._contracts import ReaderTransport, WriterTransport
+from .transport import ShmTransportReader, ShmTransportWriter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -148,8 +147,11 @@ class PngShmReader:
         """
         try:
             frame = json.loads(payload.decode("utf-8"))
-        except Exception as e:
-            self.logger.warning(f"Invalid JSON payload dropped: {e}")
+        except json.JSONDecodeError as e:
+            self.logger.debug(f"Invalid JSON payload dropped: {e}")
+            return
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Invalid JSON payload dropped: {e}")
             return
 
         if not isinstance(frame, dict):

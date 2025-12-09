@@ -26,7 +26,6 @@ import logging
 import struct
 import time
 import zlib
-import asyncio
 from multiprocessing import shared_memory
 from typing import Callable, Optional
 
@@ -42,7 +41,7 @@ class ShmTransportWriter:
     - CRC32 used for integrity verification.
     """
     DEFAULT_SHM_NAME = "png_ipc_atomic"
-    DEFAULT_MAX_MSG_SIZE = 128 * 1024  # bytes per buffer
+    DEFAULT_MAX_MSG_SIZE = 512 * 1024  # bytes per buffer
 
     # Header: seq (uint64), active_index (uint8)
     HEADER_FMT = "QB"
@@ -108,7 +107,6 @@ class ShmTransportWriter:
             raise ValueError(f"IPC payload too large ({size} > {self.max_msg_size})")
 
         crc = zlib.crc32(payload) & 0xFFFFFFFF
-
         buf_offset = self.HEADER_SIZE + (self.active_index * self.BUF_TOTAL_SIZE)
 
         # Write buffer: [size][crc][payload]
@@ -151,7 +149,7 @@ class ShmTransportReader:
     - Provides a clean stop() method.
     """
     DEFAULT_SHM_NAME = "png_ipc_atomic"
-    DEFAULT_MAX_MSG_SIZE = 128 * 1024  # must match sender
+    DEFAULT_MAX_MSG_SIZE = 512 * 1024  # must match sender
 
     HEADER_FMT = "QB"
     BUF_HEADER_FMT = "II"  # size, crc
@@ -210,8 +208,7 @@ class ShmTransportReader:
             # 2) READ PHASE (normal operation)
             # ----------------------------------
             try:
-                payload = self._read_latest()
-                if payload is not None:
+                if payload := self._read_latest():
                     self.callback(payload)
 
             # ----------------------------------
@@ -266,7 +263,9 @@ class ShmTransportReader:
 
         actual_crc = zlib.crc32(raw) & 0xFFFFFFFF
         if actual_crc != expected_crc:
-            self.logger.warning("CRC mismatch — dropped corrupted IPC frame")
+            self.logger.debug(
+                f"CRC mismatch seq={seq} size={size} expected={expected_crc:08x} actual={actual_crc:08x}"
+            )
             self.last_seq = seq
             return None
 
