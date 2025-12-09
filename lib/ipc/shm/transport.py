@@ -29,6 +29,15 @@ import zlib
 from multiprocessing import shared_memory
 from typing import Callable, Optional
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+DEFAULT_SHM_NAME = "png_ipc_atomic"
+DEFAULT_MAX_MSG_SIZE = 512 * 1024 # bytes per buffer
+
+# Pre-compile struct formats for performance
+HEADER_STRUCT = struct.Struct("QB")  # seq (uint64), active_index (uint8)
+BUF_HEADER_STRUCT = struct.Struct("II")  # size (uint32), crc32 (uint32)
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class ShmTransportWriter:
@@ -40,14 +49,6 @@ class ShmTransportWriter:
     - Double-buffered, latest-frame-wins.
     - CRC32 used for integrity verification.
     """
-    DEFAULT_SHM_NAME = "png_ipc_atomic"
-    DEFAULT_MAX_MSG_SIZE = 512 * 1024  # bytes per buffer
-
-    # Header: seq (uint64), active_index (uint8)
-    HEADER_FMT = "QB"
-
-    # Buffer header: size (uint32), crc32 (uint32)
-    BUF_HEADER_FMT = "II"
 
     def __init__(
         self,
@@ -68,8 +69,8 @@ class ShmTransportWriter:
         self.active_index: int = 0
         self.running = True
 
-        self.HEADER_SIZE = struct.calcsize(self.HEADER_FMT)
-        self.BUF_HEADER_SIZE = struct.calcsize(self.BUF_HEADER_FMT)
+        self.HEADER_SIZE = HEADER_STRUCT.size
+        self.BUF_HEADER_SIZE = BUF_HEADER_STRUCT.size
         self.BUF_TOTAL_SIZE = self.BUF_HEADER_SIZE + self.max_msg_size
         self.TOTAL_SIZE = self.HEADER_SIZE + (2 * self.BUF_TOTAL_SIZE)
 
@@ -86,7 +87,7 @@ class ShmTransportWriter:
             self.shm = shared_memory.SharedMemory(name=self.shm_name)
 
         # Always reset header
-        struct.pack_into(self.HEADER_FMT, self.shm.buf, 0, 0, 0)
+        HEADER_STRUCT.pack_into(self.shm.buf, 0, 0, 0)
         self.logger.debug("Created and initialized shared memory IPC region")
 
     async def write(self, payload: bytes) -> None:
@@ -110,15 +111,14 @@ class ShmTransportWriter:
         buf_offset = self.HEADER_SIZE + (self.active_index * self.BUF_TOTAL_SIZE)
 
         # Write buffer: [size][crc][payload]
-        struct.pack_into(self.BUF_HEADER_FMT, self.shm.buf, buf_offset, size, crc)
+        BUF_HEADER_STRUCT.pack_into(self.shm.buf, buf_offset, size, crc)
         self.shm.buf[
             buf_offset + self.BUF_HEADER_SIZE:
             buf_offset + self.BUF_HEADER_SIZE + size
         ] = payload
 
         # Commit: publish seq + active index
-        struct.pack_into(
-            self.HEADER_FMT,
+        HEADER_STRUCT.pack_into(
             self.shm.buf,
             0,
             self.seq,
@@ -148,11 +148,6 @@ class ShmTransportReader:
     - Polling interval is specified in INTEGER MILLISECONDS.
     - Provides a clean stop() method.
     """
-    DEFAULT_SHM_NAME = "png_ipc_atomic"
-    DEFAULT_MAX_MSG_SIZE = 512 * 1024  # must match sender
-
-    HEADER_FMT = "QB"
-    BUF_HEADER_FMT = "II"  # size, crc
 
     def __init__(
         self,
@@ -176,8 +171,8 @@ class ShmTransportReader:
         self.last_seq: int = 0
         self._running: bool = True
 
-        self.HEADER_SIZE = struct.calcsize(self.HEADER_FMT)
-        self.BUF_HEADER_SIZE = struct.calcsize(self.BUF_HEADER_FMT)
+        self.HEADER_SIZE = HEADER_STRUCT.size
+        self.BUF_HEADER_SIZE = BUF_HEADER_STRUCT.size
         self.BUF_TOTAL_SIZE = self.BUF_HEADER_SIZE + self.max_msg_size
 
         self.shm = None
@@ -243,25 +238,23 @@ class ShmTransportReader:
         if self.shm is None or self.shm.buf is None: # if writer shuts down
             return None
 
-        seq, active_index = struct.unpack_from(self.HEADER_FMT, self.shm.buf, 0)
+        seq, active_index = HEADER_STRUCT.unpack_from(self.shm.buf, 0)
 
         if seq == self.last_seq:
             return None
 
         buf_offset = self.HEADER_SIZE + (active_index * self.BUF_TOTAL_SIZE)
 
-        size, expected_crc = struct.unpack_from(
-            self.BUF_HEADER_FMT, self.shm.buf, buf_offset
+        size, expected_crc = BUF_HEADER_STRUCT.unpack_from(
+            self.shm.buf, buf_offset
         )
 
-        raw = bytes(
-            self.shm.buf[
-                buf_offset + self.BUF_HEADER_SIZE:
-                buf_offset + self.BUF_HEADER_SIZE + size
-            ]
-        )
+        # Calculate payload offsets once
+        payload_start = buf_offset + self.BUF_HEADER_SIZE
+        payload_end = payload_start + size
 
-        actual_crc = zlib.crc32(raw) & 0xFFFFFFFF
+        payload = self.shm.buf[payload_start:payload_end]
+        actual_crc = zlib.crc32(payload) & 0xFFFFFFFF
         if actual_crc != expected_crc:
             self.logger.debug(
                 f"CRC mismatch seq={seq} size={size} expected={expected_crc:08x} actual={actual_crc:08x}"
@@ -270,7 +263,7 @@ class ShmTransportReader:
             return None
 
         self.last_seq = seq
-        return raw
+        return bytes(payload)
 
     def close(self) -> None:
         try:
