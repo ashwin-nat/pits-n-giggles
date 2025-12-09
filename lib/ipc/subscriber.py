@@ -26,8 +26,9 @@ import logging
 import threading
 from typing import Callable, Optional
 
+import engineio.exceptions
 import msgpack
-import socketio
+import socketio.exceptions
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -163,6 +164,12 @@ class IpcSubscriber:
             # Just wait - let Socket.IO handle reconnection automatically
             while not self._stop_event.is_set():
                 self._sio.sleep(0.1)
+
+        except (socketio.exceptions.ConnectionError,
+                engineio.exceptions.ConnectionError,
+                ConnectionRefusedError):
+            # Server went away / refused connection
+            self.logger.debug("Socket.IO server unavailable, shutting down subscriber")
 
         except Exception as e: # pylint: disable=broad-except
             self.logger.exception("Connection error: %s", e)
