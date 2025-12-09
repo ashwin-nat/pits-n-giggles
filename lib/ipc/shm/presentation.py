@@ -89,7 +89,7 @@ class PngShmWriter:
         await self._transport.write(payload)
         self._frame.clear()
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """
         Close the transport.
         """

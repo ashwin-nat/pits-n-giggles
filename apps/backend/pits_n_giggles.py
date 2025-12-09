@@ -186,7 +186,7 @@ class PngRunner:
         # Explicitly stop the tasks
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
-        await self.m_shm.close()
+        self.m_shm.close()
         await asyncio.sleep(1)
 
         self.m_logger.debug("Tasks stopped. Exiting...")
