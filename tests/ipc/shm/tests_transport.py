@@ -30,8 +30,7 @@ import threading
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.ipc.shm.transport_writer import ShmTransportWriter
-from lib.ipc.shm.transport_reader import ShmTransportReader
+from lib.ipc.shm.transport import ShmTransportWriter, ShmTransportReader
 
 from .tests_shm_base import TestShm
 

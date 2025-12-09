@@ -28,8 +28,7 @@ from typing import Dict, Any, Callable, Optional
 
 from ._contracts import WriterTransport, ReaderTransport
 
-from .transport_writer import ShmTransportWriter
-from .transport_reader import ShmTransportReader
+from .transport import ShmTransportWriter, ShmTransportReader
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
