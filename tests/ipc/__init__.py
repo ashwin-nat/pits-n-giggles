@@ -25,6 +25,7 @@
 
 from .tests_parent_child import TestIpcParentChild
 from .shm.tests_transport import TestShmTransport
+from .shm.tests_presentation import TestShmPresentation
 from .tests_subscriber import TestIpcSubscriber
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -32,5 +33,6 @@ from .tests_subscriber import TestIpcSubscriber
 __all__ = [
     "TestIpcParentChild",
     "TestShmTransport",
+    "TestShmPresentation",
     "TestIpcSubscriber",
 ]
