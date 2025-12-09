@@ -30,17 +30,17 @@ import threading
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.ipc.shm.writer import ShmTransportWriter
-from lib.ipc.shm.reader import ShmTransportReader
+from lib.ipc.shm.transport_writer import ShmTransportWriter
+from lib.ipc.shm.transport_reader import ShmTransportReader
 
-from .base import TestIPC
+from .tests_shm_base import TestShm
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestShmTransport(TestIPC):
+class TestShmTransport(TestShm):
     SHM_NAME = "test_ipc_shm"
     MAX_MSG_SIZE = 1024
 

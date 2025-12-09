@@ -24,7 +24,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_parent_child import TestIpcParentChild
-from .tests_shm_transport import TestShmTransport
+from .shm.tests_transport import TestShmTransport
 from .tests_subscriber import TestIpcSubscriber
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
