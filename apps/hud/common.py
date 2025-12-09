@@ -22,8 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 from typing import Any, Dict, List, Optional, Tuple, Union
+
+import orjson
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -211,7 +212,10 @@ def serialise_data(data: JSONType) -> str:
     Returns:
         str: The serialised data
     """
-    return json.dumps(data,separators=(',', ':')) or {}
+    if not data:
+        return {}
+
+    return orjson.dumps(data).decode("utf-8")
 
 def deserialise_data(data: str) -> JSONType:
     """Deserialise string data because the Qt CPP bindings don't work well with nested dicts.
@@ -223,4 +227,8 @@ def deserialise_data(data: str) -> JSONType:
     Returns:
         JSONType: The deserialised data
     """
-    return json.loads(data) or {}
+    if not data:
+        return {}
+
+    data = data.encode("utf-8")
+    return orjson.loads(data)
