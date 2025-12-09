@@ -25,7 +25,8 @@ dependencies = [
     "aiohttp (>=3.12.15,<4.0.0)",
     "websocket-client (>=1.8.0,<2.0.0)",
     "pyside6 (>=6.10.0,<7.0.0)",
-    "markdown (>=3.10,<4.0)"
+    "markdown (>=3.10,<4.0)",
+    "orjson (>=3.11.5,<4.0.0)"
 ]
 
 
