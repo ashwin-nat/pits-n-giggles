@@ -32,7 +32,7 @@ from lib.logger import get_logger
 from meta.meta import APP_NAME
 
 from .ipc import run_ipc_task
-from .listener.task import run_hud_update_thread
+from .listener.task import run_hud_update_threads
 from .ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -67,7 +67,7 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode:
 
     overlays_mgr = OverlaysMgr(logger, config, debug=debug_mode)
 
-    client = run_hud_update_thread(
+    socketio_client, shm_reader = run_hud_update_threads(
         logger=logger,
         overlays_mgr=overlays_mgr,
         port=config.Network.server_port)
@@ -76,7 +76,8 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode:
         port=ipc_port,
         logger=logger,
         overlays_mgr=overlays_mgr,
-        receiver_client=client,)
+        socketio_client=socketio_client,
+        shm_reader=shm_reader)
 
     overlays_mgr.run()
 

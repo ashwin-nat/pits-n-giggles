@@ -190,9 +190,8 @@ async def hudUpdateTask(shm: PngShmWriter, session_state: SessionState) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
-        logger (logging.Logger): Logger handle
+        shm (PngShmWriter): Shared memory writer
         session_state (SessionState): Handle to the session state data structure
-        shutdown_event (asyncio.Event): Event to signal shutdown
     """
     await _initial_random_sleep()
     while True:

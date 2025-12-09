@@ -29,13 +29,13 @@ from functools import partial
 from typing import Callable, Dict
 
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcChildSync
+from lib.ipc import IpcChildSync, PngShmReader
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 from .handlers import (handle_lock_widgets, handle_next_page,
-                       handle_reset_overlays, handle_set_opacity, handle_set_ui_scale,
-                       handle_toggle_visibility)
+                       handle_reset_overlays, handle_set_opacity,
+                       handle_set_ui_scale, handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -58,7 +58,8 @@ def run_ipc_task(
         port: int, logger:
         logging.Logger,
         overlays_mgr: OverlaysMgr,
-        receiver_client: HudClient
+        socketio_client: HudClient,
+        shm_reader: PngShmReader
         ) -> threading.Thread:
     """Runs the IPC task.
 
@@ -66,7 +67,8 @@ def run_ipc_task(
         port (int): IPC port
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client
+        socketio_client (HudClient): Receiver client
+        shm_reader (PngShmReader): Shared memory reader
 
     Returns:
         threading.Thread: IPC thread handle
@@ -76,7 +78,8 @@ def run_ipc_task(
         name="hud"
     )
     ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, receiver_client=receiver_client))
+        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
+        shm_reader=shm_reader))
     ipc_server.register_heartbeat_missed_callback(_handle_heartbeat_missed)
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
@@ -101,32 +104,47 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-def _shutdown_handler(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
+def _shutdown_handler(
+        args: dict, logger:
+        logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        shm_reader: PngShmReader
+        ) -> None:
     """Handles shutdown command.
 
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client obj
+        socketio_client (HudClient): Receiver client obj
+        shm_reader (PngShmReader): Shared memory reader
     """
 
-    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, receiver_client,),
+    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, shm_reader,),
                      name="Shutdown tasks").start()
     return {"status": "success", "message": "Shutting down HUD manager"}
 
-def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
+def _stop_other_tasks(
+        args: dict,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        shm_reader: PngShmReader
+        ) -> None:
     """Stop all other tasks when IPC shutdown is received.
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client
+        socketio_client (HudClient): Receiver client
+        shm_reader (PngShmReader): Shared memory reader
     """
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
 
-    receiver_client.stop()
+    socketio_client.stop()
+    shm_reader.stop()
     overlays_mgr.stop()
 
     logger.info("Exiting HUD subsystem")
