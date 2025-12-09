@@ -16,6 +16,7 @@
     },
     "Display": {
         "refresh_interval": 200,
+        "hud_refresh_interval": 33,
         "disable_browser_autoload": true
     },
     "Privacy": {
