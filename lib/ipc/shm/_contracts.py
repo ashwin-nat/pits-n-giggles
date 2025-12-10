@@ -22,22 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .async_child import IpcChildAsync
-from .parent import IpcParent
-from .subscriber import IpcSubscriber
-from .sync_child import IpcChildSync
-from .utils import get_free_tcp_port
-from .shm.presentation import PngShmWriter, PngShmReader
+from typing import Protocol
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    'IpcParent',
-    'IpcChildAsync',
-    'IpcChildSync',
-    'IpcSubscriber',
-    'PngShmWriter',
-    'PngShmReader',
+class WriterTransport(Protocol):
+    async def write(self, payload: bytes) -> None: ...
+    def close(self) -> None: ...
 
-    'get_free_tcp_port',
-]
+
+class ReaderTransport(Protocol):
+    def run(self) -> None: ...
+    def stop(self) -> None: ...
+    def close(self) -> None: ...

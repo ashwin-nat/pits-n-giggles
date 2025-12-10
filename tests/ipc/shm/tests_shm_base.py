@@ -19,25 +19,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+import sys
+import os
 
-from .async_child import IpcChildAsync
-from .parent import IpcParent
-from .subscriber import IpcSubscriber
-from .sync_child import IpcChildSync
-from .utils import get_free_tcp_port
-from .shm.presentation import PngShmWriter, PngShmReader
+from ..base import TestIPC
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
-__all__ = [
-    'IpcParent',
-    'IpcChildAsync',
-    'IpcChildSync',
-    'IpcSubscriber',
-    'PngShmWriter',
-    'PngShmReader',
-
-    'get_free_tcp_port',
-]
+class TestShm(TestIPC):
+    pass

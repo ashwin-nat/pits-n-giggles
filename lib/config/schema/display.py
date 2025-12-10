@@ -40,7 +40,18 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     refresh_interval: int = Field(
         default=100,
         gt=0,
-        description=f"{APP_NAME} Display update interval (ms)",
+        description=f"{APP_NAME} Web dashboard refresh interval (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    hud_refresh_interval: int = Field(
+        default=33,
+        gt=0,
+        description="HUD overlay refresh interval (ms)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
