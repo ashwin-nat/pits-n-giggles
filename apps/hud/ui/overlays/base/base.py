@@ -32,6 +32,7 @@ from PySide6.QtGui import QIcon
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.infra.high_freq_types import HighFreqBase
 from lib.assets_loader import load_icon
 from meta.meta import APP_NAME_SNAKE
 
@@ -39,6 +40,7 @@ from meta.meta import APP_NAME_SNAKE
 
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
+OverlayHighFreqHandler = Callable[[HighFreqBase], None] # Takes high-freq payload, returns None
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -119,6 +121,7 @@ class BaseOverlay():
         self.scale_factor = scale_factor
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
+        self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
@@ -186,6 +189,12 @@ class BaseOverlay():
     def on_request(self, request_type: str):
         def decorator(func: OverlayRequestHandler):
             self._request_handlers[request_type] = func
+            return func
+        return decorator
+
+    def on_high_freq(self, hf_type: str):
+        def decorator(func: OverlayHighFreqHandler):
+            self._high_freq_handlers[hf_type] = func
             return func
         return decorator
 
@@ -279,3 +288,17 @@ class BaseOverlay():
                 self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
         else:
             self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
+
+    @Slot(set, object)
+    def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
+        if self.overlay_id not in recipients:
+            return
+
+        if handler := self._high_freq_handlers.get(payload.__hf_type__):
+            try:
+                handler(payload)
+            except AssertionError:
+                self.logger.exception(f"{self.overlay_id} | Assertion error handling command '{payload.__hf_type__}'")
+                raise # We want to crash on assertions for debugging
+            except Exception as e: # pylint: disable=broad-except
+                self.logger.exception(f"{self.overlay_id} | Error handling command '{payload.__hf_type__}': {e}")

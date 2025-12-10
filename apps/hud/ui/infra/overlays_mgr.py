@@ -25,7 +25,7 @@
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
@@ -38,6 +38,7 @@ from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
+from .high_freq_types import InputTelemetryData
 from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -210,7 +211,7 @@ class OverlaysMgr:
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
-        self.window_manager.multicast_data({MfdOverlay.OVERLAY_ID, InputTelemetryOverlay.OVERLAY_ID}, 'stream_overlay_update', data)
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
@@ -292,3 +293,15 @@ class OverlaysMgr:
         if not ret:
             return None
         return OverlaysConfig.fromJSON(ret)
+
+    def input_telemetry_update(self, data: Dict[str, Any]):
+        """Send input telemetry data to input telemetry overlay."""
+        car_telemetry = data["car-telemetry"]
+        self.window_manager.unicast_high_freq_data(
+            InputTelemetryOverlay.OVERLAY_ID,
+            InputTelemetryData(
+                throttle=car_telemetry["throttle"],
+                brake=car_telemetry["brake"],
+                steering=car_telemetry["steering"]
+            )
+        )

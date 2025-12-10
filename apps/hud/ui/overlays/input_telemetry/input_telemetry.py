@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.infra.high_freq_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from PySide6.QtCore import QMetaObject, Qt
 
@@ -80,3 +81,20 @@ class InputTelemetryOverlay(BaseOverlayQML):
                     Q_ARG("QVariant", brake),
                     Q_ARG("QVariant", steering)
                 )
+
+        @self.on_high_freq(InputTelemetryData.__hf_type__)
+        def _handle_input_telemetry(data: InputTelemetryData):
+            self.logger.info(f'{self.overlay_id} | Received throttle={data.throttle}, brake={data.brake}, steering={data.steering}')  # TDOO: remove
+
+            # Send data to QML and trigger update
+            # if self._root:
+            #     # Use invokeMethod to call QML function directly
+            #     from PySide6.QtCore import Q_ARG
+            #     QMetaObject.invokeMethod(
+            #         self._root,
+            #         "updateTelemetry",
+            #         Qt.ConnectionType.QueuedConnection,
+            #         Q_ARG("QVariant", data.throttle),
+            #         Q_ARG("QVariant", data.brake),
+            #         Q_ARG("QVariant", data.steering)
+            #     )

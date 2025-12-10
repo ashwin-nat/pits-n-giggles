@@ -86,6 +86,7 @@ from tests.ipc import (TestIpcParentChild, TestIpcSubscriber, TestShmE2E,
 from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
 from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
+from tests.tests_rate_limiter import TestRateLimiter
 from tests.tests_wdt import TestWatchDogTimer
 
 # Initialize colorama

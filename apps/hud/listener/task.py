@@ -26,6 +26,7 @@ import logging
 import threading
 
 from lib.ipc import PngShmReader
+from lib.rate_limiter import RateLimiter
 
 from ..ui.infra import OverlaysMgr
 from .client import HudClient
@@ -80,16 +81,20 @@ def _run_shm_thread(
         shm_read_interval_ms: Shared memory read interval
     """
     shm = PngShmReader(logger, read_interval_ms=shm_read_interval_ms)
+    rate_limiter = RateLimiter(interval_ms=100)  # TODO: make configurable
 
     @shm.on("race-table-update")
     def _handle_race_table_update(data):
         """Race table data update handler."""
-        overlays_mgr.race_table_update(data)
+        if rate_limiter.allows("race-table-update"):
+            overlays_mgr.race_table_update(data)
 
     @shm.on("stream-overlay-update")
     def _handle_stream_overlay_update(data):
         """Stream overlay data update handler."""
-        overlays_mgr.stream_overlays_update(data)
+        overlays_mgr.input_telemetry_update(data)
+        if rate_limiter.allows("stream-overlay-update"):
+            overlays_mgr.stream_overlays_update(data)
 
     threading.Thread(target=shm.read, daemon=True, name="SHM listener").start()
     return shm
