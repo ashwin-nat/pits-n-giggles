@@ -92,9 +92,10 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
-    tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
-                                                   write_interval_ms=settings.Display.hud_refresh_interval,
-                                                   shutdown_event=shutdown_event), name="HUD Update Task"))
+    if settings.HUD.enabled:
+        tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
+                                                       write_interval_ms=settings.Display.hud_refresh_interval,
+                                                       shutdown_event=shutdown_event), name="HUD Update Task"))
 
     registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
     return web_server, shm
@@ -185,7 +186,6 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
                 data=message.toJSON())
 
     server.m_logger.debug("Shutting down HUD notifier task")
-
 
 async def hudUpdateTask(
         shm: PngShmWriter,
