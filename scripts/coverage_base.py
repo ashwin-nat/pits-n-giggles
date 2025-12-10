@@ -38,42 +38,58 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
     print("\nWaiting for coverage data to be written...")
     time.sleep(2)
 
-    # Debug: Check what coverage files exist
+    # Check for both single-process and multi-process coverage files
     coverage_files = glob.glob(".coverage.*")
-    print(f"\nFound {len(coverage_files)} coverage data files:")
-    for f in coverage_files:
-        size = os.path.getsize(f)
-        print(f"  - {f} ({size} bytes)")
+    main_coverage = os.path.exists(".coverage")
 
-    if not coverage_files:
-        print("\n  WARNING: No coverage data files found!")
+    print(f"\nCoverage data status:")
+    print(f"  - Main .coverage file: {'EXISTS' if main_coverage else 'NOT FOUND'}")
+    print(f"  - Subprocess .coverage.* files: {len(coverage_files)} found")
+
+    if coverage_files:
+        for f in coverage_files:
+            size = os.path.getsize(f)
+            print(f"  - {f} ({size} bytes)")
+
+    # Handle different coverage scenarios
+    if not main_coverage and not coverage_files:
+        print("\nWARNING: No coverage data files found!")
         print("This usually means:")
         print("  1. Subprocesses didn't run under coverage")
         print("  2. Coverage data wasn't flushed before process exit")
         print("  3. Coverage files were created in a different directory")
         return
 
-    # Combine coverage data
-    print("\nCombining coverage data...")
-    combine_status = os.system("coverage combine")
-    if combine_status != 0:
-        print(f"  Coverage combine failed with status {combine_status}")
-        return
+    # If we have subprocess files, combine them
+    if coverage_files:
+        print("\nCombining coverage data from multiple processes...")
+        combine_status = os.system("coverage combine")
+        if combine_status != 0:
+            print(f"  WARNING: Coverage combine failed with status {combine_status}")
+            return
 
-    # Check if .coverage file was created
-    if not os.path.exists(".coverage"):
-        print("  WARNING: .coverage file not created after combine!")
-        return
+        # Verify .coverage file was created after combine
+        if not os.path.exists(".coverage"):
+            print("  WARNING: .coverage file not created after combine!")
+            return
+    elif main_coverage:
+        print("\nSingle-process coverage data found (no combine needed)")
 
-    combined_size = os.path.getsize(".coverage")
-    print(f" Combined coverage data: .coverage ({combined_size} bytes)")
+    # Check final .coverage file
+    if os.path.exists(".coverage"):
+        combined_size = os.path.getsize(".coverage")
+        print(f"Final coverage data: .coverage ({combined_size} bytes)")
+    else:
+        print("ERROR: No .coverage file available for report generation!")
+        return
 
     # Generate HTML report
     title = f"{RUN_TYPE.capitalize()} Test Coverage ({timestamp})"
     print(f"\nGenerating HTML report...")
     html_status = os.system(f'coverage html --title="{title}"')
     if html_status != 0:
-        print(f"  Coverage HTML generation failed with status {html_status}")
+        print(f"  WARNING: Coverage HTML generation failed with status {html_status}")
+        return
 
     # Ensure the coverage_reports directory exists
     os.makedirs("coverage_reports", exist_ok=True)
@@ -81,9 +97,10 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
     # Rename htmlcov folder to include timestamp for archival
     if os.path.isdir("htmlcov"):
         os.rename("htmlcov", htmlcov_dir)
-        print(f" Saved HTML report: {htmlcov_dir}/index.html")
+        print(f"Saved HTML report: {htmlcov_dir}/index.html")
     else:
         print("  WARNING: htmlcov directory not created!")
+        return
 
     if show_report:
         print("\nGenerating text report...")
