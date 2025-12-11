@@ -134,14 +134,14 @@ Window {
                         renderStrategy: Canvas.Threaded
 
                         onPaint: {
-                            var ctx = getContext("2d")
+                            let ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
 
                             // Grid
                             ctx.strokeStyle = "#1a1a1a"
                             ctx.lineWidth = 1
-                            for (var i = 1; i < 4; i++) {
-                                var y = height * i / 4
+                            for (let i = 1; i < 4; i++) {
+                                let y = height * i / 4
                                 ctx.beginPath()
                                 ctx.moveTo(0, y)
                                 ctx.lineTo(width, y)
@@ -157,17 +157,17 @@ Window {
                             if (throttleHistory.length < 2)
                                 return
 
-                            var spacing = width / (maxHistoryLength - 1)
+                            let spacing = width / (maxHistoryLength - 1)
 
                             // Throttle tint fill
-                            var gradT = ctx.createLinearGradient(0, height, 0, 0)
+                            let gradT = ctx.createLinearGradient(0, height, 0, 0)
                             gradT.addColorStop(0, Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, 0.15))
                             gradT.addColorStop(1, Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, 0))
                             ctx.fillStyle = gradT
                             ctx.beginPath()
                             ctx.moveTo(0, height)
-                            for (var t=0; t<throttleHistory.length; t++) {
-                                var yT = height - (throttleHistory[t] / 100) * height
+                            for (let t=0; t<throttleHistory.length; t++) {
+                                let yT = height - (throttleHistory[t] / 100) * height
                                 ctx.lineTo(t * spacing, yT)
                             }
                             ctx.lineTo((throttleHistory.length-1)*spacing, height)
@@ -175,14 +175,14 @@ Window {
                             ctx.fill()
 
                             // Brake tint fill
-                            var gradB = ctx.createLinearGradient(0, height, 0, 0)
+                            let gradB = ctx.createLinearGradient(0, height, 0, 0)
                             gradB.addColorStop(0, Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, 0.15))
                             gradB.addColorStop(1, Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, 0))
                             ctx.fillStyle = gradB
                             ctx.beginPath()
                             ctx.moveTo(0, height)
-                            for (var b=0; b<brakeHistory.length; b++) {
-                                var yB = height - (brakeHistory[b] / 100) * height
+                            for (let b=0; b<brakeHistory.length; b++) {
+                                let yB = height - (brakeHistory[b] / 100) * height
                                 ctx.lineTo(b*spacing, yB)
                             }
                             ctx.lineTo((brakeHistory.length-1)*spacing, height)
@@ -193,8 +193,8 @@ Window {
                             ctx.strokeStyle = throttleColor
                             ctx.lineWidth = 2
                             ctx.beginPath()
-                            for (var t2=0; t2<throttleHistory.length; t2++) {
-                                var yT2 = height - (throttleHistory[t2]/100)*height
+                            for (let t2=0; t2<throttleHistory.length; t2++) {
+                                let yT2 = height - (throttleHistory[t2]/100)*height
                                 if (t2===0) ctx.moveTo(0,yT2)
                                 else ctx.lineTo(t2*spacing, yT2)
                             }
@@ -203,8 +203,8 @@ Window {
                             // --- BRAKE LINE ---
                             ctx.strokeStyle = brakeColor
                             ctx.beginPath()
-                            for (var b2=0; b2<brakeHistory.length; b2++) {
-                                var yB2 = height - (brakeHistory[b2]/100)*height
+                            for (let b2=0; b2<brakeHistory.length; b2++) {
+                                let yB2 = height - (brakeHistory[b2]/100)*height
                                 if (b2===0) ctx.moveTo(0,yB2)
                                 else ctx.lineTo(b2*spacing, yB2)
                             }
@@ -213,8 +213,8 @@ Window {
                             // --- STEERING LINE ---
                             ctx.strokeStyle = steeringColor
                             ctx.beginPath()
-                            for (var s=0; s<steeringHistory.length; s++) {
-                                var yS = height/2 - (steeringHistory[s]/100)*(height/2)
+                            for (let s=0; s<steeringHistory.length; s++) {
+                                let yS = height/2 - (steeringHistory[s]/100)*(height/2)
                                 if (s===0) ctx.moveTo(0,yS)
                                 else ctx.lineTo(s*spacing, yS)
                             }
