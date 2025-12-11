@@ -5,7 +5,7 @@ Window {
     id: root
     visible: true
     width: 400 * scaleFactor
-    height: 150 * scaleFactor
+    height: 120 * scaleFactor
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
@@ -28,7 +28,7 @@ Window {
     property var throttleHistory: []
     property var brakeHistory: []
     property var steeringHistory: []
-    property int maxHistoryLength: 100
+    property int maxHistoryLength: 250
 
     // Function called from Python to update telemetry
     function updateTelemetry(throttle, brake, steering) {
@@ -91,15 +91,6 @@ Window {
                         ctx.beginPath()
                         ctx.moveTo(0, y)
                         ctx.lineTo(width, y)
-                        ctx.stroke()
-                    }
-
-                    // Vertical grid lines
-                    for (var j = 0; j <= 10; j++) {
-                        var x = (width / 10) * j
-                        ctx.beginPath()
-                        ctx.moveTo(x, 0)
-                        ctx.lineTo(x, height)
                         ctx.stroke()
                     }
 
@@ -177,14 +168,14 @@ Window {
                     border.color: "#FF0000"
                     border.width: 1 * scaleFactor
                     radius: 3 * scaleFactor
+                    clip: true
 
                     Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width - 4 * scaleFactor
-                        height: (brakeValue / 100) * (parent.height - 4 * scaleFactor)
+                        width: parent.width
+                        height: (brakeValue / 100) * parent.height
                         color: "#FF0000"
-                        radius: 2 * scaleFactor
                     }
                 }
 
@@ -196,14 +187,14 @@ Window {
                     border.color: "#00FF00"
                     border.width: 1 * scaleFactor
                     radius: 3 * scaleFactor
+                    clip: true
 
                     Rectangle {
                         anchors.bottom: parent.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width - 4 * scaleFactor
-                        height: (throttleValue / 100) * (parent.height - 4 * scaleFactor)
+                        width: parent.width
+                        height: (throttleValue / 100) * parent.height
                         color: "#00FF00"
-                        radius: 2 * scaleFactor
                     }
                 }
             }
