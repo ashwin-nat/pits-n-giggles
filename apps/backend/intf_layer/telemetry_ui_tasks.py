@@ -201,12 +201,23 @@ async def hudUpdateTask(
         shutdown_event (async.Event): Event to signal shutdown
     """
     await _initial_random_sleep()
-    sleep_duration = write_interval_ms / 1000
+    interval = write_interval_ms / 1000.0
+    loop = asyncio.get_running_loop()
+
     while not shutdown_event.is_set():
+        loop_start = loop.time()
+
         shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
         shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
         await shm.write()
-        await asyncio.sleep(sleep_duration)
+
+        elapsed = loop.time() - loop_start
+        remaining = interval - elapsed
+
+        if remaining > 0:
+            await asyncio.sleep(remaining)
+        else:
+            await asyncio.sleep(0) # Yield control to event loop
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

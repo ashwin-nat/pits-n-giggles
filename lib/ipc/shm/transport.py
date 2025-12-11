@@ -180,11 +180,12 @@ class ShmTransportReader:
 
     def run(self) -> None:
         """
-        Blocking polling loop with automatic re-attach if writer restarts.
+        Blocking polling loop with deadline-based timing and automatic re-attach if writer restarts.
         """
         self.logger.info("Shared memory receiver run loop started")
 
         while self._running:
+            loop_start = time.perf_counter()  # High-precision timing
 
             # ----------------------------------
             # 1) ATTACH PHASE (wait forever)
@@ -223,7 +224,14 @@ class ShmTransportReader:
                 # Force a clean re-attach on next loop
                 self.shm = None
 
-            time.sleep(self.read_interval_sec)
+            # ----------------------------------
+            # 4) DEADLINE-BASED SLEEP
+            # ----------------------------------
+            elapsed = time.perf_counter() - loop_start
+            remaining = self.read_interval_sec - elapsed
+
+            if remaining > 0:
+                time.sleep(remaining)
 
         self.logger.info("Shared memory receiver stopped")
 
