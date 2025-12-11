@@ -71,7 +71,8 @@ def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode:
         logger=logger,
         overlays_mgr=overlays_mgr,
         port=config.Network.server_port,
-        shm_read_interval_ms=config.Display.hud_refresh_interval)
+        shm_read_interval_ms=config.Display.hud_refresh_interval,
+        low_freq_update_interval_ms=config.Display.refresh_interval)
 
     run_ipc_task(
         port=ipc_port,

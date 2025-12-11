@@ -37,7 +37,8 @@ def run_hud_update_threads(
         port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        shm_read_interval_ms: int
+        shm_read_interval_ms: int,
+        low_freq_update_interval_ms: int
         ) -> HudClient:
     """Creates, runs and returns the HUD update thread.
 
@@ -46,11 +47,13 @@ def run_hud_update_threads(
         logger: Logger instance.
         overlays_mgr: Overlays manager
         shm_read_interval_ms: Shared memory read interval
+        low_freq_update_interval_ms: Low frequency update interval
 
     Returns:
         HudClient - the incoming data receiver client obj
     """
-    return _run_socketio_thread(port, logger, overlays_mgr), _run_shm_thread(logger, overlays_mgr, shm_read_interval_ms)
+    return _run_socketio_thread(port, logger, overlays_mgr), \
+            _run_shm_thread(logger, overlays_mgr, shm_read_interval_ms, low_freq_update_interval_ms)
 
 def _run_socketio_thread(
         port: int,
@@ -71,7 +74,8 @@ def _run_socketio_thread(
 def _run_shm_thread(
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        shm_read_interval_ms: int
+        shm_read_interval_ms: int,
+        low_freq_update_interval_ms: int
         ) -> None:
     """Thread target to run the shared memory listener for HUD updates.
 
@@ -79,9 +83,10 @@ def _run_shm_thread(
         logger: Logger instance.
         overlays_mgr: Overlays manager
         shm_read_interval_ms: Shared memory read interval
+        low_freq_update_interval_ms: Low frequency update interval
     """
     shm = PngShmReader(logger, read_interval_ms=shm_read_interval_ms)
-    rate_limiter = RateLimiter(interval_ms=100)  # TODO: make configurable
+    rate_limiter = RateLimiter(interval_ms=low_freq_update_interval_ms)
 
     @shm.on("race-table-update")
     def _handle_race_table_update(data):
