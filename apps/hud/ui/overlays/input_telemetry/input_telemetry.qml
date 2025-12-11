@@ -16,6 +16,14 @@ Window {
     property real brakeValue: 0
     property real steeringValue: 0
 
+    // Smoothed values for display
+    property real throttleSmoothed: 0
+    property real brakeSmoothed: 0
+    property real steeringSmoothed: 0
+
+    // Smoothing factor (0.0 = no smoothing, 1.0 = max smoothing)
+    property real smoothingFactor: 0.2
+
     // History arrays to store past values for the graph
     property var throttleHistory: []
     property var brakeHistory: []
@@ -24,14 +32,19 @@ Window {
 
     // Function called from Python to update telemetry
     function updateTelemetry(throttle, brake, steering) {
-        throttleValue = throttle
-        brakeValue = brake
-        steeringValue = steering
+        // Apply exponential moving average smoothing
+        throttleSmoothed = throttleSmoothed * smoothingFactor + throttle * (1 - smoothingFactor)
+        brakeSmoothed = brakeSmoothed * smoothingFactor + brake * (1 - smoothingFactor)
+        steeringSmoothed = steeringSmoothed * smoothingFactor + steering * (1 - smoothingFactor)
 
-        // Add to history
-        throttleHistory.push(throttle)
-        brakeHistory.push(brake)
-        steeringHistory.push(steering)
+        throttleValue = throttleSmoothed
+        brakeValue = brakeSmoothed
+        steeringValue = steeringSmoothed
+
+        // Add smoothed values to history
+        throttleHistory.push(throttleSmoothed)
+        brakeHistory.push(brakeSmoothed)
+        steeringHistory.push(steeringSmoothed)
 
         // Trim if too long
         if (throttleHistory.length > maxHistoryLength) {
@@ -59,7 +72,7 @@ Window {
             // Graph canvas
             Canvas {
                 id: canvas
-                width: parent.width - 40 * scaleFactor
+                width: parent.width - 55 * scaleFactor
                 height: parent.height
                 renderStrategy: Canvas.Threaded
                 renderTarget: Canvas.FramebufferObject
@@ -151,34 +164,15 @@ Window {
             }
 
             // Vertical bars container
-            Column {
-                width: 20 * scaleFactor
+            Row {
+                width: 45 * scaleFactor
                 height: parent.height
                 spacing: 5 * scaleFactor
 
-                // Throttle bar (green)
-                Rectangle {
-                    width: parent.width
-                    height: (parent.height - parent.spacing) / 2
-                    color: "#202020"
-                    border.color: "#00FF00"
-                    border.width: 1 * scaleFactor
-                    radius: 3 * scaleFactor
-
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width - 4 * scaleFactor
-                        height: (throttleValue / 100) * (parent.height - 4 * scaleFactor)
-                        color: "#00FF00"
-                        radius: 2 * scaleFactor
-                    }
-                }
-
                 // Brake bar (red)
                 Rectangle {
-                    width: parent.width
-                    height: (parent.height - parent.spacing) / 2
+                    width: 20 * scaleFactor
+                    height: parent.height
                     color: "#202020"
                     border.color: "#FF0000"
                     border.width: 1 * scaleFactor
@@ -190,6 +184,25 @@ Window {
                         width: parent.width - 4 * scaleFactor
                         height: (brakeValue / 100) * (parent.height - 4 * scaleFactor)
                         color: "#FF0000"
+                        radius: 2 * scaleFactor
+                    }
+                }
+
+                // Throttle bar (green)
+                Rectangle {
+                    width: 20 * scaleFactor
+                    height: parent.height
+                    color: "#202020"
+                    border.color: "#00FF00"
+                    border.width: 1 * scaleFactor
+                    radius: 3 * scaleFactor
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width - 4 * scaleFactor
+                        height: (throttleValue / 100) * (parent.height - 4 * scaleFactor)
+                        color: "#00FF00"
                         radius: 2 * scaleFactor
                     }
                 }
