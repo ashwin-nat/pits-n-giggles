@@ -74,5 +74,6 @@ class InputTelemetryOverlay(BaseOverlayQML):
                     Qt.ConnectionType.QueuedConnection,
                     Q_ARG("QVariant", data.throttle),
                     Q_ARG("QVariant", data.brake),
-                    Q_ARG("QVariant", data.steering)
+                    Q_ARG("QVariant", data.steering),
+                    Q_ARG("QVariant", data.rev_pct),
                 )

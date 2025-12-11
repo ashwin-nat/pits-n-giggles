@@ -302,6 +302,7 @@ class OverlaysMgr:
             InputTelemetryData(
                 throttle=car_telemetry["throttle"],
                 brake=car_telemetry["brake"],
-                steering=car_telemetry["steering"]
+                steering=car_telemetry["steering"],
+                rev_pct=car_telemetry["rev-lights-percent"],
             )
         )

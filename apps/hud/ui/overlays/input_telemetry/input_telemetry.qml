@@ -7,8 +7,8 @@ Window {
     visible: true
 
     property real scaleFactor: 1.0
-    readonly property int baseWidth: 420
-    readonly property int baseHeight: 130
+    readonly property int baseWidth: 450
+    readonly property int baseHeight: 120
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -28,10 +28,12 @@ Window {
     property real throttleValue: 0
     property real brakeValue:    0
     property real steeringValue: 0
+    property real revLightsValue: 0
 
     property real throttleSmoothed: 0
     property real brakeSmoothed:    0
     property real steeringSmoothed: 0
+    property real revLightsSmoothed: 0
     property real smoothingFactor:  0.2
 
 
@@ -41,16 +43,18 @@ Window {
     property var throttleHistory: []
     property var brakeHistory:    []
     property var steeringHistory: []
-    property int maxHistoryLength: 100
+    property int maxHistoryLength: 175
 
-    function updateTelemetry(t, b, s) {
-        throttleSmoothed = throttleSmoothed * smoothingFactor + t * (1 - smoothingFactor)
-        brakeSmoothed    = brakeSmoothed    * smoothingFactor + b * (1 - smoothingFactor)
-        steeringSmoothed = steeringSmoothed * smoothingFactor + s * (1 - smoothingFactor)
+    function updateTelemetry(throttle, brake, steering, revPct) {
+        throttleSmoothed = throttleSmoothed * smoothingFactor + throttle * (1 - smoothingFactor)
+        brakeSmoothed    = brakeSmoothed    * smoothingFactor + brake * (1 - smoothingFactor)
+        steeringSmoothed = steeringSmoothed * smoothingFactor + steering * (1 - smoothingFactor)
+        revLightsSmoothed = revLightsSmoothed * smoothingFactor + revPct * (1 - smoothingFactor)
 
         throttleValue = throttleSmoothed
         brakeValue    = brakeSmoothed
         steeringValue = steeringSmoothed
+        revLightsValue = revLightsSmoothed
 
         throttleHistory.push(throttleSmoothed)
         brakeHistory.push(brakeSmoothed)
@@ -113,7 +117,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
-                    // top gradient strip
+                    // top gradient strip (rev lights)
                     Rectangle {
                         anchors.left: parent.left
                         anchors.right: parent.right
@@ -122,8 +126,8 @@ Window {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 0.3; color: brakeColor }
-                            GradientStop { position: 0.7; color: throttleColor }
+                            GradientStop { position: 0.3; color: Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, revLightsValue / 100) }
+                            GradientStop { position: 0.7; color: Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, revLightsValue / 100) }
                             GradientStop { position: 1.0; color: "transparent" }
                         }
                     }

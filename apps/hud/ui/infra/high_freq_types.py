@@ -37,3 +37,4 @@ class InputTelemetryData(HighFreqBase):
     throttle: float
     brake: float
     steering: float
+    rev_pct: float
