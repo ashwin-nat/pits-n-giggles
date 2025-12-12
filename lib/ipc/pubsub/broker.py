@@ -34,12 +34,13 @@ import zmq
 class IpcPubSubBroker:
     """
     XPUB/XSUB broker that:
-    - Runs its proxy loop in a background thread
-    - Automatically restarts if the proxy loop crashes
-    - Keeps ports stable (PUB/SUB auto-reconnect)
+    - Auto-prepares (binds) in __init__
+    - Runs proxy loop in background thread
+    - Auto-restarts on crash (re-prepare + proxy)
+    - Keeps ports stable and discoverable immediately
     """
 
-    RESTART_DELAY = 0.1  # Seconds between restart attempts
+    RESTART_DELAY = 0.1
 
     def __init__(self, host="127.0.0.1", xsub_port=0, xpub_port=0, logger=None):
         self.host = host
@@ -47,23 +48,27 @@ class IpcPubSubBroker:
 
         self.ctx = zmq.Context.instance()
 
-        self._thread = None
-        self._running = False
-
         self._configured_xsub_port = xsub_port
         self._configured_xpub_port = xpub_port
 
-        # Always defined
         self.xsub: Optional[zmq.Socket] = None
         self.xpub: Optional[zmq.Socket] = None
 
-        # Populated after first bind
-        self.xsub_port = None
-        self.xpub_port = None
+        self.xsub_port: Optional[int] = None
+        self.xpub_port: Optional[int] = None
 
-    # ===============================================================
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+
+        self._prepare()
+        self.logger.info(
+            f"ZmqBroker prepared: "
+            f"XSUB={self.xsub_endpoint}, XPUB={self.xpub_endpoint}"
+        )
+
+    # ------------------------------------------------------------------
     # Public API
-    # ===============================================================
+    # ------------------------------------------------------------------
 
     def start(self):
         """Starts the broker supervisor thread."""
@@ -71,36 +76,46 @@ class IpcPubSubBroker:
             return
 
         self._running = True
-        self._thread = threading.Thread(target=self._supervisor_loop, daemon=True, name="IPC-Broker")
+        self._thread = threading.Thread(
+            target=self._supervisor_loop,
+            daemon=True,
+            name="IPC-Broker",
+        )
         self._thread.start()
+
         self.logger.info("ZmqBroker supervisor started")
 
     def close(self):
-        """Stops the broker and ends the supervisor loop."""
+        """Stops broker and shuts down sockets."""
         self._running = False
         self._cleanup_sockets()
         self.logger.info("ZmqBroker closed")
 
-    # ===============================================================
-    # Supervisor Loop - Always Running
-    # ===============================================================
+    @property
+    def xpub_endpoint(self) -> str:
+        return f"tcp://{self.host}:{self.xpub_port}"
+
+    @property
+    def xsub_endpoint(self) -> str:
+        return f"tcp://{self.host}:{self.xsub_port}"
+
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    # ------------------------------------------------------------------
+    # Supervisor loop
+    # ------------------------------------------------------------------
 
     def _supervisor_loop(self):
-        """
-        The supervisor is responsible for:
-        - Creating sockets
-        - Running proxy loop
-        - Restarting when proxy exits
-        """
         while self._running:
             try:
-                self._setup_sockets()
-
                 self.logger.info(
-                    f"ZmqBroker active: XSUB={self.xsub_port}, XPUB={self.xpub_port}"
+                    f"ZmqBroker active: "
+                    f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
                 )
 
-                # Blocking call - exits on error or socket close
+                # Blocking until crash or close()
                 zmq.proxy(self.xsub, self.xpub)
 
             except Exception as e:
@@ -109,18 +124,21 @@ class IpcPubSubBroker:
                 self.logger.error(f"ZmqBroker proxy crashed: {e}")
 
             finally:
-                # Clean up sockets so next loop can create new ones
                 self._cleanup_sockets()
 
-            # Small wait before restarting
-            time.sleep(self.RESTART_DELAY)
+                if self._running:
+                    time.sleep(self.RESTART_DELAY)
+                    self._prepare()   # 🔁 re-bind + re-discover ports
 
-    # ===============================================================
+    # ------------------------------------------------------------------
     # Internal helpers
-    # ===============================================================
+    # ------------------------------------------------------------------
 
-    def _setup_sockets(self):
-        """Bind XPUB/XSUB sockets and capture final ports."""
+    def _prepare(self):
+        """Bind XPUB/XSUB sockets and discover ports."""
+        if self.xsub or self.xpub:
+            return
+
         self.xsub = self.ctx.socket(zmq.XSUB)
         self.xsub.setsockopt(zmq.LINGER, 0)
 
@@ -128,16 +146,17 @@ class IpcPubSubBroker:
         self.xpub.setsockopt(zmq.LINGER, 0)
         self.xpub.setsockopt(zmq.XPUB_VERBOSE, 1)
 
-        # Bind ports (0 means OS assigns a port)
         self.xsub.bind(f"tcp://{self.host}:{self._configured_xsub_port}")
         self.xpub.bind(f"tcp://{self.host}:{self._configured_xpub_port}")
 
-        # Query actual assigned ports
-        self.xsub_port = int(self.xsub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1])
-        self.xpub_port = int(self.xpub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1])
+        self.xsub_port = int(
+            self.xsub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
+        )
+        self.xpub_port = int(
+            self.xpub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
+        )
 
     def _cleanup_sockets(self):
-        """Close sockets after proxy termination."""
         if self.xsub:
             try:
                 self.xsub.close(linger=0)
