@@ -39,8 +39,8 @@ class IpcServerAsync:
     Includes optional heartbeat monitoring.
     """
 
-    def __init__(self, port: int, name: str = "IpcChildAsync", max_missed_heartbeats: int = 3,
-                 heartbeat_timeout: float = 5.0):
+    def __init__(self, port: int | None = None, name: str = "IpcChildAsync",
+             max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0):
         """
         :param port: Port to bind to.
         :param name: Name for logging purposes.
@@ -51,7 +51,21 @@ class IpcServerAsync:
         self.endpoint = f"tcp://127.0.0.1:{port}"
         self.ctx = zmq.asyncio.Context()
         self.sock = self.ctx.socket(zmq.REP)
-        self.sock.bind(self.endpoint)
+
+        # ------------------------------------------------------------------
+        # 1. Bind to OS-assigned port when port is None
+        # ------------------------------------------------------------------
+        if port is None:
+            self.sock.bind("tcp://127.0.0.1:*")
+            endpoint = self.sock.getsockopt(zmq.LAST_ENDPOINT).decode()
+            # endpoint looks like: "tcp://127.0.0.1:52431"
+            self.endpoint = endpoint
+            self.port = int(endpoint.rsplit(":", 1)[1])
+        else:
+            self.endpoint = f"tcp://127.0.0.1:{port}"
+            self.port = port
+            self.sock.bind(self.endpoint)
+
         self._running = False
         self._shutdown_callback = None
 
