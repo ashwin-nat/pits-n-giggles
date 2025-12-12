@@ -102,7 +102,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
             scale_factor,
             windowed_overlay,
         )
-        logger.debug(f"{self.overlay_id} | InputTelemetryOverlay initialized. Path={self.QML_FILE}. "
+        logger.debug(f"{self.overlay_id} initialized. Path={self.QML_FILE}. "
                      f"exists={self.QML_FILE.is_file()}")
 
     # ----------------------------------------------------------------------
