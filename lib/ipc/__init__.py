@@ -28,6 +28,9 @@ from .subscriber import IpcSubscriber
 from .sync_child import IpcChildSync
 from .utils import get_free_tcp_port
 from .shm.presentation import PngShmWriter, PngShmReader
+from .pubsub.publisher import ZmqAsyncPublisher
+from .pubsub.subscriber import ZmqConsumer
+from .pubsub.broker import ZmqBroker
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -38,6 +41,9 @@ __all__ = [
     'IpcSubscriber',
     'PngShmWriter',
     'PngShmReader',
+    'ZmqAsyncPublisher',
+    'ZmqConsumer',
+    'ZmqBroker',
 
     'get_free_tcp_port',
 ]
