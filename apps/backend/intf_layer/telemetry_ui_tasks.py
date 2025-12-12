@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -48,7 +48,7 @@ def initUiIntfLayer(
     debug_mode: bool,
     tasks: List[asyncio.Task],
     ver_str: str,
-    ipc_port: Optional[int],
+    run_ipc_server: bool,
     shutdown_event: asyncio.Event,
     telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
@@ -60,7 +60,7 @@ def initUiIntfLayer(
         debug_mode (bool): Debug enabled if true
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
-        ipc_port (Optional[int]): IPC port
+        run_ipc_server (bool): Whether to run the IPC server
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
@@ -97,7 +97,7 @@ def initUiIntfLayer(
                                                        write_interval_ms=settings.Display.hud_refresh_interval,
                                                        shutdown_event=shutdown_event), name="HUD Update Task"))
 
-    registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
     return web_server, shm
 
 async def raceTableClientUpdateTask(

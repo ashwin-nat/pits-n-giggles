@@ -53,24 +53,23 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
+    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
 
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, server_port: int, ipc_port: int, version: str) -> None:
+async def main(logger: logging.Logger, server_port: int, version: str) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         server_port (int): Server port
-        ipc_port (int): IPC port
         version (str): Version
     """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger)
     web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
-    init_ipc_task(logger=logger, ipc_port=ipc_port, server=web_server, tasks=tasks)
+    init_ipc_task(logger=logger, server=web_server, tasks=tasks)
 
     try:
         await asyncio.gather(*tasks)
@@ -98,7 +97,6 @@ def entry_point():
         asyncio.run(main(
             logger=png_logger,
             server_port=configs.Network.save_viewer_port,
-            ipc_port=args.ipc_port,
             version=version))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")

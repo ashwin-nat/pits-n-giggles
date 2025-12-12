@@ -31,27 +31,27 @@ from typing import Any, Dict, List
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
+from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.ipc import IpcServerAsync
 from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SaveViewerIpc:
-    def __init__(self, logger: logging.Logger, ipc_port: int, server: SaveViewerWebServer) -> None:
+    def __init__(self, logger: logging.Logger, server: SaveViewerWebServer) -> None:
         """Initialize the IPC server.
 
         Args:
             logger (logging.Logger): Logger
-            ipc_port (int): IPC port
             server (SaveViewerWebServer): Web server
         """
         self.m_logger = logger
-        self.m_ipc_port = ipc_port
         self.m_server = server
         self.m_should_open_ui = True
-        self.m_ipc_server = IpcServerAsync(ipc_port, "Save Viewer")
+        self.m_ipc_server = IpcServerAsync(name="Save Viewer")
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
         self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
+        report_ipc_port_from_child(self.m_ipc_server.port)
 
     async def run(self) -> None:
         """Starts the IPC server."""
@@ -126,14 +126,13 @@ class SaveViewerIpc:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_ipc_task(logger: logging.Logger, ipc_port: int, server: SaveViewerWebServer, tasks: List[asyncio.Task]) -> None:
+def init_ipc_task(logger: logging.Logger, server: SaveViewerWebServer, tasks: List[asyncio.Task]) -> None:
     """Initialize the IPC task.
 
     Args:
         logger (logging.Logger): Logger
-        ipc_port (int): IPC port
         server (SaveViewerWebServer): Web server
         tasks (List[asyncio.Task]): List of tasks
     """
-    ipc_server = SaveViewerIpc(logger, ipc_port, server)
+    ipc_server = SaveViewerIpc(logger, server)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))

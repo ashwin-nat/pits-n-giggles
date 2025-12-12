@@ -28,6 +28,7 @@ import threading
 from functools import partial
 from typing import Callable, Dict
 
+from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcServerSync, PngShmReader
 
@@ -55,8 +56,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def run_ipc_task(
-        port: int, logger:
-        logging.Logger,
+        logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
         shm_reader: PngShmReader
@@ -64,7 +64,6 @@ def run_ipc_task(
     """Runs the IPC task.
 
     Args:
-        port (int): IPC port
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
         socketio_client (HudClient): Receiver client
@@ -74,9 +73,10 @@ def run_ipc_task(
         threading.Thread: IPC thread handle
     """
     ipc_server = IpcServerSync(
-        port=port,
+        # port=port,
         name="hud"
     )
+    report_ipc_port_from_child(ipc_server.port)
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
         shm_reader=shm_reader))
