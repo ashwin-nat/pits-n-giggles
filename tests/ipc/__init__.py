@@ -24,11 +24,17 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_parent_child import TestIpcParentChild
+from .shm.tests_transport import TestShmTransport
+from .shm.tests_presentation import TestShmPresentation
+from .shm.tests_shm import TestShmE2E
 from .tests_subscriber import TestIpcSubscriber
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestIpcParentChild",
+    "TestShmTransport",
+    "TestShmPresentation",
+    "TestShmE2E",
     "TestIpcSubscriber",
 ]

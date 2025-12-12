@@ -58,12 +58,6 @@ class HudClient(IpcSubscriber):
             """Post disconnection callback."""
             self.logger.info("[HudClient] Disconnected")
 
-        # custom event handler
-        @self.on('race-table-update')
-        def handle_race_table(data):
-            """Race table data update handler."""
-            self.m_overlays_mgr.race_table_update(data)
-
         @self.on('hud-toggle-notification')
         def handle_hud_toggle_notification(data):
             """HUD toggle notification handler."""
@@ -79,8 +73,3 @@ class HudClient(IpcSubscriber):
             """Cycle MFD notification handler."""
             self.logger.debug("[HudClient] Received Cycle MFD notification")
             self.m_overlays_mgr.next_page()
-
-        @self.on('stream-overlay-update')
-        def handle_stream_overlay_update(data):
-            """Stream overlay data update handler."""
-            self.m_overlays_mgr.stream_overlays_update(data)

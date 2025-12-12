@@ -22,20 +22,33 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
+import time
+from typing import Callable, Dict, Optional
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- FUNCTIONS --------------------------------------------------------------------
 
-__all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-]
+class RateLimiter:
+    def __init__(self, interval_ms: int, time_fn: Callable[[], float] = time.monotonic):
+        """
+        interval_ms : minimum time between allowed calls per event
+        time_fn     : injectable time source for testability (default: time.monotonic)
+        """
+        self.interval = interval_ms / 1000.0
+        self._time_fn: Callable[[], float] = time_fn
+        self._last_time: Dict[str, Optional[float]] = {}
+
+    def allows(self, event_id: str) -> bool:
+        """Return True if enough time has passed since last allowed call."""
+        now = self._time_fn()
+        last = self._last_time.get(event_id)
+
+        # First call must always be allowed
+        if last is None:
+            self._last_time[event_id] = now
+            return True
+
+        if now - last >= self.interval:
+            self._last_time[event_id] = now
+            return True
+
+        return False

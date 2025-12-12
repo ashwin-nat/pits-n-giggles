@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -34,6 +34,7 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
+from lib.ipc import PngShmWriter
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -49,7 +50,7 @@ def initUiIntfLayer(
     ver_str: str,
     ipc_port: Optional[int],
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> TelemetryWebServer:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -64,7 +65,7 @@ def initUiIntfLayer(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        TelemetryWebServer: The initialized web server
+        Tuple[TelemetryWebServer, PngShmWriter]: Web server and shm writer instances
     """
 
     # First, create the server instance
@@ -75,6 +76,7 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
+    shm = PngShmWriter(logger)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
@@ -89,10 +91,14 @@ def initUiIntfLayer(
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudNotifierTask(web_server, shutdown_event), name="HUD Notifier Task"))
+    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
+    if settings.HUD.enabled:
+        tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
+                                                       write_interval_ms=settings.Display.hud_refresh_interval,
+                                                       shutdown_event=shutdown_event), name="HUD Update Task"))
 
     registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
-    return web_server
+    return web_server, shm
 
 async def raceTableClientUpdateTask(
         update_interval_ms: int,
@@ -165,7 +171,7 @@ async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asynci
 
     server.m_logger.debug("Shutting down front end message task")
 
-async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
+async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
@@ -180,6 +186,38 @@ async def hudNotifierTask(server: TelemetryWebServer, shutdown_event: asyncio.Ev
                 data=message.toJSON())
 
     server.m_logger.debug("Shutting down HUD notifier task")
+
+async def hudUpdateTask(
+        shm: PngShmWriter,
+        session_state: SessionState,
+        write_interval_ms: int,
+        shutdown_event: asyncio.Event) -> None:
+    """Task to update HUD clients with telemetry data
+
+    Args:
+        shm (PngShmWriter): Shared memory writer
+        session_state (SessionState): Handle to the session state data structure
+        write_interval_ms (int): Write interval in milliseconds
+        shutdown_event (async.Event): Event to signal shutdown
+    """
+    await _initial_random_sleep()
+    interval = write_interval_ms / 1000.0
+    loop = asyncio.get_running_loop()
+
+    while not shutdown_event.is_set():
+        loop_start = loop.time()
+
+        shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
+        shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
+        await shm.write()
+
+        elapsed = loop.time() - loop_start
+        remaining = interval - elapsed
+
+        if remaining > 0:
+            await asyncio.sleep(remaining)
+        else:
+            await asyncio.sleep(0) # Yield control to event loop
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

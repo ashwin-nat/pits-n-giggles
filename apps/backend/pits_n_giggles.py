@@ -29,7 +29,7 @@ import os
 import socket
 import sys
 import time
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 import psutil
 from wsproto.connection import LocalProtocolError
@@ -42,6 +42,7 @@ from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.ipc import PngShmWriter
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -91,7 +92,7 @@ class PngRunner:
             session_state=self.m_session_state,
             tasks=self.m_tasks
         )
-        self.m_web_server = self._setupUiIntfLayer(
+        self.m_web_server, self.m_shm = self._setupUiIntfLayer(
             ipc_port=ipc_port,
             debug_mode=debug_mode
         )
@@ -112,7 +113,7 @@ class PngRunner:
 
     def _setupUiIntfLayer(self,
         ipc_port: Optional[int] = None,
-        debug_mode: Optional[bool] = False) -> TelemetryWebServer:
+        debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, PngShmWriter]:
         """Entry point to start the HTTP server.
 
         Args:
@@ -120,7 +121,7 @@ class PngRunner:
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
-            TelemetryWebServer: The initialized web server object
+            Tuple[TelemetryWebServer, PngShmWriter]: Web server and IPC writer
         """
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
@@ -182,9 +183,10 @@ class PngRunner:
         self.m_shutdown_event.set()
         await AsyncInterTaskCommunicator().unblock_receivers()
 
-        # Explicitly stop the
+        # Explicitly stop the tasks
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
+        self.m_shm.close()
         await asyncio.sleep(1)
 
         self.m_logger.debug("Tasks stopped. Exiting...")

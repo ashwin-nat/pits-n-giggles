@@ -24,18 +24,44 @@
 
 import logging
 import threading
+from typing import Tuple
+
+from lib.ipc import PngShmReader
+from lib.rate_limiter import RateLimiter
 
 from ..ui.infra import OverlaysMgr
 from .client import HudClient
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def run_hud_update_thread(
+def run_hud_update_threads(
+        port: int,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        shm_read_interval_ms: int,
+        low_freq_update_interval_ms: int
+        ) -> Tuple[HudClient, PngShmReader]:
+    """Creates, runs and returns the HUD update thread.
+
+    Args:
+        port: Port number of the Socket.IO server.
+        logger: Logger instance.
+        overlays_mgr: Overlays manager
+        shm_read_interval_ms: Shared memory read interval
+        low_freq_update_interval_ms: Low frequency update interval
+
+    Returns:
+        A tuple of the Socket.IO client and SHM reader instances.
+    """
+    return _run_socketio_thread(port, logger, overlays_mgr), \
+            _run_shm_thread(logger, overlays_mgr, shm_read_interval_ms, low_freq_update_interval_ms)
+
+def _run_socketio_thread(
         port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr
         ) -> HudClient:
-    """Creates, runs and returns the HUD update thread.
+    """Thread target to run the Socket.IO listener for HUD updates.
 
     Args:
         port: Port number of the Socket.IO server.
@@ -43,8 +69,44 @@ def run_hud_update_thread(
         overlays_mgr: Overlays manager
 
     Returns:
-        HudClient - the incoming data receiver client obj
+        The Socket.IO client instance.
     """
     client = HudClient(port, logger, overlays_mgr)
     threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
     return client
+
+def _run_shm_thread(
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        shm_read_interval_ms: int,
+        low_freq_update_interval_ms: int
+        ) -> PngShmReader:
+    """Thread target to run the shared memory listener for HUD updates.
+
+    Args:
+        logger: Logger instance.
+        overlays_mgr: Overlays manager
+        shm_read_interval_ms: Shared memory read interval
+        low_freq_update_interval_ms: Low frequency update interval
+
+    Returns:
+        The SHM reader instance.
+    """
+    shm = PngShmReader(logger, read_interval_ms=shm_read_interval_ms)
+    rate_limiter = RateLimiter(interval_ms=low_freq_update_interval_ms)
+
+    @shm.on("race-table-update")
+    def _handle_race_table_update(data):
+        """Race table data update handler."""
+        if rate_limiter.allows("race-table-update"):
+            overlays_mgr.race_table_update(data)
+
+    @shm.on("stream-overlay-update")
+    def _handle_stream_overlay_update(data):
+        """Stream overlay data update handler."""
+        overlays_mgr.input_telemetry_update(data)
+        if rate_limiter.allows("stream-overlay-update"):
+            overlays_mgr.stream_overlays_update(data)
+
+    threading.Thread(target=shm.read, daemon=True, name="SHM listener").start()
+    return shm

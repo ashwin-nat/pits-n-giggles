@@ -92,14 +92,21 @@ class StreamOverlayData(BaseAPI):
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_copies.m_packet_car_telemetry:
-            self.m_throttle = player_data.m_packet_copies.m_packet_car_telemetry.m_throttle
-            self.m_brake    = player_data.m_packet_copies.m_packet_car_telemetry.m_brake
-            self.m_steering = player_data.m_packet_copies.m_packet_car_telemetry.m_steer
-        else:
-            self.m_throttle = 0
-            self.m_brake    = 0
-            self.m_steering = 0
+        fields = {
+            "throttle": ("m_throttle", 100),
+            "brake": ("m_brake", 100),
+            "steering": ("m_steer", 100),
+            "rev-lights-percent": ("m_revLightsPercent", 1),   # no *100
+        }
+
+        telemetry = None
+        if player_data:
+            telemetry = player_data.m_packet_copies.m_packet_car_telemetry
+
+        self.m_car_telemetry = {
+            key: (getattr(telemetry, attr) * scale if telemetry else 0)
+            for key, (attr, scale) in fields.items()
+        }
 
     def __initLapTimes(self, player_data: Optional[DataPerDriver]) -> None:
         """Prepares the player's lap history data.
@@ -307,12 +314,7 @@ class StreamOverlayData(BaseAPI):
                 } for sample in self.m_weather_forecast_samples
             ],
             "lap-time-history" : self.m_lap_time_history.toJSON(),
-            "car-telemetry" : {
-                # The UI expects 0 to 100
-                "throttle": (self.m_throttle * 100),
-                "brake": (self.m_brake * 100),
-                "steering" : (self.m_steering * 100),
-            },
+            "car-telemetry" : self.m_car_telemetry,
             "tyre-sets" : self.m_tyre_sets_pkt.toJSON() if self.m_tyre_sets_pkt else None,
             "penalties-and-stats" : {
                 "time-penalties": self.m_penalties,

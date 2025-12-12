@@ -58,6 +58,9 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
+        self.assertEqual(settings.show_input_overlay, True)
+        self.assertEqual(settings.input_overlay_ui_scale, 1.0)
+        self.assertEqual(settings.input_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -87,6 +90,8 @@ class TestHudSettings(TestF1ConfigBase):
             "timing_tower_toggle_udp_action_code",
             "mfd_toggle_udp_action_code",
             "cycle_mfd_udp_action_code",
+            "track_map_toggle_udp_action_code",
+            "input_overlay_toggle_udp_action_code",
         ]
         for field in udp_action_code_fields:
             with self.subTest(field=field):
@@ -311,14 +316,22 @@ class TestHudSettings(TestF1ConfigBase):
 
         # Disable all overlays and enable HUD
         with self.assertRaises(ValidationError):
-            HudSettings(enabled=True, show_lap_timer=False, show_timing_tower=False, show_mfd=False, show_track_map=False)
+            HudSettings(enabled=True,
+                        show_lap_timer=False,
+                        show_timing_tower=False,
+                        show_mfd=False,
+                        show_track_map=False,
+                        show_input_overlay=False)
 
         # Enable atleast one overlay
-        settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False, show_mfd=False)
+        settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
+                               show_mfd=False, show_track_map=False, show_input_overlay=False)
         self.assertEqual(settings.enabled, True)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, False)
         self.assertEqual(settings.show_mfd, False)
+        self.assertEqual(settings.show_track_map, False)
+        self.assertEqual(settings.show_input_overlay, False)
 
     def test_mfd_default_pages(self):
         """Verify default MFD pages exist and are valid"""
@@ -555,3 +568,41 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(track_map_ui_scale=2.1)
         HudSettings(track_map_ui_scale=2.0)
+
+    def test_show_input_overlay(self):
+        show_input_overlay = True
+        hud_settings = HudSettings(show_input_overlay=show_input_overlay)
+        self.assertEqual(hud_settings.show_input_overlay, show_input_overlay)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_input_overlay=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_input_overlay="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_input_overlay=420)
+
+    def test_input_overlay_ui_scale(self):
+        input_overlay_ui_scale = 1.1
+        hud_settings = HudSettings(input_overlay_ui_scale=input_overlay_ui_scale)
+        self.assertEqual(hud_settings.input_overlay_ui_scale, input_overlay_ui_scale)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_ui_scale=0.4)
+        HudSettings(input_overlay_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_ui_scale=2.1)
+        HudSettings(input_overlay_ui_scale=2.0)

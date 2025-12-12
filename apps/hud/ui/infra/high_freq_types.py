@@ -22,20 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
+from dataclasses import dataclass
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-]
+class HighFreqBase:
+    __hf_type__: str
+
+    def __init_subclass__(cls, **kwargs):
+        cls.__hf_type__ = cls.__name__
+
+@dataclass
+class InputTelemetryData(HighFreqBase):
+    throttle: float
+    brake: float
+    steering: float
+    rev_pct: float

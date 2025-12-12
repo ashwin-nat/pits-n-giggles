@@ -22,20 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
+from typing import Protocol
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-]
+class WriterTransport(Protocol):
+    async def write(self, payload: bytes) -> None: ...
+    def close(self) -> None: ...
+
+
+class ReaderTransport(Protocol):
+    def run(self) -> None: ...
+    def stop(self) -> None: ...
+    def close(self) -> None: ...

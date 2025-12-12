@@ -27,6 +27,7 @@ from .parent import IpcParent
 from .subscriber import IpcSubscriber
 from .sync_child import IpcChildSync
 from .utils import get_free_tcp_port
+from .shm.presentation import PngShmWriter, PngShmReader
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -35,6 +36,8 @@ __all__ = [
     'IpcChildAsync',
     'IpcChildSync',
     'IpcSubscriber',
+    'PngShmWriter',
+    'PngShmReader',
 
     'get_free_tcp_port',
 ]

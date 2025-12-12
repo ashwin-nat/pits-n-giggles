@@ -19,23 +19,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+import sys
+import os
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
+from ..base import TestIPC
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
-__all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-]
+class TestShm(TestIPC):
+    pass
