@@ -31,15 +31,8 @@ import logging
 
 class IpcSubscriberSync:
     """
-    Synchronous consumer with route(topic) decorator.
-
-    Usage:
-        consumer = ZmqConsumer(host, port)
-
-        @consumer.route("telemetry")
-        def handle_telemetry(data): ...
-
-        consumer.start()   # blocking
+    Auto-reconnecting synchronous subscriber.
+    Survivable across broker restarts.
     """
 
     def __init__(
@@ -49,73 +42,117 @@ class IpcSubscriberSync:
         logger: Optional[logging.Logger] = None,
     ):
         if port is None:
-            raise ValueError("ZmqConsumer requires explicit port")
+            raise ValueError("IpcSubscriberSync requires explicit port")
 
         self.host = host
         self.port = port
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.IpcSubscriberSync")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
         self.logger = logger
+
         self._context = zmq.Context.instance()
-
-        self.socket = self._context.socket(zmq.SUB)
-        self.socket.setsockopt(zmq.LINGER, 0)
-
         self._routes: Dict[str, Callable[[dict], None]] = {}
 
-        endpoint = f"tcp://{host}:{port}"
+        self._running = False
+        self.socket: Optional[zmq.Socket] = None
+
+        # Create first socket
+        self._create_and_connect()
+
+    # ---------------------------------------------------------
+    # Socket setup
+    # ---------------------------------------------------------
+    def _create_and_connect(self):
+        """Create a new SUB socket and connect to the broker."""
+        if self.socket:
+            try:
+                self.socket.close(linger=0)
+            except Exception:
+                pass
+
+        self.socket: zmq.Socket = self._context.socket(zmq.SUB)
+        self.socket.setsockopt(zmq.LINGER, 0)
+
+        # Restore all topic subscriptions
+        for topic in self._routes:
+            self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode())
+
+        endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
 
-        self._running = False
+        self.logger.info(f"IpcSubscriberSync connected to {endpoint}")
 
-        if self.logger:
-            self.logger.info(f"ZmqConsumer connected to {endpoint}")
-
+    # ---------------------------------------------------------
+    # Register handler
+    # ---------------------------------------------------------
     def route(self, topic: str):
-        """
-        Decorator — registers a handler and subscribes to the topic.
-        """
+        topic_bytes = topic.encode()
 
-        topic_bytes = topic.encode("utf-8")
-        self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
+        # Subscribe immediately
+        if self.socket:
+            self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
 
-        def decorator(func: Callable[[dict], None]):
+        def decorator(func):
             self._routes[topic] = func
             return func
 
         return decorator
 
+    # ---------------------------------------------------------
+    # Main loop with auto-reconnect
+    # ---------------------------------------------------------
     def start(self):
-        """Blocking dispatch loop."""
+        """Blocking loop with reconnection support."""
         self._running = True
         poller = zmq.Poller()
-        poller.register(self.socket, zmq.POLLIN)
-
-        if self.logger:
-            self.logger.info("ZmqConsumer started")
 
         while self._running:
-            events = dict(poller.poll(100))  # 100 ms timeout for clean shutdown
+
+            poller.register(self.socket, zmq.POLLIN)
+
+            try:
+                events = dict(poller.poll(100))
+            except zmq.ZMQError:
+                # Poll error = socket died -> reconnect
+                self.logger.warning("Poll failed — reconnecting SUB socket")
+                self._create_and_connect()
+                continue
 
             if self.socket in events:
-                topic_bytes, payload = self.socket.recv_multipart()
-                topic = topic_bytes.decode("utf-8")
-                data = orjson.loads(payload)
+                try:
+                    frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
+                except zmq.ZMQError:
+                    # Receive error = socket died -> reconnect
+                    self.logger.warning("Receive failed — reconnecting SUB socket")
+                    self._create_and_connect()
+                    continue
+
+                if len(frames) != 2:
+                    continue
+
+                topic_bytes, payload = frames
+                topic = topic_bytes.decode()
 
                 handler = self._routes.get(topic)
                 if handler:
                     try:
+                        data = orjson.loads(payload)
                         handler(data)
                     except Exception as e:
-                        if self.logger:
-                            self.logger.error(f"Handler error for topic={topic}: {e}")
+                        self.logger.error(f"Handler error for {topic}: {e}")
 
-        if self.logger:
-            self.logger.info("ZmqConsumer stopped")
-
-    def close(self):
-        self._running = False
+        # clean shutdown
         try:
             self.socket.close(linger=0)
         except Exception:
             pass
-        if self.logger:
-            self.logger.info("ZmqConsumer closed")
+
+        self.logger.info("IpcSubscriberSync stopped")
+
+    # ---------------------------------------------------------
+    # External shutdown
+    # ---------------------------------------------------------
+    def close(self):
+        self._running = False

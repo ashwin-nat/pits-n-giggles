@@ -22,63 +22,123 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import zmq
-import orjson
-from typing import Optional
+import asyncio
 import logging
+from typing import Optional
+
+import orjson
+import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class IpcPublisherAsync:
     """
-    Async publisher sending multipart messages:
-        [topic_bytes, payload_bytes]
+    Async, auto-reconnecting ZeroMQ PUB publisher.
 
-    - Writes connect to broker's XSUB.
-    - publish(topic, dict) is awaitable.
-    - Non-blocking send, drops if HWM exceeded.
-    - Requires asyncio; uses DONTWAIT.
+    - Never blocks event loop
+    - Reconnects when broker restarts
+    - publish() is always non-blocking
+    - Drops messages while disconnected (PUB/SUB semantics)
     """
+
+    RECONNECT_MIN_DELAY = 0.05
+    RECONNECT_MAX_DELAY = 1.0
 
     def __init__(
         self,
-        host: Optional[str] = "127.0.0.1",
+        host: str = "127.0.0.1",
         port: Optional[int] = None,
         logger: Optional[logging.Logger] = None,
     ):
         if port is None:
-            raise ValueError("ZmqAsyncPublisher requires explicit port")
+            raise ValueError("IpcPublisherAsync requires explicit port")
 
         self.host = host
         self.port = port
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.IpcPublisherAsync")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
         self.logger = logger
+
         self._context = zmq.Context.instance()
-        self.socket = self._context.socket(zmq.PUB)
-        self.socket.setsockopt(zmq.LINGER, 0)
-        self.socket.setsockopt(zmq.SNDHWM, 1)
+        self.socket: Optional[zmq.Socket] = None
 
-        endpoint = f"tcp://{host}:{port}"
-        self.socket.connect(endpoint)
+        self._connected = False
+        self._running = True
+        self._reconnect_task = asyncio.create_task(self._reconnect_loop())
 
-        if self.logger:
-            self.logger.info(f"ZmqAsyncPublisher connected to {endpoint}")
+    # ---------------------------------------------------------
+    # Socket creation
+    # ---------------------------------------------------------
+    def _create_socket(self) -> zmq.Socket:
+        sock: zmq.Socket = self._context.socket(zmq.PUB)
+        sock.setsockopt(zmq.LINGER, 0)
+        sock.setsockopt(zmq.SNDHWM, 1)
+        sock.connect(f"tcp://{self.host}:{self.port}")
+        return sock
 
+    # ---------------------------------------------------------
+    # Async reconnect loop (non-blocking)
+    # ---------------------------------------------------------
+    async def _reconnect_loop(self):
+        delay = self.RECONNECT_MIN_DELAY
+
+        while self._running:
+            if not self._connected:
+                try:
+                    self.socket = self._create_socket()
+                    self._connected = True
+                    delay = self.RECONNECT_MIN_DELAY
+
+                    self.logger.info(f"IpcPublisherAsync connected to tcp://{self.host}:{self.port}")
+
+                except Exception:
+                    self._connected = False
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 2, self.RECONNECT_MAX_DELAY)
+                    continue
+
+            # Connected -> idle until publish() marks us disconnected
+            await asyncio.sleep(0.05)
+
+    # ---------------------------------------------------------
+    # Publish
+    # ---------------------------------------------------------
     async def publish(self, topic: str, data: dict):
+        if not self._connected:
+            return  # drop silently (ZeroMQ semantics)
+
         topic_bytes = topic.encode("utf-8")
         payload = orjson.dumps(data)
 
         try:
-            # Non-blocking send
             self.socket.send_multipart([topic_bytes, payload], flags=zmq.DONTWAIT)
+
         except zmq.Again:
-            if self.logger:
-                self.logger.debug("ZmqAsyncPublisher dropped message (HWM full)")
+            # HWM full -> drop silently
+            self.logger.debug("IpcPublisherAsync dropped message (HWM full)")
 
+        except zmq.ZMQError:
+            # Socket died -> mark disconnected, reconnect loop will fix
+            self._connected = False
+            try:
+                self.socket.close(linger=0)
+            except:
+                pass
+
+    # ---------------------------------------------------------
+    # Shutdown
+    # ---------------------------------------------------------
     async def close(self):
-        try:
-            self.socket.close(linger=0)
-        except Exception:
-            pass
-        if self.logger:
-            self.logger.info("ZmqAsyncPublisher closed")
+        self._running = False
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
 
+        if self.socket:
+            try:
+                self.socket.close(linger=0)
+            except:
+                pass
+
+        self.logger.info("IpcPublisherAsync closed")

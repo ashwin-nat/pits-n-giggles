@@ -48,6 +48,10 @@ class IpcPubSubBroker:
         logger: Optional[logging.Logger] = None,
     ):
         self.host = host
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.IpcSubscriberSync")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
         self.logger = logger
         self._context = zmq.Context.instance()
 
@@ -72,10 +76,9 @@ class IpcPubSubBroker:
         self._xpub_endpoint = self.xpub_sock.getsockopt_string(zmq.LAST_ENDPOINT)
         self.xpub_port = int(self._xpub_endpoint.rsplit(":", 1)[1])
 
-        if self.logger:
-            self.logger.info(
-                f"ZmqBroker XSUB={self._xsub_endpoint}, XPUB={self._xpub_endpoint}"
-            )
+        self.logger.info(
+            f"ZmqBroker XSUB={self._xsub_endpoint}, XPUB={self._xpub_endpoint}"
+        )
 
         self._running = False
         self._thread = None
@@ -100,14 +103,12 @@ class IpcPubSubBroker:
             except zmq.ContextTerminated:
                 pass
             except Exception as e:
-                if self.logger:
-                    self.logger.error(f"ZMQ proxy error: {e}")
+                self.logger.error(f"ZMQ proxy error: {e}")
 
         self._thread = threading.Thread(target=_proxy, daemon=True)
         self._thread.start()
 
-        if self.logger:
-            self.logger.info("ZmqBroker started")
+        self.logger.info("ZmqBroker started")
 
     def close(self):
         self._running = False
@@ -128,5 +129,4 @@ class IpcPubSubBroker:
         except Exception:
             pass
 
-        if self.logger:
-            self.logger.info("ZmqBroker closed")
+        self.logger.info("ZmqBroker closed")

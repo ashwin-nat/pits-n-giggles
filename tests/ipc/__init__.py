@@ -28,6 +28,7 @@ from .shm.tests_transport import TestShmTransport
 from .shm.tests_presentation import TestShmPresentation
 from .shm.tests_shm import TestShmE2E
 from .tests_subscriber import TestIpcSubscriber
+from .tests_pubsub import TestIpcPubSub
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -37,4 +38,5 @@ __all__ = [
     "TestShmPresentation",
     "TestShmE2E",
     "TestIpcSubscriber",
+    "TestIpcPubSub",
 ]
