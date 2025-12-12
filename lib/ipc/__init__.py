@@ -29,7 +29,7 @@ from .reqrep.async_child import IpcServerAsync
 from .reqrep.parent import IpcClientSync
 from .reqrep.sync_child import IpcServerSync
 from .shm.presentation import PngShmReader, PngShmWriter
-from .subscriber import IpcSubscriber
+from .socketio_client import SocketioClient
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -38,7 +38,7 @@ __all__ = [
     'IpcClientSync',
     'IpcServerAsync',
     'IpcServerSync',
-    'IpcSubscriber',
+    'SocketioClient',
     'PngShmWriter',
     'PngShmReader',
     'IpcPublisherAsync',

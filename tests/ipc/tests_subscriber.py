@@ -33,7 +33,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcSubscriber
+from lib.ipc import SocketioClient
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -56,7 +56,7 @@ class TestIpcSubscriber(TestIPC):
         self.sio_patch.stop()
 
     def test_initial_state(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
         self.assertFalse(subscriber._stop_event.is_set())
         self.assertFalse(subscriber._connected)
         self.assertEqual(subscriber.url, self.url)
@@ -64,7 +64,7 @@ class TestIpcSubscriber(TestIPC):
         self.assertEqual(subscriber._event_handlers, [])
 
     def test_on_decorator_registers_handler(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
 
         @subscriber.on("test-event")
         def handler(data):
@@ -74,7 +74,7 @@ class TestIpcSubscriber(TestIPC):
         self.mock_sio.on.assert_any_call("test-event", handler)
 
     def test_on_connect_disconnect_callbacks(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
 
         connect_called = []
         disconnect_called = []
@@ -98,7 +98,7 @@ class TestIpcSubscriber(TestIPC):
         self.assertTrue(disconnect_called)
 
     def test_run_connects_and_sleeps(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
 
         # Patch _setup_sio to prevent overwriting self._sio
         with patch.object(subscriber, "_setup_sio", return_value=None):
@@ -114,7 +114,7 @@ class TestIpcSubscriber(TestIPC):
             )
 
     def test_stop_disconnects(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
         subscriber._connected = True
         subscriber._sio.disconnect = MagicMock()
 
@@ -123,13 +123,13 @@ class TestIpcSubscriber(TestIPC):
         subscriber._sio.disconnect.assert_called_once()
 
     def test_logging(self):
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
         subscriber.logger.info("test message")
         self.logger.info.assert_called_with("test message")
 
     def test_run_connects_and_sleeps(self):
         """Test that run() calls connect and sleeps once, then exits."""
-        subscriber = IpcSubscriber(self.url, self.logger)
+        subscriber = SocketioClient(self.url, self.logger)
 
         # Patch _setup_sio to prevent overwriting self._sio
         with patch.object(subscriber, "_setup_sio", return_value=None):

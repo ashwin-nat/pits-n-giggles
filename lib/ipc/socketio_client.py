@@ -32,7 +32,7 @@ import socketio.exceptions
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcSubscriber:
+class SocketioClient:
     """
     Base class for a synchronous Socket.IO client running in its own thread.
     Subclasses register events via @self.on('event-name') and optionally
