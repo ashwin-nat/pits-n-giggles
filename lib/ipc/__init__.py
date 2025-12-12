@@ -25,9 +25,9 @@
 from .pubsub.broker import IpcPubSubBroker
 from .pubsub.publisher import IpcPublisherAsync
 from .pubsub.subscriber import IpcSubscriberSync
-from .reqrep.async_child import IpcServerAsync
-from .reqrep.parent import IpcClientSync
-from .reqrep.sync_child import IpcServerSync
+from .reqrep.async_server import IpcServerAsync
+from .reqrep.sync_client import IpcClientSync
+from .reqrep.sync_server import IpcServerSync
 from .shm.presentation import PngShmReader, PngShmWriter
 from .socketio_client import SocketioClient
 from .utils import get_free_tcp_port
