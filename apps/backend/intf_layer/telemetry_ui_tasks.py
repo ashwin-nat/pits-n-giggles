@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -34,7 +34,7 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
-from lib.ipc import PngShmWriter
+from lib.ipc import PngShmWriter, IpcPublisherAsync
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -49,6 +49,7 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     run_ipc_server: bool,
+    xsub_port: Optional[int],
     shutdown_event: asyncio.Event,
     telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
@@ -61,6 +62,7 @@ def initUiIntfLayer(
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
         run_ipc_server (bool): Whether to run the IPC server
+        xsub_port (Optional[int]): Port for IPC xsub socket
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
@@ -77,17 +79,19 @@ def initUiIntfLayer(
         debug_mode=debug_mode,
     )
     shm = PngShmWriter(logger)
+    ipc_pub = IpcPublisherAsync(logger=logger, port=xsub_port)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
     tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
                                                                session_state,
                                                                logger,
-                                                               shutdown_event),
+                                                               shutdown_event,
+                                                               ipc_pub),
                                      name="Race Table Update Task"))
     tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.Display.refresh_interval,
                                                              settings.StreamOverlay.show_sample_data_at_start,
-                                                             web_server, session_state, shutdown_event),
+                                                             web_server, session_state, shutdown_event, ipc_pub),
                                      name="Stream Overlay Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
@@ -95,7 +99,7 @@ def initUiIntfLayer(
     if settings.HUD.enabled:
         tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
                                                        write_interval_ms=settings.Display.hud_refresh_interval,
-                                                       shutdown_event=shutdown_event), name="HUD Update Task"))
+                                                       shutdown_event=shutdown_event, ipc_pub=ipc_pub), name="HUD Update Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
     return web_server, shm
@@ -105,7 +109,8 @@ async def raceTableClientUpdateTask(
         server: TelemetryWebServer,
         session_state: SessionState,
         logger: logging.Logger,
-        shutdown_event: asyncio.Event) -> None:
+        shutdown_event: asyncio.Event,
+        ipc_pub: IpcPublisherAsync) -> None:
     """Task to update clients with telemetry data
 
     Args:
@@ -114,16 +119,20 @@ async def raceTableClientUpdateTask(
         session_state (SessionState): Handle to the session state data structure
         logger (logging.Logger): Logger handle
         shutdown_event (asyncio.Event): Event to signal shutdown
+        ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
 
     await _initial_random_sleep()
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
+        data = PeriodicUpdateData(logger, session_state).toJSON()
+        await ipc_pub.publish("race-table-update", data)
         if server.is_any_client_interested_in_event('race-table-update'):
             await server.send_to_clients_interested_in_event(
                 event='race-table-update',
-                data=PeriodicUpdateData(logger, session_state).toJSON()
+                data=data
             )
+
         await asyncio.sleep(sleep_duration)
 
     server.m_logger.debug("Shutting down race table update task")
@@ -133,7 +142,8 @@ async def streamOverlayUpdateTask(
     stream_overlay_start_sample_data: bool,
     server: TelemetryWebServer,
     session_state: SessionState,
-    shutdown_event: asyncio.Event) -> None:
+    shutdown_event: asyncio.Event,
+    ipc_pub: IpcPublisherAsync) -> None:
     """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
@@ -141,15 +151,18 @@ async def streamOverlayUpdateTask(
         server (TelemetryWebServer): The telemetry web server
         session_state (SessionState): Handle to the session state data structure
         shutdown_event (asyncio.Event): Event to signal shutdown
+        ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
 
     await _initial_random_sleep()
     sleep_duration = update_interval_ms / 1000
     while not shutdown_event.is_set():
+        data = StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
         if server.is_any_client_interested_in_event('stream-overlay-update'):
             await server.send_to_clients_interested_in_event(
                 event='stream-overlay-update',
-                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data))
+                data=data
+            )
         await asyncio.sleep(sleep_duration)
 
     server.m_logger.debug("Shutting down stream overlay update task")
@@ -191,7 +204,8 @@ async def hudUpdateTask(
         shm: PngShmWriter,
         session_state: SessionState,
         write_interval_ms: int,
-        shutdown_event: asyncio.Event) -> None:
+        shutdown_event: asyncio.Event,
+        ipc_pub: IpcPublisherAsync) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
@@ -199,6 +213,7 @@ async def hudUpdateTask(
         session_state (SessionState): Handle to the session state data structure
         write_interval_ms (int): Write interval in milliseconds
         shutdown_event (async.Event): Event to signal shutdown
+        ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
     await _initial_random_sleep()
     interval = write_interval_ms / 1000.0
@@ -207,9 +222,11 @@ async def hudUpdateTask(
     while not shutdown_event.is_set():
         loop_start = loop.time()
 
-        shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
-        shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
-        await shm.write()
+        # shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
+        # shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
+        # # await shm.write()
+        data = StreamOverlayData(session_state).toJSON(False)
+        await ipc_pub.publish("stream-overlay-update", data)
 
         elapsed = loop.time() - loop_start
         remaining = interval - elapsed

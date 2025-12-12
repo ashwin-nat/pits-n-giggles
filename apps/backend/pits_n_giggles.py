@@ -58,7 +58,8 @@ class PngRunner:
                  config_file: str,
                  replay_server: bool,
                  debug_mode: bool,
-                 run_ipc_server: bool = False):
+                 run_ipc_server: bool = False,
+                 xsub_port: Optional[int] = None) -> None:
         """Init the runner. Register necessary tasks
 
         Args:
@@ -67,6 +68,7 @@ class PngRunner:
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
             debug_mode (bool): If true, runs in debug mode
             run_ipc_server (bool): If true, runs the IPC server
+            xsub_port (Optional[int]): If provided, uses this port for IPC xsub socket
         """
         self.m_logger: logging.Logger = logger
         self.m_config = load_config_from_json(config_file, logger)
@@ -94,6 +96,7 @@ class PngRunner:
         )
         self.m_web_server, self.m_shm = self._setupUiIntfLayer(
             run_ipc_server=run_ipc_server,
+            xsub_port=xsub_port,
             debug_mode=debug_mode
         )
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
@@ -113,11 +116,13 @@ class PngRunner:
 
     def _setupUiIntfLayer(self,
         run_ipc_server: Optional[bool] = False,
+        xsub_port: Optional[int] = None,
         debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, PngShmWriter]:
         """Entry point to start the HTTP server.
 
         Args:
             run_ipc_server (bool, optional): Whether to run the IPC server. Defaults to False.
+            xsub_port (Optional[int], optional): Port for IPC xsub socket. Defaults to None.
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
@@ -141,6 +146,7 @@ class PngRunner:
             tasks=self.m_tasks,
             ver_str=self.m_version,
             run_ipc_server=run_ipc_server,
+            xsub_port=xsub_port,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
         )
@@ -226,6 +232,8 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
     parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
+    parser.add_argument('--xpub-port', type=int, default=None, help="IPC xpub port")
+    parser.add_argument('--xsub-port', type=int, default=None, help="IPC xsub port")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -244,7 +252,8 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
             config_file=args.config_file,
             replay_server=args.replay_server,
             debug_mode=args.debug,
-            run_ipc_server=args.run_ipc_server
+            run_ipc_server=args.run_ipc_server,
+            xsub_port=args.xsub_port,
         )
     except PngError as e:
         logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")

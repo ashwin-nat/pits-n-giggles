@@ -176,8 +176,14 @@ class PngLauncherWindow(QMainWindow):
         self.update_data.connect(self.on_update_data)
         self.newer_versions: List[Dict[str, Any]] = []
 
+        self.ipc_broker = IpcPubSubBroker(logger=self.logger)
+
         # Common args
-        args = ["--config-file", self.config_file_new]
+        args = [
+            "--config-file", self.config_file_new,
+            "--xpub-port", str(self.ipc_broker.xpub_port),
+            "--xsub-port", str(self.ipc_broker.xsub_port)
+        ]
         self.subsystems: List[PngAppMgrBase] = [
            BackendAppMgr(
                window=self,
@@ -212,7 +218,6 @@ class PngLauncherWindow(QMainWindow):
         self.show_success_signal.connect(self._show_success_safe)
         self.show_error_signal.connect(self._show_error_safe)
 
-        self.ipc_broker = IpcPubSubBroker(logger=self.logger)
         self._tooltip_filter = StableTooltipFilter()
         self.setup_ui()
 

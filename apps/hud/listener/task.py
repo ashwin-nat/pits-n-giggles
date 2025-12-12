@@ -26,7 +26,7 @@ import logging
 import threading
 from typing import Tuple
 
-from lib.ipc import PngShmReader
+from lib.ipc import PngShmReader, IpcSubscriberSync
 from lib.rate_limiter import RateLimiter
 
 from ..ui.infra import OverlaysMgr
@@ -39,8 +39,9 @@ def run_hud_update_threads(
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         shm_read_interval_ms: int,
-        low_freq_update_interval_ms: int
-        ) -> Tuple[HudClient, PngShmReader]:
+        low_freq_update_interval_ms: int,
+        xpub_port: int
+        ) -> Tuple[HudClient, IpcSubscriberSync]:
     """Creates, runs and returns the HUD update thread.
 
     Args:
@@ -49,12 +50,13 @@ def run_hud_update_threads(
         overlays_mgr: Overlays manager
         shm_read_interval_ms: Shared memory read interval
         low_freq_update_interval_ms: Low frequency update interval
+        xpub_port: IPC xpub port
 
     Returns:
-        A tuple of the Socket.IO client and SHM reader instances.
+        A tuple of the Socket.IO client and the IPC subscriber instances.
     """
     return _run_socketio_thread(port, logger, overlays_mgr), \
-            _run_shm_thread(logger, overlays_mgr, shm_read_interval_ms, low_freq_update_interval_ms)
+            _run_ipc_sub_thread(logger, overlays_mgr, shm_read_interval_ms, low_freq_update_interval_ms, xpub_port)
 
 def _run_socketio_thread(
         port: int,
@@ -75,12 +77,13 @@ def _run_socketio_thread(
     threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
     return client
 
-def _run_shm_thread(
+def _run_ipc_sub_thread(
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         shm_read_interval_ms: int,
-        low_freq_update_interval_ms: int
-        ) -> PngShmReader:
+        low_freq_update_interval_ms: int,
+        xpub_port: int
+        ) -> IpcSubscriberSync:
     """Thread target to run the shared memory listener for HUD updates.
 
     Args:
@@ -88,25 +91,22 @@ def _run_shm_thread(
         overlays_mgr: Overlays manager
         shm_read_interval_ms: Shared memory read interval
         low_freq_update_interval_ms: Low frequency update interval
+        xpub_port: IPC xpub port
 
     Returns:
-        The SHM reader instance.
+        The IPC subscriber instance.
     """
-    shm = PngShmReader(logger, read_interval_ms=shm_read_interval_ms)
-    rate_limiter = RateLimiter(interval_ms=low_freq_update_interval_ms)
 
-    @shm.on("race-table-update")
+    ipc_sub = IpcSubscriberSync(port=xpub_port, logger=logger)
+    @ipc_sub.route("race-table-update")
     def _handle_race_table_update(data):
         """Race table data update handler."""
-        if rate_limiter.allows("race-table-update"):
-            overlays_mgr.race_table_update(data)
+        overlays_mgr.race_table_update(data)
 
-    @shm.on("stream-overlay-update")
+    @ipc_sub.route("stream-overlay-update")
     def _handle_stream_overlay_update(data):
         """Stream overlay data update handler."""
         overlays_mgr.input_telemetry_update(data)
-        if rate_limiter.allows("stream-overlay-update"):
-            overlays_mgr.stream_overlays_update(data)
-
-    threading.Thread(target=shm.read, daemon=True, name="SHM listener").start()
-    return shm
+        overlays_mgr.stream_overlays_update(data)
+    threading.Thread(target=ipc_sub.start, daemon=True, name="IPC Subscriber").start()
+    return ipc_sub
