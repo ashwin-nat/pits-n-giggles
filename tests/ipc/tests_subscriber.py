@@ -47,7 +47,7 @@ class TestIpcSubscriber(TestIPC):
         self.logger = MagicMock(spec=logging.Logger)
 
         # Patch socketio.Client to avoid real network connections
-        self.sio_patch = patch("lib.ipc.subscriber.socketio.Client")
+        self.sio_patch = patch("lib.ipc.socketio_client.socketio.Client")
         self.mock_sio_class = self.sio_patch.start()
         self.mock_sio = MagicMock()
         self.mock_sio_class.return_value = self.mock_sio
