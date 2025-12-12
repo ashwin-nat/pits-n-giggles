@@ -31,7 +31,7 @@ from typing import Any, Dict, List
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcChildAsync
+from lib.ipc import IpcServerAsync
 from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -49,7 +49,7 @@ class SaveViewerIpc:
         self.m_ipc_port = ipc_port
         self.m_server = server
         self.m_should_open_ui = True
-        self.m_ipc_server = IpcChildAsync(ipc_port, "Save Viewer")
+        self.m_ipc_server = IpcServerAsync(ipc_port, "Save Viewer")
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
         self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
 

@@ -29,7 +29,7 @@ import logging
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class ZmqAsyncPublisher:
+class IpcPublisherAsync:
     """
     Async publisher sending multipart messages:
         [topic_bytes, payload_bytes]

@@ -29,7 +29,7 @@ from functools import partial
 from typing import Callable, Dict
 
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcChildSync, PngShmReader
+from lib.ipc import IpcServerSync, PngShmReader
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
@@ -73,7 +73,7 @@ def run_ipc_task(
     Returns:
         threading.Thread: IPC thread handle
     """
-    ipc_server = IpcChildSync(
+    ipc_server = IpcServerSync(
         port=port,
         name="hud"
     )

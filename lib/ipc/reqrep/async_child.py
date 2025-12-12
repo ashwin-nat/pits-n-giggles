@@ -31,7 +31,7 @@ import zmq.asyncio
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcChildAsync:
+class IpcServerAsync:
     """
     Asynchronous ZeroMQ REP socket server.
     Used by child process to handle requests using asyncio.

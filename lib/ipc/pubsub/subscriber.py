@@ -29,7 +29,7 @@ import logging
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class ZmqConsumer:
+class IpcSubscriberSync:
     """
     Synchronous consumer with route(topic) decorator.
 

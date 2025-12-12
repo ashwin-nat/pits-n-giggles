@@ -29,7 +29,7 @@ from typing import Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class ZmqBroker:
+class IpcPubSubBroker:
     """
     ZeroMQ XPUB/XSUB forwarder.
 

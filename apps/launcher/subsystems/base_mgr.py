@@ -39,7 +39,7 @@ from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
                               PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
                               PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import IpcClientSync, get_free_tcp_port
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -503,7 +503,7 @@ class PngAppMgrBase(QObject):
         while not self._stop_heartbeat.is_set():
             self.debug_log(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
             try:
-                rsp = IpcParent(self.ipc_port, timeout_ms).heartbeat()
+                rsp = IpcClientSync(self.ipc_port, timeout_ms).heartbeat()
                 if rsp.get("status") == "success":
                     failed_count = 0
                     self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
@@ -532,7 +532,7 @@ class PngAppMgrBase(QObject):
     def _send_ipc_shutdown(self, reason: str) -> bool:
         """Send IPC shutdown command"""
         try:
-            rsp = IpcParent(self.ipc_port).shutdown_child(reason)
+            rsp = IpcClientSync(self.ipc_port).shutdown_child(reason)
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"IPC shutdown failed: {e}")

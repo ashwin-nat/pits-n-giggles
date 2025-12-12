@@ -30,7 +30,7 @@ import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcChildSync:
+class IpcServerSync:
     """
     Synchronous ZeroMQ REP socket server.
     Used by child process to handle requests synchronously.

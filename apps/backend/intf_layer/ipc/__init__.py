@@ -29,7 +29,7 @@ from typing import List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.ipc import IpcChildAsync
+from lib.ipc import IpcServerAsync
 
 from .command_dispatcher import processIpcCommand
 from .command_handlers import handleHeartbeatMissed, handleShutdown
@@ -56,7 +56,7 @@ def registerIpcTask(
     # Register the IPC task only if port is specified
     if ipc_port:
         logger.debug(f"Starting IPC server on port {ipc_port}")
-        server = IpcChildAsync(ipc_port, "Backend")
+        server = IpcServerAsync(ipc_port, "Backend")
         server.register_shutdown_callback(partial(handleShutdown, logger=logger))
         server.register_heartbeat_missed_callback(handleHeartbeatMissed)
         tasks.append(asyncio.create_task(server.run(partial(

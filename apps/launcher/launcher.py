@@ -32,7 +32,7 @@ import tempfile
 
 from apps.launcher.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
-from lib.ipc import IpcChildSync
+from lib.ipc import IpcServerSync
 from lib.version import get_version
 from meta.meta import APP_NAME, APP_NAME_SNAKE
 
@@ -183,7 +183,7 @@ def entry_point() -> None:
 
     ipc = None
     if args.ipc_port is not None:
-        ipc = IpcChildSync(
+        ipc = IpcServerSync(
             port=args.ipc_port,
             name="launcher_ipc",
             max_missed_heartbeats=3,

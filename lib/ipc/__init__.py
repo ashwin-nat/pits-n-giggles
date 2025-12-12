@@ -22,28 +22,28 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .async_child import IpcChildAsync
-from .parent import IpcParent
+from .pubsub.broker import IpcPubSubBroker
+from .pubsub.publisher import IpcPublisherAsync
+from .pubsub.subscriber import IpcSubscriberSync
+from .reqrep.async_child import IpcServerAsync
+from .reqrep.parent import IpcClientSync
+from .reqrep.sync_child import IpcServerSync
+from .shm.presentation import PngShmReader, PngShmWriter
 from .subscriber import IpcSubscriber
-from .sync_child import IpcChildSync
 from .utils import get_free_tcp_port
-from .shm.presentation import PngShmWriter, PngShmReader
-from .pubsub.publisher import ZmqAsyncPublisher
-from .pubsub.subscriber import ZmqConsumer
-from .pubsub.broker import ZmqBroker
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'IpcParent',
-    'IpcChildAsync',
-    'IpcChildSync',
+    'IpcClientSync',
+    'IpcServerAsync',
+    'IpcServerSync',
     'IpcSubscriber',
     'PngShmWriter',
     'PngShmReader',
-    'ZmqAsyncPublisher',
-    'ZmqConsumer',
-    'ZmqBroker',
+    'IpcPublisherAsync',
+    'IpcSubscriberSync',
+    'IpcPubSubBroker',
 
     'get_free_tcp_port',
 ]
