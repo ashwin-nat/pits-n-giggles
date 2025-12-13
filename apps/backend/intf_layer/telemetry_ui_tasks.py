@@ -82,29 +82,28 @@ def initUiIntfLayer(
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
-                                                               session_state,
-                                                               logger,
-                                                               shutdown_event,
-                                                               ipc_pub),
-                                     name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.Display.refresh_interval,
-                                                             settings.StreamOverlay.show_sample_data_at_start,
-                                                             web_server, session_state, shutdown_event, ipc_pub),
-                                     name="Stream Overlay Update Task"))
+    tasks.append(asyncio.create_task(lowFreqUpdateTask(
+        settings.Display.refresh_interval,
+        settings.StreamOverlay.show_sample_data_at_start,
+        web_server,
+        session_state,
+        logger,
+        shutdown_event,
+        ipc_pub), name="Race Table Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
     if settings.HUD.enabled:
-        tasks.append(asyncio.create_task(hudUpdateTask(session_state,
+        tasks.append(asyncio.create_task(highFreqUpdateTask(session_state,
                                                        write_interval_ms=settings.Display.hud_refresh_interval,
                                                        shutdown_event=shutdown_event, ipc_pub=ipc_pub), name="HUD Update Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
     return web_server, ipc_pub
 
-async def raceTableClientUpdateTask(
+async def lowFreqUpdateTask(
         update_interval_ms: int,
+        stream_overlay_start_sample_data: bool,
         server: TelemetryWebServer,
         session_state: SessionState,
         logger: logging.Logger,
@@ -114,6 +113,7 @@ async def raceTableClientUpdateTask(
 
     Args:
         update_interval_ms (int): Update interval in milliseconds
+        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         server (TelemetryWebServer): The telemetry web server
         session_state (SessionState): Handle to the session state data structure
         logger (logging.Logger): Logger handle
@@ -122,49 +122,39 @@ async def raceTableClientUpdateTask(
     """
 
     await _initial_random_sleep()
-    sleep_duration = update_interval_ms / 1000
+    interval = update_interval_ms / 1000.0
+    loop = asyncio.get_running_loop()
+    next_tick = loop.time()
+
     while not shutdown_event.is_set():
-        data = PeriodicUpdateData(logger, session_state).toJSON()
-        await ipc_pub.publish("race-table-update", data)
+        next_tick += interval
+
+        race_table_data = PeriodicUpdateData(logger, session_state).toJSON()
+        await ipc_pub.publish("race-table-update", race_table_data) # IPC publish is O(1) so do it always
+
         if server.is_any_client_interested_in_event('race-table-update'):
             await server.send_to_clients_interested_in_event(
                 event='race-table-update',
-                data=data
+                data=race_table_data
             )
 
-        await asyncio.sleep(sleep_duration)
-
-    server.m_logger.debug("Shutting down race table update task")
-
-async def streamOverlayUpdateTask(
-    update_interval_ms: int,
-    stream_overlay_start_sample_data: bool,
-    server: TelemetryWebServer,
-    session_state: SessionState,
-    shutdown_event: asyncio.Event,
-    ipc_pub: IpcPublisherAsync) -> None:
-    """Task to update clients with player telemetry overlay data
-    Args:
-        update_interval_ms (int): Update interval in milliseconds
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        server (TelemetryWebServer): The telemetry web server
-        session_state (SessionState): Handle to the session state data structure
-        shutdown_event (asyncio.Event): Event to signal shutdown
-        ipc_pub (IpcPublisherAsync): IPC publisher instance
-    """
-
-    await _initial_random_sleep()
-    sleep_duration = update_interval_ms / 1000
-    while not shutdown_event.is_set():
-        data = StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
         if server.is_any_client_interested_in_event('stream-overlay-update'):
             await server.send_to_clients_interested_in_event(
                 event='stream-overlay-update',
-                data=data
+                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
             )
-        await asyncio.sleep(sleep_duration)
+        # --------------
 
-    server.m_logger.debug("Shutting down stream overlay update task")
+        # Deadline sleep (no drift)
+        delay = next_tick - loop.time()
+        if delay > 0:
+            await asyncio.sleep(delay)
+        else:
+            # Missed deadline: yield but do not accumulate drift
+            next_tick = loop.time()
+            await asyncio.sleep(0)
+
+    server.m_logger.debug("Shutting down race table update task")
 
 async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
     """Task to update clients with telemetry data
@@ -199,7 +189,7 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
 
     server.m_logger.debug("Shutting down HUD notifier task")
 
-async def hudUpdateTask(
+async def highFreqUpdateTask(
         session_state: SessionState,
         write_interval_ms: int,
         shutdown_event: asyncio.Event,
