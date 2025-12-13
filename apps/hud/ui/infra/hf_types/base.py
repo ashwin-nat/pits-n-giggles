@@ -32,18 +32,6 @@ class HighFreqBase:
     def __init_subclass__(cls, **kwargs):
         cls.__hf_type__ = cls.__name__
 
-@dataclass
-class InputTelemetryData(HighFreqBase):
-    throttle: float
-    brake: float
-    steering: float
-    rev_pct: float
-
     @classmethod
-    def from_json(cls, data: dict) -> "InputTelemetryData":
-        return cls(
-            throttle=float(data.get("throttle", 0.0)),
-            brake=float(data.get("brake", 0.0)),
-            steering=float(data.get("steering", 0.0)),
-            rev_pct=float(data.get("rev_pct", 0.0)),
-        )
+    def from_json(cls, json_data: dict) -> "HighFreqBase":
+        raise NotImplementedError

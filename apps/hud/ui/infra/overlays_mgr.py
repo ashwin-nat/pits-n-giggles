@@ -299,10 +299,5 @@ class OverlaysMgr:
         car_telemetry = data["car-telemetry"]
         self.window_manager.unicast_high_freq_data(
             InputTelemetryOverlay.OVERLAY_ID,
-            InputTelemetryData(
-                throttle=car_telemetry["throttle"],
-                brake=car_telemetry["brake"],
-                steering=car_telemetry["steering"],
-                rev_pct=car_telemetry["rev-lights-percent"],
-            )
+            InputTelemetryData.from_json(car_telemetry)
         )
