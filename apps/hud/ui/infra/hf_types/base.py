@@ -38,3 +38,12 @@ class InputTelemetryData(HighFreqBase):
     brake: float
     steering: float
     rev_pct: float
+
+    @classmethod
+    def from_json(cls, data: dict) -> "InputTelemetryData":
+        return cls(
+            throttle=float(data.get("throttle", 0.0)),
+            brake=float(data.get("brake", 0.0)),
+            steering=float(data.get("steering", 0.0)),
+            rev_pct=float(data.get("rev_pct", 0.0)),
+        )

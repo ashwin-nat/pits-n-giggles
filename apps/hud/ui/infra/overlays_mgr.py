@@ -38,7 +38,7 @@ from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
-from .high_freq_types import InputTelemetryData
+from .hf_types import InputTelemetryData
 from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------

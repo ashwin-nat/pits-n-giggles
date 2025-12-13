@@ -32,7 +32,7 @@ from PySide6.QtGui import QIcon
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.high_freq_types import HighFreqBase
+from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from meta.meta import APP_NAME_SNAKE
 
