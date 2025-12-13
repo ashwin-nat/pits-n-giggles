@@ -91,7 +91,7 @@ class IpcPublisherAsync:
                     self._connected = True
                     delay = self.RECONNECT_MIN_DELAY
 
-                    self.logger.info(f"IpcPublisherAsync connected to tcp://{self.host}:{self.port}")
+                    self.logger.debug(f"IpcPublisherAsync connected to tcp://{self.host}:{self.port}")
 
                 except Exception:
                     self._connected = False
@@ -141,4 +141,4 @@ class IpcPublisherAsync:
             except:
                 pass
 
-        self.logger.info("IpcPublisherAsync closed")
+        self.logger.debug("IpcPublisherAsync closed")

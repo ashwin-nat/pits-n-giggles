@@ -82,7 +82,7 @@ class IpcSubscriberSync:
         endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
 
-        self.logger.info(f"IpcSubscriberSync connected to {endpoint}")
+        self.logger.debug(f"IpcSubscriberSync connected to {endpoint}")
 
     # ---------------------------------------------------------
     # Register handler
@@ -155,7 +155,7 @@ class IpcSubscriberSync:
         except Exception:
             pass
 
-        self.logger.info("IpcSubscriberSync stopped")
+        self.logger.debug("IpcSubscriberSync stopped")
 
     # ---------------------------------------------------------
     # External shutdown

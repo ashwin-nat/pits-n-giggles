@@ -61,7 +61,7 @@ class IpcPubSubBroker:
         self._thread: Optional[threading.Thread] = None
 
         self._prepare()
-        self.logger.info(
+        self.logger.debug(
             f"ZmqBroker prepared: "
             f"XSUB={self.xsub_endpoint}, XPUB={self.xpub_endpoint}"
         )
@@ -83,13 +83,13 @@ class IpcPubSubBroker:
         )
         self._thread.start()
 
-        self.logger.info("ZmqBroker supervisor started")
+        self.logger.debug("ZmqBroker supervisor started")
 
     def close(self):
         """Stops broker and shuts down sockets."""
         self._running = False
         self._cleanup_sockets()
-        self.logger.info("ZmqBroker closed")
+        self.logger.debug("ZmqBroker closed")
 
     @property
     def xpub_endpoint(self) -> str:
@@ -110,7 +110,7 @@ class IpcPubSubBroker:
     def _supervisor_loop(self):
         while self._running:
             try:
-                self.logger.info(
+                self.logger.debug(
                     f"ZmqBroker active: "
                     f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
                 )
