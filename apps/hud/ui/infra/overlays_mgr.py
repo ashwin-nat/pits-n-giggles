@@ -25,20 +25,21 @@
 import json
 import logging
 import os
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay, InputTelemetryOverlay,
-                                  TimingTowerOverlay)
+from apps.hud.ui.overlays import (InputTelemetryOverlay, LapTimerOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
+                                  TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
-from .hf_types import InputTelemetryData
+from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -300,4 +301,11 @@ class OverlaysMgr:
         self.window_manager.unicast_high_freq_data(
             InputTelemetryOverlay.OVERLAY_ID,
             InputTelemetryData.from_json(car_telemetry)
+        )
+
+    def motion_update(self, data: Dict[str, Any]):
+        """Send motion data to motion overlay."""
+        self.window_manager.unicast_high_freq_data(
+            TrackRadarOverlay.OVERLAY_ID,
+            LiveSessionMotionInfo.from_json(data["motion"])
         )
