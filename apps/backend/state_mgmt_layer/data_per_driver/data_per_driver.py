@@ -1226,6 +1226,7 @@ class DataPerDriver:
 
         changed_fields = self.m_packet_copies.m_packet_car_damage.diff_fields(car_damage,
                                                                         self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS)
+        wing_changed = False
         for field, diff in changed_fields.items():
             new_value = diff["new_value"]
             old_value = diff["old_value"]
@@ -1239,13 +1240,16 @@ class DataPerDriver:
                     new_value=new_value
                 )
                 self.m_race_ctrl.add_message(msg)
-            elif new_value == 0: # damage going from some value to 0 implies wing change
+            elif new_value == 0 and (not wing_changed): # damage going from some value to 0 implies wing change
                 msg = WingChangeRaceCtrlMsg(
                     timestamp=time.time(),
                     driver_index=self.m_index,
                     lap_number=self.m_lap_info.m_current_lap
                 )
                 self.m_race_ctrl.add_message(msg)
+                # Say front right has 30% damage and front left has 20% damage.
+                # Both going to 0 in same tick. Only one wing change message should be added
+                wing_changed = True
             else:
                 # something strange is going on. damage decreasing but not to 0
                 msg = None
