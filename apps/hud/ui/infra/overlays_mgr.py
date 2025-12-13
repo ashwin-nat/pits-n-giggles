@@ -160,15 +160,17 @@ class OverlaysMgr:
         else:
             self.logger.debug("Input telemetry overlay is disabled")
 
-        # TODO: config driven
-        self.window_manager.register_overlay(TrackRadarOverlay.OVERLAY_ID, TrackRadarOverlay(
-            self.config[TrackRadarOverlay.OVERLAY_ID],
-            self.logger,
-            locked=True,
-            opacity=settings.HUD.overlays_opacity,
-            scale_factor=1.0, # TODO: config driven
-            windowed_overlay=settings.HUD.use_windowed_overlays
-        ))
+        if settings.HUD.show_track_radar_overlay:
+            self.window_manager.register_overlay(TrackRadarOverlay.OVERLAY_ID, TrackRadarOverlay(
+                self.config[TrackRadarOverlay.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
+            ))
+        else:
+            self.logger.debug("Track radar overlay is disabled")
 
         self.logger.debug("Overlays manager initialized")
 
