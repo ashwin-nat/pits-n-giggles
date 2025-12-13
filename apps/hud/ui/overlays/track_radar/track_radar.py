@@ -28,7 +28,7 @@ from pathlib import Path
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.hf_types import InputTelemetryData
+from apps.hud.ui.infra.hf_types import LiveSessionMotionInfo, InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -62,18 +62,9 @@ class TrackRadarOverlay(BaseOverlayQML):
 
     def _init_handlers(self):
         """Initialize event handlers."""
-        @self.on_high_freq(InputTelemetryData.__hf_type__)
-        def _handle_input_telemetry(data: InputTelemetryData):
+        @self.on_high_freq(LiveSessionMotionInfo.__hf_type__)
+        def _handle_session_motion_info(data: LiveSessionMotionInfo):
 
             # Send data to QML and trigger update
             if self._root:
-                # Use invokeMethod to call QML function directly
-                QMetaObject.invokeMethod(
-                    self._root,
-                    "updateTelemetry",
-                    Qt.ConnectionType.QueuedConnection,
-                    Q_ARG("QVariant", data.throttle),
-                    Q_ARG("QVariant", data.brake),
-                    Q_ARG("QVariant", data.steering),
-                    Q_ARG("QVariant", data.rev_pct),
-                )
+                pass

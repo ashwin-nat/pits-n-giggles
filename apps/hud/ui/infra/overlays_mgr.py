@@ -31,7 +31,7 @@ from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.overlays import (InputTelemetryOverlay, LapTimerOverlay,
-                                  MfdOverlay, TimingTowerOverlay,
+                                  MfdOverlay, TimingTowerOverlay, TrackRadarOverlay,
                                   TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -63,6 +63,10 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     # ),
     InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
+        y=600,
+    ),
+    TrackRadarOverlay.OVERLAY_ID: OverlaysConfig(
+        x=40,
         y=600,
     ),
 }
@@ -155,6 +159,16 @@ class OverlaysMgr:
             ))
         else:
             self.logger.debug("Input telemetry overlay is disabled")
+
+        # TODO: config driven
+        self.window_manager.register_overlay(TrackRadarOverlay.OVERLAY_ID, TrackRadarOverlay(
+            self.config[TrackRadarOverlay.OVERLAY_ID],
+            self.logger,
+            locked=True,
+            opacity=settings.HUD.overlays_opacity,
+            scale_factor=1.0, # TODO: config driven
+            windowed_overlay=settings.HUD.use_windowed_overlays
+        ))
 
         self.logger.debug("Overlays manager initialized")
 
