@@ -34,7 +34,7 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
-from lib.ipc import PngShmWriter, IpcPublisherAsync
+from lib.ipc import IpcPublisherAsync
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -51,7 +51,7 @@ def initUiIntfLayer(
     run_ipc_server: bool,
     xsub_port: Optional[int],
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -67,7 +67,7 @@ def initUiIntfLayer(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        Tuple[TelemetryWebServer, PngShmWriter]: Web server and shm writer instances
+        Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
     """
 
     # First, create the server instance
@@ -78,7 +78,6 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-    shm = PngShmWriter(logger)
     ipc_pub = IpcPublisherAsync(logger=logger, port=xsub_port)
 
     # Register tasks associated with this web server
@@ -97,12 +96,12 @@ def initUiIntfLayer(
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
     if settings.HUD.enabled:
-        tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
+        tasks.append(asyncio.create_task(hudUpdateTask(session_state,
                                                        write_interval_ms=settings.Display.hud_refresh_interval,
                                                        shutdown_event=shutdown_event, ipc_pub=ipc_pub), name="HUD Update Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
-    return web_server, shm
+    return web_server, ipc_pub
 
 async def raceTableClientUpdateTask(
         update_interval_ms: int,
@@ -201,7 +200,6 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
     server.m_logger.debug("Shutting down HUD notifier task")
 
 async def hudUpdateTask(
-        shm: PngShmWriter,
         session_state: SessionState,
         write_interval_ms: int,
         shutdown_event: asyncio.Event,
@@ -209,7 +207,6 @@ async def hudUpdateTask(
     """Task to update HUD clients with telemetry data
 
     Args:
-        shm (PngShmWriter): Shared memory writer
         session_state (SessionState): Handle to the session state data structure
         write_interval_ms (int): Write interval in milliseconds
         shutdown_event (async.Event): Event to signal shutdown
@@ -218,23 +215,21 @@ async def hudUpdateTask(
     await _initial_random_sleep()
     interval = write_interval_ms / 1000.0
     loop = asyncio.get_running_loop()
+    next_tick = loop.time()
 
     while not shutdown_event.is_set():
-        loop_start = loop.time()
+        next_tick += interval
 
-        # shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
-        # shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
-        # # await shm.write()
         data = StreamOverlayData(session_state).toJSON(False)
         await ipc_pub.publish("stream-overlay-update", data)
 
-        elapsed = loop.time() - loop_start
-        remaining = interval - elapsed
-
-        if remaining > 0:
-            await asyncio.sleep(remaining)
+        delay = next_tick - loop.time()
+        if delay > 0:
+            await asyncio.sleep(delay)
         else:
-            await asyncio.sleep(0) # Yield control to event loop
+            # Missed deadline — resync without sleeping
+            next_tick = loop.time()
+            await asyncio.sleep(0)
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 
