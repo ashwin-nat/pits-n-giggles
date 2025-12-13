@@ -26,7 +26,7 @@ import logging
 import threading
 from typing import Tuple
 
-from lib.ipc import PngShmReader, IpcSubscriberSync
+from lib.ipc import IpcSubscriberSync
 from lib.rate_limiter import RateLimiter
 
 from ..ui.infra import OverlaysMgr

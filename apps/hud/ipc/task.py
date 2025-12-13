@@ -30,7 +30,7 @@ from typing import Callable, Dict
 
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcServerSync, PngShmReader, IpcSubscriberSync
+from lib.ipc import IpcServerSync, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
@@ -109,7 +109,7 @@ def _shutdown_handler(
         logging.Logger,
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
-        ipc_sub: PngShmReader
+        ipc_sub: IpcSubscriberSync
         ) -> None:
     """Handles shutdown command.
 
