@@ -24,7 +24,6 @@
 
 import json
 import sys
-import threading
 import webbrowser
 from datetime import datetime
 from pathlib import Path

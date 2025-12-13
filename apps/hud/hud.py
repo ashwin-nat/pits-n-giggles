@@ -73,7 +73,6 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool, xpub_por
         logger=logger,
         overlays_mgr=overlays_mgr,
         port=config.Network.server_port,
-        shm_read_interval_ms=config.Display.hud_refresh_interval,
         low_freq_update_interval_ms=config.Display.refresh_interval,
         xpub_port=xpub_port)
 
