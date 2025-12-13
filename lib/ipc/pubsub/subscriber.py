@@ -108,25 +108,26 @@ class IpcSubscriberSync:
         self._running = True
         poller = zmq.Poller()
 
+        poller.register(self.socket, zmq.POLLIN)
+
         while self._running:
-
-            poller.register(self.socket, zmq.POLLIN)
-
             try:
                 events = dict(poller.poll(100))
             except zmq.ZMQError:
-                # Poll error = socket died -> reconnect
                 self.logger.warning("Poll failed — reconnecting SUB socket")
+                poller.unregister(self.socket)
                 self._create_and_connect()
+                poller.register(self.socket, zmq.POLLIN)
                 continue
 
             if self.socket in events:
                 try:
                     frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
                 except zmq.ZMQError:
-                    # Receive error = socket died -> reconnect
                     self.logger.warning("Receive failed — reconnecting SUB socket")
+                    poller.unregister(self.socket)
                     self._create_and_connect()
+                    poller.register(self.socket, zmq.POLLIN)
                     continue
 
                 if len(frames) != 2:
@@ -144,6 +145,11 @@ class IpcSubscriberSync:
                         self.logger.error(f"Handler error for {topic}: {e}")
 
         # clean shutdown
+        try:
+            poller.unregister(self.socket)
+        except Exception:
+            pass
+
         try:
             self.socket.close(linger=0)
         except Exception:
