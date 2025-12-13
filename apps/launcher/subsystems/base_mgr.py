@@ -34,12 +34,13 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QPushButton
 
-from lib.child_proc_mgmt import extract_pid_from_line, is_init_complete
+from lib.child_proc_mgmt import (extract_ipc_port_from_line,
+                                 extract_pid_from_line, is_init_complete)
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
                               PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
                               PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import IpcClientSync
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -174,6 +175,11 @@ class PngAppMgrBase(QObject):
         self.num_missable_heartbeats: int = 3
         self._stop_heartbeat = threading.Event()
 
+        # Startup sync flags (fire post-start only after both seen)
+        self._init_complete_received = False
+        self._ipc_port_received = False
+        self._post_start_fired = False
+
     def get_buttons(self) -> List[QPushButton]:
         """
         Return button definitions for this subsystem's UI panel
@@ -213,11 +219,7 @@ class PngAppMgrBase(QObject):
 
         # Add additional arguments
         cmd.extend(self.args)
-
-        # Add IPC port if available
-        if self.ipc_port:
-            cmd.extend(["--ipc-port", str(self.ipc_port)])
-
+        cmd.append("--run-ipc-server")
         return cmd
 
     def start(self, reason: str):
@@ -232,7 +234,11 @@ class PngAppMgrBase(QObject):
                 self.info_log(f"Starting {self.display_name}... Reason: {reason}")
             self._update_status("Starting")
 
-            self.ipc_port = get_free_tcp_port()
+            # Reset startup signaling state for this new start
+            self._init_complete_received = False
+            self._ipc_port_received = False
+            self._post_start_fired = False
+            self.ipc_port = None # Child process will report its IPC port
 
             # Build and execute launch command
             launch_cmd = self.get_launch_command()
@@ -305,6 +311,11 @@ class PngAppMgrBase(QObject):
                 self._terminate_process()
 
             # Clean up state
+            self.ipc_port = None
+            self._init_complete_received = False
+            self._ipc_port_received = False
+            self._post_start_fired = False
+
             self.process = None
             self.child_pid = None
             self.is_running = False
@@ -391,43 +402,60 @@ class PngAppMgrBase(QObject):
             self._is_restarting.clear()
 
     def _capture_output(self):
-        """Capture subprocess output"""
+        """Capture subprocess output and react to structured launcher tokens."""
 
-        # Snapshot process and stdout once under the lock
+        # Snapshot process and stdout safely
         with self._process_lock:
             process = self.process
-            # If process or its stdout isn't available, exit immediately.
             if not process or not process.stdout:
                 return
             stdout = process.stdout
 
         self.debug_log(f"Capturing {self.display_name} output...")
-        for line in stdout:
-            if not line:
-                # EOF reached
+
+        for raw_line in stdout:
+            if not raw_line:
                 break
 
-            line = line.rstrip()
+            line = raw_line.rstrip()
 
+            # ---------------------------------------------------------
+            # 1. PID token
+            # ---------------------------------------------------------
             if pid := extract_pid_from_line(line):
                 with self._process_lock:
-                    # Check current PID safely in case process changed meanwhile
                     current_pid = self.process.pid if self.process else None
-                    changed = current_pid is not None and current_pid != pid
+                    changed = (current_pid is not None and current_pid != pid)
                     self.child_pid = pid
-                self.debug_log(f"{self.display_name} PID update: {pid} changed = {changed}")
-            elif is_init_complete(line):
+                self.debug_log(f"{self.display_name} PID update: {pid} changed={changed}")
+                continue
+
+            # ---------------------------------------------------------
+            # 2. IPC PORT token
+            # ---------------------------------------------------------
+            if port := extract_ipc_port_from_line(line):
+                with self._process_lock:
+                    self.ipc_port = port
+                    self._ipc_port_received = True
+                self.debug_log(f"{self.display_name} IPC port reported: {port}")
+                self._maybe_fire_post_start()
+                continue
+
+            # ---------------------------------------------------------
+            # 3. INIT COMPLETE token
+            # ---------------------------------------------------------
+            if is_init_complete(line):
                 self.debug_log(f"{self.display_name} initialization complete")
                 with self._process_lock:
+                    self._init_complete_received = True
                     self._update_status("Running")
-                if self._post_start_hook:
-                    try:
-                        self.post_start_signal.emit()
-                    except Exception as e: # pylint: disable=broad-exception-caught
-                        self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
+                self._maybe_fire_post_start()
+                continue
 
-            else:
-                self.info_log(line, src=self.short_name)
+            # ---------------------------------------------------------
+            # 4. Regular stdout (non-token) — send to info log
+            # ---------------------------------------------------------
+            self.info_log(line, src=self.short_name)
 
     def _monitor_exit(self):
         """Monitor for unexpected process exit"""
@@ -465,6 +493,10 @@ class PngAppMgrBase(QObject):
             self.is_running = False
             self.child_pid = None
             self.process = None
+            self.ipc_port = None
+            self._init_complete_received = False
+            self._ipc_port_received = False
+            self._post_start_fired = True
 
         # Get error info
         error_info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
@@ -496,26 +528,35 @@ class PngAppMgrBase(QObject):
         time.sleep(random.uniform(0, 2.0))
 
         failed_count = 0
-        self.debug_log(f"{self.display_name}: Starting heartbeat job to port {self.ipc_port}...")
+        self.debug_log(f"{self.display_name}: Heartbeat job starting...")
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
         assert timeout_ms > 0
 
         while not self._stop_heartbeat.is_set():
-            self.debug_log(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
-            try:
-                rsp = IpcParent(self.ipc_port, timeout_ms).heartbeat()
-                if rsp.get("status") == "success":
-                    failed_count = 0
-                    self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {self.ipc_port}")
-                else:
-                    self.debug_log(
-                        f"{self.display_name}: Heartbeat failed with response: {rsp} on port {self.ipc_port}"
-                    )
-                    failed_count += 1
+            # If we are stopping or restarting, do not treat missing port as failure
+            if self._is_stopping.is_set() or self._is_restarting.is_set():
+                self.debug_log(f"{self.display_name}: Heartbeat exiting due to stop/restart flag.")
+                break
 
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.debug_log(f"Heartbeat error: {e}")
+            self.debug_log(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
+            port = self.ipc_port
+
+            if not port:
+                # No port means child hasn't initialised yet - treat as a missed heartbeat
                 failed_count += 1
+                self.debug_log(f"{self.display_name}: No IPC port yet, missed heartbeat count={failed_count}")
+            else:
+                try:
+                    rsp = IpcClientSync(port, timeout_ms).heartbeat()
+                    if rsp.get("status") == "success":
+                        failed_count = 0
+                        self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {port}")
+                    else:
+                        failed_count += 1
+                        self.debug_log(f"{self.display_name}: Heartbeat failed with response: {rsp} on port {port}")
+                except Exception as e: # pylint: disable=broad-exception-caught
+                    self.debug_log(f"Heartbeat error: {e}")
+                    failed_count += 1
 
             # Check for excessive failures
             if failed_count > self.num_missable_heartbeats and not self.debug_mode:
@@ -531,13 +572,16 @@ class PngAppMgrBase(QObject):
 
     def _send_ipc_shutdown(self, reason: str) -> bool:
         """Send IPC shutdown command"""
+        if not self.ipc_port:
+            self.debug_log("Cannot send IPC shutdown — no IPC port detected from child.")
+            return False
+
         try:
-            rsp = IpcParent(self.ipc_port).shutdown_child(reason)
+            rsp = IpcClientSync(self.ipc_port).shutdown_child(reason)
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"IPC shutdown failed: {e}")
             return False
-
 
     def _terminate_process(self):
         """Force-terminate the process and all its subprocesses"""
@@ -561,6 +605,27 @@ class PngAppMgrBase(QObject):
                     p.kill()
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.debug_log(f"Failed to terminate process tree for PID {target_pid}: {e}")
+
+    def _maybe_fire_post_start(self) -> None:
+        """Fire the post-start hook only once and only after both init & ipc port received."""
+        # Do not hold the process lock while emitting signals to avoid deadlocks with UI callbacks.
+        if self._post_start_fired:
+            return
+
+        with self._process_lock:
+            init_ok = self._init_complete_received
+            port_ok = self._ipc_port_received
+            should_fire = not self._post_start_fired and init_ok and port_ok
+            if should_fire:
+                self._post_start_fired = True
+
+        if should_fire:
+            self.debug_log(f"{self.display_name}: All startup signals received — firing post-start hook")
+            if self._post_start_hook:
+                try:
+                    self.post_start_signal.emit()
+                except Exception as e: # pylint: disable=broad-exception-caught
+                    self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
 
     def _update_status(self, status: str):
         """Update status and emit signal"""

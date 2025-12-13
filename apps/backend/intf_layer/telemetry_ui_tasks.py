@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Optional, Tuple
+from typing import List, Tuple, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -34,7 +34,7 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.web_server import ClientType
-from lib.ipc import PngShmWriter
+from lib.ipc import IpcPublisherAsync
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -48,9 +48,10 @@ def initUiIntfLayer(
     debug_mode: bool,
     tasks: List[asyncio.Task],
     ver_str: str,
-    ipc_port: Optional[int],
+    run_ipc_server: bool,
+    xsub_port: Optional[int],
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, PngShmWriter]:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -60,12 +61,13 @@ def initUiIntfLayer(
         debug_mode (bool): Debug enabled if true
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
-        ipc_port (Optional[int]): IPC port
+        run_ipc_server (bool): Whether to run the IPC server
+        xsub_port (Optional[int]): Port for IPC xsub socket
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        Tuple[TelemetryWebServer, PngShmWriter]: Web server and shm writer instances
+        Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
     """
 
     # First, create the server instance
@@ -76,83 +78,83 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-    shm = PngShmWriter(logger)
+    ipc_pub = IpcPublisherAsync(logger=logger, port=xsub_port)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(raceTableClientUpdateTask(settings.Display.refresh_interval, web_server,
-                                                               session_state,
-                                                               logger,
-                                                               shutdown_event),
-                                     name="Race Table Update Task"))
-    tasks.append(asyncio.create_task(streamOverlayUpdateTask(settings.Display.refresh_interval,
-                                                             settings.StreamOverlay.show_sample_data_at_start,
-                                                             web_server, session_state, shutdown_event),
-                                     name="Stream Overlay Update Task"))
+    tasks.append(asyncio.create_task(lowFreqUpdateTask(
+        settings.Display.refresh_interval,
+        settings.StreamOverlay.show_sample_data_at_start,
+        web_server,
+        session_state,
+        logger,
+        shutdown_event,
+        ipc_pub), name="Race Table Update Task"))
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
     if settings.HUD.enabled:
-        tasks.append(asyncio.create_task(hudUpdateTask(shm, session_state,
+        tasks.append(asyncio.create_task(highFreqUpdateTask(session_state,
                                                        write_interval_ms=settings.Display.hud_refresh_interval,
-                                                       shutdown_event=shutdown_event), name="HUD Update Task"))
+                                                       shutdown_event=shutdown_event, ipc_pub=ipc_pub), name="HUD Update Task"))
 
-    registerIpcTask(ipc_port, logger, session_state, telemetry_handler, tasks)
-    return web_server, shm
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
+    return web_server, ipc_pub
 
-async def raceTableClientUpdateTask(
+async def lowFreqUpdateTask(
         update_interval_ms: int,
+        stream_overlay_start_sample_data: bool,
         server: TelemetryWebServer,
         session_state: SessionState,
         logger: logging.Logger,
-        shutdown_event: asyncio.Event) -> None:
+        shutdown_event: asyncio.Event,
+        ipc_pub: IpcPublisherAsync) -> None:
     """Task to update clients with telemetry data
 
-    Args:
-        update_interval_ms (int): Update interval in milliseconds
-        server (TelemetryWebServer): The telemetry web server
-        session_state (SessionState): Handle to the session state data structure
-        logger (logging.Logger): Logger handle
-        shutdown_event (asyncio.Event): Event to signal shutdown
-    """
-
-    await _initial_random_sleep()
-    sleep_duration = update_interval_ms / 1000
-    while not shutdown_event.is_set():
-        if server.is_any_client_interested_in_event('race-table-update'):
-            await server.send_to_clients_interested_in_event(
-                event='race-table-update',
-                data=PeriodicUpdateData(logger, session_state).toJSON()
-            )
-        await asyncio.sleep(sleep_duration)
-
-    server.m_logger.debug("Shutting down race table update task")
-
-async def streamOverlayUpdateTask(
-    update_interval_ms: int,
-    stream_overlay_start_sample_data: bool,
-    server: TelemetryWebServer,
-    session_state: SessionState,
-    shutdown_event: asyncio.Event) -> None:
-    """Task to update clients with player telemetry overlay data
     Args:
         update_interval_ms (int): Update interval in milliseconds
         stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
         server (TelemetryWebServer): The telemetry web server
         session_state (SessionState): Handle to the session state data structure
+        logger (logging.Logger): Logger handle
         shutdown_event (asyncio.Event): Event to signal shutdown
+        ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
 
     await _initial_random_sleep()
-    sleep_duration = update_interval_ms / 1000
+    interval = update_interval_ms / 1000.0
+    loop = asyncio.get_running_loop()
+    next_tick = loop.time()
+
     while not shutdown_event.is_set():
+        next_tick += interval
+
+        race_table_data = PeriodicUpdateData(logger, session_state).toJSON()
+        await ipc_pub.publish("race-table-update", race_table_data) # IPC publish is O(1) so do it always
+
+        if server.is_any_client_interested_in_event('race-table-update'):
+            await server.send_to_clients_interested_in_event(
+                event='race-table-update',
+                data=race_table_data
+            )
+
         if server.is_any_client_interested_in_event('stream-overlay-update'):
             await server.send_to_clients_interested_in_event(
                 event='stream-overlay-update',
-                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data))
-        await asyncio.sleep(sleep_duration)
+                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
+            )
+        # --------------
 
-    server.m_logger.debug("Shutting down stream overlay update task")
+        # Deadline sleep (no drift)
+        delay = next_tick - loop.time()
+        if delay > 0:
+            await asyncio.sleep(delay)
+        else:
+            # Missed deadline: yield but do not accumulate drift
+            next_tick = loop.time()
+            await asyncio.sleep(0)
+
+    server.m_logger.debug("Shutting down race table update task")
 
 async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
     """Task to update clients with telemetry data
@@ -187,37 +189,37 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
 
     server.m_logger.debug("Shutting down HUD notifier task")
 
-async def hudUpdateTask(
-        shm: PngShmWriter,
+async def highFreqUpdateTask(
         session_state: SessionState,
         write_interval_ms: int,
-        shutdown_event: asyncio.Event) -> None:
+        shutdown_event: asyncio.Event,
+        ipc_pub: IpcPublisherAsync) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
-        shm (PngShmWriter): Shared memory writer
         session_state (SessionState): Handle to the session state data structure
         write_interval_ms (int): Write interval in milliseconds
         shutdown_event (async.Event): Event to signal shutdown
+        ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
     await _initial_random_sleep()
     interval = write_interval_ms / 1000.0
     loop = asyncio.get_running_loop()
+    next_tick = loop.time()
 
     while not shutdown_event.is_set():
-        loop_start = loop.time()
+        next_tick += interval
 
-        shm.add("race-table-update", PeriodicUpdateData(shm.logger, session_state).toJSON())
-        shm.add("stream-overlay-update", StreamOverlayData(session_state).toJSON(False))
-        await shm.write()
+        data = StreamOverlayData(session_state).toJSON(False)
+        await ipc_pub.publish("stream-overlay-update", data)
 
-        elapsed = loop.time() - loop_start
-        remaining = interval - elapsed
-
-        if remaining > 0:
-            await asyncio.sleep(remaining)
+        delay = next_tick - loop.time()
+        if delay > 0:
+            await asyncio.sleep(delay)
         else:
-            await asyncio.sleep(0) # Yield control to event loop
+            # Missed deadline — resync without sleeping
+            next_tick = loop.time()
+            await asyncio.sleep(0)
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

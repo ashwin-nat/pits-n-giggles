@@ -31,7 +31,7 @@ from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import HudSettings, PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
 from .popup import OverlaysAdjustPopup, SliderItem
@@ -120,7 +120,7 @@ class HudAppMgr(PngAppMgrBase):
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending hide/show command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(
+        rsp = IpcClientSync(self.ipc_port).request(
             command="toggle-overlays-visibility", args={}
         )
         self.info_log(str(rsp))
@@ -133,7 +133,7 @@ class HudAppMgr(PngAppMgrBase):
 
         self.debug_log("Toggling HUD lock state...")
         self.set_button_state(self.lock_button, False)
-        rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="lock-widgets", args={
             "old-value": self.locked,
             "new-value": not self.locked,
         })
@@ -154,13 +154,13 @@ class HudAppMgr(PngAppMgrBase):
     def reset_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending reset command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(command="reset-overlays", args={})
+        rsp = IpcClientSync(self.ipc_port).request(command="reset-overlays", args={})
         self.info_log(str(rsp))
 
     def next_page_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending next page command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(
+        rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
         )
         self.info_log(str(rsp))
@@ -263,7 +263,7 @@ class HudAppMgr(PngAppMgrBase):
             opacity (int): New overlays opacity
         """
         self.debug_log("Sending set-overlays-opacity command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="set-overlays-opacity", args={
             "opacity": opacity,
         })
         if not rsp or rsp.get("status") != "success":
@@ -332,7 +332,7 @@ class HudAppMgr(PngAppMgrBase):
             data (Dict[str, Any]): UI scale data
         """
         self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
-        rsp = IpcParent(self.ipc_port).request(command="set-ui-scale", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="set-ui-scale", args={
             "oid": oid,
             "scale_factor": data["new_value"]
         })

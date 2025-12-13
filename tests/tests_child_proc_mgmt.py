@@ -10,7 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.child_proc_mgmt import extract_pid_from_line, report_pid_from_child, is_init_complete
+from lib.child_proc_mgmt import (extract_ipc_port_from_line,
+                                 extract_pid_from_line, is_init_complete,
+                                 report_ipc_port_from_child,
+                                 report_pid_from_child)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -147,3 +150,28 @@ class TestIsInitComplete(TestChildProcMgmt):
         # Test case where a substring of _INIT_COMPLETE_STR is present (should fail)
         line = "<<__PNG_SUBSYSTEM_INIT_COMPL>>"
         self.assertFalse(is_init_complete(line))
+
+class TestIpcPortExtraction(TestChildProcMgmt):
+
+    def test_valid_ipc_port(self):
+        line = "<<PNG_LAUNCHER_IPC_PORT:5555>>"
+        self.assertEqual(extract_ipc_port_from_line(line), 5555)
+
+    def test_invalid_no_tag(self):
+        self.assertIsNone(extract_ipc_port_from_line("nothing here"))
+
+    def test_invalid_wrong_tag(self):
+        self.assertIsNone(extract_ipc_port_from_line("<<PNG_LAUNCHER_CHILD_PID:1234>>"))
+
+    def test_valid_ipc_port_with_noise(self):
+        line = "log info: starting... <<PNG_LAUNCHER_IPC_PORT:7777>> ready"
+        self.assertEqual(extract_ipc_port_from_line(line), 7777)
+
+    def test_multiple_tags_uses_first_match(self):
+        line = "<<PNG_LAUNCHER_IPC_PORT:1111>> something <<PNG_LAUNCHER_IPC_PORT:2222>>"
+        self.assertEqual(extract_ipc_port_from_line(line), 1111)
+
+    def test_non_numeric_port(self):
+        # Should return None because regex requires digits
+        line = "<<PNG_LAUNCHER_IPC_PORT:abcd>>"
+        self.assertIsNone(extract_ipc_port_from_line(line))

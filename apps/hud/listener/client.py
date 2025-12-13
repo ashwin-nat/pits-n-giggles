@@ -24,12 +24,12 @@
 
 import logging
 
-from lib.ipc import IpcSubscriber
+from lib.ipc import SocketioClient
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class HudClient(IpcSubscriber):
+class HudClient(SocketioClient):
     """Socket.IO client to receive HUD data updates."""
     def __init__(self, port: int, logger: logging.Logger, overlays_mgr: OverlaysMgr):
         """Args:

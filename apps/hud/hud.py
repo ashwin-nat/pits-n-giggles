@@ -50,36 +50,37 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
+    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
+    parser.add_argument('--xpub-port', type=int, default=None, help="IPC xpub port") # unused
+    parser.add_argument('--xsub-port', type=int, default=None, help="IPC xsub port") # unused
 
     # Parse the command-line arguments
     return parser.parse_args()
 
-def main(logger: logging.Logger, config: PngSettings, ipc_port: int, debug_mode: bool) -> None:
+def main(logger: logging.Logger, config: PngSettings, debug_mode: bool, xpub_port: int) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         config (PngSettings): Configurations
-        ipc_port (int): IPC port
         debug_mode (bool): Debug mode
+        xpub_port (int): IPC xpub port
     """
 
     overlays_mgr = OverlaysMgr(logger, config, debug=debug_mode)
 
-    socketio_client, shm_reader = run_hud_update_threads(
+    socketio_client, ipc_sub = run_hud_update_threads(
         logger=logger,
         overlays_mgr=overlays_mgr,
         port=config.Network.server_port,
-        shm_read_interval_ms=config.Display.hud_refresh_interval,
-        low_freq_update_interval_ms=config.Display.refresh_interval)
+        low_freq_update_interval_ms=config.Display.refresh_interval,
+        xpub_port=xpub_port)
 
     run_ipc_task(
-        port=ipc_port,
         logger=logger,
         overlays_mgr=overlays_mgr,
         socketio_client=socketio_client,
-        shm_reader=shm_reader)
+        ipc_sub=ipc_sub)
 
     overlays_mgr.run()
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
@@ -94,8 +95,8 @@ def entry_point():
         main(
             logger=png_logger,
             config=configs,
-            ipc_port=args.ipc_port,
-            debug_mode=args.debug)
+            debug_mode=args.debug,
+            xpub_port=args.xpub_port)
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except Exception as e: # pylint: disable=broad-except

@@ -31,13 +31,14 @@ from apps.launcher.subsystems import PngAppMgrBase
 from lib.config import PngSettings
 from lib.version import (get_newer_stable_releases, get_releases_info,
                          is_update_available)
+from lib.ipc import IpcPubSubBroker
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class StopTask(QRunnable):
+class StopSubsystemTask(QRunnable):
     def __init__(self, subsystem: PngAppMgrBase, reason: str):
         super().__init__()
         self.subsystem = subsystem
@@ -45,6 +46,14 @@ class StopTask(QRunnable):
 
     def run(self):
         self.subsystem.stop(self.reason)
+
+class StopBrokerTask(QRunnable):
+    def __init__(self, broker: IpcPubSubBroker):
+        super().__init__()
+        self.broker = broker
+
+    def run(self):
+        self.broker.close()
 
 class SettingsChangeTask(QRunnable):
     def __init__(self, subsystem: PngAppMgrBase, new_settings: PngSettings):

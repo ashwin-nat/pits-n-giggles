@@ -37,20 +37,22 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QPushButton, QSplitter, QToolTip, QVBoxLayout,
                                QWidget)
 
+from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
                                       SaveViewerAppMgr)
-from apps.hud.common import deserialise_data
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
+from lib.ipc import IpcPubSubBroker
 from meta.meta import APP_NAME
 
 from .changelog_window import ChangelogWindow
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
-from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
+from .tasks import (SettingsChangeTask, StopBrokerTask, StopSubsystemTask,
+                    UpdateCheckTask)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -173,8 +175,14 @@ class PngLauncherWindow(QMainWindow):
         self.update_data.connect(self.on_update_data)
         self.newer_versions: List[Dict[str, Any]] = []
 
+        self.ipc_broker = IpcPubSubBroker(logger=self.logger)
+
         # Common args
-        args = ["--config-file", self.config_file_new]
+        args = [
+            "--config-file", self.config_file_new,
+            "--xpub-port", str(self.ipc_broker.xpub_port),
+            "--xsub-port", str(self.ipc_broker.xsub_port)
+        ]
         self.subsystems: List[PngAppMgrBase] = [
            BackendAppMgr(
                window=self,
@@ -450,6 +458,18 @@ class PngLauncherWindow(QMainWindow):
         container.setLayout(layout)
         return container
 
+    def start_msg_broker(self):
+        """Start the IPC message broker in a separate thread"""
+        assert not self.ipc_broker.running
+        self.debug_log(f"Starting IPC broker on {self.ipc_broker.xpub_endpoint} <-> {self.ipc_broker.xsub_endpoint}...")
+        self.ipc_broker.start()
+
+    def stop_msg_broker(self):
+        """Stop the IPC message broker thread"""
+
+        self.debug_log("Stopping IPC broker...")
+        self.thread_pool.start(StopBrokerTask(self.ipc_broker))
+
     def auto_start_subsystems(self):
         """Auto-start subsystems marked for auto-start"""
         for subsystem in self.subsystems:
@@ -630,8 +650,9 @@ class PngLauncherWindow(QMainWindow):
 
         for subsystem in self.subsystems:
             self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
-            task = StopTask(subsystem, "Launcher shutting down")
+            task = StopSubsystemTask(subsystem, "Launcher shutting down")
             self.thread_pool.start(task)
+        self.stop_msg_broker()
 
         MAX_TIME_MS = 10000
         elapsed = 0
@@ -653,6 +674,7 @@ class PngLauncherWindow(QMainWindow):
 
     def run(self):
         """Run the application"""
+        self.start_msg_broker()
         self.auto_start_subsystems()
         self.show()
         sys.exit(self.app.exec())

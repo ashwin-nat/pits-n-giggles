@@ -23,7 +23,7 @@ from aiohttp import ClientSession, TCPConnector
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_json
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import IpcClientSync, get_free_tcp_port
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
 
@@ -57,7 +57,7 @@ def get_cached_files() -> list[str]:
 def send_ipc_shutdown(port: int) -> bool:
     """Send shutdown command to the child process via IPC."""
     try:
-        rsp = IpcParent(port).shutdown_child("Integration test complete")
+        rsp = IpcClientSync(port).shutdown_child("Integration test complete")
         return rsp.get("status") == "success"
     except Exception as e:
         logger.test_log(f"IPC shutdown failed: {e}")
@@ -115,7 +115,7 @@ def send_heartbeat(
 
     while not stop_event.is_set():
         try:
-            rsp = IpcParent(port).heartbeat()
+            rsp = IpcClientSync(port).heartbeat()
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0

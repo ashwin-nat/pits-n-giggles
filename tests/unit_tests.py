@@ -81,9 +81,9 @@ from tests_tyre_wear_extrapolator import (
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
-from tests.ipc import (TestIpcParentChild, TestIpcSubscriber, TestShmE2E,
-                       TestShmPresentation, TestShmTransport)
-from tests.tests_child_proc_mgmt import TestIsInitComplete, TestPidReport
+from tests.ipc import (TestIpcParentChild, TestIpcSubscriber, TestIpcPubSub)
+from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
+                                         TestIsInitComplete, TestPidReport)
 from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_rate_limiter import TestRateLimiter
