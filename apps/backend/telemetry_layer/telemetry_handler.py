@@ -69,7 +69,7 @@ class UdpActionCodes:
         "timing_tower_toggle_udp_action_code": "toggle_timing_tower_overlay",
         "mfd_toggle_udp_action_code": "toggle_mfd_overlay",
         "cycle_mfd_udp_action_code": "mfd_next_page",
-        "track_map_toggle_udp_action_code": "toggle_track_radar_overlay",
+        "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
     }
 
     def update(self, key: str, value: int):

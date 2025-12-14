@@ -253,6 +253,16 @@ Window {
                     visible: !isRef && driver.relX !== undefined && driver.relZ !== undefined
 
                     // Convert world position to radar coordinates (flip X axis)
+                    // relX: world-space lateral offset from player.
+                    // Convention: +relX = car is to the right of the player.
+                    //
+                    // NOTE:
+                    // Radar screen space intentionally mirrors world X so that the radar
+                    // matches the driver's perspective. As a result:
+                    //   - +relX (world right) is drawn to the LEFT on screen
+                    //   - -relX (world left)  is drawn to the RIGHT on screen
+                    //
+                    // Side-awareness logic (hasCarOnLeft/Right) always uses world-space relX.
                     property real radarX: radarArea.centerX - (driver.relX / root.radarRange) * (radarArea.width / 2)
                     property real radarY: radarArea.centerY - (driver.relZ / root.radarRange) * (radarArea.height / 2)
 
