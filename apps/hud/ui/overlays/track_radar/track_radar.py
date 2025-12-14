@@ -68,7 +68,6 @@ class TrackRadarOverlay(BaseOverlayQML):
 
             ref_driver = self._get_reference_driver(data)
             if not ref_driver:
-                self.logger.debug(f"{self.OVERLAY_ID} | No reference driver found")
                 return
 
             # Calculate relative positions for all drivers
