@@ -100,7 +100,7 @@ Window {
                     width: circleRadius * 2
                     height: circleRadius * 2
                     color: "transparent"
-                    border.color: "#333333"
+                    border.color: Qt.rgba(1, 1, 1, 0.22)
                     border.width: 1
                     radius: circleRadius
                 }
@@ -112,14 +112,14 @@ Window {
                 y: 0
                 width: 1
                 height: radarArea.height
-                color: "#333333"
+                color: Qt.rgba(1, 1, 1, 0.28)
             }
             Rectangle {
                 x: 0
                 y: radarArea.centerY - height / 2
                 width: radarArea.width
                 height: 1
-                color: "#333333"
+                color: Qt.rgba(1, 1, 1, 0.28)
             }
 
             // Reference car (center) with side indicators
