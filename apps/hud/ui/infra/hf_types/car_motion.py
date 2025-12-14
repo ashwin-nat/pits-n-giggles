@@ -96,15 +96,17 @@ class DriverMotionInfo(HighFreqBase):
     team: str
     track_position: float
     index: int
+    is_ref: bool
     car_motion: CarMotion
 
     @classmethod
-    def from_json(cls, json_data):
+    def from_json(cls, json_data, ref_index: int):
         return cls(
             name = json_data["name"],
             team = json_data["team"],
             track_position = json_data["track-position"],
             index = json_data["index"],
+            is_ref = (json_data["index"] == ref_index),
             car_motion = CarMotion.from_json(json_data["motion"]),
         )
 
@@ -114,6 +116,12 @@ class LiveSessionMotionInfo(HighFreqBase):
 
     @classmethod
     def from_json(cls, json_data):
+
+        motion_data = json_data["motion"]
+        ref_index   = json_data["ref-index"]
         return cls(
-            motion_data = [DriverMotionInfo.from_json(motion_data) for motion_data in json_data]
+            motion_data = [
+                DriverMotionInfo.from_json(motion_data_per_driver, ref_index)
+                for motion_data_per_driver in motion_data
+            ]
         )

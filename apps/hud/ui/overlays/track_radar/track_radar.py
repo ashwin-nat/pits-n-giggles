@@ -28,7 +28,7 @@ from pathlib import Path
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.hf_types import LiveSessionMotionInfo, InputTelemetryData
+from apps.hud.ui.infra.hf_types import LiveSessionMotionInfo, DriverMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -68,3 +68,9 @@ class TrackRadarOverlay(BaseOverlayQML):
             # Send data to QML and trigger update
             if self._root:
                 pass
+
+    def _get_reference_driver(self, session: LiveSessionMotionInfo) -> DriverMotionInfo | None:
+        return next(
+            (driver for driver in session.motion_data if driver.is_ref),
+            None
+        )

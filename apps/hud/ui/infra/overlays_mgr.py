@@ -323,5 +323,5 @@ class OverlaysMgr:
         """Send motion data to motion overlay."""
         self.window_manager.unicast_high_freq_data(
             TrackRadarOverlay.OVERLAY_ID,
-            LiveSessionMotionInfo.from_json(data["motion"])
+            LiveSessionMotionInfo.from_json(data)
         )

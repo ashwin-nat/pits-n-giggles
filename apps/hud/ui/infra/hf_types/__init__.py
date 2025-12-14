@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base import HighFreqBase
-from .car_motion import LiveSessionMotionInfo
+from .car_motion import LiveSessionMotionInfo, DriverMotionInfo
 from .input_telemetry import InputTelemetryData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -32,4 +32,5 @@ __all__ = [
     "HighFreqBase",
     "InputTelemetryData",
     "LiveSessionMotionInfo",
+    "DriverMotionInfo",
 ]
