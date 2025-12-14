@@ -142,6 +142,9 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Bold.ttf"), "assets/fonts"),
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Regular.ttf"), "assets/fonts"),
 
+    # QML
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "track_radar", "track_radar.qml"), "apps/hud/ui/overlays/track_radar"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "input_telemetry", "input_telemetry.qml"), "apps/hud/ui/overlays/input_telemetry"),
 ]
 
 # --------------------------------------------------------------------------------------------------
