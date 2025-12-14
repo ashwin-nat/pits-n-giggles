@@ -202,6 +202,7 @@ async def highFreqUpdateTask(
         shutdown_event (async.Event): Event to signal shutdown
         ipc_pub (IpcPublisherAsync): IPC publisher instance
     """
+    await ipc_pub.start()
     await _initial_random_sleep()
     interval = write_interval_ms / 1000.0
     loop = asyncio.get_running_loop()
