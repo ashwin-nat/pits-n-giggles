@@ -1221,42 +1221,71 @@ class DataPerDriver:
         Args:
             car_damage (CarDamageData): The car damage data
         """
-        if not self.m_packet_copies.m_packet_car_damage:
+
+        prev_damage = self.m_packet_copies.m_packet_car_damage
+        if not prev_damage:
             return
 
-        changed_fields = self.m_packet_copies.m_packet_car_damage.diff_fields(car_damage,
-                                                                        self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS)
-        wing_changed = False
+        changed_fields = prev_damage.diff_fields(
+            car_damage,
+            self.CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS
+        )
+
+        wing_change_emitted = False
+
         for field, diff in changed_fields.items():
-            new_value = diff["new_value"]
-            old_value = diff["old_value"]
-            if new_value > old_value:
+            old = diff["old_value"]
+            new = diff["new_value"]
+
+            # ------------------------------------------------------------------
+            # Case 1: Damage increased - always report
+            # ------------------------------------------------------------------
+            if new > old:
                 msg = CarDamageRaceControlMessage(
                     timestamp=time.time(),
                     driver_index=self.m_index,
                     lap_number=self.m_lap_info.m_current_lap,
                     damaged_part=field,
-                    old_value=old_value,
-                    new_value=new_value
+                    old_value=old,
+                    new_value=new
                 )
                 self.m_race_ctrl.add_message(msg)
-            elif new_value == 0 and (not wing_changed): # damage going from some value to 0 implies wing change
-                msg = WingChangeRaceCtrlMsg(
-                    timestamp=time.time(),
-                    driver_index=self.m_index,
-                    lap_number=self.m_lap_info.m_current_lap
-                )
-                self.m_race_ctrl.add_message(msg)
-                # Say front right has 30% damage and front left has 20% damage.
-                # Both going to 0 in same tick. Only one wing change message should be added
-                wing_changed = True
-            else:
-                # something strange is going on. damage decreasing but not to 0
-                msg = None
 
-            if msg:
-                self.m_logger.debug("Driver %s - %s changed from %s to %s. Added %s race control message",
-                                str(self), field, diff["old_value"], diff["new_value"], str(msg.message_type))
-            else:
-                self.m_logger.warning("Driver %s - unexpected car damage change for field %s. old: %s, new: %s",
-                                    str(self), field, str(old_value), str(new_value))
+                self.m_logger.debug(
+                    "Driver %s - %s damage increased %s - %s. Added CAR_DAMAGE message",
+                    str(self), field, old, new
+                )
+                continue
+
+            # ------------------------------------------------------------------
+            # Case 2: Wing damage reset to 0 - wing change (only once)
+            # ------------------------------------------------------------------
+            if new == 0 and old > 0:
+                if not wing_change_emitted:
+                    msg = WingChangeRaceCtrlMsg(
+                        timestamp=time.time(),
+                        driver_index=self.m_index,
+                        lap_number=self.m_lap_info.m_current_lap
+                    )
+                    self.m_race_ctrl.add_message(msg)
+                    wing_change_emitted = True
+
+                    self.m_logger.debug(
+                        "Driver %s - %s reset %s - 0. Added WING_CHANGE message",
+                        str(self), field, old
+                    )
+                else:
+                    self.m_logger.debug(
+                        "Driver %s - %s reset %s - 0. Wing change already handled",
+                        str(self), field, old
+                    )
+                continue
+
+            # ------------------------------------------------------------------
+            # Case 3: Damage decreased but not to zero (unexpected)
+            # ------------------------------------------------------------------
+            if new < old:
+                self.m_logger.warning(
+                    "Driver %s - unexpected damage decrease for %s: %s - %s",
+                    str(self), field, old, new
+                )
