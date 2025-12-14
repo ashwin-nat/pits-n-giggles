@@ -61,12 +61,16 @@ class IpcPublisherAsync:
             logger.propagate = False
         self.logger = logger
 
-        self._context = zmq.Context.instance()
+        self._context = zmq.Context()
         self.socket: Optional[zmq.Socket] = None
 
         self._connected = False
         self._running = True
-        self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+        self._reconnect_task = None
+
+    async def start(self):
+        if not self._reconnect_task:
+            self._reconnect_task = asyncio.create_task(self._reconnect_loop())
 
     # ---------------------------------------------------------
     # Socket creation

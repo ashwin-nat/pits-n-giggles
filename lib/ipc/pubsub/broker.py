@@ -46,7 +46,7 @@ class IpcPubSubBroker:
         self.host = host
         self.logger = logger or logging.getLogger("ipc-broker")
 
-        self.ctx = zmq.Context.instance()
+        self.ctx = zmq.Context()
 
         self._configured_xsub_port = xsub_port
         self._configured_xpub_port = xpub_port

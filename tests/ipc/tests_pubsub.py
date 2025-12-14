@@ -109,6 +109,7 @@ class TestIpcPubSub(TestIPC):
 
         async def pub_task():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
 
             # Send multiple times to guarantee delivery
             for _ in range(5):
@@ -123,6 +124,7 @@ class TestIpcPubSub(TestIPC):
         time.sleep(0.05)
 
         sub.close()
+        time.sleep(0.05)
         t.join(timeout=0.2)
 
         # At least one message MUST come through
@@ -147,6 +149,7 @@ class TestIpcPubSub(TestIPC):
 
         async def pub_task():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
 
             # Send multiple times to guarantee delivery
             for _ in range(5):
@@ -160,6 +163,7 @@ class TestIpcPubSub(TestIPC):
         time.sleep(0.05)
 
         sub.close()
+        time.sleep(0.05)
         t.join(timeout=0.2)
 
         # Subscriber must have received at least one
@@ -172,6 +176,7 @@ class TestIpcPubSub(TestIPC):
 
         async def spam():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(500):
                 await pub.publish("fast", {"x": 1})
             await pub.close()
@@ -186,6 +191,7 @@ class TestIpcPubSub(TestIPC):
 
         async def run_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             # Publisher emits messages BEFORE subscriber exists
             for _ in range(SEND_REPEATS):
                 await pub.publish("late", {"late": 1})
@@ -209,6 +215,7 @@ class TestIpcPubSub(TestIPC):
 
         async def pub_again():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(SEND_REPEATS):
                 await pub.publish("late", {"late": 2})
                 await asyncio.sleep(MESSAGE_DELAY)
@@ -218,6 +225,7 @@ class TestIpcPubSub(TestIPC):
         time.sleep(PROPAGATION_DELAY)
 
         sub.close()
+        time.sleep(0.05)
         t.join(timeout=0.2)
 
         # Must receive at least one of the SECOND batch
@@ -249,6 +257,7 @@ class TestIpcPubSub(TestIPC):
 
         async def run_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(SEND_REPEATS):
                 await pub.publish("fanout", {"v": 999})
                 await asyncio.sleep(MESSAGE_DELAY)
@@ -260,6 +269,7 @@ class TestIpcPubSub(TestIPC):
         # Shutdown subscribers
         for sub in subs:
             sub.close()
+            time.sleep(0.05)
 
         for t in threads:
             t.join(timeout=0.2)
@@ -287,6 +297,7 @@ class TestIpcPubSub(TestIPC):
         # Simulate publisher crash by closing socket abruptly
         async def crash_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             # Send a few messages, then crash before graceful close
             for _ in range(3):
                 await pub.publish("crashpub", {"alive": True})
@@ -299,6 +310,7 @@ class TestIpcPubSub(TestIPC):
         time.sleep(PROPAGATION_DELAY)
 
         sub.close()
+        time.sleep(0.05)
         t.join(timeout=0.2)
 
         # Subscriber should have received the pre-crash messages
@@ -337,6 +349,7 @@ class TestIpcPubSub(TestIPC):
         # ---- publisher must continue unaffected ----
         async def run_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(SEND_REPEATS):
                 await pub.publish("crashsub", {"after": True})
                 await asyncio.sleep(MESSAGE_DELAY)
@@ -366,6 +379,7 @@ class TestIpcPubSub(TestIPC):
 
         async def pub_task_pre_crash():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(3):
                 await pub.publish("brk", {"before": True})
                 await asyncio.sleep(MESSAGE_DELAY)
@@ -392,6 +406,7 @@ class TestIpcPubSub(TestIPC):
 
         # Stop subscriber
         sub.close()
+        time.sleep(0.05)
         t_sub.join(timeout=0.2)
 
         # Must have received pre-crash messages
@@ -416,6 +431,7 @@ class TestIpcPubSub(TestIPC):
         # Publisher also starts BEFORE broker
         async def pub_task_early():
             pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
             for _ in range(SEND_REPEATS):
                 await pub.publish("pre", {"early": True})
                 await asyncio.sleep(MESSAGE_DELAY)
@@ -450,8 +466,8 @@ class TestIpcPubSub(TestIPC):
 
         # Shutdown subscriber
         sub.close()
+        time.sleep(0.05)
         t_sub.join(timeout=0.5)
 
-        # ✅ ASSERTIONS: liveness only
         self.assertTrue(t_sub.is_alive() is False)
 

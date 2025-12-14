@@ -53,7 +53,7 @@ class IpcSubscriberSync:
             logger.propagate = False
         self.logger = logger
 
-        self._context = zmq.Context.instance()
+        self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
 
         self._running = False
@@ -116,8 +116,8 @@ class IpcSubscriberSync:
                 events = dict(poller.poll(100))
             except zmq.ZMQError:
                 self.logger.warning("Poll failed — reconnecting SUB socket")
-                poller.unregister(self.socket)
                 self._create_and_connect()
+                poller = zmq.Poller()
                 poller.register(self.socket, zmq.POLLIN)
                 continue
 
@@ -126,8 +126,8 @@ class IpcSubscriberSync:
                     frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
                 except zmq.ZMQError:
                     self.logger.warning("Receive failed — reconnecting SUB socket")
-                    poller.unregister(self.socket)
                     self._create_and_connect()
+                    poller = zmq.Poller()
                     poller.register(self.socket, zmq.POLLIN)
                     continue
 
