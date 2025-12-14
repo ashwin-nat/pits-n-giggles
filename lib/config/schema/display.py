@@ -51,7 +51,8 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     hud_refresh_interval: int = Field(
         default=33,
         gt=0,
-        description="HUD overlay refresh interval (ms)",
+        description="HUD overlay refresh interval (ms. 33ms is ~30fps, 16ms is ~60fps. "
+                        "recommended to not go below 16ms)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
