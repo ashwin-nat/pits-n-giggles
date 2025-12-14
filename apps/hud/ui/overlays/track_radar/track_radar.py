@@ -25,11 +25,12 @@
 import logging
 import math
 from pathlib import Path
+from typing import Optional
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.hf_types import LiveSessionMotionInfo, DriverMotionInfo
+from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -82,7 +83,7 @@ class TrackRadarOverlay(BaseOverlayQML):
                     Q_ARG("QVariant", driver_list)
                 )
 
-    def _get_reference_driver(self, session: LiveSessionMotionInfo) -> DriverMotionInfo | None:
+    def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""
         return next(
             (driver for driver in session.motion_data if driver.is_ref),

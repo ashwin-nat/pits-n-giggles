@@ -31,7 +31,7 @@ from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.overlays import (InputTelemetryOverlay, LapTimerOverlay,
-                                  MfdOverlay, TimingTowerOverlay, TrackRadarOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -313,10 +313,9 @@ class OverlaysMgr:
 
     def input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        car_telemetry = data["car-telemetry"]
         self.window_manager.unicast_high_freq_data(
             InputTelemetryOverlay.OVERLAY_ID,
-            InputTelemetryData.from_json(car_telemetry)
+            InputTelemetryData.from_json(data)
         )
 
     def motion_update(self, data: Dict[str, Any]):

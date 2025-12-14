@@ -100,28 +100,39 @@ class DriverMotionInfo(HighFreqBase):
     car_motion: CarMotion
 
     @classmethod
-    def from_json(cls, json_data, ref_index: int):
+    def from_json(cls, json_data: dict):
+        # default is_ref=False
+        # must be explicitly set via apply_ref_index
         return cls(
-            name = json_data["name"],
-            team = json_data["team"],
-            track_position = json_data["track-position"],
-            index = json_data["index"],
-            is_ref = (json_data["index"] == ref_index),
-            car_motion = CarMotion.from_json(json_data["motion"]),
+            name=json_data["name"],
+            team=json_data["team"],
+            track_position=json_data["track-position"],
+            index=json_data["index"],
+            is_ref=False,
+            car_motion=CarMotion.from_json(json_data["motion"]),
         )
+
+    def apply_ref_index(self, ref_index: int) -> None:
+        self.is_ref = (self.index == ref_index)
 
 @dataclass
 class LiveSessionMotionInfo(HighFreqBase):
     motion_data: list[DriverMotionInfo]
 
     @classmethod
-    def from_json(cls, json_data):
+    def from_json(cls, json_data: dict) -> "LiveSessionMotionInfo":
+        ref_index = json_data["ref-index"]
 
-        motion_data = json_data["motion"]
-        ref_index   = json_data["ref-index"]
-        return cls(
-            motion_data = [
-                DriverMotionInfo.from_json(motion_data_per_driver, ref_index)
-                for motion_data_per_driver in motion_data
-            ]
-        )
+        motion_data = [
+            DriverMotionInfo(
+                name=driver_json["name"],
+                team=driver_json["team"],
+                track_position=driver_json["track-position"],
+                index=driver_json["index"],
+                is_ref=(driver_json["index"] == ref_index),
+                car_motion=CarMotion.from_json(driver_json["motion"]),
+            )
+            for driver_json in json_data["motion"]
+        ]
+
+        return cls(motion_data=motion_data)
