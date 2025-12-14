@@ -30,7 +30,7 @@ from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.high_freq_types import HighFreqBase
+from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------

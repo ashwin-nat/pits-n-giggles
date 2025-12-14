@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import zmq
-import orjson
-from typing import Callable, Dict, Optional
 import logging
+from typing import Callable, Dict, Optional
+
+import orjson
+import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -142,7 +143,7 @@ class IpcSubscriberSync:
                         data = orjson.loads(payload)
                         handler(data)
                     except Exception as e:
-                        self.logger.error(f"Handler error for {topic}: {e}")
+                        self.logger.exception(f"Handler error for {topic}: {e}")
 
         # clean shutdown
         try:

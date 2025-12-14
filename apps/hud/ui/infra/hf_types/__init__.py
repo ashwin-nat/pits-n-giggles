@@ -22,22 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
-from .track_radar import TrackRadarOverlay
+from .base import HighFreqBase
+from .car_motion import LiveSessionMotionInfo, DriverMotionInfo
+from .input_telemetry import InputTelemetryData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-    "TrackRadarOverlay",
+    "HighFreqBase",
+    "InputTelemetryData",
+    "LiveSessionMotionInfo",
+    "DriverMotionInfo",
 ]

@@ -28,7 +28,7 @@ from pathlib import Path
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.infra.high_freq_types import InputTelemetryData
+from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------

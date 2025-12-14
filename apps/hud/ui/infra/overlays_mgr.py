@@ -25,20 +25,21 @@
 import json
 import logging
 import os
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay, InputTelemetryOverlay,
-                                  TimingTowerOverlay)
+from apps.hud.ui.overlays import (InputTelemetryOverlay, LapTimerOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
+                                  TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.file_path import resolve_user_file
 
 from .config import OverlaysConfig
-from .high_freq_types import InputTelemetryData
+from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -62,6 +63,10 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     # ),
     InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
+        y=600,
+    ),
+    TrackRadarOverlay.OVERLAY_ID: OverlaysConfig(
+        x=40,
         y=600,
     ),
 }
@@ -154,6 +159,18 @@ class OverlaysMgr:
             ))
         else:
             self.logger.debug("Input telemetry overlay is disabled")
+
+        if settings.HUD.show_track_radar_overlay:
+            self.window_manager.register_overlay(TrackRadarOverlay.OVERLAY_ID, TrackRadarOverlay(
+                self.config[TrackRadarOverlay.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=settings.HUD.overlays_opacity,
+                scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+                windowed_overlay=settings.HUD.use_windowed_overlays
+            ))
+        else:
+            self.logger.debug("Track radar overlay is disabled")
 
         self.logger.debug("Overlays manager initialized")
 
@@ -296,13 +313,14 @@ class OverlaysMgr:
 
     def input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        car_telemetry = data["car-telemetry"]
         self.window_manager.unicast_high_freq_data(
             InputTelemetryOverlay.OVERLAY_ID,
-            InputTelemetryData(
-                throttle=car_telemetry["throttle"],
-                brake=car_telemetry["brake"],
-                steering=car_telemetry["steering"],
-                rev_pct=car_telemetry["rev-lights-percent"],
-            )
+            InputTelemetryData.from_json(data)
+        )
+
+    def motion_update(self, data: Dict[str, Any]):
+        """Send motion data to motion overlay."""
+        self.window_manager.unicast_high_freq_data(
+            TrackRadarOverlay.OVERLAY_ID,
+            LiveSessionMotionInfo.from_json(data)
         )

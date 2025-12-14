@@ -65,12 +65,12 @@ class StreamOverlayData(BaseAPI):
         self.m_fastest_s1_ms            = session_state.m_fastest_s1_ms
         self.m_fastest_s2_ms            = session_state.m_fastest_s2_ms
         self.m_fastest_s3_ms            = session_state.m_fastest_s3_ms
-        player_index = session_state.m_session_info.m_spectator_car_index \
+        self.m_ref_index = session_state.m_session_info.m_spectator_car_index \
                         if session_state.m_session_info.m_is_spectating \
                         else session_state.m_player_index
         player_data = (
-            session_state.m_driver_data[player_index]
-            if player_index is not None and 0 <= player_index < len(session_state.m_driver_data)
+            session_state.m_driver_data[self.m_ref_index]
+            if self.m_ref_index is not None and 0 <= self.m_ref_index < len(session_state.m_driver_data)
             else None
         )
         player_position = player_data.m_driver_info.position if player_data else None
@@ -306,6 +306,7 @@ class StreamOverlayData(BaseAPI):
             "formula-type" : str(self.m_formula_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
             "circuit-enum-name" : self.m_circuit.name if self.m_circuit else None,
+            "ref-index": self.m_ref_index,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,

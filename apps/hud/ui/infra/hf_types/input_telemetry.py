@@ -23,14 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
+from .base import HighFreqBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-class HighFreqBase:
-    __hf_type__: str
-
-    def __init_subclass__(cls, **kwargs):
-        cls.__hf_type__ = cls.__name__
 
 @dataclass
 class InputTelemetryData(HighFreqBase):
@@ -38,3 +33,13 @@ class InputTelemetryData(HighFreqBase):
     brake: float
     steering: float
     rev_pct: float
+
+    @classmethod
+    def from_json(cls, json_data: dict) -> "InputTelemetryData":
+        car_telemetry = json_data["car-telemetry"]
+        return cls (
+            throttle=car_telemetry["throttle"],
+            brake=car_telemetry["brake"],
+            steering=car_telemetry["steering"],
+            rev_pct=car_telemetry["rev-lights-percent"],
+        )

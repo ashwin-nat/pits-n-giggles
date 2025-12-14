@@ -105,6 +105,7 @@ def _run_ipc_sub_thread(
     def _handle_stream_overlay_update(data):
         """Stream overlay data update handler."""
         overlays_mgr.input_telemetry_update(data)
+        overlays_mgr.motion_update(data)
         if rate_limiter.allows("stream-overlay-update"):
             overlays_mgr.stream_overlays_update(data)
 
