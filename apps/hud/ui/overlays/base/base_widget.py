@@ -74,7 +74,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     fully handled here.
     """
     def __init__(self,
-                 overlay_id: str,
                  config: OverlaysConfig,
                  logger: logging.Logger,
                  locked: bool,
@@ -85,7 +84,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         QWidget.__init__(self)
         BaseOverlay.__init__(
             self,
-            overlay_id,
             config,
             logger,
             locked,
@@ -95,7 +93,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         )
         self.adjustSize()
 
-        logger.debug(f"{overlay_id} | BaseOverlay initialized")
+        logger.debug(f"{self.OVERLAY_ID} | BaseOverlay initialized")
 
         self._drag_pos = None
         self._fade_anim = None
@@ -152,7 +150,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
 
         # 1. Remove all child widgets (covers entire widget tree)
         for w in self.findChildren(QWidget):
-            self.logger.debug(f"{self.overlay_id} | Cleaning widget: {w.__class__.__name__}")
+            self.logger.debug(f"{self.OVERLAY_ID} | Cleaning widget: {w.__class__.__name__}")
             w.setParent(None)
             w.deleteLater()
 
@@ -180,12 +178,12 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     @override
     def toggle_visibility(self):
 
-        self.logger.debug(f'{self.overlay_id} | Toggling visibility')
+        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
         if self.isVisible():
-            self.logger.debug(f'{self.overlay_id} | Fading out overlay')
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
             self.animate_fade(show=False)
         else:
-            self.logger.debug(f'{self.overlay_id} | Fading in overlay')
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
             self.animate_fade(show=True)
 
     # ------------------------------------------------------------------

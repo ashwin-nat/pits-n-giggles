@@ -131,7 +131,7 @@ class MfdOverlay(BaseOverlayWidget):
 
         self.mfdClosed = 40
         self.settings = settings
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
 
         # Always start collapsed, but keep width & position
         geo = self.geometry()
@@ -184,14 +184,14 @@ class MfdOverlay(BaseOverlayWidget):
         self.pages.setFixedHeight(self.mfdClosed)
     def _register_page(self, widget_cls: BasePage) -> None:
         """Register an MFD page"""
-        self.logger.debug(f"{self.overlay_id} | Registering MFD page {widget_cls.KEY}")
+        self.logger.debug(f"{self.OVERLAY_ID} | Registering MFD page {widget_cls.KEY}")
         self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
 
     def _init_cmd_handlers(self):
         """Register command handlers."""
         @self.on_event("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
-            self.logger.debug(f"{self.overlay_id} | Switching to next page...")
+            self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page...")
 
             # Step forward until we find a new index different from current
             current_index = self.pages.currentIndex()
@@ -202,7 +202,7 @@ class MfdOverlay(BaseOverlayWidget):
             # in unlocked mode, don't allow switching to collapsed page
             if not self.locked and next_index == 0:
                 next_index = 1
-                self.logger.debug(f"{self.overlay_id} | Unlocked mode. Skipping collapsed page in next_page")
+                self.logger.debug(f"{self.OVERLAY_ID} | Unlocked mode. Skipping collapsed page in next_page")
             self._switch_page(current_index, next_index)
 
         @self.on_event("race_table_update")
@@ -216,12 +216,12 @@ class MfdOverlay(BaseOverlayWidget):
         @self.on_event("set_locked_state")
         def _handle_set_locked_state(data: Dict[str, Any]):
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.overlay_id} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+            self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
 
             # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
             # width to configure.
             if not locked and self.pages.currentIndex() == 0:
-                self.logger.debug(f"{self.overlay_id} | Switching to next page before unlocking ...")
+                self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
                 _handle_next_page(data)
 
             self.set_locked_state(locked)
@@ -229,7 +229,7 @@ class MfdOverlay(BaseOverlayWidget):
         @self.on_event("set_config")
         def _handle_set_config(data: Dict[str, Any]):
             config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.overlay_id} | [OVERRIDDEN HANDLER] Setting config {config}")
+            self.logger.debug(f"{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting config {config}")
             self.set_window_position(config)
             current_index = self.pages.currentIndex()
             if current_index != 0:
@@ -248,7 +248,7 @@ class MfdOverlay(BaseOverlayWidget):
         else:
             active_page = self.pages.widget(dest_index)
             if not active_page:
-                self.logger.warning(f"{self.overlay_id} | Page {dest_index} not found")
+                self.logger.warning(f"{self.OVERLAY_ID} | Page {dest_index} not found")
                 return
         active_page._handle_event(event_type, data)
 
@@ -289,7 +289,7 @@ class MfdOverlay(BaseOverlayWidget):
             # Collapsed state
             self.pages.setFixedHeight(self.mfdClosed)
             self.resize(self.width(), self.mfdClosed + self.footer.height())
-            self.logger.debug(f"{self.overlay_id} | Page changed -> collapsed (height={self.mfdClosed})")
+            self.logger.debug(f"{self.OVERLAY_ID} | Page changed -> collapsed (height={self.mfdClosed})")
         else:
             # Expanded state
             self.pages.setMaximumHeight(16777215)  # Qt::QWIDGETSIZE_MAX

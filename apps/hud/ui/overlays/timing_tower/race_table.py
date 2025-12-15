@@ -60,7 +60,7 @@ class RaceTimingTable:
             scale_factor: Scaling factor for the table size (default 1.5 = 50% larger)
         """
         self.logger = logger
-        self.overlay_id = overlay_id
+        self.OVERLAY_ID = overlay_id
         self.num_rows = num_rows
         self.scale_factor = scale_factor
 
@@ -85,9 +85,9 @@ class RaceTimingTable:
             debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
-                self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
+                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load tyre icon: {name}")
             else:
-                self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded tyre icon successfully: {name}")
 
         self.team_logo_mappings = load_team_icons_dict(debug_log_printer=self.logger.debug,
                                                        error_log_printer=self.logger.error)

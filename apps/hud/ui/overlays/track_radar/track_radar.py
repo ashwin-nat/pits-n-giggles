@@ -55,7 +55,7 @@ class TrackRadarOverlay(BaseOverlayQML):
                  scale_factor: float,
                  windowed_overlay: bool):
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
         self._init_handlers()
 
     def build_ui(self):

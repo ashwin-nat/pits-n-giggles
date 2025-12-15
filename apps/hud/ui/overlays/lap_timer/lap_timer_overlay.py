@@ -72,7 +72,7 @@ class LapTimerOverlay(BaseOverlayWidget):
         # Session state
         self.curr_session_uid = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
 
         self.last_lap_num: Optional[int] = None
         self.last_sector_display_timer = QTimer()
@@ -84,7 +84,7 @@ class LapTimerOverlay(BaseOverlayWidget):
 
     def build_ui(self):
         """Build the overlay UI components."""
-        self.logger.debug(f'{self.overlay_id} | Building UI')
+        self.logger.debug(f'{self.OVERLAY_ID} | Building UI')
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
@@ -277,7 +277,7 @@ class LapTimerOverlay(BaseOverlayWidget):
             self.best_sector_bar.set_sector_status(best_lap["sector-status"])
 
             if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
-                self.logger.debug(f"{self.overlay_id} | Lap number changed from "
+                self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
                                   f"{self.last_lap_num} to {lap_info['current-lap']}")
                 # --- Start 5 sec last-lap sector bar window ---
                 self.show_last_lap_sector_bar = True
@@ -358,7 +358,7 @@ class LapTimerOverlay(BaseOverlayWidget):
         """
         self.clear()
         self.curr_session_uid = session_uid
-        self.logger.info(f'{self.overlay_id} New session detected: {session_uid}')
+        self.logger.info(f'{self.OVERLAY_ID} New session detected: {session_uid}')
 
     def clear(self):
         """Reset all display fields to default values."""

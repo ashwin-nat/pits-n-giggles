@@ -89,7 +89,7 @@ class FuelInfoPage(BasePage):
 
         self._build_ui()
         self._init_event_handlers()
-        self.logger.debug(f"{self.overlay_id} | Fuel info widget initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Fuel info widget initialized")
 
     # ---------------------------------------------------------
     # UI BUILD

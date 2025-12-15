@@ -102,9 +102,9 @@ class BaseOverlay():
     Subclass BaseOverlay only if you need to add new UI-specific behavior.
     """
     response_signal = Signal(str, str)   # request_type, response_data (serialised JSON)
+    OVERLAY_ID: str = ""
 
     def __init__(self,
-                 overlay_id: str,
                  config: OverlaysConfig,
                  logger: logging.Logger,
                  locked: bool,
@@ -112,7 +112,8 @@ class BaseOverlay():
                  scale_factor: float,
                  windowed_overlay: bool):
 
-        self.overlay_id = overlay_id
+        assert self.OVERLAY_ID
+
         self.windowed_overlay = windowed_overlay
         self.config = config
         self.locked = locked
@@ -136,7 +137,7 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     def _setup_window(self):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
-        self.set_window_title(self.overlay_id)
+        self.set_window_title(self.OVERLAY_ID)
         self.set_window_icon(load_icon(Path("assets") / "logo.png",
                                      debug_log_printer=self.logger.debug,
                                      error_log_printer=self.logger.error))
@@ -206,14 +207,14 @@ class BaseOverlay():
         @self.on_request("get_window_info")
         def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
-            self.logger.debug(f'{self.overlay_id} | Received request "get_window_info"')
+            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
         @self.on_event("set_locked_state")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.overlay_id} | Setting locked state to {locked}')
+            self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
             self.set_locked_state(locked)
 
         @self.on_event("toggle_visibility")
@@ -232,14 +233,14 @@ class BaseOverlay():
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
             config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.overlay_id} | Setting window config to {config}")
+            self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
             self.set_window_position(config)
 
         @self.on_event("set_scale_factor")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
             """Set UI scale factor"""
             scale_factor = data["scale_factor"]
-            self.logger.debug(f"{self.overlay_id} | Setting UI scale to {scale_factor}")
+            self.logger.debug(f"{self.OVERLAY_ID} | Setting UI scale to {scale_factor}")
             self.set_ui_scale(scale_factor)
             self.scale_factor = scale_factor
 
@@ -248,7 +249,7 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     @Slot(set, str, str)
     def _handle_cmd(self, recipients: Set[str], cmd: str, data: str):
-        if recipients and self.overlay_id not in recipients:
+        if recipients and self.OVERLAY_ID not in recipients:
             return
         handler = self._command_handlers.get(cmd)
         if not handler:
@@ -257,10 +258,10 @@ class BaseOverlay():
         try:
             handler(parsed)
         except AssertionError:
-            self.logger.exception(f"{self.overlay_id} | Assertion error handling command '{cmd}'")
+            self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
             raise # We want to crash on assertions for debugging
         except Exception as e: # pylint: disable=broad-except
-            self.logger.exception(f"{self.overlay_id} | Error handling command '{cmd}': {e}")
+            self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
@@ -271,34 +272,34 @@ class BaseOverlay():
             request_type (str): Request type
             request_data (str): Request data JSON serialized as a string
         """
-        if recipient and recipient != self.overlay_id:
+        if recipient and recipient != self.OVERLAY_ID:
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
-            self.logger.debug(f"{self.overlay_id} | Handling request '{request_type}'")
+            self.logger.debug(f"{self.OVERLAY_ID} | Handling request '{request_type}'")
             parsed_data = deserialise_data(request_data)
             try:
                 response = handler(parsed_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
             except AssertionError:
-                self.logger.exception(f"{self.overlay_id} | Assertion error handling request '{request_type}'")
+                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling request '{request_type}'")
                 raise # We want to crash on assertions for debugging
             except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.overlay_id} | Error handling request '{request_type}': {e}")
+                self.logger.exception(f"{self.OVERLAY_ID} | Error handling request '{request_type}': {e}")
         else:
-            self.logger.debug(f"{self.overlay_id} | No handler for request '{request_type}'")
+            self.logger.debug(f"{self.OVERLAY_ID} | No handler for request '{request_type}'")
 
     @Slot(set, object)
     def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
-        if self.overlay_id not in recipients:
+        if self.OVERLAY_ID not in recipients:
             return
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
             try:
                 handler(payload)
             except AssertionError:
-                self.logger.exception(f"{self.overlay_id} | Assertion error handling command '{payload.__hf_type__}'")
+                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{payload.__hf_type__}'")
                 raise # We want to crash on assertions for debugging
             except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.overlay_id} | Error handling command '{payload.__hf_type__}': {e}")
+                self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{payload.__hf_type__}': {e}")

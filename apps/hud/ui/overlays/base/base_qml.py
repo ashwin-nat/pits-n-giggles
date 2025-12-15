@@ -77,7 +77,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     def __init__(
         self,
-        overlay_id: str,
         config: OverlaysConfig,
         logger: logging.Logger,
         locked: bool,
@@ -94,7 +93,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._drag_pos: Optional[QPoint] = None
 
         super().__init__(
-            overlay_id,
             config,
             logger,
             locked,
@@ -102,7 +100,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
             scale_factor,
             windowed_overlay,
         )
-        logger.debug(f"{self.overlay_id} initialized. Path={self.QML_FILE}. "
+        logger.debug(f"{self.OVERLAY_ID} initialized. Path={self.QML_FILE}. "
                      f"exists={self.QML_FILE.is_file()}")
 
     # ----------------------------------------------------------------------
@@ -148,7 +146,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """Reloads the QML file entirely when scale factor changes."""
 
         qml_path = self.QML_FILE.resolve()
-        self.logger.debug(f"{self.overlay_id} | Rebuilding QML UI ({qml_path})")
+        self.logger.debug(f"{self.OVERLAY_ID} | Rebuilding QML UI ({qml_path})")
 
         self._engine.clearComponentCache()
         self._engine.load(QUrl.fromLocalFile(str(qml_path)))
@@ -211,14 +209,14 @@ class BaseOverlayQML(BaseOverlay, QObject):
             # Check if the QML root has a scaleFactor property
             if self._root.property("scaleFactor") is not None:
                 self._root.setProperty("scaleFactor", ui_scale)
-                self.logger.debug(f"{self.overlay_id} | UI scale updated to {ui_scale}")
+                self.logger.debug(f"{self.OVERLAY_ID} | UI scale updated to {ui_scale}")
             else:
                 self.logger.warning(
-                    f"{self.overlay_id} | QML root does not have 'scaleFactor' property. "
+                    f"{self.OVERLAY_ID} | QML root does not have 'scaleFactor' property. "
                     "Add 'property real scaleFactor: 1.0' to your QML Window."
                 )
         else:
-            self.logger.warning(f"{self.overlay_id} | Cannot set UI scale - root window not initialized")
+            self.logger.warning(f"{self.OVERLAY_ID} | Cannot set UI scale - root window not initialized")
 
     @override
     def animate_fade(self, show: bool):

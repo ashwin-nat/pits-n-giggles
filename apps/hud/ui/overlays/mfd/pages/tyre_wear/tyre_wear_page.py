@@ -63,7 +63,7 @@ class TyreInfoPage(BasePage):
 
         self._init_icons()
         self._build_ui()
-        self.logger.debug(f"{self.overlay_id} | Tyre info widget initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Tyre info widget initialized")
         self._init_event_handlers()
 
     def _init_font_metrics(self):
@@ -98,9 +98,9 @@ class TyreInfoPage(BasePage):
             debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
-                self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
+                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load tyre icon: {name}")
             else:
-                self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded tyre icon successfully: {name}")
 
     def _build_ui(self) -> None:
         """Build the complete UI structure."""

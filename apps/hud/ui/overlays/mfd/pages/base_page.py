@@ -63,7 +63,7 @@ class BasePage(QWidget):
 
         self._icon_cache: Dict[str, QIcon] = {}
         self.logger = logger
-        self.overlay_id = overlay_id
+        self.OVERLAY_ID = overlay_id
 
         # Add title bar if specified
         if title:
@@ -127,7 +127,7 @@ class BasePage(QWidget):
 
         @self.on_event("page_active_status")
         def _handle_page_active_status(data: Dict[str, Any]):
-            self.logger.debug(f"{self.overlay_id} | Active status changed to {data['active']}. width={self.width()}")
+            self.logger.debug(f"{self.OVERLAY_ID} | Active status changed to {data['active']}. width={self.width()}")
 
     @property
     def scaled_width(self) -> int:

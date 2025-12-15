@@ -76,7 +76,7 @@ class TimingTowerOverlay(BaseOverlayWidget):
         self.session_info_label: Optional[QLabel] = None
         self.timing_table: Optional[RaceTimingTable] = None
 
-        super().__init__(self.OVERLAY_ID, config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
         self._init_event_handlers()
 
     def build_ui(self):
@@ -93,7 +93,7 @@ class TimingTowerOverlay(BaseOverlayWidget):
         self.timing_table = RaceTimingTable(
             parent_layout=main_layout,
             logger=self.logger,
-            overlay_id=self.overlay_id,
+            overlay_id=self.OVERLAY_ID,
             num_rows=self.total_rows,
             scale_factor=self.scale_factor
         )
