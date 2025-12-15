@@ -71,8 +71,7 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool) -> None:
     broker = IpcPubSubBroker(
         xsub_port=config.Network.broker_xsub_port,
         xpub_port=config.Network.broker_xpub_port,
-        logger=logger,
-        name="PitWall")
+        logger=logger)
     broker_thread = broker.run_in_thread()
 
     proc_mgr = IpcServerSync(

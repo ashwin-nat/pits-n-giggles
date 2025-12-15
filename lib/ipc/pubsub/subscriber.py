@@ -83,7 +83,7 @@ class IpcSubscriberSync:
         endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
 
-        self.logger.debug(f"IpcSubscriberSync connected to {endpoint}")
+        self.logger.debug(f"IpcSubscriberSync configured endpoint {endpoint}")
 
     # ---------------------------------------------------------
     # Register handler
