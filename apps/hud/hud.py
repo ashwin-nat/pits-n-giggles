@@ -28,6 +28,7 @@ import sys
 
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import PngSettings, load_config_from_json
+from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
 from lib.logger import get_logger
 from meta.meta import APP_NAME
 
@@ -87,6 +88,9 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool, xpub_por
 
 def entry_point():
     """Entry point"""
+    if sys.platform != 'win32':
+        sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
+
     report_pid_from_child()
     args = parseArgs()
     png_logger = get_logger("hud", args.debug, jsonl=True)

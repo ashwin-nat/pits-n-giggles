@@ -39,7 +39,9 @@ from lib.child_proc_mgmt import (extract_ipc_port_from_line,
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
                               PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
-                              PNG_ERROR_CODE_UNKNOWN, PNG_LOST_CONN_TO_PARENT)
+                              PNG_ERROR_CODE_UNKNOWN,
+                              PNG_ERROR_CODE_UNSUPPORTED_OS,
+                              PNG_LOST_CONN_TO_PARENT)
 from lib.ipc import IpcClientSync
 
 if TYPE_CHECKING:
@@ -88,7 +90,15 @@ class PngAppMgrBase(QObject):
                 "Please check the logs for more details."
             ),
             "status": "Timed out",
-        }
+        },
+        PNG_ERROR_CODE_UNSUPPORTED_OS: {
+            "title": "Unsupported OS",
+            "message": (
+                "failed to start because this OS is not supported.\n"
+                "This subsystem is currently only supported on Windows."
+            ),
+            "status": "Unsupported OS",
+        },
     }
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
@@ -369,6 +379,10 @@ class PngAppMgrBase(QObject):
             self.show_error(f"{self.display_name} port in use",
                             f"Please select an unused port in {self.udp_port_conflict_field}")
             self.error_log(f"{self.display_name} UDP telemetry port in use")
+            return False
+
+        if exit_code == PNG_ERROR_CODE_UNSUPPORTED_OS:
+            self.warning_log(f"{self.display_name} only supported on Windows")
             return False
 
         if not self.auto_restart:

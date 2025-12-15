@@ -138,6 +138,10 @@ class SubsystemCard(QFrame):
             'Timed out': {
                 'bg': '#3d2a2a',
                 'color': '#f48771'
+            },
+            'Unsupported': {
+                'bg': '#2a2a3d',
+                'color': '#9cdcfe'
             }
         }
 

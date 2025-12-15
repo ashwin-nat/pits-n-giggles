@@ -173,6 +173,11 @@ class HudAppMgr(PngAppMgrBase):
             self._update_status("Disabled")
             return
 
+        if not self.supported:
+            self.debug_log(f"{self.display_name} is not supported.")
+            self._update_status("Unsupported")
+            return
+
         # Run the standard start
         super().start(reason)
 
