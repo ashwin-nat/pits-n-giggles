@@ -34,127 +34,38 @@ import zmq
 class IpcPubSubBroker:
     """
     XPUB/XSUB broker that:
-    - Auto-prepares (binds) in __init__
-    - Runs proxy loop in background thread
-    - Auto-restarts on crash (re-prepare + proxy)
-    - Keeps ports stable and discoverable immediately
+    - Binds sockets in __init__
+    - Runs a blocking proxy loop
+    - Lifecycle is fully owned by the process manager
     """
 
-    RESTART_DELAY = 0.1
-
-    def __init__(self, host="127.0.0.1", xsub_port=0, xpub_port=0, logger=None):
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        xsub_port: int = 0,
+        xpub_port: int = 0,
+        logger: Optional[logging.Logger] = None,
+        name: Optional[str] = "IpcPubSubBroker",
+    ):
         self.host = host
-        self.logger = logger or logging.getLogger("ipc-broker")
+        self.name = name
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.IpcPublisherAsync")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.logger = logger
 
         self.ctx = zmq.Context()
 
-        self._configured_xsub_port = xsub_port
-        self._configured_xpub_port = xpub_port
-
-        self._first_xsub_port = None
-        self._first_xpub_port = None
-
-        self.xsub: Optional[zmq.Socket] = None
-        self.xpub: Optional[zmq.Socket] = None
-
-        self.xsub_port: Optional[int] = None
-        self.xpub_port: Optional[int] = None
-
-        self._running = False
-        self._thread: Optional[threading.Thread] = None
-
-        self._prepare()
-        self.logger.debug(
-            f"ZmqBroker prepared: "
-            f"XSUB={self.xsub_endpoint}, XPUB={self.xpub_endpoint}"
-        )
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def start(self):
-        """Starts the broker supervisor thread."""
-        if self._running:
-            return
-
-        self._running = True
-        self._thread = threading.Thread(
-            target=self._supervisor_loop,
-            daemon=True,
-            name="IPC-Broker",
-        )
-        self._thread.start()
-
-        self.logger.debug("ZmqBroker supervisor started")
-
-    def close(self):
-        """Stops broker and shuts down sockets."""
-        self._running = False
-        self._cleanup_sockets()
-        self.logger.debug("ZmqBroker closed")
-
-    @property
-    def xpub_endpoint(self) -> str:
-        return f"tcp://{self.host}:{self.xpub_port}"
-
-    @property
-    def xsub_endpoint(self) -> str:
-        return f"tcp://{self.host}:{self.xsub_port}"
-
-    @property
-    def running(self) -> bool:
-        return self._running
-
-    # ------------------------------------------------------------------
-    # Supervisor loop
-    # ------------------------------------------------------------------
-
-    def _supervisor_loop(self):
-        while self._running:
-            try:
-                self.logger.debug(
-                    f"ZmqBroker active: "
-                    f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
-                )
-
-                # Blocking until crash or close()
-                zmq.proxy(self.xsub, self.xpub)
-
-            except Exception as e:
-                if not self._running:
-                    break
-                self.logger.error(f"ZmqBroker proxy crashed: {e}")
-
-            finally:
-                self._cleanup_sockets()
-
-                if self._running:
-                    time.sleep(self.RESTART_DELAY)
-                    self._prepare()   # 🔁 re-bind + re-discover ports
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _prepare(self):
-        """Bind XPUB/XSUB sockets and discover ports."""
-        if self.xsub or self.xpub:
-            return
-
-        self.xsub = self.ctx.socket(zmq.XSUB)
+        self.xsub: zmq.Socket = self.ctx.socket(zmq.XSUB)
         self.xsub.setsockopt(zmq.LINGER, 0)
 
-        self.xpub = self.ctx.socket(zmq.XPUB)
+        self.xpub: zmq.Socket = self.ctx.socket(zmq.XPUB)
         self.xpub.setsockopt(zmq.LINGER, 0)
         self.xpub.setsockopt(zmq.XPUB_VERBOSE, 1)
 
-        # Use remembered ports after first start
-        xsub_bind_port = self._first_xsub_port or self._configured_xsub_port
-        xpub_bind_port = self._first_xpub_port or self._configured_xpub_port
-
-        self.xsub.bind(f"tcp://{self.host}:{xsub_bind_port}")
-        self.xpub.bind(f"tcp://{self.host}:{xpub_bind_port}")
+        self.xsub.bind(f"tcp://{self.host}:{xsub_port}")
+        self.xpub.bind(f"tcp://{self.host}:{xpub_port}")
 
         self.xsub_port = int(
             self.xsub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
@@ -162,24 +73,82 @@ class IpcPubSubBroker:
         self.xpub_port = int(
             self.xpub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
         )
+        self.control = self.ctx.socket(zmq.PAIR)
+        self.control.setsockopt(zmq.LINGER, 0)
+        self.control.bind(f"inproc://{self.name}-control")
 
-        # Remember first assigned ports
-        if self._first_xsub_port is None:
-            self._first_xsub_port = self.xsub_port
-        if self._first_xpub_port is None:
-            self._first_xpub_port = self.xpub_port
+        self._control_client = self.ctx.socket(zmq.PAIR)
+        self._control_client.setsockopt(zmq.LINGER, 0)
+        self._control_client.connect(f"inproc://{self.name}-control")
 
-    def _cleanup_sockets(self):
-        if self.xsub:
+
+        self.logger.debug(
+            f"{self.name} bound: "
+            f"XSUB=tcp://{self.host}:{self.xsub_port}, "
+            f"XPUB=tcp://{self.host}:{self.xpub_port}"
+        )
+
+        self._thread: Optional[threading.Thread] = None
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def run(self):
+        """
+        Blocking broker loop.
+        This should be run in its own process OR thread.
+        """
+        self.logger.debug(
+            f"{self.name} running: "
+            f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
+        )
+
+        try:
+            zmq.proxy_steerable(
+                self.xsub,
+                self.xpub,
+                None,
+                self._control_client
+            )
+        except zmq.ZMQError as e:
+            self.logger.debug("Broker proxy exited: %s", e)
+        finally:
+            self.logger.debug("Broker proxy loop exited")
+
+    def run_in_thread(self, name: str = "IPC-Broker") -> threading.Thread:
+        """
+        Runs the broker in a background daemon thread.
+        """
+        if self._thread and self._thread.is_alive():
+            return self._thread
+
+        self._thread = threading.Thread(
+            target=self.run,
+            daemon=True,
+            name=name,
+        )
+        self._thread.start()
+        return self._thread
+
+    def close(self):
+        try:
+            self.control.send(b"TERMINATE")
+        except Exception:
+            pass
+
+        if self._thread:
+            self._thread.join(timeout=0.2)
+
+        for sock in (self.xsub, self.xpub, self.control, self._control_client):
             try:
-                self.xsub.close(linger=0)
+                sock.close(linger=0)
             except Exception:
                 pass
-            self.xsub = None
 
-        if self.xpub:
-            try:
-                self.xpub.close(linger=0)
-            except Exception:
-                pass
-            self.xpub = None
+        try:
+            self.ctx.term()
+        except Exception:
+            pass
+
+        self.logger.debug("%s closed", self.name)
