@@ -51,6 +51,9 @@ class IpcPubSubBroker:
         self._configured_xsub_port = xsub_port
         self._configured_xpub_port = xpub_port
 
+        self._first_xsub_port = None
+        self._first_xpub_port = None
+
         self.xsub: Optional[zmq.Socket] = None
         self.xpub: Optional[zmq.Socket] = None
 
@@ -146,6 +149,10 @@ class IpcPubSubBroker:
         self.xpub.setsockopt(zmq.LINGER, 0)
         self.xpub.setsockopt(zmq.XPUB_VERBOSE, 1)
 
+        # Use remembered ports after first start
+        xsub_bind_port = self._first_xsub_port or self._configured_xsub_port
+        xpub_bind_port = self._first_xpub_port or self._configured_xpub_port
+
         self.xsub.bind(f"tcp://{self.host}:{self._configured_xsub_port}")
         self.xpub.bind(f"tcp://{self.host}:{self._configured_xpub_port}")
 
@@ -155,6 +162,12 @@ class IpcPubSubBroker:
         self.xpub_port = int(
             self.xpub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
         )
+
+        # Remember first assigned ports
+        if self._first_xsub_port is None:
+            self._first_xsub_port = self.xsub_port
+        if self._first_xpub_port is None:
+            self._first_xpub_port = self.xpub_port
 
     def _cleanup_sockets(self):
         if self.xsub:

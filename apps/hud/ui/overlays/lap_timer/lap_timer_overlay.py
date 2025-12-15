@@ -417,6 +417,7 @@ class LapTimerOverlay(BaseOverlayWidget):
 
         Args:
             delta_ms: Delta time in milliseconds
+            is_sc: Is safety car
         """
         delta_s = delta_ms / 1000
         self._update_delta_sec(delta_s, is_sc)
@@ -426,6 +427,7 @@ class LapTimerOverlay(BaseOverlayWidget):
 
         Args:
             delta_sec: Delta time in seconds
+            is_sc: Is safety car
         """
         text = F1Utils.formatFloat(delta_sec, precision=3, signed=True)
         self.delta_value.setText(text)
