@@ -65,7 +65,7 @@ class ShutdownDialog(QDialog):
 
         layout = QVBoxLayout(self)
         label = QLabel("Shutting down ...")
-        label.setFont(QFont("Formula1 Display"))
+        label.setFont(QFont("Formula1"))
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
@@ -303,7 +303,7 @@ class PngLauncherWindow(QMainWindow):
 
         # App name and version
         app_title_label = QLabel(f"{APP_NAME} - {self.ver_str}")
-        app_title_label.setFont(QFont("Formula1 Display", 11, QFont.Weight.Bold))
+        app_title_label.setFont(QFont("Formula1", 11, QFont.Weight.Bold))
         app_title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         app_info_layout.addWidget(app_title_label)
 
@@ -384,7 +384,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Header
         header_label = QLabel("Subsystems")
-        header_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
+        header_label.setFont(QFont("Formula1", 12, QFont.Weight.Bold))
         header_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(header_label)
 
@@ -422,7 +422,7 @@ class PngLauncherWindow(QMainWindow):
         header_layout = QHBoxLayout()
 
         console_label = QLabel("Console Log")
-        console_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
+        console_label.setFont(QFont("Formula1", 12, QFont.Weight.Bold))
         console_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         header_layout.addWidget(console_label)
 

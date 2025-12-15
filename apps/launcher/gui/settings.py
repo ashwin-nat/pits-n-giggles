@@ -222,7 +222,7 @@ class SettingsWindow(QDialog):
         # Category list on the left
         self.category_list = QListWidget()
         self.category_list.setMaximumWidth(200)
-        self.category_list.setFont(QFont("Formula1 Display"))
+        self.category_list.setFont(QFont("Formula1"))
         self.category_list.currentRowChanged.connect(self.on_category_changed)
 
         # Stacked widget for category content on the right
@@ -410,7 +410,7 @@ class SettingsWindow(QDialog):
 
             value_label = QLabel(label_text)
 
-            value_label.setFont(QFont("Formula1 Display"))
+            value_label.setFont(QFont("Formula1"))
             value_label.setMinimumWidth(40)
             value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -439,7 +439,7 @@ class SettingsWindow(QDialog):
                 layout.addWidget(label)
 
             text_box = QLineEdit(str(field_value) if field_value is not None else "")
-            text_box.setFont(QFont("Formula1 Display", 8))
+            text_box.setFont(QFont("Formula1", 8))
             text_box.setMaximumWidth(300)  # Fixed width for text boxes
             text_box.textChanged.connect(
                 lambda text, path=field_path: self._on_text_changed(path, text, field_info)
