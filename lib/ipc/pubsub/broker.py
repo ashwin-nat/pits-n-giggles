@@ -153,8 +153,8 @@ class IpcPubSubBroker:
         xsub_bind_port = self._first_xsub_port or self._configured_xsub_port
         xpub_bind_port = self._first_xpub_port or self._configured_xpub_port
 
-        self.xsub.bind(f"tcp://{self.host}:{self._configured_xsub_port}")
-        self.xpub.bind(f"tcp://{self.host}:{self._configured_xpub_port}")
+        self.xsub.bind(f"tcp://{self.host}:{xsub_bind_port}")
+        self.xpub.bind(f"tcp://{self.host}:{xpub_bind_port}")
 
         self.xsub_port = int(
             self.xsub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]
