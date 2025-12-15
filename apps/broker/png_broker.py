@@ -28,11 +28,11 @@ import sys
 
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import PngSettings, load_config_from_json
-from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
 from lib.logger import get_logger
 from meta.meta import APP_NAME
 
 from lib.ipc import IpcPubSubBroker, IpcServerSync
+from .ipc import init_ipc_task
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -65,29 +65,7 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool) -> None:
         debug_mode (bool): Debug mode
     """
 
-    proc_mgr = IpcServerSync(
-        name="pitwall_ipc",
-        max_missed_heartbeats=3,
-        heartbeat_timeout=5.0,
-    )
-
-    def proc_mgr_shutdown_callback(_args: dict) -> dict:
-        return {"status": "success"}
-
-    # shutdown handler (__shutdown__)
-    proc_mgr.register_shutdown_callback(proc_mgr_shutdown_callback)
-
-    # heartbeat missed callback
-    proc_mgr.register_heartbeat_missed_callback(proc_mgr_shutdown_callback)
-
-    # minimal generic handler
-    def proc_mgmt_cmd_handler(request: dict) -> dict:
-        return {
-            "status": "error",
-            "message": f"Launcher does not support IPC requests. Unknown command {request['cmd']}",
-        }
-
-    proc_mgr.serve(handler_fn=proc_mgmt_cmd_handler, timeout=0.25)
+    init_ipc_task(logger)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
