@@ -322,6 +322,9 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_settings",
                 "use_windowed_overlays",
             ],
+            "Network": [
+                "broker_xpub_port",
+            ],
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")

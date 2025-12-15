@@ -24,6 +24,7 @@
 
 from .backend_mgr import BackendAppMgr
 from .base_mgr import PngAppMgrBase
+from .broker_mgr import BrokerAppMgr
 from .hud_mgr import HudAppMgr
 from .save_viewer_mgr import SaveViewerAppMgr
 
@@ -31,6 +32,7 @@ from .save_viewer_mgr import SaveViewerAppMgr
 
 __all__ = [
     "BackendAppMgr",
+    "BrokerAppMgr",
     "HudAppMgr",
     "PngAppMgrBase",
     "SaveViewerAppMgr",

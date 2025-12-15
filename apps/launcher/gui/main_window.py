@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 
 from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
-from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
+from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase, BrokerAppMgr,
                                       SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
@@ -184,29 +184,36 @@ class PngLauncherWindow(QMainWindow):
             "--xsub-port", str(self.ipc_broker.xsub_port)
         ]
         self.subsystems: List[PngAppMgrBase] = [
-           BackendAppMgr(
+            BackendAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                replay_server=replay_mode,
                coverage_enabled=coverage_enabled
-           ),
-           SaveViewerAppMgr(
+            ),
+            SaveViewerAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                coverage_enabled=coverage_enabled
-           ),
-           HudAppMgr(
+            ),
+            HudAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                integration_test_mode=integration_test_mode,
                coverage_enabled=coverage_enabled
-           )
+            ),
+            BrokerAppMgr(
+               window=self,
+               settings=self.settings,
+               args=args,
+               debug_mode=debug_mode,
+               coverage_enabled=coverage_enabled
+            )
         ]
         for subsystem in self.subsystems:
             assert subsystem.short_name
