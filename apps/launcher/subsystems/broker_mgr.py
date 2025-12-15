@@ -22,13 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import webbrowser
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.ipc import IpcClientSync
 
 from .base_mgr import PngAppMgrBase
 

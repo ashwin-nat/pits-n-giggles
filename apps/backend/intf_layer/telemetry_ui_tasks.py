@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,

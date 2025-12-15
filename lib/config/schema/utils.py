@@ -22,11 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from enum import Enum
 from typing import Optional
 
 from pydantic import Field
-
-from enum import Enum
 
 # -------------------------------------- ENUM --------------------------------------------------------------------------
 
@@ -105,7 +104,7 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
         }
     )
 
-def port_field(description: str, default: int, visible: Optional[bool] = True, type: PortType = PortType.TCP):
+def port_field(description: str, default: int, visible: Optional[bool] = True, port_type: PortType = PortType.TCP):
     """
     Create a port field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -118,8 +117,8 @@ def port_field(description: str, default: int, visible: Optional[bool] = True, t
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
-                "visible": True
+                "visible": visible
             },
-            "port_type": str(type)
+            "port_type": str(port_type)
         }
     )

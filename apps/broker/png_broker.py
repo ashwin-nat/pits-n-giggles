@@ -56,13 +56,12 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-def main(logger: logging.Logger, config: PngSettings, debug_mode: bool) -> None:
+def main(logger: logging.Logger, config: PngSettings) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         config (PngSettings): Configurations
-        debug_mode (bool): Debug mode
     """
 
     broker = IpcPubSubBroker(
@@ -98,8 +97,7 @@ def entry_point():
     try:
         main(
             logger=png_logger,
-            config=configs,
-            debug_mode=args.debug)
+            config=configs)
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except Exception as e: # pylint: disable=broad-except

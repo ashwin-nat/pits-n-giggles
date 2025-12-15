@@ -31,7 +31,6 @@ from apps.launcher.subsystems import PngAppMgrBase
 from lib.config import PngSettings
 from lib.version import (get_newer_stable_releases, get_releases_info,
                          is_update_available)
-from lib.ipc import IpcPubSubBroker
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow

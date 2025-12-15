@@ -78,13 +78,13 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     broker_xpub_port: int = port_field(
         "PitWall Downstream Port",
         default=53838,
-        type=PortType.TCP,
+        port_type=PortType.TCP,
     )
 
     broker_xsub_port: int = port_field(
         "PitWall Upstream Port",
         default=53835,
-        type=PortType.TCP,
+        port_type=PortType.TCP,
     )
 
     udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
