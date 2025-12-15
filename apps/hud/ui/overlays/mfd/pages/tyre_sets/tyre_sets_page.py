@@ -40,7 +40,7 @@ class TyreSetsPage(BasePage):
 
     KEY = "tyre_sets"
 
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     MONO_FONT_FACE = "B612 Mono"
     FONT_SIZE_VALUE = 16
     FONT_SIZE_UNIT = 9

@@ -42,7 +42,7 @@ class PitRejoinPredictionPage(BasePage):
     KEY = "pit_rejoin"
 
     # Font configuration
-    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_TEXT = "Formula1"
     FONT_FACE_VALUES = "B612 Mono"
     FONT_SIZE = 10
     HEADER_FONT_SIZE = 11

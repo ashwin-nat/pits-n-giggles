@@ -54,7 +54,7 @@ class LapTimesPage(BasePage):
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
     FONT_SIZE = 12
-    FONT_FAMILY = "Formula1 Display"
+    FONT_FAMILY = "Formula1"
     BASE_ROW_HEIGHT = 40
     BASE_HEADER_HEIGHT = 35
     BASE_PADDING = 4

@@ -42,7 +42,7 @@ from .race_table import RaceTimingTable
 class TimingTowerOverlay(BaseOverlayWidget):
 
     OVERLAY_ID: str = "timing_tower"
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     FONT_SIZE = 15
 
     MAX_SUPPORTED_CARS = 22

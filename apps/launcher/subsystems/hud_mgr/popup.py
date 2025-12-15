@@ -104,7 +104,7 @@ class OverlaysAdjustPopup(QWidget):
             QLabel {
                 color: white;
                 font-size: 14px;
-                font-family: "Formula1 Display";
+                font-family: "Formula1";
                 background: transparent;
             }
 

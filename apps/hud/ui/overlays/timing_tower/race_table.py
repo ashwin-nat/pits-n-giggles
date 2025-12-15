@@ -197,7 +197,7 @@ class RaceTimingTable:
         text: str,
         alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter,
         color: Optional[QColor] = None,
-        font_family: str = "Formula1 Display",
+        font_family: str = "Formula1",
         font_size_unscaled: int = 12
     ) -> QTableWidgetItem:
         """Helper to create styled table items."""
@@ -364,7 +364,7 @@ class RaceTimingTable:
             name,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             QColor("#ffffff"),
-            font_family="Formula1 Display"
+            font_family="Formula1"
         )
         self.timing_table.setItem(row_idx, 2, name_item)
 
@@ -423,7 +423,7 @@ class RaceTimingTable:
             ers_mode: ERS mode of the driver
             drs: Is the driver in DRS
         """
-        ers_item = self._create_table_item(ers, Qt.AlignmentFlag.AlignCenter, font_family="Formula1 Display")
+        ers_item = self._create_table_item(ers, Qt.AlignmentFlag.AlignCenter, font_family="Formula1")
         ers_item.setData(
             Qt.ItemDataRole.UserRole,
             {"ers-mode": ers_mode, "drs": drs},
@@ -446,7 +446,7 @@ class RaceTimingTable:
         )
 
         pens_item = self._create_table_item(
-            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), font_family="Formula1 Display",
+            pens_str, Qt.AlignmentFlag.AlignCenter, QColor("#ffcc00"), font_family="Formula1",
             font_size_unscaled=10
         )
         self.timing_table.setItem(row_idx, 6, pens_item)

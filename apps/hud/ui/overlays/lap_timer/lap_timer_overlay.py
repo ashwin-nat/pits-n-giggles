@@ -47,7 +47,7 @@ class LapTimerOverlay(BaseOverlayWidget):
     # Display constants
     DEFAULT_TIME = "--:--.---"
     DEFAULT_DELTA = "---"
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     FONT_SIZE_LABEL = 12
     FONT_SIZE_VALUE = 14
 

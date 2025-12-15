@@ -41,7 +41,7 @@ class TyreInfoPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
     KEY = "tyre_info"
-    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_TEXT = "Formula1"
     FONT_FACE_NUMBERS = "B612 Mono"
     FONT_SIZE = 13
     FONT_SIZE_HYPHEN = 10
