@@ -65,10 +65,12 @@ class BrokerAppMgr(PngAppMgrBase):
             short_name="WALL",
             settings=settings,
             start_by_default=True,
-            should_display=False,
+            should_display=True, # TODO: undo
             args=temp_args,
             debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled
+            coverage_enabled=coverage_enabled,
+            post_start_cb=self.post_start,
+            post_stop_cb=self.post_stop
         )
 
     def get_buttons(self) -> List[QPushButton]:
@@ -76,7 +78,11 @@ class BrokerAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
-        return []
+        # Button for trouble shooting only
+        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
+        return [
+            self.start_stop_button
+        ]
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -96,3 +102,28 @@ class BrokerAppMgr(PngAppMgrBase):
         # Update the port number
         should_restart = bool(diff)
         return should_restart
+
+    def post_start(self):
+        """Update buttons after app start"""
+        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
+        self.set_button_tooltip(self.start_stop_button, "Stop")
+        self.set_button_state(self.start_stop_button, True)
+
+    def post_stop(self):
+        """Update buttons after app stop"""
+        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
+        self.set_button_tooltip(self.start_stop_button, "Start")
+        self.set_button_state(self.start_stop_button, True)
+
+    def start_stop_callback(self):
+        """Start or stop the backend application."""
+        # disable the button. enable in post_start/post_stop
+        self.set_button_state(self.start_stop_button, False)
+        try:
+            # Call the start_stop method
+            self.start_stop("Button pressed")
+        except Exception as e: # pylint: disable=broad-exception-caught
+            # Log the error or handle it as needed
+            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            # If no exception, it will be handled in post_start/post_stop
+            self.set_button_state(self.start_stop_button, True)
