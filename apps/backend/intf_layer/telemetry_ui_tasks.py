@@ -49,7 +49,6 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     run_ipc_server: bool,
-    xsub_port: Optional[int],
     shutdown_event: asyncio.Event,
     telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
@@ -62,7 +61,6 @@ def initUiIntfLayer(
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
         run_ipc_server (bool): Whether to run the IPC server
-        xsub_port (Optional[int]): Port for IPC xsub socket
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 

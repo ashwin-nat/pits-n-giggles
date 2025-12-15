@@ -176,8 +176,6 @@ class PngLauncherWindow(QMainWindow):
         # Common args
         args = [
             "--config-file", self.config_file_new,
-            "--xpub-port", str(1234),
-            "--xsub-port", str(4567)
         ]
         self.subsystems: List[PngAppMgrBase] = [
             BackendAppMgr(
