@@ -81,7 +81,7 @@ class IpcPublisherAsync:
         sock.setsockopt(zmq.SNDHWM, 1)
         endpoint = f"tcp://{self.host}:{self.port}"
         sock.connect(endpoint)
-        self.logger.debug(f"IpcSubscriberSync configured endpoint {endpoint}")
+        self.logger.debug(f"IpcPublisherAsync configured endpoint {endpoint}")
         return sock
 
     # ---------------------------------------------------------

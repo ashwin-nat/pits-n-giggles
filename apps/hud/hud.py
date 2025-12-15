@@ -75,7 +75,7 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool, xpub_por
         overlays_mgr=overlays_mgr,
         port=config.Network.server_port,
         low_freq_update_interval_ms=config.Display.refresh_interval,
-        xpub_port=xpub_port)
+        xpub_port=config.Network.broker_xpub_port)
 
     run_ipc_task(
         logger=logger,

@@ -78,7 +78,7 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-    ipc_pub = IpcPublisherAsync(logger=logger, port=xsub_port)
+    ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
