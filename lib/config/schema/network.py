@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field, model_validator
 from meta.meta import APP_NAME
 
 from .diff import ConfigDiffMixin
-from .utils import udp_action_field
+from .utils import PortType, port_field, udp_action_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -38,7 +38,7 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
     }
-
+    # TODO: migrate all to port_field
     telemetry_port: int = Field(
         default=20777,
         ge=0,
@@ -75,6 +75,18 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    broker_xpub_port: int = port_field(
+        "PitWall Downstream Port",
+        default=53838,
+        type=PortType.TCP,
+    )
+
+    broker_xsub_port: int = port_field(
+        "PitWall Upstream Port",
+        default=53835,
+        type=PortType.TCP,
+    )
+
     udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
     udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker UDP Action Code")
 
@@ -92,6 +104,7 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
 
     @model_validator(mode="after")
     def check_ports_and_action_codes(self) -> "NetworkSettings":
+        # TODO: update to use annotations
         fields_map = type(self).model_fields
 
         if self.server_port == self.save_viewer_port:

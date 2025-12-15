@@ -47,6 +47,10 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.udp_tyre_delta_action_code, None)
         self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
+        self.assertIsNone(settings.udp_custom_action_code)
+        self.assertIsNone(settings.udp_tyre_delta_action_code)
+        self.assertEqual(settings.broker_xpub_port, 53838)
+        self.assertEqual(settings.broker_xsub_port, 53835)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -140,3 +144,36 @@ class TestNetworkSettings(TestF1ConfigBase):
             NetworkSettings(wdt_interval_sec=0)
         with self.assertRaises(ValidationError):
             NetworkSettings(wdt_interval_sec=121)
+
+    def test_broker_xpub_port(self):
+
+        NetworkSettings(broker_xpub_port=5000) # Valid
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=69420)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port="cat")
+
+        # Boundary conditions
+        NetworkSettings(broker_xpub_port=0)
+        NetworkSettings(broker_xpub_port=65535)
+
+    def test_broker_xsub_port(self):
+
+        NetworkSettings(broker_xsub_port=5000) # Valid
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=69420)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port="cat")
+
+        # Boundary conditions
+        NetworkSettings(broker_xsub_port=0)
+        NetworkSettings(broker_xsub_port=65535)
+

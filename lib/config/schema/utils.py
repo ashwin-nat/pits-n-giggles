@@ -26,6 +26,23 @@ from typing import Optional
 
 from pydantic import Field
 
+from enum import Enum
+
+# -------------------------------------- ENUM --------------------------------------------------------------------------
+
+class PortType(Enum):
+    TCP = "tcp"
+    UDP = "udp"
+
+    def __str__(self):
+        return self.value
+
+    @classmethod
+    def from_str(cls, value: str):
+        if value not in cls.__members__:
+            return None
+        return cls(value)
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def udp_action_field(description: str, *, default: Optional[int] = None, visible: Optional[bool] = True):
@@ -85,5 +102,24 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
                 "visible": visible,
                 "overlay_enable": True
             }
+        }
+    )
+
+def port_field(description: str, default: int, visible: Optional[bool] = True, type: PortType = PortType.TCP):
+    """
+    Create a port field with standard bounds and schema extras.
+    Only the description varies per leaf.
+    """
+    return Field(
+        default=default,
+        ge=0,
+        le=65535,
+        description=description,
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            },
+            "port_type": str(type)
         }
     )
