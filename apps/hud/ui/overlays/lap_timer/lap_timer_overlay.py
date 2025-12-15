@@ -298,8 +298,14 @@ class LapTimerOverlay(BaseOverlayWidget):
         In races, always display every thing live
         """
         driver_status = curr_lap["driver-status"]
-        if not is_race_type_session(session_type) and driver_status in {"FLYING_LAP", "ON_TRACK"}:
+        if is_race_type_session(session_type):
+            # In races, ignore driver_status completely
             self._update_curr_lap(curr_lap["lap-time-ms"])
+
+        elif driver_status in {"FLYING_LAP", "ON_TRACK"}:
+            # Non-race sessions: only update when active
+            self._update_curr_lap(curr_lap["lap-time-ms"])
+
         else:
             self.curr_value.setText(driver_status)
             self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
