@@ -30,7 +30,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
                                QVBoxLayout)
 
-from apps.hud.common import get_ref_row
+from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayWidget
 from lib.f1_types import F1Utils
@@ -251,7 +251,8 @@ class LapTimerOverlay(BaseOverlayWidget):
         @self.on_event("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
-            if data["event-type"] == "None":
+            session_type = data["event-type"]
+            if session_type == "None":
                 return
 
             ref_row = get_ref_row(data)
@@ -288,16 +289,16 @@ class LapTimerOverlay(BaseOverlayWidget):
                 self.sector_bar.set_sector_status(curr_lap["sector-status"])
             self.last_lap_num = lap_info["current-lap"]
 
-            self._handle_current_lap_display(curr_lap)
+            self._handle_current_lap_display(curr_lap, session_type)
             self._handle_delta_and_estimated(data, curr_lap, best_lap)
 
-    def _handle_current_lap_display(self, curr_lap: Dict[str, Any]) -> None:
+    def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str) -> None:
         """Handle current lap display.
-        If on flying lap, display curr lap time, else display status
+        On FP/Quali, If on flying lap, display curr lap time, else display status
+        In races, always display every thing live
         """
         driver_status = curr_lap["driver-status"]
-
-        if driver_status in {"FLYING_LAP", "ON_TRACK"}:
+        if not is_race_type_session(session_type) and driver_status in {"FLYING_LAP", "ON_TRACK"}:
             self._update_curr_lap(curr_lap["lap-time-ms"])
         else:
             self.curr_value.setText(driver_status)
@@ -322,7 +323,7 @@ class LapTimerOverlay(BaseOverlayWidget):
         if is_sc:
             delta_sc = curr_lap["delta-sc-sec"]
             if delta_sc is not None:
-                self._update_delta_sec(delta_sc)
+                self._update_delta_sec(delta_sc, is_sc=True)
                 delta_ms_for_estimated = int(delta_sc * 1000)
             else:
                 self._clear_delta()
@@ -330,7 +331,7 @@ class LapTimerOverlay(BaseOverlayWidget):
             # --- Normal racing delta ---
             delta_ms = curr_lap["delta-ms"]
             if delta_ms is not None:
-                self._update_delta_ms(delta_ms)
+                self._update_delta_ms(delta_ms, is_sc=False)
                 delta_ms_for_estimated = delta_ms
             else:
                 self._clear_delta()
@@ -405,16 +406,16 @@ class LapTimerOverlay(BaseOverlayWidget):
         self.curr_value.setText(time_str)
         self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
 
-    def _update_delta_ms(self, delta_ms: int):
+    def _update_delta_ms(self, delta_ms: int, is_sc: bool):
         """Update delta display with appropriate color.
 
         Args:
             delta_ms: Delta time in milliseconds
         """
         delta_s = delta_ms / 1000
-        self._update_delta_sec(delta_s)
+        self._update_delta_sec(delta_s, is_sc)
 
-    def _update_delta_sec(self, delta_sec: float):
+    def _update_delta_sec(self, delta_sec: float, is_sc: bool):
         """Update delta display with appropriate color.
 
         Args:
@@ -423,13 +424,10 @@ class LapTimerOverlay(BaseOverlayWidget):
         text = F1Utils.formatFloat(delta_sec, precision=3, signed=True)
         self.delta_value.setText(text)
 
-        # Set color based on delta value
-        if delta_sec < 0:
-            color = "#00FF00"  # Faster (green)
-        elif delta_sec > 0:
-            color = "#FF5555"  # Slower (red)
-        else:
-            color = "#FFFFFF"  # Neutral (white)
+        # Under SC: positive (or zero) is good
+        # Racing: negative is good
+        is_good = (delta_sec < 0) != is_sc
+        color = "#00FF00" if is_good else "#FF5555"
 
         self.delta_value.setStyleSheet(f"color: {color}; border: none;")
 
@@ -537,3 +535,5 @@ class LapTimerOverlay(BaseOverlayWidget):
     def _timer_clear_cb(self):
         """Clear the last lap sector bar flag"""
         self.show_last_lap_sector_bar = False
+        # Momentarily clear the sector bar
+        self.sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
