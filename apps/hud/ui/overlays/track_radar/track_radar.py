@@ -68,7 +68,7 @@ class TrackRadarOverlay(BaseOverlayQML):
         def _handle_session_motion_info(data: LiveSessionMotionInfo):
 
             ref_driver = self._get_reference_driver(data)
-            if not ref_driver:
+            if not ref_driver or not ref_driver.car_motion:
                 return
 
             # Calculate relative positions for all drivers
@@ -110,19 +110,22 @@ class TrackRadarOverlay(BaseOverlayQML):
         ref_pos = ref_driver.car_motion.world_position
         ref_yaw = ref_driver.car_motion.orientation.yaw
 
+        # Rotate to ref driver's coordinate system
+        # In F1 games, typically X is right and Z is forward
+        # We need forward to be up on the radar (Z axis)
+        cos_yaw = math.cos(-ref_yaw)
+        sin_yaw = math.sin(-ref_yaw)
+
         for driver in session.motion_data:
+            if not driver.car_motion:
+                # Can be none if the motion packet has not arrived by then
+                continue
             # Get absolute position
             pos = driver.car_motion.world_position
 
             # Calculate vector from ref to this car in world space
             dx = pos.x - ref_pos.x
             dz = pos.z - ref_pos.z
-
-            # Rotate to ref driver's coordinate system
-            # In F1 games, typically X is right and Z is forward
-            # We need forward to be up on the radar (Z axis)
-            cos_yaw = math.cos(-ref_yaw)
-            sin_yaw = math.sin(-ref_yaw)
 
             # Swap axes: use Z as the primary forward axis
             rel_x = dz * sin_yaw + dx * cos_yaw  # Right

@@ -81,6 +81,9 @@ class CarMotion(HighFreqBase):
 
     @classmethod
     def from_json(cls, json_data):
+        # Can be none if the motion packet has not arrived by then
+        if not json_data:
+            return None
         return cls(
             world_position = Vec3f.from_json(json_data["world-position"]),
             world_velocity = Vec3f.from_json(json_data["world-velocity"]),
