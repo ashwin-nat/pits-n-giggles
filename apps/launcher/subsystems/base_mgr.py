@@ -109,6 +109,7 @@ class PngAppMgrBase(QObject):
                  short_name: str,
                  settings: PngSettings,
                  start_by_default: bool = False,
+                 should_display: bool = True,
                  args: Optional[List[str]] = None,
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
@@ -126,7 +127,9 @@ class PngAppMgrBase(QObject):
             module_path: Python module path to run (e.g., 'my_app.server')
             display_name: Human-readable name for UI display
             short_name: Short name for logging
+            settings: Settings object
             start_by_default: Whether to auto-start this subsystem
+            should_display: Whether to show this subsystem in the UI
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
             coverage_enabled: Enable code coverage tracking
@@ -144,6 +147,7 @@ class PngAppMgrBase(QObject):
         self.display_name = display_name
         self.short_name = short_name
         self.start_by_default = start_by_default
+        self.should_display = should_display
         self.args = args or []
         self.debug_mode = debug_mode
         self.coverage_enabled = coverage_enabled
@@ -644,7 +648,8 @@ class PngAppMgrBase(QObject):
     def _update_status(self, status: str):
         """Update status and emit signal"""
         self.status = status
-        self.status_changed.emit(status)
+        if self.should_display:
+            self.status_changed.emit(status)
 
     # Logging methods
     def info_log(self, message: str, src: str = ''):

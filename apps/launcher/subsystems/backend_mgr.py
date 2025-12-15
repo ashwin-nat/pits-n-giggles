@@ -71,6 +71,7 @@ class BackendAppMgr(PngAppMgrBase):
             short_name="CORE",
             settings=settings,
             start_by_default=True,
+            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,

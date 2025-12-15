@@ -398,6 +398,8 @@ class PngLauncherWindow(QMainWindow):
 
         # Add subsystem cards in a grid
         for idx, subsystem in enumerate(self.subsystems):
+            if not subsystem.should_display:
+                continue
             row = idx // NUM_SUBSYS_PER_ROW
             col = idx % NUM_SUBSYS_PER_ROW
             card = SubsystemCard(subsystem)

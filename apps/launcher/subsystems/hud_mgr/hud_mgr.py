@@ -75,6 +75,7 @@ class HudAppMgr(PngAppMgrBase):
             display_name="HUD",
             short_name="HUD",
             start_by_default=(self.supported and self.enabled),
+            should_display=True,
             window=window,
             settings=settings,
             args=self.args,
