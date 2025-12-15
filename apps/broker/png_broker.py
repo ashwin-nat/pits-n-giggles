@@ -52,7 +52,6 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port") # unused
 
     # Parse the command-line arguments
     return parser.parse_args()

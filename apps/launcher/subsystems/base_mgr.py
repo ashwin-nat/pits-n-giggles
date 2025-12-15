@@ -233,7 +233,6 @@ class PngAppMgrBase(QObject):
 
         # Add additional arguments
         cmd.extend(self.args)
-        cmd.append("--run-ipc-server")
         return cmd
 
     def start(self, reason: str):

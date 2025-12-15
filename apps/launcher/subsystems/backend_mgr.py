@@ -57,6 +57,7 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         extra_args = []
+        extra_args.append("--run-ipc-server")
         if debug_mode:
             extra_args.append("--debug")
         if replay_server:
