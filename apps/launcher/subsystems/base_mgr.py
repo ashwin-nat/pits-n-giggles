@@ -476,7 +476,7 @@ class PngAppMgrBase(QObject):
                 continue
 
             # ---------------------------------------------------------
-            # 4. Regular stdout (non-token) — send to info log
+            # 4. Regular stdout (non-token) - send to info log
             # ---------------------------------------------------------
             self.info_log(line, src=self.short_name)
 
@@ -506,6 +506,7 @@ class PngAppMgrBase(QObject):
                 self._handle_unexpected_exit(ret_code)
 
         finally:
+            self.debug_log(f"{self.display_name} Setting heartbeat stop flag...")
             self._stop_heartbeat.set()
 
     def _handle_unexpected_exit(self, ret_code: int):
@@ -600,12 +601,13 @@ class PngAppMgrBase(QObject):
 
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
+        self.debug_log(f"{self.display_name}: Heartbeat job exiting...")
         self._stop_heartbeat.clear()
 
     def _send_ipc_shutdown(self, reason: str) -> bool:
         """Send IPC shutdown command"""
         if not self.ipc_port:
-            self.debug_log("Cannot send IPC shutdown — no IPC port detected from child.")
+            self.debug_log("Cannot send IPC shutdown - no IPC port detected from child.")
             return False
 
         try:
@@ -652,7 +654,7 @@ class PngAppMgrBase(QObject):
                 self._post_start_fired = True
 
         if should_fire:
-            self.debug_log(f"{self.display_name}: All startup signals received — firing post-start hook")
+            self.debug_log(f"{self.display_name}: All startup signals received - firing post-start hook")
             if self._post_start_hook:
                 try:
                     self.post_start_signal.emit()

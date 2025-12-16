@@ -25,7 +25,7 @@
 import asyncio
 import logging
 from functools import partial
-from typing import List, Optional
+from typing import List
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
@@ -56,11 +56,12 @@ def registerIpcTask(
 
     # Register the IPC task only if port is specified
     if run_ipc_server:
+        logger.debug("Starting IPC server")
         server = IpcServerAsync(name="Backend")
         report_ipc_port_from_child(server.port)
         logger.debug("Started IPC server on port %d", server.port)
         server.register_shutdown_callback(partial(handleShutdown, logger=logger))
-        server.register_heartbeat_missed_callback(handleHeartbeatMissed)
+        server.register_heartbeat_missed_callback(partial(handleHeartbeatMissed, logger=logger))
         tasks.append(asyncio.create_task(server.run(partial(
             processIpcCommand, logger=logger, session_state=session_state, telemetry_handler=telemetry_handler)),
                 name="IPC Task"))

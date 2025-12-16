@@ -83,6 +83,43 @@ class PngSettings(ConfigDiffMixin, BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def check_port_conflicts(self) -> "PngSettings":
+        """Ensure all configured ports are unique per protocol (TCP / UDP)."""
+
+        # port_type -> port_value -> "Section.field"
+        ports_by_type: dict[str, dict[int, str]] = {}
+
+        # Walk through submodels
+        for section_name, section in self.__dict__.items():
+            if not isinstance(section, BaseModel):
+                continue
+
+            for field_name, field in type(section).model_fields.items():
+                extra = field.json_schema_extra or {}
+                port_type = extra.get("port_type")
+
+                # Not a port field
+                if not port_type:
+                    continue
+
+                value = getattr(section, field_name)
+                if value is None:
+                    continue
+
+                ports_by_type.setdefault(port_type, {})
+
+                if value in ports_by_type[port_type]:
+                    prev = ports_by_type[port_type][value]
+                    raise ValueError(
+                        f"Duplicate {port_type.upper()} port {value} between "
+                        f"{prev} and {section_name}.{field_name}"
+                    )
+
+                ports_by_type[port_type][value] = f"{section_name}.{field_name}"
+
+        return self
+
     def __str__(self) -> str:
         lines = ["PngSettings:"]
         for section_name, section_model in self:

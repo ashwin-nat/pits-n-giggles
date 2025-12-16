@@ -28,6 +28,7 @@ from typing import Awaitable, Callable, Optional
 
 import zmq
 import zmq.asyncio
+import logging
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -40,12 +41,14 @@ class IpcServerAsync:
     """
 
     def __init__(self, port: int | None = None, name: str = "IpcChildAsync",
-             max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0):
+             max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0,
+             logger: Optional[logging.Logger] = None):
         """
         :param port: Port to bind to.
         :param name: Name for logging purposes.
         :param max_missed_heartbeats: Number of consecutive missed heartbeats before calling callback.
         :param heartbeat_timeout: Time in seconds to wait for heartbeat before considering it missed.
+        :param logger: Logger to use.
         """
         self.name = name
         self.endpoint = f"tcp://127.0.0.1:{port}"
@@ -77,6 +80,12 @@ class IpcServerAsync:
         self._heartbeat_missed_callback = self._def_heartbeat_missed_callback
         self._heartbeat_task = None
 
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.logger = logger
+
     def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
         """
         Registers an async callback to be called before shutdown.
@@ -107,7 +116,7 @@ class IpcServerAsync:
             except asyncio.CancelledError:
                 break
             except Exception as e: # pylint: disable=broad-exception-caught
-                print(f"[{self.name}] Error in heartbeat monitor: {e}")
+                self.logger.exception("%s: Error in heartbeat monitor. %s", self.name, e)
                 break
 
             if not self._running:
@@ -122,6 +131,7 @@ class IpcServerAsync:
             time_since_last = current_time - self._last_heartbeat
             if time_since_last > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
+                self.logger.debug("%s: Missed heartbeat. count: %d", self.name, self._missed_heartbeats)
 
                 # Check if we've missed too many consecutive heartbeats
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
@@ -129,7 +139,7 @@ class IpcServerAsync:
                         await self._heartbeat_missed_callback(self._missed_heartbeats)
                         break
                     except Exception as e: # pylint: disable=broad-exception-caught
-                        print(f"[{self.name}] Error in heartbeat missed callback: {e}")
+                        self.logger.exception("%s: Error in heartbeat missed callback. %s", self.name, e)
 
     def _handle_heartbeat(self) -> dict:
         """
@@ -161,7 +171,7 @@ class IpcServerAsync:
                     else:
                         msg = await self.sock.recv_json()
                 except asyncio.TimeoutError:
-                    print(f"[{self.name}] Timeout waiting for request")
+                    self.logger.warning("%s: Timeout waiting for request", self.name)
                     continue  # go back and recv again
 
                 cmd = msg.get("cmd")
@@ -212,11 +222,12 @@ class IpcServerAsync:
             self._running = False
 
     async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
-        """Default heartbeat missed callback. Hard kills the app"""
+        """Default heartbeat missed callback. no-op"""
         return
 
     def close(self) -> None:
         """Closes the socket."""
+        self.logger.debug("%s closing", self.name)
         self._running = False
         self.sock.close()
         self.ctx.term()

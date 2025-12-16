@@ -24,6 +24,7 @@
 
 import threading
 import time
+import logging
 from typing import Callable, Optional
 
 import zmq
@@ -39,12 +40,14 @@ class IpcServerSync:
     """
 
     def __init__(self, port: int | None = None, name: str = "IpcChildSync",
-                max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0):
+                max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0,
+                logger: Optional[logging.Logger] = None):
         """
         :param port: Port to bind to. If None, OS chooses a free port.
         :param name: Name of the child process.
         :param max_missed_heartbeats: Number of consecutive missed heartbeats before calling callback.
         :param heartbeat_timeout: Time in seconds to wait for heartbeat before considering it missed.
+        :param logger: Logger to use. If None, a NullHandler is used.
         """
         self.name = name
         self.ctx = zmq.Context()
@@ -73,6 +76,12 @@ class IpcServerSync:
         self._heartbeat_missed_callback = None
         self._heartbeat_thread: Optional[threading.Thread] = None
 
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.logger = logger
+
     # -------------------------------------- CALLBACKS ------------------------------------------------------------------
 
     def register_shutdown_callback(self, callback: Callable[[dict], dict]) -> None:
@@ -93,7 +102,7 @@ class IpcServerSync:
     # -------------------------------------- HEARTBEAT ------------------------------------------------------------------
 
     def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
-        """Default heartbeat missed callback. Hard kills the app."""
+        """Default heartbeat missed callback. no-op"""
         return
 
     def _handle_heartbeat(self) -> dict:
@@ -116,6 +125,7 @@ class IpcServerSync:
             elapsed = time.time() - self._last_heartbeat
             if elapsed > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
+                self.logger.debug("%s: Missed heartbeat. count: %d", self.name, self._missed_heartbeats)
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
                         callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
@@ -213,6 +223,7 @@ class IpcServerSync:
             return  # Already closed
 
         self._running = False
+        self.logger.debug("%s closing", self.name)
 
         # Gracefully stop heartbeat monitor if active
         if self._heartbeat_thread and self._heartbeat_thread.is_alive():

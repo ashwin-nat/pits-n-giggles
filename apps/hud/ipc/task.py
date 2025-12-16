@@ -72,15 +72,17 @@ def run_ipc_task(
     Returns:
         threading.Thread: IPC thread handle
     """
+    logger.debug("Starting IPC server")
     ipc_server = IpcServerSync(
         # port=port,
         name="hud"
     )
     report_ipc_port_from_child(ipc_server.port)
+    logger.debug("Started IPC server on port %d", ipc_server.port)
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
         shm_reader=ipc_sub))
-    ipc_server.register_heartbeat_missed_callback(_handle_heartbeat_missed)
+    ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
 def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
@@ -149,8 +151,8 @@ def _stop_other_tasks(
 
     logger.info("Exiting HUD subsystem")
 
-def _handle_heartbeat_missed(count: int) -> dict:
+def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
-    print(f"[HUD] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
     os._exit(PNG_LOST_CONN_TO_PARENT)
