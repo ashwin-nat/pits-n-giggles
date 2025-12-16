@@ -37,7 +37,6 @@ def run_hud_update_threads(
         port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        low_freq_update_interval_ms: int,
         xpub_port: int
         ) -> Tuple[HudClient, IpcSubscriberSync]:
     """Creates, runs and returns the HUD update thread.
@@ -46,14 +45,13 @@ def run_hud_update_threads(
         port: Port number of the Socket.IO server.
         logger: Logger instance.
         overlays_mgr: Overlays manager
-        low_freq_update_interval_ms: Low frequency update interval
         xpub_port: IPC xpub port
 
     Returns:
         A tuple of the Socket.IO client and the IPC subscriber instances.
     """
     return _run_socketio_thread(port, logger, overlays_mgr), \
-            _run_ipc_sub_thread(logger, overlays_mgr, low_freq_update_interval_ms, xpub_port)
+            _run_ipc_sub_thread(logger, overlays_mgr, xpub_port)
 
 def _run_socketio_thread(
         port: int,
@@ -77,7 +75,6 @@ def _run_socketio_thread(
 def _run_ipc_sub_thread(
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        low_freq_update_interval_ms: int,
         xpub_port: int
         ) -> IpcSubscriberSync:
     """Thread target to run the shared memory listener for HUD updates.
@@ -85,7 +82,6 @@ def _run_ipc_sub_thread(
     Args:
         logger: Logger instance.
         overlays_mgr: Overlays manager
-        low_freq_update_interval_ms: Low frequency update interval
         xpub_port: IPC xpub port
 
     Returns:
