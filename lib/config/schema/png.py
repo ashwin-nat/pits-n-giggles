@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import ForwardingSettings
+from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
 from .https import HttpsSettings
 from .hud import HudSettings
 from .network import NetworkSettings
@@ -80,6 +80,19 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                     f"Duplicate UDP action code {val} between {seen[val]} and {name}"
                 )
             seen[val] = name
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_no_localhost_udp_loop(self):
+        telemetry_port = self.Network.telemetry_port
+
+        for host, port in self.Forwarding.forwarding_targets:
+            if port == telemetry_port and host in _LOCALHOST_ALIASES:
+                raise ValueError(
+                    f"UDP forwarding target {host}:{port} forms a localhost loop "
+                    f"with Network.telemetry_port={telemetry_port}"
+                )
 
         return self
 

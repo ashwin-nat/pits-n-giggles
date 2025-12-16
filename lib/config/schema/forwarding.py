@@ -23,11 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import re
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .diff import ConfigDiffMixin
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+_LOCALHOST_ALIASES = {"localhost", "127.0.0.1", "::1"}
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -97,17 +101,6 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
             raise ValueError(f"Port number out of range in '{v}'")
         return v
 
-    @property
-    def forwarding_targets(self) -> list[tuple[str, int]]:
-        ret = []
-        if self.target_1:
-            ret.append((self._parse_hostport(self.target_1)))
-        if self.target_2:
-            ret.append((self._parse_hostport(self.target_2)))
-        if self.target_3:
-            ret.append((self._parse_hostport(self.target_3)))
-        return ret
-
     def _parse_hostport(self, value: str) -> tuple[str, int]:
         """
         Parse a host:port string into (host, port) tuple.
@@ -117,3 +110,62 @@ class ForwardingSettings(ConfigDiffMixin, BaseModel):
         """
         host, port_str = value.strip().split(":")
         return host, int(port_str)
+
+    @staticmethod
+    def _parse_target(value: str) -> tuple[str, int]:
+        host, port = value.split(":", 1)
+        return host, int(port)
+
+    @property
+    def target_1_tuple(self) -> Optional[Tuple[str, int] | None]:
+        return self._parse_target(self.target_1) if self.target_1 else None
+
+    @property
+    def target_2_tuple(self) -> Optional[Tuple[str, int] | None]:
+        return self._parse_target(self.target_2) if self.target_2 else None
+
+    @property
+    def target_3_tuple(self) -> Optional[Tuple[str, int] | None]:
+        return self._parse_target(self.target_3) if self.target_3 else None
+
+    @property
+    def forwarding_targets(self) -> list[tuple[str, int]]:
+        return [
+            t for t in (
+                self.target_1_tuple,
+                self.target_2_tuple,
+                self.target_3_tuple,
+            )
+            if t is not None
+        ]
+
+    @staticmethod
+    def _normalize_host(host: str) -> str:
+        """
+        Normalize hostnames so localhost variants are treated the same.
+        """
+        if host in _LOCALHOST_ALIASES:
+            return "localhost"
+        return host.lower()
+
+    @model_validator(mode="after")
+    def _validate_no_duplicate_targets(self):
+        seen: set[tuple[str, int]] = set()
+
+        for target in (
+            self.target_1_tuple,
+            self.target_2_tuple,
+            self.target_3_tuple,
+        ):
+            if target is None:
+                continue
+
+            host, port = target # pylint: disable=unpacking-non-sequence
+
+            key = (self._normalize_host(host), port)
+            if key in seen:
+                raise ValueError(f"Duplicate forwarding target detected: {host}:{port}")
+
+            seen.add(key)
+
+        return self
