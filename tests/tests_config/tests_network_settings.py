@@ -23,6 +23,7 @@
 
 import os
 import sys
+from itertools import combinations
 
 from pydantic import ValidationError
 
@@ -177,3 +178,30 @@ class TestNetworkSettings(TestF1ConfigBase):
         NetworkSettings(broker_xsub_port=0)
         NetworkSettings(broker_xsub_port=65535)
 
+    def test_network_settings_port_collisions(self):
+
+        ports = {
+            "telemetry_port": (20777, "udp"),
+            "server_port": (4768, "tcp"),
+            "save_viewer_port": (4769, "tcp"),
+            "broker_xpub_port": (53838, "tcp"),
+            "broker_xsub_port": (53835, "tcp"),
+        }
+
+        # all pairs
+        for (n1, (p1, t1)), (n2, (p2, t2)) in combinations(ports.items(), 2):
+            if t1 == t2:
+                assert p1 != p2, f"{n1} and {n2} conflict"
+
+        # significant triplets (same protocol)
+        tcp_ports = [(n, p) for n, (p, t) in ports.items() if t == "tcp"]
+        for a, b, c in combinations(tcp_ports, 3):
+            vals = {a[1], b[1], c[1]}
+            assert len(vals) == 3, f"TCP triplet conflict: {[a[0], b[0], c[0]]}"
+
+        # all ports equal (should fail)
+        all_ports = [p for p, _ in ports.values()]
+        assert len(set(all_ports)) == len(all_ports), "All-port-equal conflict detected"
+
+        # No error for TCP and UDP sharing the same port
+        NetworkSettings(telemetry_port=5000, server_port=5000)

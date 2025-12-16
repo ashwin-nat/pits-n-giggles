@@ -38,42 +38,20 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
     }
-    # TODO: migrate all to port_field
-    telemetry_port: int = Field(
+
+    telemetry_port: int = port_field(
+        "F1 UDP Telemetry Port",
         default=20777,
-        ge=0,
-        le=65535,
-        description="F1 UDP Telemetry Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
-    )
-    server_port: int = Field(
+        port_type=PortType.UDP)
+    server_port: int = port_field(
+        f"{APP_NAME} HTTP Server Port",
         default=4768,
-        ge=0,
-        le=65535,
-        description=f"{APP_NAME} HTTP Server Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
+        port_type=PortType.TCP
     )
-    save_viewer_port: int = Field(
+    save_viewer_port: int = port_field(
+        f"{APP_NAME} Save Data Viewer Port",
         default=4769,
-        ge=0,
-        le=65535,
-        description=f"{APP_NAME} Save Data Viewer Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
+        port_type=PortType.TCP
     )
     broker_xpub_port: int = port_field(
         "PitWall Downstream Port",
