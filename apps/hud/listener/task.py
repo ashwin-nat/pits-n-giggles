@@ -27,7 +27,6 @@ import threading
 from typing import Tuple
 
 from lib.ipc import IpcSubscriberSync
-from lib.rate_limiter import RateLimiter
 
 from ..ui.infra import OverlaysMgr
 from .client import HudClient
@@ -94,7 +93,6 @@ def _run_ipc_sub_thread(
     """
 
     ipc_sub = IpcSubscriberSync(port=xpub_port, logger=logger)
-    rate_limiter = RateLimiter(interval_ms=low_freq_update_interval_ms)
 
     @ipc_sub.route("race-table-update")
     def _handle_race_table_update(data):
@@ -104,10 +102,7 @@ def _run_ipc_sub_thread(
     @ipc_sub.route("stream-overlay-update")
     def _handle_stream_overlay_update(data):
         """Stream overlay data update handler."""
-        overlays_mgr.input_telemetry_update(data)
-        overlays_mgr.motion_update(data)
-        if rate_limiter.allows("stream-overlay-update"):
-            overlays_mgr.stream_overlays_update(data)
+        overlays_mgr.stream_overlays_update(data)
 
     threading.Thread(target=ipc_sub.start, daemon=True, name="IPC Subscriber").start()
     return ipc_sub

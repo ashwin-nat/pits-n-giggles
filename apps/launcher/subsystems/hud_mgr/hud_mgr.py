@@ -325,6 +325,9 @@ class HudAppMgr(PngAppMgrBase):
             "Network": [
                 "broker_xpub_port",
             ],
+            "Display" : [
+                "refresh_interval",
+            ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")
