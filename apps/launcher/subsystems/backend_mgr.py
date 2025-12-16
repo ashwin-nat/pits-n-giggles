@@ -126,7 +126,6 @@ class BackendAppMgr(PngAppMgrBase):
             "Network": [
                 "udp_tyre_delta_action_code",
                 "udp_custom_action_code",
-                "broker_xsub_port",
             ],
             "HUD": [
                 "toggle_overlays_udp_action_code",
@@ -148,6 +147,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "telemetry_port",
                 "server_port",
                 "wdt_interval_sec",
+                "broker_xsub_port",
             ],
             "Capture" : [],
             "Display" : [
