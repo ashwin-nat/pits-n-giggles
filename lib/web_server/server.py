@@ -182,7 +182,7 @@ class BaseWebServer:
             if not client_type:
                 return
 
-            if client_type in {'player-stream-overlay', 'race-table'}:
+            if client_type in {'player-stream-overlay', 'race-table', 'hud'}:
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_connect_callback:
                     await self._on_client_connect_callback(ClientType(client_type), sid)
