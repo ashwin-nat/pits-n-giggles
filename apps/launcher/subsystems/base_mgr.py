@@ -158,6 +158,7 @@ class PngAppMgrBase(QObject):
         self.is_running = False
         self._is_restarting = threading.Event()
         self._is_stopping = threading.Event()
+        self._heartbeat_gen_num = 0
 
         # Status tracking
         self.status = "Stopped"
@@ -282,10 +283,15 @@ class PngAppMgrBase(QObject):
                     name=f"{self.display_name}-monitor"
                 ).start()
 
+                # Fresh heartbeat lifecycle for every start
+                self._stop_heartbeat = threading.Event()
+                self._heartbeat_gen_num += 1
+                hb_gen = self._heartbeat_gen_num
                 threading.Thread(
                     target=self._send_heartbeat,
+                    args=(hb_gen,),
                     daemon=True,
-                    name=f"{self.display_name}-heartbeat"
+                    name=f"{self.display_name}-heartbeat-{hb_gen}"
                 ).start()
 
                 self.debug_log(f"{self.display_name} started (PID: {self.child_pid})")
@@ -536,8 +542,12 @@ class PngAppMgrBase(QObject):
                 f"{self.display_name} will not auto-restart (max attempts reached)"
             )
 
-    def _send_heartbeat(self):
-        """Send periodic heartbeat to child process"""
+    def _send_heartbeat(self, hb_gen: int):
+        """Send periodic heartbeat to child process
+
+        Args:
+            hb_gen (int): Heartbeat generation number
+        """
         # Initial random delay
         time.sleep(random.uniform(0, 2.0))
 
@@ -545,8 +555,13 @@ class PngAppMgrBase(QObject):
         self.debug_log(f"{self.display_name}: Heartbeat job starting...")
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
         assert timeout_ms > 0
+        assert not self._stop_heartbeat.is_set(), "Heartbeat thread started with stop flag already set" # TODO: remove
 
         while not self._stop_heartbeat.is_set():
+            if hb_gen != self._heartbeat_gen_num:
+                self.debug_log(f"{self.display_name}: Heartbeat exiting (stale generation {hb_gen})")
+                break
+
             # If we are stopping or restarting, do not treat missing port as failure
             if self._is_stopping.is_set() or self._is_restarting.is_set():
                 self.debug_log(f"{self.display_name}: Heartbeat exiting due to stop/restart flag.")
