@@ -75,6 +75,7 @@ class HudAppMgr(PngAppMgrBase):
             display_name="HUD",
             short_name="HUD",
             start_by_default=(self.supported and self.enabled),
+            should_display=True,
             window=window,
             settings=settings,
             args=self.args,
@@ -321,6 +322,12 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_settings",
                 "use_windowed_overlays",
             ],
+            "Network": [
+                "broker_xpub_port",
+            ],
+            "Display" : [
+                "refresh_interval",
+            ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")

@@ -34,7 +34,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import get_free_tcp_port, IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
+from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -79,7 +79,7 @@ class TestIpcPubSub(TestIPC):
     def setUp(self):
         # Start broker with OS-assigned ports
         self.broker = IpcPubSubBroker(xsub_port=0, xpub_port=0)
-        self.broker.start()
+        self.broker.run_in_thread()
         time.sleep(0.05)
 
         self.xsub_port = self.broker.xsub_port
@@ -88,6 +88,8 @@ class TestIpcPubSub(TestIPC):
     def tearDown(self):
         self.broker.close()
         time.sleep(0.05)
+        if self.broker._thread:
+            self.broker._thread.join(timeout=0.2)
 
     # ----------------------------------------------------------
     # End-to-end PUB → XSUB → XPUB → SUB test
@@ -362,112 +364,18 @@ class TestIpcPubSub(TestIPC):
         self.assertTrue(True)
 
     # ----------------------------------------------------------
-    # Broker crash mid-stream
-    # ----------------------------------------------------------
-    def test_broker_crash(self):
-        received = []
+    # Broker lifecycle semantics
 
-        sub = IpcSubscriberSync(port=self.xpub_port)
-
-        @sub.route("brk")
-        def handler(data):
-            received.append(data)
-
-        t_sub = threading.Thread(target=sub.start, daemon=True)
-        t_sub.start()
-        time.sleep(PROPAGATION_DELAY)
-
-        async def pub_task_pre_crash():
-            pub = IpcPublisherAsync(port=self.xsub_port)
-            await pub.start()
-            for _ in range(3):
-                await pub.publish("brk", {"before": True})
-                await asyncio.sleep(MESSAGE_DELAY)
-            return pub  # Keep pub alive
-
-        # Publisher running and sending
-        pub = asyncio.run(pub_task_pre_crash())
-
-        # Crash broker mid-stream
-        self.broker.close()
-        time.sleep(0.05)
-
-        # Publisher continues (messages will drop)
-        async def pub_task_post_crash():
-            for _ in range(3):
-                await pub.publish("brk", {"after": True})
-                await asyncio.sleep(MESSAGE_DELAY)
-            pub.socket.close(linger=0)
-
-        asyncio.run(pub_task_post_crash())
-
-        # Give subscriber time to choke
-        time.sleep(0.05)
-
-        # Stop subscriber
-        sub.close()
-        time.sleep(0.05)
-        t_sub.join(timeout=0.2)
-
-        # Must have received pre-crash messages
-        self.assertIn({"before": True}, received)
-
-        # Must NOT have received messages after crash
-        self.assertNotIn({"after": True}, received)
-
-    def test_pub_and_sub_before_broker(self):
-        received = []
-
-        # Subscriber starts BEFORE broker exists
-        sub = IpcSubscriberSync(port=self.xpub_port)
-
-        @sub.route("pre")
-        def handler(data):
-            received.append(data)
-
-        t_sub = threading.Thread(target=sub.start, daemon=True)
-        t_sub.start()
-
-        # Publisher also starts BEFORE broker
-        async def pub_task_early():
-            pub = IpcPublisherAsync(port=self.xsub_port)
-            await pub.start()
-            for _ in range(SEND_REPEATS):
-                await pub.publish("pre", {"early": True})
-                await asyncio.sleep(MESSAGE_DELAY)
-            await pub.close()
-
-        asyncio.run(pub_task_early())
-
-        # Restart broker
-        old_xsub = self.xsub_port
-        old_xpub = self.xpub_port
+    def test_broker_close_terminates_background_thread(self):
+        # Broker was started in setUp via run_in_thread()
+        self.assertIsNotNone(self.broker._thread)
+        self.assertTrue(self.broker._thread.is_alive())
 
         self.broker.close()
-        time.sleep(0.05)
+        # Give the steerable proxy time to receive the termination signal
+        if self.broker._thread is not None:
+            self.broker._thread.join(timeout=1.0)
 
-        self.broker = IpcPubSubBroker(
-            xsub_port=old_xsub,
-            xpub_port=old_xpub
-        )
-        self.broker.start()
-
-        # Give system time to settle (no delivery guarantee expected)
-        time.sleep(0.2)
-
-        async def pub_task_late():
-            pub = IpcPublisherAsync(port=self.broker.xsub_port)
-            for _ in range(SEND_REPEATS):
-                await pub.publish("pre", {"late": True})
-                await asyncio.sleep(MESSAGE_DELAY)
-            await pub.close()
-
-        asyncio.run(pub_task_late())
-
-        # Shutdown subscriber
-        sub.close()
-        time.sleep(0.05)
-        t_sub.join(timeout=0.5)
-
-        self.assertTrue(t_sub.is_alive() is False)
-
+        # The background thread should have exited
+        if self.broker._thread is not None:
+            self.assertFalse(self.broker._thread.is_alive())

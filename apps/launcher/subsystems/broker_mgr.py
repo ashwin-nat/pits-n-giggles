@@ -22,13 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import webbrowser
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.ipc import IpcClientSync
 
 from .base_mgr import PngAppMgrBase
 
@@ -37,7 +35,7 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class SaveViewerAppMgr(PngAppMgrBase):
+class BrokerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
     def __init__(self,
                  window: "PngLauncherWindow",
@@ -58,21 +56,17 @@ class SaveViewerAppMgr(PngAppMgrBase):
         if debug_mode:
             extra_args.append("--debug")
         temp_args = args + extra_args
-        self.port = settings.Network.save_viewer_port
-        self.proto = settings.HTTPS.proto
         super().__init__(
             window=window,
-            module_path="apps.save_viewer",
-            display_name="Save Viewer",
-            short_name="SAVE",
+            module_path="apps.broker",
+            display_name="Pit Wall",
+            short_name="WALL",
             settings=settings,
             start_by_default=True,
-            should_display=True,
+            should_display=False,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
-            http_port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
-            udp_port_conflict_settings_field="N/A",
             post_start_cb=self.post_start,
             post_stop_cb=self.post_stop
         )
@@ -82,39 +76,11 @@ class SaveViewerAppMgr(PngAppMgrBase):
         :return: List of button objects
         """
 
+        # Button for trouble shooting only
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.open_file_button = self.build_button(self.get_icon("open-file"), self.open_file, "Open File")
-        self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
-                                                       "Open Dashboard")
-
         return [
-            self.start_stop_button,
-            self.open_file_button,
-            self.open_dashboard_button,
+            self.start_stop_button
         ]
-
-    def open_dashboard(self):
-        """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'http://localhost:{self.port}', new=2)
-
-    def open_file(self):
-        """Open a file dialog and send the selected file path to the backend process."""
-        file_path = self.select_file(title="Select File", file_filter="JSON files (*.json);;All Files (*.*)")
-
-        if file_path:
-            self.debug_log(f"Selected file: {file_path}")
-
-            if self.process:
-                ipc_client = IpcClientSync(self.ipc_port)
-                rsp = ipc_client.request("open-file", {"file-path": file_path})
-
-                if rsp["status"] != "error":
-                    self.info_log("File path sent successfully.")
-                else:
-                    self.info_log(f"Error sending file path: {rsp['message']}")
-                    self.show_error("File open error", "\n".join([rsp["message"]]))
-            else:
-                self.info_log("No process running to send the file path to.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -125,12 +91,14 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """
 
         diff = self.curr_settings.diff(new_settings, {
-            "Network": ["save_viewer_port"],
+            "Network": [
+                "broker_xpub_port",
+                "broker_xsub_port",
+            ],
         })
         self.debug_log(f"{self.display_name} Settings changed: {diff}")
         # Update the port number
-        should_restart = (self.port != new_settings.Network.save_viewer_port)
-        self.port = new_settings.Network.save_viewer_port
+        should_restart = bool(diff)
         return should_restart
 
     def post_start(self):
@@ -138,24 +106,17 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_file_button, True)
-        self.set_button_state(self.open_dashboard_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_file_button, False)
-        self.set_button_state(self.open_dashboard_button, False)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.open_file_button, False)
-        self.set_button_state(self.open_dashboard_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")

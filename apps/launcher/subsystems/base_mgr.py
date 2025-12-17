@@ -109,6 +109,7 @@ class PngAppMgrBase(QObject):
                  short_name: str,
                  settings: PngSettings,
                  start_by_default: bool = False,
+                 should_display: bool = True,
                  args: Optional[List[str]] = None,
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
@@ -126,7 +127,9 @@ class PngAppMgrBase(QObject):
             module_path: Python module path to run (e.g., 'my_app.server')
             display_name: Human-readable name for UI display
             short_name: Short name for logging
+            settings: Settings object
             start_by_default: Whether to auto-start this subsystem
+            should_display: Whether to show this subsystem in the UI
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
             coverage_enabled: Enable code coverage tracking
@@ -144,6 +147,7 @@ class PngAppMgrBase(QObject):
         self.display_name = display_name
         self.short_name = short_name
         self.start_by_default = start_by_default
+        self.should_display = should_display
         self.args = args or []
         self.debug_mode = debug_mode
         self.coverage_enabled = coverage_enabled
@@ -230,7 +234,6 @@ class PngAppMgrBase(QObject):
 
         # Add additional arguments
         cmd.extend(self.args)
-        cmd.append("--run-ipc-server")
         return cmd
 
     def start(self, reason: str):
@@ -473,7 +476,7 @@ class PngAppMgrBase(QObject):
                 continue
 
             # ---------------------------------------------------------
-            # 4. Regular stdout (non-token) — send to info log
+            # 4. Regular stdout (non-token) - send to info log
             # ---------------------------------------------------------
             self.info_log(line, src=self.short_name)
 
@@ -503,6 +506,7 @@ class PngAppMgrBase(QObject):
                 self._handle_unexpected_exit(ret_code)
 
         finally:
+            self.debug_log(f"{self.display_name} Setting heartbeat stop flag...")
             self._stop_heartbeat.set()
 
     def _handle_unexpected_exit(self, ret_code: int):
@@ -597,12 +601,13 @@ class PngAppMgrBase(QObject):
 
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
+        self.debug_log(f"{self.display_name}: Heartbeat job exiting...")
         self._stop_heartbeat.clear()
 
     def _send_ipc_shutdown(self, reason: str) -> bool:
         """Send IPC shutdown command"""
         if not self.ipc_port:
-            self.debug_log("Cannot send IPC shutdown — no IPC port detected from child.")
+            self.debug_log("Cannot send IPC shutdown - no IPC port detected from child.")
             return False
 
         try:
@@ -649,7 +654,7 @@ class PngAppMgrBase(QObject):
                 self._post_start_fired = True
 
         if should_fire:
-            self.debug_log(f"{self.display_name}: All startup signals received — firing post-start hook")
+            self.debug_log(f"{self.display_name}: All startup signals received - firing post-start hook")
             if self._post_start_hook:
                 try:
                     self.post_start_signal.emit()
@@ -659,7 +664,8 @@ class PngAppMgrBase(QObject):
     def _update_status(self, status: str):
         """Update status and emit signal"""
         self.status = status
-        self.status_changed.emit(status)
+        if self.should_display:
+            self.status_changed.emit(status)
 
     # Logging methods
     def info_log(self, message: str, src: str = ''):

@@ -79,7 +79,9 @@ class IpcPublisherAsync:
         sock: zmq.Socket = self._context.socket(zmq.PUB)
         sock.setsockopt(zmq.LINGER, 0)
         sock.setsockopt(zmq.SNDHWM, 1)
-        sock.connect(f"tcp://{self.host}:{self.port}")
+        endpoint = f"tcp://{self.host}:{self.port}"
+        sock.connect(endpoint)
+        self.logger.debug(f"IpcPublisherAsync configured endpoint {endpoint}")
         return sock
 
     # ---------------------------------------------------------
@@ -94,8 +96,6 @@ class IpcPublisherAsync:
                     self.socket = self._create_socket()
                     self._connected = True
                     delay = self.RECONNECT_MIN_DELAY
-
-                    self.logger.debug(f"IpcPublisherAsync connected to tcp://{self.host}:{self.port}")
 
                 except Exception:
                     self._connected = False

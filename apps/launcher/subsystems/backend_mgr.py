@@ -57,6 +57,7 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         extra_args = []
+        extra_args.append("--run-ipc-server")
         if debug_mode:
             extra_args.append("--debug")
         if replay_server:
@@ -71,6 +72,7 @@ class BackendAppMgr(PngAppMgrBase):
             short_name="CORE",
             settings=settings,
             start_by_default=True,
+            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -145,6 +147,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "telemetry_port",
                 "server_port",
                 "wdt_interval_sec",
+                "broker_xsub_port",
             ],
             "Capture" : [],
             "Display" : [

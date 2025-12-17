@@ -185,3 +185,30 @@ class TestForwardingSettings(TestF1ConfigBase):
     def test_whitespace_trimmed(self):
         settings = ForwardingSettings(target_1="  myhost.com:1234  ")
         self.assertEqual(settings.target_1, "myhost.com:1234")
+
+    def test_forwarding_duplicate_targets(self):
+        # valid: distinct targets
+        ForwardingSettings(
+            target_1="example.com:1234",
+            target_2="example.org:1234",
+        )
+
+        # valid: localhost vs remote
+        ForwardingSettings(
+            target_1="localhost:5000",
+            target_2="example.com:5000",
+        )
+
+        # invalid: localhost aliases treated as duplicate
+        with self.assertRaises(ValueError):
+            ForwardingSettings(
+                target_1="localhost:6000",
+                target_2="127.0.0.1:6000",
+            )
+
+        # invalid: exact duplicate
+        with self.assertRaises(ValueError):
+            ForwardingSettings(
+                target_1="myhost:7000",
+                target_2="myhost:7000",
+            )

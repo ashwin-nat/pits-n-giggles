@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -49,7 +49,6 @@ def initUiIntfLayer(
     tasks: List[asyncio.Task],
     ver_str: str,
     run_ipc_server: bool,
-    xsub_port: Optional[int],
     shutdown_event: asyncio.Event,
     telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
@@ -62,7 +61,6 @@ def initUiIntfLayer(
         tasks (List[asyncio.Task]): List of tasks to be executed
         ver_str (str): Version string
         run_ipc_server (bool): Whether to run the IPC server
-        xsub_port (Optional[int]): Port for IPC xsub socket
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
@@ -78,7 +76,7 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-    ipc_pub = IpcPublisherAsync(logger=logger, port=xsub_port)
+    ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
 
     # Register tasks associated with this web server
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))

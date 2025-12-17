@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import ForwardingSettings
+from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
 from .https import HttpsSettings
 from .hud import HudSettings
 from .network import NetworkSettings
@@ -80,6 +80,56 @@ class PngSettings(ConfigDiffMixin, BaseModel):
                     f"Duplicate UDP action code {val} between {seen[val]} and {name}"
                 )
             seen[val] = name
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_no_localhost_udp_loop(self):
+        telemetry_port = self.Network.telemetry_port
+
+        for host, port in self.Forwarding.forwarding_targets:
+            if port == telemetry_port and host in _LOCALHOST_ALIASES:
+                raise ValueError(
+                    f"UDP forwarding target {host}:{port} forms a localhost loop "
+                    f"with Network.telemetry_port={telemetry_port}"
+                )
+
+        return self
+
+    @model_validator(mode="after")
+    def check_port_conflicts(self) -> "PngSettings":
+        """Ensure all configured ports are unique per protocol (TCP / UDP)."""
+
+        # port_type -> port_value -> "Section.field"
+        ports_by_type: dict[str, dict[int, str]] = {}
+
+        # Walk through submodels
+        for section_name, section in self.__dict__.items():
+            if not isinstance(section, BaseModel):
+                continue
+
+            for field_name, field in type(section).model_fields.items():
+                extra = field.json_schema_extra or {}
+                port_type = extra.get("port_type")
+
+                # Not a port field
+                if not port_type:
+                    continue
+
+                value = getattr(section, field_name)
+                if value is None:
+                    continue
+
+                ports_by_type.setdefault(port_type, {})
+
+                if value in ports_by_type[port_type]:
+                    prev = ports_by_type[port_type][value]
+                    raise ValueError(
+                        f"Duplicate {port_type.upper()} port {value} between "
+                        f"{prev} and {section_name}.{field_name}"
+                    )
+
+                ports_by_type[port_type][value] = f"{section_name}.{field_name}"
 
         return self
 

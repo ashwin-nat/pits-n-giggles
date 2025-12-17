@@ -37,6 +37,7 @@ from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.file_path import resolve_user_file
+from lib.rate_limiter import RateLimiter
 
 from .config import OverlaysConfig
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
@@ -94,6 +95,7 @@ class OverlaysMgr:
         self.debug_mode = debug
         self._init_config()
         self.running = False
+        self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
@@ -216,7 +218,10 @@ class OverlaysMgr:
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+        self._input_telemetry_update(data)
+        self._motion_update(data)
+        if self.rate_limiter.allows("stream-overlay-update"):
+            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
@@ -324,14 +329,14 @@ class OverlaysMgr:
             )
         )
 
-    def input_telemetry_update(self, data: Dict[str, Any]):
+    def _input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
         self.window_manager.unicast_high_freq_data(
             InputTelemetryOverlay.OVERLAY_ID,
             InputTelemetryData.from_json(data)
         )
 
-    def motion_update(self, data: Dict[str, Any]):
+    def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
         self.window_manager.unicast_high_freq_data(
             TrackRadarOverlay.OVERLAY_ID,

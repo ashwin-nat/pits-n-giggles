@@ -48,6 +48,7 @@ def _dispatch_frozen_submodule():
         "apps.backend",
         "apps.save_viewer",
         "apps.hud",
+        "apps.broker",
     }
 
     # Locate the module name and its args
