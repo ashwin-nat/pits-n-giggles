@@ -56,17 +56,11 @@ class TrackRadarOverlay(BaseOverlayQML):
                  windowed_overlay: bool):
 
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
-        self._init_handlers()
+        self.subscribe_hf(LiveSessionMotionInfo)
 
     def build_ui(self):
         """Initialize QML connection after window is set up."""
         pass
-
-    def _init_handlers(self):
-        """Initialize event handlers."""
-        @self.on_high_freq(LiveSessionMotionInfo.__hf_type__)
-        def _handle_session_motion_info(data: LiveSessionMotionInfo):
-            self.update_hf_data_cache(data)
 
     @override
     def render_frame(self):
