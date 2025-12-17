@@ -25,7 +25,7 @@
 import ctypes
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Set
+from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
@@ -41,6 +41,8 @@ from meta.meta import APP_NAME_SNAKE
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
 OverlayHighFreqHandler = Callable[[HighFreqBase], None] # Takes high-freq payload, returns None
+
+HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -123,6 +125,8 @@ class BaseOverlay():
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
+        self._latest_hf: Dict[str, HighFreqBase] = {}
+        self._hf_subscriptions: Set[str] = set()
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
@@ -198,6 +202,21 @@ class BaseOverlay():
             self._high_freq_handlers[hf_type] = func
             return func
         return decorator
+
+    def subscribe_hf(self, type: HighFreqObjType) -> None:
+        """Subscribe to high frequency data.
+        Subcribed types latest data will automatically be cached
+        """
+        self._hf_subscriptions.add(type.__hf_type__)
+
+    def update_hf_data_cache(self, data: HighFreqBase):
+        """Update the latest high frequency data cache."""
+        self._latest_hf[data.__hf_type__] = data
+
+    def get_latest_hf_data(self, type_: Type[HighFreqObjType]) -> Optional[HighFreqObjType]:
+        """Get the latest high frequency data of a specific type."""
+        return self._latest_hf.get(type_.__hf_type__)
+
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -294,6 +313,9 @@ class BaseOverlay():
     def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
         if self.OVERLAY_ID not in recipients:
             return
+
+        if payload.__hf_type__ in self._hf_subscriptions:
+            self._latest_hf[payload.__hf_type__] = payload
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
             try:

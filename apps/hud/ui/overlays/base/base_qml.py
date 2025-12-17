@@ -39,7 +39,7 @@ from .base import BaseOverlay
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
-T = TypeVar("T", bound=HighFreqBase)
+HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -100,7 +100,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._frame_timer = QTimer(self)
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
-        self._latest_hf: Dict[str, HighFreqBase] = {}
 
         super().__init__(
             config,
@@ -293,11 +292,3 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def render_frame(self):
         """Derived classes must implement this method."""
         raise NotImplementedError
-
-    def update_hf_data_cache(self, data: HighFreqBase):
-        """Update the latest high frequency data cache."""
-        self._latest_hf[data.__hf_type__] = data
-
-    def get_latest_hf_data(self, type_: Type[T]) -> Optional[T]:
-        """Get the latest high frequency data of a specific type."""
-        return self._latest_hf.get(type_.__hf_type__)
