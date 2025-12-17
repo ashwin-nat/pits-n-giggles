@@ -25,7 +25,7 @@
 import logging
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Optional, override
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -66,22 +66,29 @@ class TrackRadarOverlay(BaseOverlayQML):
         """Initialize event handlers."""
         @self.on_high_freq(LiveSessionMotionInfo.__hf_type__)
         def _handle_session_motion_info(data: LiveSessionMotionInfo):
+            self.update_hf_data_cache(data)
 
-            ref_driver = self._get_reference_driver(data)
-            if not ref_driver or not ref_driver.car_motion:
-                return
+    @override
+    def render_frame(self):
+        """Render a new frame."""
+        data = self.get_latest_hf_data(LiveSessionMotionInfo)
+        if not data:
+            return
 
-            # Calculate relative positions for all drivers
-            driver_list = self._calculate_relative_positions(data, ref_driver)
+        ref_driver = self._get_reference_driver(data)
+        if not ref_driver or not ref_driver.car_motion:
+            return
 
-            # Send data to QML and trigger update
-            if self._root:
-                QMetaObject.invokeMethod(
-                    self._root,
-                    "updateTelemetry",
-                    Qt.ConnectionType.QueuedConnection,
-                    Q_ARG("QVariant", driver_list)
-                )
+        # Calculate relative positions for all drivers
+        driver_list = self._calculate_relative_positions(data, ref_driver)
+
+        # Send data to QML and trigger update
+        QMetaObject.invokeMethod(
+            self._root,
+            "updateTelemetry",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG("QVariant", driver_list)
+        )
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""

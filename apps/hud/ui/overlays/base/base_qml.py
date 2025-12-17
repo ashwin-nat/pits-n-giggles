@@ -24,17 +24,22 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, override
+from typing import Dict, Optional, Type, TypeVar, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
-                            QUrl)
+                            QTimer, QUrl)
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.infra.hf_types import HighFreqBase
 
 from .base import BaseOverlay
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+T = TypeVar("T", bound=HighFreqBase)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -92,6 +97,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
 
+        self._frame_timer = QTimer(self)
+        self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._frame_timer.timeout.connect(self._on_frame)
+        self._latest_hf: Dict[str, HighFreqBase] = {}
+
         super().__init__(
             config,
             logger,
@@ -129,6 +139,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         super()._setup_window()
         self.update_window_flags()
         self._root.setVisible(True)
+        self._frame_timer.start(16) # 60 Hz default; TODO: make configurable later
 
     # ----------------------------------------------------------------------
     # Abstract method implementations
@@ -265,3 +276,28 @@ class BaseOverlayQML(BaseOverlay, QObject):
                 return True
 
         return super().eventFilter(obj, event)
+
+    # ----------------------------------------------------------------------
+    # Rendering methods
+    # ----------------------------------------------------------------------
+    def _on_frame(self):
+        """
+        Fixed-rate render tick for QML overlays.
+        Derived classes may override _render_frame().
+        """
+        if not self._root or not self._root.isVisible():
+            return
+
+        self.render_frame()
+
+    def render_frame(self):
+        """Derived classes must implement this method."""
+        raise NotImplementedError
+
+    def update_hf_data_cache(self, data: HighFreqBase):
+        """Update the latest high frequency data cache."""
+        self._latest_hf[data.__hf_type__] = data
+
+    def get_latest_hf_data(self, type_: Type[T]) -> Optional[T]:
+        """Get the latest high frequency data of a specific type."""
+        return self._latest_hf.get(type_.__hf_type__)
