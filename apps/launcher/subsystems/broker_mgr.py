@@ -103,18 +103,27 @@ class BrokerAppMgr(PngAppMgrBase):
 
     def post_start(self):
         """Update buttons after app start"""
+        if not self.should_display:
+            return
+
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
+        if not self.should_display:
+            return
+
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
+        if not self.should_display:
+            return
+
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
         try:
