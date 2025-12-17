@@ -3,6 +3,8 @@
         "telemetry_port": 20778,
         "server_port": 4768,
         "save_viewer_port": 4769,
+        "broker_xpub_port": 53838,
+        "broker_xsub_port": 53835,
         "udp_tyre_delta_action_code": null,
         "udp_custom_action_code": null,
         "wdt_interval_sec": 30
