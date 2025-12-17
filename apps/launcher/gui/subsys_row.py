@@ -99,6 +99,9 @@ class SubsystemCard(QFrame):
             button.setFixedSize(32, 32)
             buttons_layout.addWidget(button)
 
+            # Disable buttons at start. post_start should enable them
+            self.manager.set_button_state(button, False)
+
         buttons_layout.addStretch()
         layout.addLayout(buttons_layout)
 
