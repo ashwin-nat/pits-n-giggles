@@ -142,24 +142,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def build_ui(self):
         raise NotImplementedError
 
-    def rebuild_ui(self): # TODO: do we need this?
-        """Reloads the QML file entirely when scale factor changes."""
-
-        qml_path = self.QML_FILE.resolve()
-        self.logger.debug(f"{self.OVERLAY_ID} | Rebuilding QML UI ({qml_path})")
-
-        self._engine.clearComponentCache()
-        self._engine.load(QUrl.fromLocalFile(str(qml_path)))
-
-        if not self._engine.rootObjects():
-            raise RuntimeError("Failed to rebuild QML UI")
-
-        self._root = self._engine.rootObjects()[0]
-        self._root.installEventFilter(self)
-        self._root.setProperty("scaleFactor", self.scale_factor)
-        self.update_window_flags()
-        self.apply_config()
-
     @override
     def apply_config(self):
         self._root.setPosition(self.config.x, self.config.y)
@@ -184,7 +166,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     @override
     def set_opacity(self, opacity: int):
-        self.opacity = opacity
         self._root.setOpacity(opacity / 100.0)
 
     @override

@@ -226,8 +226,8 @@ class BaseOverlay():
         def _handle_set_opacity(data: Dict[str, Any]):
             """Set opacity."""
             opacity = data["opacity"]
-            self.set_opacity(opacity)
             self.opacity = opacity
+            self.set_opacity(opacity)
 
         @self.on_event("set_config")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:

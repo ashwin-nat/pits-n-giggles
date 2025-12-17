@@ -221,7 +221,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     @override
     def set_opacity(self, opacity: int):
-        self.opacity = opacity
         self.setWindowOpacity(opacity / 100.0)
 
     @override
