@@ -286,7 +286,9 @@ class SettingsWindow(QDialog):
         layout.setSpacing(12)
 
         # Category title
-        title_label = QLabel(category_name)
+        field_info = self._get_field_info_from_path(category_name)
+        title_text = field_info.description
+        title_label = QLabel(title_text)
         title_label.setFont(QFont("Roboto", 14, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(title_label)

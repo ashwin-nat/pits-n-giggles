@@ -192,7 +192,6 @@ class PngAppMgrBase(QObject):
 
         # Startup sync flags (fire post-start only after both seen)
         self._init_complete_received = False
-        self._ipc_port_received = False
         self._post_start_fired = False
 
     def get_buttons(self) -> List[QPushButton]:
@@ -250,7 +249,6 @@ class PngAppMgrBase(QObject):
 
             # Reset startup signaling state for this new start
             self._init_complete_received = False
-            self._ipc_port_received = False
             self._post_start_fired = False
             self.ipc_port = None # Child process will report its IPC port
 
@@ -332,7 +330,6 @@ class PngAppMgrBase(QObject):
             # Clean up state
             self.ipc_port = None
             self._init_complete_received = False
-            self._ipc_port_received = False
             self._post_start_fired = False
 
             self.process = None
@@ -459,7 +456,6 @@ class PngAppMgrBase(QObject):
             if port := extract_ipc_port_from_line(line):
                 with self._process_lock:
                     self.ipc_port = port
-                    self._ipc_port_received = True
                 self.debug_log(f"{self.display_name} IPC port reported: {port}")
                 self._maybe_fire_post_start()
                 continue
@@ -519,7 +515,6 @@ class PngAppMgrBase(QObject):
             self.process = None
             self.ipc_port = None
             self._init_complete_received = False
-            self._ipc_port_received = False
             self._post_start_fired = True
 
         # Get error info
@@ -648,7 +643,7 @@ class PngAppMgrBase(QObject):
 
         with self._process_lock:
             init_ok = self._init_complete_received
-            port_ok = self._ipc_port_received
+            port_ok = self.ipc_port is not None
             should_fire = not self._post_start_fired and init_ok and port_ok
             if should_fire:
                 self._post_start_fired = True
