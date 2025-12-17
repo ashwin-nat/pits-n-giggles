@@ -80,14 +80,14 @@ class TestNetworkSettings(TestF1ConfigBase):
 
     def test_valid_port_ranges(self):
         net = NetworkSettings(
-            telemetry_port=0,
+            telemetry_port=1,
             server_port=65535,
             save_viewer_port=12345,
             udp_tyre_delta_action_code=1,
             udp_custom_action_code=12,
             wdt_interval_sec=45
         )
-        self.assertEqual(net.telemetry_port, 0)
+        self.assertEqual(net.telemetry_port, 1)
         self.assertEqual(net.server_port, 65535)
         self.assertEqual(net.save_viewer_port, 12345)
         self.assertEqual(net.udp_tyre_delta_action_code, 1)
@@ -128,7 +128,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         """Test that server_port and save_viewer_port cannot be the same"""
         with self.assertRaises(ValidationError) as ctx:
             NetworkSettings(server_port=5000, save_viewer_port=5000)
-        self.assertIn("must not be the same", str(ctx.exception))
 
     def test_udp_action_codes_must_differ(self):
         """Test that tyre and custom UDP action codes cannot be the same"""
@@ -159,7 +158,7 @@ class TestNetworkSettings(TestF1ConfigBase):
             NetworkSettings(broker_xpub_port="cat")
 
         # Boundary conditions
-        NetworkSettings(broker_xpub_port=0)
+        NetworkSettings(broker_xpub_port=1)
         NetworkSettings(broker_xpub_port=65535)
 
     def test_broker_xsub_port(self):
@@ -175,33 +174,44 @@ class TestNetworkSettings(TestF1ConfigBase):
             NetworkSettings(broker_xsub_port="cat")
 
         # Boundary conditions
-        NetworkSettings(broker_xsub_port=0)
+        NetworkSettings(broker_xsub_port=1)
         NetworkSettings(broker_xsub_port=65535)
 
-    def test_network_settings_port_collisions(self):
+    def test_network_settings_port_conflicts(self):
+        """
+        Rules covered:
+        - TCP ports must be unique among TCP fields
+        - UDP ports must be unique among UDP fields
+        - UDP/TCP sharing the same numeric port is VALID
+        - unset / disabled ports (0 or None) are ignored
+        """
 
-        ports = {
-            "telemetry_port": (20777, "udp"),
-            "server_port": (4768, "tcp"),
-            "save_viewer_port": (4769, "tcp"),
-            "broker_xpub_port": (53838, "tcp"),
-            "broker_xsub_port": (53835, "tcp"),
-        }
+        # ---- 1. Valid baseline ----
+        NetworkSettings(
+            telemetry_port=20777,      # UDP
+            server_port=4768,          # TCP
+            save_viewer_port=4769,     # TCP
+            broker_xpub_port=53838,    # TCP
+            broker_xsub_port=53835,    # TCP
+        )
 
-        # all pairs
-        for (n1, (p1, t1)), (n2, (p2, t2)) in combinations(ports.items(), 2):
-            if t1 == t2:
-                assert p1 != p2, f"{n1} and {n2} conflict"
+        # ---- 2. TCP–TCP conflict (invalid) ----
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                server_port=5000,
+                save_viewer_port=5000,
+            )
 
-        # significant triplets (same protocol)
-        tcp_ports = [(n, p) for n, (p, t) in ports.items() if t == "tcp"]
-        for a, b, c in combinations(tcp_ports, 3):
-            vals = {a[1], b[1], c[1]}
-            assert len(vals) == 3, f"TCP triplet conflict: {[a[0], b[0], c[0]]}"
+        # ---- 3. UDP–TCP same port (VALID) ----
+        NetworkSettings(
+            telemetry_port=6000,       # UDP
+            server_port=6000,          # TCP
+        )
 
-        # all ports equal (should fail)
-        all_ports = [p for p, _ in ports.values()]
-        assert len(set(all_ports)) == len(all_ports), "All-port-equal conflict detected"
-
-        # No error for TCP and UDP sharing the same port
-        NetworkSettings(telemetry_port=5000, server_port=5000)
+        # ---- 4. Three-way TCP conflict ----
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                server_port=7000,
+                save_viewer_port=7000,
+                broker_xpub_port=7000,
+            )

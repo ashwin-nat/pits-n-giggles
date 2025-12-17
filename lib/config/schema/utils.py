@@ -111,7 +111,7 @@ def port_field(description: str, default: int, visible: Optional[bool] = True, p
     """
     return Field(
         default=default,
-        ge=0,
+        gt=0,
         le=65535,
         description=description,
         json_schema_extra={

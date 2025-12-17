@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from collections import defaultdict
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -81,19 +82,59 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     )
 
     @model_validator(mode="after")
-    def check_ports_and_action_codes(self) -> "NetworkSettings":
-        # TODO: update to use annotations
+    def check_action_codes(self) -> "NetworkSettings":
         fields_map = type(self).model_fields
-
-        if self.server_port == self.save_viewer_port:
-            desc1 = fields_map["server_port"].description # pylint: disable=unsubscriptable-object
-            desc2 = fields_map["save_viewer_port"].description # pylint: disable=unsubscriptable-object
-            raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.server_port})")
 
         if (self.udp_custom_action_code and self.udp_tyre_delta_action_code) and \
                 (self.udp_tyre_delta_action_code == self.udp_custom_action_code):
             desc1 = fields_map["udp_tyre_delta_action_code"].description # pylint: disable=unsubscriptable-object
             desc2 = fields_map["udp_custom_action_code"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")
+
+        return self
+
+    @model_validator(mode="after")
+    def check_port_conflicts(self) -> "NetworkSettings":
+        fields_map = type(self).model_fields
+
+        # port_type -> port -> [(field_name, description)]
+        used_ports: dict[str, dict[int, list[tuple[str, str]]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+
+        for field_name, field_info in fields_map.items():
+            extra = field_info.json_schema_extra or {}
+            port_type = extra.get("port_type")
+
+            # Only consider fields explicitly marked as ports
+            if not port_type:
+                continue
+
+            port_value = getattr(self, field_name)
+
+            used_ports[port_type][port_value].append(
+                (field_name, field_info.description or field_name)
+            )
+
+        conflicts = {
+            port_type: {
+                port: fields
+                for port, fields in ports.items()
+                if len(fields) > 1
+            }
+            for port_type, ports in used_ports.items()
+            if any(len(fields) > 1 for fields in ports.values())
+        }
+
+        if conflicts:
+            messages = []
+            for port_type, ports in conflicts.items():
+                for port, fields in ports.items():
+                    field_list = ", ".join(desc for _, desc in fields)
+                    messages.append(
+                        f"{port_type.upper()} port {port} is used by: {field_list}"
+                    )
+
+            raise ValueError("Port conflict detected:\n" + "\n".join(messages))
 
         return self
