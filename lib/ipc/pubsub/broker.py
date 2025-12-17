@@ -50,7 +50,7 @@ class IpcPubSubBroker:
         self.host = host
         self.name = name
         if logger is None:
-            logger = logging.getLogger(f"{__name__}.IpcPublisherAsync")
+            logger = logging.getLogger(f"{__name__}")
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
         self.logger = logger

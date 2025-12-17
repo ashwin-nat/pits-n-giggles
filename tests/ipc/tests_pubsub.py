@@ -34,7 +34,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import get_free_tcp_port, IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
+from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -88,7 +88,8 @@ class TestIpcPubSub(TestIPC):
     def tearDown(self):
         self.broker.close()
         time.sleep(0.05)
-        self.broker._thread.join(timeout=0.2)
+        if self.broker._thread:
+            self.broker._thread.join(timeout=0.2)
 
     # ----------------------------------------------------------
     # End-to-end PUB → XSUB → XPUB → SUB test
@@ -362,4 +363,19 @@ class TestIpcPubSub(TestIPC):
         # Test passes if we get here
         self.assertTrue(True)
 
-    # def test_broker_crash_does_not_kill_pubsub(self):
+    # ----------------------------------------------------------
+    # Broker lifecycle semantics
+
+    def test_broker_close_terminates_background_thread(self):
+        # Broker was started in setUp via run_in_thread()
+        self.assertIsNotNone(self.broker._thread)
+        self.assertTrue(self.broker._thread.is_alive())
+
+        self.broker.close()
+        # Give the steerable proxy time to receive the termination signal
+        if self.broker._thread is not None:
+            self.broker._thread.join(timeout=1.0)
+
+        # The background thread should have exited
+        if self.broker._thread is not None:
+            self.assertFalse(self.broker._thread.is_alive())

@@ -47,7 +47,7 @@ def parseArgs() -> argparse.Namespace:
     """
 
     # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} HUD")
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} Pit Wall")
 
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
@@ -92,7 +92,7 @@ def entry_point():
 
     report_pid_from_child()
     args = parseArgs()
-    png_logger = get_logger("hud", args.debug, jsonl=True)
+    png_logger = get_logger("pit_wall", args.debug, jsonl=True)
     configs = load_config_from_json(args.config_file, png_logger)
     try:
         main(
