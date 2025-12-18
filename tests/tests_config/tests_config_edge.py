@@ -202,7 +202,7 @@ post_race_data_autosave = true
         self.assertTrue(config.Capture.post_race_data_autosave)
 
         # Verify missing sections have default values
-        self.assertEqual(config.Display.refresh_interval, 100)  # Default
+        self.assertEqual(config.Display.refresh_interval, 200)  # Default
         self.assertFalse(config.Display.disable_browser_autoload)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
         self.assertEqual(config.Forwarding.target_1, "")  # Default
@@ -296,7 +296,7 @@ udp_custom_action_code = 5
         self.assertTrue(config.Capture.post_quali_data_autosave)
         self.assertFalse(config.Capture.post_fp_data_autosave)
 
-        self.assertEqual(config.Display.refresh_interval, 100)
+        self.assertEqual(config.Display.refresh_interval, 200)
         self.assertFalse(config.Display.disable_browser_autoload)
 
         self.assertFalse(config.Privacy.process_car_setup)
@@ -338,7 +338,7 @@ target_2 = example.com:9090
         self.assertEqual(config.Network.save_viewer_port, 4769)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
         self.assertEqual(config.Network.udp_custom_action_code, None)
-        self.assertEqual(config.Display.refresh_interval, 100)
+        self.assertEqual(config.Display.refresh_interval, 200)
         self.assertEqual(config.Forwarding.target_1, "")
         self.assertEqual(config.Forwarding.target_3, "")
 
@@ -398,7 +398,7 @@ target_1 = localhost:8080
 
         # Check that values which were missing are now present in the file
         self.assertIn("[Display]", saved_content)
-        self.assertIn("refresh_interval = 100", saved_content)
+        self.assertIn("refresh_interval = 200", saved_content)
         self.assertIn("disable_browser_autoload = False", saved_content)
 
         self.assertIn("[Privacy]", saved_content)
