@@ -31,9 +31,10 @@ from pydantic.fields import FieldInfo
 from PySide6.QtCore import (QEasingCurve, QParallelAnimationGroup, QPoint,
                             QPropertyAnimation, Qt)
 from PySide6.QtGui import QCloseEvent, QFont, QIcon
-from PySide6.QtWidgets import (QCheckBox, QDialog, QFrame, QGroupBox,
-                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
-                               QMessageBox, QPushButton, QScrollArea, QSlider,
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
+                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                               QListWidget, QMessageBox, QPushButton,
+                               QRadioButton, QScrollArea, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
 from lib.config import PngSettings
@@ -211,6 +212,26 @@ class SettingsWindow(QDialog):
                 border: none;
                 background-color: #1e1e1e;
             }
+            QRadioButton {
+                color: #d4d4d4;
+                spacing: 8px;
+            }
+
+            /* Unchecked */
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border: 1px solid #6a6a6a;
+                background-color: #1e1e1e;
+            }
+
+            /* Checked */
+            QRadioButton::indicator:checked {
+                border: 1px solid #0e639c;
+                background-color: #0e639c;
+            }
+
         """)
 
         main_layout = QVBoxLayout()
@@ -449,6 +470,49 @@ class SettingsWindow(QDialog):
             layout.addWidget(text_box)
 
             self.field_widgets[field_path] = text_box
+
+        elif ui_type == "radio_buttons":
+            label = QLabel(description)
+            label.setFont(QFont("Roboto", 10))
+
+            if ext_info:
+                label_widget = self._wrap_widget_with_info_icons(label, ext_info)
+                layout.addWidget(label_widget)
+            else:
+                layout.addWidget(label)
+
+            options = ui_config.get("options", [])
+            if not options:
+                self.parent_window.warning_log(f"No options provided for radio_buttons field {field_path}")
+                return None
+
+            radio_container = QWidget()
+            radio_layout = QHBoxLayout()
+            radio_layout.setContentsMargins(0, 0, 0, 0)
+            radio_layout.setSpacing(16)
+
+            button_group = QButtonGroup(container)
+
+            for option in options:
+                radio_btn = QRadioButton(str(option))
+                radio_btn.setFont(QFont("Roboto", 10))
+
+                if option == field_value:
+                    radio_btn.setChecked(True)
+
+                radio_btn.toggled.connect(
+                    lambda checked, opt=option, path=field_path:
+                    self._on_radio_changed(path, opt, checked)
+                )
+
+                button_group.addButton(radio_btn)
+                radio_layout.addWidget(radio_btn)
+
+            radio_layout.addStretch()
+            radio_container.setLayout(radio_layout)
+            layout.addWidget(radio_container)
+
+            self.field_widgets[field_path] = button_group
 
         container.setLayout(layout)
         return container
@@ -1081,3 +1145,43 @@ class SettingsWindow(QDialog):
 
         container.setLayout(layout)
         return container
+
+    def _on_radio_changed(self, field_path: str, option: Any, checked: bool):
+        """Handle radio button change"""
+        if checked:
+            self._on_field_changed(field_path, option)
+
+    def _update_all_widgets(self):
+        """Update all widgets from working_settings"""
+        for field_path, widget in self.field_widgets.items():
+            try:
+                value = self._get_nested_value(self.working_settings, field_path)
+
+                if isinstance(widget, QCheckBox):
+                    widget.setChecked(value)
+
+                elif isinstance(widget, QButtonGroup):
+                    for button in widget.buttons():
+                        try:
+                            btn_value = int(button.text())
+                        except ValueError:
+                            btn_value = button.text()
+
+                        if btn_value == value:
+                            button.setChecked(True)
+                            break
+
+                elif isinstance(widget, QSlider):
+                    field_info = self._get_field_info_from_path(field_path)
+                    ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+
+                    if ui_config.get("convert") == "percent":
+                        widget.setValue(int(value * 100))
+                    else:
+                        widget.setValue(value)
+
+                elif isinstance(widget, QLineEdit):
+                    widget.setText(str(value) if value is not None else "")
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
