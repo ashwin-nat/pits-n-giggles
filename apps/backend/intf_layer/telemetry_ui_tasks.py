@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import List, Tuple
+from typing import Awaitable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -33,8 +33,8 @@ from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.web_server import ClientType
 from lib.ipc import IpcPublisherAsync
+from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -77,84 +77,99 @@ def initUiIntfLayer(
         debug_mode=debug_mode,
     )
     ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
-
-    # Register tasks associated with this web server
+    tasks.append(ipc_pub.get_task())
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
-    tasks.append(asyncio.create_task(lowFreqUpdateTask(
-        settings.Display.refresh_interval,
-        settings.StreamOverlay.show_sample_data_at_start,
-        web_server,
-        session_state,
-        logger,
-        shutdown_event,
-        ipc_pub), name="Race Table Update Task"))
+
+    # Setup periodic tasks
+    tasks.append(asyncio.create_task(
+        _periodic_task(
+            settings.Display.refresh_interval,
+            shutdown_event,
+            logger,
+            lowFreqLocalUpdateTask,
+            session_state,
+            ipc_pub), name="Low Frequency Local Update Task"
+        ))
+    tasks.append(asyncio.create_task(
+        _periodic_task(
+            settings.Display.refresh_interval,
+            shutdown_event,
+            logger,
+            webClientUpdateTask,
+            web_server,
+            session_state,
+            settings.StreamOverlay.show_sample_data_at_start), name="Web Client Update Task"))
+    tasks.append(asyncio.create_task(
+        _periodic_task(
+            settings.Display.hud_refresh_interval,
+            shutdown_event,
+            logger,
+            highFreqLocalUpdateTask,
+            session_state,
+            ipc_pub), name="High Frequency Local Update Task"))
+
+    # Interrupt/event driven tasks
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event), name="HUD Interaction Task"))
-    if settings.HUD.enabled:
-        tasks.append(asyncio.create_task(highFreqUpdateTask(session_state,
-                                                       write_interval_ms=settings.Display.hud_refresh_interval,
-                                                       shutdown_event=shutdown_event, ipc_pub=ipc_pub), name="HUD Update Task"))
+    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
+                                     name="HUD Interaction Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
     return web_server, ipc_pub
 
-async def lowFreqUpdateTask(
-        update_interval_ms: int,
-        stream_overlay_start_sample_data: bool,
-        server: TelemetryWebServer,
+async def lowFreqLocalUpdateTask(
         session_state: SessionState,
-        logger: logging.Logger,
-        shutdown_event: asyncio.Event,
         ipc_pub: IpcPublisherAsync) -> None:
-    """Task to update clients with telemetry data
+    """Low frequency local update task to publish periodic data
 
     Args:
-        update_interval_ms (int): Update interval in milliseconds
-        stream_overlay_start_sample_data (bool): Whether to show sample data in overlay until real data arrives
-        server (TelemetryWebServer): The telemetry web server
-        session_state (SessionState): Handle to the session state data structure
-        logger (logging.Logger): Logger handle
-        shutdown_event (asyncio.Event): Event to signal shutdown
-        ipc_pub (IpcPublisherAsync): IPC publisher instance
+        session_state (SessionState): The session state
+        ipc_pub (IpcPublisherAsync): The IPC publisher
     """
 
-    await _initial_random_sleep()
-    interval = update_interval_ms / 1000.0
-    loop = asyncio.get_running_loop()
-    next_tick = loop.time()
+    race_table_data = PeriodicUpdateData(session_state).toJSON()
+    await ipc_pub.publish("race-table-update", race_table_data) # IPC publish is O(1) so do it always
 
-    while not shutdown_event.is_set():
-        next_tick += interval
+async def highFreqLocalUpdateTask(
+    session_state: SessionState,
+    ipc_pub: IpcPublisherAsync) -> None:
+    """High frequency local update task to publish stream overlay data
 
-        race_table_data = PeriodicUpdateData(logger, session_state).toJSON()
-        await ipc_pub.publish("race-table-update", race_table_data) # IPC publish is O(1) so do it always
+    Args:
+        session_state (SessionState): The session state
+        ipc_pub (IpcPublisherAsync): The IPC publisher
+    """
 
-        if server.is_any_client_interested_in_event('race-table-update'):
-            await server.send_to_clients_interested_in_event(
-                event='race-table-update',
-                data=race_table_data
-            )
+    data = StreamOverlayData(session_state).toJSON(False)
+    await ipc_pub.publish("stream-overlay-update", data)
 
-        if server.is_any_client_interested_in_event('stream-overlay-update'):
-            await server.send_to_clients_interested_in_event(
-                event='stream-overlay-update',
-                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
-            )
-        # --------------
+async def webClientUpdateTask(
+    server: TelemetryWebServer,
+    session_state: SessionState,
+    stream_overlay_start_sample_data: bool) -> None:
+    """Task to update web clients with telemetry data
 
-        # Deadline sleep (no drift)
-        delay = next_tick - loop.time()
-        if delay > 0:
-            await asyncio.sleep(delay)
-        else:
-            # Missed deadline: yield but do not accumulate drift
-            next_tick = loop.time()
-            await asyncio.sleep(0)
+    Args:
+        server (TelemetryWebServer): The telemetry web server
+        session_state (SessionState): The session state
+        stream_overlay_start_sample_data (bool): Whether to show sample data at start
+    """
 
-    server.m_logger.debug("Shutting down race table update task")
+    if server.is_any_client_interested_in_event('race-table-update'):
+        await server.send_to_clients_interested_in_event(
+            event='race-table-update',
+            data=PeriodicUpdateData(session_state).toJSON()
+        )
 
-async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
+    if server.is_any_client_interested_in_event('stream-overlay-update'):
+        await server.send_to_clients_interested_in_event(
+            event='stream-overlay-update',
+            data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
+        )
+
+async def frontEndMessageTask(
+    server: TelemetryWebServer,
+    shutdown_event: asyncio.Event) -> None:
     """Task to update clients with telemetry data
 
     Args:
@@ -171,7 +186,9 @@ async def frontEndMessageTask(server: TelemetryWebServer, shutdown_event: asynci
 
     server.m_logger.debug("Shutting down front end message task")
 
-async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio.Event) -> None:
+async def hudInteractionTask(
+    server: TelemetryWebServer,
+    shutdown_event: asyncio.Event) -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
@@ -187,41 +204,54 @@ async def hudInteractionTask(server: TelemetryWebServer, shutdown_event: asyncio
 
     server.m_logger.debug("Shutting down HUD notifier task")
 
-async def highFreqUpdateTask(
-        session_state: SessionState,
-        write_interval_ms: int,
-        shutdown_event: asyncio.Event,
-        ipc_pub: IpcPublisherAsync) -> None:
-    """Task to update HUD clients with telemetry data
-
-    Args:
-        session_state (SessionState): Handle to the session state data structure
-        write_interval_ms (int): Write interval in milliseconds
-        shutdown_event (async.Event): Event to signal shutdown
-        ipc_pub (IpcPublisherAsync): IPC publisher instance
-    """
-    await ipc_pub.start()
-    await _initial_random_sleep()
-    interval = write_interval_ms / 1000.0
-    loop = asyncio.get_running_loop()
-    next_tick = loop.time()
-
-    while not shutdown_event.is_set():
-        next_tick += interval
-
-        data = StreamOverlayData(session_state).toJSON(False)
-        await ipc_pub.publish("stream-overlay-update", data)
-
-        delay = next_tick - loop.time()
-        if delay > 0:
-            await asyncio.sleep(delay)
-        else:
-            # Missed deadline — resync without sleeping
-            next_tick = loop.time()
-            await asyncio.sleep(0)
-
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 
 async def _initial_random_sleep() -> None:
     """Sleep for a random amount of time to avoid bursty events"""
     await asyncio.sleep(random.uniform(0, 0.2))
+
+async def _periodic_task(
+    interval_ms: int,
+    shutdown_event: asyncio.Event,
+    logger: logging.Logger,
+    task_coro: Awaitable,
+    *args,
+    **kwargs) -> None:
+    """Utility to run a periodic task with deadline scheduling
+
+    Args:
+    interval_ms (int): Interval in milliseconds
+    shutdown_event (asyncio.Event): Event to signal shutdown
+    logger (logging.Logger): Logger
+    task_coro: Coroutine function to run periodically
+    *args: Positional arguments to pass to task_coro
+    **kwargs: Keyword arguments to pass to task_coro
+    """
+    await _initial_random_sleep() # Stagger start times
+    interval = interval_ms / 1000.0
+    loop = asyncio.get_running_loop()
+    next_tick = loop.time()
+
+    task = asyncio.current_task()
+    task_name = task.get_name() if task else "<unknown>"
+
+    logger.debug("%s: Starting periodic task", task_name)
+
+    while not shutdown_event.is_set():
+        next_tick += interval
+        try:
+            await task_coro(*args, **kwargs)
+        except Exception as e: # pylint: disable=broad-except
+            logger.exception("%s: Error running periodic task %s", task_name, e)
+
+        delay = next_tick - loop.time()
+
+        if delay > 0:
+            await asyncio.sleep(delay)
+        else:
+            # Missed deadline — resync without sleeping
+            logger.debug("%s: Missed deadline by %f seconds", task_name, -delay)
+            next_tick = loop.time()
+            await asyncio.sleep(0)
+
+    logger.debug("%s: Shutting down periodic task", task_name)

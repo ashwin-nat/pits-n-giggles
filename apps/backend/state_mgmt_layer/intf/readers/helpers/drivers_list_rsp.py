@@ -39,7 +39,6 @@ class DriversListRsp(BaseAPI):
     """
 
     def __init__(self,
-                 logger: logging.Logger,
                  session_state: SessionState,
                  is_spectator_mode: bool,
                  track_length: Optional[int] = None,
@@ -48,14 +47,12 @@ class DriversListRsp(BaseAPI):
         """Get the drivers list and prepare the rsp fields
 
         Args:
-            logger (logging.Logger): Logger
             session_state_ref (TelState.SessionState): Reference to the session state
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (Optional[int], optional): The track length. Defaults to None.
             is_tt_mode (bool, optional): Whether the player is in time trial mode
         """
 
-        self.m_logger: logging.Logger = logger
         self.m_session_state: SessionState = session_state
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
@@ -234,7 +231,6 @@ class DriversListRsp(BaseAPI):
         # Player object must be found in TT mode
         player_obj = self.m_session_state.m_driver_data[player_index]
         if not player_obj:
-            self.m_logger.debug("Player not found in TT mode")
             return
 
         # Init the TT packet copy

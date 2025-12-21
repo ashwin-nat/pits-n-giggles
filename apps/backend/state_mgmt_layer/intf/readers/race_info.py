@@ -38,15 +38,13 @@ class RaceInfoData(BaseAPI):
     Overall race stats response class.
     """
 
-    def __init__(self, logger: logging.Logger, session_state: SessionState):
+    def __init__(self, session_state: SessionState):
         """Get the overall race stats and prepare the rsp fields
 
         Args:
-            logger (logging.Logger): Handle to the logger
             session_state (SessionState): Handle to the session state data structure
         """
 
-        self.m_logger: logging.Logger = logger
         self.m_session_state: SessionState = session_state
         self.m_rsp = self.m_session_state.getRaceInfo()
         self._checkUpdateRecords()
@@ -64,7 +62,6 @@ class RaceInfoData(BaseAPI):
             try:
                 self.m_rsp["records"]["fastest"] = RaceAnalyzer.getFastestTimesJson(self.m_rsp)
             except ValueError:
-                self.m_logger.debug('Failed to get fastest times JSON')
                 self.m_rsp["records"]["fastest"] = None
 
         if "tyre-stats" not in self.m_rsp["records"]:
@@ -93,7 +90,6 @@ class RaceInfoData(BaseAPI):
         self.m_rsp["custom-markers"] = self.m_session_state.m_custom_markers_history.getJSONList()
         if self.m_session_state.m_session_info.is_valid:
             drivers_list_rsp = DriversListRsp(
-                logger=self.m_logger,
                 session_state=self.m_session_state,
                 is_spectator_mode=True,
                 is_tt_mode=self.m_session_state.m_session_info.m_session_type.isTimeTrialTypeSession())
