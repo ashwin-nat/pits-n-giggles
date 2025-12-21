@@ -68,9 +68,23 @@ class IpcPublisherAsync:
         self._running = True
         self._reconnect_task = None
 
+    def get_task(self) -> asyncio.Task:
+        """
+        Return the reconnect loop task.
+
+        Caller is responsible for scheduling and lifetime management.
+        """
+        if self._reconnect_task:
+            return self._reconnect_task
+
+        self._reconnect_task = asyncio.create_task(
+            self._reconnect_loop(),
+            name="IpcPublisherAsync.reconnect",
+        )
+        return self._reconnect_task
+
     async def start(self):
-        if not self._reconnect_task:
-            self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+        self.get_task()
 
     # ---------------------------------------------------------
     # Socket creation
