@@ -24,17 +24,22 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, override
+from typing import Optional, TypeVar, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
-                            QUrl)
+                            QTimer, QUrl)
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.infra.hf_types import HighFreqBase
 
 from .base import BaseOverlay
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -83,7 +88,20 @@ class BaseOverlayQML(BaseOverlay, QObject):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
+        refresh_interval_ms: Optional[int],
     ):
+        """Initialize QML overlay.
+
+        Args:
+            config (OverlaysConfig): Overlay config
+            logger (logging.Logger): Logger object
+            locked (bool): Locked state
+            opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
+            windowed_overlay (bool): Windowed overlay
+            refresh_interval_ms (Optional[int]): Refresh interval. If not specified, re-paint timer is disabled.
+                    The overlay is responsible to repaint itself (preferably on telemetry update)
+        """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
 
         QObject.__init__(self)
@@ -91,6 +109,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root: Optional[QQuickWindow] = None
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
+
+        self._refresh_interval_ms = refresh_interval_ms
+        self._frame_timer = QTimer(self)
+        self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._frame_timer.timeout.connect(self._on_frame)
 
         super().__init__(
             config,
@@ -129,6 +152,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
         super()._setup_window()
         self.update_window_flags()
         self._root.setVisible(True)
+        if self._refresh_interval_ms is not None:
+            self._frame_timer.start(self._refresh_interval_ms)
 
     # ----------------------------------------------------------------------
     # Abstract method implementations
@@ -265,3 +290,20 @@ class BaseOverlayQML(BaseOverlay, QObject):
                 return True
 
         return super().eventFilter(obj, event)
+
+    # ----------------------------------------------------------------------
+    # Rendering methods
+    # ----------------------------------------------------------------------
+    def _on_frame(self):
+        """
+        Fixed-rate render tick for QML overlays.
+        Derived classes may override _render_frame().
+        """
+        if not self._root or not self._root.isVisible():
+            return
+
+        self.render_frame()
+
+    def render_frame(self):
+        """Derived classes must implement this method."""
+        raise NotImplementedError

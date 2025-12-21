@@ -155,7 +155,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return PeriodicUpdateData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
+            return PeriodicUpdateData(self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -165,7 +165,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return RaceInfoData(self.m_logger, self.m_session_state).toJSON(), HTTPStatus.OK
+            return RaceInfoData(self.m_session_state).toJSON(), HTTPStatus.OK
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:

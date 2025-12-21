@@ -41,9 +41,8 @@ class TestDisplaySettings(TestF1ConfigBase):
     def test_default_values(self):
         """Test default values"""
         settings = DisplaySettings()
-        self.assertEqual(settings.refresh_interval, 100)
+        self.assertEqual(settings.refresh_interval, 200)
         self.assertFalse(settings.disable_browser_autoload)
-        self.assertEqual(settings.hud_refresh_interval, 33)
 
     def test_refresh_interval_validation(self):
         """Test refresh interval must be positive"""
@@ -75,19 +74,3 @@ class TestDisplaySettings(TestF1ConfigBase):
     def test_invalid_disable_browser_autoload(self):
         with self.assertRaises(ValidationError):
             DisplaySettings(disable_browser_autoload="notaboolean")
-
-    def test_hud_refresh_interval_validation(self):
-        """Test HUD refresh interval must be positive"""
-        settings = DisplaySettings(hud_refresh_interval=50)
-        self.assertEqual(settings.hud_refresh_interval, 50)
-
-        with self.assertRaises(ValidationError):
-            DisplaySettings(hud_refresh_interval=None)
-
-        with self.assertRaises(ValidationError):
-            DisplaySettings(hud_refresh_interval="notanint")
-
-        # Boundary cases
-        with self.assertRaises(ValidationError):
-            DisplaySettings(hud_refresh_interval=0)
-        DisplaySettings(hud_refresh_interval=1)  # Should not raise

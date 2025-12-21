@@ -123,6 +123,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.input_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
         )
 
 
@@ -144,6 +145,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
         )
 
         if settings.HUD.show_mfd:

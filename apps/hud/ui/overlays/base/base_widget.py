@@ -268,3 +268,10 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
 
     def mouseReleaseEvent(self, _event: QMouseEvent):
         self._drag_pos = None
+
+    # ----------------------------------------------------------------------
+    # Command/Request handler registration
+    # ----------------------------------------------------------------------
+    @override
+    def on_high_freq(self, _hf_type):
+        raise NotImplementedError("high_freq channels are not allowed on QWidget based overlays")

@@ -25,7 +25,7 @@
 import logging
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Optional, override
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -53,35 +53,38 @@ class TrackRadarOverlay(BaseOverlayQML):
                  locked: bool,
                  opacity: int,
                  scale_factor: float,
-                 windowed_overlay: bool):
+                 windowed_overlay: bool,
+                 refresh_interval_ms: int):
 
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
-        self._init_handlers()
+        assert refresh_interval_ms
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
+        self.subscribe_hf(LiveSessionMotionInfo)
 
     def build_ui(self):
         """Initialize QML connection after window is set up."""
         pass
 
-    def _init_handlers(self):
-        """Initialize event handlers."""
-        @self.on_high_freq(LiveSessionMotionInfo.__hf_type__)
-        def _handle_session_motion_info(data: LiveSessionMotionInfo):
+    @override
+    def render_frame(self):
+        """Render a new frame."""
+        data = self.get_latest_hf_data(LiveSessionMotionInfo)
+        if not data:
+            return
 
-            ref_driver = self._get_reference_driver(data)
-            if not ref_driver or not ref_driver.car_motion:
-                return
+        ref_driver = self._get_reference_driver(data)
+        if not ref_driver or not ref_driver.car_motion:
+            return
 
-            # Calculate relative positions for all drivers
-            driver_list = self._calculate_relative_positions(data, ref_driver)
+        # Calculate relative positions for all drivers
+        driver_list = self._calculate_relative_positions(data, ref_driver)
 
-            # Send data to QML and trigger update
-            if self._root:
-                QMetaObject.invokeMethod(
-                    self._root,
-                    "updateTelemetry",
-                    Qt.ConnectionType.QueuedConnection,
-                    Q_ARG("QVariant", driver_list)
-                )
+        # Send data to QML and trigger update
+        QMetaObject.invokeMethod(
+            self._root,
+            "updateTelemetry",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG("QVariant", driver_list)
+        )
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""

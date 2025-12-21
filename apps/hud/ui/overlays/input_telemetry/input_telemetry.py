@@ -24,6 +24,7 @@
 
 import logging
 from pathlib import Path
+from typing import override
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -51,29 +52,30 @@ class InputTelemetryOverlay(BaseOverlayQML):
                  locked: bool,
                  opacity: int,
                  scale_factor: float,
-                 windowed_overlay: bool):
+                 windowed_overlay: bool,
+                 refresh_interval_ms: int) -> None:
 
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
-        self._init_handlers()
+        assert refresh_interval_ms
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
+        self.subscribe_hf(InputTelemetryData)
 
     def build_ui(self):
         """Initialize QML connection after window is set up."""
         pass
 
-    def _init_handlers(self):
-        """Initialize event handlers."""
-        @self.on_high_freq(InputTelemetryData.__hf_type__)
-        def _handle_input_telemetry(data: InputTelemetryData):
+    @override
+    def render_frame(self):
+        """Render a new frame."""
+        data = self.get_latest_hf_data(InputTelemetryData)
+        if not data:
+            return
 
-            # Send data to QML and trigger update
-            if self._root:
-                # Use invokeMethod to call QML function directly
-                QMetaObject.invokeMethod(
-                    self._root,
-                    "updateTelemetry",
-                    Qt.ConnectionType.QueuedConnection,
-                    Q_ARG("QVariant", data.throttle),
-                    Q_ARG("QVariant", data.brake),
-                    Q_ARG("QVariant", data.steering),
-                    Q_ARG("QVariant", data.rev_pct),
-                )
+        QMetaObject.invokeMethod(
+            self._root,
+            "updateTelemetry",
+            Qt.ConnectionType.QueuedConnection,
+            Q_ARG("QVariant", data.throttle),
+            Q_ARG("QVariant", data.brake),
+            Q_ARG("QVariant", data.steering),
+            Q_ARG("QVariant", data.rev_pct),
+        )
