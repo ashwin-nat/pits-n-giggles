@@ -8,7 +8,7 @@ Window {
 
     property real scaleFactor: 1.0
     property int numRows: 5  // Set by Python
-    readonly property int baseWidth: 520
+    readonly property int baseWidth: 550
     readonly property int rowHeight: 32
     readonly property int headerHeight: 40
     readonly property int margins: 25
@@ -107,7 +107,7 @@ Window {
                         readonly property int deltaWidth: 90    // Delta/gap column
                         readonly property int tyreWidth: 75     // Tyre info column
                         readonly property int ersWidth: 75      // ERS/DRS column
-                        readonly property int pensWidth: 50     // Penalties column
+                        readonly property int pensWidth: 80     // Penalties column
                     }
 
                     // Table content
@@ -148,7 +148,7 @@ Window {
                                     Layout.fillHeight: true
                                     text: modelData.position < 10 ? modelData.position + " " : modelData.position
                                     font.family: "Consolas"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 12
                                     color: "#ddd"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
@@ -175,7 +175,7 @@ Window {
                                     Layout.fillHeight: true
                                     text: modelData.name
                                     font.family: "Formula1"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 13
                                     color: "#ffffff"
                                     horizontalAlignment: Text.AlignLeft
                                     verticalAlignment: Text.AlignVCenter
@@ -188,7 +188,7 @@ Window {
                                     Layout.fillHeight: true
                                     text: modelData.delta
                                     font.family: "Consolas"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 13
                                     color: "#ffffff"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
@@ -215,7 +215,7 @@ Window {
                                         Text {
                                             text: modelData.tyreWear
                                             font.family: "Consolas"
-                                            font.pixelSize: 11
+                                            font.pixelSize: 13
                                             color: "#ffffff"
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
@@ -254,7 +254,7 @@ Window {
                                             height: parent.height
                                             text: modelData.ers
                                             font.family: "Formula1"
-                                            font.pixelSize: 11
+                                            font.pixelSize: 12
                                             color: "white"
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
@@ -286,7 +286,7 @@ Window {
                                     Layout.fillHeight: true
                                     text: modelData.penalties
                                     font.family: "Formula1"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 11
                                     color: "#ffcc00"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
