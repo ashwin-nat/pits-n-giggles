@@ -110,3 +110,8 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     def hud_refresh_interval(self) -> int:
         # hz to ms
         return 1000 // self.realtime_overlay_fps
+
+    @property
+    def realtime_overlay_update_interval_ms(self) -> int:
+        # fps to ms
+        return 1000 // self.realtime_overlay_fps

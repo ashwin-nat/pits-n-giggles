@@ -88,7 +88,20 @@ class BaseOverlayQML(BaseOverlay, QObject):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
+        refresh_interval_ms: Optional[int],
     ):
+        """Initialize QML overlay.
+
+        Args:
+            config (OverlaysConfig): Overlay config
+            logger (logging.Logger): Logger object
+            locked (bool): Locked state
+            opacity (int): Window opacity
+            scale_factor (float): UI Scale factor (multiplier)
+            windowed_overlay (bool): Windowed overlay
+            refresh_interval_ms (Optional[int]): Refresh interval. If not specified, re-paint timer is disabled.
+                    The overlay is responsible to repaint itself (preferably on telemetry update)
+        """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
 
         QObject.__init__(self)
@@ -97,6 +110,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
 
+        self._refresh_interval_ms = refresh_interval_ms
         self._frame_timer = QTimer(self)
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
@@ -138,7 +152,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
         super()._setup_window()
         self.update_window_flags()
         self._root.setVisible(True)
-        self._frame_timer.start(16) # 60 Hz default; TODO: make configurable later
+        if self._refresh_interval_ms is not None:
+            self._frame_timer.start(self._refresh_interval_ms)
 
     # ----------------------------------------------------------------------
     # Abstract method implementations

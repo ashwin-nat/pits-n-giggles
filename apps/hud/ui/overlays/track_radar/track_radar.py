@@ -53,9 +53,11 @@ class TrackRadarOverlay(BaseOverlayQML):
                  locked: bool,
                  opacity: int,
                  scale_factor: float,
-                 windowed_overlay: bool):
+                 windowed_overlay: bool,
+                 refresh_interval_ms: int):
 
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+        assert refresh_interval_ms
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
 
     def build_ui(self):

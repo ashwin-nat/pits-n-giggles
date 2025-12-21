@@ -73,9 +73,17 @@ class TrackMapOverlay(BaseOverlayQML):
         }
     )
 
-    def __init__(self, config: OverlaysConfig, logger: logging.Logger, locked: bool, opacity: int, scale_factor: float, windowed_overlay: bool):
-        logger.debug(f"{self.OVERLAY_ID} | TrackMapOverlay initialized. Path={self.QML_FILE}. exists={self.QML_FILE.is_file()}")
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+    def __init__(self,
+                 config: OverlaysConfig,
+                 logger: logging.Logger,
+                 locked: bool,
+                 opacity: int,
+                 scale_factor: float,
+                 windowed_overlay: bool,
+                 refresh_interval_ms: int) -> None:
+
+        assert refresh_interval_ms
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self._init_handlers()
 
         self.curr_circuit_name: Optional[str] = None
