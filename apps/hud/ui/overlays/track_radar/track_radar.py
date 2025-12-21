@@ -60,10 +60,6 @@ class TrackRadarOverlay(BaseOverlayQML):
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
 
-    def build_ui(self):
-        """Initialize QML connection after window is set up."""
-        pass
-
     @override
     def render_frame(self):
         """Render a new frame."""

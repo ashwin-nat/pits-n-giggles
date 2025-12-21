@@ -89,11 +89,6 @@ class TrackMapOverlay(BaseOverlayQML):
         self.curr_circuit_name: Optional[str] = None
         self.circuit_svg_path: Optional[str] = None
 
-    def build_ui(self):
-        """Initialize QML connection after window is set up."""
-        if self._root:
-            self.logger.debug(f"{self.OVERLAY_ID} | QML root window ready")
-
     def _init_handlers(self):
 
         @self.on_event("stream_overlay_update")

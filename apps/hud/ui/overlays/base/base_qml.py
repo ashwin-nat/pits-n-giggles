@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, TypeVar, override
+from typing import Optional, TypeVar, final, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
                             QTimer, QUrl)
@@ -154,6 +154,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root.setVisible(True)
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
+
+    @final
+    def build_ui(self):
+        pass # QML based overlays dont need this
 
     # ----------------------------------------------------------------------
     # Abstract method implementations
