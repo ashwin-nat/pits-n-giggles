@@ -49,6 +49,7 @@ class PitTimeLossF1(ConfigDiffMixin, BaseModel):
     Austria: Optional[float] = Field(19.0)
     Austria_Reverse: Optional[float] = Field(19.0)
     Silverstone: Optional[float] = Field(28.0)
+    Silverstone_Reverse: Optional[float] = Field(None)
     Hungaroring: Optional[float] = Field(20.0)
     Zandvoort: Optional[float] = Field(18.0)
     Spa: Optional[float] = Field(18.0)
