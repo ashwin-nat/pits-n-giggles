@@ -176,6 +176,9 @@ class TimingTowerOverlay(BaseOverlayQML):
             Args:
                 data (Dict[str, Any]): The race table data from the server
             """
+            if not self._root:
+                return
+
             session_type = data["event-type"]
 
             if is_tt_session(session_type):
@@ -225,8 +228,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         Args:
             text (str): Session info text
         """
-        if self._root:
-            self._root.setProperty("sessionInfo", text)
+        self._root.setProperty("sessionInfo", text)
 
     def _show_error(self, message: str):
         """Show an error message in the table area.
@@ -234,10 +236,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         Args:
             message (str): Error message to display
         """
-        if self._root:
-            self._root.setProperty("showError", True)
-            self._root.setProperty("errorMessage", message)
-            self._root.setProperty("tableData", [])
+        self._root.setProperty("showError", True)
+        self._root.setProperty("errorMessage", message)
+        self._root.setProperty("tableData", [])
 
     def _update_table_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int):
         """Update the timing table data in QML.
@@ -246,8 +247,6 @@ class TimingTowerOverlay(BaseOverlayQML):
             relevant_rows (List[Dict[str, Any]]): List of row data
             ref_index (int): Index of reference driver
         """
-        if not self._root:
-            return
 
         # Hide error message
         self._root.setProperty("showError", False)
