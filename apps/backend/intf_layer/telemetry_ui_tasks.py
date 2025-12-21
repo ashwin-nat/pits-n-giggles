@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import Awaitable, List, Tuple
+from typing import Any, Awaitable, Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -214,7 +214,7 @@ async def _periodic_task(
     interval_ms: int,
     shutdown_event: asyncio.Event,
     logger: logging.Logger,
-    task_coro: Awaitable,
+    task_coro: Callable[..., Awaitable[Any]],
     *args,
     **kwargs) -> None:
     """Utility to run a periodic task with deadline scheduling
