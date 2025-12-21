@@ -24,6 +24,7 @@
 
 import base64
 import logging
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -74,10 +75,11 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         # Icon mappings (QIcon objects)
         self.tyre_icon_mappings: Dict[str, QIcon] = {}
-        self.team_logo_mappings: Dict[str, QIcon] = {}
+        self.team_logo_mappings: defaultdict[str, QIcon] = {}
 
         # Base64 data URL cache (for QML)
         self.tyre_icon_data_urls: Dict[str, str] = {}
+        self.team_logo_default_url: str = ""
         self.team_logo_data_urls: Dict[str, str] = {}
 
         super().__init__(
@@ -152,6 +154,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             else:
                 self.team_logo_data_urls[name] = self._qicon_to_base64_url(icon, size=20)
                 self.logger.debug(f"{self.OVERLAY_ID} | Loaded team icon successfully: {name}")
+        self.team_logo_default_url = self._qicon_to_base64_url(self.team_logo_mappings["invalid"], size=20)
 
     def _setup_window(self):
         """Override to set numRows property after QML loads."""
@@ -302,7 +305,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             )
 
             # Get base64 data URLs from cache
-            team_icon_url = self.team_logo_data_urls.get(team, "")
+            team_icon_url = self.team_logo_data_urls.get(team, self.team_logo_default_url)
             tyre_icon_url = self.tyre_icon_data_urls.get(tyre_compound, "")
 
             qml_data.append({
