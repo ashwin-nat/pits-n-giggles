@@ -168,9 +168,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_window_icon(self, icon: QIcon):
         self._root.setIcon(icon)
 
-    def build_ui(self):
-        raise NotImplementedError
-
     @override
     def apply_config(self):
         self._root.setPosition(self.config.x, self.config.y)
