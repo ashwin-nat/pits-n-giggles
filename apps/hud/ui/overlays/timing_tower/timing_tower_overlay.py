@@ -22,40 +22,42 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import base64
 import logging
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QFontMetrics
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+from PySide6.QtGui import QIcon
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlayWidget
-
-from .race_table import RaceTimingTable
+from apps.hud.ui.overlays.base import BaseOverlayQML
+from lib.assets_loader import load_team_icons_dict, load_tyre_icons_dict
+from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TimingTowerOverlay(BaseOverlayWidget):
+class TimingTowerOverlay(BaseOverlayQML):
+    """QML-based timing tower overlay."""
 
     OVERLAY_ID: str = "timing_tower"
-    FONT_FACE = "Formula1"
-    FONT_SIZE = 15
+    QML_FILE: Path = Path(__file__).parent / "timing_tower.qml"
 
     MAX_SUPPORTED_CARS = 22
 
-    def __init__(self,
-                 config: OverlaysConfig,
-                 logger: logging.Logger,
-                 locked: bool,
-                 opacity: int,
-                 scale_factor: float,
-                 num_adjacent_cars: int,
-                 windowed_overlay: bool
-                 ):
+    def __init__(
+        self,
+        config: OverlaysConfig,
+        logger: logging.Logger,
+        locked: bool,
+        opacity: int,
+        scale_factor: float,
+        num_adjacent_cars: int,
+        windowed_overlay: bool
+    ):
         """Initialize timing tower overlay.
 
         Args:
@@ -67,166 +69,283 @@ class TimingTowerOverlay(BaseOverlayWidget):
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
         """
-
-        # Overlay specific fields
         self.num_adjacent_cars = num_adjacent_cars
-        self.total_rows = min(((self.num_adjacent_cars * 2) + 1, self.MAX_SUPPORTED_CARS))
+        self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
-        # UI components
-        self.session_info_label: Optional[QLabel] = None
-        self.timing_table: Optional[RaceTimingTable] = None
+        # Icon mappings (QIcon objects)
+        self.tyre_icon_mappings: Dict[str, QIcon] = {}
+        self.team_logo_mappings: Dict[str, QIcon] = {}
 
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
-        self._init_event_handlers()
+        # Base64 data URL cache (for QML)
+        self.tyre_icon_data_urls: Dict[str, str] = {}
+        self.team_logo_data_urls: Dict[str, str] = {}
 
-    def build_ui(self):
-        """Build the timing tower UI"""
-        main_layout = QVBoxLayout(self)
-        self._configure_main_layout(main_layout)
-
-        content_width = self._calculate_content_width()
-
-        header_widget = self._create_header_section(int(content_width * self.scale_factor))
-        main_layout.addWidget(header_widget)
-
-        # Create and attach the timing table
-        self.timing_table = RaceTimingTable(
-            parent_layout=main_layout,
-            logger=self.logger,
-            overlay_id=self.OVERLAY_ID,
-            num_rows=self.total_rows,
-            scale_factor=self.scale_factor
+        super().__init__(
+            config,
+            logger,
+            locked,
+            opacity,
+            scale_factor,
+            windowed_overlay,
+            refresh_interval_ms=None  # Event-driven updates only
         )
 
-        self._apply_overall_style()
+        self._init_icons()
+        self._init_event_handlers()
 
-    def _configure_main_layout(self, layout: QVBoxLayout) -> None:
-        """Configure main layout spacing, margins, and alignment."""
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def _qicon_to_base64_url(self, icon: QIcon, size: int = 64) -> str:
+        """Convert QIcon to base64 data URL for use in QML Image source.
 
-    def _calculate_content_width(self) -> int:
-        """Return total content width based on column sizes."""
-        return 40 + 30 + 160 + 90 + 75 + 75 + 50
+        Args:
+            icon (QIcon): The icon to convert
+            size (int): Size to render the icon at
 
-    def _create_header_section(self, content_width: int) -> QWidget:
-        """Create the header section with proper scaling (no extra vertical gap)."""
+        Returns:
+            str: data:image/png;base64,... URL string
+        """
+        if icon.isNull():
+            return ""
 
-        scale = self.scale_factor
-        font_px = int(self.FONT_SIZE * scale)
-        padding = int(3 * scale)
-        margin = int(3 * scale)
-        spacing = int(2 * scale)
+        # Get pixmap from icon
+        pixmap = icon.pixmap(size, size)
+        if pixmap.isNull():
+            return ""
 
-        header_widget = QWidget()
-        header_widget.setFixedWidth(content_width)
+        # Convert to PNG bytes
+        byte_array = QByteArray()
+        buffer = QBuffer(byte_array)
+        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+        pixmap.save(buffer, "PNG")
+        buffer.close()
 
-        header_widget.setStyleSheet(f"""
-            QWidget {{
-                background-color: rgba(15, 15, 15, 200);
-                border-radius: {int(5 * scale)}px;
-            }}
-        """)
+        # Encode to base64
+        base64_data = base64.b64encode(byte_array.data()).decode('ascii')
+        return f"data:image/png;base64,{base64_data}"
 
-        header_layout = QVBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, margin, 0, margin)
-        header_layout.setSpacing(spacing)
+    def _init_icons(self):
+        """Initialize tyre and team icons and convert to base64 data URLs."""
+        # Load QIcon objects
+        self.tyre_icon_mappings = load_tyre_icons_dict(
+            debug_log_printer=self.logger.debug,
+            error_log_printer=self.logger.error
+        )
 
-        font = QFont(self.FONT_FACE)
-        font.setPixelSize(font_px)
+        self.team_logo_mappings = load_team_icons_dict(
+            debug_log_printer=self.logger.debug,
+            error_log_printer=self.logger.error
+        )
 
-        fm = QFontMetrics(font)
-        text_height = fm.height()
-        total_height = text_height + (padding * 2)
+        # Convert tyre icons to base64 data URLs
+        for name, icon in self.tyre_icon_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load tyre icon: {name}")
+                self.tyre_icon_data_urls[name] = ""
+            else:
+                self.tyre_icon_data_urls[name] = self._qicon_to_base64_url(icon, size=20)
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded tyre icon successfully: {name}")
 
-        self.session_info_label = QLabel("-- / --")
-        self.session_info_label.setFont(font)
-        self.session_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.session_info_label.setFixedHeight(total_height)
+        # Convert team icons to base64 data URLs
+        for name, icon in self.team_logo_mappings.items():
+            if icon.isNull():
+                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load team icon: {name}")
+                self.team_logo_data_urls[name] = ""
+            else:
+                self.team_logo_data_urls[name] = self._qicon_to_base64_url(icon, size=20)
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded team icon successfully: {name}")
 
-        self.session_info_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: rgba(40, 40, 40, 200);
-                color: #ffffff;
-                padding: {padding}px 0px;
-                border-radius: {int(3 * scale)}px;
-            }}
-        """)
+    def _setup_window(self):
+        """Override to set numRows property after QML loads."""
+        super()._setup_window()
+        if self._root:
+            self._root.setProperty("numRows", self.total_rows)
 
-        header_layout.addWidget(self.session_info_label)
+    def build_ui(self):
+        """Not used in QML-based overlays - UI is defined in QML file."""
+        pass
 
-        return header_widget
-
-    def _apply_overall_style(self) -> None:
-        """Apply background and border styling to the main widget."""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: rgba(10, 10, 10, 220);
-                border-radius: 8px;
-            }
-        """)
+    def render_frame(self):
+        """Not used - this overlay uses event-driven updates."""
+        pass
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]) -> None:
-            """Handles race_table_update event
+            """Handles race_table_update event.
 
             Args:
                 data (Dict[str, Any]): The race table data from the server
             """
             session_type = data["event-type"]
+
             if is_tt_session(session_type):
-                self.session_info_label.setText("-- / --")
-                self.timing_table.show_error("TIME TRIAL NOT YET SUPPORTED")
+                self._show_error("TIME TRIAL NOT YET SUPPORTED")
+                self._update_session_info("-- / --")
                 return
 
             table_entries = data["table-entries"]
             if not table_entries:
-                self.timing_table.clear()
+                self.clear()
                 return
 
             ref_row = get_ref_row(data)
             if not ref_row:
-                self.timing_table.show_error("ERROR: Please check the logs")
+                self._show_error("ERROR: Please check the logs")
                 return
+
             ref_index = ref_row["driver-info"]["index"]
 
             table_entries.sort(key=lambda x: x["driver-info"]["position"])
             relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
+
             if is_race_type_session(session_type):
                 insert_relative_deltas_race(relevant_rows, ref_index)
             elif not is_tt_session(session_type):
                 self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
 
-            # Use the timing table's update_data method
-            self.timing_table.update_data(relevant_rows, ref_index)
+            # Update QML with data
+            self._update_table_data(relevant_rows, ref_index)
 
-            # Update session info (lap or time)
+            # Update session info
             if session_type == 'None':
-                self.session_info_label.setText("----")
+                self._update_session_info("----")
             elif self._should_show_lap_number(session_type):
                 current_lap = data.get("current-lap", 0)
                 total_laps = data.get("total-laps", 0)
-                self.session_info_label.setText(f"{session_type.upper()}    |    LAP {current_lap} / {total_laps}")
+                self._update_session_info(f"{session_type.upper()}    |    LAP {current_lap} / {total_laps}")
             else:
                 time_remaining_sec = data.get("session-time-left", 0)
                 minutes = int(time_remaining_sec // 60)
                 seconds = int(time_remaining_sec % 60)
-                self.session_info_label.setText(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
+                self._update_session_info(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
+
+    def _update_session_info(self, text: str):
+        """Update the session info label in QML.
+
+        Args:
+            text (str): Session info text
+        """
+        if self._root:
+            self._root.setProperty("sessionInfo", text)
+
+    def _show_error(self, message: str):
+        """Show an error message in the table area.
+
+        Args:
+            message (str): Error message to display
+        """
+        if self._root:
+            self._root.setProperty("showError", True)
+            self._root.setProperty("errorMessage", message)
+            self._root.setProperty("tableData", [])
+
+    def _update_table_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int):
+        """Update the timing table data in QML.
+
+        Args:
+            relevant_rows (List[Dict[str, Any]]): List of row data
+            ref_index (int): Index of reference driver
+        """
+        if not self._root:
+            return
+
+        # Hide error message
+        self._root.setProperty("showError", False)
+
+        # Convert data to QML-friendly format
+        qml_data = []
+        for row_data in relevant_rows:
+            driver_info = row_data.get("driver-info", {})
+            delta_info = row_data.get("delta-info", {})
+            tyre_info = row_data.get("tyre-info", {})
+            ers_info = row_data.get("ers-info", {})
+            warns_pens_info = row_data.get("warns-pens-info", {})
+
+            telemetry_public = driver_info.get("telemetry-setting") == "Public"
+            position = driver_info.get("position", 0)
+            name = driver_info.get("name", "UNKNOWN")
+            team = driver_info.get("team", "UNKNOWN")
+            driver_idx = driver_info.get("index", -1)
+            is_pitting = driver_info.get("is_pitting", False)
+            drs = driver_info.get("drs", False)
+
+            delta = delta_info.get("relative-delta", 0)
+            delta_text = (
+                "PIT" if is_pitting else
+                "---" if driver_idx == ref_index or not delta else
+                F1Utils.formatFloat(delta / 1000, precision=3, signed=True)
+            )
+
+            # Tyre info
+            tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
+            if telemetry_public:
+                max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
+                tyre_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+            else:
+                tyre_age = tyre_info.get("tyre-age", 0)
+                tyre_wear_str = f"{tyre_age}L"
+
+            # ERS info
+            ers_mode = ers_info.get("ers-mode", "None")
+            ers_perc = ers_info.get("ers-percent-float", 0.0)
+            if telemetry_public:
+                ers_text = f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
+            else:
+                ers_text = "N/A"
+
+            # Penalties
+            pens_sec = warns_pens_info.get("time-penalties", 0)
+            num_dt = warns_pens_info.get("num-dt", 0)
+            pens_str = (
+                f"{num_dt}DT" if num_dt else
+                f"+{pens_sec}sec" if pens_sec else
+                ""
+            )
+
+            # Get base64 data URLs from cache
+            team_icon_url = self.team_logo_data_urls.get(team, "")
+            tyre_icon_url = self.tyre_icon_data_urls.get(tyre_compound, "")
+
+            qml_data.append({
+                "position": position,
+                "teamIcon": team_icon_url,
+                "name": name,
+                "delta": delta_text,
+                "tyreIcon": tyre_icon_url,
+                "tyreWear": tyre_wear_str,
+                "ers": ers_text,
+                "ersMode": ers_mode,
+                "drs": drs,
+                "penalties": pens_str,
+                "isReference": driver_idx == ref_index
+            })
+
+        self._root.setProperty("tableData", qml_data)
 
     def clear(self):
-        """Clear all timing data"""
-        self.session_info_label.setText("-- / --")
-        self.timing_table.clear()
+        """Clear all timing data."""
+        if self._root:
+            self._root.setProperty("sessionInfo", "-- / --")
+            self._root.setProperty("tableData", [])
+            self._root.setProperty("showError", False)
 
     def _should_show_lap_number(self, session_type: str) -> bool:
-        """Check if it is a race/sprint session"""
+        """Check if it is a race/sprint session.
+
+        Args:
+            session_type (str): Session type
+
+        Returns:
+            bool: True if race/sprint session
+        """
         return is_race_type_session(session_type)
 
-    def _insert_relative_deltas_fp_quali(self, relevant_rows: List[Dict[str, Any]], ref_row: Dict[str, Any]) -> None:
-        """Insert relative deltas for FP/Quali mode
+    def _insert_relative_deltas_fp_quali(
+        self,
+        relevant_rows: List[Dict[str, Any]],
+        ref_row: Dict[str, Any]
+    ) -> None:
+        """Insert relative deltas for FP/Quali mode.
 
         Args:
             relevant_rows (List[Dict[str, Any]]): List of relevant rows
@@ -235,10 +354,9 @@ class TimingTowerOverlay(BaseOverlayWidget):
         if not ref_row:
             self.logger.warning('<<TIMING_TOWER>> Reference row is None!')
             return
+
         ref_best_lap_ms = ref_row["lap-info"]["best-lap"]["lap-time-ms"]
 
-        # For each car, compute the best lap delta against the ref car
-        # ref lap - car lap
         for row in relevant_rows:
             best_lap_ms = row["lap-info"]["best-lap"]["lap-time-ms"]
             if ref_best_lap_ms is None or best_lap_ms is None:
