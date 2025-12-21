@@ -526,7 +526,7 @@ class SettingsWindow(QDialog):
         options = ui_config.get("options", [])
         if not options:
             self.parent_window.warning_log(f"No options provided for radio_buttons field {field_path}")
-            return None
+            return
 
         radio_container = QWidget()
         radio_layout = QHBoxLayout()

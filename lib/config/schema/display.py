@@ -26,8 +26,6 @@ from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field
 
-from meta.meta import APP_NAME
-
 from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -51,7 +49,7 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     refresh_interval: int = Field(
         default=200,
         gt=0,
-        description=f"Web dashboard / Text overlays refresh interval (ms)",
+        description="Web dashboard / Text overlays refresh interval (ms)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",

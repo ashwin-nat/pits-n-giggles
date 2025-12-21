@@ -203,11 +203,11 @@ class BaseOverlay():
             return func
         return decorator
 
-    def subscribe_hf(self, type: HighFreqObjType) -> None:
+    def subscribe_hf(self, obj_type: HighFreqObjType) -> None:
         """Subscribe to high frequency data.
         Subcribed types latest data will automatically be cached
         """
-        self._hf_subscriptions.add(type.__hf_type__)
+        self._hf_subscriptions.add(obj_type.__hf_type__)
 
     def update_hf_data_cache(self, data: HighFreqBase):
         """Update the latest high frequency data cache."""

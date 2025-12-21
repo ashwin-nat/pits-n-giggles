@@ -22,7 +22,6 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import logging
 from typing import Any, Dict
 
 import lib.race_analyzer as RaceAnalyzer

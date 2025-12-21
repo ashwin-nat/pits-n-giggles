@@ -22,7 +22,6 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import logging
 from typing import Any, Dict, List, Optional, Union
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
