@@ -238,7 +238,8 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     @override
     def animate_fade(self, show: bool):
-        start, end = (0, 1) if show else (1, 0)
+        target_opacity = self.opacity / 100.0
+        start, end = (0, target_opacity) if show else (target_opacity, 0)
 
         anim = QPropertyAnimation(self, b"windowOpacity")
         anim.setDuration(250)
