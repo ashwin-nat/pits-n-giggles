@@ -25,17 +25,15 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from PySide6.QtGui import QIcon
+from typing import Any, Dict, List
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.assets_loader import (load_team_icons_dict, load_team_logos_uri_dict,
-                               load_tyre_icons_dict, load_tyre_icons_uri_dict)
+from lib.assets_loader import (load_team_logos_uri_dict,
+                               load_tyre_icons_uri_dict)
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -72,12 +70,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
-        # Icon mappings (QIcon objects)
-        self.tyre_icon_mappings: Dict[str, QIcon] = {}
-        self.team_logo_mappings: defaultdict[str, QIcon] = {}
-
-        self.team_logo_uris: Optional[defaultdict[str, str]] = None
-        self.tyre_icon_uris: Optional[Dict[str, str]] = None
+        self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
+        self.tyre_icon_uris: Dict[str, str] = {}
 
         super().__init__(
             config,
@@ -94,17 +88,6 @@ class TimingTowerOverlay(BaseOverlayQML):
 
     def _init_icons(self):
         """Initialize tyre and team icons URI's"""
-        # Load QIcon objects
-        self.tyre_icon_mappings = load_tyre_icons_dict(
-            debug_log_printer=self.logger.debug,
-            error_log_printer=self.logger.error
-        )
-
-        self.team_logo_mappings = load_team_icons_dict(
-            debug_log_printer=self.logger.debug,
-            error_log_printer=self.logger.error
-        )
-
         self.team_logo_uris = load_team_logos_uri_dict()
         self.tyre_icon_uris = load_tyre_icons_uri_dict()
 

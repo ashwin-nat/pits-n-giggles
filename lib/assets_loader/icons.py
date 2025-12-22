@@ -178,7 +178,7 @@ def load_tyre_icons_uri_dict(relative_path: Optional[Path] = Path("assets") / "t
         relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
 
     Returns:
-        dict[str, QIcon]: A dictionary mapping visual compound names to their corresponding icons.
+        dict[str, Path]: A dictionary mapping visual compound names to their URI's
     """
     base = relative_path.resolve()
 
