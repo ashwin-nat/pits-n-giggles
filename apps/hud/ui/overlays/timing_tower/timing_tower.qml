@@ -163,9 +163,12 @@ Window {
                                         anchors.centerIn: parent
                                         width: 20
                                         height: 20
+                                        sourceSize.width: width * Screen.devicePixelRatio
+                                        sourceSize.height: height * Screen.devicePixelRatio
                                         source: modelData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
+                                        cache: true
                                     }
                                 }
 
@@ -206,10 +209,13 @@ Window {
                                         Image {
                                             width: 20
                                             height: 20
+                                            sourceSize.width: width * Screen.devicePixelRatio
+                                            sourceSize.height: height * Screen.devicePixelRatio
                                             source: modelData.tyreIcon || ""
                                             fillMode: Image.PreserveAspectFit
                                             smooth: true
                                             anchors.verticalCenter: parent.verticalCenter
+                                            cache: true
                                         }
 
                                         Text {

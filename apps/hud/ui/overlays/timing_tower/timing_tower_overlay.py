@@ -22,13 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import base64
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QBuffer, QByteArray, QIODevice
 from PySide6.QtGui import QIcon
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
@@ -36,7 +34,8 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              is_tt_session)
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.assets_loader import load_team_icons_dict, load_tyre_icons_dict
+from lib.assets_loader import (load_team_icons_dict, load_team_logos_uri_dict,
+                               load_tyre_icons_dict, load_tyre_icons_uri_dict)
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -77,10 +76,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.tyre_icon_mappings: Dict[str, QIcon] = {}
         self.team_logo_mappings: defaultdict[str, QIcon] = {}
 
-        # Base64 data URL cache (for QML)
-        self.tyre_icon_data_urls: Dict[str, str] = {}
-        self.team_logo_default_url: str = ""
-        self.team_logo_data_urls: Dict[str, str] = {}
+        self.team_logo_uris: Optional[defaultdict[str, str]] = None
+        self.tyre_icon_uris: Optional[Dict[str, str]] = None
 
         super().__init__(
             config,
@@ -95,37 +92,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self._init_icons()
         self._init_event_handlers()
 
-    def _qicon_to_base64_url(self, icon: QIcon, size: int = 64) -> str:
-        """Convert QIcon to base64 data URL for use in QML Image source.
-
-        Args:
-            icon (QIcon): The icon to convert
-            size (int): Size to render the icon at
-
-        Returns:
-            str: data:image/png;base64,... URL string
-        """
-        if icon.isNull():
-            return ""
-
-        # Get pixmap from icon
-        pixmap = icon.pixmap(size, size)
-        if pixmap.isNull():
-            return ""
-
-        # Convert to PNG bytes
-        byte_array = QByteArray()
-        buffer = QBuffer(byte_array)
-        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-        pixmap.save(buffer, "PNG")
-        buffer.close()
-
-        # Encode to base64
-        base64_data = base64.b64encode(byte_array.data()).decode('ascii')
-        return f"data:image/png;base64,{base64_data}"
-
     def _init_icons(self):
-        """Initialize tyre and team icons and convert to base64 data URLs."""
+        """Initialize tyre and team icons URI's"""
         # Load QIcon objects
         self.tyre_icon_mappings = load_tyre_icons_dict(
             debug_log_printer=self.logger.debug,
@@ -137,24 +105,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             error_log_printer=self.logger.error
         )
 
-        # Convert tyre icons to base64 data URLs
-        for name, icon in self.tyre_icon_mappings.items():
-            if icon.isNull():
-                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load tyre icon: {name}")
-                self.tyre_icon_data_urls[name] = ""
-            else:
-                self.tyre_icon_data_urls[name] = self._qicon_to_base64_url(icon, size=20)
-                self.logger.debug(f"{self.OVERLAY_ID} | Loaded tyre icon successfully: {name}")
-
-        # Convert team icons to base64 data URLs
-        for name, icon in self.team_logo_mappings.items():
-            if icon.isNull():
-                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load team icon: {name}")
-                self.team_logo_data_urls[name] = ""
-            else:
-                self.team_logo_data_urls[name] = self._qicon_to_base64_url(icon, size=20)
-                self.logger.debug(f"{self.OVERLAY_ID} | Loaded team icon successfully: {name}")
-        self.team_logo_default_url = self._qicon_to_base64_url(self.team_logo_mappings["invalid"], size=20)
+        self.team_logo_uris = load_team_logos_uri_dict()
+        self.tyre_icon_uris = load_tyre_icons_uri_dict()
 
     def _setup_window(self):
         """Override to set numRows property after QML loads."""
@@ -304,9 +256,9 @@ class TimingTowerOverlay(BaseOverlayQML):
                 ""
             )
 
-            # Get base64 data URLs from cache
-            team_icon_url = self.team_logo_data_urls.get(team, self.team_logo_default_url)
-            tyre_icon_url = self.tyre_icon_data_urls.get(tyre_compound, "")
+            # Get icon URI
+            team_icon_url = self.team_logo_uris[team]
+            tyre_icon_url = self.tyre_icon_uris.get(tyre_compound, "")
 
             qml_data.append({
                 "position": position,
