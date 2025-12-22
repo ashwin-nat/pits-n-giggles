@@ -114,10 +114,6 @@ class TimingTowerOverlay(BaseOverlayQML):
         if self._root:
             self._root.setProperty("numRows", self.total_rows)
 
-    def build_ui(self):
-        """Not used in QML-based overlays - UI is defined in QML file."""
-        pass
-
     def render_frame(self):
         """Not used - this overlay uses event-driven updates."""
         pass
