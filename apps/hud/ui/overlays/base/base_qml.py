@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, TypeVar, override
+from typing import Optional, TypeVar, final, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
                             QTimer, QUrl)
@@ -155,6 +155,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
 
+    @final
+    def build_ui(self):
+        pass # QML based overlays dont need this
+
     # ----------------------------------------------------------------------
     # Abstract method implementations
     # ----------------------------------------------------------------------
@@ -163,9 +167,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     def set_window_icon(self, icon: QIcon):
         self._root.setIcon(icon)
-
-    def build_ui(self):
-        raise NotImplementedError
 
     @override
     def apply_config(self):
