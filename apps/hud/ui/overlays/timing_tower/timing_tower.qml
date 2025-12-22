@@ -8,7 +8,7 @@ Window {
 
     property real scaleFactor: 1.0
     property int numRows: 5  // Set by Python
-    readonly property int baseWidth: 550
+    readonly property int baseWidth: 570
     readonly property int rowHeight: 32
     readonly property int headerHeight: 40
     readonly property int margins: 25
@@ -93,21 +93,16 @@ Window {
                         visible: showError
                     }
 
-                    // Table header (invisible but defines column structure)
-                    // COLUMN WIDTH CONFIGURATION - Adjust these values to change column widths
-                    Item {
-                        id: tableHeader
-                        width: parent.width
-                        height: 0
-                        visible: false
-
-                        readonly property int posWidth: 40      // Position column
-                        readonly property int teamWidth: 30     // Team icon column
-                        readonly property int nameWidth: 160    // Driver name column
-                        readonly property int deltaWidth: 90    // Delta/gap column
-                        readonly property int tyreWidth: 75     // Tyre info column
-                        readonly property int ersWidth: 75      // ERS/DRS column
-                        readonly property int pensWidth: 80     // Penalties column
+                    // Column widths
+                    QtObject {
+                        id: cols
+                        readonly property int pos: 40
+                        readonly property int team: 30
+                        readonly property int name: 160
+                        readonly property int delta: 90
+                        readonly property int tyre: 75
+                        readonly property int ers: 75
+                        readonly property int pens: 80
                     }
 
                     // Table content
@@ -136,16 +131,17 @@ Window {
                                 visible: modelData.isReference
                             }
 
-                            RowLayout {
-                                anchors.fill: parent
+                            Row {
+                                anchors.left: parent.left
                                 anchors.leftMargin: 4
-                                anchors.rightMargin: 4
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: parent.height
                                 spacing: 0
 
                                 // Position
                                 Text {
-                                    Layout.preferredWidth: tableHeader.posWidth
-                                    Layout.fillHeight: true
+                                    width: cols.pos
+                                    height: parent.height
                                     text: modelData.position < 10 ? modelData.position + " " : modelData.position
                                     font.family: "Consolas"
                                     font.pixelSize: 12
@@ -156,8 +152,8 @@ Window {
 
                                 // Team icon
                                 Item {
-                                    Layout.preferredWidth: tableHeader.teamWidth
-                                    Layout.fillHeight: true
+                                    width: cols.team
+                                    height: parent.height
 
                                     Image {
                                         anchors.centerIn: parent
@@ -174,8 +170,8 @@ Window {
 
                                 // Driver name
                                 Text {
-                                    Layout.preferredWidth: tableHeader.nameWidth
-                                    Layout.fillHeight: true
+                                    width: cols.name
+                                    height: parent.height
                                     text: modelData.name
                                     font.family: "Formula1"
                                     font.pixelSize: 13
@@ -187,8 +183,8 @@ Window {
 
                                 // Delta
                                 Text {
-                                    Layout.preferredWidth: tableHeader.deltaWidth
-                                    Layout.fillHeight: true
+                                    width: cols.delta
+                                    height: parent.height
                                     text: modelData.delta
                                     font.family: "Consolas"
                                     font.pixelSize: 13
@@ -199,8 +195,8 @@ Window {
 
                                 // Tyre
                                 Item {
-                                    Layout.preferredWidth: tableHeader.tyreWidth
-                                    Layout.fillHeight: true
+                                    width: cols.tyre
+                                    height: parent.height
 
                                     Row {
                                         anchors.centerIn: parent
@@ -230,8 +226,8 @@ Window {
 
                                 // ERS/DRS
                                 Rectangle {
-                                    Layout.preferredWidth: tableHeader.ersWidth
-                                    Layout.fillHeight: true
+                                    width: cols.ers
+                                    height: parent.height
                                     color: Qt.rgba(0.1, 0.1, 0.1, 0.7)
 
                                     Row {
@@ -287,15 +283,22 @@ Window {
                                 }
 
                                 // Penalties
-                                Text {
-                                    Layout.preferredWidth: tableHeader.pensWidth
-                                    Layout.fillHeight: true
-                                    text: modelData.penalties
-                                    font.family: "Formula1"
-                                    font.pixelSize: 11
-                                    color: "#ffcc00"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
+                                Rectangle {
+                                    width: cols.pens
+                                    height: parent.height
+                                    color: "transparent"
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.penalties
+                                        font.family: "Formula1"
+                                        font.pixelSize: 11
+                                        color: "white"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        wrapMode: Text.NoWrap
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }
