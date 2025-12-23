@@ -17,9 +17,11 @@
         "save_race_ctrl_msg": false
     },
     "Display": {
+        "disable_browser_autoload": true,
         "refresh_interval": 200,
-        "hud_refresh_interval": 33,
-        "disable_browser_autoload": true
+        "local_telemetry_rate": 5,
+        "telemetry_rate": 30,
+        "realtime_overlay_fps": 60
     },
     "Privacy": {
         "process_car_setup": false
@@ -84,6 +86,7 @@
         "show_input_overlay": true,
         "input_overlay_ui_scale": 1.0,
         "input_overlay_toggle_udp_action_code": null,
+        "input_overlay_buffer_duration_sec": 5.0,
         "show_track_radar_overlay": true,
         "track_radar_overlay_ui_scale": 1.0,
         "track_radar_overlay_toggle_udp_action_code": null,
