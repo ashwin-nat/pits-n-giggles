@@ -69,12 +69,33 @@ class ShutdownDialog(QDialog):
 
         self.setFixedSize(220, 80)
 
-class StableTooltipFilter(QObject):
+class StableTooltipController(QObject):
+    """
+    Fully deterministic tooltip handling.
+    Survives enable/disable, hover churn, and dynamic text updates.
+    """
+
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.ToolTip:
-            # Directly show the tooltip, bypassing Qt's hover timer
-            QToolTip.showText(event.globalPos(), obj.toolTip(), obj)
+        if not obj.isEnabled():
+            QToolTip.hideText()
+            return False
+
+        if event.type() in (QEvent.Enter, QEvent.HoverEnter):
+            text = obj.property("_stable_tooltip")
+            if text:
+                QToolTip.showText(
+                    obj.mapToGlobal(obj.rect().bottomRight()),
+                    text,
+                    obj
+                )
+
+        elif event.type() in (QEvent.Leave, QEvent.HoverLeave):
+            QToolTip.hideText()
+
+        elif event.type() == QEvent.ToolTip:
+            # Prevent Qt from doing anything implicit
             return True
+
         return False
 
 class PngLauncherWindow(QMainWindow):
@@ -132,6 +153,16 @@ class PngLauncherWindow(QMainWindow):
 
         self.app = QApplication(sys.argv)
         super().__init__()
+        self.app.setStyleSheet("""
+            QToolTip {
+                font-family: 'Exo2';
+                font-size: 11pt;
+                color: #ffffff;
+                background-color: #202020;
+                border: 1px solid #444444;
+                padding: 4px;
+            }
+        """)
 
         # Log colors
         self.log_colors = {
@@ -218,7 +249,7 @@ class PngLauncherWindow(QMainWindow):
         self.show_success_signal.connect(self._show_success_safe)
         self.show_error_signal.connect(self._show_error_safe)
 
-        self._tooltip_filter = StableTooltipFilter()
+        self._tooltip_filter = StableTooltipController()
         self.setup_ui()
 
     def _load_icon(self, relative_path: Path) -> QIcon:
@@ -672,35 +703,68 @@ class PngLauncherWindow(QMainWindow):
         """Process pending events in the application's event loop"""
         self.app.processEvents()
 
-    def build_button(self, icon: QIcon, callback: Callable[[], None], tooltip: str) -> QPushButton:
-        """Build a button with an icon and callback"""
+
+    def _rearm_hover(self, widget: QWidget):
+        """
+        Force Qt to re-evaluate hover state.
+        Required for stable tooltips when widgets are
+        enabled/disabled or tooltip text changes while hovered.
+        """
+        if widget.underMouse():
+            widget.setAttribute(Qt.WA_UnderMouse, False)
+            widget.setAttribute(Qt.WA_UnderMouse, True)
+
+    def build_button(
+        self,
+        icon: QIcon,
+        callback: Callable[[], None],
+        tooltip: str
+    ) -> QPushButton:
+        """Build a QPushButton with a stable tooltip."""
         assert icon and not icon.isNull(), f"Failed to load icon: {icon}"
 
         btn = QPushButton()
+
+        # Required for reliable tooltip delivery
+        btn.setAttribute(Qt.WA_Hover, True)
+        btn.setMouseTracking(True)
+
         btn.setIcon(icon)
         btn.setIconSize(QSize(20, 20))
-
         btn.setFixedSize(32, 32)
         btn.setStyleSheet(self.BUTTON_STYLESHEET)
 
         btn.clicked.connect(callback)
-        self.set_button_tooltip(btn, tooltip)
+
+        # Canonical tooltip storage
+        btn.setProperty("_stable_tooltip", tooltip)
+        btn.setToolTip(tooltip)
         btn.installEventFilter(self._tooltip_filter)
         return btn
 
     def set_button_tooltip(self, button: QPushButton, tooltip: str):
-        """Set tooltip for a QPushButton and store it for later use."""
-        button.setProperty("button_tooltip", tooltip)
-        button.setToolTip(tooltip)
+        button.setProperty("_stable_tooltip", tooltip)
+
+        if button.underMouse() and button.isEnabled():
+            QToolTip.showText(
+                button.mapToGlobal(button.rect().bottomRight()),
+                tooltip,
+                button
+            )
 
     def set_button_state(self, button: QPushButton, enabled: bool):
-        """Enable/disable a QPushButton and restore tooltip if previously set."""
         button.setEnabled(enabled)
 
-        # Restore tooltip if it was previously configured
-        tooltip = button.property("button_tooltip")
-        if tooltip is not None:
-            button.setToolTip(tooltip)
+        if not enabled:
+            QToolTip.hideText()
+        elif button.underMouse():
+            tooltip = button.property("_stable_tooltip")
+            if tooltip:
+                QToolTip.showText(
+                    button.mapToGlobal(button.rect().bottomRight()),
+                    tooltip,
+                    button
+                )
 
     def set_button_icon(self, button: QPushButton, icon: QIcon):
         """Set icon on a QPushButton."""
