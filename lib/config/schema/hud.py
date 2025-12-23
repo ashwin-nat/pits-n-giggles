@@ -182,6 +182,24 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     input_overlay_ui_scale: float = ui_scale_field(description="Input telemetry overlay UI scale")
     input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle input telemetry overlay UDP action code")
+    input_overlay_buffer_duration_sec: float = Field(
+        default=5.0,
+        ge=1.0,
+        le=20.0,
+        description="Input telemetry overlay buffer duration (sec)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info": [
+                    "Controls how much recent throttle, brake, and steering input history is shown in the overlay. "
+                    "Higher values show a longer time window, while lower values make input changes appear more responsive.\n"
+                    "Test out different values in heavy braking zones. Set a value where you can see the braking shape once you've exited the corner.\n"
+                    "Recommendation: Bahrain T1"
+                ]
+            }
+        }
+    )
 
     show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay")
     track_radar_overlay_ui_scale: float = ui_scale_field(description="Track radar overlay UI scale")

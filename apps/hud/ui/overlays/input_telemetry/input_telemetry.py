@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import override
+from typing import final
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -53,13 +53,21 @@ class InputTelemetryOverlay(BaseOverlayQML):
                  opacity: int,
                  scale_factor: float,
                  windowed_overlay: bool,
-                 refresh_interval_ms: int) -> None:
+                 refresh_interval_ms: int,
+                 window_duration_sec: float) -> None:
 
         assert refresh_interval_ms
+        fps = 1000 // refresh_interval_ms
+        self.num_window_samples: int = max(1, round(window_duration_sec * fps))
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(InputTelemetryData)
 
-    @override
+    @final
+    def _setup_window(self):
+        super()._setup_window()
+        self._root.setProperty("maxHistoryLength", self.num_window_samples)
+
+    @final
     def render_frame(self):
         """Render a new frame."""
         data = self.get_latest_hf_data(InputTelemetryData)

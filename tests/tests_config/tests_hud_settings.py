@@ -61,6 +61,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_input_overlay, True)
         self.assertEqual(settings.input_overlay_ui_scale, 1.0)
         self.assertEqual(settings.input_overlay_toggle_udp_action_code, None)
+        self.assertEqual(settings.input_overlay_buffer_duration_sec, 5.0)
         self.assertEqual(settings.show_track_radar_overlay, True)
         self.assertEqual(settings.track_radar_overlay_ui_scale, 1.0)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
@@ -611,6 +612,32 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(input_overlay_ui_scale=2.1)
         HudSettings(input_overlay_ui_scale=2.0)
+
+    def test_input_overlay_buffer_duration_sec(self):
+        input_overlay_buffer_duration_sec = 1.1
+        hud_settings = HudSettings(input_overlay_buffer_duration_sec=input_overlay_buffer_duration_sec)
+        self.assertEqual(hud_settings.input_overlay_buffer_duration_sec, input_overlay_buffer_duration_sec)
+
+        # int should be accepted
+        HudSettings(input_overlay_buffer_duration_sec=2)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_buffer_duration_sec=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_buffer_duration_sec="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_buffer_duration_sec=420)
+
+        # Boundary conditions
+        HudSettings(input_overlay_buffer_duration_sec=1.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_buffer_duration_sec=0.9)
+
+        HudSettings(input_overlay_buffer_duration_sec=20.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(input_overlay_buffer_duration_sec=21.0)
 
     def test_show_track_radar(self):
         show_track_radar_overlay = True

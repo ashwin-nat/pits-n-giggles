@@ -123,7 +123,8 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.input_overlay_ui_scale,
-            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
         )
 
 
