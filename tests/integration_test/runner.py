@@ -198,13 +198,14 @@ def fetch_test_files() -> list[str]:
         sys.exit(1)
 
 
-def start_app(port: int, coverage_enabled: bool) -> subprocess.Popen:
+def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess.Popen:
     """Start the application process."""
     app_cmd_base = [
         "-m", "apps.launcher",
         "--ipc-port", str(port),
         "--debug",
-        "--replay-server"
+        "--replay-server",
+        "--config-file", config_file
     ]
     if coverage_enabled:
         app_cmd = [
@@ -298,7 +299,7 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-def main(telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
+def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
     """Main test execution function."""
     global app_process, exit_event, ipc_port
 
@@ -309,7 +310,7 @@ def main(telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool
 
     # Start the app
     ipc_port = get_free_tcp_port()
-    app_process = start_app(ipc_port, coverage_enabled)
+    app_process = start_app(config_file, ipc_port, coverage_enabled)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
 
     # Start heartbeat thread
@@ -378,13 +379,15 @@ if __name__ == "__main__":
     if not IS_WINDOWS:
         signal.signal(signal.SIGTERM, cleanup_and_exit)
 
-    settings = load_config_from_json("integration_test_cfg.json")
+    config_file = "integration_test_cfg.json"
+    settings = load_config_from_json(config_file)
     coverage_enabled = "--coverage" in sys.argv
 
     start_time = time.perf_counter()
 
     try:
         success = main(
+            config_file=config_file,
             telemetry_port=settings.Network.telemetry_port,
             http_port=settings.Network.server_port,
             proto=settings.HTTPS.proto,

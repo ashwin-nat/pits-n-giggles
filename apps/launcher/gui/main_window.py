@@ -144,8 +144,8 @@ class PngLauncherWindow(QMainWindow):
 
     def __init__(self,
                  ver_str: str,
+                 config_file: Optional[str],
                  logo_path: str,
-                 settings_icon_path: str,
                  debug_mode: bool,
                  replay_mode: bool,
                  integration_test_mode: bool,
@@ -189,10 +189,9 @@ class PngLauncherWindow(QMainWindow):
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
-        self.settings_icon_path = settings_icon_path
-        self.log_file = Path("launcher.log")
         self.config_file_legacy = resolve_user_file("png_config.ini")
-        self.config_file_new = resolve_user_file("png_config.json")
+        self.logger.debug("Starting with config file %s", config_file)
+        self.config_file_new = resolve_user_file(config_file if config_file else "png_config.json")
         self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
                                                           logger=self.logger)
 
