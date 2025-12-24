@@ -269,6 +269,7 @@ class LapTimerOverlay(BaseOverlayWidget):
             last_lap = lap_info["last-lap"]
             best_lap = lap_info["best-lap"]
             curr_lap = lap_info["curr-lap"]
+            sc_status = data["safety-car-status"]
 
             # Update static fields
             self._update_last_lap(last_lap["lap-time-ms"])
@@ -289,18 +290,21 @@ class LapTimerOverlay(BaseOverlayWidget):
                 self.sector_bar.set_sector_status(curr_lap["sector-status"])
             self.last_lap_num = lap_info["current-lap"]
 
-            self._handle_current_lap_display(curr_lap, session_type)
-            self._handle_delta_and_estimated(data, curr_lap, best_lap)
+            self._handle_current_lap_display(curr_lap, session_type, sc_status)
+            self._handle_delta_and_estimated(curr_lap, best_lap, sc_status)
 
-    def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str) -> None:
+    def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str, sc_status: str) -> None:
         """Handle current lap display.
         On FP/Quali, If on flying lap, display curr lap time, else display status
         In races, always display every thing live
         """
         driver_status = curr_lap["driver-status"]
         if is_race_type_session(session_type):
-            # In races, ignore driver_status completely
-            self._update_curr_lap(curr_lap["lap-time-ms"])
+            # In races, ignore driver_status completely, only consider sc status
+            if self._is_safety_car(sc_status):
+                self._update_curr_lap_str(sc_status)
+            else:
+                self._update_curr_lap(curr_lap["lap-time-ms"])
 
         elif driver_status in {"FLYING_LAP", "ON_TRACK"}:
             # Non-race sessions: only update when active
@@ -312,15 +316,12 @@ class LapTimerOverlay(BaseOverlayWidget):
 
     def _handle_delta_and_estimated(
         self,
-        data: Dict[str, Any],
         curr_lap: Dict[str, Any],
         best_lap: Dict[str, Any],
+        sc_status: str
     ) -> None:
 
-        is_sc = data["safety-car-status"] in {
-            "FULL_SAFETY_CAR",
-            "VIRTUAL_SAFETY_CAR",
-        }
+        is_sc = self._is_safety_car(sc_status)
 
         best_ms = best_lap["lap-time-ms"] or 0
         delta_ms_for_estimated = None
@@ -409,6 +410,9 @@ class LapTimerOverlay(BaseOverlayWidget):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(curr_lap_ms)
             if curr_lap_ms else self.DEFAULT_TIME
         )
+        self._update_curr_lap_str(time_str)
+
+    def _update_curr_lap_str(self, time_str: str):
         self.curr_value.setText(time_str)
         self.curr_value.setStyleSheet("color: #00FFFF; border: none;")
 
@@ -545,3 +549,7 @@ class LapTimerOverlay(BaseOverlayWidget):
         self.show_last_lap_sector_bar = False
         # Momentarily clear the sector bar
         self.sector_bar.set_sector_status(SectorStatusBar.DEFAULT_SECTOR_STATUS)
+
+    def _is_safety_car(self, status: str) -> bool:
+        """Check if the session is in racing or safety car state."""
+        return status in {"FULL_SAFETY_CAR", "VIRTUAL_SAFETY_CAR"}
