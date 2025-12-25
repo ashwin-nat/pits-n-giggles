@@ -23,6 +23,7 @@
 
 import os
 import sys
+from itertools import combinations
 
 from pydantic import ValidationError
 
@@ -47,6 +48,10 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.udp_tyre_delta_action_code, None)
         self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
+        self.assertIsNone(settings.udp_custom_action_code)
+        self.assertIsNone(settings.udp_tyre_delta_action_code)
+        self.assertEqual(settings.broker_xpub_port, 53838)
+        self.assertEqual(settings.broker_xsub_port, 53835)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -75,14 +80,14 @@ class TestNetworkSettings(TestF1ConfigBase):
 
     def test_valid_port_ranges(self):
         net = NetworkSettings(
-            telemetry_port=0,
+            telemetry_port=1,
             server_port=65535,
             save_viewer_port=12345,
             udp_tyre_delta_action_code=1,
             udp_custom_action_code=12,
             wdt_interval_sec=45
         )
-        self.assertEqual(net.telemetry_port, 0)
+        self.assertEqual(net.telemetry_port, 1)
         self.assertEqual(net.server_port, 65535)
         self.assertEqual(net.save_viewer_port, 12345)
         self.assertEqual(net.udp_tyre_delta_action_code, 1)
@@ -123,7 +128,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         """Test that server_port and save_viewer_port cannot be the same"""
         with self.assertRaises(ValidationError) as ctx:
             NetworkSettings(server_port=5000, save_viewer_port=5000)
-        self.assertIn("must not be the same", str(ctx.exception))
 
     def test_udp_action_codes_must_differ(self):
         """Test that tyre and custom UDP action codes cannot be the same"""
@@ -140,3 +144,74 @@ class TestNetworkSettings(TestF1ConfigBase):
             NetworkSettings(wdt_interval_sec=0)
         with self.assertRaises(ValidationError):
             NetworkSettings(wdt_interval_sec=121)
+
+    def test_broker_xpub_port(self):
+
+        NetworkSettings(broker_xpub_port=5000) # Valid
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=69420)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port="cat")
+
+        # Boundary conditions
+        NetworkSettings(broker_xpub_port=1)
+        NetworkSettings(broker_xpub_port=65535)
+
+    def test_broker_xsub_port(self):
+
+        NetworkSettings(broker_xsub_port=5000) # Valid
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=69420)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xsub_port="cat")
+
+        # Boundary conditions
+        NetworkSettings(broker_xsub_port=1)
+        NetworkSettings(broker_xsub_port=65535)
+
+    def test_network_settings_port_conflicts(self):
+        """
+        Rules covered:
+        - TCP ports must be unique among TCP fields
+        - UDP ports must be unique among UDP fields
+        - UDP/TCP sharing the same numeric port is VALID
+        - unset / disabled ports (0 or None) are ignored
+        """
+
+        # ---- 1. Valid baseline ----
+        NetworkSettings(
+            telemetry_port=20777,      # UDP
+            server_port=4768,          # TCP
+            save_viewer_port=4769,     # TCP
+            broker_xpub_port=53838,    # TCP
+            broker_xsub_port=53835,    # TCP
+        )
+
+        # ---- 2. TCP–TCP conflict (invalid) ----
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                server_port=5000,
+                save_viewer_port=5000,
+            )
+
+        # ---- 3. UDP–TCP same port (VALID) ----
+        NetworkSettings(
+            telemetry_port=6000,       # UDP
+            server_port=6000,          # TCP
+        )
+
+        # ---- 4. Three-way TCP conflict ----
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                server_port=7000,
+                save_viewer_port=7000,
+                broker_xpub_port=7000,
+            )

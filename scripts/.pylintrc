@@ -122,7 +122,8 @@ disable=
     redefined-variable-type,
     unnecessary-pass,
     too-many-return-statements,
-    no-member
+    no-member,
+    abstract-method
 
 [REPORTS]
 

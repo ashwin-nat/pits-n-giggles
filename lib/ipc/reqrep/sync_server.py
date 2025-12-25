@@ -24,13 +24,14 @@
 
 import threading
 import time
+import logging
 from typing import Callable, Optional
 
 import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcChildSync:
+class IpcServerSync:
     """
     Synchronous ZeroMQ REP socket server.
     Used by child process to handle requests synchronously.
@@ -38,19 +39,31 @@ class IpcChildSync:
     Includes optional heartbeat monitoring (only active if callback registered).
     """
 
-    def __init__(self, port: int, name: str = "IpcChildSync",
-                 max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0):
+    def __init__(self, port: int | None = None, name: str = "IpcChildSync",
+                max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0,
+                logger: Optional[logging.Logger] = None):
         """
-        :param port: Port to bind to.
+        :param port: Port to bind to. If None, OS chooses a free port.
         :param name: Name of the child process.
         :param max_missed_heartbeats: Number of consecutive missed heartbeats before calling callback.
         :param heartbeat_timeout: Time in seconds to wait for heartbeat before considering it missed.
+        :param logger: Logger to use. If None, a NullHandler is used.
         """
         self.name = name
-        self.endpoint = f"tcp://127.0.0.1:{port}"
         self.ctx = zmq.Context()
         self.sock = self.ctx.socket(zmq.REP)
-        self.sock.bind(self.endpoint)
+
+        if port is None:
+            # Bind to a free port chosen by OS
+            self.sock.bind("tcp://127.0.0.1:*")
+            endpoint = self.sock.getsockopt(zmq.LAST_ENDPOINT).decode()
+            self.endpoint = endpoint
+            self.port = int(endpoint.rsplit(":", 1)[1])
+        else:
+            self.endpoint = f"tcp://127.0.0.1:{port}"
+            self.port = port
+            self.sock.bind(self.endpoint)
+
         self._thread: Optional[threading.Thread] = None
         self._running = False
         self._shutdown_callback = None
@@ -62,6 +75,12 @@ class IpcChildSync:
         self._missed_heartbeats = 0
         self._heartbeat_missed_callback = None
         self._heartbeat_thread: Optional[threading.Thread] = None
+
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.logger = logger
 
     # -------------------------------------- CALLBACKS ------------------------------------------------------------------
 
@@ -83,7 +102,7 @@ class IpcChildSync:
     # -------------------------------------- HEARTBEAT ------------------------------------------------------------------
 
     def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
-        """Default heartbeat missed callback. Hard kills the app."""
+        """Default heartbeat missed callback. no-op"""
         return
 
     def _handle_heartbeat(self) -> dict:
@@ -106,6 +125,7 @@ class IpcChildSync:
             elapsed = time.time() - self._last_heartbeat
             if elapsed > self.heartbeat_timeout:
                 self._missed_heartbeats += 1
+                self.logger.debug("%s: Missed heartbeat. count: %d", self.name, self._missed_heartbeats)
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
                         callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
@@ -203,6 +223,7 @@ class IpcChildSync:
             return  # Already closed
 
         self._running = False
+        self.logger.debug("%s closing", self.name)
 
         # Gracefully stop heartbeat monitor if active
         if self._heartbeat_thread and self._heartbeat_thread.is_alive():

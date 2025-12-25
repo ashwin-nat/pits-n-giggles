@@ -145,7 +145,8 @@ class TelemetryRenderer {
     this.setWearPredictionColumnState(isLiveDataMode, sessionType);
     this.setWingDamageColumnState(sessionType);
 
-    const tableEntries = getRelevantRaceTableRows(incomingData, g_pref_numAdjacentCars);
+    const shouldInsertRejoinPositions = true;
+    const tableEntries = getRelevantRaceTableRows(incomingData, g_pref_numAdjacentCars, shouldInsertRejoinPositions);
     updateReferenceLapTimes(tableEntries,
       (spectatorMode) ?
       ((entry) => entry["driver-info"]?.["index"] == spectatorCarIndex) :

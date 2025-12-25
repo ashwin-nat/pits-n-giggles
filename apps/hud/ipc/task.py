@@ -28,14 +28,15 @@ import threading
 from functools import partial
 from typing import Callable, Dict
 
+from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcChildSync
+from lib.ipc import IpcServerSync, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 from .handlers import (handle_lock_widgets, handle_next_page,
-                       handle_reset_overlays, handle_set_opacity, handle_set_ui_scale,
-                       handle_toggle_visibility)
+                       handle_reset_overlays, handle_set_opacity,
+                       handle_set_ui_scale, handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -55,29 +56,33 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def run_ipc_task(
-        port: int, logger:
-        logging.Logger,
+        logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        receiver_client: HudClient
+        socketio_client: HudClient,
+        ipc_sub: IpcSubscriberSync
         ) -> threading.Thread:
     """Runs the IPC task.
 
     Args:
-        port (int): IPC port
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client
+        socketio_client (HudClient): Receiver client
+        ipc_sub (IpcSubscriberSync): IPC subscriber
 
     Returns:
         threading.Thread: IPC thread handle
     """
-    ipc_server = IpcChildSync(
-        port=port,
+    logger.debug("Starting IPC server")
+    ipc_server = IpcServerSync(
+        # port=port,
         name="hud"
     )
+    report_ipc_port_from_child(ipc_server.port)
+    logger.debug("Started IPC server on port %d", ipc_server.port)
     ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, receiver_client=receiver_client))
-    ipc_server.register_heartbeat_missed_callback(_handle_heartbeat_missed)
+        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
+        shm_reader=ipc_sub))
+    ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
 def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
@@ -101,38 +106,53 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
 
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-def _shutdown_handler(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
+def _shutdown_handler(
+        args: dict, logger:
+        logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        ipc_sub: IpcSubscriberSync
+        ) -> None:
     """Handles shutdown command.
 
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client obj
+        socketio_client (HudClient): Receiver client obj
+        ipc_sub (PngShmReader): Shared memory reader
     """
 
-    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, receiver_client,),
+    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
                      name="Shutdown tasks").start()
     return {"status": "success", "message": "Shutting down HUD manager"}
 
-def _stop_other_tasks(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr, receiver_client: HudClient) -> None:
+def _stop_other_tasks(
+        args: dict,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        ipc_sub: IpcSubscriberSync
+        ) -> None:
     """Stop all other tasks when IPC shutdown is received.
     Args:
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        receiver_client (HudClient): Receiver client
+        socketio_client (HudClient): Receiver client
+        ipc_sub (IpcSubscriberSync): IPC subscriber
     """
     reason = args.get("reason", "N/A")
     logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
 
-    receiver_client.stop()
+    socketio_client.stop()
+    ipc_sub.close()
     overlays_mgr.stop()
 
     logger.info("Exiting HUD subsystem")
 
-def _handle_heartbeat_missed(count: int) -> dict:
+def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
-    print(f"[HUD] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
     os._exit(PNG_LOST_CONN_TO_PARENT)

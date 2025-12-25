@@ -26,8 +26,6 @@ from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field
 
-from meta.meta import APP_NAME
-
 from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -37,17 +35,6 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
         "visible" : True,
     }
 
-    refresh_interval: int = Field(
-        default=100,
-        gt=0,
-        description=f"{APP_NAME} Display update interval (ms)",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
-    )
     disable_browser_autoload: bool = Field(
         default=False,
         description="Disable automatic opening of the web page in the browser",
@@ -58,3 +45,73 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+
+    refresh_interval: int = Field(
+        default=200,
+        gt=0,
+        description="Web dashboard / Text overlays refresh interval (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+
+    local_telemetry_rate: int = Field(
+        default=5,
+        gt=0,
+        description="Low frequency telemetry send rate (used for table based overlays) (Hz)",
+        json_schema_extra={
+            "ui": {
+                "type" : "radio_buttons",
+                "options": [5, 10, 25, 60],
+                "visible": True,
+                "ext_info": [
+                    'Not recommended to go super high, as it will increase the CPU load. '
+                    '5 Hz is good enough for most cases'
+                ]
+            }
+        }
+    )
+    telemetry_rate: int = Field(
+        default=30,
+        gt=0,
+        description="Internal telemetry send rate (Hz)",
+        json_schema_extra={
+            "ui": {
+                "type" : "radio_buttons",
+                "options": [30, 60],
+                "visible": True,
+                "ext_info": [
+                    '30 Hz is good enough for most cases. '
+                    'Use 60 Hz if you want even higher accuracy in input and track radar overlays'
+                ]
+            }
+        }
+    )
+    realtime_overlay_fps: int = Field(
+        default=60,
+        gt=0,
+        description="Realtime overlay FPS",
+        json_schema_extra={
+            "ui": {
+                "type" : "radio_buttons",
+                "options": [30, 60, 90],
+                "visible": True,
+                "ext_info": [
+                    'Uses GPU. Higher FPS will cause more GPU load.'
+                ]
+            }
+        }
+    )
+
+    @property
+    def hud_refresh_interval(self) -> int:
+        # hz to ms
+        return 1000 // self.realtime_overlay_fps
+
+    @property
+    def realtime_overlay_update_interval_ms(self) -> int:
+        # fps to ms
+        return 1000 // self.realtime_overlay_fps

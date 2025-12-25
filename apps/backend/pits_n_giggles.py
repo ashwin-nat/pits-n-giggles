@@ -29,9 +29,10 @@ import os
 import socket
 import sys
 import time
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 import psutil
+from wsproto.connection import LocalProtocolError
 
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
 from apps.backend.state_mgmt_layer import (SessionState,
@@ -41,6 +42,7 @@ from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
+from lib.ipc import IpcPublisherAsync
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -56,7 +58,7 @@ class PngRunner:
                  config_file: str,
                  replay_server: bool,
                  debug_mode: bool,
-                 ipc_port: Optional[int] = None):
+                 run_ipc_server: bool = False) -> None:
         """Init the runner. Register necessary tasks
 
         Args:
@@ -64,7 +66,7 @@ class PngRunner:
             config_file (str): Path to the config file
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
             debug_mode (bool): If true, runs in debug mode
-            ipc_port (Optional[int], optional): IPC port. Defaults to None.
+            run_ipc_server (bool): If true, runs the IPC server
         """
         self.m_logger: logging.Logger = logger
         self.m_config = load_config_from_json(config_file, logger)
@@ -90,8 +92,8 @@ class PngRunner:
             session_state=self.m_session_state,
             tasks=self.m_tasks
         )
-        self.m_web_server = self._setupUiIntfLayer(
-            ipc_port=ipc_port,
+        self.m_web_server, self.m_ipc_pub = self._setupUiIntfLayer(
+            run_ipc_server=run_ipc_server,
             debug_mode=debug_mode
         )
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
@@ -110,16 +112,16 @@ class PngRunner:
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self,
-        ipc_port: Optional[int] = None,
-        debug_mode: Optional[bool] = False) -> TelemetryWebServer:
+        run_ipc_server: Optional[bool] = False,
+        debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
         """Entry point to start the HTTP server.
 
         Args:
-            ipc_port (Optional[int], optional): IPC port. Defaults to None.
+            run_ipc_server (bool, optional): Whether to run the IPC server. Defaults to False.
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
-            TelemetryWebServer: The initialized web server object
+            Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
         """
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
@@ -138,7 +140,7 @@ class PngRunner:
             debug_mode=debug_mode,
             tasks=self.m_tasks,
             ver_str=self.m_version,
-            ipc_port=ipc_port,
+            run_ipc_server=run_ipc_server,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
         )
@@ -181,9 +183,10 @@ class PngRunner:
         self.m_shutdown_event.set()
         await AsyncInterTaskCommunicator().unblock_receivers()
 
-        # Explicitly stop the
+        # Explicitly stop the tasks
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
+        await self.m_ipc_pub.close()
         await asyncio.sleep(1)
 
         self.m_logger.debug("Tasks stopped. Exiting...")
@@ -222,7 +225,7 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
-    parser.add_argument("--ipc-port", type=int, default=None, help="Port number for the IPC server.")
+    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -236,16 +239,12 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
     """
 
     try:
-        # if args.debug:
-        #     loop = asyncio.get_running_loop()
-        #     loop.set_debug(True)
-        #     loop.slow_callback_duration = 0.1   # 100 ms
         app = PngRunner(
             logger=logger,
             config_file=args.config_file,
             replay_server=args.replay_server,
             debug_mode=args.debug,
-            ipc_port=args.ipc_port
+            run_ipc_server=args.run_ipc_server,
         )
     except PngError as e:
         logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
@@ -274,6 +273,8 @@ def entry_point():
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:
+        png_logger.info("Program shutdown gracefully.")
+    except LocalProtocolError: # race condition that occurs occasionally during shutdown. safe to ignore
         png_logger.info("Program shutdown gracefully.")
     except Exception as e: # pylint: disable=broad-exception-caught
         png_logger.exception("Error in main: %s", e)

@@ -126,7 +126,7 @@ class TestPngSettings(TestF1ConfigBase):
                 },
                 "Display" : {
                     "refresh_interval" : {
-                        "old_value" : 100,
+                        "old_value" : 200,
                         "new_value" : 1000
                     }
                 }
@@ -143,7 +143,7 @@ class TestPngSettings(TestF1ConfigBase):
                 },
                 "Display" : {
                     "refresh_interval" : {
-                        "old_value" : 100,
+                        "old_value" : 200,
                         "new_value" : 1000
                     }
                 }
@@ -159,3 +159,42 @@ class TestPngSettings(TestF1ConfigBase):
         self.assertEqual(settings1.diff(settings2), {})
         self.assertTrue(settings1.has_changed(settings3))
         self.assertEqual(settings1.diff(settings3), {"save_race_ctrl_msg" : {"old_value" : False, "new_value" : True}})
+
+    def test_no_localhost_udp_loop(self):
+        # valid: different port on localhost
+        PngSettings(
+            Network=NetworkSettings(telemetry_port=20777),
+            Forwarding=ForwardingSettings(target_1="localhost:20778"),
+        )
+
+        # valid: same port, remote host
+        PngSettings(
+            Network=NetworkSettings(telemetry_port=20777),
+            Forwarding=ForwardingSettings(target_1="192.168.1.50:20777"),
+        )
+
+        # valid: multiple targets, none looping
+        PngSettings(
+            Network=NetworkSettings(telemetry_port=20777),
+            Forwarding=ForwardingSettings(
+                target_1="localhost:3000",
+                target_2="example.com:20777",
+            ),
+        )
+
+        # invalid: localhost loop
+        with self.assertRaises(ValueError):
+            PngSettings(
+                Network=NetworkSettings(telemetry_port=20777),
+                Forwarding=ForwardingSettings(target_1="localhost:20777"),
+            )
+
+        # invalid: 127.0.0.1 loop among multiple targets
+        with self.assertRaises(ValueError):
+            PngSettings(
+                Network=NetworkSettings(telemetry_port=20777),
+                Forwarding=ForwardingSettings(
+                    target_1="example.com:3000",
+                    target_2="127.0.0.1:20777",
+                ),
+            )

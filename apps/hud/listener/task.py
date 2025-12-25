@@ -24,18 +24,41 @@
 
 import logging
 import threading
+from typing import Tuple
+
+from lib.ipc import IpcSubscriberSync
 
 from ..ui.infra import OverlaysMgr
 from .client import HudClient
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def run_hud_update_thread(
+def run_hud_update_threads(
+        port: int,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        xpub_port: int
+        ) -> Tuple[HudClient, IpcSubscriberSync]:
+    """Creates, runs and returns the HUD update thread.
+
+    Args:
+        port: Port number of the Socket.IO server.
+        logger: Logger instance.
+        overlays_mgr: Overlays manager
+        xpub_port: IPC xpub port
+
+    Returns:
+        A tuple of the Socket.IO client and the IPC subscriber instances.
+    """
+    return _run_socketio_thread(port, logger, overlays_mgr), \
+            _run_ipc_sub_thread(logger, overlays_mgr, xpub_port)
+
+def _run_socketio_thread(
         port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr
         ) -> HudClient:
-    """Creates, runs and returns the HUD update thread.
+    """Thread target to run the Socket.IO listener for HUD updates.
 
     Args:
         port: Port number of the Socket.IO server.
@@ -43,8 +66,39 @@ def run_hud_update_thread(
         overlays_mgr: Overlays manager
 
     Returns:
-        HudClient - the incoming data receiver client obj
+        The Socket.IO client instance.
     """
     client = HudClient(port, logger, overlays_mgr)
     threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
     return client
+
+def _run_ipc_sub_thread(
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        xpub_port: int
+        ) -> IpcSubscriberSync:
+    """Thread target to run the shared memory listener for HUD updates.
+
+    Args:
+        logger: Logger instance.
+        overlays_mgr: Overlays manager
+        xpub_port: IPC xpub port
+
+    Returns:
+        The IPC subscriber instance.
+    """
+
+    ipc_sub = IpcSubscriberSync(port=xpub_port, logger=logger)
+
+    @ipc_sub.route("race-table-update")
+    def _handle_race_table_update(data):
+        """Race table data update handler."""
+        overlays_mgr.race_table_update(data)
+
+    @ipc_sub.route("stream-overlay-update")
+    def _handle_stream_overlay_update(data):
+        """Stream overlay data update handler."""
+        overlays_mgr.stream_overlays_update(data)
+
+    threading.Thread(target=ipc_sub.start, daemon=True, name="IPC Subscriber").start()
+    return ipc_sub

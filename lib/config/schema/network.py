@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from collections import defaultdict
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -29,7 +30,7 @@ from pydantic import BaseModel, Field, model_validator
 from meta.meta import APP_NAME
 
 from .diff import ConfigDiffMixin
-from .utils import udp_action_field
+from .utils import PortType, port_field, udp_action_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -39,42 +40,32 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         "visible" : True,
     }
 
-    telemetry_port: int = Field(
+    telemetry_port: int = port_field(
+        "F1 UDP Telemetry Port",
         default=20777,
-        ge=0,
-        le=65535,
-        description="F1 UDP Telemetry Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
-    )
-    server_port: int = Field(
+        port_type=PortType.UDP)
+    server_port: int = port_field(
+        f"{APP_NAME} HTTP Server Port",
         default=4768,
-        ge=0,
-        le=65535,
-        description=f"{APP_NAME} HTTP Server Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
+        port_type=PortType.TCP
     )
-    save_viewer_port: int = Field(
+    save_viewer_port: int = port_field(
+        f"{APP_NAME} Save Data Viewer Port",
         default=4769,
-        ge=0,
-        le=65535,
-        description=f"{APP_NAME} Save Data Viewer Port",
-        json_schema_extra={
-            "ui": {
-                "type" : "text_box",
-                "visible": True
-            }
-        }
+        port_type=PortType.TCP
     )
+    broker_xpub_port: int = port_field(
+        "PitWall Downstream Port",
+        default=53838,
+        port_type=PortType.TCP,
+    )
+
+    broker_xsub_port: int = port_field(
+        "PitWall Upstream Port",
+        default=53835,
+        port_type=PortType.TCP,
+    )
+
     udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
     udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker UDP Action Code")
 
@@ -91,18 +82,59 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     )
 
     @model_validator(mode="after")
-    def check_ports_and_action_codes(self) -> "NetworkSettings":
+    def check_action_codes(self) -> "NetworkSettings":
         fields_map = type(self).model_fields
-
-        if self.server_port == self.save_viewer_port:
-            desc1 = fields_map["server_port"].description # pylint: disable=unsubscriptable-object
-            desc2 = fields_map["save_viewer_port"].description # pylint: disable=unsubscriptable-object
-            raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.server_port})")
 
         if (self.udp_custom_action_code and self.udp_tyre_delta_action_code) and \
                 (self.udp_tyre_delta_action_code == self.udp_custom_action_code):
             desc1 = fields_map["udp_tyre_delta_action_code"].description # pylint: disable=unsubscriptable-object
             desc2 = fields_map["udp_custom_action_code"].description # pylint: disable=unsubscriptable-object
             raise ValueError(f"{desc1} and {desc2} must not be the same (both are {self.udp_tyre_delta_action_code})")
+
+        return self
+
+    @model_validator(mode="after")
+    def check_port_conflicts(self) -> "NetworkSettings":
+        fields_map = type(self).model_fields
+
+        # port_type -> port -> [(field_name, description)]
+        used_ports: dict[str, dict[int, list[tuple[str, str]]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+
+        for field_name, field_info in fields_map.items():
+            extra = field_info.json_schema_extra or {}
+            port_type = extra.get("port_type")
+
+            # Only consider fields explicitly marked as ports
+            if not port_type:
+                continue
+
+            port_value = getattr(self, field_name)
+
+            used_ports[port_type][port_value].append(
+                (field_name, field_info.description or field_name)
+            )
+
+        conflicts = {
+            port_type: {
+                port: fields
+                for port, fields in ports.items()
+                if len(fields) > 1
+            }
+            for port_type, ports in used_ports.items()
+            if any(len(fields) > 1 for fields in ports.values())
+        }
+
+        if conflicts:
+            messages = []
+            for port_type, ports in conflicts.items():
+                for port, fields in ports.items():
+                    field_list = ", ".join(desc for _, desc in fields)
+                    messages.append(
+                        f"{port_type.upper()} port {port} is used by: {field_list}"
+                    )
+
+            raise ValueError("Port conflict detected:\n" + "\n".join(messages))
 
         return self

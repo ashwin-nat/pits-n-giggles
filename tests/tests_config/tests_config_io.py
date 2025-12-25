@@ -221,7 +221,7 @@ cert_file_path = {cert_path}
             self.assertTrue(settings.Capture.post_race_data_autosave)
             self.assertTrue(settings.Capture.post_quali_data_autosave)
             self.assertFalse(settings.Capture.post_fp_data_autosave)
-            self.assertEqual(settings.Display.refresh_interval, 100)
+            self.assertEqual(settings.Display.refresh_interval, 200)
 
             # File should have been created
             self.assertTrue(os.path.exists(nonexistent_path))
@@ -367,7 +367,7 @@ cert_file_path = {cert_path}
         self._write_ini(ini_data)
 
         config = load_config_from_ini(self.ini_path)
-        self.assertEqual(config.Display.refresh_interval, 100)  # default
+        self.assertEqual(config.Display.refresh_interval, 200)  # default
 
         self.assertTrue(os.path.exists(self.ini_path + ".invalid"))
 
@@ -579,7 +579,7 @@ class TestLoadConfigFromJson(TestConfigIO):
 
         config = load_config_from_json(self.json_path)
 
-        self.assertEqual(config.Display.refresh_interval, 100)
+        self.assertEqual(config.Display.refresh_interval, 200)
 
         backup = self.json_path + ".invalid"
         self.assertTrue(os.path.exists(backup))
@@ -592,7 +592,7 @@ class TestLoadConfigFromJson(TestConfigIO):
         config = load_config_from_json(self.json_path)
 
         # Check that defaults are used
-        self.assertEqual(config.Display.refresh_interval, 100)
+        self.assertEqual(config.Display.refresh_interval, 200)
 
         # Check that backup file was created
         backup = self.json_path + ".invalid"

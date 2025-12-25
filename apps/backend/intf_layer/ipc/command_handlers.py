@@ -50,10 +50,10 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
     return {'status': 'success'}
 
-async def handleHeartbeatMissed(count: int) -> dict:
+async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
-    print(f"[BACKEND] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
     os._exit(PNG_LOST_CONN_TO_PARENT)
 
 async def handleUdpActionCodeChange(

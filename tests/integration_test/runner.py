@@ -23,7 +23,7 @@ from aiohttp import ClientSession, TCPConnector
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_json
-from lib.ipc import IpcParent, get_free_tcp_port
+from lib.ipc import IpcClientSync, get_free_tcp_port
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
 
@@ -57,7 +57,7 @@ def get_cached_files() -> list[str]:
 def send_ipc_shutdown(port: int) -> bool:
     """Send shutdown command to the child process via IPC."""
     try:
-        rsp = IpcParent(port).shutdown_child("Integration test complete")
+        rsp = IpcClientSync(port).shutdown_child("Integration test complete")
         return rsp.get("status") == "success"
     except Exception as e:
         logger.test_log(f"IPC shutdown failed: {e}")
@@ -115,7 +115,7 @@ def send_heartbeat(
 
     while not stop_event.is_set():
         try:
-            rsp = IpcParent(port).heartbeat()
+            rsp = IpcClientSync(port).heartbeat()
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0
@@ -198,13 +198,14 @@ def fetch_test_files() -> list[str]:
         sys.exit(1)
 
 
-def start_app(port: int, coverage_enabled: bool) -> subprocess.Popen:
+def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess.Popen:
     """Start the application process."""
     app_cmd_base = [
         "-m", "apps.launcher",
         "--ipc-port", str(port),
         "--debug",
-        "--replay-server"
+        "--replay-server",
+        "--config-file", config_file
     ]
     if coverage_enabled:
         app_cmd = [
@@ -298,7 +299,7 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-def main(telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
+def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
     """Main test execution function."""
     global app_process, exit_event, ipc_port
 
@@ -309,7 +310,7 @@ def main(telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool
 
     # Start the app
     ipc_port = get_free_tcp_port()
-    app_process = start_app(ipc_port, coverage_enabled)
+    app_process = start_app(config_file, ipc_port, coverage_enabled)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
 
     # Start heartbeat thread
@@ -378,13 +379,15 @@ if __name__ == "__main__":
     if not IS_WINDOWS:
         signal.signal(signal.SIGTERM, cleanup_and_exit)
 
-    settings = load_config_from_json("integration_test_cfg.json")
+    config_file = "integration_test_cfg.json"
+    settings = load_config_from_json(config_file)
     coverage_enabled = "--coverage" in sys.argv
 
     start_time = time.perf_counter()
 
     try:
         success = main(
+            config_file=config_file,
             telemetry_port=settings.Network.telemetry_port,
             http_port=settings.Network.server_port,
             proto=settings.HTTPS.proto,

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import IpcClientSync
 
 from .base_mgr import PngAppMgrBase
 
@@ -57,6 +57,7 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         extra_args = []
+        extra_args.append("--run-ipc-server")
         if debug_mode:
             extra_args.append("--debug")
         if replay_server:
@@ -71,6 +72,7 @@ class BackendAppMgr(PngAppMgrBase):
             short_name="CORE",
             settings=settings,
             start_by_default=True,
+            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -145,6 +147,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "telemetry_port",
                 "server_port",
                 "wdt_interval_sec",
+                "broker_xsub_port",
             ],
             "Capture" : [],
             "Display" : [
@@ -187,7 +190,7 @@ class BackendAppMgr(PngAppMgrBase):
     def manual_save(self):
         """Send a manual save command to the backend."""
         self.debug_log("Sending manual save command to backend...")
-        ipc_client = IpcParent(self.ipc_port)
+        ipc_client = IpcClientSync(self.ipc_port)
         rsp = ipc_client.request("manual-save", {})
 
         status = rsp["status"]
@@ -208,7 +211,7 @@ class BackendAppMgr(PngAppMgrBase):
     def send_udp_action_code_change(self, action_code_field: str, value: int):
         """Send a UDP action code change command to the backend."""
         self.debug_log(f"Sending UDP action code change for {action_code_field} to backend...")
-        ipc_client = IpcParent(self.ipc_port)
+        ipc_client = IpcClientSync(self.ipc_port)
         rsp = ipc_client.request("udp-action-code-change", {"action_code_field": action_code_field, "value": value})
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to change UDP action code: {rsp}")

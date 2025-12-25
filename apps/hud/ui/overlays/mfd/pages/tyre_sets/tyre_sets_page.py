@@ -40,7 +40,7 @@ class TyreSetsPage(BasePage):
 
     KEY = "tyre_sets"
 
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     MONO_FONT_FACE = "B612 Mono"
     FONT_SIZE_VALUE = 16
     FONT_SIZE_UNIT = 9
@@ -75,11 +75,11 @@ class TyreSetsPage(BasePage):
         self._init_icons()
         self._build_ui()
         self._init_event_handlers()
-        self.logger.debug(f"{self.overlay_id} | Tyre delta page initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Tyre delta page initialized")
 
     def _init_icons(self):
         """Load tyre icons."""
-        self.logger.debug(f"{self.overlay_id} | Loading tyre icons")
+        self.logger.debug(f"{self.OVERLAY_ID} | Loading tyre icons")
         self.tyre_icons = load_tyre_icons_dict(
             debug_log_printer=self.logger.debug,
             error_log_printer=self.logger.error

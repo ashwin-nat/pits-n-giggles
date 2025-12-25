@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import IpcClientSync
 
 from .base_mgr import PngAppMgrBase
 
@@ -67,6 +67,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
             short_name="SAVE",
             settings=settings,
             start_by_default=True,
+            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -104,7 +105,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.debug_log(f"Selected file: {file_path}")
 
             if self.process:
-                ipc_client = IpcParent(self.ipc_port)
+                ipc_client = IpcClientSync(self.ipc_port)
                 rsp = ipc_client.request("open-file", {"file-path": file_path})
 
                 if rsp["status"] != "error":

@@ -24,12 +24,12 @@
 
 import logging
 
-from lib.ipc import IpcSubscriber
+from lib.ipc import SocketioClient
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class HudClient(IpcSubscriber):
+class HudClient(SocketioClient):
     """Socket.IO client to receive HUD data updates."""
     def __init__(self, port: int, logger: logging.Logger, overlays_mgr: OverlaysMgr):
         """Args:
@@ -58,12 +58,6 @@ class HudClient(IpcSubscriber):
             """Post disconnection callback."""
             self.logger.info("[HudClient] Disconnected")
 
-        # custom event handler
-        @self.on('race-table-update')
-        def handle_race_table(data):
-            """Race table data update handler."""
-            self.m_overlays_mgr.race_table_update(data)
-
         @self.on('hud-toggle-notification')
         def handle_hud_toggle_notification(data):
             """HUD toggle notification handler."""
@@ -79,8 +73,3 @@ class HudClient(IpcSubscriber):
             """Cycle MFD notification handler."""
             self.logger.debug("[HudClient] Received Cycle MFD notification")
             self.m_overlays_mgr.next_page()
-
-        @self.on('stream-overlay-update')
-        def handle_stream_overlay_update(data):
-            """Stream overlay data update handler."""
-            self.m_overlays_mgr.stream_overlays_update(data)

@@ -26,6 +26,7 @@
 PNG_ERROR_CODE_HTTP_PORT_IN_USE = 100
 PNG_LOST_CONN_TO_PARENT = 101
 PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE = 102
+PNG_ERROR_CODE_UNSUPPORTED_OS = 103
 PNG_ERROR_CODE_UNKNOWN = 999
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------

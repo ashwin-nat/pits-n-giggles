@@ -21,6 +21,7 @@ source =
     lib
     apps/backend
     apps/hud
+    apps/broker
 
 sigterm = True
 

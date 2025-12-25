@@ -25,10 +25,12 @@
 
 from .tests_parent_child import TestIpcParentChild
 from .tests_subscriber import TestIpcSubscriber
+from .tests_pubsub import TestIpcPubSub
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestIpcParentChild",
     "TestIpcSubscriber",
+    "TestIpcPubSub",
 ]

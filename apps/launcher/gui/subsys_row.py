@@ -69,7 +69,7 @@ class SubsystemCard(QFrame):
 
         # Name
         name_label = QLabel(self.manager.display_name.upper())
-        name_label.setFont(QFont("Formula1 Display", 11, QFont.Weight.Bold))
+        name_label.setFont(QFont("Formula1", 11, QFont.Weight.Bold))
         name_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
         header_layout.addWidget(name_label)
 
@@ -77,7 +77,7 @@ class SubsystemCard(QFrame):
 
         # Status badge
         self.status_label = QLabel(self.manager.status)
-        self.status_label.setFont(QFont("Formula1 Display", 9))
+        self.status_label.setFont(QFont("Formula1", 9))
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setFixedHeight(22)
         self.status_label.setStyleSheet("""
@@ -98,6 +98,9 @@ class SubsystemCard(QFrame):
         for button in self.manager.get_buttons():
             button.setFixedSize(32, 32)
             buttons_layout.addWidget(button)
+
+            # Disable buttons at start. post_start should enable them
+            self.manager.set_button_state(button, False)
 
         buttons_layout.addStretch()
         layout.addLayout(buttons_layout)
@@ -138,6 +141,10 @@ class SubsystemCard(QFrame):
             'Timed out': {
                 'bg': '#3d2a2a',
                 'color': '#f48771'
+            },
+            'Unsupported': {
+                'bg': '#2a2a3d',
+                'color': '#9cdcfe'
             }
         }
 

@@ -46,8 +46,10 @@ Inits and runs the overlay windows, while providing means of communicating with 
 
 - Command Registry
 - Request Registry
-- Shared overlay behavior
+- Shared overlay behavior virtual functions
 - Ability to emit responses upward via `response_signal`
+
+This is derived from and the virtual functions are implemented by `BaseOverlayWidget` and `BaseOverlayQML` accordingly
 
 ---
 

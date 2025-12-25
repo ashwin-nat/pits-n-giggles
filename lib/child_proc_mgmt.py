@@ -28,8 +28,10 @@ from typing import Optional
 # -------------------------------------- CONSTANTS -----------------------------------------------------------------------
 
 _PID_TAG_PREFIX = "<<PNG_LAUNCHER_CHILD_PID:"
-_PID_TAG_REGEX = re.compile(r"<<PNG_LAUNCHER_CHILD_PID:(\d+)>>")
+_PID_TAG_REGEX = re.compile(fr"{_PID_TAG_PREFIX}(\d+)>>")
 _INIT_COMPLETE_STR = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
+_IPC_PORT_TAG_PREFIX = "<<PNG_LAUNCHER_IPC_PORT:"
+_IPC_PORT_TAG_REGEX = re.compile(fr"{_IPC_PORT_TAG_PREFIX}(\d+)>>")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -37,7 +39,7 @@ def report_pid_from_child():
     """Call this in the child process to print its actual PID to stdout."""
     print(f"{_PID_TAG_PREFIX}{os.getpid()}>>", flush=True)
 
-def extract_pid_from_line(line: str) ->  Optional[int]:
+def extract_pid_from_line(line: str) -> Optional[int]:
     """
     Call this in the parent process to parse a PID from a line of stdout.
 
@@ -48,6 +50,22 @@ def extract_pid_from_line(line: str) ->  Optional[int]:
         The PID as an int if found, otherwise None.
     """
     match = _PID_TAG_REGEX.search(line)
+    return int(match.group(1)) if match else None
+
+def report_ipc_port_from_child(port: int) -> None:
+    """
+    Call this in the child process to report the IPC port it is listening on.
+
+    Args:
+        port: The IPC port number to report.
+    """
+    print(f"{_IPC_PORT_TAG_PREFIX}{port}>>", flush=True)
+
+def extract_ipc_port_from_line(line: str) -> Optional[int]:
+    """
+    Parse IPC port from a line of stdout.
+    """
+    match = _IPC_PORT_TAG_REGEX.search(line)
     return int(match.group(1)) if match else None
 
 def notify_parent_init_complete() -> None:
