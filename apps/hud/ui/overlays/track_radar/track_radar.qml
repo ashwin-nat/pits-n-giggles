@@ -169,7 +169,7 @@ Window {
                             ctx.fillStyle = gradient;
                             ctx.beginPath();
                             ctx.moveTo(centerX, centerY);
-                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleTopRight, angleBottomRight, true);  // Changed to counterclockwise
+                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleTopRight, angleBottomRight, false);  // clockwise
                             ctx.lineTo(centerX, centerY);
                             ctx.fill();
                         }
@@ -220,7 +220,7 @@ Window {
                             ctx.fillStyle = gradient;
                             ctx.beginPath();
                             ctx.moveTo(centerX, centerY);
-                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleTopLeft, angleBottomLeft, true);  // Changed to counterclockwise
+                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleBottomLeft, angleTopLeft, false);  // clockwise
                             ctx.lineTo(centerX, centerY);
                             ctx.fill();
                         }
