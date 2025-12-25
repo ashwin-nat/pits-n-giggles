@@ -302,7 +302,7 @@ class LapTimerOverlay(BaseOverlayWidget):
         if is_race_type_session(session_type):
             # In races, ignore driver_status completely, only consider sc status
             if self._is_safety_car(sc_status):
-                self._update_curr_lap_str(sc_status)
+                self._update_curr_lap_str("VSC" if sc_status == "VIRTUAL_SAFETY_CAR" else "SC")
             else:
                 self._update_curr_lap(curr_lap["lap-time-ms"])
 
