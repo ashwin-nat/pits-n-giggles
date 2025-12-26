@@ -41,7 +41,7 @@ class TyreInfoPage(BasePage):
     """Modern tyre wear and prediction display for MFD."""
 
     KEY = "tyre_info"
-    FONT_FACE_TEXT = "Formula1 Display"
+    FONT_FACE_TEXT = "Formula1"
     FONT_FACE_NUMBERS = "B612 Mono"
     FONT_SIZE = 13
     FONT_SIZE_HYPHEN = 10
@@ -63,7 +63,7 @@ class TyreInfoPage(BasePage):
 
         self._init_icons()
         self._build_ui()
-        self.logger.debug(f"{self.overlay_id} | Tyre info widget initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Tyre info widget initialized")
         self._init_event_handlers()
 
     def _init_font_metrics(self):
@@ -98,9 +98,9 @@ class TyreInfoPage(BasePage):
             debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         for name, icon in self.tyre_icon_mappings.items():
             if icon.isNull():
-                self.logger.warning(f"{self.overlay_id} | Failed to load tyre icon: {name}")
+                self.logger.warning(f"{self.OVERLAY_ID} | Failed to load tyre icon: {name}")
             else:
-                self.logger.debug(f"{self.overlay_id} | Loaded tyre icon successfully: {name}")
+                self.logger.debug(f"{self.OVERLAY_ID} | Loaded tyre icon successfully: {name}")
 
     def _build_ui(self) -> None:
         """Build the complete UI structure."""
@@ -600,30 +600,30 @@ class TyreInfoPage(BasePage):
 
         # Add predictions if available
         if predictions and len(predictions) > 0:
-            end_lap = pit_lap or predictions[-1]["lap-number"]
-            mid_lap = curr_lap + (end_lap - curr_lap) // 2
+            end_lap = predictions[-1]["lap-number"]
 
-            pred_mid = self._find_closest_prediction(predictions, mid_lap)
-            pred_end = self._find_closest_prediction(predictions, end_lap)
+            if pit_lap:
+                lap_sequence = [curr_lap, pit_lap, end_lap]
+            else:
+                mid_lap = curr_lap + (end_lap - curr_lap) // 2
+                lap_sequence = [curr_lap, mid_lap, end_lap]
 
-            # Only add mid prediction if it's different from end
-            if pred_mid and pred_end and pred_mid["lap-number"] != pred_end["lap-number"]:
+            # Skip curr lap (already added)
+            for lap in lap_sequence[1:]:
+                pred = self._find_closest_prediction(predictions, lap)
+                if not pred:
+                    continue
+
+                label = f"{pred['lap-number']}"
+                if pit_lap and lap == pit_lap:
+                    label += " (Pit)"
+
                 rows_data.append({
-                    'label': f'{pred_mid["lap-number"]}',
-                    'fl': pred_mid.get('front-left-wear', 0.0),
-                    'fr': pred_mid.get('front-right-wear', 0.0),
-                    'rl': pred_mid.get('rear-left-wear', 0.0),
-                    'rr': pred_mid.get('rear-right-wear', 0.0),
-                })
-
-            if pred_end:
-                label_suffix = " (Pit)" if pit_lap else ""
-                rows_data.append({
-                    'label': f'{pred_end["lap-number"]}{label_suffix}',
-                    'fl': pred_end.get('front-left-wear', 0.0),
-                    'fr': pred_end.get('front-right-wear', 0.0),
-                    'rl': pred_end.get('rear-left-wear', 0.0),
-                    'rr': pred_end.get('rear-right-wear', 0.0),
+                    'label': label,
+                    'fl': pred.get('front-left-wear', 0.0),
+                    'fr': pred.get('front-right-wear', 0.0),
+                    'rl': pred.get('rear-left-wear', 0.0),
+                    'rr': pred.get('rear-right-wear', 0.0),
                 })
 
         # Update table

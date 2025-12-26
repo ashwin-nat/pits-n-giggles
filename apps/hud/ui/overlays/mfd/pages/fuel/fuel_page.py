@@ -41,7 +41,7 @@ class FuelInfoPage(BasePage):
 
     KEY = "fuel_info"
 
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     SURPLUS_FONT_FACE = "B612 Mono"
     FONT_SIZE_VALUE = 16
     FONT_SIZE_UNIT = 11
@@ -89,7 +89,7 @@ class FuelInfoPage(BasePage):
 
         self._build_ui()
         self._init_event_handlers()
-        self.logger.debug(f"{self.overlay_id} | Fuel info widget initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Fuel info widget initialized")
 
     # ---------------------------------------------------------
     # UI BUILD

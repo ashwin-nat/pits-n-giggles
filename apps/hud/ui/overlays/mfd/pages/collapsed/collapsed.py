@@ -38,7 +38,7 @@ class CollapsedPage(BasePage):
     """Minimal page shown when MFD is collapsed."""
 
     KEY = "collapsed"
-    FONT_FACE = "Formula1 Display"
+    FONT_FACE = "Formula1"
     FONT_SIZE = 13
 
     def __init__(self, parent: BasePage, logger: logging.Logger, scale_factor: float):

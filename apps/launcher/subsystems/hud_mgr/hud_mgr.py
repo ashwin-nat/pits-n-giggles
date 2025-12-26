@@ -31,7 +31,7 @@ from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import HudSettings, PngSettings
-from lib.ipc import IpcParent
+from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
 from .popup import OverlaysAdjustPopup, SliderItem
@@ -75,6 +75,7 @@ class HudAppMgr(PngAppMgrBase):
             display_name="HUD",
             short_name="HUD",
             start_by_default=(self.supported and self.enabled),
+            should_display=True,
             window=window,
             settings=settings,
             args=self.args,
@@ -120,7 +121,7 @@ class HudAppMgr(PngAppMgrBase):
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending hide/show command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(
+        rsp = IpcClientSync(self.ipc_port).request(
             command="toggle-overlays-visibility", args={}
         )
         self.info_log(str(rsp))
@@ -133,7 +134,7 @@ class HudAppMgr(PngAppMgrBase):
 
         self.debug_log("Toggling HUD lock state...")
         self.set_button_state(self.lock_button, False)
-        rsp = IpcParent(self.ipc_port).request(command="lock-widgets", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="lock-widgets", args={
             "old-value": self.locked,
             "new-value": not self.locked,
         })
@@ -154,13 +155,13 @@ class HudAppMgr(PngAppMgrBase):
     def reset_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending reset command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(command="reset-overlays", args={})
+        rsp = IpcClientSync(self.ipc_port).request(command="reset-overlays", args={})
         self.info_log(str(rsp))
 
     def next_page_callback(self):
         """Open the dashboard viewer in a web browser."""
         self.info_log("Sending next page command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(
+        rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
         )
         self.info_log(str(rsp))
@@ -171,6 +172,11 @@ class HudAppMgr(PngAppMgrBase):
         if not self.enabled:
             self.debug_log(f"{self.display_name} is not enabled.")
             self._update_status("Disabled")
+            return
+
+        if not self.supported:
+            self.debug_log(f"{self.display_name} is not supported.")
+            self._update_status("Unsupported")
             return
 
         # Run the standard start
@@ -263,7 +269,7 @@ class HudAppMgr(PngAppMgrBase):
             opacity (int): New overlays opacity
         """
         self.debug_log("Sending set-overlays-opacity command to HUD...")
-        rsp = IpcParent(self.ipc_port).request(command="set-overlays-opacity", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="set-overlays-opacity", args={
             "opacity": opacity,
         })
         if not rsp or rsp.get("status") != "success":
@@ -316,6 +322,12 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_settings",
                 "use_windowed_overlays",
             ],
+            "Network": [
+                "broker_xpub_port",
+            ],
+            "Display" : [
+                "refresh_interval",
+            ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")
@@ -332,7 +344,7 @@ class HudAppMgr(PngAppMgrBase):
             data (Dict[str, Any]): UI scale data
         """
         self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
-        rsp = IpcParent(self.ipc_port).request(command="set-ui-scale", args={
+        rsp = IpcClientSync(self.ipc_port).request(command="set-ui-scale", args={
             "oid": oid,
             "scale_factor": data["new_value"]
         })
@@ -368,6 +380,27 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
             ),
+            # SliderItem(
+            #     key="track_map",
+            #     label="Track Map Scale",
+            #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
+            #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
+            #     value=int(hud_settings.track_map_ui_scale * 100),
+            # ),
+            SliderItem(
+                key="input_telemetry",
+                label="Input Telemetry Scale",
+                min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.input_overlay_ui_scale * 100),
+            ),
+            SliderItem(
+                key="track_radar",
+                label="Track Radar Scale",
+                min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.track_radar_overlay_ui_scale * 100),
+            ),
 
             # Opacity at the bottom
             SliderItem(
@@ -394,11 +427,17 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
         new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
+        # new_settings.HUD.track_map_ui_scale = values["track_map"] / 100.0
+        new_settings.HUD.input_overlay_ui_scale = values["input_telemetry"] / 100.0
+        new_settings.HUD.track_radar_overlay_ui_scale = values["track_radar"] / 100.0
 
         diff = self.curr_settings.HUD.diff(new_settings.HUD, [
             "lap_timer_ui_scale",
             "timing_tower_ui_scale",
             "mfd_ui_scale",
+            "track_map_ui_scale",
+            "input_overlay_ui_scale",
+            "track_radar_overlay_ui_scale",
         ])
         self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
 
@@ -411,6 +450,9 @@ class HudAppMgr(PngAppMgrBase):
                 "lap_timer_ui_scale": "lap_timer",
                 "timing_tower_ui_scale": "timing_tower",
                 "mfd_ui_scale": "mfd",
+                "track_map_ui_scale": "track_map",
+                "input_overlay_ui_scale": "input_telemetry",
+                "track_radar_overlay_ui_scale": "track_radar",
             }
             for key, data in diff.items():
                 oid = key_to_oid[key]

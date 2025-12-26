@@ -23,15 +23,21 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base import BaseOverlay
+from .input_telemetry import InputTelemetryOverlay
 from .lap_timer import LapTimerOverlay
 from .mfd import MfdOverlay
 from .timing_tower import TimingTowerOverlay
+from .track_map import TrackMapOverlay
+from .track_radar import TrackRadarOverlay
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "BaseOverlay",
+    "InputTelemetryOverlay",
     "LapTimerOverlay",
-    "TimingTowerOverlay",
     "MfdOverlay",
+    "TimingTowerOverlay",
+    "TrackMapOverlay",
+    "TrackRadarOverlay",
 ]

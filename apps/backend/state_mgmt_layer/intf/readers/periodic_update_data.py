@@ -22,7 +22,6 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import logging
 from typing import Any, Dict
 
 from apps.backend.state_mgmt_layer.session_state import SessionState
@@ -35,11 +34,10 @@ from .helpers import DriversListRsp
 class PeriodicUpdateData(BaseAPI):
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
-    def __init__(self, logger: logging.Logger, session_state: SessionState) -> None:
+    def __init__(self, session_state: SessionState) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
         Args:
-            logger (logging.Logger): Handle to the logger
             session_state (SessionState): Handle to the session state data structure
         """
 
@@ -47,7 +45,6 @@ class PeriodicUpdateData(BaseAPI):
         self.m_wdt_status = session_state.m_connected_to_sim
         track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(
-            logger=logger,
             session_state=session_state,
             is_spectator_mode=self.m_session_info.m_is_spectating,
             track_length=track_length,

@@ -72,7 +72,8 @@ hiddenimports = (
     collect_submodules("apps.launcher") +
     collect_submodules("apps.backend") +
     collect_submodules("apps.save_viewer") +
-    collect_submodules("apps.hud")
+    collect_submodules("apps.hud") +
+    collect_submodules("apps.broker")
 )
 
 datas = [
@@ -142,6 +143,10 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Bold.ttf"), "assets/fonts"),
     (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Regular.ttf"), "assets/fonts"),
 
+    # QML
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "track_radar", "track_radar.qml"), "apps/hud/ui/overlays/track_radar"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "input_telemetry", "input_telemetry.qml"), "apps/hud/ui/overlays/input_telemetry"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "timing_tower", "timing_tower.qml"), "apps/hud/ui/overlays/timing_tower"),
 ]
 
 # --------------------------------------------------------------------------------------------------

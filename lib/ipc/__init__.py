@@ -22,19 +22,25 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .async_child import IpcChildAsync
-from .parent import IpcParent
-from .subscriber import IpcSubscriber
-from .sync_child import IpcChildSync
+from .pubsub.broker import IpcPubSubBroker
+from .pubsub.publisher import IpcPublisherAsync
+from .pubsub.subscriber import IpcSubscriberSync
+from .reqrep.async_server import IpcServerAsync
+from .reqrep.sync_client import IpcClientSync
+from .reqrep.sync_server import IpcServerSync
+from .socketio_client import SocketioClient
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'IpcParent',
-    'IpcChildAsync',
-    'IpcChildSync',
-    'IpcSubscriber',
+    'IpcClientSync',
+    'IpcServerAsync',
+    'IpcServerSync',
+    'SocketioClient',
+    'IpcPublisherAsync',
+    'IpcSubscriberSync',
+    'IpcPubSubBroker',
 
     'get_free_tcp_port',
 ]

@@ -25,19 +25,22 @@
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.overlays import (LapTimerOverlay, MfdOverlay,
-                                  TimingTowerOverlay)
+from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
+                                  LapTimerOverlay, MfdOverlay,
+                                  TimingTowerOverlay, TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.file_path import resolve_user_file
+from lib.rate_limiter import RateLimiter
 
 from .config import OverlaysConfig
+from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -54,6 +57,18 @@ _DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
     MfdOverlay.OVERLAY_ID: OverlaysConfig(
         x=10,
         y=355,
+    ),
+    # TrackMapOverlay.OVERLAY_ID: OverlaysConfig(
+    #     x=10,
+    #     y=600,
+    # ),
+    InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
+        x=10,
+        y=600,
+    ),
+    TrackRadarOverlay.OVERLAY_ID: OverlaysConfig(
+        x=40,
+        y=600,
     ),
 }
 
@@ -80,47 +95,77 @@ class OverlaysMgr:
         self.debug_mode = debug
         self._init_config()
         self.running = False
+        self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
 
-        if settings.HUD.show_lap_timer:
-            self.window_manager.register_overlay(LapTimerOverlay.OVERLAY_ID, LapTimerOverlay(
-                self.config[LapTimerOverlay.OVERLAY_ID],
-                self.logger,
-                locked=True,
-                opacity=settings.HUD.overlays_opacity,
-                scale_factor=settings.HUD.lap_timer_ui_scale,
-                windowed_overlay=settings.HUD.use_windowed_overlays
-            ))
-        else:
-            self.logger.debug("Lap timer overlay is disabled")
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_lap_timer,
+            overlay_cls=LapTimerOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.lap_timer_ui_scale,
+        )
 
-        if settings.HUD.show_timing_tower:
-            self.window_manager.register_overlay(TimingTowerOverlay.OVERLAY_ID, TimingTowerOverlay(
-                self.config[TimingTowerOverlay.OVERLAY_ID],
-                self.logger,
-                locked=True,
-                opacity=settings.HUD.overlays_opacity,
-                scale_factor=settings.HUD.timing_tower_ui_scale,
-                num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
-                windowed_overlay=settings.HUD.use_windowed_overlays
-            ))
-        else:
-            self.logger.debug("Timing tower overlay is disabled")
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_timing_tower,
+            overlay_cls=TimingTowerOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.timing_tower_ui_scale,
+            num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_input_overlay,
+            overlay_cls=InputTelemetryOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.input_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
+        )
+
+
+        # if settings.HUD.show_track_map:
+        #     self.window_manager.register_overlay(TrackMapOverlay.OVERLAY_ID, TrackMapOverlay(
+        #         self.config[TrackMapOverlay.OVERLAY_ID],
+        #         self.logger,
+        #         locked=True,
+        #         opacity=settings.HUD.overlays_opacity,
+        #         scale_factor=settings.HUD.track_map_ui_scale,
+        #         windowed_overlay=settings.HUD.use_windowed_overlays
+        #     ))
+        # else:
+        #     self.logger.debug("Track map overlay is disabled")
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_track_radar_overlay,
+            overlay_cls=TrackRadarOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
+        )
 
         if settings.HUD.show_mfd:
-            self.window_manager.register_overlay(MfdOverlay.OVERLAY_ID, MfdOverlay(
-                self.config[MfdOverlay.OVERLAY_ID],
-                settings,
-                self.logger,
-                locked=True,
-                opacity=settings.HUD.overlays_opacity,
-                scale_factor=settings.HUD.mfd_ui_scale,
-                windowed_overlay=settings.HUD.use_windowed_overlays
-            ))
+            self.window_manager.register_overlay(
+                MfdOverlay.OVERLAY_ID,
+                MfdOverlay(
+                    self.config[MfdOverlay.OVERLAY_ID],
+                    settings,
+                    self.logger,
+                    locked=True,
+                    opacity=settings.HUD.overlays_opacity,
+                    scale_factor=settings.HUD.mfd_ui_scale,
+                    windowed_overlay=settings.HUD.use_windowed_overlays
+                )
+            )
         else:
             self.logger.debug("MFD overlay is disabled")
+
+        self.logger.debug("Overlays manager initialized")
 
     def run(self):
         """Start the overlays manager"""
@@ -176,7 +221,10 @@ class OverlaysMgr:
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'stream_overlay_update', data)
+        self._input_telemetry_update(data)
+        self._motion_update(data)
+        if self.rate_limiter.allows("stream-overlay-update"):
+            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
@@ -258,3 +306,42 @@ class OverlaysMgr:
         if not ret:
             return None
         return OverlaysConfig.fromJSON(ret)
+
+    def _register_overlay_if_enabled(
+        self,
+        *,
+        enabled: bool,
+        overlay_cls: BaseOverlay,
+        opacity: float,
+        windowed_overlay: bool,
+        **overlay_kwargs
+    ):
+        if not enabled:
+            self.logger.debug(f"{overlay_cls.OVERLAY_ID} overlay is disabled")
+            return
+
+        self.window_manager.register_overlay(
+            overlay_cls.OVERLAY_ID,
+            overlay_cls(
+                self.config[overlay_cls.OVERLAY_ID],
+                self.logger,
+                locked=True,
+                opacity=opacity,
+                windowed_overlay=windowed_overlay,
+                **overlay_kwargs
+            )
+        )
+
+    def _input_telemetry_update(self, data: Dict[str, Any]):
+        """Send input telemetry data to input telemetry overlay."""
+        self.window_manager.unicast_high_freq_data(
+            InputTelemetryOverlay.OVERLAY_ID,
+            InputTelemetryData.from_json(data)
+        )
+
+    def _motion_update(self, data: Dict[str, Any]):
+        """Send motion data to motion overlay."""
+        self.window_manager.unicast_high_freq_data(
+            TrackRadarOverlay.OVERLAY_ID,
+            LiveSessionMotionInfo.from_json(data)
+        )

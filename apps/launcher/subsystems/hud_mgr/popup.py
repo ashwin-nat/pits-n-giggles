@@ -84,7 +84,7 @@ class OverlaysAdjustPopup(QWidget):
         self.confirm_btn = QPushButton("Confirm")
         self.confirm_btn.clicked.connect(self.on_confirm)
         self.confirm_btn.setFixedHeight(36)
-        self.confirm_btn.setFont(QFont("Formula1 Display"))
+        self.confirm_btn.setFont(QFont("Formula1"))
 
         # ---- Styles (updated) ----
         self.setStyleSheet("""
@@ -104,7 +104,7 @@ class OverlaysAdjustPopup(QWidget):
             QLabel {
                 color: white;
                 font-size: 14px;
-                font-family: "Formula1 Display";
+                font-family: "Formula1";
                 background: transparent;
             }
 
@@ -166,7 +166,7 @@ class OverlaysAdjustPopup(QWidget):
             value_label = QLabel(str(item.value), row_widget)
             value_label.setMinimumWidth(40)
             value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            value_label.setFont(QFont("Formula1 Display"))
+            value_label.setFont(QFont("Formula1"))
 
             slider.valueChanged.connect(lambda v, lbl=value_label: lbl.setText(str(v)))
 

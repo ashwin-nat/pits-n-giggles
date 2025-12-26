@@ -325,7 +325,7 @@ class WeatherForecastPage(BasePage):
         self._build_ui()
         self._init_event_handlers()
 
-        self.logger.debug(f"{self.overlay_id} | Weather forecast widget initialized")
+        self.logger.debug(f"{self.OVERLAY_ID} | Weather forecast widget initialized")
 
     # ----------------------------------------------------------------------
     # Properties for scaled sizes

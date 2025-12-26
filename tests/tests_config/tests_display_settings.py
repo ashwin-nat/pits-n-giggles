@@ -41,7 +41,7 @@ class TestDisplaySettings(TestF1ConfigBase):
     def test_default_values(self):
         """Test default values"""
         settings = DisplaySettings()
-        self.assertEqual(settings.refresh_interval, 100)
+        self.assertEqual(settings.refresh_interval, 200)
         self.assertFalse(settings.disable_browser_autoload)
 
     def test_refresh_interval_validation(self):

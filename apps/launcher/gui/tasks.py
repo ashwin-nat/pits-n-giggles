@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class StopTask(QRunnable):
+class StopSubsystemTask(QRunnable):
     def __init__(self, subsystem: PngAppMgrBase, reason: str):
         super().__init__()
         self.subsystem = subsystem

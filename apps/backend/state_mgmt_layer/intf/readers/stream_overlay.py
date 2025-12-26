@@ -22,7 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.session_state import SessionState
@@ -65,12 +65,12 @@ class StreamOverlayData(BaseAPI):
         self.m_fastest_s1_ms            = session_state.m_fastest_s1_ms
         self.m_fastest_s2_ms            = session_state.m_fastest_s2_ms
         self.m_fastest_s3_ms            = session_state.m_fastest_s3_ms
-        player_index = session_state.m_session_info.m_spectator_car_index \
+        self.m_ref_index = session_state.m_session_info.m_spectator_car_index \
                         if session_state.m_session_info.m_is_spectating \
                         else session_state.m_player_index
         player_data = (
-            session_state.m_driver_data[player_index]
-            if player_index is not None and 0 <= player_index < len(session_state.m_driver_data)
+            session_state.m_driver_data[self.m_ref_index]
+            if self.m_ref_index is not None and 0 <= self.m_ref_index < len(session_state.m_driver_data)
             else None
         )
         player_position = player_data.m_driver_info.position if player_data else None
@@ -83,6 +83,7 @@ class StreamOverlayData(BaseAPI):
         self.__initPenalties(player_data)
         self.__initGForce(player_data)
         self.__initPaceComparison(player_data, prev_data, next_data)
+        self.__initMotion(session_state.m_driver_data)
 
     def __initCarTelemetry(self, player_data: Optional[DataPerDriver]) -> None:
         """Prepares the car telemetry data.
@@ -91,14 +92,21 @@ class StreamOverlayData(BaseAPI):
             player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_copies.m_packet_car_telemetry:
-            self.m_throttle = player_data.m_packet_copies.m_packet_car_telemetry.m_throttle
-            self.m_brake    = player_data.m_packet_copies.m_packet_car_telemetry.m_brake
-            self.m_steering = player_data.m_packet_copies.m_packet_car_telemetry.m_steer
-        else:
-            self.m_throttle = 0
-            self.m_brake    = 0
-            self.m_steering = 0
+        fields = {
+            "throttle": ("m_throttle", 100),
+            "brake": ("m_brake", 100),
+            "steering": ("m_steer", 100),
+            "rev-lights-percent": ("m_revLightsPercent", 1),   # no *100
+        }
+
+        telemetry = None
+        if player_data:
+            telemetry = player_data.m_packet_copies.m_packet_car_telemetry
+
+        self.m_car_telemetry = {
+            key: (getattr(telemetry, attr) * scale if telemetry else 0)
+            for key, (attr, scale) in fields.items()
+        }
 
     def __initLapTimes(self, player_data: Optional[DataPerDriver]) -> None:
         """Prepares the player's lap history data.
@@ -222,6 +230,35 @@ class StreamOverlayData(BaseAPI):
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["prev"], prev_data)
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["next"], next_data)
 
+    def __initMotion(self, drivers_data: List[DataPerDriver]) -> None:
+        """Prepares and updates the motion/position data of all cars"""
+        self.m_motion_json = [
+            {
+                "name": driver.m_driver_info.name,
+                "team": str(driver.m_driver_info.team),
+                "track-position": driver.m_driver_info.position,
+                "index": driver.m_index,
+                "motion": (
+                    driver.m_packet_copies.m_packet_motion.toJSON()
+                        if driver.m_packet_copies.m_packet_motion
+                        else None
+                ),
+                "ers" : {
+                    "ers-percent" : self._getValueOrDefaultValue(driver.m_car_info.m_ers_perc),
+                    "ers-mode" : self._getValueOrDefaultValue(str(driver.m_packet_copies.m_packet_car_status.m_ersDeployMode)
+                                                    if driver.m_packet_copies.m_packet_car_status else None),
+                    "ers-harvested-by-mguk-this-lap" : (((driver.m_packet_copies.m_packet_car_status.m_ersHarvestedThisLapMGUK
+                                                    if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                        CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0),
+                    "ers-deployed-this-lap" : ((driver.m_packet_copies.m_packet_car_status.m_ersDeployedThisLap
+                                            if driver.m_packet_copies.m_packet_car_status else 0.0) /
+                                                CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
+                }
+            }
+            for driver in drivers_data
+            if driver and driver.is_valid
+        ]
+
     def __populatePaceCompDataForDriver(self,
                                         json_dict: Dict[str, any],
                                         driver_obj: Optional[DataPerDriver]) -> None:
@@ -268,6 +305,8 @@ class StreamOverlayData(BaseAPI):
             "event-type" : str(self.m_session_type),
             "formula-type" : str(self.m_formula_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
+            "circuit-enum-name" : self.m_circuit.name if self.m_circuit else None,
+            "ref-index": self.m_ref_index,
             "weather-forecast-samples": [
                 {
                     "time-offset": sample.m_timeOffset,
@@ -276,12 +315,7 @@ class StreamOverlayData(BaseAPI):
                 } for sample in self.m_weather_forecast_samples
             ],
             "lap-time-history" : self.m_lap_time_history.toJSON(),
-            "car-telemetry" : {
-                # The UI expects 0 to 100
-                "throttle": (self.m_throttle * 100),
-                "brake": (self.m_brake * 100),
-                "steering" : (self.m_steering * 100),
-            },
+            "car-telemetry" : self.m_car_telemetry,
             "tyre-sets" : self.m_tyre_sets_pkt.toJSON() if self.m_tyre_sets_pkt else None,
             "penalties-and-stats" : {
                 "time-penalties": self.m_penalties,
@@ -302,4 +336,5 @@ class StreamOverlayData(BaseAPI):
                 "long": self.m_g_force_long
             },
             "pace-comparison" : self.m_pace_comp_json,
+            "motion" : self.m_motion_json,
         }

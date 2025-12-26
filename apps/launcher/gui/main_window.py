@@ -37,10 +37,10 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QPushButton, QSplitter, QToolTip, QVBoxLayout,
                                QWidget)
 
-from apps.launcher.logger import get_rotating_logger
-from apps.launcher.subsystems import (BackendAppMgr, HudAppMgr, PngAppMgrBase,
-                                      SaveViewerAppMgr)
 from apps.hud.common import deserialise_data
+from apps.launcher.logger import get_rotating_logger
+from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
+                                      PngAppMgrBase, SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import PngSettings, load_config_migrated, save_config_to_json
 from lib.file_path import resolve_user_file
@@ -50,7 +50,7 @@ from .changelog_window import ChangelogWindow
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
-from .tasks import SettingsChangeTask, StopTask, UpdateCheckTask
+from .tasks import SettingsChangeTask, StopSubsystemTask, UpdateCheckTask
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -63,18 +63,39 @@ class ShutdownDialog(QDialog):
 
         layout = QVBoxLayout(self)
         label = QLabel("Shutting down ...")
-        label.setFont(QFont("Formula1 Display"))
+        label.setFont(QFont("Formula1"))
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
 
         self.setFixedSize(220, 80)
 
-class StableTooltipFilter(QObject):
+class StableTooltipController(QObject):
+    """
+    Fully deterministic tooltip handling.
+    Survives enable/disable, hover churn, and dynamic text updates.
+    """
+
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.ToolTip:
-            # Directly show the tooltip, bypassing Qt's hover timer
-            QToolTip.showText(event.globalPos(), obj.toolTip(), obj)
+        if not obj.isEnabled():
+            QToolTip.hideText()
+            return False
+
+        if event.type() in (QEvent.Enter, QEvent.HoverEnter):
+            text = obj.property("_stable_tooltip")
+            if text:
+                QToolTip.showText(
+                    obj.mapToGlobal(obj.rect().bottomRight()),
+                    text,
+                    obj
+                )
+
+        elif event.type() in (QEvent.Leave, QEvent.HoverLeave):
+            QToolTip.hideText()
+
+        elif event.type() == QEvent.ToolTip:
+            # Prevent Qt from doing anything implicit
             return True
+
         return False
 
 class PngLauncherWindow(QMainWindow):
@@ -123,8 +144,8 @@ class PngLauncherWindow(QMainWindow):
 
     def __init__(self,
                  ver_str: str,
+                 config_file: Optional[str],
                  logo_path: str,
-                 settings_icon_path: str,
                  debug_mode: bool,
                  replay_mode: bool,
                  integration_test_mode: bool,
@@ -132,6 +153,16 @@ class PngLauncherWindow(QMainWindow):
 
         self.app = QApplication(sys.argv)
         super().__init__()
+        self.app.setStyleSheet("""
+            QToolTip {
+                font-family: 'Exo2';
+                font-size: 11pt;
+                color: #ffffff;
+                background-color: #202020;
+                border: 1px solid #444444;
+                padding: 4px;
+            }
+        """)
 
         # Log colors
         self.log_colors = {
@@ -158,10 +189,9 @@ class PngLauncherWindow(QMainWindow):
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
-        self.settings_icon_path = settings_icon_path
-        self.log_file = Path("launcher.log")
         self.config_file_legacy = resolve_user_file("png_config.ini")
-        self.config_file_new = resolve_user_file("png_config.json")
+        self.logger.debug("Starting with config file %s", config_file)
+        self.config_file_new = resolve_user_file(config_file if config_file else "png_config.json")
         self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
                                                           logger=self.logger)
 
@@ -174,31 +204,40 @@ class PngLauncherWindow(QMainWindow):
         self.newer_versions: List[Dict[str, Any]] = []
 
         # Common args
-        args = ["--config-file", self.config_file_new]
+        args = [
+            "--config-file", self.config_file_new,
+        ]
         self.subsystems: List[PngAppMgrBase] = [
-           BackendAppMgr(
+            BackendAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                replay_server=replay_mode,
                coverage_enabled=coverage_enabled
-           ),
-           SaveViewerAppMgr(
+            ),
+            SaveViewerAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                coverage_enabled=coverage_enabled
-           ),
-           HudAppMgr(
+            ),
+            HudAppMgr(
                window=self,
                settings=self.settings,
                args=args,
                debug_mode=debug_mode,
                integration_test_mode=integration_test_mode,
                coverage_enabled=coverage_enabled
-           )
+            ),
+            BrokerAppMgr(
+               window=self,
+               settings=self.settings,
+               args=args,
+               debug_mode=debug_mode,
+               coverage_enabled=coverage_enabled
+            )
         ]
         for subsystem in self.subsystems:
             assert subsystem.short_name
@@ -209,7 +248,7 @@ class PngLauncherWindow(QMainWindow):
         self.show_success_signal.connect(self._show_success_safe)
         self.show_error_signal.connect(self._show_error_safe)
 
-        self._tooltip_filter = StableTooltipFilter()
+        self._tooltip_filter = StableTooltipController()
         self.setup_ui()
 
     def _load_icon(self, relative_path: Path) -> QIcon:
@@ -295,7 +334,7 @@ class PngLauncherWindow(QMainWindow):
 
         # App name and version
         app_title_label = QLabel(f"{APP_NAME} - {self.ver_str}")
-        app_title_label.setFont(QFont("Formula1 Display", 11, QFont.Weight.Bold))
+        app_title_label.setFont(QFont("Formula1", 11, QFont.Weight.Bold))
         app_title_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         app_info_layout.addWidget(app_title_label)
 
@@ -376,7 +415,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Header
         header_label = QLabel("Subsystems")
-        header_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
+        header_label.setFont(QFont("Formula1", 12, QFont.Weight.Bold))
         header_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         layout.addWidget(header_label)
 
@@ -390,6 +429,8 @@ class PngLauncherWindow(QMainWindow):
 
         # Add subsystem cards in a grid
         for idx, subsystem in enumerate(self.subsystems):
+            if not subsystem.should_display:
+                continue
             row = idx // NUM_SUBSYS_PER_ROW
             col = idx % NUM_SUBSYS_PER_ROW
             card = SubsystemCard(subsystem)
@@ -414,7 +455,7 @@ class PngLauncherWindow(QMainWindow):
         header_layout = QHBoxLayout()
 
         console_label = QLabel("Console Log")
-        console_label.setFont(QFont("Formula1 Display", 12, QFont.Weight.Bold))
+        console_label.setFont(QFont("Formula1", 12, QFont.Weight.Bold))
         console_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
         header_layout.addWidget(console_label)
 
@@ -630,7 +671,7 @@ class PngLauncherWindow(QMainWindow):
 
         for subsystem in self.subsystems:
             self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
-            task = StopTask(subsystem, "Launcher shutting down")
+            task = StopSubsystemTask(subsystem, "Launcher shutting down")
             self.thread_pool.start(task)
 
         MAX_TIME_MS = 10000
@@ -661,35 +702,68 @@ class PngLauncherWindow(QMainWindow):
         """Process pending events in the application's event loop"""
         self.app.processEvents()
 
-    def build_button(self, icon: QIcon, callback: Callable[[], None], tooltip: str) -> QPushButton:
-        """Build a button with an icon and callback"""
+
+    def _rearm_hover(self, widget: QWidget):
+        """
+        Force Qt to re-evaluate hover state.
+        Required for stable tooltips when widgets are
+        enabled/disabled or tooltip text changes while hovered.
+        """
+        if widget.underMouse():
+            widget.setAttribute(Qt.WA_UnderMouse, False)
+            widget.setAttribute(Qt.WA_UnderMouse, True)
+
+    def build_button(
+        self,
+        icon: QIcon,
+        callback: Callable[[], None],
+        tooltip: str
+    ) -> QPushButton:
+        """Build a QPushButton with a stable tooltip."""
         assert icon and not icon.isNull(), f"Failed to load icon: {icon}"
 
         btn = QPushButton()
+
+        # Required for reliable tooltip delivery
+        btn.setAttribute(Qt.WA_Hover, True)
+        btn.setMouseTracking(True)
+
         btn.setIcon(icon)
         btn.setIconSize(QSize(20, 20))
-
         btn.setFixedSize(32, 32)
         btn.setStyleSheet(self.BUTTON_STYLESHEET)
 
         btn.clicked.connect(callback)
-        self.set_button_tooltip(btn, tooltip)
+
+        # Canonical tooltip storage
+        btn.setProperty("_stable_tooltip", tooltip)
+        btn.setToolTip(tooltip)
         btn.installEventFilter(self._tooltip_filter)
         return btn
 
     def set_button_tooltip(self, button: QPushButton, tooltip: str):
-        """Set tooltip for a QPushButton and store it for later use."""
-        button.setProperty("button_tooltip", tooltip)
-        button.setToolTip(tooltip)
+        button.setProperty("_stable_tooltip", tooltip)
+
+        if button.underMouse() and button.isEnabled():
+            QToolTip.showText(
+                button.mapToGlobal(button.rect().bottomRight()),
+                tooltip,
+                button
+            )
 
     def set_button_state(self, button: QPushButton, enabled: bool):
-        """Enable/disable a QPushButton and restore tooltip if previously set."""
         button.setEnabled(enabled)
 
-        # Restore tooltip if it was previously configured
-        tooltip = button.property("button_tooltip")
-        if tooltip is not None:
-            button.setToolTip(tooltip)
+        if not enabled:
+            QToolTip.hideText()
+        elif button.underMouse():
+            tooltip = button.property("_stable_tooltip")
+            if tooltip:
+                QToolTip.showText(
+                    button.mapToGlobal(button.rect().bottomRight()),
+                    tooltip,
+                    button
+                )
 
     def set_button_icon(self, button: QPushButton, icon: QIcon):
         """Set icon on a QPushButton."""

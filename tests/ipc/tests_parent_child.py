@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcParent, IpcChildAsync, get_free_tcp_port, IpcChildSync
+from lib.ipc import IpcClientSync, IpcServerAsync, get_free_tcp_port, IpcServerSync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -52,12 +52,12 @@ class TestIpcParentChild(TestIPC):
                 return {'reply': 'pong'}
             return {'message': 'unknown'}
 
-        child = IpcChildSync(self.port)
+        child = IpcServerSync(self.port)
         child_thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
         child_thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertEqual(resp.get('reply'), 'pong')
 
@@ -74,7 +74,7 @@ class TestIpcParentChild(TestIPC):
                 return {'reply': 'pong-async'}
             return {'message': 'unknown'}
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -85,7 +85,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertEqual(resp.get('reply'), 'pong-async')
 
@@ -99,12 +99,12 @@ class TestIpcParentChild(TestIPC):
         def handler(msg):
             return {'message': 'unknown'}
 
-        child = IpcChildSync(self.port)
+        child = IpcServerSync(self.port)
         thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.request('invalid_command')
         self.assertEqual(resp.get('message'), 'unknown')
         parent.terminate_child()
@@ -116,7 +116,7 @@ class TestIpcParentChild(TestIPC):
         async def handler(msg):
             raise RuntimeError("Simulated crash")
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -127,7 +127,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.request('ping')
         self.assertIn('message', resp)
         parent.close()
@@ -135,7 +135,7 @@ class TestIpcParentChild(TestIPC):
 
     def test_child_not_started(self):
         """Test: Parent attempts to connect but child was never started"""
-        parent = IpcParent(get_free_tcp_port(), timeout_ms=500)
+        parent = IpcClientSync(get_free_tcp_port(), timeout_ms=500)
         resp = parent.request('ping')
         self.assertIn('message', resp)
 
@@ -156,14 +156,14 @@ class TestIpcParentChild(TestIPC):
             time.sleep(0.2)  # 200 ms
             return {'reply': 'late'}
 
-        child = IpcChildSync(self.port)
+        child = IpcServerSync(self.port)
 
         # Start child in a normal (non-daemon) thread
         thread = threading.Thread(target=child.serve, args=(handler,))
         thread.start()
 
         time.sleep(0.05)  # give child time to start
-        parent = IpcParent(self.port, timeout_ms=100)
+        parent = IpcClientSync(self.port, timeout_ms=100)
 
         # This should trigger timeout immediately
         resp = parent.request('ping')
@@ -185,7 +185,7 @@ class TestIpcParentChild(TestIPC):
         async def heartbeat_missed_callback(_missed_heartbeats: int) -> None:
             pass
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
         child.register_heartbeat_missed_callback(heartbeat_missed_callback)
 
         def run_async_child():
@@ -197,7 +197,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)  # allow bind
-        parent = IpcParent(self.port, timeout_ms=100)
+        parent = IpcClientSync(self.port, timeout_ms=100)
         resp = parent.request("ping")
 
         # Expect timeout error
@@ -213,7 +213,7 @@ class TestIpcParentChild(TestIPC):
             # Should not be called for ping
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -224,7 +224,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.ping()
 
         self.assertEqual(resp.get("reply"), "__pong__")
@@ -240,7 +240,7 @@ class TestIpcParentChild(TestIPC):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
 
         def run_async_child():
             loop = asyncio.new_event_loop()
@@ -251,7 +251,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.terminate_child()
 
         # No strict expected format — just ensure it's a dict
@@ -270,7 +270,7 @@ class TestIpcParentChild(TestIPC):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(self.port, name=self.id())
+        child = IpcServerAsync(self.port, name=self.id())
         child.register_shutdown_callback(shutdown_callback)
 
         def run_async_child():
@@ -282,7 +282,7 @@ class TestIpcParentChild(TestIPC):
         thread.start()
 
         time.sleep(0.1)  # allow bind
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         resp = parent.shutdown_child()
 
         self.assertEqual(resp.get("status"), "ok")
@@ -308,7 +308,7 @@ class TestIpcParentChild(TestIPC):
         async def handler(_msg):
             return {"unexpected": True}
 
-        child = IpcChildAsync(
+        child = IpcServerAsync(
             self.port,
             name=self.id(),
             max_missed_heartbeats=max_missed_heartbeats,
@@ -334,7 +334,7 @@ class TestIpcParentChild(TestIPC):
                          "Incorrect number of missed heartbeats reported.")
 
         # Ensure the child is terminated cleanly
-        parent = IpcParent(self.port, timeout_ms=500)
+        parent = IpcClientSync(self.port, timeout_ms=500)
         parent.terminate_child()
         parent.close()
         thread.join(timeout=2)
@@ -360,7 +360,7 @@ class TestIpcParentChild(TestIPC):
             cb_triggered["count"] = count
             cb_event.set()
 
-        child = IpcChildSync(self.port, max_missed_heartbeats=3, heartbeat_timeout=0.2)
+        child = IpcServerSync(self.port, max_missed_heartbeats=3, heartbeat_timeout=0.2)
         child.register_heartbeat_missed_callback(on_missed)
 
         child_thread = threading.Thread(target=child.serve, args=(handler,), daemon=True)
@@ -388,7 +388,7 @@ class TestIpcParentChild(TestIPC):
         def on_missed(count):
             triggered["count"] = count
 
-        child = IpcChildSync(
+        child = IpcServerSync(
             self.port,
             heartbeat_timeout=0.3,
             max_missed_heartbeats=3,
@@ -399,7 +399,7 @@ class TestIpcParentChild(TestIPC):
         t.start()
         time.sleep(0.1)
 
-        parent = IpcParent(self.port)
+        parent = IpcClientSync(self.port)
 
         # Send periodic heartbeats (always within timeout window)
         for _ in range(6):

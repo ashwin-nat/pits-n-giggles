@@ -32,7 +32,7 @@ import tempfile
 
 from apps.launcher.gui import PngLauncherWindow
 from lib.file_path import resolve_user_file
-from lib.ipc import IpcChildSync
+from lib.ipc import IpcServerSync
 from lib.version import get_version
 from meta.meta import APP_NAME, APP_NAME_SNAKE
 
@@ -66,6 +66,14 @@ def parse_args() -> argparse.Namespace:
         "--debug",
         action="store_true",
         help="Enable debug mode"
+    )
+
+    # Optional config file
+    parser.add_argument(
+        "--config-file",
+        nargs="?",
+        default="png_config.json",
+        help="Configuration file name (optional)"
     )
 
     # Replay server is an optional boolean flag
@@ -145,7 +153,6 @@ atexit.register(_cleanup_temp_icon)
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 APP_ICON_PATH = str(resource_path("assets/logo.png"))
-SETTINGS_ICON_PATH = str(resource_path("assets/settings.ico"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
@@ -173,8 +180,8 @@ def entry_point() -> None:
 
     app = PngLauncherWindow(
         ver_str=get_version(),
+        config_file=args.config_file,
         logo_path=APP_ICON_PATH,
-        settings_icon_path=SETTINGS_ICON_PATH,
         debug_mode=args.debug,
         replay_mode=args.replay_server,
         integration_test_mode=args.ipc_port is not None,
@@ -183,7 +190,7 @@ def entry_point() -> None:
 
     ipc = None
     if args.ipc_port is not None:
-        ipc = IpcChildSync(
+        ipc = IpcServerSync(
             port=args.ipc_port,
             name="launcher_ipc",
             max_missed_heartbeats=3,

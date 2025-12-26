@@ -23,7 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .fonts import load_fonts
-from .icons import load_icon, load_team_icons_dict, load_tyre_icons_dict
+from .icons import (load_icon, load_team_icons_dict, load_team_logos_uri_dict,
+                    load_tyre_icons_dict, load_tyre_icons_uri_dict)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -31,5 +32,7 @@ __all__ = [
     "load_fonts",
     "load_icon",
     "load_team_icons_dict",
+    "load_team_logos_uri_dict",
     "load_tyre_icons_dict",
+    "load_tyre_icons_uri_dict",
 ]

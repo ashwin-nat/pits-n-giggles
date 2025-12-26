@@ -23,22 +23,24 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Set
 
 from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
                             QWaitCondition, Signal, Slot)
 
 from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.config import OverlaysConfig
+from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class WindowManager(QObject):
 
-    mgmt_cmd_signal = Signal(str, str, str)  # recipient, event, data (serialised into string)
+    mgmt_cmd_signal = Signal(set, str, str)  # recipients, event, data (serialised into string)
     mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
+    mgmt_high_freq_signal = Signal(set, object) # recipients, HighFreqBase
 
     def __init__(self, logger: logging.Logger, post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
@@ -72,6 +74,7 @@ class WindowManager(QObject):
         # Connect command and request signals TO the overlay
         self.mgmt_cmd_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
+        self.mgmt_high_freq_signal.connect(overlay._handle_high_freq_data)
 
         # Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
@@ -83,7 +86,7 @@ class WindowManager(QObject):
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, _request_type: str, _request_data: Dict[str, Any]):
+    def _handle_request(self, recipient: str, _request_type: str, _request_data: str):
         """Handle requests on GUI thread - manager-level requests only."""
         if recipient:
             return  # Overlay-specific requests handled by overlay
@@ -138,7 +141,7 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
         """
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit('', cmd, serialise_data(data))
+        self.mgmt_cmd_signal.emit(set(), cmd, serialise_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any]):
         """Unicast event data to a specific overlay using signal.
@@ -150,4 +153,26 @@ class WindowManager(QObject):
         """
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit(overlay_id, event, serialise_data(data))
+        self.mgmt_cmd_signal.emit({overlay_id}, event, serialise_data(data))
+
+    def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any]):
+        """Multicast event data to multiple overlays using signal.
+
+        Args:
+            overlay_ids (Set[str]): Overlay IDs
+            event (str): Command
+            data (Dict[str, Any]): Command data
+        """
+        assert overlay_ids
+        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
+        self.mgmt_cmd_signal.emit(overlay_ids, event, serialise_data(data))
+
+    def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
+        """Unicast high-frequency data to a specific overlay using signal.
+
+        Args:
+            overlay_id (str): Overlay ID
+            data (Dict[str, Any]): Command data
+        """
+        assert overlay_id
+        self.mgmt_high_freq_signal.emit({overlay_id}, data)
