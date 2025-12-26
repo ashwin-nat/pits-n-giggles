@@ -155,8 +155,7 @@ def load_team_logos_uri_dict(
         dict[str, str]: A dictionary mapping team names to their corresponding icons as URIs.
     """
 
-
-    base = relative_path.resolve()
+    base = _get_resource_base() / relative_path
     default_team_logo_uri = (base / "default.svg").as_uri()
 
     return defaultdict(
@@ -200,7 +199,8 @@ def load_tyre_icons_uri_dict(relative_path: Optional[Path] = Path("assets") / "t
     Returns:
         dict[str, Path]: A dictionary mapping visual compound names to their URI's
     """
-    base = relative_path.resolve()
+
+    base = _get_resource_base() / relative_path
 
     return {
         "Soft": (base / "soft_tyre.svg").as_uri(),
@@ -210,3 +210,9 @@ def load_tyre_icons_uri_dict(relative_path: Optional[Path] = Path("assets") / "t
         "Inters": (base / "intermediate_tyre.svg").as_uri(),
         "Wet": (base / "wet_tyre.svg").as_uri(),
     }
+
+def _get_resource_base() -> Path:
+    """Get the base path for loading resources. Handles pyinstaller build paths"""
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path.cwd()
