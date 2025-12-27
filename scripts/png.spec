@@ -147,7 +147,7 @@ datas = [
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "track_radar", "track_radar.qml"), "apps/hud/ui/overlays/track_radar"),
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "input_telemetry", "input_telemetry.qml"), "apps/hud/ui/overlays/input_telemetry"),
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "timing_tower", "timing_tower.qml"), "apps/hud/ui/overlays/timing_tower"),
-    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "lap_timer", "lap_timer_overlay.qml"), "apps/hud/ui/overlays/timing_tower"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "lap_timer", "lap_timer_overlay.qml"), "apps/hud/ui/overlays/lap_timer"),
 ]
 
 # --------------------------------------------------------------------------------------------------

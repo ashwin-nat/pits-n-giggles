@@ -16,7 +16,7 @@ Window {
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
-    color: "transparent"
+    color: "#000000"
 
     // Exposed properties for Python to update
     property string currentTime: "--:--.---"
@@ -117,7 +117,7 @@ Window {
                 // Estimated time bar
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 28
+                    Layout.minimumHeight: 36
                     color: "#1a1a1a"
                     border.color: "#333333"
                     border.width: 1
@@ -199,6 +199,8 @@ Window {
 
     // Card with sector bar component
     component CardWithSectorBar: Rectangle {
+        id: card
+
         property string labelText: ""
         property string valueText: ""
         property string valueColor: "#FFFFFF"
@@ -236,7 +238,7 @@ Window {
             SectorStatusBar {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 8
-                sectorStatus: parent.parent.sectorStatus
+                sectorStatus: card.sectorStatus
             }
         }
     }
