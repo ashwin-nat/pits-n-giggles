@@ -135,7 +135,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
 
-        qml_logger = QmlLogger(self.logger)
+        qml_logger = QmlLogger(self.logger, self.OVERLAY_ID)
         self._engine.rootContext().setContextProperty("Log", qml_logger)
 
         qml_path = self.QML_FILE.resolve()
