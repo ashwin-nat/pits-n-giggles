@@ -250,7 +250,6 @@ async def _periodic_task(
             await asyncio.sleep(delay)
         else:
             # Missed deadline — resync without sleeping
-            logger.debug("%s: Missed deadline by %f seconds", task_name, -delay)
             next_tick = loop.time()
             await asyncio.sleep(0)
 

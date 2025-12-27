@@ -60,6 +60,7 @@ class UdpActionCodes:
     toggle_timing_tower_overlay: Optional[int] = None
     toggle_mfd_overlay: Optional[int] = None
     toggle_track_radar_overlay: Optional[int] = None
+    toggle_input_overlay: Optional[int] = None
 
     _MAP = {
         "udp_tyre_delta_action_code": "tyre_delta",
@@ -70,6 +71,7 @@ class UdpActionCodes:
         "mfd_toggle_udp_action_code": "toggle_mfd_overlay",
         "cycle_mfd_udp_action_code": "mfd_next_page",
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
+        "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
     }
 
     def update(self, key: str, value: int):
@@ -177,6 +179,7 @@ class F1TelemetryHandler:
             toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
             toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
             toggle_track_radar_overlay=settings.HUD.track_radar_overlay_toggle_udp_action_code,
+            toggle_input_overlay=settings.HUD.input_overlay_toggle_udp_action_code
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
@@ -511,6 +514,11 @@ class F1TelemetryHandler:
                 self.m_logger.debug('UDP action %d pressed - Toggle track radar overlay',
                                     self.m_udp_action_codes.toggle_track_radar_overlay)
                 await self._processToggleHud('track_radar')
+
+            if self._isUdpActionButtonPressed(buttons, self.m_udp_action_codes.toggle_input_overlay):
+                self.m_logger.debug('UDP action %d pressed - Toggle input overlay',
+                                    self.m_udp_action_codes.toggle_input_overlay)
+                await self._processToggleHud('input_telemetry')
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
