@@ -6,15 +6,13 @@ Window {
 
     property real scaleFactor: 1.0
 
-    // Base dimensions (unscaled)
     readonly property int baseWidth: 280
     readonly property int baseHeight: 180
 
-    // Font sizes - easy to adjust
-    readonly property int fontSizeLabel: 11
-    readonly property int fontSizeValue: 13
-    readonly property int fontSizeEstimated: 11
-    readonly property int fontSizeEstimatedValue: 13
+    readonly property int fontSizeLabel: 12
+    readonly property int fontSizeValue: 14
+    readonly property int fontSizeEstimated: 12
+    readonly property int fontSizeEstimatedValue: 14
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
