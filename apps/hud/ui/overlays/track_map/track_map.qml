@@ -36,7 +36,7 @@ Window {
             // Fallback if image fails to load
             onStatusChanged: {
                 if (status === Image.Error) {
-                    console.log("Failed to load track map: " + root.svgPath)
+                    Log.debug("Failed to load track map: " + root.svgPath)
                 }
             }
         }

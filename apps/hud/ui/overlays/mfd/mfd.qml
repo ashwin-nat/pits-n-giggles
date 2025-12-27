@@ -18,7 +18,7 @@ Window {
     property string fuelSurplus: ""
 
     Component.onCompleted: {
-        console.log("QML base URL:", Qt.resolvedUrl("."))
+        Log.debug("QML base URL:", Qt.resolvedUrl("."))
     }
     Loader {
         id: pageLoader
@@ -26,9 +26,9 @@ Window {
         source: "pages/collapsed/collapsed_page.qml"
 
         onStatusChanged: {
-            console.log("Loader status:", status)
+            Log.debug("Loader status:", status)
             if (status === Loader.Ready) {
-                console.log("Loader READY, item:", item)
+                Log.debug("Loader READY, item:", item)
                 item.visible = true
             }
         }

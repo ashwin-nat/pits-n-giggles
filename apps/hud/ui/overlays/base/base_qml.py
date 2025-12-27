@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional, TypeVar, final, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
-                            QTimer, QUrl)
+                            QTimer, QUrl, Slot)
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
@@ -134,6 +134,9 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
+
+        qml_logger = QmlLogger(self.logger)
+        self._engine.rootContext().setContextProperty("Log", qml_logger)
 
         qml_path = self.QML_FILE.resolve()
         self._engine.load(QUrl.fromLocalFile(str(qml_path)))
@@ -311,3 +314,25 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def render_frame(self):
         """Derived classes must implement this method."""
         raise NotImplementedError
+
+class QmlLogger(QObject):
+    def __init__(self, logger: logging.Logger, oid: str):
+        super().__init__()
+        self._logger = logger
+        self._oid = oid
+
+    @Slot(str)
+    def debug(self, msg):
+        self._logger.debug("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def info(self, msg):
+        self._logger.info("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def warn(self, msg):
+        self._logger.warning("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def error(self, msg):
+        self._logger.error("%s | %s", self._oid, msg)
