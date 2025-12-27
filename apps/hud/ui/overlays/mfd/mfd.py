@@ -25,13 +25,14 @@
 import itertools
 import logging
 from typing import Any, Dict, List, Optional, override
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlayWidget
+from apps.hud.ui.overlays.base import BaseOverlayWidget, BaseOverlayQML
 from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
                                             FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
@@ -105,7 +106,7 @@ class PageIndicatorFooter(QWidget):
                 self.circle_radius * 2
             )
 
-class MfdOverlay(BaseOverlayWidget):
+class MfdOverlayOld(BaseOverlayWidget):
 
     OVERLAY_ID = "mfd"
     PAGES: List[BasePage] = [
@@ -308,3 +309,32 @@ class MfdOverlay(BaseOverlayWidget):
         if current_index is not None and 0 <= current_index < self.pages.count():
             self.pages.setCurrentIndex(current_index)
             self._on_page_changed(current_index)
+
+class MfdOverlay(BaseOverlayQML):
+
+    OVERLAY_ID = "mfd"
+    QML_FILE: Path = Path(__file__).parent / "mfd.qml"
+
+    def __init__(
+        self,
+        config: OverlaysConfig,
+        settings: PngSettings,
+        logger: logging.Logger,
+        locked: bool,
+        opacity: int,
+        scale_factor: float,
+        windowed_overlay: bool,
+    ):
+        super().__init__(
+            config=config,
+            logger=logger,
+            locked=locked,
+            opacity=opacity,
+            scale_factor=scale_factor,
+            windowed_overlay=windowed_overlay,
+            refresh_interval_ms=None,  # ❌ no FPS loop
+        )
+
+        # Pages are created AFTER QML is loaded
+        self._pages = []
+        self._current_index = 0

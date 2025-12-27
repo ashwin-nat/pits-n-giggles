@@ -132,3 +132,25 @@ class BasePage(QWidget):
     @property
     def scaled_width(self) -> int:
         return int(self.BASE_WIDTH * self.scale_factor)
+
+class MfdPageBase:
+    KEY: str = ""
+
+    def __init__(self, root, logger):
+        """
+        root   : QQuickWindow (or root QML item)
+        logger : logger
+        """
+        self._root = root
+        self._logger = logger
+        self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+
+    def on_event(self, event_type: str):
+        def decorator(fn):
+            self._handlers[event_type] = fn
+            return fn
+        return decorator
+
+    def handle_event(self, event_type: str, data: Dict[str, Any]):
+        if handler := self._handlers.get(event_type):
+            handler(data)
