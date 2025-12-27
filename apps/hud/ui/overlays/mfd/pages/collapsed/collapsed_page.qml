@@ -1,12 +1,12 @@
-import QtQuick
-import QtQuick.Window
-import QtQuick.Layouts
-
-
 // pages/collapsed/collapsed_page.qml
+import QtQuick
+
 Item {
     id: page
     implicitHeight: 36 * root.scaleFactor
+
+    // PAGE-OWNED PROPERTY
+    property string title: "MFD test 69420"
 
     Rectangle {
         anchors.fill: parent
@@ -15,7 +15,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            text: root.collapsedTitle
+            text: page.title
             font.pixelSize: 13 * root.scaleFactor
             font.family: "Formula1"
             color: "white"
