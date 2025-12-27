@@ -133,6 +133,8 @@ class BackendAppMgr(PngAppMgrBase):
                 "timing_tower_toggle_udp_action_code",
                 "mfd_toggle_udp_action_code",
                 "cycle_mfd_udp_action_code",
+                "input_overlay_toggle_udp_action_code",
+                "track_radar_overlay_toggle_udp_action_code",
             ],
         }):
             for fields_in_category in udp_action_codes_diff.values():
