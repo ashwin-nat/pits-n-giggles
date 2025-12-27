@@ -103,6 +103,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
                     The overlay is responsible to repaint itself (preferably on telemetry update)
         """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
+        assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
+        assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
 
         QObject.__init__(self)
         self._engine = QQmlApplicationEngine()
