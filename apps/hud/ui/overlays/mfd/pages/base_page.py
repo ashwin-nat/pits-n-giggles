@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import Qt
@@ -135,14 +136,16 @@ class BasePage(QWidget):
 
 class MfdPageBase:
     KEY: str = ""
+    QML_FILE: Path = ""
 
-    def __init__(self, root, logger):
-        """
-        root   : QQuickWindow (or root QML item)
-        logger : logger
-        """
-        self._root = root
-        self._logger = logger
+    def __init__(self, overlay, logger):
+        assert self.KEY, "KEY must be set in subclass"
+        assert self.QML_FILE, "Derived classes must define QML_FILE"
+        assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
+        assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
+
+        self.overlay = overlay
+        self.logger = logger
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
 
     def on_event(self, event_type: str):

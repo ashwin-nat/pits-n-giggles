@@ -6,7 +6,7 @@ import QtQuick.Layouts
 // pages/fuel/fuel_page.qml
 Item {
     id: page
-    implicitHeight: content.implicitHeight + 12 * root.scaleFactor
+    implicitHeight: content.implicitHeight + 120 * root.scaleFactor
 
     Column {
         id: content

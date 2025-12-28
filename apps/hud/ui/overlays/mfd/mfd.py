@@ -24,16 +24,16 @@
 
 import itertools
 import logging
-from typing import Any, Dict, List, Optional, override
+from typing import Any, Dict, List, Optional, override, final
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayWidget, BaseOverlayQML
-from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
+from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage, MfdPageBase,
                                             FuelInfoPage, LapTimesPage, TyreSetsPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, WeatherForecastPage)
@@ -325,6 +325,10 @@ class MfdOverlay(BaseOverlayQML):
         scale_factor: float,
         windowed_overlay: bool,
     ):
+        # Pages are created AFTER QML is loaded
+        self._mfd_pages: List[MfdPageBase] = []
+        self._current_index = 0
+
         super().__init__(
             config=config,
             logger=logger,
@@ -332,9 +336,81 @@ class MfdOverlay(BaseOverlayQML):
             opacity=opacity,
             scale_factor=scale_factor,
             windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None,  # ❌ no FPS loop
+            refresh_interval_ms=None,
         )
 
-        # Pages are created AFTER QML is loaded
-        self._pages = []
+        self._init_cmd_handlers()
+
+    @final
+    def _setup_window(self):
+        super()._setup_window()
+
+        # Example: build from user config
+        enabled_pages = [
+            CollapsedPage,
+            FuelInfoPage,
+            # later: WeatherPage, TyrePage, etc
+        ]
+
+        for cls in enabled_pages:
+            self._mfd_pages.append(cls(self, self.logger))
         self._current_index = 0
+
+        self._apply_current_page()
+
+    def _apply_current_page(self):
+        try:
+            page = self._mfd_pages[self._current_index]
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.logger.error(f"{self.OVERLAY_ID} | Failed to apply current page: {e}")
+            return
+        qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
+
+        self._root.setProperty("currentPage", self._current_index)
+        self._root.setProperty("currentPageQml", qml_url)
+
+
+    def _init_cmd_handlers(self):
+        """Register command handlers."""
+        @self.on_event("next_page")
+        def _handle_next_page(_data: Dict[str, Any]):
+            self._next_page()
+
+        @self.on_event("race_table_update")
+        def _handle_race_update(data: Dict[str, Any]):
+            self.logger.debug(f"{self.OVERLAY_ID} | Updating race table...")
+            self._handle_event("race_table_update", data)
+
+    def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
+        """Forward event to page.
+
+        Args:
+            event_type (str): Event type
+            data (Dict[str, Any]): Event data
+            dest_index (Optional[int]): Destination page index. If not specified, the current page is used.
+        """
+        if not self._mfd_pages:
+            return
+
+        if dest_index is None:
+            index = self._current_index
+        else:
+            if dest_index < 0 or dest_index >= len(self._mfd_pages):
+                self.logger.warning(f"{self.OVERLAY_ID} | Page index {dest_index} out of range")
+                return
+            index = dest_index
+
+        page = self._mfd_pages[index]
+        page.handle_event(event_type, data)
+
+    def _next_page(self):
+
+        if not self._mfd_pages:
+            return
+
+        old = self._current_index
+        self._current_index = (old + 1) % len(self._mfd_pages)
+
+        self._apply_current_page()
+
+        self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")

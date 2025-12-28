@@ -24,6 +24,7 @@
 
 import logging
 from typing import Any, Dict
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QFontMetrics
@@ -354,6 +355,7 @@ from lib.f1_types import F1Utils
 
 class FuelInfoPage(MfdPageBase):
     KEY = "fuel_info"
+    QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     def __init__(self, root, logger):
         super().__init__(root, logger)
@@ -362,12 +364,4 @@ class FuelInfoPage(MfdPageBase):
     def _init_handlers(self):
         @self.on_event("race_table_update")
         def _update(data: Dict[str, Any]):
-            ref = data.get("ref")
-            if not ref:
-                return
-
-            surplus = ref["fuel"]["surplus-laps"]
-            self._root.setProperty(
-                "fuelSurplus",
-                f"{surplus:+.2f} laps"
-            )
+            self.logger.debug(f"{self.KEY} | Received race table update event. Updating...")

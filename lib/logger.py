@@ -120,4 +120,4 @@ class JsonlFormatter(logging.Formatter):
             log["exc_message"] = str(record.exc_info[1])
             log["stack"] = self.formatException(record.exc_info)
 
-        return json.dumps(log, ensure_ascii=False)
+        return json.dumps(log, ensure_ascii=True)
