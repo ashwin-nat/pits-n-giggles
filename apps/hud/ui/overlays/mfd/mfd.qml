@@ -9,14 +9,22 @@ Window {
     width: 400
     height: pageLoader.item ? pageLoader.item.implicitHeight : 40
 
-    property real scaleFactor: 1.0
+    /* ---------- FUEL DATA (SET FROM PYTHON) ---------- */
+    property string currValue: "---"
+    property string lastValue: "---"
+    property string tgtAvgValue: "---"
+    property string tgtNextValue: "---"
 
-    // driven from python
-    property int currentPage: 0
+    property string surplusText: "Surplus: ---"
+    property real surplusValue: 0.0
+    property bool surplusValid: false
+
+    /* ---------- PAGE CONTROL ---------- */
     property url currentPageQml: ""
 
     Loader {
         id: pageLoader
+        objectName: "pageLoader"
         anchors.fill: parent
         source: root.currentPageQml
     }

@@ -24,11 +24,14 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget, QSizePolicy
+
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd import MfdOverlay
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -138,7 +141,7 @@ class MfdPageBase:
     KEY: str = ""
     QML_FILE: Path = ""
 
-    def __init__(self, overlay, logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         assert self.KEY, "KEY must be set in subclass"
         assert self.QML_FILE, "Derived classes must define QML_FILE"
         assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
@@ -157,3 +160,11 @@ class MfdPageBase:
     def handle_event(self, event_type: str, data: Dict[str, Any]):
         if handler := self._handlers.get(event_type):
             handler(data)
+
+    @property
+    def root(self):
+        return self.overlay._root
+
+    @property
+    def page_item(self):
+        return self.overlay.current_page_item

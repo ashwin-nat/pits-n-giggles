@@ -27,7 +27,8 @@ import logging
 from typing import Any, Dict, List, Optional, override, final
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtQuick import QQuickItem
+from PySide6.QtCore import Qt, QUrl, QObject
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
@@ -378,7 +379,6 @@ class MfdOverlay(BaseOverlayQML):
 
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
-            self.logger.debug(f"{self.OVERLAY_ID} | Updating race table...")
             self._handle_event("race_table_update", data)
 
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
@@ -414,3 +414,8 @@ class MfdOverlay(BaseOverlayQML):
         self._apply_current_page()
 
         self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")
+
+    @property
+    def current_page_item(self) -> Optional[QQuickItem]:
+        loader: Optional[QQuickItem] = self._root.findChild(QObject, "pageLoader")
+        return loader.item if loader else None

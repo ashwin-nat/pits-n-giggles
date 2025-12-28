@@ -357,11 +357,61 @@ class FuelInfoPage(MfdPageBase):
     KEY = "fuel_info"
     QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
-    def __init__(self, root, logger):
-        super().__init__(root, logger)
+    MIN_FUEL = 0.2
+
+    def __init__(self, overlay, logger):
+        super().__init__(overlay, logger)
         self._init_handlers()
 
     def _init_handlers(self):
         @self.on_event("race_table_update")
-        def _update(data: Dict[str, Any]):
-            self.logger.debug(f"{self.KEY} | Received race table update event. Updating...")
+        def update(data: Dict[str, Any]) -> None:
+            """Update fuel information display."""
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                return
+
+            root = self.root
+            if not self.root:
+                self.logger.error(f"{self.KEY} | Failed to find root")
+                return
+
+            if ref_row["driver-info"]["telemetry-setting"] != "Public":
+                self._set_all_dim(root)
+                return
+
+            session_type = data["event-type"]
+            fuel = ref_row["fuel-info"]
+
+            root.setProperty("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
+
+            if is_race_type_session(session_type):
+                root.setProperty("currValue", self._fmt(fuel.get("curr-fuel-rate")))
+                root.setProperty("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
+                root.setProperty("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
+                surplus = fuel.get("surplus-laps-png")
+            else:
+                root.setProperty("currValue", "---")
+                root.setProperty("tgtAvgValue", "---")
+                root.setProperty("tgtNextValue", "---")
+                surplus = fuel.get("surplus-laps-game")
+
+            if surplus is not None:
+                root.setProperty(
+                    "surplusText",
+                    f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps"
+                )
+                root.setProperty("surplusValue", surplus)
+                root.setProperty("surplusValid", True)
+            else:
+                root.setProperty("surplusText", "Surplus: ---")
+                root.setProperty("surplusValid", False)
+
+    def _fmt(self, value):
+        return f"{value:.3f}" if value is not None else "---"
+
+    def _set_all_dim(self, root):
+        for prop in ("currValue", "lastValue", "tgtAvgValue", "tgtNextValue"):
+            root.setProperty(prop, "---")
+        root.setProperty("surplusText", "Surplus: ---")
+        root.setProperty("surplusValid", False)
