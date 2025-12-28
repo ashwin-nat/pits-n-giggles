@@ -6,26 +6,33 @@ Window {
     visible: true
     color: "black"
 
-    width: 400
-    height: pageLoader.item ? pageLoader.item.implicitHeight : 40
-
-    /* ---------- FUEL DATA (SET FROM PYTHON) ---------- */
-    property string currValue: "---"
-    property string lastValue: "---"
-    property string tgtAvgValue: "---"
-    property string tgtNextValue: "---"
-
-    property string surplusText: "Surplus: ---"
-    property real surplusValue: 0.0
-    property bool surplusValid: false
+    /* ---------- SCALING ---------- */
+    property real scaleFactor: 1.0
+    readonly property int baseWidth: 400
+    readonly property int baseHeightExpanded: 220
+    readonly property int baseHeightCollapsed: 36
 
     /* ---------- PAGE CONTROL ---------- */
     property url currentPageQml: ""
+    property bool collapsed: false   // SET FROM PYTHON
 
-    Loader {
-        id: pageLoader
-        objectName: "pageLoader"
+    width: baseWidth * scaleFactor
+    height: (collapsed ? baseHeightCollapsed : baseHeightExpanded) * scaleFactor
+
+    Item {
+        id: scaledRoot
         anchors.fill: parent
-        source: root.currentPageQml
+
+        // Scale the entire content
+        scale: root.scaleFactor
+        transformOrigin: Item.TopLeft
+
+        Loader {
+            id: pageLoader
+            objectName: "pageLoader"
+            width: baseWidth
+            height: collapsed ? baseHeightCollapsed : baseHeightExpanded
+            source: root.currentPageQml
+        }
     }
 }

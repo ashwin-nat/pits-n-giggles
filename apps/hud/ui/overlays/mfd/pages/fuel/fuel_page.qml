@@ -3,8 +3,18 @@ import QtQuick.Layouts
 
 Item {
     id: page
-    width: parent ? parent.width : 0
-    implicitHeight: content.implicitHeight + 24
+    width: parent ? parent.width : 400
+    height: parent ? parent.height : 220
+
+    /* ---------- DATA ---------- */
+    property string currValue: "---"
+    property string lastValue: "---"
+    property string tgtAvgValue: "---"
+    property string tgtNextValue: "---"
+
+    property string surplusText: "Surplus: ---"
+    property real surplusValue: 0.0
+    property bool surplusValid: false
 
     /* ---------- COLORS ---------- */
     readonly property color bgColor: "#1a1a1a"
@@ -16,34 +26,39 @@ Item {
     readonly property color dangerColor: "#ff4444"
 
     readonly property color surplusColor: {
-        if (!root.surplusValid)        return dimTextColor
-        if (root.surplusValue < 0)     return dangerColor
-        if (root.surplusValue < 0.2)   return warningColor
+        if (!surplusValid)        return dimTextColor
+        if (surplusValue < 0)     return dangerColor
+        if (surplusValue < 0.2)   return warningColor
         return primaryColor
     }
 
-    Column {
-        id: content
-        anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 16
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 16
+        spacing: 12
 
         GridLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 160
             columns: 2
             rowSpacing: 12
             columnSpacing: 12
 
-            FuelCard { title: "CURRENT RATE"; value: root.currValue; unit: "kg/lap"; primary: true }
-            FuelCard { title: "LAST LAP";     value: root.lastValue; unit: "kg";     primary: true }
-            FuelCard { title: "TARGET AVG";   value: root.tgtAvgValue; unit: "kg/lap" }
-            FuelCard { title: "TARGET NEXT";  value: root.tgtNextValue; unit: "kg" }
+            FuelCard { title: "CURRENT RATE"; value: currValue; unit: "kg/lap"; primary: true }
+            FuelCard { title: "LAST LAP";     value: lastValue; unit: "kg";     primary: true }
+            FuelCard { title: "TARGET AVG";   value: tgtAvgValue; unit: "kg/lap" }
+            FuelCard { title: "TARGET NEXT";  value: tgtNextValue; unit: "kg" }
         }
 
+        Item { Layout.fillHeight: true } // spacer
+
         Text {
-            text: root.surplusText
+            text: surplusText
             font.family: "B612 Mono"
             font.pixelSize: 14
             color: surplusColor
-            anchors.horizontalCenter: parent.horizontalCenter
+            horizontalAlignment: Text.AlignHCenter
+            Layout.fillWidth: true
         }
     }
 
@@ -53,8 +68,8 @@ Item {
         required property string unit
         property bool primary: false
 
-        implicitWidth: 160
-        implicitHeight: 78
+        Layout.fillWidth: true
+        Layout.preferredHeight: 72
         radius: 8
         color: bgColor
         border.color: borderColor

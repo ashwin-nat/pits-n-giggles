@@ -367,9 +367,17 @@ class MfdOverlay(BaseOverlayQML):
             return
         qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
 
-        self._root.setProperty("currentPage", self._current_index)
+        is_collapsed = (page.KEY == CollapsedPage.KEY)
+
+        self._root.setProperty("collapsed", is_collapsed)
         self._root.setProperty("currentPageQml", qml_url)
 
+        self.logger.debug(
+            "%s | Applied page '%s' (collapsed=%s)",
+            self.OVERLAY_ID,
+            page.KEY,
+            is_collapsed,
+        )
 
     def _init_cmd_handlers(self):
         """Register command handlers."""
