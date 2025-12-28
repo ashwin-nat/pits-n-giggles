@@ -425,5 +425,9 @@ class MfdOverlay(BaseOverlayQML):
 
     @property
     def current_page_item(self) -> Optional[QQuickItem]:
-        loader: Optional[QQuickItem] = self._root.findChild(QObject, "pageLoader")
-        return loader.item if loader else None
+        loader: Optional[QObject] = self._root.findChild(QObject, "pageLoader")
+        if not loader:
+            return None
+
+        item = loader.property("item")
+        return item if isinstance(item, QQuickItem) else None

@@ -376,6 +376,10 @@ class FuelInfoPage(MfdPageBase):
                 self.logger.error(f"{self.KEY} | Failed to find root")
                 return
 
+            page_item = self.overlay.current_page_item
+            if not page_item:
+                return
+
             if ref_row["driver-info"]["telemetry-setting"] != "Public":
                 self._set_all_dim(root)
                 return
@@ -383,35 +387,35 @@ class FuelInfoPage(MfdPageBase):
             session_type = data["event-type"]
             fuel = ref_row["fuel-info"]
 
-            root.setProperty("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
+            page_item.setProperty("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
 
             if is_race_type_session(session_type):
-                root.setProperty("currValue", self._fmt(fuel.get("curr-fuel-rate")))
-                root.setProperty("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
-                root.setProperty("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
+                page_item.setProperty("currValue", self._fmt(fuel.get("curr-fuel-rate")))
+                page_item.setProperty("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
+                page_item.setProperty("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
                 surplus = fuel.get("surplus-laps-png")
             else:
-                root.setProperty("currValue", "---")
-                root.setProperty("tgtAvgValue", "---")
-                root.setProperty("tgtNextValue", "---")
+                page_item.setProperty("currValue", "---")
+                page_item.setProperty("tgtAvgValue", "---")
+                page_item.setProperty("tgtNextValue", "---")
                 surplus = fuel.get("surplus-laps-game")
 
             if surplus is not None:
-                root.setProperty(
+                page_item.setProperty(
                     "surplusText",
                     f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps"
                 )
-                root.setProperty("surplusValue", surplus)
-                root.setProperty("surplusValid", True)
+                page_item.setProperty("surplusValue", surplus)
+                page_item.setProperty("surplusValid", True)
             else:
-                root.setProperty("surplusText", "Surplus: ---")
-                root.setProperty("surplusValid", False)
+                page_item.setProperty("surplusText", "Surplus: ---")
+                page_item.setProperty("surplusValid", False)
 
     def _fmt(self, value):
         return f"{value:.3f}" if value is not None else "---"
 
-    def _set_all_dim(self, root):
+    def _set_all_dim(self, page_item):
         for prop in ("currValue", "lastValue", "tgtAvgValue", "tgtNextValue"):
-            root.setProperty(prop, "---")
-        root.setProperty("surplusText", "Surplus: ---")
-        root.setProperty("surplusValid", False)
+            page_item.setProperty(prop, "---")
+        page_item.setProperty("surplusText", "Surplus: ---")
+        page_item.setProperty("surplusValid", False)
