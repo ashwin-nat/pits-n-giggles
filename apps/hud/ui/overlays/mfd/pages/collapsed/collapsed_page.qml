@@ -3,9 +3,9 @@ import QtQuick
 
 Item {
     id: page
+    width: parent ? parent.width : 0
     implicitHeight: 36 * root.scaleFactor
 
-    // PAGE-OWNED PROPERTY
     property string title: "MFD test 69420"
 
     Rectangle {

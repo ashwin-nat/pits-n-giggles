@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 
-
 // pages/fuel/fuel_page.qml
 Item {
     id: page
+    width: parent ? parent.width : 0
     implicitHeight: content.implicitHeight + 120 * root.scaleFactor
 
     Column {
