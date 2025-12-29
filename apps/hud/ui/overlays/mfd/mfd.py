@@ -350,6 +350,7 @@ class MfdOverlay(BaseOverlayQML):
         enabled_pages = [
             CollapsedPage,
             FuelInfoPage,
+            LapTimesPage,
             # later: WeatherPage, TyrePage, etc
         ]
 
@@ -388,6 +389,10 @@ class MfdOverlay(BaseOverlayQML):
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
             self._handle_event("race_table_update", data)
+
+        @self.on_event("stream_overlay_update")
+        def _handle_stream_overlay_update(data: Dict[str, Any]):
+            self._handle_event("stream_overlay_update", data)
 
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
         """Forward event to page.
