@@ -5,6 +5,7 @@ Item {
     id: page
     width: parent ? parent.width : 600
     height: parent ? parent.height : 220
+    clip: true
 
     /* ---------- WEATHER EMOJIS ---------- */
     readonly property var weatherEmojis: ({
@@ -28,42 +29,47 @@ Item {
     /* ---------- DATA PROPERTIES ---------- */
     property var forecastData: []
 
-    RowLayout {
+    // Calculate card width dynamically based on available space
+    readonly property int maxCards: 5
+    readonly property int separatorWidth: 1
+    readonly property int cardSpacing: 6
+    readonly property int totalMargin: 16
+    readonly property int cardCount: Math.min(forecastData.length, maxCards)
+    readonly property int availableWidth: width - totalMargin
+    readonly property int totalSpacing: (cardCount - 1) * (separatorWidth + cardSpacing * 2)
+    readonly property int cardWidth: cardCount > 0 ? Math.floor((availableWidth - totalSpacing) / cardCount) : 80
+
+    Rectangle {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 8
+        color: "transparent"
 
-        Item { Layout.fillWidth: true }
+        Row {
+            anchors.centerIn: parent
+            spacing: cardSpacing
 
-        Repeater {
-            id: cardRepeater
-            model: forecastData.length
+            Repeater {
+                model: forecastData.length
 
-            delegate: Item {
-                Layout.fillHeight: true
-                Layout.preferredWidth: 100
-                Layout.maximumWidth: 100
+                Row {
+                    spacing: cardSpacing
 
-                WeatherCard {
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    cardData: forecastData[index]
-                }
+                    WeatherCard {
+                        width: cardWidth
+                        height: page.height - 20
+                        cardData: forecastData[index]
+                    }
 
-                // Separator after each card except the last
-                Rectangle {
-                    visible: index < forecastData.length - 1
-                    width: 1
-                    height: Math.min(parent.height * 0.6, 120)
-                    color: separatorColor
-                    anchors.left: parent.right
-                    anchors.leftMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
+                    // Separator
+                    Rectangle {
+                        visible: index < forecastData.length - 1
+                        width: separatorWidth
+                        height: Math.min(page.height * 0.6, 120)
+                        color: separatorColor
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                 }
             }
         }
-
-        Item { Layout.fillWidth: true }
     }
 
     component WeatherCard: Item {
@@ -71,9 +77,9 @@ Item {
         required property var cardData
 
         Column {
-            anchors.fill: parent
-            anchors.margins: 4
-            spacing: 6
+            anchors.centerIn: parent
+            width: parent.width - 4
+            spacing: 3
 
             // Time offset
             Text {
@@ -82,17 +88,22 @@ Item {
                     return offset > 0 ? `+${offset}m` : "Now"
                 }
                 font.family: "Consolas"
-                font.pixelSize: 15
+                font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: primaryTextColor
-                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalAlignment: Text.AlignHCenter
+                width: parent.width
             }
 
             // Weather emoji
             Text {
                 text: weatherEmojis[cardData.weather] || "☀️"
-                font.pixelSize: 24
-                anchors.horizontalCenter: parent.horizontalCenter
+                font.pixelSize: 20
+                horizontalAlignment: Text.AlignHCenter
+                width: parent.width
+                textFormat: Text.PlainText
+                renderType: Text.NativeRendering
+                smooth: true
             }
 
             // Track temperature row
@@ -115,58 +126,70 @@ Item {
             Text {
                 text: `💧 ${cardData["rain-percentage"] || 0}%`
                 font.family: "Consolas"
-                font.pixelSize: 13
+                font.pixelSize: 11
                 font.weight: Font.Bold
                 color: rainColor
-                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalAlignment: Text.AlignHCenter
+                width: parent.width
+                textFormat: Text.PlainText
+                renderType: Text.NativeRendering
+                smooth: true
             }
         }
     }
 
-    component TemperatureRow: Row {
+    component TemperatureRow: Item {
         required property string iconSource
         required property var temperature
         required property string temperatureChange
 
-        spacing: 4
+        height: 18
 
-        // Icon
-        Image {
-            width: 16
-            height: 16
-            source: iconSource
-            sourceSize.width: 16
-            sourceSize.height: 16
-            fillMode: Image.PreserveAspectFit
-            anchors.verticalCenter: parent.verticalCenter
-        }
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 2
 
-        // Temperature value
-        Text {
-            text: temperature !== undefined ? `${temperature}°C` : "N/A"
-            font.family: "Consolas"
-            font.pixelSize: 13
-            font.weight: Font.Bold
-            color: primaryTextColor
-            anchors.verticalCenter: parent.verticalCenter
-        }
-
-        // Temperature change arrow
-        Text {
-            text: {
-                if (temperatureChange === "Temperature Up") return "▲"
-                if (temperatureChange === "Temperature Down") return "▼"
-                return "─"
+            // Icon
+            Image {
+                width: 12
+                height: 12
+                source: iconSource
+                sourceSize.width: 48
+                sourceSize.height: 48
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                antialiasing: true
+                mipmap: true
+                anchors.verticalCenter: parent.verticalCenter
             }
-            font.family: "Consolas"
-            font.pixelSize: 14
-            font.weight: Font.Bold
-            color: {
-                if (temperatureChange === "Temperature Up") return tempUpColor
-                if (temperatureChange === "Temperature Down") return tempDownColor
-                return dimTextColor
+
+            // Temperature value
+            Text {
+                text: temperature !== undefined ? `${temperature}°C` : "N/A"
+                font.family: "Consolas"
+                font.pixelSize: 11
+                font.weight: Font.Bold
+                color: primaryTextColor
+                anchors.verticalCenter: parent.verticalCenter
             }
-            anchors.verticalCenter: parent.verticalCenter
+
+            // Temperature change arrow
+            Text {
+                text: {
+                    if (temperatureChange === "Temperature Up") return "▲"
+                    if (temperatureChange === "Temperature Down") return "▼"
+                    return "─"
+                }
+                font.family: "Consolas"
+                font.pixelSize: 11
+                font.weight: Font.Bold
+                color: {
+                    if (temperatureChange === "Temperature Up") return tempUpColor
+                    if (temperatureChange === "Temperature Down") return tempDownColor
+                    return dimTextColor
+                }
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
     }
 }
