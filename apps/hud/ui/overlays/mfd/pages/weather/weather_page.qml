@@ -7,16 +7,21 @@ Item {
     height: parent ? parent.height : 220
     clip: true
 
-    /* ---------- WEATHER EMOJIS ---------- */
-    readonly property var weatherEmojis: ({
-        "Clear": "☀️",
-        "Light Cloud": "🌤️",
-        "Overcast": "☁️",
-        "Light Rain": "🌦️",
-        "Heavy Rain": "🌧️",
-        "Storm": "⛈️",
-        "Thunderstorm": "⛈️"
+    /* ---------- WEATHER ICONS (SVG) ---------- */
+    readonly property var weatherIcons: ({
+        "Clear": "../../../../../../../assets/weather/clear.svg",
+        "Light Cloud": "../../../../../../../assets/weather/light-cloud.svg",
+        "Overcast": "../../../../../../../assets/weather/overcast.svg",
+        "Light Rain": "../../../../../../../assets/weather/light-rain.svg",
+        "Heavy Rain": "../../../../../../../assets/weather/heavy-rain.svg",
+        "Storm": "../../../../../../../assets/weather/storm.svg",
+        "Thunderstorm": "../../../../../../../assets/weather/thunderstorm.svg"
     })
+
+    readonly property string rainIcon: "../../../../../../../assets/weather/rain-drop.svg"
+    readonly property string arrowUpIcon: "../../../../../../../assets/weather/arrow-up.svg"
+    readonly property string arrowDownIcon: "../../../../../../../assets/weather/arrow-down.svg"
+    readonly property string dashIcon: "../../../../../../../assets/weather/dash.svg"
 
     /* ---------- COLORS ---------- */
     readonly property color separatorColor: "#444444"
@@ -26,10 +31,9 @@ Item {
     readonly property color tempUpColor: "#ff6666"
     readonly property color tempDownColor: "#6699ff"
 
-    /* ---------- DATA PROPERTIES ---------- */
+    /* ---------- DATA ---------- */
     property var forecastData: []
 
-    // Calculate card width dynamically based on available space
     readonly property int maxCards: 5
     readonly property int separatorWidth: 1
     readonly property int cardSpacing: 6
@@ -37,7 +41,9 @@ Item {
     readonly property int cardCount: Math.min(forecastData.length, maxCards)
     readonly property int availableWidth: width - totalMargin
     readonly property int totalSpacing: (cardCount - 1) * (separatorWidth + cardSpacing * 2)
-    readonly property int cardWidth: cardCount > 0 ? Math.floor((availableWidth - totalSpacing) / cardCount) : 80
+    readonly property int cardWidth: cardCount > 0
+        ? Math.floor((availableWidth - totalSpacing) / cardCount)
+        : 80
 
     Rectangle {
         anchors.fill: parent
@@ -59,7 +65,6 @@ Item {
                         cardData: forecastData[index]
                     }
 
-                    // Separator
                     Rectangle {
                         visible: index < forecastData.length - 1
                         width: separatorWidth
@@ -95,18 +100,18 @@ Item {
                 width: parent.width
             }
 
-            // Weather emoji
-            Text {
-                text: weatherEmojis[cardData.weather] || "☀️"
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                width: parent.width
-                textFormat: Text.PlainText
-                renderType: Text.NativeRendering
+            // Weather icon (SVG)
+            Image {
+                width: 20
+                height: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                source: weatherIcons[cardData.weather] || weatherIcons["Clear"]
+                fillMode: Image.PreserveAspectFit
                 smooth: true
+                mipmap: true
             }
 
-            // Track temperature row
+            // Track temperature
             TemperatureRow {
                 width: parent.width
                 iconSource: "../../../../../../../assets/overlays/road.svg"
@@ -114,7 +119,7 @@ Item {
                 temperatureChange: cardData["track-temperature-change"]
             }
 
-            // Air temperature row
+            // Air temperature
             TemperatureRow {
                 width: parent.width
                 iconSource: "../../../../../../../assets/overlays/thermometer-half.svg"
@@ -123,17 +128,26 @@ Item {
             }
 
             // Rain percentage
-            Text {
-                text: `💧 ${cardData["rain-percentage"] || 0}%`
-                font.family: "Consolas"
-                font.pixelSize: 11
-                font.weight: Font.Bold
-                color: rainColor
-                horizontalAlignment: Text.AlignHCenter
-                width: parent.width
-                textFormat: Text.PlainText
-                renderType: Text.NativeRendering
-                smooth: true
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 3
+
+                Image {
+                    width: 11
+                    height: 11
+                    source: rainIcon
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    mipmap: true
+                }
+
+                Text {
+                    text: `${cardData["rain-percentage"] || 0}%`
+                    font.family: "Consolas"
+                    font.pixelSize: 11
+                    font.weight: Font.Bold
+                    color: rainColor
+                }
             }
         }
     }
@@ -149,21 +163,16 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 2
 
-            // Icon
             Image {
                 width: 12
                 height: 12
                 source: iconSource
-                sourceSize.width: 48
-                sourceSize.height: 48
                 fillMode: Image.PreserveAspectFit
                 smooth: true
-                antialiasing: true
                 mipmap: true
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            // Temperature value
             Text {
                 text: temperature !== undefined ? `${temperature}°C` : "N/A"
                 font.family: "Consolas"
@@ -173,22 +182,18 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            // Temperature change arrow
-            Text {
-                text: {
-                    if (temperatureChange === "Temperature Up") return "▲"
-                    if (temperatureChange === "Temperature Down") return "▼"
-                    return "─"
-                }
-                font.family: "Consolas"
-                font.pixelSize: 11
-                font.weight: Font.Bold
-                color: {
-                    if (temperatureChange === "Temperature Up") return tempUpColor
-                    if (temperatureChange === "Temperature Down") return tempDownColor
-                    return dimTextColor
-                }
+            Image {
+                width: 10
+                height: 10
                 anchors.verticalCenter: parent.verticalCenter
+                source: {
+                    if (temperatureChange === "Temperature Up") return arrowUpIcon
+                    if (temperatureChange === "Temperature Down") return arrowDownIcon
+                    return dashIcon
+                }
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
             }
         }
     }
