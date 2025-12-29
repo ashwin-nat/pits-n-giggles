@@ -35,33 +35,20 @@ from PySide6.QtWidgets import (QHeaderView, QSizePolicy, QTableWidget,
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
-from .text_cell_delegate import NoElideDelegate
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class CellColour(Enum):
-    NONE = 0
-    RED = 1
-    GREEN = 2
-    PURPLE = 3
 
 class LapTimesPage(MfdPageBase):
     """Lap Times MFD Page."""
     KEY = "lap_times"
     QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
 
-    HEADERS = ["Lap", "S1", "S2", "S3", "Time"]
     NUM_ROWS = 5
 
     LAP_VALID_MASK = 1
     S1_VALID_MASK = 2
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
-    FONT_SIZE = 12
-    FONT_FAMILY = "Formula1"
-    BASE_ROW_HEIGHT = 40
-    BASE_HEADER_HEIGHT = 35
-    BASE_PADDING = 4
 
     def __init__(self, overlay, logger):
         self._last_processed_data: List[Dict[str, Any]] = []
@@ -192,7 +179,7 @@ class LapTimesPage(MfdPageBase):
         return "#e0e0e0"
 
     def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
-                              pb_lap_num: int, isValid: bool) -> CellColour:
+                              pb_lap_num: int, isValid: bool) -> SyntaxError:
         """Get the text colour for a cell"""
         if global_best_time_ms and (time_ms == global_best_time_ms):
             return "magenta"
