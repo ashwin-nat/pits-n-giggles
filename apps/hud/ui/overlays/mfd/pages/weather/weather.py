@@ -30,7 +30,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QWidget
 
-from apps.hud.ui.overlays.mfd.pages.base_page import BasePage
+from apps.hud.ui.overlays.mfd.pages.base_page import BasePage, MfdPageBase
 from lib.assets_loader import load_icon
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -284,7 +284,7 @@ class WeatherForecastCard:
         if change == "Temperature Down": return "color: #6699ff; font-weight: bold;"
         return "color: #999999; font-weight: bold;"
 
-class WeatherForecastPage(BasePage):
+class WeatherForecastPageOld(BasePage):
     """Weather forecast widget showing detailed forecast data."""
     KEY = "weather_forecast"
     WEATHER_EMOJIS = {
@@ -403,3 +403,48 @@ class WeatherForecastPage(BasePage):
         for separator in self._separators:
             separator.hide()
         self._last_processed_samples = []
+
+class WeatherForecastPage(MfdPageBase):
+
+    KEY = "weather"
+    QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
+
+    MAX_SAMPLES = 5
+
+    def __init__(self, overlay, logger):
+        self._last_processed_samples: List[Dict[str, Any]] = []
+        super().__init__(overlay, logger)
+        self._init_event_handlers()
+
+    def _init_event_handlers(self):
+        """Initialize event handlers."""
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            forecast_data = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
+
+            # forecast data is a list of json dict. sample list item
+            # {
+            #     "air-temperature": 21,
+            #     "air-temperature-change": "No Temperature Change",
+            #     "rain-percentage": 21,
+            #     "rain-probability": "21",
+            #     "session-type": "Race",
+            #     "time-offset": 0,
+            #     "track-temperature": 29,
+            #     "track-temperature-change": "No Temperature Change",
+            #     "weather": "Overcast"
+            # },
+
+
+            # Skip if data hasn't changed
+            if forecast_data == self._last_processed_samples:
+                return
+
+            page_item = self.overlay.current_page_item
+            if not page_item:
+                return
+
+            # Pass the forecast data array directly to QML
+            page_item.setProperty("forecastData", forecast_data)
+
+            self._last_processed_samples = forecast_data
