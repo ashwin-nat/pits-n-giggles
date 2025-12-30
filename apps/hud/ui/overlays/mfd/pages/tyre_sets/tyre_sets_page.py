@@ -46,7 +46,6 @@ class TyreSetsPage(MfdPageBase):
         self.tyre_uri_mappings = load_tyre_icons_uri_dict()
         self._icons_pushed = False
         self._init_event_handlers()
-        self._push_static_props()
 
     def _push_static_props(self, page_item: QQuickItem):
         """Push props that never change."""
