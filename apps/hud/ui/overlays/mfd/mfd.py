@@ -352,6 +352,7 @@ class MfdOverlay(BaseOverlayQML):
             FuelInfoPage,
             LapTimesPage,
             WeatherForecastPage,
+            TyreSetsPage,
             # later: WeatherPage, TyrePage, etc
         ]
 
