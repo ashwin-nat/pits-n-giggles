@@ -23,18 +23,19 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Any, Dict, List, Optional, final
 from pathlib import Path
+from typing import Any, Dict, List, Optional, final
 
+from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
-from PySide6.QtCore import QUrl, QObject
 
 from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage, MfdPageBase,
-                                            FuelInfoPage, LapTimesPage, TyreSetsPage,
+from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
+                                            LapTimesPage, MfdPageBase,
                                             PitRejoinPredictionPage,
-                                            TyreInfoPage, WeatherForecastPage)
+                                            TyreInfoPage, TyreSetsPage,
+                                            WeatherForecastPage)
 from lib.config import PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -44,7 +45,7 @@ class MfdOverlay(BaseOverlayQML):
     OVERLAY_ID = "mfd"
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
-    PAGES: List[BasePage] = [
+    PAGES: List[MfdPageBase] = [
         CollapsedPage,
         FuelInfoPage,
         LapTimesPage,
