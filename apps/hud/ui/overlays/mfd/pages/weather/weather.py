@@ -28,6 +28,8 @@ from typing import Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
+from PySide6.QtCore import QTimer
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class WeatherForecastPage(MfdPageBase):
@@ -61,5 +63,8 @@ class WeatherForecastPage(MfdPageBase):
 
     @final
     def on_page_active(self):
-        # Invalidate the cache
+        # Invalidate the cache after a delay
+        QTimer.singleShot(1000, self._invalidate_cache)
+
+    def _invalidate_cache(self):
         self._last_processed_samples = []
