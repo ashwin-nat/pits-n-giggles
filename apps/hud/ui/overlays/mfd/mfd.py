@@ -354,6 +354,7 @@ class MfdOverlay(BaseOverlayQML):
             WeatherForecastPage,
             TyreSetsPage,
             TyreInfoPage,
+            PitRejoinPredictionPage,
             # later: WeatherPage, TyrePage, etc
         ]
 
