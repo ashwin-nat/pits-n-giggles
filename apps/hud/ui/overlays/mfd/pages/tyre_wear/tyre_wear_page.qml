@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Rectangle {
     id: root
     color: "#0a0a0a"
+    property string title: "TYRE WEAR INFO"
 
     property string iconSourcePrefix: "../../../../../../../assets/tyre-icons/"
     readonly property var tyreIcons: ({
