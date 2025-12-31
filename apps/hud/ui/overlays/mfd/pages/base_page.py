@@ -168,3 +168,7 @@ class MfdPageBase:
     @property
     def page_item(self):
         return self.overlay.current_page_item
+
+    def on_page_active(self):
+        """Called when the page becomes active. Interested overlays should override this method."""
+        pass

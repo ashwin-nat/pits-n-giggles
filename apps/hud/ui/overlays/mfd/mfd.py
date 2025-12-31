@@ -380,6 +380,7 @@ class MfdOverlay(BaseOverlayQML):
         self._root.setProperty("currentPageQml", qml_url)
         self._root.setProperty("currentPageIndex", self._current_index)
 
+        page.on_page_active()
         self.logger.debug(
             "%s | Applied page '%s' (index=%d, collapsed=%s)",
             self.OVERLAY_ID,

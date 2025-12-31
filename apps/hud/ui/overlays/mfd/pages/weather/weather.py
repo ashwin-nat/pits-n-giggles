@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
@@ -58,3 +58,8 @@ class WeatherForecastPage(MfdPageBase):
 
             page_item.setProperty("forecastData", forecast_data)
             self._last_processed_samples = forecast_data
+
+    @final
+    def on_page_active(self):
+        # Invalidate the cache
+        self._last_processed_samples = []

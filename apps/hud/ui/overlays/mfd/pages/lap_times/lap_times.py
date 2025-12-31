@@ -25,7 +25,7 @@
 from pathlib import Path
 import logging
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, final
 
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 from PySide6.QtCore import Qt
@@ -54,6 +54,11 @@ class LapTimesPage(MfdPageBase):
         self._last_processed_data: List[Dict[str, Any]] = []
         super().__init__(overlay, logger)
         self._init_event_handlers()
+
+    @final
+    def on_page_active(self):
+        # Invalidate the cache
+        self._last_processed_data = []
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
