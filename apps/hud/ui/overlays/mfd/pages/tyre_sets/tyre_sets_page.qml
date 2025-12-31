@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 
 Item {
     id: root
+    property string title: "TYRE SETS"
 
     property var tyreIcons: ({})
     property var bestSets: []

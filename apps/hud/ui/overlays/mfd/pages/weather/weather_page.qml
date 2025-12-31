@@ -6,6 +6,7 @@ Item {
     width: parent ? parent.width : 600
     height: parent ? parent.height : 220
     clip: true
+    property string title: "WEATHER FORECAST"
 
     /* ---------- WEATHER ICONS (SVG) ---------- */
     readonly property var weatherIcons: ({

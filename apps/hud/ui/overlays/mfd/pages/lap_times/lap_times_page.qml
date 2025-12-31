@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 
 Item {
     id: root
+    property string title: "LAP TIMES"
 
     /* -----------------------------
      * CONFIG

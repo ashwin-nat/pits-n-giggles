@@ -5,6 +5,7 @@ Item {
     id: page
     width: parent ? parent.width : 400
     height: parent ? parent.height : 220
+    property string title: "FUEL INFO"
 
     /* ---------- DATA ---------- */
     property string currValue: "---"
