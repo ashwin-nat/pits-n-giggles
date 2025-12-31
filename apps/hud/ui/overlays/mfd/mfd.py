@@ -405,6 +405,19 @@ class MfdOverlay(BaseOverlayQML):
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             self._handle_event("stream_overlay_update", data)
 
+        @self.on_event("set_locked_state")
+        def _handle_set_locked_state(data: Dict[str, Any]):
+            locked = data.get('new-value', False)
+            self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+
+            # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
+            # width to configure.
+            if not locked and self._current_index == 0:
+                self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
+                _handle_next_page(data)
+
+            self.set_locked_state(locked)
+
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
         """Forward event to page.
 
