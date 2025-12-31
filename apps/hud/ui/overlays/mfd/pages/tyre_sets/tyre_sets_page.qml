@@ -30,7 +30,7 @@ Item {
         Label {
             text: "BEST AVAILABLE SETS"
             color: textDim
-            font.pixelSize: 7
+            font.pixelSize: 9
         }
 
         GridLayout {
@@ -89,7 +89,7 @@ Item {
 
                             Label {
                                 text: "s/lap"
-                                font.pixelSize: 7
+                                font.pixelSize: 9
                                 color: textDim
                             }
                         }
@@ -113,7 +113,7 @@ Item {
         Label {
             text: "ACTUAL COMPOUNDS"
             color: textDim
-            font.pixelSize: 7
+            font.pixelSize: 9
         }
 
         GridLayout {
