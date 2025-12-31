@@ -43,17 +43,7 @@ class TyreSetsPage(MfdPageBase):
 
     def __init__(self, overlay, logger: logging.Logger):
         super().__init__(overlay, logger)
-        self.tyre_uri_mappings = load_tyre_icons_uri_dict()
-        self._icons_pushed = False
         self._init_event_handlers()
-
-    def _push_static_props(self, page_item: QQuickItem):
-        """Push props that never change."""
-        if self._icons_pushed:
-            return
-
-        page_item.setProperty("tyreIcons", self.tyre_uri_mappings)
-        self._icons_pushed = True
 
     def _init_event_handlers(self):
         @self.on_event("stream_overlay_update")
@@ -61,7 +51,6 @@ class TyreSetsPage(MfdPageBase):
             page_item = self.overlay.current_page_item
             if not page_item:
                 return
-            self._push_static_props(page_item)
 
             tyre_sets_info = data.get("tyre-sets")
             if not tyre_sets_info:

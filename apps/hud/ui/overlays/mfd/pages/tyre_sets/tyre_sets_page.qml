@@ -6,9 +6,18 @@ Item {
     id: root
     property string title: "TYRE SETS"
 
-    property var tyreIcons: ({})
     property var bestSets: []
     property var compoundMappings: []
+
+    property string iconSourcePrefix: "../../../../../../../assets/tyre-icons/"
+    readonly property var tyreIcons: ({
+        "Super Soft": iconSourcePrefix + "super_soft_tyre.svg",
+        "Soft":       iconSourcePrefix + "soft_tyre.svg",
+        "Medium":     iconSourcePrefix + "medium_tyre.svg",
+        "Hard":       iconSourcePrefix + "hard_tyre.svg",
+        "Inters":     iconSourcePrefix + "intermediate_tyre.svg",
+        "Wet":        iconSourcePrefix + "wet_tyre.svg"
+    })
 
     readonly property color bgColor: "#1a1a1a"
     readonly property color textColor: "#e0e0e0"
