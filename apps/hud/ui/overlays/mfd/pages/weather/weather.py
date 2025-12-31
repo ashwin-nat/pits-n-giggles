@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, final
 
 from PySide6.QtCore import QTimer
+from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
@@ -57,7 +58,7 @@ class WeatherForecastPage(MfdPageBase):
             if forecast_data == self._last_processed_samples:
                 return
 
-            page_item = self.overlay.current_page_item
+            page_item = self._page_item
             if not page_item:
                 return
 
@@ -65,7 +66,8 @@ class WeatherForecastPage(MfdPageBase):
             self._last_processed_samples = forecast_data
 
     @final
-    def on_page_active(self):
+    def on_page_activated(self, item: QQuickItem):
+        super().on_page_activated(item)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 

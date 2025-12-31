@@ -102,6 +102,7 @@ class MfdOverlay(BaseOverlayQML):
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow. Init the pages in the specified order"""
         super()._setup_window()
+        self._root.pageLoaded.connect(self._on_page_loaded)
 
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
@@ -114,8 +115,25 @@ class MfdOverlay(BaseOverlayQML):
 
         self._apply_current_page()
 
+    def _on_page_loaded(self, page_key: str, item: QQuickItem):
+        """Called when a page is loaded completely"""
+        page = self.PAGE_CLS_BY_KEY.get(page_key)
+        if not page:
+            self.logger.debug("Ignoring stale load for %s", page_key)
+            return
+
+        # Qt guarantees order of delivery, but it doesn't change the fact that the request for page change
+        # and actual page load are asynchronous
+        # If pages are cycled very quickly, this class's tracker may be well ahead of the actual qml load status
+        # Simplest fix, deactivate everything else except current
+        for page in self._mfd_pages:
+            if page.KEY == page_key:
+                page.on_page_activated(item)
+            elif page.is_active:
+                page.on_page_deactivated()
+
     def _apply_current_page(self):
-        """Apply the current page. Call the page's on_page_active() method."""
+        """Apply the current page."""
         try:
             page = self._mfd_pages[self._current_index]
         except Exception as e: # pylint: disable=broad-exception-caught
@@ -126,10 +144,10 @@ class MfdOverlay(BaseOverlayQML):
         is_collapsed = (page.KEY == CollapsedPage.KEY)
 
         self._root.setProperty("collapsed", is_collapsed)
+        self._root.setProperty("activePageKey", page.KEY)
         self._root.setProperty("currentPageQml", qml_url)
         self._root.setProperty("currentPageIndex", self._current_index)
 
-        page.on_page_active()
         self.logger.debug(
             "%s | Applied page '%s' (index=%d, collapsed=%s)",
             self.OVERLAY_ID,

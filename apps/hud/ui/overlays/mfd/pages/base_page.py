@@ -26,6 +26,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict
 
+from PySide6.QtQuick import QQuickItem
+
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd import MfdOverlay
 
@@ -46,6 +48,7 @@ class MfdPageBase:
         assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
 
         self.overlay = overlay
+        self._page_item = None
         self.logger = logger
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
 
@@ -67,6 +70,16 @@ class MfdPageBase:
     def page_item(self):
         return self.overlay.current_page_item
 
-    def on_page_active(self):
+    def on_page_activated(self, item: QQuickItem):
         """Called when the page becomes active. Interested overlays should override this method."""
-        pass
+        self._page_item = item
+        self.logger.debug(f"{self.KEY} | Page activated")
+
+    def on_page_deactivated(self):
+        """Called when the page becomes active. Interested overlays should override this method."""
+        self._page_item = None
+        self.logger.debug(f"{self.KEY} | Page deactivated")
+
+    @property
+    def is_active(self) -> bool:
+        return self._page_item is not None

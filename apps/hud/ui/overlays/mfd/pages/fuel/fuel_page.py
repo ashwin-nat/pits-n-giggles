@@ -60,7 +60,7 @@ class FuelInfoPage(MfdPageBase):
                 self.logger.error(f"{self.KEY} | Failed to find root")
                 return
 
-            page_item = self.overlay.current_page_item
+            page_item = self._page_item
             if not page_item:
                 return
 

@@ -50,7 +50,7 @@ class TyreSetsPage(MfdPageBase):
     def _init_event_handlers(self):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
-            page_item = self.overlay.current_page_item
+            page_item = self._page_item
             if not page_item:
                 return
 

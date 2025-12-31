@@ -58,7 +58,7 @@ class PitRejoinPredictionPage(MfdPageBase):
             Args:
                 data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
             """
-            page_item = self.overlay.current_page_item
+            page_item = self._page_item
             if not page_item:
                 return
 

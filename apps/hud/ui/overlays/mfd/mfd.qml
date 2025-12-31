@@ -6,6 +6,8 @@ Window {
     visible: true
     color: "black"
 
+    signal pageLoaded(string pageKey, var item)
+
     /* ---------- SCALING ---------- */
     property real scaleFactor: 1.0
     readonly property int baseWidth: 400
@@ -16,6 +18,7 @@ Window {
 
     /* ---------- PAGE CONTROL ---------- */
     property url currentPageQml: ""
+    property string activePageKey: ""
     property bool collapsed: false   // SET FROM PYTHON
     property int totalPages: 0       // SET FROM PYTHON
     property int currentPageIndex: 0 // SET FROM PYTHON
@@ -131,6 +134,10 @@ Window {
             height: collapsed ? baseHeightCollapsed : baseHeightExpanded
             anchors.top: showTitleBar ? titleBar.bottom : parent.top
             opacity: 1.0
+
+            onLoaded: {
+                root.pageLoaded(root.activePageKey, item)
+            }
 
             // Fade out animation
             NumberAnimation on opacity {

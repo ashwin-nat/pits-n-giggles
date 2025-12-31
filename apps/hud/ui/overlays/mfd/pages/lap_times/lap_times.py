@@ -26,6 +26,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, final
 
+from PySide6.QtQuick import QQuickItem
+
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
 if TYPE_CHECKING:
@@ -51,7 +53,8 @@ class LapTimesPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_active(self):
+    def on_page_activated(self, item: QQuickItem):
+        super().on_page_activated(item)
         # Invalidate the cache
         self._last_processed_data = []
 
@@ -85,7 +88,7 @@ class LapTimesPage(MfdPageBase):
             glob_best_s2_ms = lap_time_history["global-fastest-s2-ms"]
             glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
 
-            page_item = self.overlay.current_page_item
+            page_item = self._page_item
             if not page_item:
                 self.logger.error("Page not found")
                 return
