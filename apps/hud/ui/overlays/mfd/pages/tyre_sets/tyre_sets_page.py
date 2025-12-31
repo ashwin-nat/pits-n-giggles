@@ -24,12 +24,14 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.assets_loader import load_tyre_icons_uri_dict
+
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -41,7 +43,7 @@ class TyreSetsPage(MfdPageBase):
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]
 
-    def __init__(self, overlay, logger: logging.Logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         super().__init__(overlay, logger)
         self._init_event_handlers()
 

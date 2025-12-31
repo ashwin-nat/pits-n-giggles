@@ -22,14 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.f1_types import F1Utils
+
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,7 +43,7 @@ class FuelInfoPage(MfdPageBase):
 
     MIN_FUEL = 0.2
 
-    def __init__(self, overlay, logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         super().__init__(overlay, logger)
         self._init_handlers()
 

@@ -24,11 +24,14 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, final
+from typing import TYPE_CHECKING, Any, Dict, List, final
+
+from PySide6.QtCore import QTimer
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
-from PySide6.QtCore import QTimer
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,7 +42,7 @@ class WeatherForecastPage(MfdPageBase):
 
     MAX_SAMPLES = 5
 
-    def __init__(self, overlay, logger: logging.Logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         self._last_processed_samples: List[Dict[str, Any]] = []
         super().__init__(overlay, logger)
         self._init_event_handlers()

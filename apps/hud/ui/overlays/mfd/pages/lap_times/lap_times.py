@@ -22,21 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from pathlib import Path
 import logging
-from enum import Enum
-from typing import Any, Dict, List, final
-
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (QHeaderView, QSizePolicy, QTableWidget,
-                               QTableWidgetItem, QWidget)
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimesPage(MfdPageBase):
     """Lap Times MFD Page."""
@@ -50,7 +45,7 @@ class LapTimesPage(MfdPageBase):
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
 
-    def __init__(self, overlay, logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         self._last_processed_data: List[Dict[str, Any]] = []
         super().__init__(overlay, logger)
         self._init_event_handlers()
