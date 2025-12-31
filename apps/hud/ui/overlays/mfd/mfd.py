@@ -316,6 +316,17 @@ class MfdOverlay(BaseOverlayQML):
     OVERLAY_ID = "mfd"
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
+    PAGES: List[BasePage] = [
+        CollapsedPage,
+        FuelInfoPage,
+        LapTimesPage,
+        PitRejoinPredictionPage,
+        TyreInfoPage,
+        WeatherForecastPage,
+        TyreSetsPage,
+    ]
+    PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
+
     def __init__(
         self,
         config: OverlaysConfig,
@@ -329,6 +340,7 @@ class MfdOverlay(BaseOverlayQML):
         # Pages are created AFTER QML is loaded
         self._mfd_pages: List[MfdPageBase] = []
         self._current_index = 0
+        self._init_pages_order(settings)
 
         super().__init__(
             config=config,
@@ -342,23 +354,27 @@ class MfdOverlay(BaseOverlayQML):
 
         self._init_cmd_handlers()
 
+    def _init_pages_order(self, settings: PngSettings):
+
+        self.enabled_pages = [
+            {"key": "collapsed", "cls": CollapsedPage, "position": 0},
+            *[
+                {
+                    "key": key,
+                    "cls": self.PAGE_CLS_BY_KEY[key],
+                    "position": settings.position
+                }
+                for key, settings in
+                settings.HUD.mfd_settings.sorted_enabled_pages()
+            ]
+        ]
+
     @final
     def _setup_window(self):
         super()._setup_window()
 
-        # Example: build from user config
-        enabled_pages = [
-            CollapsedPage,
-            FuelInfoPage,
-            LapTimesPage,
-            WeatherForecastPage,
-            TyreSetsPage,
-            TyreInfoPage,
-            PitRejoinPredictionPage,
-            # later: WeatherPage, TyrePage, etc
-        ]
-
-        for cls in enabled_pages:
+        for page_info in self.enabled_pages:
+            cls = page_info["cls"]
             self._mfd_pages.append(cls(self, self.logger))
         self._current_index = 0
 

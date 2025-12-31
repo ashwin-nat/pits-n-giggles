@@ -34,7 +34,7 @@ from PySide6.QtCore import QTimer
 
 class WeatherForecastPage(MfdPageBase):
 
-    KEY = "weather"
+    KEY = "weather_forecast"
     QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
