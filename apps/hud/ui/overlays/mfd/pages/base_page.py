@@ -53,12 +53,22 @@ class MfdPageBase:
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
 
     def on_event(self, event_type: str):
+        """Decorator to register an event handler for this page."""
         def decorator(fn):
             self._handlers[event_type] = fn
             return fn
         return decorator
 
+    def get_handled_event_types(self) -> set:
+        """Return the set of event types this page handles."""
+        return set(self._handlers.keys())
+
+    def handles_event(self, event_type: str) -> bool:
+        """Check if this page handles a specific event type."""
+        return event_type in self._handlers
+
     def handle_event(self, event_type: str, data: Dict[str, Any]):
+        """Handle an event if this page has a handler registered for it."""
         if handler := self._handlers.get(event_type):
             handler(data)
 

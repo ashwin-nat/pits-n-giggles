@@ -78,10 +78,33 @@ class MfdOverlay(BaseOverlayQML):
             opacity=opacity,
             scale_factor=scale_factor,
             windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None,
+            refresh_interval_ms=None, # Telemetry based refreshes
         )
 
+        self._register_page_event_handlers()
         self._init_cmd_handlers()
+
+    def _register_page_event_handlers(self):
+        """Automatically register all event handlers from all pages."""
+        # Collect all unique event types from all pages
+        all_event_types = set()
+        for page in self._mfd_pages:
+            all_event_types.update(page.get_handled_event_types())
+
+        # Register a handler for each event type that broadcasts to all pages
+        for event_type in all_event_types:
+            self._register_broadcast_handler(event_type)
+
+        self.logger.debug("%s | Registered %d event handlers %s", self.OVERLAY_ID, len(all_event_types), all_event_types)
+
+    def _register_broadcast_handler(self, event_type: str):
+        """Register a handler that broadcasts an event to all interested pages."""
+        @self.on_event(event_type)
+        def _handler(data: Dict[str, Any]):
+            # Broadcast to all pages that handle this event
+            for page in self._mfd_pages:
+                if page.handles_event(event_type):
+                    page.handle_event(event_type, data)
 
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
