@@ -40,6 +40,7 @@ Item {
             text: "BEST AVAILABLE SETS"
             color: textDim
             font.pixelSize: 9
+            font.family: "Formula1"
         }
 
         GridLayout {
@@ -126,6 +127,7 @@ Item {
             text: "ACTUAL COMPOUNDS"
             color: textDim
             font.pixelSize: 9
+            font.family: "Formula1"
         }
 
         GridLayout {

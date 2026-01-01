@@ -206,10 +206,10 @@ class TyreInfoPage(MfdPageBase):
         while len(rows_data) < 3:
             rows_data.append({
                 'label': '',
-                'fl': 0.0,
-                'fr': 0.0,
-                'rl': 0.0,
-                'rr': 0.0,
+                'fl': float('-inf'),  # Use -inf as sentinel for null/no data
+                'fr': float('-inf'),
+                'rl': float('-inf'),
+                'rr': float('-inf'),
             })
 
         # Update QML table data

@@ -307,6 +307,7 @@ Rectangle {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            Layout.preferredHeight: 40
                             color: "#1a1a1a"
 
                             RowLayout {
@@ -341,10 +342,16 @@ Rectangle {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: modelData.fl.toFixed(2) + "%"
+                                        visible: modelData.fl !== undefined && modelData.fl !== null && isFinite(modelData.fl)
+                                        text: {
+                                            if (modelData.fl === undefined || modelData.fl === null || !isFinite(modelData.fl)) {
+                                                return ""
+                                            }
+                                            return modelData.fl.toFixed(2) + "%"
+                                        }
                                         font.family: "B612 Mono"
                                         font.pixelSize: 12
-                                        color: getWearColor(modelData.fl)
+                                        color: modelData.fl !== null && modelData.fl !== undefined && isFinite(modelData.fl) ? getWearColor(modelData.fl) : "#666666"
                                     }
                                 }
 
@@ -358,10 +365,16 @@ Rectangle {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: modelData.fr.toFixed(2) + "%"
+                                        visible: modelData.fr !== undefined && modelData.fr !== null && isFinite(modelData.fr)
+                                        text: {
+                                            if (modelData.fr === undefined || modelData.fr === null || !isFinite(modelData.fr)) {
+                                                return ""
+                                            }
+                                            return modelData.fr.toFixed(2) + "%"
+                                        }
                                         font.family: "B612 Mono"
                                         font.pixelSize: 12
-                                        color: getWearColor(modelData.fr)
+                                        color: modelData.fr !== null && modelData.fr !== undefined && isFinite(modelData.fr) ? getWearColor(modelData.fr) : "#666666"
                                     }
                                 }
 
@@ -375,10 +388,16 @@ Rectangle {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: modelData.rl.toFixed(2) + "%"
+                                        visible: modelData.rl !== undefined && modelData.rl !== null && isFinite(modelData.rl)
+                                        text: {
+                                            if (modelData.rl === undefined || modelData.rl === null || !isFinite(modelData.rl)) {
+                                                return ""
+                                            }
+                                            return modelData.rl.toFixed(2) + "%"
+                                        }
                                         font.family: "B612 Mono"
                                         font.pixelSize: 12
-                                        color: getWearColor(modelData.rl)
+                                        color: modelData.rl !== null && modelData.rl !== undefined && isFinite(modelData.rl) ? getWearColor(modelData.rl) : "#666666"
                                     }
                                 }
 
@@ -392,10 +411,16 @@ Rectangle {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: modelData.rr.toFixed(2) + "%"
+                                        visible: modelData.rr !== undefined && modelData.rr !== null && isFinite(modelData.rr)
+                                        text: {
+                                            if (modelData.rr === undefined || modelData.rr === null || !isFinite(modelData.rr)) {
+                                                return ""
+                                            }
+                                            return modelData.rr.toFixed(2) + "%"
+                                        }
                                         font.family: "B612 Mono"
                                         font.pixelSize: 12
-                                        color: getWearColor(modelData.rr)
+                                        color: modelData.rr !== null && modelData.rr !== undefined && isFinite(modelData.rr) ? getWearColor(modelData.rr) : "#666666"
                                     }
                                 }
                             }

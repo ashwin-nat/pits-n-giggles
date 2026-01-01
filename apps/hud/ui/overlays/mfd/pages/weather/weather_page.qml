@@ -50,7 +50,21 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
+        // No data message
+        Text {
+            visible: forecastData.length === 0
+            anchors.centerIn: parent
+            text: "WAITING FOR DATA ..."
+            font.family: "Formula1"
+            font.pixelSize: 14
+            font.weight: Font.Bold
+            color: dimTextColor
+            horizontalAlignment: Text.AlignHCenter
+        }
+
+        // Weather cards
         Row {
+            visible: forecastData.length > 0
             anchors.centerIn: parent
             spacing: cardSpacing
 
