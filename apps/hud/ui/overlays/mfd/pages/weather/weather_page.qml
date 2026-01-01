@@ -108,6 +108,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 source: weatherIcons[cardData.weather] || weatherIcons["Clear"]
                 fillMode: Image.PreserveAspectFit
+                antialiasing: true
                 smooth: true
                 mipmap: true
             }
@@ -140,6 +141,7 @@ Item {
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
+                    antialiasing: true
                 }
 
                 Text {
@@ -172,6 +174,7 @@ Item {
                 smooth: true
                 mipmap: true
                 anchors.verticalCenter: parent.verticalCenter
+                antialiasing: true
             }
 
             Text {
@@ -195,6 +198,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 mipmap: true
+                antialiasing: true
             }
         }
     }

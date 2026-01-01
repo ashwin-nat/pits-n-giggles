@@ -73,6 +73,9 @@ Rectangle {
                                 Layout.preferredHeight: 28
                                 source: root.tyreIcons[root.currentCompoundVisual] || ""
                                 fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                antialiasing: true
+                                mipmap: true
                             }
 
                             // Compound name
@@ -177,6 +180,9 @@ Rectangle {
                                             Layout.preferredHeight: 24
                                             source: root.tyreIcons[modelData] || ""
                                             fillMode: Image.PreserveAspectFit
+                                            smooth: true
+                                            antialiasing: true
+                                            mipmap: true
                                         }
 
                                         Text {
@@ -206,6 +212,9 @@ Rectangle {
                                             Layout.preferredHeight: 24
                                             source: root.tyreIcons[modelData] || ""
                                             fillMode: Image.PreserveAspectFit
+                                            smooth: true
+                                            antialiasing: true
+                                            mipmap: true
                                         }
 
                                         Text {

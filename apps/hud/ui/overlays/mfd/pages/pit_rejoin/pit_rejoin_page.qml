@@ -160,6 +160,7 @@ Rectangle {
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             mipmap: true
+                            antialiasing: true
                             visible: source !== ""
                         }
                     }

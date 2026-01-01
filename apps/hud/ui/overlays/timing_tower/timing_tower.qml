@@ -165,6 +165,7 @@ Window {
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
                                         cache: true
+                                        antialiasing: true
                                     }
                                 }
 
@@ -212,6 +213,7 @@ Window {
                                             smooth: true
                                             anchors.verticalCenter: parent.verticalCenter
                                             cache: true
+                                            antialiasing: true
                                         }
 
                                         Text {

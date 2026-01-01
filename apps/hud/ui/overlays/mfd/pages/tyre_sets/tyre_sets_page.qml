@@ -70,6 +70,9 @@ Item {
                             Layout.preferredHeight: 32
                             fillMode: Image.PreserveAspectFit
                             source: entry && tyreIcons[entry.compound] ? tyreIcons[entry.compound] : ""
+                            smooth: true
+                            antialiasing: true
+                            mipmap: true
                         }
 
                         ColumnLayout {
@@ -149,6 +152,9 @@ Item {
                             Layout.preferredHeight: 18
                             fillMode: Image.PreserveAspectFit
                             source: tyreIcons[modelData.visualCompound]
+                            smooth: true
+                            antialiasing: true
+                            mipmap: true
                         }
 
                         Label {

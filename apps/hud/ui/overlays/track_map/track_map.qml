@@ -32,6 +32,7 @@ Window {
             antialiasing: true
             source: root.svgPath
             visible: root.svgPath !== ""
+            antialiasing: true
 
             // Fallback if image fails to load
             onStatusChanged: {
