@@ -113,6 +113,19 @@ datas = [
     (os.path.join(PROJECT_ROOT, "assets", "overlays", "road.svg"), "assets/overlay"),
     (os.path.join(PROJECT_ROOT, "assets", "overlays", "thermometer-half.svg"), "assets/overlay"),
 
+    # Overlay icons - weather
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "arrow-up.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "arrow-down.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "clear.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "dash.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "heavy-rain.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "light-cloud.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "light-rain.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "overcast.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "rain-drop.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "storm.svg"), "assets/weather"),
+    (os.path.join(PROJECT_ROOT, "assets", "weather", "thunderstorm.svg"), "assets/weather"),
+
     # Launcher icons
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
     (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-up.svg"), "assets/launcher-icons"),
@@ -148,6 +161,14 @@ datas = [
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "input_telemetry", "input_telemetry.qml"), "apps/hud/ui/overlays/input_telemetry"),
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "timing_tower", "timing_tower.qml"), "apps/hud/ui/overlays/timing_tower"),
     (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "lap_timer", "lap_timer_overlay.qml"), "apps/hud/ui/overlays/lap_timer"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "mfd.qml"), "apps/hud/ui/overlays/mfd"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "collapsed", "collapsed_page.qml"), "apps/hud/ui/overlays/mfd/pages/collapsed"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "fuel", "fuel_page.qml"), "apps/hud/ui/overlays/mfd/pages/fuel"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "lap_times", "lap_times_page.qml"), "apps/hud/ui/overlays/mfd/pages/lap_times"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "pit_rejoin", "pit_rejoin_page.qml"), "apps/hud/ui/overlays/mfd/pages/pit_rejoin"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "tyre_sets", "tyre_sets_page.qml"), "apps/hud/ui/overlays/mfd/pages/tyre_sets"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "tyre_wear", "tyre_wear_page.qml"), "apps/hud/ui/overlays/mfd/pages/tyre_wear"),
+    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "mfd", "pages", "weather", "weather_page.qml"), "apps/hud/ui/overlays/mfd/pages/weather"),
 ]
 
 # --------------------------------------------------------------------------------------------------
