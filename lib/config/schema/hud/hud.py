@@ -22,12 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
 from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
+from .layout import DEFAULT_OVERLAY_LAYOUT, OverlayPosition
 from .mfd import MfdSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -150,6 +152,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "check_box",
                 "visible": True
+            }
+        }
+    )
+
+    layout: Dict[str, OverlayPosition] = Field(
+        default_factory=lambda: copy.deepcopy(DEFAULT_OVERLAY_LAYOUT),
+        description="Overlay screen positions (pixels)",
+        json_schema_extra={
+            "ui": {
+                "visible": False
             }
         }
     )
