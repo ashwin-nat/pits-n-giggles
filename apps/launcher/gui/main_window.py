@@ -42,7 +42,8 @@ from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       PngAppMgrBase, SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
-from lib.config import PngSettings, load_config_migrated, save_config_to_json
+from lib.config import (PngSettings, load_config_migrated,
+                        maybe_migrate_legacy_hud_layout, save_config_to_json)
 from lib.file_path import resolve_user_file
 from meta.meta import APP_NAME
 
@@ -189,11 +190,17 @@ class PngLauncherWindow(QMainWindow):
         self.logo_path = logo_path
         self.setWindowIcon(QIcon(self.logo_path))
         self.integration_test_mode = integration_test_mode
-        self.config_file_legacy = resolve_user_file("png_config.ini")
+        self.config_file_path_legacy = resolve_user_file("png_config.ini")
         self.logger.debug("Starting with config file %s", config_file)
-        self.config_file_new = resolve_user_file(config_file if config_file else "png_config.json")
-        self.settings: PngSettings = load_config_migrated(self.config_file_legacy, self.config_file_new,
+        self.config_file_path_new = resolve_user_file(config_file if config_file else "png_config.json")
+        self.settings: PngSettings = load_config_migrated(self.config_file_path_legacy, self.config_file_path_new,
                                                           logger=self.logger)
+        self.settings: PngSettings = maybe_migrate_legacy_hud_layout(
+            settings=self.settings,
+            json_config_path=self.config_file_path_new,
+            legacy_layout_path=resolve_user_file("png_overlays.json"),
+            logger=self.logger,
+        )
 
         # Update button blink timer
         self.update_blink_timer = QTimer(self)
@@ -205,7 +212,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Common args
         args = [
-            "--config-file", self.config_file_new,
+            "--config-file", self.config_file_path_new,
         ]
         self.subsystems: List[PngAppMgrBase] = [
             BackendAppMgr(
@@ -841,7 +848,7 @@ class PngLauncherWindow(QMainWindow):
     def save_settings_to_disk(self, settings: PngSettings, path: Optional[str] = None):
         """Save the settings to disk"""
         if not path:
-            path = self.config_file_new
+            path = self.config_file_path_new
         try:
             save_config_to_json(settings, path)
         except Exception as e: # pylint: disable=broad-exception-caught

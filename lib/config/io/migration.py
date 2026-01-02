@@ -22,13 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import os
-from typing import Optional
 from logging import Logger
+from typing import Dict, Optional
 
+from ..schema import OverlayPosition, PngSettings
 from .ini import load_config_from_ini
 from .json import load_config_from_json, save_config_to_json
-from ..schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -92,3 +93,104 @@ def load_config_migrated(
     model = PngSettings()
     save_config_to_json(model, json_path)
     return model
+
+def maybe_migrate_legacy_hud_layout(
+    settings: PngSettings,
+    json_config_path: str,
+    legacy_layout_path: str,
+    logger: Optional[Logger] = None,
+) -> PngSettings:
+    """Migrate legacy png_overlays.json into HUD.layout (one-time)."""
+
+    if not os.path.exists(legacy_layout_path):
+        return settings
+
+    if logger:
+        logger.info("Legacy png_overlays.json found; attempting HUD layout migration")
+
+    new_settings = settings
+
+    try:
+        legacy_layout = _read_legacy_layout(legacy_layout_path)
+
+        default_layout = dict(settings.HUD.layout)
+        merged_layout = _merge_legacy_layout(
+            default_layout,
+            legacy_layout,
+            logger,
+        )
+
+        new_settings = settings.model_copy(deep=True)
+        new_settings.HUD.layout = merged_layout
+
+        save_config_to_json(new_settings, json_config_path)
+
+        if logger:
+            logger.info("HUD layout successfully migrated from legacy file")
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        if logger:
+            logger.error(
+                "Failed to migrate legacy HUD layout; reverting to defaults: %s",
+                e,
+            )
+
+    finally:
+        # Always delete legacy file
+        try:
+            os.remove(legacy_layout_path)
+            if logger:
+                logger.debug("Deleted legacy png_overlays.json")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            if logger:
+                logger.warning("Failed to delete legacy png_overlays.json: %s",e,)
+
+    return new_settings
+
+def _read_legacy_layout(
+    legacy_layout_path: str,
+) -> Dict[str, OverlayPosition]:
+    """Read and parse legacy png_overlays.json.
+
+    Raises:
+        Exception on any parse or validation failure.
+    """
+    with open(legacy_layout_path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+
+    if not isinstance(raw, dict):
+        raise ValueError("Legacy layout root is not a dict")
+
+    layout: Dict[str, OverlayPosition] = {}
+
+    for overlay_id, data in raw.items():
+        if not isinstance(data, dict):
+            raise ValueError(f"Invalid layout entry for overlay '{overlay_id}'")
+
+        layout[overlay_id] = OverlayPosition.fromJSON(data)
+
+    if not layout:
+        raise ValueError("Legacy layout contained no valid overlays")
+
+    return layout
+
+def _merge_legacy_layout(
+    default_layout: Dict[str, OverlayPosition],
+    legacy_layout: Dict[str, OverlayPosition],
+    logger: Optional[Logger],
+) -> Dict[str, OverlayPosition]:
+    """Merge legacy layout into defaults (legacy overrides, defaults fill gaps)."""
+    merged = dict(default_layout)
+
+    for overlay_id, pos in legacy_layout.items():
+        if overlay_id not in merged:
+            if logger:
+                logger.debug(
+                    "Ignoring legacy layout for unknown overlay '%s'",
+                    overlay_id,
+                )
+            continue
+
+        merged[overlay_id] = pos
+
+    return merged
