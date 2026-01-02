@@ -26,6 +26,8 @@ from typing import Dict
 
 from pydantic import BaseModel, Field
 
+from ..diff import ConfigDiffMixin
+
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
 LAP_TIMER_OVERLAY_ID = "lap_timer"
@@ -37,7 +39,7 @@ TRACK_RADAR_OVERLAY_ID = "track_radar"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
-class OverlayPosition(BaseModel):
+class OverlayPosition(ConfigDiffMixin, BaseModel):
     """
     Screen position for a single overlay.
 
