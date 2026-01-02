@@ -254,7 +254,7 @@ class OverlaysMgr:
                     "__set_config__",
                     overlay_layout,
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # pylint: disable=broad-except
                 self.logger.exception(
                     "Failed to apply layout for overlay '%s'",
                     overlay_id,

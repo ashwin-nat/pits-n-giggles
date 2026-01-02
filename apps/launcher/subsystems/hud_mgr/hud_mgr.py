@@ -182,10 +182,7 @@ class HudAppMgr(PngAppMgrBase):
 
         status = rsp.get("status")
         if status != "success":
-            self.error_log(
-                "Failed to reset HUD overlays: %s",
-                rsp.get("error", "unknown error")
-            )
+            self.error_log(f"Failed to reset HUD overlays: {rsp.get("error", "unknown error")}")
             return
 
         # IPC success - write defaults
