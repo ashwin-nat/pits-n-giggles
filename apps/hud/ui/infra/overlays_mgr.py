@@ -190,7 +190,6 @@ class OverlaysMgr:
     def reset_overlays(self):
         """Reset overlays"""
         self._reset_config()
-        self.window_manager.set_config(self.config)
         for overlay_id, config in self.config.items():
             self.window_manager.unicast_data(overlay_id, '__set_config__', config.toJSON())
 
