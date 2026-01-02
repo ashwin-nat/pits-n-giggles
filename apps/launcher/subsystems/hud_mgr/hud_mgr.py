@@ -319,6 +319,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "show_mfd",
+                "show_track_radar_overlay",
                 "mfd_settings",
                 "use_windowed_overlays",
             ],
@@ -327,6 +328,7 @@ class HudAppMgr(PngAppMgrBase):
             ],
             "Display" : [
                 "refresh_interval",
+                "realtime_overlay_fps",
             ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
