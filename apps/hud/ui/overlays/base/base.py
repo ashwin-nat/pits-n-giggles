@@ -236,26 +236,26 @@ class BaseOverlay():
             self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
             self.set_locked_state(locked)
 
-        @self.on_event("toggle_visibility")
+        @self.on_event("__toggle_visibility__")
         def _handle_toggle_visibility(_data: Dict[str, Any]):
             """Toggle visibility."""
             self.toggle_visibility()
 
-        @self.on_event("set_opacity")
+        @self.on_event("__set_opacity__")
         def _handle_set_opacity(data: Dict[str, Any]):
             """Set opacity."""
             opacity = data["opacity"]
             self.opacity = opacity
             self.set_opacity(opacity)
 
-        @self.on_event("set_config")
+        @self.on_event("__set_config__")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
             config = OverlaysConfig.fromJSON(data)
             self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
             self.set_window_position(config)
 
-        @self.on_event("set_scale_factor")
+        @self.on_event("__set_scale_factor__")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
             """Set UI scale factor"""
             scale_factor = data["scale_factor"]

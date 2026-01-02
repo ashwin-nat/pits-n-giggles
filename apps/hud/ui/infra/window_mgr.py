@@ -29,7 +29,6 @@ from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
                             QWaitCondition, Signal, Slot)
 
 from apps.hud.common import deserialise_data, serialise_data
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
 
@@ -37,7 +36,7 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
 
-    mgmt_cmd_signal = Signal(set, str, str)  # recipients, event, data (serialised into string)
+    generic_cmd_signal = Signal(set, str, str)  # recipients, event, data (serialised into string)
     mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
     mgmt_high_freq_signal = Signal(set, object) # recipients, HighFreqBase
@@ -72,17 +71,12 @@ class WindowManager(QObject):
         self.overlays[overlay_id] = overlay
 
         # Connect command and request signals TO the overlay
-        self.mgmt_cmd_signal.connect(overlay._handle_cmd)
+        self.generic_cmd_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
         self.mgmt_high_freq_signal.connect(overlay._handle_high_freq_data)
 
         # Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
-
-    def set_config(self, config_dict: Dict[str, OverlaysConfig]) -> None:
-        """Set config for an overlay."""
-        for overlay_id, config in config_dict.items():
-            self.unicast_data(overlay_id, 'set_config', config.toJSON())
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
@@ -141,7 +135,7 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
         """
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit(set(), cmd, serialise_data(data))
+        self.generic_cmd_signal.emit(set(), cmd, serialise_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any]):
         """Unicast event data to a specific overlay using signal.
@@ -153,7 +147,7 @@ class WindowManager(QObject):
         """
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit({overlay_id}, event, serialise_data(data))
+        self.generic_cmd_signal.emit({overlay_id}, event, serialise_data(data))
 
     def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any]):
         """Multicast event data to multiple overlays using signal.
@@ -165,7 +159,7 @@ class WindowManager(QObject):
         """
         assert overlay_ids
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.mgmt_cmd_signal.emit(overlay_ids, event, serialise_data(data))
+        self.generic_cmd_signal.emit(overlay_ids, event, serialise_data(data))
 
     def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
         """Unicast high-frequency data to a specific overlay using signal.

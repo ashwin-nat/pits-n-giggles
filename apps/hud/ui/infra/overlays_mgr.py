@@ -201,14 +201,14 @@ class OverlaysMgr:
 
         self.logger.debug("Toggling overlays visibility. oid=%s", oid)
         if oid:
-            self.window_manager.unicast_data(oid, 'toggle_visibility', {})
+            self.window_manager.unicast_data(oid, '__toggle_visibility__', {})
         else:
-            self.window_manager.broadcast_data('toggle_visibility', {})
+            self.window_manager.broadcast_data('__toggle_visibility__', {})
 
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
         self.logger.debug(f"Setting overlays opacity to {opacity}%")
-        self.window_manager.broadcast_data('set_opacity', {'opacity': opacity})
+        self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity})
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
@@ -218,6 +218,8 @@ class OverlaysMgr:
         """Reset overlays"""
         self._reset_config()
         self.window_manager.set_config(self.config)
+        for overlay_id, config in self.config.items():
+            self.window_manager.unicast_data(overlay_id, '__set_config__', config.toJSON())
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -230,7 +232,7 @@ class OverlaysMgr:
         """Set overlays scale factor to specified overlay"""
 
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
-        self.window_manager.unicast_data(oid, 'set_scale_factor', {'scale_factor': scale_factor})
+        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
     def stop(self):
         """Stop the overlays manager"""
