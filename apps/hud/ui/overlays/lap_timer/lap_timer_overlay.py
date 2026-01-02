@@ -29,8 +29,8 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QTimer
 
 from apps.hud.common import get_ref_row, is_race_type_session
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
+from lib.config import OverlayPosition
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -47,7 +47,7 @@ class LapTimerOverlay(BaseOverlayQML):
     DEFAULT_SECTOR_STATUS = [F1Utils.SECTOR_STATUS_NA] * 3
 
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,

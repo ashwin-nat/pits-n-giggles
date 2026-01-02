@@ -29,8 +29,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
+from lib.config import OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ class TrackMapOverlay(BaseOverlayQML):
     )
 
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,

@@ -29,9 +29,9 @@ from typing import Optional, override
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
+from lib.config import OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ class TrackRadarOverlay(BaseOverlayQML):
     OVERLAY_ID = "track_radar"
 
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,

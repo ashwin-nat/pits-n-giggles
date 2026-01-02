@@ -31,9 +31,9 @@ from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
 
 from apps.hud.common import deserialise_data, serialise_data
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
+from lib.config import OverlayPosition
 from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class BaseOverlay():
     OVERLAY_ID: str = ""
 
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,
@@ -170,10 +170,10 @@ class BaseOverlay():
     def animate_fade(self, show: bool):
         raise NotImplementedError
 
-    def get_window_info(self) -> OverlaysConfig:
+    def get_window_info(self) -> OverlayPosition:
         raise NotImplementedError
 
-    def set_window_position(self, config: OverlaysConfig):
+    def set_window_position(self, config: OverlayPosition):
         raise NotImplementedError
 
     def toggle_visibility(self):
@@ -251,7 +251,7 @@ class BaseOverlay():
         @self.on_event("__set_config__")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
-            config = OverlaysConfig.fromJSON(data)
+            config = OverlayPosition.fromJSON(data)
             self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
             self.set_window_position(config)
 

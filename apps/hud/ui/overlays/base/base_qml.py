@@ -32,8 +32,8 @@ from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import HighFreqBase
+from lib.config import OverlayPosition
 
 from .base import BaseOverlay
 
@@ -82,7 +82,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     def __init__(
         self,
-        config: OverlaysConfig,
+        config: OverlayPosition,
         logger: logging.Logger,
         locked: bool,
         opacity: int,
@@ -93,7 +93,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """Initialize QML overlay.
 
         Args:
-            config (OverlaysConfig): Overlay config
+            config (OverlayPosition): Overlay config
             logger (logging.Logger): Logger object
             locked (bool): Locked state
             opacity (int): Window opacity
@@ -259,12 +259,12 @@ class BaseOverlayQML(BaseOverlay, QObject):
             self.animate_fade(True)
 
     @override
-    def get_window_info(self) -> OverlaysConfig:
+    def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
-        return OverlaysConfig(x=pos.x(), y=pos.y())
+        return OverlayPosition(x=pos.x(), y=pos.y())
 
     @override
-    def set_window_position(self, config: OverlaysConfig):
+    def set_window_position(self, config: OverlayPosition):
         self.config = config
         self._root.setPosition(config.x, config.y)
 

@@ -35,7 +35,7 @@ from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
                                   TimingTowerOverlay, TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import PngSettings
+from lib.config import OverlayPosition, PngSettings
 from lib.file_path import resolve_user_file
 from lib.rate_limiter import RateLimiter
 
@@ -103,6 +103,7 @@ class OverlaysMgr:
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_lap_timer,
             overlay_cls=LapTimerOverlay,
+            overlay_cfg=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.lap_timer_ui_scale,
@@ -112,6 +113,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_timing_tower,
             overlay_cls=TimingTowerOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.timing_tower_ui_scale,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
@@ -121,6 +123,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_input_overlay,
             overlay_cls=InputTelemetryOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.input_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
@@ -144,6 +147,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_track_radar_overlay,
             overlay_cls=TrackRadarOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
@@ -153,7 +157,7 @@ class OverlaysMgr:
             self.window_manager.register_overlay(
                 MfdOverlay.OVERLAY_ID,
                 MfdOverlay(
-                    self.config[MfdOverlay.OVERLAY_ID],
+                    settings.HUD.layout[MfdOverlay.OVERLAY_ID],
                     settings,
                     self.logger,
                     locked=True,
@@ -301,19 +305,20 @@ class OverlaysMgr:
 
         return None
 
-    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
+    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
         self.logger.debug(f"Requesting window info for {overlay_id}")
         ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
         if not ret:
             return None
-        return OverlaysConfig.fromJSON(ret)
+        return OverlayPosition.fromJSON(ret)
 
     def _register_overlay_if_enabled(
         self,
         *,
         enabled: bool,
         overlay_cls: BaseOverlay,
+        overlay_cfg: OverlayPosition,
         opacity: float,
         windowed_overlay: bool,
         **overlay_kwargs
@@ -325,7 +330,7 @@ class OverlaysMgr:
         self.window_manager.register_overlay(
             overlay_cls.OVERLAY_ID,
             overlay_cls(
-                self.config[overlay_cls.OVERLAY_ID],
+                overlay_cfg,
                 self.logger,
                 locked=True,
                 opacity=opacity,
