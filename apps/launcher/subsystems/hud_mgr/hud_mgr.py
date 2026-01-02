@@ -25,7 +25,7 @@
 import json
 import sys
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
@@ -134,16 +134,25 @@ class HudAppMgr(PngAppMgrBase):
 
         self.debug_log("Toggling HUD lock state...")
         self.set_button_state(self.lock_button, False)
-        rsp = IpcClientSync(self.ipc_port).request(command="lock-widgets", args={
-            "old-value": self.locked,
-            "new-value": not self.locked,
-        })
-        self.locked = not self.locked
 
+        requested_state = not self.locked
+        success, rsp = self._request_lock_state_change(
+            old_value=self.locked,
+            new_value=requested_state,
+        )
+
+        self.locked = requested_state
         self.set_button_state(self.lock_button, True)
-        status = rsp.get("status", None)
-        if status is not None:
+
+        if success:
             self.set_lock_button_icon()
+
+            if self.locked:
+                try:
+                    self._save_layout_if_changed(rsp)
+                except Exception as e:  # noqa: BLE001
+                    self.error_log(f"Failed to persist HUD layout: {e}")
+
         else:
             self.error_log("Failed to toggle lock state.")
 
@@ -464,3 +473,60 @@ class HudAppMgr(PngAppMgrBase):
             # Update current settings and save to disk
             self.window.update_settings(new_settings)
             self.window.save_settings_to_disk(new_settings)
+
+    def _request_lock_state_change(self, old_value: bool, new_value: bool) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Send lock-widgets IPC request and validate response.
+
+        Returns:
+            (success, response)
+        """
+        try:
+            rsp = IpcClientSync(self.ipc_port).request(
+                command="lock-widgets",
+                args={
+                    "old-value": old_value,
+                    "new-value": new_value,
+                },
+            )
+        except Exception as e:
+            self.error_log(f"IPC request failed: {e}")
+            return False, None
+
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(
+                "Lock-widgets IPC failed: %s",
+                rsp.get("error", "unknown error"),
+            )
+            return False, rsp
+
+        return True, rsp
+
+    def _save_layout_if_changed(self, rsp: dict[str, Any]) -> None:
+        """Save the layout if it has changed."""
+        layout: Optional[Dict[str, Dict[str, int]]] = rsp.get("layout")
+        if not layout:
+            self.error_log(f"HUD layout not found in lock-widgets response: {json.dumps(rsp, indent=2)}")
+            return
+
+        should_write = False
+        parsed_layout_dict = HudSettings.layout_dict_from_json(layout)
+        for oid, overlay_layout in parsed_layout_dict.items():
+            curr_cfg = self.curr_settings.HUD.layout.get(oid)
+            if not curr_cfg:
+                self.error_log(f"HUD layout for overlay {oid} not found in current settings. Aborting save.")
+                return
+
+            if curr_cfg.has_changed(overlay_layout):
+                self.debug_log(f"Overlay {oid} layout has changed from {curr_cfg} to {overlay_layout}. "
+                               "Saving to disk...")
+                should_write = True
+
+        if should_write:
+            new_settings = self.curr_settings.model_copy(deep=True)
+            new_settings.HUD.layout = parsed_layout_dict
+            self.window.update_settings(new_settings)
+            self.window.save_settings_to_disk(new_settings)
+        else:
+            self.debug_log("HUD layout has not changed. Not saving to disk...")
