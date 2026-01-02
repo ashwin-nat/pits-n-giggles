@@ -259,6 +259,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
             self.animate_fade(True)
 
     @override
+    def set_visibility(self, visible: bool):
+        self.animate_fade(visible)
+
+    @override
     def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
         return OverlayPosition(x=pos.x(), y=pos.y())

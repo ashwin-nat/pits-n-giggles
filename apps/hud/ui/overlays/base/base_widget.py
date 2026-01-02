@@ -186,6 +186,10 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
             self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
             self.animate_fade(show=True)
 
+    @override
+    def set_visibility(self, visible):
+        self.animate_fade(visible)
+
     # ------------------------------------------------------------------
     # Window flag logic
     # ------------------------------------------------------------------

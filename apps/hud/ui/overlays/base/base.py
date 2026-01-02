@@ -179,6 +179,9 @@ class BaseOverlay():
     def toggle_visibility(self):
         raise NotImplementedError
 
+    def set_visibility(self, visible: bool):
+        raise NotImplementedError
+
     def set_ui_scale(self, ui_scale: float):
         raise NotImplementedError
 
@@ -235,11 +238,21 @@ class BaseOverlay():
             locked = data.get('new-value', False)
             self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
             self.set_locked_state(locked)
+            if not locked:
+                # Enable all overlays so that the user can see the new layout
+                # User has selected unlocked mode so that they can see and edit the layout
+                self.set_visibility(True)
 
         @self.on_event("__toggle_visibility__")
         def _handle_toggle_visibility(_data: Dict[str, Any]):
             """Toggle visibility."""
             self.toggle_visibility()
+
+        @self.on_event("__set_visibility__")
+        def _handle_set_visibility(data: Dict[str, Any]):
+            """Set visibility."""
+            visible = data["visible"]
+            self.set_visibility(visible)
 
         @self.on_event("__set_opacity__")
         def _handle_set_opacity(data: Dict[str, Any]):

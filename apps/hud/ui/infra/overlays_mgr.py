@@ -272,6 +272,8 @@ class OverlaysMgr:
                 rsp["error"] = f"{overlay_id}: {e}"
                 return rsp
 
+        # Enable all overlays so that the user can see the new layout
+        self._set_overlays_visibility(True)
         return rsp
 
     def set_scale_factor(self, oid: str, scale_factor: float):
@@ -333,3 +335,6 @@ class OverlaysMgr:
             TrackRadarOverlay.OVERLAY_ID,
             LiveSessionMotionInfo.from_json(data)
         )
+
+    def _set_overlays_visibility(self, visible: bool):
+        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible})
