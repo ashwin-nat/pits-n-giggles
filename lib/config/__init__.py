@@ -24,7 +24,10 @@
 
 from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
+from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                     TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
+                     CaptureSettings, DisplaySettings, ForwardingSettings,
                      HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
                      NetworkSettings, OverlayPosition, PitTimeLossF1,
                      PitTimeLossF2, PngSettings, PrivacySettings,
@@ -58,4 +61,13 @@ __all__ = [
     'save_config_to_json',
 
     'load_config_migrated',
+
+    'OverlayPosition',
+
+    'INPUT_TELEMETRY_OVERLAY_ID',
+    'LAP_TIMER_OVERLAY_ID',
+    'MFD_OVERLAY_ID',
+    'TIMING_TOWER_OVERLAY_ID',
+    'TRACK_MAP_OVERLAY_ID',
+    'TRACK_RADAR_OVERLAY_ID',
 ]

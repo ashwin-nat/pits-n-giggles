@@ -33,7 +33,7 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
-from lib.config import OverlayPosition
+from lib.config import TIMING_TOWER_OVERLAY_ID, OverlayPosition
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -41,7 +41,7 @@ from lib.f1_types import F1Utils
 class TimingTowerOverlay(BaseOverlayQML):
     """QML-based timing tower overlay."""
 
-    OVERLAY_ID: str = "timing_tower"
+    OVERLAY_ID: str = TIMING_TOWER_OVERLAY_ID
     QML_FILE: Path = Path(__file__).parent / "timing_tower.qml"
 
     MAX_SUPPORTED_CARS = 22

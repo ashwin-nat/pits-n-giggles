@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition
+from lib.config import TRACK_MAP_OVERLAY_ID, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ class TrackMapOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "track_map.qml"
-    OVERLAY_ID = "track_map"
+    OVERLAY_ID = TRACK_MAP_OVERLAY_ID
 
     TEAM_COLOURS_HEX = defaultdict(
         lambda: '#FFFFFF',

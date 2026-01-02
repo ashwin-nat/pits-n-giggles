@@ -35,13 +35,13 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
-from lib.config import OverlayPosition, PngSettings
+from lib.config import MFD_OVERLAY_ID, OverlayPosition, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdOverlay(BaseOverlayQML):
 
-    OVERLAY_ID = "mfd"
+    OVERLAY_ID = MFD_OVERLAY_ID
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
     PAGES: List[MfdPageBase] = [

@@ -31,7 +31,7 @@ from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition
+from lib.config import TRACK_RADAR_OVERLAY_ID, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -45,7 +45,7 @@ class TrackRadarOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "track_radar.qml"
-    OVERLAY_ID = "track_radar"
+    OVERLAY_ID = TRACK_RADAR_OVERLAY_ID
 
     def __init__(self,
                  config: OverlayPosition,

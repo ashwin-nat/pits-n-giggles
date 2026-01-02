@@ -30,7 +30,7 @@ from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition
+from lib.config import INPUT_TELEMETRY_OVERLAY_ID, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ class InputTelemetryOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "input_telemetry.qml"
-    OVERLAY_ID = "input_telemetry"
+    OVERLAY_ID = INPUT_TELEMETRY_OVERLAY_ID
 
     def __init__(self,
                  config: OverlayPosition,

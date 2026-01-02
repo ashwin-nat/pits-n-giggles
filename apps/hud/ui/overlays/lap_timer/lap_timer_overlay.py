@@ -30,7 +30,7 @@ from PySide6.QtCore import QTimer
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition
+from lib.config import LAP_TIMER_OVERLAY_ID, OverlayPosition
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -38,7 +38,7 @@ from lib.f1_types import F1Utils
 class LapTimerOverlay(BaseOverlayQML):
     """QML-based overlay displaying lap timing information for racing sessions."""
 
-    OVERLAY_ID: str = "lap_timer"
+    OVERLAY_ID: str = LAP_TIMER_OVERLAY_ID
     QML_FILE: Path = Path(__file__).parent / "lap_timer_overlay.qml"
 
     # Display constants
