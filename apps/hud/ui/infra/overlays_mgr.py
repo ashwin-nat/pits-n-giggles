@@ -163,6 +163,15 @@ class OverlaysMgr:
 
     # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
+    def toggle_overlays_visibility(self, oid: Optional[str] = ''):
+        """Toggle overlays visibility"""
+
+        self.logger.debug("Toggling overlays visibility. oid=%s", oid)
+        if oid:
+            self.window_manager.unicast_data(oid, '__toggle_visibility__', {})
+        else:
+            self.window_manager.broadcast_data('__toggle_visibility__', {})
+
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change."""
         rsp = {
