@@ -145,6 +145,30 @@ class OverlaysMgr:
         self.running = True
         self.app.exec()
 
+    def stop(self):
+        """Stop the overlays manager"""
+        self.running = False
+        QMetaObject.invokeMethod(
+            self.app,
+            "quit",
+            Qt.ConnectionType.QueuedConnection
+        )
+
+    # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
+
+    def race_table_update(self, data):
+        """Handle race table update"""
+        self.window_manager.broadcast_data('race_table_update', data)
+
+    def stream_overlays_update(self, data):
+        """Handle the stream overlay update event"""
+        self._input_telemetry_update(data)
+        self._motion_update(data)
+        if self.rate_limiter.allows("stream-overlay-update"):
+            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+
+    # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
+
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change"""
         self.window_manager.broadcast_data('set_locked_state', args)
@@ -163,11 +187,7 @@ class OverlaysMgr:
                 changed = True
 
         if changed:
-            self._save_config()
-
-    def race_table_update(self, data):
-        """Handle race table update"""
-        self.window_manager.broadcast_data('race_table_update', data)
+            pass # TODO: rsp
 
     def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
@@ -193,40 +213,16 @@ class OverlaysMgr:
         for overlay_id, config in self.config.items():
             self.window_manager.unicast_data(overlay_id, '__set_config__', config.toJSON())
 
-    def stream_overlays_update(self, data):
-        """Handle the stream overlay update event"""
-        self._input_telemetry_update(data)
-        self._motion_update(data)
-        if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
-
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
 
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
         self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
-    def stop(self):
-        """Stop the overlays manager"""
-        self.running = False
-        QMetaObject.invokeMethod(
-            self.app,
-            "quit",
-            Qt.ConnectionType.QueuedConnection
-        )
-
-    def _get_html_path_for_window(self, overlay_id: str) -> str:
-        """Constructs the absolute path to the HTML file for a given window ID."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        html_file_path = os.path.join(base_dir, "..", "overlays", overlay_id, f"{overlay_id}.html")
-        return html_file_path
+    # -------------------------------------- HELPERS -------------------------------------------------------------------
 
     def _reset_config(self):
         """"Reset config to default"""
-        pass # TODO
-
-    def _save_config(self):
-        """"Save config file"""
         pass # TODO
 
     def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
