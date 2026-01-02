@@ -22,8 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .hud import HudSettings
-from .mfd import MfdSettings, MfdPageSettings
+from .hud import HudSettings, OverlayPosition
+from .mfd import MfdPageSettings, MfdSettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -31,4 +31,5 @@ __all__ = [
     'HudSettings',
     'MfdSettings',
     'MfdPageSettings',
+    'OverlayPosition',
 ]

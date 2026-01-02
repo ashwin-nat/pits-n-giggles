@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from typing import Dict
+
 from pydantic import BaseModel, Field
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
@@ -44,6 +45,22 @@ class OverlayPosition(BaseModel):
     """
     x: int = Field(description="X position in pixels")
     y: int = Field(description="Y position in pixels")
+
+
+    def toJSON(self) -> Dict[str, int]:
+        """Used for Qt signal/slot transport."""
+        return {
+            "x": self.x,
+            "y": self.y,
+        }
+
+    @classmethod
+    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlayPosition":
+        """Used for Qt signal/slot transport."""
+        return cls(
+            x=json_dict["x"],
+            y=json_dict["y"],
+        )
 
 # -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
