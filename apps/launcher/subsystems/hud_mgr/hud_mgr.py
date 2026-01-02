@@ -153,7 +153,7 @@ class HudAppMgr(PngAppMgrBase):
             if self.locked:
                 try:
                     self._save_layout_if_changed(rsp)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:  # pylint: disable=broad-except
                     self.error_log(f"Failed to persist HUD layout: {e}")
 
         else:
@@ -492,16 +492,13 @@ class HudAppMgr(PngAppMgrBase):
                     "new-value": new_value,
                 },
             )
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error_log(f"IPC request failed: {e}")
             return False, None
 
         status = rsp.get("status")
         if status != "success":
-            self.error_log(
-                "Lock-widgets IPC failed: %s",
-                rsp.get("error", "unknown error"),
-            )
+            self.error_log(f"Lock-widgets IPC failed: {rsp.get("error", "unknown error")}")
             return False, rsp
 
         return True, rsp

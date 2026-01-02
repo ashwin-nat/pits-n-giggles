@@ -25,7 +25,7 @@
 import copy
 from typing import Any, ClassVar, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..diff import ConfigDiffMixin
 from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
@@ -196,5 +196,5 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         return (self.timing_tower_max_rows - 1) // 2
 
     @classmethod
-    def layout_dict_from_json(self, json_dict: Dict[str, int]) -> Dict[str, OverlayPosition]:
+    def layout_dict_from_json(cls, json_dict: Dict[str, int]) -> Dict[str, OverlayPosition]:
         return {k: OverlayPosition.fromJSON(v) for k, v in json_dict.items()}

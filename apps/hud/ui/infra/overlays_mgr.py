@@ -22,9 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import logging
-import os
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
@@ -186,7 +184,7 @@ class OverlaysMgr:
         # --------------------------------------------------
         try:
             self.window_manager.broadcast_data("__set_locked_state__", args)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # pylint: disable=broad-except
             self.logger.exception("Failed to broadcast locked state")
             rsp["status"] = "error"
             rsp["message"] = "Failed to apply locked state to overlays"
@@ -212,7 +210,7 @@ class OverlaysMgr:
                 )
                 layout[overlay_id] = curr_params.toJSON()
 
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # pylint: disable=broad-except
                 self.logger.exception(
                     "Aborting layout capture; failed for overlay '%s'",
                     overlay_id,

@@ -23,12 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
-from ..utils import udp_action_field, ui_scale_field, overlay_enable_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
