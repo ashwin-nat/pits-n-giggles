@@ -229,7 +229,7 @@ class BaseOverlay():
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
-        @self.on_event("set_locked_state")
+        @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)

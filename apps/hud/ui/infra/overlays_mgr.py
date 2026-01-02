@@ -36,7 +36,6 @@ from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
-from lib.file_path import resolve_user_file
 from lib.rate_limiter import RateLimiter
 
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
@@ -48,20 +47,17 @@ class OverlaysMgr:
     def __init__(self,
                  logger: logging.Logger,
                  settings: PngSettings,
-                 config_file: Optional[str] = 'png_overlays.json',
                  debug: bool = False):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
             logger (logging.Logger): Logger object
             settings (PngSettings): App Settings
-            config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
             debug (bool, optional): Debug mode. Defaults to False.
         """
         self.app = QApplication()
         self.logger = logger
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
-        self.config_file = resolve_user_file(config_file)
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
@@ -170,33 +166,67 @@ class OverlaysMgr:
     # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
     def on_locked_state_change(self, args: Dict[str, bool]):
-        """Handle locked state change"""
-        self.window_manager.broadcast_data('set_locked_state', args)
-        locked_value = args.get('new-value')
+        """Handle locked state change."""
+        rsp = {
+            "status": "success",
+            "message": "lock-widgets handler executed.",
+        }
+
+        # --------------------------------------------------
+        # 1. Validate input
+        # --------------------------------------------------
+        locked_value = args.get("new-value")
+        if not isinstance(locked_value, bool):
+            rsp["status"] = "error"
+            rsp["message"] = "Invalid or missing 'new-value' in args"
+            return rsp
+
+        # --------------------------------------------------
+        # 2. Broadcast locked state
+        # --------------------------------------------------
+        try:
+            self.window_manager.broadcast_data("__set_locked_state__", args)
+        except Exception as e:  # noqa: BLE001
+            self.logger.exception("Failed to broadcast locked state")
+            rsp["status"] = "error"
+            rsp["message"] = "Failed to apply locked state to overlays"
+            rsp["error"] = str(e)
+            return rsp
+
+        # If unlocking, nothing to persist
         if not locked_value:
-            return
+            return rsp
 
-        changed = False
+        # --------------------------------------------------
+        # 3. Capture layout (transactional)
+        # --------------------------------------------------
+        layout = {}
+
         for overlay_id in list(self.window_manager.overlays.keys()):
-            curr_params = self._get_window_info(overlay_id)
-            self.logger.debug(f"Current config for overlay '{overlay_id}' is {curr_params}")
-            saved_params = self.config[overlay_id]
-            if curr_params != saved_params:
-                self.logger.debug(f"Updating config for overlay '{overlay_id}' to {curr_params}")
-                self.config[overlay_id] = curr_params
-                changed = True
+            try:
+                curr_params = self._get_window_info(overlay_id)
+                self.logger.debug(
+                    "Current config for overlay '%s' is %s",
+                    overlay_id,
+                    curr_params,
+                )
+                layout[overlay_id] = curr_params.toJSON()
 
-        if changed:
-            pass # TODO: rsp
+            except Exception as e:  # noqa: BLE001
+                self.logger.exception(
+                    "Aborting layout capture; failed for overlay '%s'",
+                    overlay_id,
+                )
+                rsp["status"] = "error"
+                rsp["message"] = "Failed to capture overlay layout"
+                rsp["error"] = f"{overlay_id}: {e}"
+                return rsp
 
-    def toggle_overlays_visibility(self, oid: Optional[str] = ''):
-        """Toggle overlays visibility"""
-
-        self.logger.debug("Toggling overlays visibility. oid=%s", oid)
-        if oid:
-            self.window_manager.unicast_data(oid, '__toggle_visibility__', {})
-        else:
-            self.window_manager.broadcast_data('__toggle_visibility__', {})
+        # --------------------------------------------------
+        # 4. Finalise response
+        # --------------------------------------------------
+        rsp["layout"] = layout
+        return rsp
 
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""

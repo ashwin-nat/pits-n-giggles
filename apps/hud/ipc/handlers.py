@@ -41,11 +41,8 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     """
 
     logger.debug("Received lock-widgets command. args: %s", msg)
-
-    args = msg.get("args", {})
-    if args:
-        overlays_mgr.on_locked_state_change(args)
-        return {"status": "success", "message": "lock-widgets handler executed."}
+    if args := msg.get("args", {}):
+        return overlays_mgr.on_locked_state_change(args)
     return {"status": "error", "message": "Missing args in lock-widgets command."}
 
 def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
