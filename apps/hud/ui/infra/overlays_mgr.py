@@ -39,38 +39,8 @@ from lib.config import OverlayPosition, PngSettings
 from lib.file_path import resolve_user_file
 from lib.rate_limiter import RateLimiter
 
-from .config import OverlaysConfig
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-_DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
-    LapTimerOverlay.OVERLAY_ID: OverlaysConfig(
-        x=600,
-        y=60,
-    ),
-    TimingTowerOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=55,
-    ),
-    MfdOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=355,
-    ),
-    # TrackMapOverlay.OVERLAY_ID: OverlaysConfig(
-    #     x=10,
-    #     y=600,
-    # ),
-    InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=600,
-    ),
-    TrackRadarOverlay.OVERLAY_ID: OverlaysConfig(
-        x=40,
-        y=600,
-    ),
-}
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -93,7 +63,6 @@ class OverlaysMgr:
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         self.config_file = resolve_user_file(config_file)
         self.debug_mode = debug
-        self._init_config()
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
 
@@ -253,57 +222,13 @@ class OverlaysMgr:
         html_file_path = os.path.join(base_dir, "..", "overlays", overlay_id, f"{overlay_id}.html")
         return html_file_path
 
-    def _init_config(self):
-        """"Load config file if it exists. Else, use default config."""
-        should_write = False
-        config = self._load_config()
-        if not config:
-            self.config = _DEFAULT_OVERLAYS_CONFIG
-            self.logger.debug("Using default config")
-            should_write = True
-        else:
-            # Check if any keys are missing from default config and add them with default values
-            for key, value in _DEFAULT_OVERLAYS_CONFIG.items():
-                if key not in config:
-                    config[key] = value
-                    self.logger.debug(f"Missing overlay config key. Added {key} to config")
-                    should_write = True
-
-            self.config = config
-            json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
-            self.logger.debug(f"Final loaded config: \n{json_str}")
-        if should_write:
-            pass
-
     def _reset_config(self):
         """"Reset config to default"""
-        self.config = _DEFAULT_OVERLAYS_CONFIG
-        self._save_config()
+        pass # TODO
 
     def _save_config(self):
         """"Save config file"""
-        json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
-        self.logger.debug(f"Saving config to {self.config_file}. Config: \n{json_str}")
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump({k: v.toJSON() for k, v in self.config.items()}, f, indent=4)
-
-    def _load_config(self) -> Optional[Dict[str, OverlaysConfig]]:
-        """"Load config file if it exists. Else, return None"""
-        if os.path.exists(self.config_file):
-            try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    try:
-                        parsed_contents = json.load(f)
-                        return {
-                            overlay_id: OverlaysConfig.fromJSON(params)
-                            for overlay_id, params in parsed_contents.items()
-                        }
-                    except Exception as e: # pylint: disable=broad-exception-caught
-                        self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
-
-        return None
+        pass # TODO
 
     def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
