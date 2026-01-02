@@ -196,5 +196,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         return (self.timing_tower_max_rows - 1) // 2
 
     @classmethod
-    def layout_dict_from_json(cls, json_dict: Dict[str, int]) -> Dict[str, OverlayPosition]:
+    def get_layout_dict_from_json(cls, json_dict: Dict[str, int]) -> Dict[str, OverlayPosition]:
         return {k: OverlayPosition.fromJSON(v) for k, v in json_dict.items()}
+
+    @property
+    def layout_config_json(self) -> Dict[str, Dict[str, int]]:
+        return {k: v.toJSON() for k, v in self.layout.items()}
+
+    @classmethod
+    def get_default_layout_json(cls) -> Dict[str, OverlayPosition]:
+        return {k: v.toJSON() for k, v in DEFAULT_OVERLAY_LAYOUT.items()}
+
+    @classmethod
+    def get_default_layout_dict(cls) -> Dict[str, OverlayPosition]:
+        return DEFAULT_OVERLAY_LAYOUT

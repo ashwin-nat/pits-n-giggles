@@ -235,11 +235,35 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
-    def reset_overlays(self):
-        """Reset overlays"""
-        self._reset_config()
-        for overlay_id, config in self.config.items():
-            self.window_manager.unicast_data(overlay_id, '__set_config__', config.toJSON())
+    def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
+        """Apply a full overlays layout snapshot."""
+        rsp = {
+            "status": "success",
+            "message": "Overlays layout applied successfully.",
+        }
+
+        if not isinstance(layout, dict):
+            rsp["status"] = "error"
+            rsp["error"] = "Invalid layout payload (expected dict)"
+            return rsp
+
+        for overlay_id, overlay_layout in layout.items():
+            try:
+                self.window_manager.unicast_data(
+                    overlay_id,
+                    "__set_config__",
+                    overlay_layout,
+                )
+            except Exception as e:  # noqa: BLE001
+                self.logger.exception(
+                    "Failed to apply layout for overlay '%s'",
+                    overlay_id,
+                )
+                rsp["status"] = "error"
+                rsp["error"] = f"{overlay_id}: {e}"
+                return rsp
+
+        return rsp
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""

@@ -33,7 +33,7 @@ from lib.button_debouncer import ButtonDebouncer
 from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                         TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, PngSettings)
+                        HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
@@ -165,10 +165,37 @@ class HudAppMgr(PngAppMgrBase):
             self.show_scale_popup()
 
     def reset_callback(self):
-        """Open the dashboard viewer in a web browser."""
-        self.info_log("Sending reset command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="reset-overlays", args={})
-        self.info_log(str(rsp))
+        """Reset HUD overlays to default layout."""
+        self.info_log("Sending reset overlays command to HUD...")
+
+        default_layout_json = HudSettings.get_default_layout_json()
+        try:
+            rsp = IpcClientSync(self.ipc_port).request(
+                command="set-overlays-layout",
+                args={
+                    "layout": default_layout_json,
+                },
+            )
+        except Exception as e: # pylint: disable=broad-except
+            self.error_log(f"IPC request failed while resetting overlays: {e}")
+            return
+
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(
+                "Failed to reset HUD overlays: %s",
+                rsp.get("error", "unknown error")
+            )
+            return
+
+        # IPC success - write defaults
+        try:
+            self._save_new_layout_to_disk(
+                new_layout=HudSettings.get_default_layout_dict()
+            )
+            self.info_log("HUD overlays reset to defaults and saved successfully.")
+        except Exception as e:  # pylint: disable=broad-except
+            self.error_log(f"Failed to persist default HUD layout: {e}")
 
     def next_page_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -511,7 +538,7 @@ class HudAppMgr(PngAppMgrBase):
             return
 
         should_write = False
-        parsed_layout_dict = HudSettings.layout_dict_from_json(layout)
+        parsed_layout_dict = HudSettings.get_layout_dict_from_json(layout)
         for oid, overlay_layout in parsed_layout_dict.items():
             curr_cfg = self.curr_settings.HUD.layout.get(oid)
             if not curr_cfg:
@@ -524,9 +551,13 @@ class HudAppMgr(PngAppMgrBase):
                 should_write = True
 
         if should_write:
-            new_settings = self.curr_settings.model_copy(deep=True)
-            new_settings.HUD.layout = parsed_layout_dict
-            self.window.update_settings(new_settings)
-            self.window.save_settings_to_disk(new_settings)
+            self._save_new_layout_to_disk(new_layout=parsed_layout_dict)
         else:
             self.debug_log("HUD layout has not changed. Not saving to disk...")
+
+    def _save_new_layout_to_disk(self, new_layout: Dict[str, OverlayPosition]) -> None:
+        """Save the new layout to disk and propagate the new settings to all subsystems"""
+        new_settings = self.curr_settings.model_copy(deep=True)
+        new_settings.HUD.layout = new_layout
+        self.window.update_settings(new_settings)
+        self.window.save_settings_to_disk(new_settings)

@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from typing import Dict
 
 from ..ui.infra import OverlaysMgr
 
@@ -99,7 +100,7 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
-def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_overlays_layout(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'reset-overlays' IPC command to reset HUD widgets.
 
     Args:
@@ -112,8 +113,12 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
     """
 
     logger.debug("Received reset-overlays command. args: %s", msg)
-    overlays_mgr.reset_overlays()
-    return {"status": "success", "message": "reset-overlays handler executed."}
+    args: dict = msg.get("args", {})
+    if not args:
+        return {"status": "error", "message": "Missing args in set-overlays-layout command."}
+
+    layout: Dict[str, Dict[str, int]] = args.get("layout", {})
+    return overlays_mgr.set_overlays_layout(layout)
 
 def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.
