@@ -101,7 +101,7 @@ def entry_point():
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except PngError as e:
-        png_logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        png_logger.exception(f"Terminating due to Error: %s with code %d", e, e.exit_code)
         sys.exit(e.exit_code)
     except Exception as e: # pylint: disable=broad-except
         png_logger.exception("Error in main: %s", e)
