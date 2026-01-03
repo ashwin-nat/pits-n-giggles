@@ -24,21 +24,35 @@ Window {
     property int currentPageIndex: 0 // SET FROM PYTHON
 
     // Animation control
-    property int animationDuration: 125
+    property int animationDuration: 100
+    property int collapseDuration: 75
     property bool isAnimating: false
     property url pendingPageQml: ""
 
+    // Track the actual display state (delayed from collapsed property)
+    property bool displayCollapsed: collapsed
+    property bool useCollapseAnimation: false
+
     // Get title from loaded page
     readonly property string pageTitle: pageLoader.item && pageLoader.item.title !== undefined ? pageLoader.item.title : ""
-    readonly property bool showTitleBar: pageTitle.length > 0 && !collapsed
-    readonly property bool showFooter: totalPages > 0 && !collapsed
+    readonly property bool showTitleBar: pageTitle.length > 0 && !displayCollapsed
+    readonly property bool showFooter: totalPages > 0 && !displayCollapsed
 
     width: baseWidth * scaleFactor
     height: {
-        let h = collapsed ? baseHeightCollapsed : baseHeightExpanded;
+        let h = displayCollapsed ? baseHeightCollapsed : baseHeightExpanded;
         if (showTitleBar) h += titleBarHeight;
         if (showFooter) h += footerHeight;
         return h * scaleFactor;
+    }
+
+    // Smooth height animation when collapsing/expanding
+    Behavior on height {
+        enabled: useCollapseAnimation
+        NumberAnimation {
+            duration: collapseDuration
+            easing.type: Easing.InOutCubic
+        }
     }
 
     // Watch for page changes and animate
@@ -60,15 +74,42 @@ Window {
         if (pageLoader.source == "") {
             // First load, no animation
             pageLoader.source = currentPageQml;
+            displayCollapsed = collapsed;
             return;
         }
 
+        // Determine if we need collapse/expand animation
+        let wasCollapsed = displayCollapsed;
+        let willBeCollapsed = collapsed;
+        useCollapseAnimation = (wasCollapsed !== willBeCollapsed);
+
         isAnimating = true;
-        fadeOutAnimation.start();
+
+        if (useCollapseAnimation) {
+            if (willBeCollapsed) {
+                // Going TO collapsed: fade out content, then collapse height
+                fadeOutAnimation.start();
+            } else {
+                // Going FROM collapsed: expand height first, then fade in new content
+                displayCollapsed = false; // Expand immediately
+                pageLoader.opacity = 0.0; // Start hidden
+                pageLoader.source = currentPageQml; // Load new page
+                // Fade in will be triggered by onLoaded
+                Qt.callLater(function() {
+                    fadeInAnimation.start();
+                });
+            }
+        } else {
+            // Normal page-to-page transition (no collapse involved)
+            fadeOutAnimation.start();
+        }
     }
 
     function onAnimationFinished() {
         isAnimating = false;
+
+        // Update display state now that animation is complete
+        displayCollapsed = collapsed;
 
         // Process any pending transition
         if (pendingPageQml != "") {
@@ -131,7 +172,7 @@ Window {
             id: pageLoader
             objectName: "pageLoader"
             width: baseWidth
-            height: collapsed ? baseHeightCollapsed : baseHeightExpanded
+            height: displayCollapsed ? baseHeightCollapsed : baseHeightExpanded
             anchors.top: showTitleBar ? titleBar.bottom : parent.top
             opacity: 1.0
 
@@ -145,13 +186,23 @@ Window {
                 running: false
                 from: 1.0
                 to: 0.0
-                duration: root.animationDuration
+                duration: root.useCollapseAnimation ? root.collapseDuration : root.animationDuration
                 easing.type: Easing.OutCubic
 
                 onFinished: {
-                    // Switch page at the end of fade-out
-                    pageLoader.source = root.currentPageQml;
-                    fadeInAnimation.start();
+                    if (root.useCollapseAnimation && root.collapsed) {
+                        // Going TO collapsed: now collapse the height
+                        root.displayCollapsed = true;
+                        // Give a brief moment for height to collapse, then switch page
+                        Qt.callLater(function() {
+                            pageLoader.source = root.currentPageQml;
+                            fadeInAnimation.start();
+                        });
+                    } else {
+                        // Normal transition: switch page immediately
+                        pageLoader.source = root.currentPageQml;
+                        fadeInAnimation.start();
+                    }
                 }
             }
 
@@ -161,7 +212,7 @@ Window {
                 running: false
                 from: 0.0
                 to: 1.0
-                duration: root.animationDuration
+                duration: root.useCollapseAnimation ? root.collapseDuration : root.animationDuration
                 easing.type: Easing.InCubic
 
                 onFinished: {
