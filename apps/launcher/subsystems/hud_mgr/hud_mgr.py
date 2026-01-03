@@ -72,8 +72,6 @@ class HudAppMgr(PngAppMgrBase):
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
         super().__init__(
-            http_port_conflict_settings_field='N/A',
-            udp_port_conflict_settings_field="N/A",
             module_path="apps.hud",
             display_name="HUD",
             short_name="HUD",

@@ -28,9 +28,10 @@ from typing import TYPE_CHECKING, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
+from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
-from .base_mgr import PngAppMgrBase
+from .base_mgr import ExitReason, PngAppMgrBase
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -71,11 +72,17 @@ class SaveViewerAppMgr(PngAppMgrBase):
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
-            http_port_conflict_settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"',
-            udp_port_conflict_settings_field="N/A",
             post_start_cb=self.post_start,
             post_stop_cb=self.post_stop
         )
+        self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
+            code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,
+            status="HTTP Port Conflict",
+            title="HTTP port in use",
+            message="The HTTP port is already in use by another process. Please close the other process and try again or change the port",
+            can_restart=False,
+            settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"'
+        ))
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly

@@ -134,6 +134,10 @@ class SubsystemCard(QFrame):
                 'bg': '#3d2a2a',
                 'color': '#f48771'
             },
+            'Pit Wall Port Conflict': {
+                'bg': '#3d2a2a',
+                'color': '#f48771'
+            },
             'UDP Port Conflict': {
                 'bg': '#3d2a2a',
                 'color': '#f48771'
