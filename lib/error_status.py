@@ -47,12 +47,12 @@ class PngTelemetryPortInUseError(PngError):
         super().__init__(PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, "Port already in use")
 
 class PngXpubPortInUseError(PngError):
-    def __init__(self):
-        super().__init__(PNG_ERROR_CODE_XPUB_PORT_IN_USE, "Port already in use")
+    def __init__(self, err_msg: str = "Port already in use"):
+        super().__init__(PNG_ERROR_CODE_XPUB_PORT_IN_USE, err_msg)
 
 class PngXsubPortInUseError(PngError):
-    def __init__(self):
-        super().__init__(PNG_ERROR_CODE_XSUB_PORT_IN_USE, "Port already in use")
+    def __init__(self, err_msg: str = "Port already in use"):
+        super().__init__(PNG_ERROR_CODE_XSUB_PORT_IN_USE, err_msg)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

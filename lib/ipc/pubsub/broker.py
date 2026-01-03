@@ -69,7 +69,6 @@ class IpcPubSubBroker:
             self.xsub.bind(f"tcp://{self.host}:{xsub_port}")
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
-            self.ctx.term()
             if e.errno == zmq.EADDRINUSE:
                 raise PngXsubPortInUseError(f"{self.name}: XSUB port already in use ({xsub_port})") from e
             raise
@@ -79,7 +78,6 @@ class IpcPubSubBroker:
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
             self.xpub.close(linger=0)
-            self.ctx.term()
             if e.errno == zmq.EADDRINUSE:
                 raise PngXpubPortInUseError(f"{self.name}: XPUB port already in use ({xpub_port})") from e
             raise
