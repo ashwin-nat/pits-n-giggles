@@ -39,9 +39,7 @@ from PySide6.QtWidgets import QPushButton
 from lib.child_proc_mgmt import (extract_ipc_port_from_line,
                                  extract_pid_from_line, is_init_complete)
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
-                              PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
-                              PNG_ERROR_CODE_UNKNOWN,
+from lib.error_status import (PNG_ERROR_CODE_UNKNOWN,
                               PNG_ERROR_CODE_UNSUPPORTED_OS,
                               PNG_LOST_CONN_TO_PARENT)
 from lib.ipc import IpcClientSync
