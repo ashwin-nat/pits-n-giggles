@@ -69,50 +69,6 @@ class PngAppMgrBase(QObject):
     post_stop_signal = Signal()
     msg_window_signal = Signal()
 
-    EXIT_ERRORS = {
-        PNG_ERROR_CODE_HTTP_PORT_IN_USE: {
-            "title": "HTTP Port In Use",
-            "message": (
-                "failed to start because the required port is already in use.\n"
-                "Please close the conflicting app or change the port in settings."
-            ),
-            "status": "HTTP Port Conflict",
-        },
-        PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE: {
-            "title": "Telemetry Port In Use",
-            "message": (
-                "failed to start because the required UDP port is already in use.\n"
-                "Please close the conflicting app or setup forwarding to the current port in settings."
-            ),
-            "status": "UDP Port Conflict",
-        },
-        PNG_ERROR_CODE_UNKNOWN: {
-            "title": "Unknown Error",
-            "message": (
-                "failed to start due to an unknown error.\n"
-                "Please check the logs for more details."
-            ),
-            "status": "Crashed",
-        },
-        PNG_LOST_CONN_TO_PARENT: {
-            "title": "Lost Connection to Parent",
-            "message": (
-                "lost connection to the parent process.\n"
-                "Please check the logs for more details."
-            ),
-            "status": "Timed out",
-        },
-        PNG_ERROR_CODE_UNSUPPORTED_OS: {
-            "title": "Unsupported OS",
-            "message": (
-                "failed to start because this OS is not supported.\n"
-                "This subsystem is currently only supported on Windows."
-            ),
-            "status": "Unsupported OS",
-        },
-    }
-    DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
-
     BASE_EXIT_REASONS: dict[int, ExitReason] = {
         PNG_LOST_CONN_TO_PARENT: ExitReason(
             code=PNG_LOST_CONN_TO_PARENT,
