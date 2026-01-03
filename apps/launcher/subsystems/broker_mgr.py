@@ -81,7 +81,7 @@ class BrokerAppMgr(PngAppMgrBase):
             settings_field='Network -> "PitWall Downstream Port"'
         ))
         self.register_exit_reason(PNG_ERROR_CODE_XSUB_PORT_IN_USE, ExitReason(
-            code=PNG_ERROR_CODE_XPUB_PORT_IN_USE,
+            code=PNG_ERROR_CODE_XSUB_PORT_IN_USE,
             status="Pit Wall Port conflict",
             title="Pit Wall Downstream Port Conflict",
             message="This TCP port is already in use by another process. Please close the other process and try again or change the port.",
