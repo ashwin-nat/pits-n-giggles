@@ -22,11 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 import random
 import subprocess
 import sys
 import threading
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 import psutil
@@ -48,6 +50,15 @@ if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ExitReason:
+    code: int
+    status: str
+    title: str
+    message: str
+    can_restart: bool
+    settings_field: Optional[str] = None
 
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
@@ -102,6 +113,30 @@ class PngAppMgrBase(QObject):
     }
     DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
+    BASE_EXIT_REASONS: dict[int, ExitReason] = {
+        PNG_LOST_CONN_TO_PARENT: ExitReason(
+            code=PNG_LOST_CONN_TO_PARENT,
+            status="Timed out",
+            title="Lost Connection to Parent",
+            message="The parent process has probably been orphaned. Terminating...",
+            can_restart=True,
+        ),
+        PNG_ERROR_CODE_UNSUPPORTED_OS: ExitReason(
+            code=PNG_ERROR_CODE_UNSUPPORTED_OS,
+            status="Unsupported OS",
+            title="Unsupported OS",
+            message="This subsystem is only supported on Windows.",
+            can_restart=False,
+        ),
+        PNG_ERROR_CODE_UNKNOWN: ExitReason(
+            code=PNG_ERROR_CODE_UNKNOWN,
+            status="Crashed",
+            title="Unknown Error",
+            message="Please check the logs for details.",
+            can_restart=True,
+        ),
+    }
+
     def __init__(self,
                  window: "PngLauncherWindow",
                  module_path: str,
@@ -140,7 +175,7 @@ class PngAppMgrBase(QObject):
             restart_delay: Delay in seconds between restart attempts (default: 2.0)
         """
         super().__init__()
-
+        self.exit_reasons = copy.deepcopy(self.BASE_EXIT_REASONS)
 
         self.window = window
         self.module_path = module_path
@@ -369,26 +404,9 @@ class PngAppMgrBase(QObject):
             self.start(reason)
 
     def _should_auto_restart(self, exit_code: int) -> bool:
-        """Determine if auto-restart should be attempted
+        reason = self.exit_reasons.get(exit_code)
 
-        Args:
-            exit_code (int): Exit code of the process
-        """
-
-        if exit_code == PNG_ERROR_CODE_HTTP_PORT_IN_USE:
-            self.show_error(f"{self.display_name} port in use",
-                            f"Please select an unused port in {self.http_port_conflict_field}")
-            self.error_log(f"{self.display_name} HTTP port in use")
-            return False
-
-        if exit_code == PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE:
-            self.show_error(f"{self.display_name} port in use",
-                            f"Please select an unused port in {self.udp_port_conflict_field}")
-            self.error_log(f"{self.display_name} UDP telemetry port in use")
-            return False
-
-        if exit_code == PNG_ERROR_CODE_UNSUPPORTED_OS:
-            self.warning_log(f"{self.display_name} only supported on Windows")
+        if reason and not reason.can_restart:
             return False
 
         if not self.auto_restart:
@@ -518,9 +536,13 @@ class PngAppMgrBase(QObject):
             self._post_start_fired = True
 
         # Get error info
-        error_info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
-        status = error_info.get("status", "Crashed")
-        self._update_status(status)
+        reason = self.exit_reasons.get(ret_code, self.exit_reasons[PNG_ERROR_CODE_UNKNOWN])
+        self._update_status(reason.status)
+
+        if reason.settings_field:
+            self.show_error(reason.title, f"{reason.message}\nField: {reason.settings_field}")
+        else:
+            self.show_error(reason.title, reason.message)
 
         # Run post-stop hook
         if self._post_stop_hook:
