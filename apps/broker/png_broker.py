@@ -32,7 +32,7 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_ipc_port_from_child,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_json
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
+from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
 from lib.ipc import IpcPubSubBroker, IpcServerSync
 from lib.logger import get_logger
 from meta.meta import APP_NAME
@@ -100,6 +100,9 @@ def entry_point():
             config=configs)
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
+    except PngError as e:
+        png_logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        sys.exit(e.exit_code)
     except Exception as e: # pylint: disable=broad-except
         png_logger.exception("Error in main: %s", e)
         sys.exit(1)
