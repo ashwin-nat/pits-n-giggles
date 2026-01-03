@@ -22,9 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import logging
-import os
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
@@ -35,42 +33,11 @@ from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
                                   TimingTowerOverlay, TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import PngSettings
-from lib.file_path import resolve_user_file
+from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 
-from .config import OverlaysConfig
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
-
-_DEFAULT_OVERLAYS_CONFIG: Dict[str, OverlaysConfig] = {
-    LapTimerOverlay.OVERLAY_ID: OverlaysConfig(
-        x=600,
-        y=60,
-    ),
-    TimingTowerOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=55,
-    ),
-    MfdOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=355,
-    ),
-    # TrackMapOverlay.OVERLAY_ID: OverlaysConfig(
-    #     x=10,
-    #     y=600,
-    # ),
-    InputTelemetryOverlay.OVERLAY_ID: OverlaysConfig(
-        x=10,
-        y=600,
-    ),
-    TrackRadarOverlay.OVERLAY_ID: OverlaysConfig(
-        x=40,
-        y=600,
-    ),
-}
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -78,22 +45,18 @@ class OverlaysMgr:
     def __init__(self,
                  logger: logging.Logger,
                  settings: PngSettings,
-                 config_file: Optional[str] = 'png_overlays.json',
                  debug: bool = False):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
             logger (logging.Logger): Logger object
             settings (PngSettings): App Settings
-            config_file (str, optional): Path to config file. Defaults to 'png_overlays.json'.
             debug (bool, optional): Debug mode. Defaults to False.
         """
         self.app = QApplication()
         self.logger = logger
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
-        self.config_file = resolve_user_file(config_file)
         self.debug_mode = debug
-        self._init_config()
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
 
@@ -103,6 +66,7 @@ class OverlaysMgr:
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_lap_timer,
             overlay_cls=LapTimerOverlay,
+            overlay_cfg=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.lap_timer_ui_scale,
@@ -112,6 +76,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_timing_tower,
             overlay_cls=TimingTowerOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.timing_tower_ui_scale,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
@@ -121,6 +86,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_input_overlay,
             overlay_cls=InputTelemetryOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.input_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
@@ -144,6 +110,7 @@ class OverlaysMgr:
             enabled=settings.HUD.show_track_radar_overlay,
             overlay_cls=TrackRadarOverlay,
             opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
@@ -153,7 +120,7 @@ class OverlaysMgr:
             self.window_manager.register_overlay(
                 MfdOverlay.OVERLAY_ID,
                 MfdOverlay(
-                    self.config[MfdOverlay.OVERLAY_ID],
+                    settings.HUD.layout[MfdOverlay.OVERLAY_ID],
                     settings,
                     self.logger,
                     locked=True,
@@ -172,29 +139,29 @@ class OverlaysMgr:
         self.running = True
         self.app.exec()
 
-    def on_locked_state_change(self, args: Dict[str, bool]):
-        """Handle locked state change"""
-        self.window_manager.broadcast_data('set_locked_state', args)
-        locked_value = args.get('new-value')
-        if not locked_value:
-            return
+    def stop(self):
+        """Stop the overlays manager"""
+        self.running = False
+        QMetaObject.invokeMethod(
+            self.app,
+            "quit",
+            Qt.ConnectionType.QueuedConnection
+        )
 
-        changed = False
-        for overlay_id in list(self.window_manager.overlays.keys()):
-            curr_params = self._get_window_info(overlay_id)
-            self.logger.debug(f"Current config for overlay '{overlay_id}' is {curr_params}")
-            saved_params = self.config[overlay_id]
-            if curr_params != saved_params:
-                self.logger.debug(f"Updating config for overlay '{overlay_id}' to {curr_params}")
-                self.config[overlay_id] = curr_params
-                changed = True
-
-        if changed:
-            self._save_config()
+    # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
     def race_table_update(self, data):
         """Handle race table update"""
         self.window_manager.broadcast_data('race_table_update', data)
+
+    def stream_overlays_update(self, data):
+        """Handle the stream overlay update event"""
+        self._input_telemetry_update(data)
+        self._motion_update(data)
+        if self.rate_limiter.allows("stream-overlay-update"):
+            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+
+    # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
     def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
@@ -205,6 +172,69 @@ class OverlaysMgr:
         else:
             self.window_manager.broadcast_data('__toggle_visibility__', {})
 
+    def on_locked_state_change(self, args: Dict[str, bool]):
+        """Handle locked state change."""
+        rsp = {
+            "status": "success",
+            "message": "lock-widgets handler executed.",
+        }
+
+        # --------------------------------------------------
+        # 1. Validate input
+        # --------------------------------------------------
+        locked_value = args.get("new-value")
+        if not isinstance(locked_value, bool):
+            rsp["status"] = "error"
+            rsp["message"] = "Invalid or missing 'new-value' in args"
+            return rsp
+
+        # --------------------------------------------------
+        # 2. Broadcast locked state
+        # --------------------------------------------------
+        try:
+            self.window_manager.broadcast_data("__set_locked_state__", args)
+        except Exception as e:  # pylint: disable=broad-except
+            self.logger.exception("Failed to broadcast locked state")
+            rsp["status"] = "error"
+            rsp["message"] = "Failed to apply locked state to overlays"
+            rsp["error"] = str(e)
+            return rsp
+
+        # If unlocking, nothing to persist
+        if not locked_value:
+            return rsp
+
+        # --------------------------------------------------
+        # 3. Capture layout (transactional)
+        # --------------------------------------------------
+        layout = {}
+
+        for overlay_id in list(self.window_manager.overlays.keys()):
+            try:
+                curr_params = self._get_window_info(overlay_id)
+                self.logger.debug(
+                    "Current config for overlay '%s' is %s",
+                    overlay_id,
+                    curr_params,
+                )
+                layout[overlay_id] = curr_params.toJSON()
+
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.exception(
+                    "Aborting layout capture; failed for overlay '%s'",
+                    overlay_id,
+                )
+                rsp["status"] = "error"
+                rsp["message"] = "Failed to capture overlay layout"
+                rsp["error"] = f"{overlay_id}: {e}"
+                return rsp
+
+        # --------------------------------------------------
+        # 4. Finalise response
+        # --------------------------------------------------
+        rsp["layout"] = layout
+        return rsp
+
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
         self.logger.debug(f"Setting overlays opacity to {opacity}%")
@@ -214,18 +244,37 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
-    def reset_overlays(self):
-        """Reset overlays"""
-        self._reset_config()
-        for overlay_id, config in self.config.items():
-            self.window_manager.unicast_data(overlay_id, '__set_config__', config.toJSON())
+    def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
+        """Apply a full overlays layout snapshot."""
+        rsp = {
+            "status": "success",
+            "message": "Overlays layout applied successfully.",
+        }
 
-    def stream_overlays_update(self, data):
-        """Handle the stream overlay update event"""
-        self._input_telemetry_update(data)
-        self._motion_update(data)
-        if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+        if not isinstance(layout, dict):
+            rsp["status"] = "error"
+            rsp["error"] = "Invalid layout payload (expected dict)"
+            return rsp
+
+        for overlay_id, overlay_layout in layout.items():
+            try:
+                self.window_manager.unicast_data(
+                    overlay_id,
+                    "__set_config__",
+                    overlay_layout,
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.exception(
+                    "Failed to apply layout for overlay '%s'",
+                    overlay_id,
+                )
+                rsp["status"] = "error"
+                rsp["error"] = f"{overlay_id}: {e}"
+                return rsp
+
+        # Enable all overlays so that the user can see the new layout
+        self._set_overlays_visibility(True)
+        return rsp
 
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
@@ -233,86 +282,26 @@ class OverlaysMgr:
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
         self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
-    def stop(self):
-        """Stop the overlays manager"""
-        self.running = False
-        QMetaObject.invokeMethod(
-            self.app,
-            "quit",
-            Qt.ConnectionType.QueuedConnection
-        )
-
-    def _get_html_path_for_window(self, overlay_id: str) -> str:
-        """Constructs the absolute path to the HTML file for a given window ID."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        html_file_path = os.path.join(base_dir, "..", "overlays", overlay_id, f"{overlay_id}.html")
-        return html_file_path
-
-    def _init_config(self):
-        """"Load config file if it exists. Else, use default config."""
-        should_write = False
-        config = self._load_config()
-        if not config:
-            self.config = _DEFAULT_OVERLAYS_CONFIG
-            self.logger.debug("Using default config")
-            should_write = True
-        else:
-            # Check if any keys are missing from default config and add them with default values
-            for key, value in _DEFAULT_OVERLAYS_CONFIG.items():
-                if key not in config:
-                    config[key] = value
-                    self.logger.debug(f"Missing overlay config key. Added {key} to config")
-                    should_write = True
-
-            self.config = config
-            json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
-            self.logger.debug(f"Final loaded config: \n{json_str}")
-        if should_write:
-            pass
+    # -------------------------------------- HELPERS -------------------------------------------------------------------
 
     def _reset_config(self):
         """"Reset config to default"""
-        self.config = _DEFAULT_OVERLAYS_CONFIG
-        self._save_config()
+        pass # TODO
 
-    def _save_config(self):
-        """"Save config file"""
-        json_str = json.dumps({k: v.toJSON() for k, v in self.config.items()}, indent=2)
-        self.logger.debug(f"Saving config to {self.config_file}. Config: \n{json_str}")
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump({k: v.toJSON() for k, v in self.config.items()}, f, indent=4)
-
-    def _load_config(self) -> Optional[Dict[str, OverlaysConfig]]:
-        """"Load config file if it exists. Else, return None"""
-        if os.path.exists(self.config_file):
-            try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    try:
-                        parsed_contents = json.load(f)
-                        return {
-                            overlay_id: OverlaysConfig.fromJSON(params)
-                            for overlay_id, params in parsed_contents.items()
-                        }
-                    except Exception as e: # pylint: disable=broad-exception-caught
-                        self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.logger.error(f"Failed to load config file: {e}. Falling back to default config")
-
-        return None
-
-    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlaysConfig]:
+    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
         self.logger.debug(f"Requesting window info for {overlay_id}")
         ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
         if not ret:
             return None
-        return OverlaysConfig.fromJSON(ret)
+        return OverlayPosition.fromJSON(ret)
 
     def _register_overlay_if_enabled(
         self,
         *,
         enabled: bool,
         overlay_cls: BaseOverlay,
+        overlay_cfg: OverlayPosition,
         opacity: float,
         windowed_overlay: bool,
         **overlay_kwargs
@@ -324,7 +313,7 @@ class OverlaysMgr:
         self.window_manager.register_overlay(
             overlay_cls.OVERLAY_ID,
             overlay_cls(
-                self.config[overlay_cls.OVERLAY_ID],
+                overlay_cfg,
                 self.logger,
                 locked=True,
                 opacity=opacity,
@@ -346,3 +335,6 @@ class OverlaysMgr:
             TrackRadarOverlay.OVERLAY_ID,
             LiveSessionMotionInfo.from_json(data)
         )
+
+    def _set_overlays_visibility(self, visible: bool):
+        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible})

@@ -26,7 +26,10 @@ from .capture import CaptureSettings
 from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
-from .hud import HudSettings, MfdSettings, MfdPageSettings
+from .hud import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                  MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                  TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HudSettings,
+                  MfdPageSettings, MfdSettings, OverlayPosition)
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
@@ -45,6 +48,7 @@ __all__ = [
     'HudSettings',
     'MfdSettings',
     'MfdPageSettings',
+    'OverlayPosition',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
@@ -52,4 +56,11 @@ __all__ = [
     'PrivacySettings',
     'StreamOverlaySettings',
     'SubSysCtrl',
+
+    'INPUT_TELEMETRY_OVERLAY_ID',
+    'LAP_TIMER_OVERLAY_ID',
+    'MFD_OVERLAY_ID',
+    'TIMING_TOWER_OVERLAY_ID',
+    'TRACK_MAP_OVERLAY_ID',
+    'TRACK_RADAR_OVERLAY_ID',
 ]

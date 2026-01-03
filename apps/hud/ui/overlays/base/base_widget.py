@@ -29,7 +29,7 @@ from PySide6.QtCore import QPropertyAnimation, Qt
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import QWidget
 
-from apps.hud.ui.infra.config import OverlaysConfig
+from lib.config import OverlayPosition
 
 from .base import BaseOverlay
 
@@ -74,7 +74,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     fully handled here.
     """
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,
@@ -165,13 +165,13 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         self.update_window_flags()
 
     @override
-    def get_window_info(self) -> OverlaysConfig:
-        """Return current geometry as an OverlaysConfig."""
+    def get_window_info(self) -> OverlayPosition:
+        """Return current geometry as an OverlayPosition."""
         geo = self.geometry()
-        return OverlaysConfig(x=geo.x(), y=geo.y())
+        return OverlayPosition(x=geo.x(), y=geo.y())
 
     @override
-    def set_window_position(self, config: OverlaysConfig):
+    def set_window_position(self, config: OverlayPosition):
         self.move(config.x, config.y)
         self.config = config
 
@@ -185,6 +185,10 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         else:
             self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
             self.animate_fade(show=True)
+
+    @override
+    def set_visibility(self, visible):
+        self.animate_fade(visible)
 
     # ------------------------------------------------------------------
     # Window flag logic

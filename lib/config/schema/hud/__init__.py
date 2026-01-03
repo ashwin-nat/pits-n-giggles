@@ -22,27 +22,25 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
-from typing import Dict
+from .hud import HudSettings
+from .layout import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                     TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
+                     OverlayPosition)
+from .mfd import MfdPageSettings, MfdSettings
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-@dataclass
-class OverlaysConfig:
-    x: int
-    y: int
+__all__ = [
+    'HudSettings',
+    'MfdSettings',
+    'MfdPageSettings',
+    'OverlayPosition',
 
-    def toJSON(self) -> Dict[str, int]:
-        """Convert this object to a JSON serializable dictionary."""
-        return {
-            "x": self.x,
-            "y": self.y,
-        }
-
-    @classmethod
-    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlaysConfig":
-        """Create an OverlaysConfig object from a JSON dictionary."""
-        return cls(
-            x=json_dict["x"],
-            y=json_dict["y"],
-        )
+    'INPUT_TELEMETRY_OVERLAY_ID',
+    'LAP_TIMER_OVERLAY_ID',
+    'MFD_OVERLAY_ID',
+    'TIMING_TOWER_OVERLAY_ID',
+    'TRACK_MAP_OVERLAY_ID',
+    'TRACK_RADAR_OVERLAY_ID',
+]

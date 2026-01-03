@@ -29,20 +29,19 @@ from typing import Any, Dict, List, Optional, final
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
-from lib.config import PngSettings
+from lib.config import MFD_OVERLAY_ID, OverlayPosition, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdOverlay(BaseOverlayQML):
 
-    OVERLAY_ID = "mfd"
+    OVERLAY_ID = MFD_OVERLAY_ID
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
     PAGES: List[MfdPageBase] = [
@@ -58,7 +57,7 @@ class MfdOverlay(BaseOverlayQML):
 
     def __init__(
         self,
-        config: OverlaysConfig,
+        config: OverlayPosition,
         settings: PngSettings,
         logger: logging.Logger,
         locked: bool,

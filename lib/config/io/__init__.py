@@ -24,7 +24,7 @@
 
 from .ini import load_config_from_ini, save_config_to_ini
 from .json import load_config_from_json, save_config_to_json
-from .migration import load_config_migrated
+from .migration import load_config_migrated, maybe_migrate_legacy_hud_layout
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -36,4 +36,5 @@ __all__ = [
     'save_config_to_json',
 
     'load_config_migrated',
+    'maybe_migrate_legacy_hud_layout',
 ]

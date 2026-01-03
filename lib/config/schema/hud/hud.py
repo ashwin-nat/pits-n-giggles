@@ -25,95 +25,14 @@
 import copy
 from typing import Any, ClassVar, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
-from .diff import ConfigDiffMixin
-from .utils import udp_action_field, ui_scale_field, overlay_enable_field
+from ..diff import ConfigDiffMixin
+from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
+from .layout import DEFAULT_OVERLAY_LAYOUT, OverlayPosition
+from .mfd import MfdSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
-
-class MfdPageSettings(ConfigDiffMixin, BaseModel):
-    ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
-
-    enabled: bool = Field(
-        default=False,
-        description="Enable this MFD page",
-        json_schema_extra={"ui": {"type": "check_box", "visible": True}},
-    )
-
-    position: int = Field(
-        gt=0,
-        description="Ordering index",
-        json_schema_extra={"ui": {"type": "text_box", "visible": True}},
-    )
-
-
-DEFAULT_PAGES = {
-    "lap_times": MfdPageSettings(enabled=True, position=1, description="Lap Times"),
-    "weather_forecast": MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
-    "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
-    "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
-    "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
-    "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
-}
-
-
-class MfdSettings(ConfigDiffMixin, BaseModel):
-    ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
-
-    pages: Dict[str, MfdPageSettings] = Field(
-        default_factory=lambda: copy.deepcopy(DEFAULT_PAGES),
-        description="Dictionary of MFD pages",
-        json_schema_extra={
-            "ui": {
-                "type": "group_box",
-                "visible": True,
-                "reorderable_collection": True,
-                "item_enabled_field": "enabled",
-                "item_position_field": "position"
-            }
-        },
-    )
-
-    @model_validator(mode="after")
-    def check_unique_positions(self):
-        # Enabled pages must have unique positions
-        pos_map = {} # Key = position, Value = page
-        for name, page in self.pages.items():
-            if not page.enabled:
-                continue
-            if page.position in pos_map:
-                raise ValueError(
-                    f"MFD page '{name}' has duplicate position {page.position} "
-                    f"(also used by '{pos_map[page.position]}')"
-                )
-            pos_map[page.position] = name
-
-        return self
-
-    @model_validator(mode="after")
-    def add_missing_pages(self):
-        """
-        Ensure all DEFAULT_PAGES exist.
-        New pages are added as disabled by default.
-        """
-        merged = dict(self.pages)
-
-        for key, default_page in DEFAULT_PAGES.items():
-            if key not in merged:
-                # Add new page, but disabled so UI does not break
-                new_page = default_page.model_copy(deep=True)
-                new_page.enabled = False
-                merged[key] = new_page
-
-        self.pages = merged
-        return self
-
-    def sorted_enabled_pages(self):
-        return sorted(
-            [(name, page) for name, page in self.pages.items() if page.enabled],
-            key=lambda p: p[1].position
-        )
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -237,6 +156,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    layout: Dict[str, OverlayPosition] = Field(
+        default_factory=lambda: copy.deepcopy(DEFAULT_OVERLAY_LAYOUT),
+        description="Overlay screen positions (pixels)",
+        json_schema_extra={
+            "ui": {
+                "visible": False
+            }
+        }
+    )
+
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         # Not allowed to enable HUD while all overlays are disabled
@@ -265,3 +194,19 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         if self.timing_tower_max_rows == 22:
             return 11
         return (self.timing_tower_max_rows - 1) // 2
+
+    @classmethod
+    def get_layout_dict_from_json(cls, json_dict: Dict[str, Dict[str, int]]) -> Dict[str, OverlayPosition]:
+        return {k: OverlayPosition.fromJSON(v) for k, v in json_dict.items()}
+
+    @property
+    def layout_config_json(self) -> Dict[str, Dict[str, int]]:
+        return {k: v.toJSON() for k, v in self.layout.items()}
+
+    @classmethod
+    def get_default_layout_json(cls) -> Dict[str, OverlayPosition]:
+        return {k: v.toJSON() for k, v in DEFAULT_OVERLAY_LAYOUT.items()}
+
+    @classmethod
+    def get_default_layout_dict(cls) -> Dict[str, OverlayPosition]:
+        return DEFAULT_OVERLAY_LAYOUT
