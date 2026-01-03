@@ -63,7 +63,7 @@ class BrokerAppMgr(PngAppMgrBase):
             short_name="WALL",
             settings=settings,
             start_by_default=True,
-            should_display=False,
+            should_display=True, # TODO: revert
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,

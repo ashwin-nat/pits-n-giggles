@@ -148,8 +148,6 @@ class PngAppMgrBase(QObject):
                  args: Optional[List[str]] = None,
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
-                 http_port_conflict_settings_field: Optional[str] = None,
-                 udp_port_conflict_settings_field: Optional[str] = None,
                  post_start_cb: Optional[Callable[[], None]] = None,
                  post_stop_cb: Optional[Callable[[], None]] = None,
                  auto_restart: bool = True,
@@ -168,8 +166,6 @@ class PngAppMgrBase(QObject):
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
             coverage_enabled: Enable code coverage tracking
-            http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
-            udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
             auto_restart: Enable automatic restart on unexpected exits
             max_restart_attempts: Maximum number of restart attempts (default: 3)
             restart_delay: Delay in seconds between restart attempts (default: 2.0)
@@ -186,8 +182,6 @@ class PngAppMgrBase(QObject):
         self.args = args or []
         self.debug_mode = debug_mode
         self.coverage_enabled = coverage_enabled
-        self.http_port_conflict_field = http_port_conflict_settings_field
-        self.udp_port_conflict_field = udp_port_conflict_settings_field
         self.curr_settings = settings
 
         # Process management
