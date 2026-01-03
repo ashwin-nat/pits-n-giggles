@@ -223,6 +223,15 @@ class PngAppMgrBase(QObject):
         self._init_complete_received = False
         self._post_start_fired = False
 
+    def register_exit_reason(self, code: int, reason: ExitReason):
+        """Register an exit reason
+
+        Args:
+            code: Process Exit code
+            reason: Exit reason
+        """
+        self.exit_reasons[code] = reason
+
     def get_buttons(self) -> List[QPushButton]:
         """
         Return button definitions for this subsystem's UI panel
