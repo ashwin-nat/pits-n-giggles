@@ -150,10 +150,6 @@ class LapTimesPage(MfdPageBase):
                     {'text': '---', 'color': '#808080'}
                 ])
 
-            self.logger.info(f"Setting rows property with {len(all_rows)} rows")
-            if all_rows:
-                self.logger.info(f"First row: {all_rows[0]}")
-
             # Set the entire rows property at once
             page_item.setProperty("rows", all_rows)
 
@@ -162,10 +158,6 @@ class LapTimesPage(MfdPageBase):
             if current_version is None:
                 current_version = 0
             page_item.setProperty("rowsVersion", current_version + 1)
-
-            # Verify it was set
-            current_rows = page_item.property("rows")
-            self.logger.info(f"Property after setting, length: {len(current_rows) if current_rows else 0}")
 
             # Update the cache
             self._last_processed_data = lap_time_history
