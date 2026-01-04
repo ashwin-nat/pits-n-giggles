@@ -90,7 +90,6 @@ class LapTimesPage(MfdPageBase):
 
             page_item = self._page_item
             if not page_item:
-                self.logger.error("Page not found")
                 return
 
             # Build the complete rows array
