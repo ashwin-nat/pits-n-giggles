@@ -229,6 +229,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             # Penalties
             pens_sec = warns_pens_info.get("time-penalties", 0)
             num_dt = warns_pens_info.get("num-dt", 0)
+            num_sg = warns_pens_info.get("num-sg", 0)
+            pens_sec += (num_sg * 10) # SG counts as 10 seconds
             pens_str = (
                 f"{num_dt}DT" if num_dt else
                 f"+{pens_sec}sec" if pens_sec else
