@@ -43,6 +43,9 @@ class TestDisplaySettings(TestF1ConfigBase):
         settings = DisplaySettings()
         self.assertEqual(settings.refresh_interval, 200)
         self.assertFalse(settings.disable_browser_autoload)
+        self.assertEqual(settings.local_telemetry_rate, 5)
+        self.assertEqual(settings.realtime_overlay_fps, 30)
+        self.assertFalse(settings.use_cpu_acceleration)
 
     def test_refresh_interval_validation(self):
         """Test refresh interval must be positive"""
@@ -74,3 +77,56 @@ class TestDisplaySettings(TestF1ConfigBase):
     def test_invalid_disable_browser_autoload(self):
         with self.assertRaises(ValidationError):
             DisplaySettings(disable_browser_autoload="notaboolean")
+
+    def test_local_telemetry_rate_validation(self):
+        settings = DisplaySettings(local_telemetry_rate=5)
+        self.assertEqual(settings.local_telemetry_rate, 5)
+
+        # Boundary condition
+        settings = DisplaySettings(local_telemetry_rate=1)
+        self.assertEqual(settings.local_telemetry_rate, 1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(local_telemetry_rate=0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(local_telemetry_rate=-1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(local_telemetry_rate=None)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(local_telemetry_rate="notanumber")
+
+    def test_realtime_overlay_fps_validation(self):
+        settings = DisplaySettings(realtime_overlay_fps=30)
+        self.assertEqual(settings.realtime_overlay_fps, 30)
+
+        # Boundary condition
+        settings = DisplaySettings(realtime_overlay_fps=1)
+        self.assertEqual(settings.realtime_overlay_fps, 1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(realtime_overlay_fps=0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(realtime_overlay_fps=-1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(realtime_overlay_fps=None)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(realtime_overlay_fps="notanumber")
+
+    def test_use_gpu_acceleration(self):
+        settings = DisplaySettings(use_cpu_acceleration=True)
+        self.assertTrue(settings.use_cpu_acceleration)
+
+        settings = DisplaySettings(use_cpu_acceleration=False)
+        self.assertFalse(settings.use_cpu_acceleration)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(use_cpu_acceleration="notabool")
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(use_cpu_acceleration=123)

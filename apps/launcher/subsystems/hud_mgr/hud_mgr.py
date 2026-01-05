@@ -363,6 +363,7 @@ class HudAppMgr(PngAppMgrBase):
             "Display" : [
                 "refresh_interval",
                 "realtime_overlay_fps",
+                "use_gpu_acceleration",
             ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(

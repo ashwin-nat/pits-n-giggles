@@ -105,6 +105,20 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    use_cpu_acceleration: bool = Field(
+        default=False,
+        description="Use CPU acceleration for overlays",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info" : [
+                    "Forces CPU-based rendering for compatibility with older GPU's.\n"
+                    "May reduce visual quality and increase CPU usage."
+                ]
+            }
+        }
+    )
 
     @property
     def hud_refresh_interval(self) -> int:

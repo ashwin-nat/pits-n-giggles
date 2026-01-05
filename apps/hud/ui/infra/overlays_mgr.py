@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import logging
 from typing import Any, Dict, Optional
 
@@ -53,6 +54,10 @@ class OverlaysMgr:
             settings (PngSettings): App Settings
             debug (bool, optional): Debug mode. Defaults to False.
         """
+        if settings.Display.use_cpu_acceleration:
+            os.environ["QT_QUICK_BACKEND"] = "software"
+            logger.debug("Using software backend")
+
         self.app = QApplication()
         self.logger = logger
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
