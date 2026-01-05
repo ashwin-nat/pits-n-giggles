@@ -44,7 +44,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertEqual(settings.refresh_interval, 200)
         self.assertFalse(settings.disable_browser_autoload)
         self.assertEqual(settings.local_telemetry_rate, 5)
-        self.assertEqual(settings.realtime_overlay_fps, 30)
+        self.assertEqual(settings.realtime_overlay_fps, 60)
         self.assertFalse(settings.use_cpu_acceleration)
 
     def test_refresh_interval_validation(self):
