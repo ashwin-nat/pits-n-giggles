@@ -129,3 +129,8 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     def realtime_overlay_update_interval_ms(self) -> int:
         # fps to ms
         return 1000 // self.realtime_overlay_fps
+
+    @property
+    def local_telemetry_interval_ms(self) -> int:
+        # hz to ms
+        return 1000 // self.local_telemetry_rate
