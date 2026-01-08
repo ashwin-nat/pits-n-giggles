@@ -91,7 +91,6 @@ endpoints_config = {
     "/static/js/telemetryRenderer.js": [200],
     "/static/js/frontendUpdate.js": [200],
     "/static/js/app.js": [200],
-    "/static/js/updater.js": [200],
 }
 
 # Example hostname and port
