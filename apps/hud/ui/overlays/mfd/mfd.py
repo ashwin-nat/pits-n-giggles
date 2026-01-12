@@ -228,6 +228,7 @@ class MfdOverlay(BaseOverlayQML):
     def _next_page(self):
         """Go to the next page in MFD overlay"""
         if not self._mfd_pages:
+            self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
             return
 
         old = self._current_index
