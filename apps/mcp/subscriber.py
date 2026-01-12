@@ -24,10 +24,11 @@
 
 import asyncio
 import logging
-import os
 from typing import Any, Dict, List
 
 from lib.ipc import IpcSubscriberAsync
+
+from .state import set_state_data
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,6 +48,7 @@ class McpSubscriber:
         async def _handle_race_table_update(msg: Dict[str, Any]) -> None:
             """Handle race table update messages."""
             self.m_ipc_sub.logger.debug("Received race table update")
+            set_state_data("race-table-update", msg)
 
     async def run(self) -> None:
         """Starts the IPC server."""
