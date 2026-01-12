@@ -1,9 +1,9 @@
 graph TD
 
-subgraph EXT["External Threads"]
+subgraph EXT["🔌 External Threads"]
     direction TB
     IPC["IPC Server Thread"]
-    SIO["Socket.IO Client Thread"]
+    SUB["IPC Subscriber Client Thread"]
 end
 
 subgraph OM["L1 - OverlaysManager"]
@@ -36,26 +36,25 @@ subgraph BASE["L3 - Overlay Base Layer"]
     BaseOverlay["BaseOverlay<br/>Command Registry<br/>Request Registry"]
 end
 
-subgraph OVERLAYS["L4 - Implementation layer"]
+subgraph OVERLAYS["L4 - Implementation Layer"]
     direction TB
     TimingTowerOverlay["Timing Tower Overlay"]
     LapTimeOverlay["Lap Time Overlay"]
 
-    subgraph MFD[" "]
+    subgraph MFD["MFD System"]
         direction TB
         MFDCommandRouter["MFD Overlay"]
-        subgraph MFDCTRL["MFD Control Path"]
+        subgraph MFDCTRL["Control Path"]
             MFDHandlers["Control Handler"]
             SwitchPage["_switch_page()"]
         end
 
-        subgraph MFDDATA["MFD Data Path"]
+        subgraph MFDDATA["Data Path"]
             ForwardData["Forward to Page"]
             ActivePage["Active Page"]
         end
     end
 end
-
 
 subgraph PAGES["L5 - MFD Page Events"]
     direction TB
@@ -65,7 +64,7 @@ end
 
 %% ========= Top-Down Flows =========
 IPC -->|control cmd| OM_Cmd
-SIO -->|data update| OM_Data
+SUB -->|data update| OM_Data
 IPC -->|request| OM_Req
 
 OM_Cmd --> API_UC
@@ -99,14 +98,14 @@ ActivePage --> PageReg
 PageReg --> UpdateUI
 
 %% ========= Styles =========
-classDef thread fill:#ffcccb,stroke:#b71c1c,color:#000,stroke-width:1px
-classDef manager fill:#c8e6ff,stroke:#1565c0,color:#000,stroke-width:1px
-classDef overlay fill:#d2ffd9,stroke:#1b5e20,color:#000,stroke-width:1px
-classDef special fill:#d7e3ff,stroke:#0d47a1,color:#000,stroke-width:1px
-classDef signal fill:#ffe9b0,stroke:#ef6c00,color:#000,stroke-width:1px
-classDef page fill:#f3c6ff,stroke:#6a1b9a,color:#000,stroke-width:1px
+classDef thread fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:3px,rx:10
+classDef manager fill:#4dabf7,stroke:#1971c2,color:#fff,stroke-width:3px,rx:10
+classDef signal fill:#ffd43b,stroke:#f59f00,color:#000,stroke-width:3px,rx:10
+classDef overlay fill:#51cf66,stroke:#2b8a3e,color:#fff,stroke-width:3px,rx:10
+classDef special fill:#748ffc,stroke:#4c6ef5,color:#fff,stroke-width:3px,rx:10
+classDef page fill:#da77f2,stroke:#9c36b5,color:#fff,stroke-width:3px,rx:10
 
-class IPC,SIO thread
+class IPC,SUB thread
 class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_REQ,RespStore manager
 class Sig_CMD,Sig_REQ,Sig_RESP signal
 class BaseOverlay,TimingTowerOverlay,LapTimeOverlay overlay
