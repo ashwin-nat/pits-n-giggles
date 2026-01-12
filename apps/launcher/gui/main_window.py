@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 
 from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
-from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
+from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr, McpAppMgr,
                                       PngAppMgrBase, SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
@@ -244,7 +244,14 @@ class PngLauncherWindow(QMainWindow):
                args=args,
                debug_mode=debug_mode,
                coverage_enabled=coverage_enabled
-            )
+            ),
+            McpAppMgr(
+               window=self,
+               settings=self.settings,
+               args=args,
+               debug_mode=debug_mode,
+               coverage_enabled=coverage_enabled
+            ),
         ]
         for subsystem in self.subsystems:
             assert subsystem.short_name
