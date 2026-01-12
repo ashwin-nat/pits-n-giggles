@@ -25,17 +25,18 @@
 import asyncio
 import logging
 import os
-import webbrowser
 from typing import Any, Dict, List
 
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.child_proc_mgmt import report_ipc_port_from_child
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcServerAsync
+
+from .subscriber import McpSubscriber
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpIpc:
-    def __init__(self, logger: logging.Logger) -> None:
+    def __init__(self, logger: logging.Logger, ipc_sub: McpSubscriber) -> None:
         """Initialize the IPC server.
 
         Args:
@@ -46,6 +47,7 @@ class McpIpc:
         self.m_ipc_server = IpcServerAsync(name="MCP IPC Server")
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
         self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
+        self.m_ipc_sub = ipc_sub
         report_ipc_port_from_child(self.m_ipc_server.port)
 
     async def run(self) -> None:
@@ -75,6 +77,7 @@ class McpIpc:
         """
         reason = args["reason"]
         self.m_logger.info(f"Shutting down. Reason: {reason}")
+        asyncio.create_task(self._handle_shutdown_task())
         return {"status": "success"}
 
     async def _heartbeat_missed_handler(self, count: int) -> dict:
@@ -83,14 +86,20 @@ class McpIpc:
         print(f"[MCP] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
+    async def _handle_shutdown_task(self) -> None:
+        """Handles shutdown signal."""
+        self.m_logger.info("Shutting down MCP IPC Subscriber")
+        await self.m_ipc_sub.close()
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_ipc_task(logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
+def init_ipc_task(logger: logging.Logger, tasks: List[asyncio.Task], ipc_sub: McpSubscriber) -> None:
     """Initialize the IPC task.
 
     Args:
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
+        ipc_sub (McpSubscriber): MCP Subscriber
     """
-    ipc_server = McpIpc(logger)
+    ipc_server = McpIpc(logger, ipc_sub=ipc_sub)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))

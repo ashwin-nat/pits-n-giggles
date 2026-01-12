@@ -28,13 +28,16 @@ import logging
 import sys
 from typing import List
 
-from .mgmt import init_ipc_task
-from lib.child_proc_mgmt import report_pid_from_child, notify_parent_init_complete
-from lib.config import load_config_from_json, PngSettings
+from lib.child_proc_mgmt import (notify_parent_init_complete,
+                                 report_pid_from_child)
+from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PngError
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
+
+from .mgmt import init_ipc_task
+from .subscriber import init_subscriber_task
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -63,7 +66,8 @@ async def main(logger: logging.Logger, settings: PngSettings) -> None:
         settings (PngSettings): Settings
     """
     tasks: List[asyncio.Task] = []
-    init_ipc_task(logger=logger, tasks=tasks)
+    ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
+    init_ipc_task(logger=logger, tasks=tasks, ipc_sub=ipc_sub)
 
     try:
         notify_parent_init_complete()
