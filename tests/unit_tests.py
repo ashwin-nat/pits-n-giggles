@@ -81,7 +81,8 @@ from tests_tyre_wear_extrapolator import (
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
-from tests.ipc import (TestIpcParentChild, TestIpcSubscriber, TestIpcPubSub)
+from tests.ipc import (TestIpcParentChild, TestIpcPubSub, TestIpcPubSubAsync,
+                       TestIpcSubscriber)
 from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
                                          TestIsInitComplete, TestPidReport)
 from tests.tests_delta import TestF1Delta

@@ -22,8 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import logging
-from typing import Callable, Dict, Optional
+from typing import Awaitable, Callable, Dict, Optional
 
 import orjson
 import zmq
@@ -162,4 +163,155 @@ class IpcSubscriberSync:
     # External shutdown
     # ---------------------------------------------------------
     def close(self):
+        self._running = False
+
+class IpcSubscriberAsync:
+    """
+    Async, auto-reconnecting ZeroMQ SUB subscriber.
+
+    - Caller owns the asyncio.Task
+    - run() is a long-lived coroutine
+    - Survives broker restarts
+    - Topic → async handler routing
+    """
+
+    RECONNECT_DELAY = 0.2
+
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: Optional[int] = None,
+        logger: Optional[logging.Logger] = None,
+    ):
+        if port is None:
+            raise ValueError("IpcSubscriberAsync requires explicit port")
+
+        self.host = host
+        self.port = port
+
+        if logger is None:
+            logger = logging.getLogger(f"{__name__}.IpcSubscriberAsync")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.logger = logger
+
+        self._context = zmq.Context()
+        self.socket: Optional[zmq.Socket] = None
+
+        self._routes: Dict[str, Callable[[dict], Awaitable[None]]] = {}
+        self._running = True
+
+    # ------------------------------------------------------------------
+    # Socket lifecycle
+    # ------------------------------------------------------------------
+
+    def _create_and_connect(self):
+        if self.socket:
+            try:
+                self.socket.close(linger=0)
+            except Exception: # pylint: disable=broad-except
+                pass
+
+        sock = self._context.socket(zmq.SUB)
+        sock.setsockopt(zmq.LINGER, 0)
+
+        # Restore subscriptions
+        for topic in self._routes:
+            sock.setsockopt(zmq.SUBSCRIBE, topic.encode())
+
+        endpoint = f"tcp://{self.host}:{self.port}"
+        sock.connect(endpoint)
+
+        self.socket = sock
+        self.logger.debug(f"IpcSubscriberAsync connected to {endpoint}")
+
+    # ------------------------------------------------------------------
+    # Route registration
+    # ------------------------------------------------------------------
+
+    def route(self, topic: str):
+        topic_bytes = topic.encode()
+
+        def decorator(func: Callable[[dict], Awaitable[None]]):
+            self._routes[topic] = func
+            if self.socket:
+                self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
+            return func
+
+        return decorator
+
+    # ------------------------------------------------------------------
+    # Main async loop (caller schedules this)
+    # ------------------------------------------------------------------
+
+    async def run(self):
+        poller = zmq.Poller()
+
+        self._create_and_connect()
+        poller.register(self.socket, zmq.POLLIN)
+
+        self.logger.debug("IpcSubscriberAsync run loop started")
+
+        while self._running:
+            try:
+                # offload blocking poll - extra thread safety is not required
+                # since the handlers will still execute on the main event loop
+                events = dict(await asyncio.to_thread(poller.poll, 100))
+            except zmq.ZMQError:
+                self.logger.warning("Poll failed — reconnecting SUB socket")
+                await asyncio.sleep(self.RECONNECT_DELAY)
+                self._create_and_connect()
+                poller = zmq.Poller()
+                poller.register(self.socket, zmq.POLLIN)
+                continue
+
+            if self.socket not in events:
+                await asyncio.sleep(0)
+                continue
+
+            try:
+                frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
+            except zmq.ZMQError:
+                self.logger.warning("Receive failed — reconnecting SUB socket")
+                await asyncio.sleep(self.RECONNECT_DELAY)
+                self._create_and_connect()
+                poller = zmq.Poller()
+                poller.register(self.socket, zmq.POLLIN)
+                continue
+
+            if len(frames) != 2:
+                continue
+
+            topic_bytes, payload = frames
+            topic = topic_bytes.decode()
+
+            handler = self._routes.get(topic)
+            if not handler:
+                continue
+
+            try:
+                data = orjson.loads(payload)
+                await handler(data)
+            except Exception: # pylint: disable=broad-except
+                self.logger.exception(f"Handler error for topic '{topic}'")
+
+        # graceful exit
+        try:
+            poller.unregister(self.socket)
+        except Exception: # pylint: disable=broad-except
+            pass
+
+        try:
+            self.socket.close(linger=0)
+        except Exception: # pylint: disable=broad-except
+            pass
+
+        self.logger.debug("IpcSubscriberAsync run loop exited")
+
+    # ------------------------------------------------------------------
+    # Shutdown signal
+    # ------------------------------------------------------------------
+
+    def close(self):
+        """Signal the run() loop to exit."""
         self._running = False
