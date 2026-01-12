@@ -253,7 +253,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def toggle_visibility(self):
 
-        if self._root.isVisible():
+        if self.get_visibility():
             self.animate_fade(False)
         else:
             self.animate_fade(True)
@@ -271,6 +271,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_window_position(self, config: OverlayPosition):
         self.config = config
         self._root.setPosition(config.x, config.y)
+
+    @override
+    def get_visibility(self) -> bool:
+        return self._root.isVisible()
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
 
@@ -310,7 +314,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         Fixed-rate render tick for QML overlays.
         Derived classes may override _render_frame().
         """
-        if not self._root or not self._root.isVisible():
+        if not self._root or not self.get_visibility():
             return
 
         self.render_frame()

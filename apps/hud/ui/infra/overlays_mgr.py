@@ -173,9 +173,9 @@ class OverlaysMgr:
 
         self.logger.debug("Toggling overlays visibility. oid=%s", oid)
         if oid:
-            self.window_manager.unicast_data(oid, '__toggle_visibility__', {})
+            self.window_manager.unicast_data(oid, '__toggle_visibility__', {}, high_prio=True)
         else:
-            self.window_manager.broadcast_data('__toggle_visibility__', {})
+            self.window_manager.broadcast_data('__toggle_visibility__', {}, high_prio=True)
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change."""
@@ -197,7 +197,7 @@ class OverlaysMgr:
         # 2. Broadcast locked state
         # --------------------------------------------------
         try:
-            self.window_manager.broadcast_data("__set_locked_state__", args)
+            self.window_manager.broadcast_data("__set_locked_state__", args, high_prio=True)
         except Exception as e:  # pylint: disable=broad-except
             self.logger.exception("Failed to broadcast locked state")
             rsp["status"] = "error"
@@ -243,7 +243,7 @@ class OverlaysMgr:
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
         self.logger.debug(f"Setting overlays opacity to {opacity}%")
-        self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity})
+        self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
         """Go to the next page in MFD overlay"""

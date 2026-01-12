@@ -179,7 +179,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     def toggle_visibility(self):
 
         self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
-        if self.isVisible():
+        if self.get_visibility():
             self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
             self.animate_fade(show=False)
         else:
@@ -236,6 +236,10 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     def set_ui_scale(self, ui_scale):
         self.scale_factor = ui_scale
         self.rebuild_ui()
+
+    @override
+    def get_visibility(self) -> bool:
+        return self.isVisible()
 
     # ------------------------------------------------------------------
     # Fade

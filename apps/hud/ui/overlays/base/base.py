@@ -91,6 +91,7 @@ class BaseOverlay():
         - `set_window_position()`- set window position and update self.config
         - `toggle_visibility()`  - fade in/out
         - `set_ui_scale()`       - set scale factor
+        - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
     ------------------------------
@@ -183,6 +184,9 @@ class BaseOverlay():
         raise NotImplementedError
 
     def set_ui_scale(self, ui_scale: float):
+        raise NotImplementedError
+
+    def get_visibility(self) -> bool:
         raise NotImplementedError
 
     # ----------------------------------------------------------------------
@@ -279,9 +283,13 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(set, str, str)
-    def _handle_cmd(self, recipients: Set[str], cmd: str, data: str):
+    @Slot(set, bool, str, str)
+    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: str):
         if recipients and self.OVERLAY_ID not in recipients:
+            return
+        visibile = self.get_visibility()
+        if not visibile and not high_prio:
+            # When not visible, only process high-priority commands
             return
         handler = self._command_handlers.get(cmd)
         if not handler:
