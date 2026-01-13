@@ -93,8 +93,9 @@ class PaceCompPage(MfdPageBase):
         return f"{sign}{d:.3f}"
 
     def _row_player(self, p: Dict[str, Any]) -> Dict[str, str]:
+        name = p.get("name")
         return {
-            "name": p.get("name", "---"),
+            "name": name if name else "---",
             "s1": self._fmt_abs_sector(p.get("sector-1-ms")),
             "s2": self._fmt_abs_sector(p.get("sector-2-ms")),
             "s3": self._fmt_abs_sector(p.get("sector-3-ms")),
@@ -102,8 +103,9 @@ class PaceCompPage(MfdPageBase):
         }
 
     def _row_other(self, o: Dict[str, Any], p: Dict[str, Any]) -> Dict[str, str]:
+        name = o.get("name")
         return {
-            "name": o.get("name", "---"),
+            "name": name if name else "---",
             "s1": self._fmt_rel(o.get("sector-1-ms"), p.get("sector-1-ms")),
             "s2": self._fmt_rel(o.get("sector-2-ms"), p.get("sector-2-ms")),
             "s3": self._fmt_rel(o.get("sector-3-ms"), p.get("sector-3-ms")),
