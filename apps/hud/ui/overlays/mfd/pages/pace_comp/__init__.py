@@ -20,8 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# ----------------------------------------------------------------------------------------------------------------------
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-APP_VERSION = "3.2.0"
-APP_NAME_SNAKE = "pits_n_giggles"
-APP_NAME = "Pits n' Giggles"
+from .pace_comp import PaceCompPage
+
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+
+__all__ = [
+    "PaceCompPage",
+]

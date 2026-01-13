@@ -32,6 +32,7 @@ from PySide6.QtQuick import QQuickItem
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
+                                            PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
@@ -52,6 +53,7 @@ class MfdOverlay(BaseOverlayQML):
         TyreInfoPage,
         WeatherForecastPage,
         TyreSetsPage,
+        PaceCompPage,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -228,6 +230,7 @@ class MfdOverlay(BaseOverlayQML):
     def _next_page(self):
         """Go to the next page in MFD overlay"""
         if not self._mfd_pages:
+            self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
             return
 
         old = self._current_index

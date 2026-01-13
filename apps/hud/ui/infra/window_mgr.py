@@ -36,7 +36,7 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
 
-    generic_cmd_signal = Signal(set, str, str)  # recipients, event, data (serialised into string)
+    generic_cmd_signal = Signal(set, bool, str, str)  # recipients, priority, event, data (serialised into string)
     mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
     mgmt_high_freq_signal = Signal(set, object) # recipients, HighFreqBase
@@ -127,39 +127,42 @@ class WindowManager(QObject):
             return None
 
     # Keep existing methods for GUI thread use
-    def broadcast_data(self, cmd: str, data: Dict[str, Any]):
+    def broadcast_data(self, cmd: str, data: Dict[str, Any], high_prio: bool = False):
         """Broadcast event data to all registered overlays using signal.
 
         Args:
             cmd (str): Command
             data (Dict[str, Any]): Command data
+            high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit(set(), cmd, serialise_data(data))
+        self.generic_cmd_signal.emit(set(), high_prio, cmd, serialise_data(data))
 
-    def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any]):
+    def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
         """Unicast event data to a specific overlay using signal.
 
         Args:
             overlay_id (str): Overlay ID
             event (str): Command
             data (Dict[str, Any]): Command data
+            high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit({overlay_id}, event, serialise_data(data))
+        self.generic_cmd_signal.emit({overlay_id}, high_prio, event, serialise_data(data))
 
-    def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any]):
+    def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any], high_prio: bool = False):
         """Multicast event data to multiple overlays using signal.
 
         Args:
             overlay_ids (Set[str]): Overlay IDs
             event (str): Command
             data (Dict[str, Any]): Command data
+            high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_ids
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit(overlay_ids, event, serialise_data(data))
+        self.generic_cmd_signal.emit(overlay_ids, high_prio, event, serialise_data(data))
 
     def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
         """Unicast high-frequency data to a specific overlay using signal.

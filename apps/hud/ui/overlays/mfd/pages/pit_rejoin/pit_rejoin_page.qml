@@ -67,7 +67,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: root.pitTimeLossText
                 font.family: "Formula1"
-                font.pixelSize: 11
+                font.pixelSize: 12
                 font.bold: true
                 color: "white"
             }
@@ -140,7 +140,7 @@ Rectangle {
                         Layout.fillHeight: true
                         text: modelData.name
                         font.family: "Formula1"
-                        font.pixelSize: 10
+                        font.pixelSize: 11
                         color: "white"
                         horizontalAlignment: Text.AlignLeft
                         verticalAlignment: Text.AlignVCenter
@@ -171,7 +171,7 @@ Rectangle {
                         Layout.fillHeight: true
                         text: modelData.tyreAge
                         font.family: "B612 Mono"
-                        font.pixelSize: 9
+                        font.pixelSize: 11
                         color: "white"
                         horizontalAlignment: Text.AlignCenter
                         verticalAlignment: Text.AlignVCenter
@@ -183,7 +183,7 @@ Rectangle {
                         Layout.fillHeight: true
                         text: modelData.delta
                         font.family: "B612 Mono"
-                        font.pixelSize: 9
+                        font.pixelSize: 11
                         color: "white"
                         horizontalAlignment: Text.AlignRight
                         verticalAlignment: Text.AlignVCenter
