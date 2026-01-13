@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, final
+from typing import TYPE_CHECKING, Any, Dict, Optional, final
 
 from PySide6.QtCore import QTimer
 from PySide6.QtQuick import QQuickItem
@@ -49,7 +49,7 @@ class PaceCompPage(MfdPageBase):
     def _init_handlers(self):
         @self.on_event("stream_overlay_update")
         def update(data: Dict[str, Any]) -> None:
-            item: QQuickItem | None = self._page_item
+            item: Optional[QQuickItem] = self._page_item
             if not item:
                 return
 
@@ -75,17 +75,17 @@ class PaceCompPage(MfdPageBase):
     def _invalidate_cache(self):
         self._last_processed_data = {}
 
-    def _fmt_abs_lap(self, ms: int | None) -> str:
+    def _fmt_abs_lap(self, ms: Optional[int]) -> str:
         if not ms or ms <= 0:
             return "--:--.---"
         return F1Utils.millisecondsToMinutesSecondsMilliseconds(ms)
 
-    def _fmt_abs_sector(self, ms: int | None) -> str:
+    def _fmt_abs_sector(self, ms: Optional[int]) -> str:
         if not ms or ms <= 0:
             return "--.---"
         return F1Utils.millisecondsToSecondsMilliseconds(ms)
 
-    def _fmt_rel(self, ms: int | None, ref: int | None) -> str:
+    def _fmt_rel(self, ms: Optional[int], ref: Optional[int]) -> str:
         if not ms or not ref:
             return "---"
         d = (ms - ref) / 1000.0
