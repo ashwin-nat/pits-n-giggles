@@ -10,51 +10,321 @@ Item {
     /* REQUIRED BY MFD */
     property string title: "LAST LAP PACE COMP"
 
+    /* FONT SIZE CONTROL */
+    readonly property int baseFontSize: 13
+
     /* STRING-ONLY DATA (POPULATED BY PYTHON) */
     property var nextRow:   ({ name: "---", s1: "---", s2: "---", s3: "---", lap: "---" })
     property var playerRow: ({ name: "---", s1: "--:--.---", s2: "--:--.---", s3: "--:--.---", lap: "--:--.---" })
     property var prevRow:   ({ name: "---", s1: "---", s2: "---", s3: "---", lap: "---" })
 
+    // Helper function to get color for delta values
+    function getDeltaColor(valueStr) {
+        if (valueStr === "---" || valueStr === "--:--.---") return "#ddd";
+
+        // Check if it starts with + or -
+        if (valueStr.startsWith("+")) return "#FF4444"; // Red for slower (positive)
+        if (valueStr.startsWith("-")) return "#00FF00"; // Green for faster (negative)
+
+        return "#ddd"; // Default
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: 16
+        spacing: 0
 
-        GridLayout {
+        // Table container
+        Item {
             Layout.fillWidth: true
-            columns: 5
-            rowSpacing: 6
-            columnSpacing: 12
+            Layout.fillHeight: true
 
-            /* HEADER */
-            Text { text: "DRIVER"; color: "#aaa"; font.family: "Formula1"; font.pixelSize: 12 }
-            Text { text: "S1";     color: "#aaa"; font.family: "Formula1"; font.pixelSize: 12 }
-            Text { text: "S2";     color: "#aaa"; font.family: "Formula1"; font.pixelSize: 12 }
-            Text { text: "S3";     color: "#aaa"; font.family: "Formula1"; font.pixelSize: 12 }
-            Text { text: "LAP";    color: "#aaa"; font.family: "Formula1"; font.pixelSize: 12 }
+            Column {
+                anchors.fill: parent
+                spacing: 0
 
-            /* PREV */
-            Text { text: prevRow.name; color: "#ddd"; font.family: "Formula1"; font.pixelSize: 13 }
-            Text { text: prevRow.s1;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: prevRow.s2;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: prevRow.s3;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: prevRow.lap;  color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
+                // Header Row
+                Rectangle {
+                    width: parent.width
+                    height: 35
+                    color: "transparent"
 
-            /* PLAYER */
-            Text { text: playerRow.name; color: "white"; font.family: "Formula1"; font.pixelSize: 14; font.bold: true }
-            Text { text: playerRow.s1;   color: "white"; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
-            Text { text: playerRow.s2;   color: "white"; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
-            Text { text: playerRow.s3;   color: "white"; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
-            Text { text: playerRow.lap;  color: "white"; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 1
+                        color: "#555"
+                    }
 
-            /* NEXT */
-            Text { text: nextRow.name; color: "#ddd"; font.family: "Formula1"; font.pixelSize: 13 }
-            Text { text: nextRow.s1;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: nextRow.s2;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: nextRow.s3;   color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
-            Text { text: nextRow.lap;  color: "#ddd"; font.family: "Consolas"; font.pixelSize: 13 }
+                    Row {
+                        anchors.fill: parent
+                        anchors.bottomMargin: 8
+                        spacing: 0
+
+                        Text {
+                            width: 90
+                            height: parent.height
+                            text: "DRIVER"
+                            color: "#888"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignBottom
+                        }
+                        Text {
+                            width: 70
+                            height: parent.height
+                            text: "S1"
+                            color: "#888"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignBottom
+                        }
+                        Text {
+                            width: 70
+                            height: parent.height
+                            text: "S2"
+                            color: "#888"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignBottom
+                        }
+                        Text {
+                            width: 70
+                            height: parent.height
+                            text: "S3"
+                            color: "#888"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignBottom
+                        }
+                        Text {
+                            width: 84
+                            height: parent.height
+                            text: "LAP"
+                            color: "#888"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            font.bold: true
+                            font.letterSpacing: 1.2
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignBottom
+                        }
+                    }
+                }
+
+                Item { height: 10 }
+
+                // PREV Row
+                Item {
+                    width: parent.width
+                    height: 40
+
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        spacing: 0
+
+                        Text {
+                            width: 90
+                            text: prevRow.name
+                            color: "#bbb"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: prevRow.s1
+                            color: getDeltaColor(prevRow.s1)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: prevRow.s2
+                            color: getDeltaColor(prevRow.s2)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: prevRow.s3
+                            color: getDeltaColor(prevRow.s3)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 84
+                            text: prevRow.lap
+                            color: getDeltaColor(prevRow.lap)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                // PLAYER Row
+                Item {
+                    width: parent.width
+                    height: 46
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.leftMargin: -16
+                        anchors.rightMargin: -16
+                        color: "transparent"
+                        border.color: "#FFFFFF"
+                        border.width: 2
+                    }
+
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        spacing: 0
+
+                        Text {
+                            width: 90
+                            text: playerRow.name
+                            color: "#FFFFFF"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: playerRow.s1
+                            color: "#FFFFFF"
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: playerRow.s2
+                            color: "#FFFFFF"
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: playerRow.s3
+                            color: "#FFFFFF"
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 84
+                            text: playerRow.lap
+                            color: "#FFFFFF"
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                // NEXT Row
+                Item {
+                    width: parent.width
+                    height: 40
+
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        spacing: 0
+
+                        Text {
+                            width: 90
+                            text: nextRow.name
+                            color: "#bbb"
+                            font.family: "Formula1"
+                            font.pixelSize: baseFontSize - 2
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: nextRow.s1
+                            color: getDeltaColor(nextRow.s1)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: nextRow.s2
+                            color: getDeltaColor(nextRow.s2)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 70
+                            text: nextRow.s3
+                            color: getDeltaColor(nextRow.s3)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            width: 84
+                            text: nextRow.lap
+                            color: getDeltaColor(nextRow.lap)
+                            font.family: "Consolas"
+                            font.pixelSize: baseFontSize
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
         }
-
-        Item { Layout.fillHeight: true }
     }
 }
