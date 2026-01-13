@@ -24,12 +24,11 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, TYPE_CHECKING, final
+from typing import TYPE_CHECKING, Any, Dict, final
 
-from PySide6.QtQuick import QQuickItem
 from PySide6.QtCore import QTimer
+from PySide6.QtQuick import QQuickItem
 
-from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.f1_types import F1Utils
 
@@ -76,13 +75,15 @@ class PaceCompPage(MfdPageBase):
     def _invalidate_cache(self):
         self._last_processed_data = {}
 
-    def _fmt_abs(self, ms: int | None) -> str:
+    def _fmt_abs_lap(self, ms: int | None) -> str:
         if not ms or ms <= 0:
             return "--:--.---"
-        t = ms / 1000.0
-        m = int(t // 60)
-        s = t % 60
-        return f"{m}:{s:06.3f}"
+        return F1Utils.millisecondsToMinutesSecondsMilliseconds(ms)
+
+    def _fmt_abs_sector(self, ms: int | None) -> str:
+        if not ms or ms <= 0:
+            return "--.---"
+        return F1Utils.millisecondsToSecondsMilliseconds(ms)
 
     def _fmt_rel(self, ms: int | None, ref: int | None) -> str:
         if not ms or not ref:
@@ -94,10 +95,10 @@ class PaceCompPage(MfdPageBase):
     def _row_player(self, p: Dict[str, Any]) -> Dict[str, str]:
         return {
             "name": p.get("name", "---"),
-            "s1": self._fmt_abs(p.get("sector-1-ms")),
-            "s2": self._fmt_abs(p.get("sector-2-ms")),
-            "s3": self._fmt_abs(p.get("sector-3-ms")),
-            "lap": self._fmt_abs(p.get("lap-ms")),
+            "s1": self._fmt_abs_sector(p.get("sector-1-ms")),
+            "s2": self._fmt_abs_sector(p.get("sector-2-ms")),
+            "s3": self._fmt_abs_sector(p.get("sector-3-ms")),
+            "lap": self._fmt_abs_lap(p.get("lap-ms")),
         }
 
     def _row_other(self, o: Dict[str, Any], p: Dict[str, Any]) -> Dict[str, str]:
