@@ -151,7 +151,7 @@ Item {
                             width: 70
                             text: prevRow.s1
                             color: getDeltaColor(prevRow.s1)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -161,7 +161,7 @@ Item {
                             width: 70
                             text: prevRow.s2
                             color: getDeltaColor(prevRow.s2)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -171,7 +171,7 @@ Item {
                             width: 70
                             text: prevRow.s3
                             color: getDeltaColor(prevRow.s3)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -181,7 +181,7 @@ Item {
                             width: 84
                             text: prevRow.lap
                             color: getDeltaColor(prevRow.lap)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -223,7 +223,7 @@ Item {
                             width: 70
                             text: playerRow.s1
                             color: "#FFFFFF"
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -233,7 +233,7 @@ Item {
                             width: 70
                             text: playerRow.s2
                             color: "#FFFFFF"
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -243,7 +243,7 @@ Item {
                             width: 70
                             text: playerRow.s3
                             color: "#FFFFFF"
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -253,7 +253,7 @@ Item {
                             width: 84
                             text: playerRow.lap
                             color: "#FFFFFF"
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -286,7 +286,7 @@ Item {
                             width: 70
                             text: nextRow.s1
                             color: getDeltaColor(nextRow.s1)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -296,7 +296,7 @@ Item {
                             width: 70
                             text: nextRow.s2
                             color: getDeltaColor(nextRow.s2)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -306,7 +306,7 @@ Item {
                             width: 70
                             text: nextRow.s3
                             color: getDeltaColor(nextRow.s3)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -316,7 +316,7 @@ Item {
                             width: 84
                             text: nextRow.lap
                             color: getDeltaColor(nextRow.lap)
-                            font.family: "Consolas"
+                            font.family: "B612 Mono"
                             font.pixelSize: baseFontSize
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
