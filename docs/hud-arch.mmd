@@ -1,3 +1,5 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#999','lineColor':'#666','secondaryColor':'#f9f9f9','tertiaryColor':'#fff','background':'#ffffff','mainBkg':'#ffffff','clusterBkg':'#f8f9fa','clusterBorder':'#adb5bd','edgeLabelBackground':'#ffffff'}}}%%
+
 graph TD
 
 subgraph EXT["🔌 External Threads"]
@@ -97,13 +99,13 @@ ForwardData --> ActivePage
 ActivePage --> PageReg
 PageReg --> UpdateUI
 
-%% ========= Styles =========
-classDef thread fill:#ff6b6b,stroke:#c92a2a,color:#fff,stroke-width:3px,rx:10
-classDef manager fill:#4dabf7,stroke:#1971c2,color:#fff,stroke-width:3px,rx:10
-classDef signal fill:#ffd43b,stroke:#f59f00,color:#000,stroke-width:3px,rx:10
-classDef overlay fill:#51cf66,stroke:#2b8a3e,color:#fff,stroke-width:3px,rx:10
-classDef special fill:#748ffc,stroke:#4c6ef5,color:#fff,stroke-width:3px,rx:10
-classDef page fill:#da77f2,stroke:#9c36b5,color:#fff,stroke-width:3px,rx:10
+%% ========= Light Theme Styles =========
+classDef thread fill:#fee2e2,stroke:#dc2626,color:#991b1b,stroke-width:2.5px,rx:8
+classDef manager fill:#dbeafe,stroke:#2563eb,color:#1e40af,stroke-width:2.5px,rx:8
+classDef signal fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2.5px,rx:8
+classDef overlay fill:#d1fae5,stroke:#10b981,color:#065f46,stroke-width:2.5px,rx:8
+classDef special fill:#e0e7ff,stroke:#6366f1,color:#3730a3,stroke-width:2.5px,rx:8
+classDef page fill:#fae8ff,stroke:#a855f7,color:#6b21a8,stroke-width:2.5px,rx:8
 
 class IPC,SUB thread
 class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_REQ,RespStore manager
