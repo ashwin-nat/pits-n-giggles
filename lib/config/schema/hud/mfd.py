@@ -54,6 +54,7 @@ DEFAULT_PAGES = {
     "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
     "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
     "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
+    "pace_comp": MfdPageSettings(enabled=False, position=7, description="Pace Comparison"),
 }
 
 
