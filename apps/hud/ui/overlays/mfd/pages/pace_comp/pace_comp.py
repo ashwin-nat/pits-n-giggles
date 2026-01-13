@@ -44,50 +44,67 @@ class PaceCompPage(MfdPageBase):
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         super().__init__(overlay, logger)
-        self._last_processed_data = {}
+        self._last_processed_data: Dict[str, Any] = {}
         self._init_handlers()
 
     def _init_handlers(self):
         @self.on_event("stream_overlay_update")
         def update(data: Dict[str, Any]) -> None:
-            """Update fuel information display."""
-
-            page_item = self._page_item
-            if not page_item:
+            item: QQuickItem | None = self._page_item
+            if not item:
                 return
 
-            pace_comp_data = data["pace-comparison"]
-            if self._last_processed_data == pace_comp_data:
-                return  # No changes
+            payload = data.get("pace-comparison")
+            if not payload or payload == self._last_processed_data:
+                return
 
-            player_data = pace_comp_data["player"]
-            next_data = pace_comp_data["next"]
-            prev_data = pace_comp_data["prev"]
+            player = payload.get("player", {})
+            prev = payload.get("prev", {})
+            next_ = payload.get("next", {})
 
+            item.setProperty("playerRow", self._row_player(player))
+            item.setProperty("prevRow", self._row_other(prev, player))
+            item.setProperty("nextRow", self._row_other(next_, player))
 
-            # TODO: update data
-
-            # "player": {
-            #   "ers": {
-            #     "ers-deployed-this-lap": null,
-            #     "ers-harvested-by-mguk-this-lap": null,
-            #     "ers-mode": null,
-            #     "ers-percent": null
-            #   },
-            #   "lap-ms": null,
-            #   "name": null,
-            #   "sector-1-ms": null,
-            #   "sector-2-ms": null,
-            #   "sector-3-ms": null
-            # },
-
-            self._last_processed_data = pace_comp_data
+            self._last_processed_data = payload
 
     @final
     def on_page_activated(self, item: QQuickItem):
         super().on_page_activated(item)
-        # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
     def _invalidate_cache(self):
         self._last_processed_data = {}
+
+    def _fmt_abs(self, ms: int | None) -> str:
+        if not ms or ms <= 0:
+            return "--:--.---"
+        t = ms / 1000.0
+        m = int(t // 60)
+        s = t % 60
+        return f"{m}:{s:06.3f}"
+
+    def _fmt_rel(self, ms: int | None, ref: int | None) -> str:
+        if not ms or not ref:
+            return "---"
+        d = (ms - ref) / 1000.0
+        sign = "+" if d > 0 else ""
+        return f"{sign}{d:.3f}"
+
+    def _row_player(self, p: Dict[str, Any]) -> Dict[str, str]:
+        return {
+            "name": p.get("name", "---"),
+            "s1": self._fmt_abs(p.get("sector-1-ms")),
+            "s2": self._fmt_abs(p.get("sector-2-ms")),
+            "s3": self._fmt_abs(p.get("sector-3-ms")),
+            "lap": self._fmt_abs(p.get("lap-ms")),
+        }
+
+    def _row_other(self, o: Dict[str, Any], p: Dict[str, Any]) -> Dict[str, str]:
+        return {
+            "name": o.get("name", "---"),
+            "s1": self._fmt_rel(o.get("sector-1-ms"), p.get("sector-1-ms")),
+            "s2": self._fmt_rel(o.get("sector-2-ms"), p.get("sector-2-ms")),
+            "s3": self._fmt_rel(o.get("sector-3-ms"), p.get("sector-3-ms")),
+            "lap": self._fmt_rel(o.get("lap-ms"), p.get("lap-ms")),
+        }
