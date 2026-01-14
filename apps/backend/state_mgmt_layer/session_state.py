@@ -555,8 +555,8 @@ class SessionState:
 
         # Delta - not supported in time trial
         if self.m_session_info.m_session_type and \
-            not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
-                lap_data.m_driverStatus in {LapData.DriverStatus.FLYING_LAP, LapData.DriverStatus.ON_TRACK}:
+            not self.m_session_info.m_session_type.isTimeTrialTypeSession():
+            # DO NOT check for driver status. let the UI component handle that
             if flashback_occurred:
                 driver_obj.m_delta_mgr.handle_flashback(lap_data.m_currentLapNum,lap_data.m_lapDistance)
             driver_obj.m_delta_mgr.record_data_point(
