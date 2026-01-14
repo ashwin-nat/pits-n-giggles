@@ -21,7 +21,8 @@
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
         "telemetry_rate": 30,
-        "realtime_overlay_fps": 60
+        "realtime_overlay_fps": 60,
+        "use_cpu_acceleration": false
     },
     "Privacy": {
         "process_car_setup": false
