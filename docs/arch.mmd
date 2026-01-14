@@ -37,57 +37,52 @@ subgraph PNG_LAUNCHER["   Pits n' Giggles   "]
     end
 
     %% -------------------------------------------------------------------------
-    %% PitWall Broker (Center - Hub of communication)
+    %% Core (Left side)
+    %% -------------------------------------------------------------------------
+    subgraph CORE["   Telemetry Core   "]
+        direction TB
+        subgraph TELEMETRY["   Telemetry Layer   "]
+            direction TB
+            UDP_RECV["  UDP Receiver  "]
+            PARSERS["  Parsers  "]
+            PACKET_FWD["  Packet Forwarder  "]
+        end
+
+        subgraph STATE["   State Management Layer   "]
+            direction TB
+            COMP_ENGINE["  Computation Engine  "]
+            SHARED_STATE["  Shared State  "]
+            API_INTF["  State Interface  "]
+        end
+
+        subgraph INTF["   Interface Layer   "]
+            direction TB
+            HTTP["  HTTP Server  "]
+            SOCKETIO["  Socket.IO  "]
+            IPC["  ZMQ IPC Server  "]
+            ZMQ_PUB["  ZMQ Publisher  "]
+        end
+    end
+
+    %% -------------------------------------------------------------------------
+    %% PitWall Broker (Center)
     %% -------------------------------------------------------------------------
     subgraph PITWALL["   PitWall Broker   "]
         direction TB
         ZMQ_PROXY["  ZMQ Proxy  "]
     end
 
-    %% Row with Core, PitWall visually centered, and HUD
-    subgraph ROW1[" "]
-        direction LR
-
-        %% -------------------------------------------------------------------------
-        %% Core (Left side)
-        %% -------------------------------------------------------------------------
-        subgraph CORE["   Telemetry Core   "]
+    %% -------------------------------------------------------------------------
+    %% HUD Subsystem (Right side)
+    %% -------------------------------------------------------------------------
+    subgraph HUD["   HUD Subsystem   "]
+        direction TB
+        subgraph HUD_INPUT["   Input Layer   "]
             direction TB
-            subgraph TELEMETRY["   Telemetry Layer   "]
-                direction TB
-                UDP_RECV["  UDP Receiver  "]
-                PARSERS["  Parsers  "]
-                PACKET_FWD["  Packet Forwarder  "]
-            end
-
-            subgraph STATE["   State Management Layer   "]
-                direction TB
-                COMP_ENGINE["  Computation Engine  "]
-                SHARED_STATE["  Shared State  "]
-                API_INTF["  API Interface  "]
-            end
-
-            subgraph INTF["   Interface Layer   "]
-                direction TB
-                HTTP["  HTTP Server  "]
-                SOCKETIO["  Socket.IO  "]
-                IPC["  ZMQ IPC Server  "]
-                ZMQ_PUB["  ZMQ Publisher  "]
-            end
+            HUD_IPC["  IPC Server  "]
+            HUD_SUB["  ZMQ Subscriber  "]
         end
-
-        %% -------------------------------------------------------------------------
-        %% HUD Subsystem (Right side)
-        %% -------------------------------------------------------------------------
-        subgraph HUD["   HUD Subsystem   "]
-            direction TB
-            subgraph HUD_INPUT["   Input Layer   "]
-                direction LR
-                HUD_IPC["  IPC Server  "]
-                HUD_SUB["  ZMQ Subscriber  "]
-            end
-            HUD_QT["  Qt Overlays  "]
-        end
+        HUD_QT["  Qt Overlays  "]
     end
 
     %% -------------------------------------------------------------------------
@@ -105,7 +100,7 @@ end
 %% ---------------------------------------------------------------------------
 %% UI Clients (Bottom)
 %% ---------------------------------------------------------------------------
-subgraph UI_CLIENTS["   UI Clients   "]
+subgraph UI_CLIENTS["   Web Clients   "]
     direction LR
     STREAM_OVERLAY["  Stream Overlay  "]
     DRV_VIEW["  Driver Dashboard  "]
@@ -113,63 +108,58 @@ subgraph UI_CLIENTS["   UI Clients   "]
 end
 
 %% ---------------------------------------------------------------------------
-%% Connections - Telemetry Flow
+%% Connections - Telemetry Flow (Top to Core)
 %% ---------------------------------------------------------------------------
 F1_SIM -->|"Telemetry Data"| UDP_RECV
 UDP_RECV --> PARSERS
-UDP_RECV --> PACKET_FWD --> EXT_TGT
+UDP_RECV --> PACKET_FWD
+PACKET_FWD --> EXT_TGT
 PARSERS --> COMP_ENGINE
 COMP_ENGINE --> SHARED_STATE
 
 %% ---------------------------------------------------------------------------
-%% Connections - Core Internal
+%% Connections - Core Internal (Vertical flow)
 %% ---------------------------------------------------------------------------
-API_INTF <-->|"Read/Write"| SHARED_STATE
-HTTP -->|"Request"| API_INTF
-SOCKETIO <-->|"Read / Fetch"| API_INTF
+SHARED_STATE --> API_INTF
+API_INTF --> HTTP
+API_INTF --> SOCKETIO
+API_INTF --> ZMQ_PUB
 
 %% ---------------------------------------------------------------------------
-%% Connections - ZMQ Pub/Sub Flow (Core -> PitWall -> HUD)
+%% Connections - Process Management (Clean vertical lines)
 %% ---------------------------------------------------------------------------
-ZMQ_PUB -->|"Publish"| ZMQ_PROXY
-ZMQ_PROXY -->|"Subscribe"| HUD_SUB
-HUD_SUB -->|"Data Feed"| HUD_QT
+CORE_PROG_MGR --> IPC
+PITWALL_PROC_MGR --> ZMQ_PROXY
+HUD_PROC_MGR --> HUD_IPC
+SAVE_VIEWER_PROC_MGR --> SV_IPC
 
 %% ---------------------------------------------------------------------------
-%% Connections - UI Clients
+%% Connections - ZMQ Pub/Sub Flow (Left to Right: Core -> PitWall -> HUD)
 %% ---------------------------------------------------------------------------
-SOCKETIO -->|"Periodic Updates"| STREAM_OVERLAY
-SOCKETIO -->|"Periodic Updates"| DRV_VIEW
-SOCKETIO -->|"Periodic Updates"| ENG_VIEW
-HTTP -->|"Serve Pages"| UI_CLIENTS
-
-%% ---------------------------------------------------------------------------
-%% Connections - Save Viewer
-%% ---------------------------------------------------------------------------
-SV_HTTP -->|"Serve Pages"| UI_CLIENTS
-SV_SOCKETIO -->|"Updates"| DRV_VIEW
-SV_IPC -->|"Save file path"| SV_STATE
-SV_SOCKETIO -->|"Read"| SV_STATE
-SV_STATE -->|"Notify"| SV_SOCKETIO
-
-%% ---------------------------------------------------------------------------
-%% Connections - Process Management (from top horizontal bar to all subsystems)
-%% ---------------------------------------------------------------------------
-CORE -->|"stdout"| CORE_PROG_MGR
-PITWALL -->|"stdout"| PITWALL_PROC_MGR
-HUD -->|"stdout"| HUD_PROC_MGR
-SAVE_VIEWER -->|"stdout"| SAVE_VIEWER_PROC_MGR
-
-CORE_PROG_MGR -->|"Manage / Heartbeat"| IPC
-PITWALL_PROC_MGR -->|"Manage / Heartbeat"| ZMQ_PROXY
-HUD_PROC_MGR -->|"Manage / Heartbeat"| HUD_IPC
-SAVE_VIEWER_PROC_MGR -->|"Manage / Heartbeat"| SV_IPC
+ZMQ_PUB --> ZMQ_PROXY
+ZMQ_PROXY --> HUD_SUB
+HUD_SUB --> HUD_QT
 
 %% ---------------------------------------------------------------------------
 %% Connections - HUD Control
 %% ---------------------------------------------------------------------------
-HUD_IPC -->|"Commands"| HUD_QT
-HUD_QT -->|"Responses"| HUD_IPC
+HUD_IPC --> HUD_QT
+
+%% ---------------------------------------------------------------------------
+%% Connections - UI Clients (Clean lines from bottom)
+%% ---------------------------------------------------------------------------
+HTTP --> UI_CLIENTS
+SOCKETIO --> STREAM_OVERLAY
+SOCKETIO --> DRV_VIEW
+SOCKETIO --> ENG_VIEW
+
+%% ---------------------------------------------------------------------------
+%% Connections - Save Viewer (Clean lines from bottom)
+%% ---------------------------------------------------------------------------
+SV_HTTP --> UI_CLIENTS
+SV_SOCKETIO --> DRV_VIEW
+SV_IPC --> SV_STATE
+SV_STATE --> SV_SOCKETIO
 
 %% ---------------------------------------------------------------------------
 %% Styles
@@ -183,7 +173,6 @@ classDef pitwall fill:#ffc6ff,stroke:#9d4edd,stroke-width:2px,color:#3c096c,font
 classDef hud fill:#caffbf,stroke:#2a9d8f,stroke-width:2px,color:#1b4332,font-weight:bold
 classDef save fill:#ffd6a5,stroke:#f48c06,stroke-width:2px,color:#78350f,font-weight:bold
 classDef ui fill:#dabfff,stroke:#7209b7,stroke-width:2px,color:#240046,font-weight:bold
-classDef row fill:none,stroke:none
 classDef input fill:#a7f3d0,stroke:#059669,stroke-width:2px,color:#064e3b,font-weight:bold
 
 %% Core sublayers
@@ -202,4 +191,3 @@ class HUD hud
 class HUD_INPUT input
 class SAVE_VIEWER save
 class UI_CLIENTS ui
-class ROW1 row
