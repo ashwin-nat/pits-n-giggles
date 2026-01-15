@@ -22,17 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from collections import defaultdict
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-state_data: defaultdict[str, Dict[str, Any]] = defaultdict(dict)
+state_data: Dict[str, Any] = {}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def set_state_data(topic: str, data: Dict[str, Any]) -> None:
     state_data[topic] = data
 
-def get_state_data(topic: str) -> Dict[str, Any]:
-    return state_data[topic]
+def get_state_data(topic: str, default_val: Optional[Any] = {}) -> Dict[str, Any]:
+    return state_data.get(topic, default_val)
+
