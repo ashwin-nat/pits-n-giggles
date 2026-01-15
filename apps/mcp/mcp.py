@@ -90,6 +90,7 @@ def entry_point():
     # TODO: make rotating logging configurable
     png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log", console_output=False)
     version = get_version()
+    png_logger.info(f"Starting {APP_NAME} MCP server, version {version}...")
     # TODO: fail if config file is not available
     configs = load_config_from_json(args.config_file, png_logger)
     if sys.platform == 'win32':

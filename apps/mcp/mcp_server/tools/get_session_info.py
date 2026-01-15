@@ -42,7 +42,7 @@ def get_session_info() -> Dict[str, Any]:
         Dict[str, Any]: Session info dictionary.
     """
     telemetry_update = get_state_data("race-table-update")
-    connected = True # TODO: derive from telemetry source status
+    connected = get_state_data("connected", False)
     data_unavailable_rsp = {
         "available": False,
         "connected": connected,

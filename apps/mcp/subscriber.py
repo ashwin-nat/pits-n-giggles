@@ -40,14 +40,27 @@ class McpSubscriber:
             logger (logging.Logger): Logger
         """
         self.m_ipc_sub = IpcSubscriberAsync(port=port, logger=logger)
+        set_state_data("connected", False)
         self._init_routes()
+        self._init_callbacks()
+
+    def _init_callbacks(self) -> None:
+        """Initialize connection callbacks."""
+        @self.m_ipc_sub.on_connect
+        async def _on_connect() -> None:
+            self.m_ipc_sub.logger.info("IPC Subscriber connected")
+            set_state_data("connected", True)
+
+        @self.m_ipc_sub.on_disconnect
+        async def _on_disconnect(exc: Exception | None) -> None:
+            self.m_ipc_sub.logger.info("IPC Subscriber disconnected")
+            set_state_data("connected", True)
 
     def _init_routes(self) -> None:
         """Initialize the IPC routes."""
         @self.m_ipc_sub.route("race-table-update")
         async def _handle_race_table_update(msg: Dict[str, Any]) -> None:
             """Handle race table update messages."""
-            self.m_ipc_sub.logger.debug("Received race table update")
             set_state_data("race-table-update", msg)
 
     async def run(self) -> None:
