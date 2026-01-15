@@ -29,6 +29,11 @@ from typing import Awaitable, Callable, Dict, Optional
 import orjson
 import zmq
 
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+OnConnectCbAsync = Callable[[], Awaitable[None]]
+OnDisconnectCbAsync = Callable[[Exception | None], Awaitable[None]]
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class IpcSubscriberSync:
@@ -201,6 +206,10 @@ class IpcSubscriberAsync:
         self._routes: Dict[str, Callable[[dict], Awaitable[None]]] = {}
         self._running = True
 
+        self._on_connect: Optional[OnConnectCbAsync] = None
+        self._on_disconnect: Optional[OnDisconnectCbAsync] = None
+        self._connected = False
+
     # ------------------------------------------------------------------
     # Socket lifecycle
     # ------------------------------------------------------------------
@@ -257,8 +266,9 @@ class IpcSubscriberAsync:
                 # offload blocking poll - extra thread safety is not required
                 # since the handlers will still execute on the main event loop
                 events = dict(await asyncio.to_thread(poller.poll, 100))
-            except zmq.ZMQError:
+            except zmq.ZMQError as e:
                 self.logger.warning("Poll failed — reconnecting SUB socket")
+                await self._mark_disconnected(e)
                 await asyncio.sleep(self.RECONNECT_DELAY)
                 self._create_and_connect()
                 poller = zmq.Poller()
@@ -271,8 +281,9 @@ class IpcSubscriberAsync:
 
             try:
                 frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
-            except zmq.ZMQError:
+            except zmq.ZMQError as e:
                 self.logger.warning("Receive failed — reconnecting SUB socket")
+                await self._mark_disconnected(e)
                 await asyncio.sleep(self.RECONNECT_DELAY)
                 self._create_and_connect()
                 poller = zmq.Poller()
@@ -284,6 +295,7 @@ class IpcSubscriberAsync:
 
             topic_bytes, payload = frames
             topic = topic_bytes.decode()
+            await self._mark_connected()
 
             handler = self._routes.get(topic)
             if not handler:
@@ -307,6 +319,7 @@ class IpcSubscriberAsync:
             pass
 
         self.logger.debug("IpcSubscriberAsync run loop exited")
+        await self._mark_disconnected(None)
 
     # ------------------------------------------------------------------
     # Shutdown signal
@@ -315,3 +328,31 @@ class IpcSubscriberAsync:
     def close(self):
         """Signal the run() loop to exit."""
         self._running = False
+
+    # ------------------------------------------------------------------
+    # Connection callbacks
+    # ------------------------------------------------------------------
+
+    def on_connect(self, func: OnConnectCbAsync) -> OnConnectCbAsync:
+        self._on_connect = func
+        return func
+
+    def on_disconnect(self, func: OnDisconnectCbAsync) -> OnDisconnectCbAsync:
+        self._on_disconnect = func
+        return func
+
+    async def _mark_connected(self):
+        if not self._connected:
+            self._connected = True
+            if self._on_connect:
+                await self._on_connect()
+
+    async def _mark_disconnected(self, exc: Exception | None):
+        if self._connected:
+            self._connected = False
+            if self._on_disconnect:
+                await self._on_disconnect(exc)
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
