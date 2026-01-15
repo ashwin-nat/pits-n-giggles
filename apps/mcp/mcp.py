@@ -38,6 +38,7 @@ from meta.meta import APP_NAME
 
 from .mgmt import init_ipc_task
 from .subscriber import init_subscriber_task
+from .mcp_server import MCPBridge
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -52,25 +53,26 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=f"{APP_NAME} MCP server")
 
     # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, settings: PngSettings) -> None:
+async def main(logger: logging.Logger, settings: PngSettings, version: str) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         settings (PngSettings): Settings
+        version (str): Version string
     """
     tasks: List[asyncio.Task] = []
-    ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
-    init_ipc_task(logger=logger, tasks=tasks, ipc_sub=ipc_sub)
+    init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
+    mcp_bridge = MCPBridge(logger)
+    tasks.append(asyncio.create_task(mcp_bridge.run(), name="MCP Server Task"))
 
     try:
-        notify_parent_init_complete()
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         logger.debug("Main task was cancelled.")
@@ -86,8 +88,10 @@ def entry_point():
     """Entry point"""
     report_pid_from_child()
     args = parseArgs()
-    png_logger = get_logger("mcp", args.debug, jsonl=True)
+    # TODO: make rotating logging configurable
+    png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log")
     version = get_version()
+    # TODO: fail if config file is not available
     configs = load_config_from_json(args.config_file, png_logger)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -95,6 +99,7 @@ def entry_point():
         asyncio.run(main(
             logger=png_logger,
             settings=configs,
+            version=version
             ))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
