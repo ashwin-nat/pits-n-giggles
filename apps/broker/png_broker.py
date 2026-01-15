@@ -50,7 +50,7 @@ def parseArgs() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=f"{APP_NAME} Pit Wall")
 
     # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.ini", help="Configuration file name (optional)")
+    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     # Parse the command-line arguments
