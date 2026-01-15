@@ -34,6 +34,8 @@ from mcp.types import Tool
 from .tools_infra import ToolRegistry
 from meta.meta import APP_NAME
 
+from .tools.get_session_info import get_session_info
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 class MCPBridge:
@@ -44,7 +46,6 @@ class MCPBridge:
         self.logger: logging.Logger = logger
         self.version: str = version
         self._register_tools()
-        self._init_infra()
         self.logger.debug("MCPBridge initialized with tools: %s", list(self.registry._tools.keys()))
 
     def _register_tools(self):
@@ -67,6 +68,20 @@ class MCPBridge:
                     "status": "This is hardcoded example data"
                 }, indent=2)
             }]
+
+        @self.registry.tool(
+            name="get_session_info",
+            description="Get current session information",
+        )
+        async def handle_get_session_info(
+            context: "MCPBridge",
+            arguments: Dict[str, Any],
+        ) -> Dict[str, Any]:
+            rsp = get_session_info()
+            self.logger.debug("handle_get_session_info called with arguments: %s. rsp: available=%s",
+                              arguments, rsp.get("available", False))
+            return rsp
+
 
     def _init_infra(self, server: Server) -> None:
         """Initialize infrastructure components if any"""
