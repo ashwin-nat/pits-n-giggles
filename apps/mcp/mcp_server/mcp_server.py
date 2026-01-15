@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
+import logging
 import json
 from typing import Dict, Any, List, Callable, Awaitable, Optional
 from dataclasses import dataclass
@@ -32,16 +32,19 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool
 
 from .tools_infra import ToolRegistry
+from meta.meta import APP_NAME
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 class MCPBridge:
     """MCP Bridge for sim racing telemetry"""
 
-    def __init__(self, logger):
-        self.registry = ToolRegistry()
-        self.logger = logger
+    def __init__(self, logger: logging.Logger, version: str) -> None:
+        self.registry: ToolRegistry = ToolRegistry()
+        self.logger: logging.Logger = logger
+        self.version: str = version
         self._register_tools()
+        self._init_infra()
         self.logger.debug("MCPBridge initialized with tools: %s", list(self.registry._tools.keys()))
 
     def _register_tools(self):
@@ -65,19 +68,12 @@ class MCPBridge:
                 }, indent=2)
             }]
 
-    # ========================================================================
-    # MCP Server Setup
-    # ========================================================================
-
-    async def run(self):
-        """Main entry point - run MCP server over stdio"""
-        server = Server("sim-racing-telemetry")
-        self.logger.debug("MCP Server initialized.")
-
+    def _init_infra(self, server: Server) -> None:
+        """Initialize infrastructure components if any"""
         @server.list_tools()
         async def list_tools():
-            tools = [t.mcp_tool for t in self.registry._tools.values()]
-            self.logger.debug("Listing registered tools: %s", [t.name for t in tools])
+            tools = self.registry.get_tool_list()
+            self.logger.debug("Listing registered tools: %s", tools)
             return tools
 
         @server.call_tool()
@@ -89,6 +85,18 @@ class MCPBridge:
                     "type": "text",
                     "text": f"Error: {str(e)}"
                 }]
+
+    # ========================================================================
+    # MCP Server Setup
+    # ========================================================================
+
+    async def run(self):
+        """Main entry point - run MCP server over stdio"""
+        server = Server(
+            name=f"{APP_NAME} MCP Server",
+            version=self.version)
+        self._init_infra(server)
+        self.logger.debug("MCP Server initialized.")
 
         # Run MCP server
         async with stdio_server() as (read_stream, write_stream):

@@ -36,6 +36,7 @@ def get_logger(
     debug_mode: bool = False,
     jsonl: bool = False,
     file_path: Optional[str] = None,
+    console_output: bool = True,
 ) -> logging.Logger:
     """Initialize and configure the logger.
 
@@ -44,6 +45,7 @@ def get_logger(
         debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
         jsonl (bool, optional): Whether to use JSONL format. Defaults to False.
         file_path (Optional[str], optional): The path to the log file. Defaults to None.
+        console_output (bool, optional): Whether to log to console. Defaults to True.
 
     Returns:
         logging.Logger: The configured logger.
@@ -68,10 +70,11 @@ def get_logger(
         console_formatter = logging.Formatter(text_fmt, ts_fmt)
         file_formatter    = logging.Formatter(text_fmt, ts_fmt)
 
-    # Console handler (always)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(console_formatter)
-    png_logger.addHandler(console_handler)
+    # Console handler (optional)
+    if console_output:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(console_formatter)
+        png_logger.addHandler(console_handler)
 
     # File handler (optional)
     if file_path:

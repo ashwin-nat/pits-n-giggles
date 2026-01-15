@@ -69,7 +69,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str) -> N
     """
     tasks: List[asyncio.Task] = []
     init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
-    mcp_bridge = MCPBridge(logger)
+    mcp_bridge = MCPBridge(logger, version)
     tasks.append(asyncio.create_task(mcp_bridge.run(), name="MCP Server Task"))
 
     try:
@@ -86,10 +86,9 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str) -> N
 
 def entry_point():
     """Entry point"""
-    report_pid_from_child()
     args = parseArgs()
     # TODO: make rotating logging configurable
-    png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log")
+    png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log", console_output=False)
     version = get_version()
     # TODO: fail if config file is not available
     configs = load_config_from_json(args.config_file, png_logger)

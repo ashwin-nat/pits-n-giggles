@@ -95,12 +95,8 @@ class ToolRegistry:
     def get_tool_list(self) -> List[Dict[str, Any]]:
         """Get list of all registered tools"""
         return [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "inputSchema": tool.input_schema
-            }
-            for tool in self._tools.values()
+            t.mcp_tool
+            for t in self._tools.values()
         ]
 
     async def call_tool(self, name: str, arguments: Dict[str, Any], context: Any) -> List[Dict[str, Any]]:
