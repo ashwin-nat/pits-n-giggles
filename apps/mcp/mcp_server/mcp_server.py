@@ -50,8 +50,9 @@ Rules:
 - Do NOT use web search for session-specific information.
 - Treat MCP tool responses as the single source of truth.
 - If a tool reports available=false, the data is currently unavailable.
-- If a tool reports connected=false, the data source is disconnected. The data may be outdated. Take it with a grain of salt.
-  Do not speculate or infer missing information.
+- If a tool reports connected=false, the data source is disconnected. The data may be outdated.
+    - Check for the last-update-timestamp field if available and use it to determine data freshness.
+- Do not speculate or infer missing information.
 
 Tools exposed by this MCP provide structured snapshots of the current session.
 They are safe to call whenever up-to-date information is required.
@@ -67,24 +68,6 @@ They are safe to call whenever up-to-date information is required.
 
     def _register_tools(self):
         """Register all tools"""
-        @self.registry.tool(
-            name="get_example_data",
-            description="Example tool that returns hardcoded data",
-        )
-        async def handle_get_example_data(
-            context: "MCPBridge",
-            arguments: Dict[str, Any],
-        ) -> List[Dict[str, Any]]:
-            self.logger.debug("handle_get_example_data called with arguments: %s", arguments)
-            return [{
-                "type": "text",
-                "text": json.dumps({
-                    "speed": 150,
-                    "rpm": 7500,
-                    "gear": 4,
-                    "status": "This is hardcoded example data"
-                }, indent=2)
-            }]
 
         @self.registry.tool(
             name="get_session_info",
@@ -94,7 +77,7 @@ They are safe to call whenever up-to-date information is required.
             context: "MCPBridge",
             arguments: Dict[str, Any],
         ) -> Dict[str, Any]:
-            rsp = get_session_info()
+            rsp = get_session_info(self.logger)
             self.logger.debug("handle_get_session_info called with arguments: %s. rsp: available=%s",
                               arguments, rsp.get("available", False))
             return rsp

@@ -23,16 +23,28 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from typing import Any, Dict, Optional
+from dataclasses import dataclass
+import time
+
+# -------------------------------------- CLASSES ------------------------------------------------------------------------
+
+@dataclass(slots=True)
+class StateEntry:
+    data: Any
+    ts: float
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
-state_data: Dict[str, Any] = {}
+state_data: Dict[str, StateEntry] = {}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def set_state_data(topic: str, data: Dict[str, Any]) -> None:
-    state_data[topic] = data
+    state_data[topic] = StateEntry(
+        data=data,
+        ts=time.time(),
+    )
 
-def get_state_data(topic: str, default_val: Optional[Any] = {}) -> Dict[str, Any]:
-    return state_data.get(topic, default_val)
 
+def get_state_data(topic: str, default: Optional[Any] = None) -> Optional[StateEntry]:
+    return state_data.get(topic, default)

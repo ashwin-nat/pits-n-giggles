@@ -35,28 +35,39 @@ from apps.mcp.state import get_state_data
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_session_info() -> Dict[str, Any]:
+def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
     """Get session info from state data.
+
+    Arguments:
+        logger (logging.Logger): Logger instance.
 
     Returns:
         Dict[str, Any]: Session info dictionary.
     """
-    telemetry_update = get_state_data("race-table-update")
-    connected = get_state_data("connected", False)
+    telemetry_update_entry = get_state_data("race-table-update")
+    connected_entry = get_state_data("connected", False)
+    assert connected_entry is not None, "Connected state data missing"
+    connected: bool = connected_entry.data
+    logger.debug("get_session_info: connected=%s, telemetry_update_entry=%s",
+                 connected, telemetry_update_entry)
     data_unavailable_rsp = {
         "available": False,
         "connected": connected,
     }
-    if telemetry_update is None:
+    if telemetry_update_entry is None:
+        logger.debug("get_session_info: telemetry update entry is None")
         return data_unavailable_rsp
 
+    telemetry_update: Dict[str, Any] = telemetry_update_entry.data
     session_uid = telemetry_update.get("session-uid")
     if not session_uid:
+        logger.debug("get_session_info: session UID is missing or empty")
         return data_unavailable_rsp
 
     return {
         "available": True,
         "connected": connected,
+        "last-update-timestamp": telemetry_update_entry.ts,
 
         "identity": {
             "session_uid": session_uid,
