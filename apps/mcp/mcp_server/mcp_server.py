@@ -35,6 +35,7 @@ from .tools_infra import ToolRegistry
 from meta.meta import APP_NAME
 
 from .tools.get_session_info import get_session_info
+from .tools.get_race_table import get_race_table
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -56,6 +57,11 @@ Rules:
 
 Tools exposed by this MCP provide structured snapshots of the current session.
 They are safe to call whenever up-to-date information is required.
+
+NOTE: Users perfer the following conventions for time representation:
+    - Lap times -> mm:ss.sss
+    - Sector times -> ss.sss
+    - Time deltas -> +-s.sss
 
 """
 
@@ -82,6 +88,18 @@ They are safe to call whenever up-to-date information is required.
                               arguments, rsp.get("available", False))
             return rsp
 
+        @self.registry.tool(
+            name="get_race_table",
+            description="Get current race table",
+        )
+        async def handle_get_race_table(
+            context: "MCPBridge",
+            arguments: Dict[str, Any],
+        ) -> Dict[str, Any]:
+            rsp = get_race_table(self.logger)
+            self.logger.debug("handle_get_race_table called with arguments: %s. rsp: available=%s",
+                              arguments, rsp.get("available", False))
+            return rsp
 
     def _init_infra(self, server: Server) -> None:
         """Initialize infrastructure components if any"""

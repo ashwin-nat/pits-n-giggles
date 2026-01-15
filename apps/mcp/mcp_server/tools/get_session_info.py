@@ -32,6 +32,7 @@ from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcServerAsync
 
 from apps.mcp.state import get_state_data
+from .common import _get_race_table_context
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -44,33 +45,16 @@ def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Session info dictionary.
     """
-    telemetry_update_entry = get_state_data("race-table-update")
-    connected_entry = get_state_data("connected", False)
-    assert connected_entry is not None, "Connected state data missing"
-    connected: bool = connected_entry.data
-    logger.debug("get_session_info: connected=%s, telemetry_update_entry=%s",
-                 connected, telemetry_update_entry)
-    data_unavailable_rsp = {
-        "available": False,
-        "connected": connected,
-    }
-    if telemetry_update_entry is None:
-        logger.debug("get_session_info: telemetry update entry is None")
-        return data_unavailable_rsp
+    telemetry_update, base_rsp = _get_race_table_context(logger)
 
-    telemetry_update: Dict[str, Any] = telemetry_update_entry.data
-    session_uid = telemetry_update.get("session-uid")
-    if not session_uid:
-        logger.debug("get_session_info: session UID is missing or empty")
-        return data_unavailable_rsp
+    if telemetry_update is None:
+        return base_rsp
 
     return {
-        "available": True,
-        "connected": connected,
-        "last-update-timestamp": telemetry_update_entry.ts,
+        **base_rsp,
 
         "identity": {
-            "session_uid": session_uid,
+            "session_uid": telemetry_update.get("session-uid"),
             "session_type": telemetry_update.get("event-type"),
             "formula_type": telemetry_update.get("formula"),
             "circuit_name": telemetry_update.get("circuit"),
@@ -88,15 +72,6 @@ def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
             "air_temperature_c": telemetry_update.get("air-temperature"),
             "track_temperature_c": telemetry_update.get("track-temperature"),
             "weather_forecast": telemetry_update.get("weather-forecast-samples"),
-            # each forecast sample contains:
-            #   session_type
-            #   time_offset
-            #   weather
-            #   track_temperature
-            #   track_temperature_change
-            #   air_temperature
-            #   air_temperature_change
-            #   rain_percentage
         },
 
         "race_control": {
