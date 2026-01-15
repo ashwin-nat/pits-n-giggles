@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+# TODO: re-evaluate if MCP app manager is needed
+
 class McpAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
     def __init__(self,

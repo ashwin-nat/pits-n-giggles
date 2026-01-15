@@ -245,13 +245,13 @@ class PngLauncherWindow(QMainWindow):
                debug_mode=debug_mode,
                coverage_enabled=coverage_enabled
             ),
-            McpAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               coverage_enabled=coverage_enabled
-            ),
+            # McpAppMgr(
+            #    window=self,
+            #    settings=self.settings,
+            #    args=args,
+            #    debug_mode=debug_mode,
+            #    coverage_enabled=coverage_enabled
+            # ),
         ]
         for subsystem in self.subsystems:
             assert subsystem.short_name
