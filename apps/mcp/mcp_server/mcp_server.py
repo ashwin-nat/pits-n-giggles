@@ -58,10 +58,20 @@ Rules:
 Tools exposed by this MCP provide structured snapshots of the current session.
 They are safe to call whenever up-to-date information is required.
 
-NOTE: Users perfer the following conventions for time representation:
-    - Lap times -> mm:ss.sss
-    - Sector times -> ss.sss
-    - Time deltas -> +-s.sss
+TIME AND UNIT HANDLING (MANDATORY):
+
+All time values returned by MCP tools are in milliseconds unless explicitly stated otherwise.
+
+You MUST convert all time values before presenting them to the user using the following formats:
+
+- Lap times MUST be formatted as: mm:ss.sss
+- Sector times MUST be formatted as: ss.sss
+- Time deltas MUST be formatted as: +s.sss or -s.sss
+
+Rules:
+- NEVER display raw milliseconds to the user.
+- NEVER mix formats.
+- If a value cannot be converted due to missing context, state that it is unavailable.
 
 """
 

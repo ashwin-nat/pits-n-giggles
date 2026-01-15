@@ -67,10 +67,12 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
         current_wear_info: Dict[str, Any] = tyre_info_dict.get("current-wear", {})
         wear_prediction_dict: Dict[str, Any] = tyre_info_dict.get("wear-prediction", {})
         wear_rate_dict: Dict[str, Any] = wear_prediction_dict.get("rate", {})
+        fuel_info_dict: Dict[str, Any] = entry.get("fuel-info", {})
+        ers_info_dict: Dict[str, Any] = entry.get("ers-info", {})
 
 
         rsp_table_entries.append({
-            "driver-info" : {
+            "driver_info" : {
                 "driver_name": driver_info.get("name"),
                 "team_name": driver_info.get("team"),
                 "dnf_status": driver_info.get("dnf-status"),
@@ -79,13 +81,13 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
                 "is_player": driver_info.get("is-player"),
                 "delta-to-leader-ms": delta_info_dict.get("delta-to-leader-ms"),
             },
-            "lap-info": {
+            "lap_info": {
                 "last_lap_time_ms": last_lap_dict.get("lap-time-ms"),
                 "best_lap_time_ms": best_lap_dict.get("best-lap-ms"),
                 "speed_trap_record_kmph": lap_info_dict.get("speed-trap-record-kmph"),
                 "top_speed_kmph": lap_info_dict.get("top-speed-kmph"),
             },
-            "tyre-info": {
+            "tyre_info": {
                 "current_wear_percent": current_wear_info.get("wear-percent"),
                 "tyre_compound": tyre_info_dict.get("visual-tyre-compound"),
                 "tyre_age": tyre_info_dict.get("tyre-age"),
@@ -103,6 +105,14 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
                     "rr_rate_pct_per_lap": wear_rate_dict.get("rear-right"),
                 },
             },
+            "car_info": {
+                "curr_fuel_rate": fuel_info_dict.get("current-fuel-rate"),
+                "fuel_surplus_laps_builtin_est": fuel_info_dict.get("surplus-laps-game"),
+                "fuel_surplus_laps_live_est": fuel_info_dict.get("surplus-laps-png"),
+                "last_lap_fuel_consumption": fuel_info_dict.get("last-lap-fuel-used"),
+                "ers_percent": ers_info_dict.get("ers-percent-float"),
+                "ers_mode": ers_info_dict.get("ers-mode"),
+            }
         })
 
     return {
