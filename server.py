@@ -30,6 +30,24 @@ class ToolRegistry:
     def __init__(self):
         self._tools: Dict[str, ToolDefinition] = {}
 
+    def tool(
+        self,
+        *,
+        name: str,
+        description: str,
+        input_schema: dict | None = None,
+    ):
+        def decorator(func):
+            self.register(
+                name=name,
+                description=description,
+                handler=func,
+                input_schema=input_schema,
+            )
+            return func
+
+        return decorator
+
     def register(
         self,
         name: str,
@@ -89,39 +107,24 @@ class MCPBridge:
 
     def _register_tools(self):
         """Register all tools"""
-        self.registry.register(
+        @self.registry.tool(
             name="get_example_data",
             description="Example tool that returns hardcoded data",
-            handler=self.handle_get_example_data,
-            input_schema={"type": "object", "properties": {}}
         )
-
-        # Add more tools here
-        # self.registry.register(
-        #     name="get_telemetry",
-        #     description="Get current telemetry",
-        #     handler=self.handle_get_telemetry
-        # )
-
-    # ========================================================================
-    # Tool Handlers
-    # ========================================================================
-
-    async def handle_get_example_data(
-        self,
-        context: "MCPBridge",
-        arguments: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
-        self.logger.debug("handle_get_example_data called with arguments: %s", arguments)
-        return [{
-            "type": "text",
-            "text": json.dumps({
-                "speed": 150,
-                "rpm": 7500,
-                "gear": 4,
-                "status": "This is hardcoded example data"
-            }, indent=2)
-        }]
+        async def handle_get_example_data(
+            context: "MCPBridge",
+            arguments: Dict[str, Any],
+        ) -> List[Dict[str, Any]]:
+            self.logger.debug("handle_get_example_data called with arguments: %s", arguments)
+            return [{
+                "type": "text",
+                "text": json.dumps({
+                    "speed": 150,
+                    "rpm": 7500,
+                    "gear": 4,
+                    "status": "This is hardcoded example data"
+                }, indent=2)
+            }]
 
     # ========================================================================
     # MCP Server Setup
