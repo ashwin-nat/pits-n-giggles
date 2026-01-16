@@ -105,6 +105,20 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    use_cpu_acceleration: bool = Field(
+        default=False,
+        description="Use CPU acceleration for overlays",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info" : [
+                    "Forces CPU-based rendering for compatibility with older GPU's.\n"
+                    "May reduce visual quality and increase CPU usage."
+                ]
+            }
+        }
+    )
 
     @property
     def hud_refresh_interval(self) -> int:
@@ -115,3 +129,8 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
     def realtime_overlay_update_interval_ms(self) -> int:
         # fps to ms
         return 1000 // self.realtime_overlay_fps
+
+    @property
+    def local_telemetry_interval_ms(self) -> int:
+        # hz to ms
+        return 1000 // self.local_telemetry_rate

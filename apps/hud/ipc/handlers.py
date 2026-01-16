@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from typing import Dict
 
 from ..ui.infra import OverlaysMgr
 
@@ -41,11 +42,8 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     """
 
     logger.debug("Received lock-widgets command. args: %s", msg)
-
-    args = msg.get("args", {})
-    if args:
-        overlays_mgr.on_locked_state_change(args)
-        return {"status": "success", "message": "lock-widgets handler executed."}
+    if args := msg.get("args", {}):
+        return overlays_mgr.on_locked_state_change(args)
     return {"status": "error", "message": "Missing args in lock-widgets command."}
 
 def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
@@ -102,7 +100,7 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
-def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_overlays_layout(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'reset-overlays' IPC command to reset HUD widgets.
 
     Args:
@@ -115,8 +113,12 @@ def handle_reset_overlays(msg: dict, logger: logging.Logger, overlays_mgr: Overl
     """
 
     logger.debug("Received reset-overlays command. args: %s", msg)
-    overlays_mgr.reset_overlays()
-    return {"status": "success", "message": "reset-overlays handler executed."}
+    args: dict = msg.get("args", {})
+    if not args:
+        return {"status": "error", "message": "Missing args in set-overlays-layout command."}
+
+    layout: Dict[str, Dict[str, int]] = args.get("layout", {})
+    return overlays_mgr.set_overlays_layout(layout)
 
 def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.

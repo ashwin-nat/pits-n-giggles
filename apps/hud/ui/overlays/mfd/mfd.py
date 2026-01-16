@@ -22,93 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import itertools
 import logging
-from typing import Any, Dict, List, Optional, override
+from pathlib import Path
+from typing import Any, Dict, List, Optional, final
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
-from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtCore import QObject, QUrl
+from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.infra.config import OverlaysConfig
-from apps.hud.ui.overlays.base import BaseOverlayWidget
-from apps.hud.ui.overlays.mfd.pages import (BasePage, CollapsedPage,
-                                            FuelInfoPage, LapTimesPage, TyreSetsPage,
+from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
+                                            LapTimesPage, MfdPageBase,
                                             PitRejoinPredictionPage,
-                                            TyreInfoPage, WeatherForecastPage)
-from lib.config import PngSettings
-
-from .animation import AnimatedStackedWidget
+                                            TyreInfoPage, TyreSetsPage,
+                                            WeatherForecastPage)
+from lib.config import MFD_OVERLAY_ID, OverlayPosition, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PageIndicatorFooter(QWidget):
-    """Footer widget that displays page indicators as circles."""
+class MfdOverlay(BaseOverlayQML):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(45)  # Increased height for more padding
-        self.total_pages = 0
-        self.active_page = 0
-        self.circle_radius = 6  # Radius of each circle
-        self.circle_spacing = 30  # Space between circle centers
+    OVERLAY_ID = MFD_OVERLAY_ID
+    QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
-    def set_page_count(self, count: int):
-        """Set the total number of pages."""
-        self.total_pages = count
-        self.update()
-
-    def set_active_page(self, index: int):
-        """Set which page is currently active (0-indexed)."""
-        self.active_page = index
-        self.update()
-
-    def paintEvent(self, _event):
-        """Draw the page indicator circles and border."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Draw top border
-        painter.setPen(QPen(QColor(255, 255, 255), 0.4))
-        painter.drawLine(0, 1, self.width(), 1)
-
-        # Draw background
-        painter.fillRect(0, 2, self.width(), self.height() - 2, QColor(0, 0, 0, 76))
-
-        if self.total_pages == 0:
-            return
-
-        # Calculate total width needed for all circles
-        total_width = (self.total_pages - 1) * self.circle_spacing + 2 * self.circle_radius
-
-        # Start position (centered horizontally)
-        start_x = (self.width() - total_width) // 2
-        center_y = self.height() // 2
-
-        # Draw each circle
-        for i in range(self.total_pages):
-            center_x = start_x + self.circle_radius + i * self.circle_spacing
-
-            if i == self.active_page:
-                # Filled white circle for active page
-                painter.setPen(QPen(QColor(245, 236, 235), 1))
-                painter.setBrush(QBrush(QColor(245, 236, 235)))
-            else:
-                # Unfilled white outline for inactive pages
-                painter.setPen(QPen(QColor(245, 236, 235), 1))
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-
-            painter.drawEllipse(
-                center_x - self.circle_radius,
-                center_y - self.circle_radius,
-                self.circle_radius * 2,
-                self.circle_radius * 2
-            )
-
-class MfdOverlay(BaseOverlayWidget):
-
-    OVERLAY_ID = "mfd"
-    PAGES: List[BasePage] = [
+    PAGES: List[MfdPageBase] = [
         CollapsedPage,
         FuelInfoPage,
         LapTimesPage,
@@ -119,45 +55,59 @@ class MfdOverlay(BaseOverlayWidget):
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
-    def __init__(self,
-                 config: OverlaysConfig,
-                 settings: PngSettings,
-                 logger: logging.Logger,
-                 locked: bool,
-                 opacity: int,
-                 scale_factor: float,
-                 windowed_overlay: bool
-                 ):
+    def __init__(
+        self,
+        config: OverlayPosition,
+        settings: PngSettings,
+        logger: logging.Logger,
+        locked: bool,
+        opacity: int,
+        scale_factor: float,
+        windowed_overlay: bool,
+    ):
+        # Pages are created AFTER QML is loaded
+        self._mfd_pages: List[MfdPageBase] = []
+        self._current_index = 0
+        self._init_pages_order(settings)
 
-        self.mfdClosed = 40
-        self.settings = settings
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(
+            config=config,
+            logger=logger,
+            locked=locked,
+            opacity=opacity,
+            scale_factor=scale_factor,
+            windowed_overlay=windowed_overlay,
+            refresh_interval_ms=None, # Telemetry based refreshes
+        )
 
-        # Always start collapsed, but keep width & position
-        geo = self.geometry()
-        self.setGeometry(geo.x(), geo.y(), geo.width(), self.mfdClosed)
-
-        # Initialize handlers and start on default/collapsed page
+        self._register_page_event_handlers()
         self._init_cmd_handlers()
 
-    def build_ui(self):
-        """Set up stacked pages and layout with footer."""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)  # No spacing between pages and footer
+    def _register_page_event_handlers(self):
+        """Automatically register all event handlers from all pages."""
+        # Collect all unique event types from all pages
+        all_event_types = set()
+        for page in self._mfd_pages:
+            all_event_types.update(page.get_handled_event_types())
 
-        self.pages = AnimatedStackedWidget(self)
-        self.pages.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        layout.addWidget(self.pages)
+        # Register a handler for each event type that broadcasts to all pages
+        for event_type in all_event_types:
+            self._register_broadcast_handler(event_type)
 
-        # Add footer with page indicators
-        self.footer = PageIndicatorFooter(self)
-        layout.addWidget(self.footer)
+        self.logger.debug("%s | Registered %d event handlers %s", self.OVERLAY_ID, len(all_event_types), all_event_types)
 
-        # Re-apply height rules after every animated page change
-        self.pages.currentChanged.connect(self._on_page_changed)
+    def _register_broadcast_handler(self, event_type: str):
+        """Register a handler that broadcasts an event to all interested pages."""
+        @self.on_event(event_type)
+        def _handler(data: Dict[str, Any]):
+            # Broadcast to all pages that handle this event
+            for page in self._mfd_pages:
+                if page.handles_event(event_type):
+                    page.handle_event(event_type, data)
 
-        enabled_pages = [
+    def _init_pages_order(self, settings: PngSettings):
+        """Initialize the order of the enabled pages in the MFD."""
+        self.enabled_pages = [
             {"key": "collapsed", "cls": CollapsedPage, "position": 0},
             *[
                 {
@@ -165,45 +115,74 @@ class MfdOverlay(BaseOverlayWidget):
                     "cls": self.PAGE_CLS_BY_KEY[key],
                     "position": settings.position
                 }
-                for key, settings in self.settings.HUD.mfd_settings.sorted_enabled_pages()
+                for key, settings in
+                settings.HUD.mfd_settings.sorted_enabled_pages()
             ]
         ]
 
-        for page in sorted(enabled_pages, key=lambda p: p["position"]):
-            self._register_page(page["cls"])
+    @final
+    def _setup_window(self):
+        """Load QML and extract the root QQuickWindow. Init the pages in the specified order"""
+        super()._setup_window()
+        self._root.pageLoaded.connect(self._on_page_loaded)
 
-        # Build an opaque iterator that cycles indefinitely
-        self.page_cycle = itertools.cycle(range(self.pages.count()))
-        self.pages.setCurrentIndex(0)
+        for page_info in self.enabled_pages:
+            cls = page_info["cls"]
+            self._mfd_pages.append(cls(self, self.logger))
+        self._current_index = 0
 
-        # Initialize footer with page count
-        self.footer.set_page_count(self.pages.count())
-        self.footer.set_active_page(0)
+        # Set total pages in QML
+        self._root.setProperty("totalPages", len(self._mfd_pages))
+        self._root.setProperty("currentPageIndex", 0)
 
-        # Apply initial height constraint for collapsed page
-        self.pages.setFixedHeight(self.mfdClosed)
-    def _register_page(self, widget_cls: BasePage) -> None:
-        """Register an MFD page"""
-        self.logger.debug(f"{self.OVERLAY_ID} | Registering MFD page {widget_cls.KEY}")
-        self.pages.addWidget(widget_cls(self, self.logger, self.scale_factor))
+        self._apply_current_page()
+
+    def _on_page_loaded(self, page_key: str, item: QQuickItem):
+        """Called when a page is loaded completely"""
+        page = self.PAGE_CLS_BY_KEY.get(page_key)
+        if not page:
+            self.logger.debug("Ignoring stale load for %s", page_key)
+            return
+
+        # Qt guarantees order of delivery, but it doesn't change the fact that the request for page change
+        # and actual page load are asynchronous
+        # If pages are cycled very quickly, this class's tracker may be well ahead of the actual qml load status
+        # Simplest fix, deactivate everything else except current
+        for page in self._mfd_pages:
+            if page.KEY == page_key:
+                page.on_page_activated(item)
+            elif page.is_active:
+                page.on_page_deactivated()
+
+    def _apply_current_page(self):
+        """Apply the current page."""
+        try:
+            page = self._mfd_pages[self._current_index]
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.logger.error(f"{self.OVERLAY_ID} | Failed to apply current page: {e}")
+            return
+        qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
+
+        is_collapsed = (page.KEY == CollapsedPage.KEY)
+
+        self._root.setProperty("collapsed", is_collapsed)
+        self._root.setProperty("activePageKey", page.KEY)
+        self._root.setProperty("currentPageQml", qml_url)
+        self._root.setProperty("currentPageIndex", self._current_index)
+
+        self.logger.debug(
+            "%s | Applied page '%s' (index=%d, collapsed=%s)",
+            self.OVERLAY_ID,
+            page.KEY,
+            self._current_index,
+            is_collapsed,
+        )
 
     def _init_cmd_handlers(self):
         """Register command handlers."""
         @self.on_event("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
-            self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page...")
-
-            # Step forward until we find a new index different from current
-            current_index = self.pages.currentIndex()
-            next_index = next(self.page_cycle)
-            while next_index == current_index:
-                next_index = next(self.page_cycle)
-
-            # in unlocked mode, don't allow switching to collapsed page
-            if not self.locked and next_index == 0:
-                next_index = 1
-                self.logger.debug(f"{self.OVERLAY_ID} | Unlocked mode. Skipping collapsed page in next_page")
-            self._switch_page(current_index, next_index)
+            self._next_page()
 
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
@@ -213,27 +192,16 @@ class MfdOverlay(BaseOverlayWidget):
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             self._handle_event("stream_overlay_update", data)
 
-        @self.on_event("set_locked_state")
-        def _handle_set_locked_state(data: Dict[str, Any]):
-            locked = data.get('new-value', False)
-            self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+    @final
+    def set_locked_state(self, locked):
+        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
 
-            # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
-            # width to configure.
-            if not locked and self.pages.currentIndex() == 0:
-                self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
-                _handle_next_page(data)
-
-            self.set_locked_state(locked)
-
-        @self.on_event("set_config")
-        def _handle_set_config(data: Dict[str, Any]):
-            config = OverlaysConfig.fromJSON(data)
-            self.logger.debug(f"{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting config {config}")
-            self.set_window_position(config)
-            current_index = self.pages.currentIndex()
-            if current_index != 0:
-                self._switch_page(current_index, 0)
+        # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
+        # width to configure.
+        if not locked and self._current_index == 0:
+            self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
+            self._next_page()
+        super().set_locked_state(locked)
 
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
         """Forward event to page.
@@ -243,68 +211,38 @@ class MfdOverlay(BaseOverlayWidget):
             data (Dict[str, Any]): Event data
             dest_index (Optional[int]): Destination page index. If not specified, the current page is used.
         """
+        if not self._mfd_pages:
+            return
+
         if dest_index is None:
-            active_page: BasePage = self.pages.currentWidget()
+            index = self._current_index
         else:
-            active_page = self.pages.widget(dest_index)
-            if not active_page:
-                self.logger.warning(f"{self.OVERLAY_ID} | Page {dest_index} not found")
+            if dest_index < 0 or dest_index >= len(self._mfd_pages):
+                self.logger.warning(f"{self.OVERLAY_ID} | Page index {dest_index} out of range")
                 return
-        active_page._handle_event(event_type, data)
+            index = dest_index
 
-    def _switch_page(self, old_index: int, new_index: int):
-        """Switch page with animation and resize MFD based on open/closed state."""
+        page = self._mfd_pages[index]
+        page.handle_event(event_type, data)
 
-        # First set the stacked widget height constraint
-        if new_index == 0:
-            self.pages.setFixedHeight(self.mfdClosed)
-        else:
-            # Remove fixed height constraint for expanded pages
-            self.pages.setMaximumHeight(16777215)  # Qt's QWIDGETSIZE_MAX
-            self.pages.setMinimumHeight(0)
+    def _next_page(self):
+        """Go to the next page in MFD overlay"""
+        if not self._mfd_pages:
+            self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
+            return
 
-        # Use animated transition instead of instant switch
-        self.pages.setCurrentIndexAnimated(new_index)
+        old = self._current_index
+        self._current_index = (old + 1) % len(self._mfd_pages)
 
-        # Resize the window
-        self.adjustSize()
+        self._apply_current_page()
+        self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")
 
-        page_name = "collapsed" if new_index == 0 else "expanded"
-        self.logger.debug(f"MFD: switched to {page_name} page")
+    @property
+    def current_page_item(self) -> Optional[QQuickItem]:
+        """Get the current page item."""
+        loader: Optional[QObject] = self._root.findChild(QObject, "pageLoader")
+        if not loader:
+            return None
 
-        # Notify the new and old pages of the switch
-        self._handle_event("page_active_status", {"active" : False}, old_index)
-        self._handle_event("page_active_status", {"active" : True}, new_index)
-
-    def _is_page_active(self, page: QWidget) -> bool:
-        """Return True if the given page is currently active."""
-        return self.pages.currentWidget() is page
-
-    def _on_page_changed(self, index: int):
-        """Ensure correct MFD height when a page changes (after animation)."""
-        # Update footer indicator
-        self.footer.set_active_page(index)
-
-        if index == 0:
-            # Collapsed state
-            self.pages.setFixedHeight(self.mfdClosed)
-            self.resize(self.width(), self.mfdClosed + self.footer.height())
-            self.logger.debug(f"{self.OVERLAY_ID} | Page changed -> collapsed (height={self.mfdClosed})")
-        else:
-            # Expanded state
-            self.pages.setMaximumHeight(16777215)  # Qt::QWIDGETSIZE_MAX
-            self.pages.setMinimumHeight(0)
-            self.adjustSize()
-
-    @override
-    def rebuild_ui(self):
-        # Capture index only if pages already exists
-        current_index = self.pages.currentIndex() if self.pages is not None else None
-
-        # Reuse the existing rebuild
-        super().rebuild_ui()
-
-        # Restore page if valid
-        if current_index is not None and 0 <= current_index < self.pages.count():
-            self.pages.setCurrentIndex(current_index)
-            self._on_page_changed(current_index)
+        item = loader.property("item")
+        return item if isinstance(item, QQuickItem) else None

@@ -33,7 +33,7 @@ import os
 import platform
 import shutil
 import tempfile
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
 
@@ -45,7 +45,7 @@ ICON_PATH = "../assets/favicon.ico"
 ICON_PATH_MAC = "../assets/logo.icns"
 
 APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
-COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"      # used for intermediate dist folder
+COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
 PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
@@ -65,6 +65,27 @@ with open(runtime_hook_path, "w", encoding="utf-8") as f:
 entry_script = os.path.join(PROJECT_ROOT, "apps", "launcher", "__main__.py")
 
 # --------------------------------------------------------------------------------------------------
+# Helper function to collect directories recursively
+# --------------------------------------------------------------------------------------------------
+
+def collect_directory(src_dir, dest_dir):
+    """Collect all files in a directory recursively."""
+    items = []
+    src_path = os.path.join(PROJECT_ROOT, src_dir)
+
+    if not os.path.exists(src_path):
+        print(f"Warning: {src_path} does not exist")
+        return items
+
+    for root, dirs, files in os.walk(src_path):
+        for file in files:
+            src_file = os.path.join(root, file)
+            rel_path = os.path.relpath(root, PROJECT_ROOT)
+            items.append((src_file, rel_path))
+
+    return items
+
+# --------------------------------------------------------------------------------------------------
 # Modules and Assets
 # --------------------------------------------------------------------------------------------------
 
@@ -76,79 +97,42 @@ hiddenimports = (
     collect_submodules("apps.broker")
 )
 
-datas = [
-    # Frontend assets
-    (os.path.join(PROJECT_ROOT, "apps", "frontend", "css"), "apps/frontend/css"),
-    (os.path.join(PROJECT_ROOT, "apps", "frontend", "html"), "apps/frontend/html"),
-    (os.path.join(PROJECT_ROOT, "apps", "frontend", "js"), "apps/frontend/js"),
+# Automatically collect all assets and frontend files
+datas = []
 
-    # Icons and images
-    (os.path.join(PROJECT_ROOT, "assets", "favicon.ico"), "assets"),
-    (os.path.join(PROJECT_ROOT, "assets", "logo.png"), "assets"),
-    (os.path.join(PROJECT_ROOT, "assets", "settings.ico"), "assets"),
+# Frontend assets (CSS, HTML, JS)
+datas.extend(collect_directory("apps/frontend/css", "apps/frontend/css"))
+datas.extend(collect_directory("apps/frontend/html", "apps/frontend/html"))
+datas.extend(collect_directory("apps/frontend/js", "apps/frontend/js"))
 
-    # Tyre icons
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "soft_tyre.svg"), "assets/tyre-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "medium_tyre.svg"), "assets/tyre-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "hard_tyre.svg"), "assets/tyre-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "wet_tyre.svg"), "assets/tyre-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "intermediate_tyre.svg"), "assets/tyre-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "tyre-icons", "super_soft_tyre.svg"), "assets/tyre-icons"),
+# All assets (icons, images, fonts, etc.)
+datas.extend(collect_directory("assets", "assets"))
 
-    # Team icons
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "alpine.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "aston_martin.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "ferrari.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "haas.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mclaren.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "mercedes.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "rb.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "red_bull.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "sauber.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "williams.svg"), "assets/team-logos"),
-    (os.path.join(PROJECT_ROOT, "assets", "team-logos", "default.svg"), "assets/team-logos"),
+# QML files (hardcoded intentionally, since they don't have an explicit assets path)
+def qml_file(path, filename):
+    """Helper to add a QML file with less repetition.
 
-    # Overlay icons
-    (os.path.join(PROJECT_ROOT, "assets", "overlays", "fuel-pump.svg"), "assets/overlay"),
-    (os.path.join(PROJECT_ROOT, "assets", "overlays", "road.svg"), "assets/overlay"),
-    (os.path.join(PROJECT_ROOT, "assets", "overlays", "thermometer-half.svg"), "assets/overlay"),
+    Args:
+        path: Relative path from PROJECT_ROOT (e.g., "apps/hud/ui/overlays/track_radar")
+        filename: QML filename (e.g., "track_radar.qml")
+    """
+    full_path = os.path.join(PROJECT_ROOT, path, filename)
+    return (full_path, path)
 
-    # Launcher icons
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-down.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "arrow-up.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "dashboard.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "discord.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "download.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "lock.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "next-page.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "open-file.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "reset.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "save.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "settings.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "show-hide.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "start.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "stop.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "twitch.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "unlock.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "updates.svg"), "assets/launcher-icons"),
-    (os.path.join(PROJECT_ROOT, "assets", "launcher-icons", "website.svg"), "assets/launcher-icons"),
-
-    # Fonts
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-bold.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "f1-regular.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Roboto-Regular.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Roboto-Bold.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Bold.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "Exo2-Regular.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Bold.ttf"), "assets/fonts"),
-    (os.path.join(PROJECT_ROOT, "assets", "fonts", "B612Mono-Regular.ttf"), "assets/fonts"),
-
-    # QML
-    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "track_radar", "track_radar.qml"), "apps/hud/ui/overlays/track_radar"),
-    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "input_telemetry", "input_telemetry.qml"), "apps/hud/ui/overlays/input_telemetry"),
-    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "timing_tower", "timing_tower.qml"), "apps/hud/ui/overlays/timing_tower"),
-    (os.path.join(PROJECT_ROOT, "apps", "hud", "ui", "overlays", "lap_timer", "lap_timer_overlay.qml"), "apps/hud/ui/overlays/lap_timer"),
-]
+datas.extend([
+    qml_file("apps/hud/ui/overlays/track_radar", "track_radar.qml"),
+    qml_file("apps/hud/ui/overlays/input_telemetry", "input_telemetry.qml"),
+    qml_file("apps/hud/ui/overlays/timing_tower", "timing_tower.qml"),
+    qml_file("apps/hud/ui/overlays/lap_timer", "lap_timer_overlay.qml"),
+    qml_file("apps/hud/ui/overlays/mfd", "mfd.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/collapsed", "collapsed_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/fuel", "fuel_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/lap_times", "lap_times_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/pit_rejoin", "pit_rejoin_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/tyre_sets", "tyre_sets_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/tyre_wear", "tyre_wear_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/weather", "weather_page.qml"),
+])
 
 # --------------------------------------------------------------------------------------------------
 # Build pipeline
@@ -202,7 +186,6 @@ if platform.system() == "Darwin":
         icon=ICON_PATH_MAC,
         bundle_identifier="com.pitsngiggles.app",
     )
-    # app is built for .app bundle, but we still pass `exe` to COLLECT
 
 coll = COLLECT(
     exe,

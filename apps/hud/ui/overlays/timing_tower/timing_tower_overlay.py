@@ -30,10 +30,10 @@ from typing import Any, Dict, List
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
+from lib.config import TIMING_TOWER_OVERLAY_ID, OverlayPosition
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -41,14 +41,14 @@ from lib.f1_types import F1Utils
 class TimingTowerOverlay(BaseOverlayQML):
     """QML-based timing tower overlay."""
 
-    OVERLAY_ID: str = "timing_tower"
+    OVERLAY_ID: str = TIMING_TOWER_OVERLAY_ID
     QML_FILE: Path = Path(__file__).parent / "timing_tower.qml"
 
     MAX_SUPPORTED_CARS = 22
 
     def __init__(
         self,
-        config: OverlaysConfig,
+        config: OverlayPosition,
         logger: logging.Logger,
         locked: bool,
         opacity: int,
@@ -229,6 +229,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             # Penalties
             pens_sec = warns_pens_info.get("time-penalties", 0)
             num_dt = warns_pens_info.get("num-dt", 0)
+            num_sg = warns_pens_info.get("num-sg", 0)
+            pens_sec += (num_sg * 10) # SG counts as 10 seconds
             pens_str = (
                 f"{num_dt}DT" if num_dt else
                 f"+{pens_sec}sec" if pens_sec else

@@ -24,10 +24,11 @@
 
 import logging
 import threading
-import time
 from typing import Optional
 
 import zmq
+
+from lib.error_status import PngXpubPortInUseError, PngXsubPortInUseError
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -64,8 +65,23 @@ class IpcPubSubBroker:
         self.xpub.setsockopt(zmq.LINGER, 0)
         self.xpub.setsockopt(zmq.XPUB_VERBOSE, 1)
 
-        self.xsub.bind(f"tcp://{self.host}:{xsub_port}")
-        self.xpub.bind(f"tcp://{self.host}:{xpub_port}")
+        try:
+            self.xsub.bind(f"tcp://{self.host}:{xsub_port}")
+        except zmq.ZMQError as e:
+            self.xsub.close(linger=0)
+            self.xpub.close(linger=0)
+            if e.errno == zmq.EADDRINUSE:
+                raise PngXsubPortInUseError(f"{self.name}: XSUB port already in use ({xsub_port})") from e
+            raise
+
+        try:
+            self.xpub.bind(f"tcp://{self.host}:{xpub_port}")
+        except zmq.ZMQError as e:
+            self.xsub.close(linger=0)
+            self.xpub.close(linger=0)
+            if e.errno == zmq.EADDRINUSE:
+                raise PngXpubPortInUseError(f"{self.name}: XPUB port already in use ({xpub_port})") from e
+            raise
 
         self.xsub_port = int(
             self.xsub.getsockopt(zmq.LAST_ENDPOINT).split(b":")[-1]

@@ -27,13 +27,13 @@ from pathlib import Path
 from typing import Optional, TypeVar, final, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
-                            QTimer, QUrl)
+                            QTimer, QUrl, Slot)
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import HighFreqBase
+from lib.config import OverlayPosition
 
 from .base import BaseOverlay
 
@@ -82,7 +82,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     def __init__(
         self,
-        config: OverlaysConfig,
+        config: OverlayPosition,
         logger: logging.Logger,
         locked: bool,
         opacity: int,
@@ -93,7 +93,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """Initialize QML overlay.
 
         Args:
-            config (OverlaysConfig): Overlay config
+            config (OverlayPosition): Overlay config
             logger (logging.Logger): Logger object
             locked (bool): Locked state
             opacity (int): Window opacity
@@ -103,6 +103,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
                     The overlay is responsible to repaint itself (preferably on telemetry update)
         """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
+        assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
+        assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
 
         QObject.__init__(self)
         self._engine = QQmlApplicationEngine()
@@ -132,6 +134,9 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
+
+        qml_logger = QmlLogger(self.logger, self.OVERLAY_ID)
+        self._engine.rootContext().setContextProperty("Log", qml_logger)
 
         qml_path = self.QML_FILE.resolve()
         self._engine.load(QUrl.fromLocalFile(str(qml_path)))
@@ -248,20 +253,28 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def toggle_visibility(self):
 
-        if self._root.isVisible():
+        if self.get_visibility():
             self.animate_fade(False)
         else:
             self.animate_fade(True)
 
     @override
-    def get_window_info(self) -> OverlaysConfig:
-        pos = self._root.position()
-        return OverlaysConfig(x=pos.x(), y=pos.y())
+    def set_visibility(self, visible: bool):
+        self.animate_fade(visible)
 
     @override
-    def set_window_position(self, config: OverlaysConfig):
+    def get_window_info(self) -> OverlayPosition:
+        pos = self._root.position()
+        return OverlayPosition(x=pos.x(), y=pos.y())
+
+    @override
+    def set_window_position(self, config: OverlayPosition):
         self.config = config
         self._root.setPosition(config.x, config.y)
+
+    @override
+    def get_visibility(self) -> bool:
+        return self._root.isVisible()
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
 
@@ -301,7 +314,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         Fixed-rate render tick for QML overlays.
         Derived classes may override _render_frame().
         """
-        if not self._root or not self._root.isVisible():
+        if not self._root or not self.get_visibility():
             return
 
         self.render_frame()
@@ -309,3 +322,25 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def render_frame(self):
         """Derived classes must implement this method."""
         raise NotImplementedError
+
+class QmlLogger(QObject):
+    def __init__(self, logger: logging.Logger, oid: str):
+        super().__init__()
+        self._logger = logger
+        self._oid = oid
+
+    @Slot(str)
+    def debug(self, msg):
+        self._logger.debug("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def info(self, msg):
+        self._logger.info("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def warn(self, msg):
+        self._logger.warning("%s | %s", self._oid, msg)
+
+    @Slot(str)
+    def error(self, msg):
+        self._logger.error("%s | %s", self._oid, msg)

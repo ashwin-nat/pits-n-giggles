@@ -27,6 +27,8 @@ PNG_ERROR_CODE_HTTP_PORT_IN_USE = 100
 PNG_LOST_CONN_TO_PARENT = 101
 PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE = 102
 PNG_ERROR_CODE_UNSUPPORTED_OS = 103
+PNG_ERROR_CODE_XPUB_PORT_IN_USE = 104
+PNG_ERROR_CODE_XSUB_PORT_IN_USE = 105
 PNG_ERROR_CODE_UNKNOWN = 999
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -43,6 +45,14 @@ class PngHttpPortInUseError(PngError):
 class PngTelemetryPortInUseError(PngError):
     def __init__(self):
         super().__init__(PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, "Port already in use")
+
+class PngXpubPortInUseError(PngError):
+    def __init__(self, err_msg: str = "Port already in use"):
+        super().__init__(PNG_ERROR_CODE_XPUB_PORT_IN_USE, err_msg)
+
+class PngXsubPortInUseError(PngError):
+    def __init__(self, err_msg: str = "Port already in use"):
+        super().__init__(PNG_ERROR_CODE_XSUB_PORT_IN_USE, err_msg)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

@@ -25,12 +25,15 @@
 import json
 import sys
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import HudSettings, PngSettings
+from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
+                        HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
@@ -69,8 +72,6 @@ class HudAppMgr(PngAppMgrBase):
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
         super().__init__(
-            http_port_conflict_settings_field='N/A',
-            udp_port_conflict_settings_field="N/A",
             module_path="apps.hud",
             display_name="HUD",
             short_name="HUD",
@@ -134,16 +135,25 @@ class HudAppMgr(PngAppMgrBase):
 
         self.debug_log("Toggling HUD lock state...")
         self.set_button_state(self.lock_button, False)
-        rsp = IpcClientSync(self.ipc_port).request(command="lock-widgets", args={
-            "old-value": self.locked,
-            "new-value": not self.locked,
-        })
-        self.locked = not self.locked
 
+        requested_state = not self.locked
+        success, rsp = self._request_lock_state_change(
+            old_value=self.locked,
+            new_value=requested_state,
+        )
+
+        self.locked = requested_state
         self.set_button_state(self.lock_button, True)
-        status = rsp.get("status", None)
-        if status is not None:
+
+        if success:
             self.set_lock_button_icon()
+
+            if self.locked:
+                try:
+                    self._save_layout_if_changed(rsp)
+                except Exception as e:  # pylint: disable=broad-except
+                    self.error_log(f"Failed to persist HUD layout: {e}")
+
         else:
             self.error_log("Failed to toggle lock state.")
 
@@ -153,10 +163,34 @@ class HudAppMgr(PngAppMgrBase):
             self.show_scale_popup()
 
     def reset_callback(self):
-        """Open the dashboard viewer in a web browser."""
-        self.info_log("Sending reset command to HUD...")
-        rsp = IpcClientSync(self.ipc_port).request(command="reset-overlays", args={})
-        self.info_log(str(rsp))
+        """Reset HUD overlays to default layout."""
+        self.info_log("Sending reset overlays command to HUD...")
+
+        default_layout_json = HudSettings.get_default_layout_json()
+        try:
+            rsp = IpcClientSync(self.ipc_port).request(
+                command="set-overlays-layout",
+                args={
+                    "layout": default_layout_json,
+                },
+            )
+        except Exception as e: # pylint: disable=broad-except
+            self.error_log(f"IPC request failed while resetting overlays: {e}")
+            return
+
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to reset HUD overlays: {rsp.get("error", "unknown error")}")
+            return
+
+        # IPC success - write defaults
+        try:
+            self._save_new_layout_to_disk(
+                new_layout=HudSettings.get_default_layout_dict()
+            )
+            self.info_log("HUD overlays reset to defaults and saved successfully.")
+        except Exception as e:  # pylint: disable=broad-except
+            self.error_log(f"Failed to persist default HUD layout: {e}")
 
     def next_page_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -319,6 +353,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "show_mfd",
+                "show_track_radar_overlay",
                 "mfd_settings",
                 "use_windowed_overlays",
             ],
@@ -327,6 +362,8 @@ class HudAppMgr(PngAppMgrBase):
             ],
             "Display" : [
                 "refresh_interval",
+                "realtime_overlay_fps",
+                "use_gpu_acceleration",
             ]
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
@@ -360,42 +397,42 @@ class HudAppMgr(PngAppMgrBase):
         # pylint: disable=unsubscriptable-object
         self.overlays_adj_popup.set_items([
             SliderItem(
-                key="lap_timer",
+                key=LAP_TIMER_OVERLAY_ID,
                 label="Lap Timer Scale",
                 min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.lap_timer_ui_scale * 100),
             ),
             SliderItem(
-                key="timing_tower",
+                key=TIMING_TOWER_OVERLAY_ID,
                 label="Timing Tower Scale",
                 min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.timing_tower_ui_scale * 100),
             ),
             SliderItem(
-                key="mfd",
+                key=MFD_OVERLAY_ID,
                 label="MFD Scale",
                 min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
             ),
             # SliderItem(
-            #     key="track_map",
+            #     key=TRACK_MAP_OVERLAY_ID,
             #     label="Track Map Scale",
             #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
             #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
             #     value=int(hud_settings.track_map_ui_scale * 100),
             # ),
             SliderItem(
-                key="input_telemetry",
+                key=INPUT_TELEMETRY_OVERLAY_ID,
                 label="Input Telemetry Scale",
                 min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.input_overlay_ui_scale * 100),
             ),
             SliderItem(
-                key="track_radar",
+                key=TRACK_RADAR_OVERLAY_ID,
                 label="Track Radar Scale",
                 min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -423,13 +460,13 @@ class HudAppMgr(PngAppMgrBase):
         """Scale confirm callback. No guarantee that values have been changed"""
 
         new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.timing_tower_ui_scale = values["timing_tower"] / 100.0
-        new_settings.HUD.lap_timer_ui_scale = values["lap_timer"] / 100.0
-        new_settings.HUD.mfd_ui_scale = values["mfd"] / 100.0
+        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
+        new_settings.HUD.lap_timer_ui_scale = values[LAP_TIMER_OVERLAY_ID] / 100.0
+        new_settings.HUD.mfd_ui_scale = values[MFD_OVERLAY_ID] / 100.0
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
-        # new_settings.HUD.track_map_ui_scale = values["track_map"] / 100.0
-        new_settings.HUD.input_overlay_ui_scale = values["input_telemetry"] / 100.0
-        new_settings.HUD.track_radar_overlay_ui_scale = values["track_radar"] / 100.0
+        # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
+        new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
+        new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
 
         diff = self.curr_settings.HUD.diff(new_settings.HUD, [
             "lap_timer_ui_scale",
@@ -447,12 +484,12 @@ class HudAppMgr(PngAppMgrBase):
 
         if diff:
             key_to_oid: Dict[str, str] = {
-                "lap_timer_ui_scale": "lap_timer",
-                "timing_tower_ui_scale": "timing_tower",
-                "mfd_ui_scale": "mfd",
-                "track_map_ui_scale": "track_map",
-                "input_overlay_ui_scale": "input_telemetry",
-                "track_radar_overlay_ui_scale": "track_radar",
+                "lap_timer_ui_scale": LAP_TIMER_OVERLAY_ID,
+                "timing_tower_ui_scale": TIMING_TOWER_OVERLAY_ID,
+                "mfd_ui_scale": MFD_OVERLAY_ID,
+                "track_map_ui_scale": TRACK_MAP_OVERLAY_ID,
+                "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
+                "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
             }
             for key, data in diff.items():
                 oid = key_to_oid[key]
@@ -462,3 +499,61 @@ class HudAppMgr(PngAppMgrBase):
             # Update current settings and save to disk
             self.window.update_settings(new_settings)
             self.window.save_settings_to_disk(new_settings)
+
+    def _request_lock_state_change(self, old_value: bool, new_value: bool) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Send lock-widgets IPC request and validate response.
+
+        Returns:
+            (success, response)
+        """
+        try:
+            rsp = IpcClientSync(self.ipc_port).request(
+                command="lock-widgets",
+                args={
+                    "old-value": old_value,
+                    "new-value": new_value,
+                },
+            )
+        except Exception as e: # pylint: disable=broad-except
+            self.error_log(f"IPC request failed: {e}")
+            return False, None
+
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Lock-widgets IPC failed: {rsp.get("error", "unknown error")}")
+            return False, rsp
+
+        return True, rsp
+
+    def _save_layout_if_changed(self, rsp: dict[str, Any]) -> None:
+        """Save the layout if it has changed."""
+        layout: Optional[Dict[str, Dict[str, int]]] = rsp.get("layout")
+        if not layout:
+            self.error_log(f"HUD layout not found in lock-widgets response: {json.dumps(rsp, indent=2)}")
+            return
+
+        should_write = False
+        parsed_layout_dict = HudSettings.get_layout_dict_from_json(layout)
+        for oid, overlay_layout in parsed_layout_dict.items():
+            curr_cfg = self.curr_settings.HUD.layout.get(oid)
+            if not curr_cfg:
+                self.error_log(f"HUD layout for overlay {oid} not found in current settings. Aborting save.")
+                return
+
+            if curr_cfg.has_changed(overlay_layout):
+                self.debug_log(f"Overlay {oid} layout has changed from {curr_cfg} to {overlay_layout}. "
+                               "Saving to disk...")
+                should_write = True
+
+        if should_write:
+            self._save_new_layout_to_disk(new_layout=parsed_layout_dict)
+        else:
+            self.debug_log("HUD layout has not changed. Not saving to disk...")
+
+    def _save_new_layout_to_disk(self, new_layout: Dict[str, OverlayPosition]) -> None:
+        """Save the new layout to disk and propagate the new settings to all subsystems"""
+        new_settings = self.curr_settings.model_copy(deep=True)
+        new_settings.HUD.layout = new_layout
+        self.window.update_settings(new_settings)
+        self.window.save_settings_to_disk(new_settings)

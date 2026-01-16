@@ -21,7 +21,8 @@
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
         "telemetry_rate": 30,
-        "realtime_overlay_fps": 60
+        "realtime_overlay_fps": 60,
+        "use_cpu_acceleration": false
     },
     "Privacy": {
         "process_car_setup": false
@@ -93,7 +94,29 @@
         "toggle_overlays_udp_action_code": 10,
         "cycle_mfd_udp_action_code": 9,
         "overlays_opacity": 100,
-        "use_windowed_overlays": false
+        "use_windowed_overlays": false,
+        "layout": {
+            "lap_timer": {
+                "x": 3306,
+                "y": 48
+            },
+            "timing_tower": {
+                "x": 2722,
+                "y": 45
+            },
+            "input_telemetry": {
+                "x": 3446,
+                "y": 569
+            },
+            "track_radar": {
+                "x": 3073,
+                "y": 512
+            },
+            "mfd": {
+                "x": 3332,
+                "y": 237
+            }
+        }
     },
     "TimeLossInPitsF1": {
         "Melbourne": 18.0,

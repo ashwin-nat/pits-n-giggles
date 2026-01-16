@@ -31,9 +31,9 @@ from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
 
 from apps.hud.common import deserialise_data, serialise_data
-from apps.hud.ui.infra.config import OverlaysConfig
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
+from lib.config import OverlayPosition
 from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -91,6 +91,7 @@ class BaseOverlay():
         - `set_window_position()`- set window position and update self.config
         - `toggle_visibility()`  - fade in/out
         - `set_ui_scale()`       - set scale factor
+        - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
     ------------------------------
@@ -107,7 +108,7 @@ class BaseOverlay():
     OVERLAY_ID: str = ""
 
     def __init__(self,
-                 config: OverlaysConfig,
+                 config: OverlayPosition,
                  logger: logging.Logger,
                  locked: bool,
                  opacity: int,
@@ -170,16 +171,22 @@ class BaseOverlay():
     def animate_fade(self, show: bool):
         raise NotImplementedError
 
-    def get_window_info(self) -> OverlaysConfig:
+    def get_window_info(self) -> OverlayPosition:
         raise NotImplementedError
 
-    def set_window_position(self, config: OverlaysConfig):
+    def set_window_position(self, config: OverlayPosition):
         raise NotImplementedError
 
     def toggle_visibility(self):
         raise NotImplementedError
 
+    def set_visibility(self, visible: bool):
+        raise NotImplementedError
+
     def set_ui_scale(self, ui_scale: float):
+        raise NotImplementedError
+
+    def get_visibility(self) -> bool:
         raise NotImplementedError
 
     # ----------------------------------------------------------------------
@@ -229,33 +236,43 @@ class BaseOverlay():
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
-        @self.on_event("set_locked_state")
+        @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
             self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
             self.set_locked_state(locked)
+            if not locked:
+                # Enable all overlays so that the user can see the new layout
+                # User has selected unlocked mode so that they can see and edit the layout
+                self.set_visibility(True)
 
-        @self.on_event("toggle_visibility")
+        @self.on_event("__toggle_visibility__")
         def _handle_toggle_visibility(_data: Dict[str, Any]):
             """Toggle visibility."""
             self.toggle_visibility()
 
-        @self.on_event("set_opacity")
+        @self.on_event("__set_visibility__")
+        def _handle_set_visibility(data: Dict[str, Any]):
+            """Set visibility."""
+            visible = data["visible"]
+            self.set_visibility(visible)
+
+        @self.on_event("__set_opacity__")
         def _handle_set_opacity(data: Dict[str, Any]):
             """Set opacity."""
             opacity = data["opacity"]
             self.opacity = opacity
             self.set_opacity(opacity)
 
-        @self.on_event("set_config")
+        @self.on_event("__set_config__")
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
-            config = OverlaysConfig.fromJSON(data)
+            config = OverlayPosition.fromJSON(data)
             self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
             self.set_window_position(config)
 
-        @self.on_event("set_scale_factor")
+        @self.on_event("__set_scale_factor__")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
             """Set UI scale factor"""
             scale_factor = data["scale_factor"]
@@ -266,9 +283,13 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(set, str, str)
-    def _handle_cmd(self, recipients: Set[str], cmd: str, data: str):
+    @Slot(set, bool, str, str)
+    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: str):
         if recipients and self.OVERLAY_ID not in recipients:
+            return
+        visibile = self.get_visibility()
+        if not visibile and not high_prio:
+            # When not visible, only process high-priority commands
             return
         handler = self._command_handlers.get(cmd)
         if not handler:
@@ -312,6 +333,12 @@ class BaseOverlay():
     @Slot(set, object)
     def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
         if self.OVERLAY_ID not in recipients:
+            return
+
+        visibile = self.get_visibility()
+        if not visibile:
+            # All high-frequency data is treated as low prio
+            # This channel is not meant for high-priority/control messages
             return
 
         if payload.__hf_type__ in self._hf_subscriptions:

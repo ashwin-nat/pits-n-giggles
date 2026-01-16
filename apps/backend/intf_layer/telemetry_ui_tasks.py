@@ -83,7 +83,7 @@ def initUiIntfLayer(
     # Setup periodic tasks
     tasks.append(asyncio.create_task(
         _periodic_task(
-            settings.Display.refresh_interval,
+            settings.Display.local_telemetry_interval_ms,
             shutdown_event,
             logger,
             lowFreqLocalUpdateTask,

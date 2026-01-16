@@ -22,11 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import copy
 import random
 import subprocess
 import sys
 import threading
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 import psutil
@@ -37,9 +39,7 @@ from PySide6.QtWidgets import QPushButton
 from lib.child_proc_mgmt import (extract_ipc_port_from_line,
                                  extract_pid_from_line, is_init_complete)
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
-                              PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
-                              PNG_ERROR_CODE_UNKNOWN,
+from lib.error_status import (PNG_ERROR_CODE_UNKNOWN,
                               PNG_ERROR_CODE_UNSUPPORTED_OS,
                               PNG_LOST_CONN_TO_PARENT)
 from lib.ipc import IpcClientSync
@@ -48,6 +48,15 @@ if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ExitReason:
+    code: int
+    status: str
+    title: str
+    message: str
+    can_restart: bool
+    settings_field: Optional[str] = None
 
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
@@ -58,49 +67,29 @@ class PngAppMgrBase(QObject):
     post_stop_signal = Signal()
     msg_window_signal = Signal()
 
-    EXIT_ERRORS = {
-        PNG_ERROR_CODE_HTTP_PORT_IN_USE: {
-            "title": "HTTP Port In Use",
-            "message": (
-                "failed to start because the required port is already in use.\n"
-                "Please close the conflicting app or change the port in settings."
-            ),
-            "status": "HTTP Port Conflict",
-        },
-        PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE: {
-            "title": "Telemetry Port In Use",
-            "message": (
-                "failed to start because the required UDP port is already in use.\n"
-                "Please close the conflicting app or setup forwarding to the current port in settings."
-            ),
-            "status": "UDP Port Conflict",
-        },
-        PNG_ERROR_CODE_UNKNOWN: {
-            "title": "Unknown Error",
-            "message": (
-                "failed to start due to an unknown error.\n"
-                "Please check the logs for more details."
-            ),
-            "status": "Crashed",
-        },
-        PNG_LOST_CONN_TO_PARENT: {
-            "title": "Lost Connection to Parent",
-            "message": (
-                "lost connection to the parent process.\n"
-                "Please check the logs for more details."
-            ),
-            "status": "Timed out",
-        },
-        PNG_ERROR_CODE_UNSUPPORTED_OS: {
-            "title": "Unsupported OS",
-            "message": (
-                "failed to start because this OS is not supported.\n"
-                "This subsystem is currently only supported on Windows."
-            ),
-            "status": "Unsupported OS",
-        },
+    BASE_EXIT_REASONS: dict[int, ExitReason] = {
+        PNG_LOST_CONN_TO_PARENT: ExitReason(
+            code=PNG_LOST_CONN_TO_PARENT,
+            status="Timed out",
+            title="Lost Connection to Parent",
+            message="The parent process has probably been orphaned. Terminating...",
+            can_restart=True,
+        ),
+        PNG_ERROR_CODE_UNSUPPORTED_OS: ExitReason(
+            code=PNG_ERROR_CODE_UNSUPPORTED_OS,
+            status="Unsupported OS",
+            title="Unsupported OS",
+            message="This subsystem is only supported on Windows.",
+            can_restart=False,
+        ),
+        PNG_ERROR_CODE_UNKNOWN: ExitReason(
+            code=PNG_ERROR_CODE_UNKNOWN,
+            status="Crashed",
+            title="Unknown Error",
+            message="Please check the logs for details.",
+            can_restart=True,
+        ),
     }
-    DEFAULT_EXIT = EXIT_ERRORS[PNG_ERROR_CODE_UNKNOWN]
 
     def __init__(self,
                  window: "PngLauncherWindow",
@@ -113,8 +102,6 @@ class PngAppMgrBase(QObject):
                  args: Optional[List[str]] = None,
                  debug_mode: bool = False,
                  coverage_enabled: bool = False,
-                 http_port_conflict_settings_field: Optional[str] = None,
-                 udp_port_conflict_settings_field: Optional[str] = None,
                  post_start_cb: Optional[Callable[[], None]] = None,
                  post_stop_cb: Optional[Callable[[], None]] = None,
                  auto_restart: bool = True,
@@ -133,14 +120,12 @@ class PngAppMgrBase(QObject):
             args: Additional command-line arguments
             debug_mode: Enable debug mode (disables heartbeat timeout)
             coverage_enabled: Enable code coverage tracking
-            http_port_conflict_settings_field: Settings field to check for HTTP port conflicts
-            udp_port_conflict_settings_field: Settings field to check for UDP port conflicts
             auto_restart: Enable automatic restart on unexpected exits
             max_restart_attempts: Maximum number of restart attempts (default: 3)
             restart_delay: Delay in seconds between restart attempts (default: 2.0)
         """
         super().__init__()
-
+        self.exit_reasons = copy.deepcopy(self.BASE_EXIT_REASONS)
 
         self.window = window
         self.module_path = module_path
@@ -151,8 +136,6 @@ class PngAppMgrBase(QObject):
         self.args = args or []
         self.debug_mode = debug_mode
         self.coverage_enabled = coverage_enabled
-        self.http_port_conflict_field = http_port_conflict_settings_field
-        self.udp_port_conflict_field = udp_port_conflict_settings_field
         self.curr_settings = settings
 
         # Process management
@@ -193,6 +176,15 @@ class PngAppMgrBase(QObject):
         # Startup sync flags (fire post-start only after both seen)
         self._init_complete_received = False
         self._post_start_fired = False
+
+    def register_exit_reason(self, code: int, reason: ExitReason):
+        """Register an exit reason
+
+        Args:
+            code: Process Exit code
+            reason: Exit reason
+        """
+        self.exit_reasons[code] = reason
 
     def get_buttons(self) -> List[QPushButton]:
         """
@@ -369,26 +361,9 @@ class PngAppMgrBase(QObject):
             self.start(reason)
 
     def _should_auto_restart(self, exit_code: int) -> bool:
-        """Determine if auto-restart should be attempted
+        reason = self.exit_reasons.get(exit_code)
 
-        Args:
-            exit_code (int): Exit code of the process
-        """
-
-        if exit_code == PNG_ERROR_CODE_HTTP_PORT_IN_USE:
-            self.show_error(f"{self.display_name} port in use",
-                            f"Please select an unused port in {self.http_port_conflict_field}")
-            self.error_log(f"{self.display_name} HTTP port in use")
-            return False
-
-        if exit_code == PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE:
-            self.show_error(f"{self.display_name} port in use",
-                            f"Please select an unused port in {self.udp_port_conflict_field}")
-            self.error_log(f"{self.display_name} UDP telemetry port in use")
-            return False
-
-        if exit_code == PNG_ERROR_CODE_UNSUPPORTED_OS:
-            self.warning_log(f"{self.display_name} only supported on Windows")
+        if reason and not reason.can_restart:
             return False
 
         if not self.auto_restart:
@@ -518,9 +493,13 @@ class PngAppMgrBase(QObject):
             self._post_start_fired = True
 
         # Get error info
-        error_info = self.EXIT_ERRORS.get(ret_code, self.DEFAULT_EXIT)
-        status = error_info.get("status", "Crashed")
-        self._update_status(status)
+        reason = self.exit_reasons.get(ret_code, self.exit_reasons[PNG_ERROR_CODE_UNKNOWN])
+        self._update_status(reason.status)
+
+        if reason.settings_field:
+            self.show_error(reason.title, f"{reason.message}\nField: {reason.settings_field}")
+        else:
+            self.show_error(reason.title, reason.message)
 
         # Run post-stop hook
         if self._post_stop_hook:
