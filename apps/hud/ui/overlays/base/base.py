@@ -335,6 +335,12 @@ class BaseOverlay():
         if self.OVERLAY_ID not in recipients:
             return
 
+        visibile = self.get_visibility()
+        if not visibile:
+            # All high-frequency data is treated as low prio
+            # This channel is not meant for high-priority/control messages
+            return
+
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload
 
