@@ -456,7 +456,8 @@ class DataPerDriver:
                 tyre_set_data = None
 
                 if not lap_snapshot:
-                    self.m_logger.warning("%s - No lap snapshot found for lap number %s", str(self), tyre_wear.lap_number)
+                    self.m_logger.debug("%s - No lap snapshot found for lap number %s. Possible red flag",
+                        str(self), tyre_wear.lap_number)
                 elif not lap_snapshot.m_tyre_sets_packet:
                     self.m_logger.warning("%s - No tyre sets packet found for lap number %s",
                                         str(self), tyre_wear.lap_number)
