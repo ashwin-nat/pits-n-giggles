@@ -176,15 +176,23 @@ Rules:
             "Starting MCP server (transport=%s)", self.transport
         )
 
+        logging.getLogger("uvicorn.error").setLevel(logging.CRITICAL)
+        logging.getLogger("uvicorn.lifespan").setLevel(logging.CRITICAL)
+        logging.getLogger("starlette").setLevel(logging.CRITICAL)
+
         if self.transport == "http":
             await self.mcp.run_async(
                 transport="http",
                 host=self.host,
                 port=self.port,
+                show_banner=False,
+                lifespan="off",
             )
         elif self.transport == "stdio":
             await self.mcp.run_async(
                 transport="stdio",
+                show_banner=False,
+                lifespan="off",
             )
         else:
             raise ValueError(f"Unsupported transport: {self.transport}")

@@ -37,8 +37,6 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-# TODO: re-evaluate if MCP app manager is needed
-
 class McpAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
     def __init__(self,
@@ -56,17 +54,18 @@ class McpAppMgr(PngAppMgrBase):
         :param coverage_enabled: Whether to enable coverage
         """
 
-        extra_args = []
+        extra_args = ["--managed"]
         if debug_mode:
             extra_args.append("--debug")
         temp_args = args + extra_args
+        self.enabled = settings.MCP.mcp_http_server_enable
         super().__init__(
             window=window,
             module_path="apps.mcp",
             display_name="MCP",
             short_name="MCP",
             settings=settings,
-            start_by_default=True,
+            start_by_default=self.enabled,
             should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
@@ -74,6 +73,7 @@ class McpAppMgr(PngAppMgrBase):
             post_start_cb=self.post_start,
             post_stop_cb=self.post_stop
         )
+        # TODO: fix error codes
         self.register_exit_reason(PNG_ERROR_CODE_XPUB_PORT_IN_USE, ExitReason(
             code=PNG_ERROR_CODE_XPUB_PORT_IN_USE,
             status="Pit Wall Port conflict",
@@ -111,9 +111,13 @@ class McpAppMgr(PngAppMgrBase):
         """
 
         diff = self.curr_settings.diff(new_settings, {
+            "MCP": [
+                "mcp_http_server_enable",
+                "mcp_http_port",
+            ],
             "Network": [
                 "broker_xpub_port",
-                "broker_xsub_port",
+                # "server_port", # Enable when GET request support is added
             ],
         })
         self.debug_log(f"{self.display_name} Settings changed: {diff}")

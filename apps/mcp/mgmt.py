@@ -36,11 +36,13 @@ from .subscriber import McpSubscriber
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpIpc:
-    def __init__(self, logger: logging.Logger, ipc_sub: McpSubscriber) -> None:
+    def __init__(self, logger: logging.Logger, ipc_sub: McpSubscriber, mcp_task: asyncio.Task) -> None:
         """Initialize the IPC server.
 
         Args:
             logger (logging.Logger): Logger
+            ipc_sub (McpSubscriber): MCP Subscriber
+            mcp_task (asyncio.Task): MCP Task
         """
         self.m_logger = logger
         self.m_should_open_ui = True
@@ -48,6 +50,7 @@ class McpIpc:
         self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
         self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
         self.m_ipc_sub = ipc_sub
+        self.m_mcp_task = mcp_task
         report_ipc_port_from_child(self.m_ipc_server.port)
 
     async def run(self) -> None:
@@ -90,16 +93,22 @@ class McpIpc:
         """Handles shutdown signal."""
         self.m_logger.info("Shutting down MCP IPC Subscriber")
         await self.m_ipc_sub.close()
+        self.m_mcp_task.cancel()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_ipc_task(logger: logging.Logger, tasks: List[asyncio.Task], ipc_sub: McpSubscriber) -> None:
+def init_ipc_task(
+        logger: logging.Logger,
+        tasks: List[asyncio.Task],
+        ipc_sub: McpSubscriber,
+        mcp_task: asyncio.Task) -> None:
     """Initialize the IPC task.
 
     Args:
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
         ipc_sub (McpSubscriber): MCP Subscriber
+        mcp_task (asyncio.Task): MCP Task
     """
-    ipc_server = McpIpc(logger, ipc_sub=ipc_sub)
+    ipc_server = McpIpc(logger, ipc_sub=ipc_sub, mcp_task=mcp_task)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))

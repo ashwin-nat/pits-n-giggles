@@ -55,25 +55,36 @@ def parseArgs() -> argparse.Namespace:
     # Add command-line arguments with default values
     parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument("--managed", action="store_true", help="Indicates if process is managed by parent")
 
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, settings: PngSettings, version: str) -> None:
+async def main(logger: logging.Logger, settings: PngSettings, version: str, managed: bool) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         settings (PngSettings): Settings
         version (str): Version string
+        managed (bool): Whether process is managed by parent
     """
     tasks: List[asyncio.Task] = []
-    init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
-    mcp_bridge = MCPBridge(logger, version)
-    tasks.append(asyncio.create_task(mcp_bridge.run(), name="MCP Server Task"))
+    transport = "http" if managed else "stdio"
+    ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
+    mcp_bridge = MCPBridge(logger, version, transport=transport, port=settings.MCP.mcp_http_port)
+    mcp_task = asyncio.create_task(mcp_bridge.run(), name="MCP Server Task")
+    tasks.append(mcp_task)
+
+    if managed:
+        logger.debug("Managed mode enabled")
+        init_ipc_task(logger, tasks, ipc_sub, mcp_task)
+        notify_parent_init_complete()
+    else:
+        logger.debug("Unmanaged mode; skipping IPC initialization")
 
     try:
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks, return_exceptions=True)
     except asyncio.CancelledError:
         logger.debug("Main task was cancelled.")
         for task in tasks:
@@ -88,8 +99,13 @@ def entry_point():
     """Entry point"""
     args = parseArgs()
     # TODO: make rotating logging configurable
-    png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log", console_output=False)
+    if args.managed:
+        png_logger = get_logger("mcp", args.debug, jsonl=True) # Emit JSONL to stdout. Parent process will capture.
+        report_pid_from_child()
+    else:
+        png_logger = get_logger("mcp", args.debug, jsonl=False, file_path="mcp.log", console_output=False)
     version = get_version()
+
     png_logger.info(f"Starting {APP_NAME} MCP server, version {version}...")
     # TODO: fail if config file is not available
     configs = load_config_from_json(args.config_file, png_logger)
@@ -99,7 +115,8 @@ def entry_point():
         asyncio.run(main(
             logger=png_logger,
             settings=configs,
-            version=version
+            version=version,
+            managed=args.managed
             ))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")

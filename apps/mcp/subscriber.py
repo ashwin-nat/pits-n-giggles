@@ -69,17 +69,20 @@ class McpSubscriber:
 
     async def close(self) -> None:
         """Closes the IPC subscriber."""
-        await self.m_ipc_sub.close()
+        self.m_ipc_sub.close()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_subscriber_task(port: int, logger: logging.Logger, tasks: List[asyncio.Task]) -> None:
+def init_subscriber_task(port: int, logger: logging.Logger, tasks: List[asyncio.Task]) -> McpSubscriber:
     """Initialize the IPC task.
 
     Args:
         port (int): IPC port
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
+
+    Returns:
+        McpSubscriber: The MCP Subscriber instance
     """
     ipc_sub = McpSubscriber(logger, port)
     tasks.append(asyncio.create_task(ipc_sub.run(), name="IPC Server Task"))
