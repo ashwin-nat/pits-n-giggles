@@ -27,9 +27,10 @@ from pydantic import BaseModel, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
+from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
 from .https import HttpsSettings
 from .hud import HudSettings
+from .mcp import McpSettings
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
@@ -48,6 +49,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings, description="Stream Overlay")
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings, description="HTTPS")
     HUD: HudSettings = Field(default_factory=HudSettings, description="Overlays")
+    MCP: McpSettings = Field(default_factory=McpSettings, description="MCP Settings")
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl, description="Subsys Control")

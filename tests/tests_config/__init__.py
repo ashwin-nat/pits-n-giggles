@@ -24,7 +24,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_capture_settings import TestCaptureSettings
-from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
+from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys, TestPortConflicts,
                                 TestSampleSettingsFixture)
 from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
 from .tests_display_settings import TestDisplaySettings
@@ -38,12 +38,14 @@ from .tests_png_settings import TestPngSettings
 from .tests_privacy_settings import TestPrivacySettings
 from .tests_stream_overlay_settings import TestStreamOverlaySettings
 from .tests_subsysctrl import TestSubSysCtrl
+from .tests_mcp_settings import TestMcpSettings
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TestCaptureSettings",
     "TestEdgeCases",
+    "TestPortConflicts",
     "TestMissingSectionsAndKeys",
     "TestSampleSettingsFixture",
     "TestLoadConfigFromIni",
@@ -60,6 +62,7 @@ __all__ = [
     "TestPitTimeLossF2",
     "TestSubSysCtrl",
     "TestHudSettings",
+    "TestMcpSettings",
 
     "TestFilePathStr",
 ]

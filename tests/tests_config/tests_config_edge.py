@@ -34,7 +34,7 @@ import sys
 
 from pydantic import ValidationError
 
-from lib.config import HudSettings
+from lib.config import HudSettings, McpSettings, NetworkSettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -423,3 +423,34 @@ target_1 = localhost:8080
                 Network=NetworkSettings(udp_tyre_delta_action_code=1),
                 HUD=HudSettings(toggle_overlays_udp_action_code=1)
             )
+
+class TestPortConflicts(TestF1ConfigBase):
+    """Test port conflict detection in PngSettings"""
+
+    def test_tcp_port_conflict_across_sections(self):
+        """Test TCP port conflicts across different sections"""
+        with self.assertRaises(ValidationError):
+            PngSettings(
+                Network=NetworkSettings(server_port=5000),
+                MCP=McpSettings(mcp_http_port=5000)
+            )
+
+    def test_tcp_port_conflict_within_section(self):
+        """Test TCP port conflicts within the same section"""
+        with self.assertRaises(ValidationError):
+            NetworkSettings(server_port=6000, save_viewer_port=6000)
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_xpub_port=7000, broker_xsub_port=7000)
+
+    def test_dup_across_protocols(self):
+        """Test that same port numbers can be used across TCP and UDP without conflict"""
+        NetworkSettings(
+            server_port=8000,
+            telemetry_port=8000  # Different protocols, should be allowed
+        )
+
+        PngSettings(
+            Network=NetworkSettings(telemetry_port=9000),
+            MCP=McpSettings(mcp_http_port=9000)  # Different protocols, should be allowed
+        )
