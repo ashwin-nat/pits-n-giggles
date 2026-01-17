@@ -439,16 +439,18 @@ class PngLauncherWindow(QMainWindow):
         grid_layout.setContentsMargins(0, 0, 0, 0)
 
         # Number of subsystems per row
-        NUM_SUBSYS_PER_ROW = 3
+        NUM_SUBSYS_PER_ROW = 2
 
         # Add subsystem cards in a grid
-        for idx, subsystem in enumerate(self.subsystems):
+        visible_idx = 0
+        for subsystem in self.subsystems:
             if not subsystem.should_display:
                 continue
-            row = idx // NUM_SUBSYS_PER_ROW
-            col = idx % NUM_SUBSYS_PER_ROW
+            row = visible_idx // NUM_SUBSYS_PER_ROW
+            col = visible_idx % NUM_SUBSYS_PER_ROW
             card = SubsystemCard(subsystem)
             grid_layout.addWidget(card, row, col)
+            visible_idx += 1
 
         layout.addLayout(grid_layout)
         layout.addStretch()
