@@ -22,25 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
+import asyncio
 import json
-from typing import Dict, Any, List, Callable, Awaitable, Optional
+import logging
 from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional
 
+from fastmcp import FastMCP
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool
 
-from .tools_infra import ToolRegistry
 from meta.meta import APP_NAME
 
-from .tools.get_session_info import get_session_info
 from .tools.get_race_table import get_race_table
+from .tools.get_session_info import get_session_info
+from .tools_infra import ToolRegistry
+
+TransportType = Literal["http", "stdio"]
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 class MCPBridge:
-    """MCP Bridge for sim racing telemetry"""
+    """FastMCP-based MCP Bridge for sim racing telemetry"""
 
     WELCOME_MSG = """\
 This MCP server provides authoritative, local, live telemetry and session state
@@ -75,16 +79,43 @@ Rules:
 
 """
 
-    def __init__(self, logger: logging.Logger, version: str) -> None:
-        self.registry: ToolRegistry = ToolRegistry()
-        self.logger: logging.Logger = logger
-        self.version: str = version
+    def __init__(
+        self,
+        logger: logging.Logger,
+        version: str,
+        *,
+        transport: TransportType = "stdio",
+        host: str = "127.0.0.1",
+        port: int = 8000,
+    ) -> None:
+        self.logger = logger
+        self.version = version
+        self.transport = transport
+        self.host = host
+        self.port = port
+
+        self.registry = ToolRegistry()
+
+        # FastMCP server
+        self.mcp = FastMCP(
+            name=f"{APP_NAME} MCP Server",
+            instructions=self.WELCOME_MSG,
+        )
+
         self._register_tools()
-        self.logger.debug("MCPBridge initialized with tools: %s", list(self.registry._tools.keys()))
+        self._wire_registry_to_mcp()
 
-    def _register_tools(self):
-        """Register all tools"""
+        self.logger.debug(
+            "MCPBridge initialized (transport=%s, tools=%s)",
+            transport,
+            list(self.registry._tools.keys()),
+        )
 
+    # ------------------------------------------------------------------
+    # Tool registration (unchanged semantics)
+    # ------------------------------------------------------------------
+
+    def _register_tools(self) -> None:
         @self.registry.tool(
             name="get_session_info",
             description="Get current session information",
@@ -94,8 +125,10 @@ Rules:
             arguments: Dict[str, Any],
         ) -> Dict[str, Any]:
             rsp = get_session_info(self.logger)
-            self.logger.debug("handle_get_session_info called with arguments: %s. rsp: available=%s",
-                              arguments, rsp.get("available", False))
+            self.logger.debug(
+                "get_session_info called: available=%s",
+                rsp.get("available", False),
+            )
             return rsp
 
         @self.registry.tool(
@@ -107,45 +140,51 @@ Rules:
             arguments: Dict[str, Any],
         ) -> Dict[str, Any]:
             rsp = get_race_table(self.logger)
-            self.logger.debug("handle_get_race_table called with arguments: %s. rsp: available=%s",
-                              arguments, rsp.get("available", False))
+            self.logger.debug(
+                "get_race_table called: available=%s",
+                rsp.get("available", False),
+            )
             return rsp
 
-    def _init_infra(self, server: Server) -> None:
-        """Initialize infrastructure components if any"""
-        @server.list_tools()
-        async def list_tools():
-            tools = self.registry.get_tool_list()
-            self.logger.debug("Listing registered tools: %s", tools)
-            return tools
+    # ------------------------------------------------------------------
+    # Registry → FastMCP wiring
+    # ------------------------------------------------------------------
 
-        @server.call_tool()
-        async def call_tool(name: str, arguments: Dict[str, Any]):
-            try:
-                return await self.registry.call_tool(name, arguments, self)
-            except Exception as e:
-                return [{
-                    "type": "text",
-                    "text": f"Error: {str(e)}"
-                }]
+    def _wire_registry_to_mcp(self) -> None:
+        """
+        Expose all ToolRegistry tools as FastMCP tools.
+        """
+        for name, tool_def in self.registry._tools.items():
 
-    # ========================================================================
-    # MCP Server Setup
-    # ========================================================================
-
-    async def run(self):
-        """Main entry point - run MCP server over stdio"""
-        server = Server(
-            name=f"{APP_NAME} MCP Server",
-            version=self.version,
-            instructions=self.WELCOME_MSG,)
-        self._init_infra(server)
-        self.logger.debug("MCP Server initialized.")
-
-        # Run MCP server
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(
-                read_stream,
-                write_stream,
-                server.create_initialization_options()
+            @self.mcp.tool(
+                name=tool_def.name,
+                description=tool_def.description,
             )
+            async def _tool(arguments: Dict[str, Any], _name=name):
+                return await self.registry.call_tool(_name, arguments, self)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def run(self) -> None:
+        """
+        Long-running MCP server coroutine.
+        Intended to be scheduled with asyncio.create_task().
+        """
+        self.logger.info(
+            "Starting MCP server (transport=%s)", self.transport
+        )
+
+        if self.transport == "http":
+            await self.mcp.run_async(
+                transport="http",
+                host=self.host,
+                port=self.port,
+            )
+        elif self.transport == "stdio":
+            await self.mcp.run_async(
+                transport="stdio",
+            )
+        else:
+            raise ValueError(f"Unsupported transport: {self.transport}")
