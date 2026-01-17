@@ -73,4 +73,5 @@ def _get_race_table_context(
         return None, base_rsp
 
     base_rsp["last-update-timestamp"] = telemetry_update_entry.ts
+    base_rsp["available"] = True
     return telemetry_update, base_rsp
