@@ -92,8 +92,9 @@ class McpIpc:
     async def _handle_shutdown_task(self) -> None:
         """Handles shutdown signal."""
         self.m_logger.info("Shutting down MCP IPC Subscriber")
-        await self.m_ipc_sub.close()
+        self.m_ipc_sub.m_wdt.stop()
         self.m_mcp_task.cancel()
+        await self.m_ipc_sub.close()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

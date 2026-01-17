@@ -172,27 +172,35 @@ Rules:
         Long-running MCP server coroutine.
         Intended to be scheduled with asyncio.create_task().
         """
-        self.logger.info(
-            "Starting MCP server (transport=%s)", self.transport
-        )
 
         logging.getLogger("uvicorn.error").setLevel(logging.CRITICAL)
         logging.getLogger("uvicorn.lifespan").setLevel(logging.CRITICAL)
         logging.getLogger("starlette").setLevel(logging.CRITICAL)
 
-        if self.transport == "http":
-            await self.mcp.run_async(
-                transport="http",
-                host=self.host,
-                port=self.port,
-                show_banner=False,
-                lifespan="off",
-            )
-        elif self.transport == "stdio":
-            await self.mcp.run_async(
-                transport="stdio",
-                show_banner=False,
-                lifespan="off",
-            )
-        else:
-            raise ValueError(f"Unsupported transport: {self.transport}")
+        try:
+            if self.transport == "http":
+                self.logger.info(
+                    "Starting MCP server (transport=%s port=%s)", self.transport, self.port
+                )
+                await self.mcp.run_async(
+                    transport="http",
+                    host=self.host,
+                    port=self.port,
+                    show_banner=False,
+                )
+            elif self.transport == "stdio":
+                self.logger.info(
+                    "Starting MCP server (transport=%s)", self.transport
+                )
+                await self.mcp.run_async(
+                    transport="stdio",
+                    show_banner=False,
+                )
+            else:
+                raise ValueError(f"Unsupported transport: {self.transport}")
+
+        except asyncio.CancelledError:
+            return # silent handling - this is expected
+
+        except Exception as e: # pylint: disable=broad-except
+            self.logger.exception("MCP server failed: %s", e)

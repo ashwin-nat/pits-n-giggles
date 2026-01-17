@@ -84,6 +84,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
         logger.debug("Unmanaged mode; skipping IPC initialization")
 
     try:
+        logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
         await asyncio.gather(*tasks, return_exceptions=True)
     except asyncio.CancelledError:
         logger.debug("Main task was cancelled.")

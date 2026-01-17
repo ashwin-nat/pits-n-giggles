@@ -27,20 +27,27 @@ import logging
 from typing import Any, Dict, List
 
 from lib.ipc import IpcSubscriberAsync
+from lib.wdt import WatchDogTimer
 
 from .state import set_state_data
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpSubscriber:
-    def __init__(self, logger: logging.Logger, port: int) -> None:
+    def __init__(self, logger: logging.Logger, port: int, timeout: float) -> None:
         """Initialize the IPC server.
 
         Args:
             logger (logging.Logger): Logger
+            port (int): IPC port
+            timeout (float): Connection timeout in seconds
         """
         self.m_ipc_sub = IpcSubscriberAsync(port=port, logger=logger)
         set_state_data("connected", False)
+        self.m_wdt = WatchDogTimer(
+            status_callback=self._wdt_callback,
+            timeout=timeout
+        )
         self._init_routes()
         self._init_callbacks()
 
@@ -49,12 +56,10 @@ class McpSubscriber:
         @self.m_ipc_sub.on_connect
         async def _on_connect() -> None:
             self.m_ipc_sub.logger.info("IPC Subscriber connected")
-            set_state_data("connected", True)
 
         @self.m_ipc_sub.on_disconnect
         async def _on_disconnect(exc: Exception | None) -> None:
             self.m_ipc_sub.logger.info("IPC Subscriber disconnected")
-            set_state_data("connected", True)
 
     def _init_routes(self) -> None:
         """Initialize the IPC routes."""
@@ -62,6 +67,7 @@ class McpSubscriber:
         async def _handle_race_table_update(msg: Dict[str, Any]) -> None:
             """Handle race table update messages."""
             set_state_data("race-table-update", msg)
+            self.m_wdt.kick()
 
     async def run(self) -> None:
         """Starts the IPC server."""
@@ -70,6 +76,15 @@ class McpSubscriber:
     async def close(self) -> None:
         """Closes the IPC subscriber."""
         self.m_ipc_sub.close()
+
+    def _wdt_callback(self, active: bool) -> None:
+        """Watchdog timer callback to update IPC activity state.
+
+        Args:
+            active (bool): True if Subscriptions are active (i.e.) "connected" to producer
+        """
+        set_state_data("connected", active)
+        self.m_ipc_sub.logger.info("Subscriber connected state changed: %s", active)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -84,6 +99,7 @@ def init_subscriber_task(port: int, logger: logging.Logger, tasks: List[asyncio.
     Returns:
         McpSubscriber: The MCP Subscriber instance
     """
-    ipc_sub = McpSubscriber(logger, port)
-    tasks.append(asyncio.create_task(ipc_sub.run(), name="IPC Server Task"))
+    ipc_sub = McpSubscriber(logger, port, timeout=10.0)
+    tasks.append(asyncio.create_task(ipc_sub.run(), name="IPC Subscriber Task"))
+    tasks.append(asyncio.create_task(ipc_sub.m_wdt.run(), name="IPC Watchdog Task"))
     return ipc_sub
