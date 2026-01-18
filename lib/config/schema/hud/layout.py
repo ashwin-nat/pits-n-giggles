@@ -22,7 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict
+import copy
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -92,3 +93,16 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         y=600,
     ),
 }
+
+# -------------------------------------- HELPERS -----------------------------------------------------------------------
+
+def merge_overlay_layout(
+    user_layout: Optional[Dict[str, OverlayPosition]],
+) -> Dict[str, OverlayPosition]:
+    layout = copy.deepcopy(DEFAULT_OVERLAY_LAYOUT)
+
+    if user_layout:
+        for key, value in user_layout.items():
+            layout[key] = value
+
+    return layout

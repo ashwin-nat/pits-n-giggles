@@ -118,6 +118,18 @@
             "args": [
             ]
         },
+        {
+            "name": "UDP action code injector",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "apps.dev_tools.udp_action_code_injector",
+            "console": "integratedTerminal",
+            "args": [
+                "--port", "20778",
+                "--action-code",  "10",
+                "--udp-mode"
+            ]
+        },
 
         {
             "name": "App (Legacy)",
