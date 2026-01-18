@@ -74,7 +74,6 @@ def send_bytes_tcp(
     data: bytes,
     tcp_ip: str,
     tcp_port: int,
-    no_nagle: bool = False
 ) -> int:
     """
     Send a single F1 UDP-format packet over TCP using
@@ -86,9 +85,6 @@ def send_bytes_tcp(
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_socket:
         tcp_socket.connect((tcp_ip, tcp_port))
-
-        if no_nagle:
-            tcp_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
         tcp_socket.sendall(message_length_bytes + data)
 
@@ -112,6 +108,6 @@ if __name__ == "__main__":
     raw_pkt = pkt_obj.to_bytes(include_header=True)
     if args.udp_mode:
         ret = send_bytes_udp(raw_pkt, args.ip_addr, args.port)
-        print(f"Sent {ret} bytes")
     else:
-        raise NotImplementedError
+        ret = send_bytes_tcp(raw_pkt, args.ip_addr, args.port)
+    print(f"Sent {ret} bytes")
