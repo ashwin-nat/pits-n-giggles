@@ -30,7 +30,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import HudSettings, MfdSettings, MfdPageSettings
+from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
+                        HudSettings, MfdPageSettings, MfdSettings,
+                        OverlayPosition)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -688,3 +692,29 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(track_radar_overlay_toggle_udp_action_code=420)
+
+    def test_new_key_in_layout_defaults(self):
+
+        # Assume input_telemetry is new
+        loaded_settings = HudSettings(enabled=True,
+                                      layout={
+                                          LAP_TIMER_OVERLAY_ID: OverlayPosition(x=1, y=1),
+                                          TIMING_TOWER_OVERLAY_ID: OverlayPosition(x=2, y=2),
+                                          MFD_OVERLAY_ID: OverlayPosition(x=3, y=3),
+                                          TRACK_RADAR_OVERLAY_ID: OverlayPosition(x=4, y=4),
+                                      })
+
+        # Validate that the input telemetry key got inserted with defaults
+        self.assertIn(INPUT_TELEMETRY_OVERLAY_ID, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[INPUT_TELEMETRY_OVERLAY_ID],
+                         HudSettings.get_default_layout_dict()[INPUT_TELEMETRY_OVERLAY_ID])
+
+        # Validate that the other keys are still there and their values are preserved
+        self.assertIn(LAP_TIMER_OVERLAY_ID, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[LAP_TIMER_OVERLAY_ID], OverlayPosition(x=1, y=1))
+        self.assertIn(TIMING_TOWER_OVERLAY_ID, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[TIMING_TOWER_OVERLAY_ID], OverlayPosition(x=2, y=2))
+        self.assertIn(MFD_OVERLAY_ID, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[MFD_OVERLAY_ID], OverlayPosition(x=3, y=3))
+        self.assertIn(TRACK_RADAR_OVERLAY_ID, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[TRACK_RADAR_OVERLAY_ID], OverlayPosition(x=4, y=4))

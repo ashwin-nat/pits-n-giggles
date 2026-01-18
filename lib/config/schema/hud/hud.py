@@ -29,7 +29,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from ..diff import ConfigDiffMixin
 from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
-from .layout import DEFAULT_OVERLAY_LAYOUT, OverlayPosition
+from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
+                     merge_overlay_layout)
 from .mfd import MfdSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
@@ -169,6 +170,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
         """Validate file existence only if HTTPS is enabled."""
         # Not allowed to enable HUD while all overlays are disabled
+        self.layout = merge_overlay_layout(self.layout)
+
         if not self.enabled:
             return
 

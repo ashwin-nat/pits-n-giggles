@@ -271,7 +271,11 @@ class SettingsWindow(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        reset_btn = QPushButton("Reset")
+        revert_btn = QPushButton("Revert Changes")
+        revert_btn.clicked.connect(self.on_revert)
+        button_layout.addWidget(revert_btn)
+
+        reset_btn = QPushButton("Reset to Defaults")
         reset_btn.clicked.connect(self.on_reset)
         button_layout.addWidget(reset_btn)
 
@@ -1023,19 +1027,33 @@ class SettingsWindow(QDialog):
         ui_config = ui_meta.get("ui", {})
         return ui_config.get("visible", True)
 
-    def on_reset(self):
+    def on_revert(self):
         """Reset settings to original values"""
         reply = QMessageBox.question(
             self,
-            "Reset Settings",
-            "Are you sure you want to reset all settings to their original values?",
+            "Revert Changes",
+            "Discard all unsaved changes and restore the last saved settings?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
         if reply == QMessageBox.StandardButton.Yes:
             self.working_settings = self.original_settings.model_copy(deep=True)
             self._update_all_widgets()
-            self.parent_window.info_log("Settings reset to original values")
+            self.parent_window.info_log("Settings reset to last saved values")
+
+    def on_reset(self):
+        """Reset settings to default values"""
+        reply = QMessageBox.question(
+            self,
+            "Reset Settings",
+            "Are you sure you want to reset all settings to their factory default values?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.working_settings = PngSettings()
+            self._update_all_widgets()
+            self.parent_window.info_log("Settings reset to factory default values")
 
     def _update_all_widgets(self):
         """Update all widgets from working_settings"""

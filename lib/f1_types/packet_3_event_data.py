@@ -32,7 +32,9 @@ from .header import PacketHeader
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
 class EventType(F1SubPacketBase, ABC):
-    pass
+    def to_bytes(self, packet_format: int) -> bytes:
+        """Serialize this event to raw bytes"""
+        raise NotImplementedError
 
 class PacketEventData(F1PacketBase):
     """Class representing the incoming PacketEventData message
@@ -1221,6 +1223,24 @@ class PacketEventData(F1PacketBase):
 
             return self.buttonStatus != other.buttonStatus
 
+        @classmethod
+        def from_status(cls, button_status: int) -> "PacketEventData.Buttons":
+            obj = cls.__new__(cls)
+            obj.buttonStatus = button_status
+            return obj
+
+        @classmethod
+        def udp_action_flag(cls, action_code: int) -> int:
+            """
+            Convert UDP action code (1-12) into the corresponding button flag.
+            """
+            if not 1 <= action_code <= 12:
+                raise ValueError("UDP action code must be in range 1-12")
+            return 1 << (action_code + 19)
+
+        def to_bytes(self, _packet_format: int) -> bytes:
+            return self.COMPILED_PACKET_STRUCT.pack(self.buttonStatus)
+
     class Overtake(EventType):
         """
         The class representing the OVERTAKE event. This is sent when one vehicle overtakes another.
@@ -1578,3 +1598,41 @@ class PacketEventData(F1PacketBase):
         """
 
         return not self.__eq__(other)
+
+    def to_bytes(self, include_header: bool=False) -> bytes:
+        data = bytearray()
+
+        # 1. Header
+        if include_header:
+            data += self.m_header.to_bytes()
+
+        # 2. Event string code (4 bytes, ASCII per spec)
+        data += self.COMPILED_PACKET_STRUCT.pack(
+            self.m_eventStringCode.encode("ascii")
+        )
+
+        # 3. Optional event payload
+        if self.mEventDetails:
+            data += self.mEventDetails.to_bytes(self.m_header.m_packetFormat)
+
+        return bytes(data)
+
+
+
+    @classmethod
+    def from_values(
+        cls,
+        header: PacketHeader,
+        event_type: EventPacketType,
+        event_details: Optional[EventType]
+    ) -> "PacketEventData":
+
+        obj = cls.__new__(cls)
+        super(PacketEventData, obj).__init__(header)
+
+        obj.m_eventCode = event_type
+        obj.m_eventStringCode = event_type.value
+        obj.mEventDetails = event_details
+
+        return obj
+
