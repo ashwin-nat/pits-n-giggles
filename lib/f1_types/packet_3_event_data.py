@@ -28,12 +28,10 @@ from typing import Any, Dict, Optional
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import SafetyCarEventType, SafetyCarType
 from .header import PacketHeader
-from abc import abstractmethod
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
 
 class EventType(F1SubPacketBase, ABC):
-    @abstractmethod
     def to_bytes(self, packet_format: int) -> bytes:
         """Serialize this event to raw bytes"""
         raise NotImplementedError
