@@ -1531,7 +1531,7 @@ class PacketEventData(F1PacketBase):
         super().__init__(header)
 
         # Parse the event string and prep the enum
-        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(packet[:self.PACKET_LEN])[0].decode('utf-8')
+        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(packet[:self.PACKET_LEN])[0].decode('ascii')
         if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
             self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
         else:
@@ -1608,7 +1608,7 @@ class PacketEventData(F1PacketBase):
 
         # 2. Event string code (4 bytes, ASCII per spec)
         data += self.COMPILED_PACKET_STRUCT.pack(
-            self.m_eventStringCode.encode("utf-8")
+            self.m_eventStringCode.encode("ascii")
         )
 
         # 3. Optional event payload
