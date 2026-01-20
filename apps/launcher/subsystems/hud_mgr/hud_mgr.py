@@ -25,7 +25,8 @@
 import json
 import sys
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
@@ -41,6 +42,18 @@ from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
+
+
+# -------------------------------------- BUTTON CONFIGURATION ----------------------------------------------------------
+
+@dataclass
+class ButtonConfig:
+    """Configuration for a button"""
+    name: str
+    icon: str
+    callback: Callable
+    tooltip: str
+    enabled_when_stopped: bool = False
 
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -71,6 +84,10 @@ class HudAppMgr(PngAppMgrBase):
         self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
+
+        # Button registry
+        self.buttons: Dict[str, QPushButton] = {}
+
         super().__init__(
             module_path="apps.hud",
             display_name="HUD",
@@ -93,31 +110,83 @@ class HudAppMgr(PngAppMgrBase):
         self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
         self.overlays_adj_popup.hide()
 
+    def _get_button_configs(self) -> List[ButtonConfig]:
+        """Define button configurations
+
+        Returns:
+            List of button configurations in display order
+        """
+        return [
+            ButtonConfig(
+                name="start_stop",
+                icon="start",
+                callback=self.start_stop_callback,
+                tooltip="Start",
+                enabled_when_stopped=True
+            ),
+            ButtonConfig(
+                name="hide_show",
+                icon="show-hide",
+                callback=self.hide_show_callback,
+                tooltip="Hide/Show"
+            ),
+            ButtonConfig(
+                name="next_page",
+                icon="next-page",
+                callback=self.next_page_callback,
+                tooltip="Next MFD Page"
+            ),
+            ButtonConfig(
+                name="reset",
+                icon="reset",
+                callback=self.reset_callback,
+                tooltip="Reset Overlays Positions"
+            ),
+            ButtonConfig(
+                name="lock",
+                icon="unlock",
+                callback=self.lock_callback,
+                tooltip="Edit Overlays"
+            ),
+        ]
+
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
         :return: List of button objects
         """
+        button_list = []
+        for config in self._get_button_configs():
+            btn = self.build_button(
+                self.get_icon(config.icon),
+                config.callback,
+                config.tooltip
+            )
+            self.buttons[config.name] = btn
 
-        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
-        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Edit Overlays")
-        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays Positions")
-        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
+            # Set initial state based on enabled flag
+            if not self.enabled:
+                self.set_button_state(btn, False)
 
-        if not self.enabled:
-            self.set_button_state(self.start_stop_button, False)
-            self.set_button_state(self.hide_show_button, False)
-            self.set_button_state(self.lock_button, False)
-            self.set_button_state(self.reset_button, False)
-            self.set_button_state(self.next_page_button, False)
+            button_list.append(btn)
 
-        return [
-            self.start_stop_button,
-            self.hide_show_button,
-            self.next_page_button,
-            self.reset_button,
-            self.lock_button,
-        ]
+        return button_list
+
+    def _update_all_button_states(self, running: bool):
+        """Update all button states based on running state
+
+        Args:
+            running: Whether the HUD is currently running
+        """
+        configs = {cfg.name: cfg for cfg in self._get_button_configs()}
+
+        for name, btn in self.buttons.items():
+            config = configs.get(name)
+            if not config:
+                continue
+
+            # Enable button if running OR if it's enabled when stopped
+            should_enable = running or config.enabled_when_stopped
+            self.set_button_state(btn, should_enable)
 
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -134,7 +203,7 @@ class HudAppMgr(PngAppMgrBase):
             return
 
         self.debug_log("Toggling HUD lock state...")
-        self.set_button_state(self.lock_button, False)
+        self.set_button_state(self.buttons["lock"], False)
 
         requested_state = not self.locked
         success, rsp = self._request_lock_state_change(
@@ -143,10 +212,16 @@ class HudAppMgr(PngAppMgrBase):
         )
 
         self.locked = requested_state
-        self.set_button_state(self.lock_button, True)
+        self.set_button_state(self.buttons["lock"], True)
 
         if success:
-            self.set_lock_button_icon()
+            # Update lock button icon and tooltip based on new state
+            if self.locked:
+                self.set_button_icon(self.buttons["lock"], self.get_icon("unlock"))
+                self.set_button_tooltip(self.buttons["lock"], "Edit Overlays")
+            else:
+                self.set_button_icon(self.buttons["lock"], self.get_icon("lock"))
+                self.set_button_tooltip(self.buttons["lock"], "Lock Overlays")
 
             if self.locked:
                 try:
@@ -218,13 +293,11 @@ class HudAppMgr(PngAppMgrBase):
 
     def post_start(self):
         """Update buttons after app start"""
-        self.set_button_state(self.hide_show_button, True)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
-        self.set_button_tooltip(self.start_stop_button, "Stop")
-        self.set_button_state(self.lock_button, True)
-        self.set_button_state(self.reset_button, True)
-        self.set_button_state(self.next_page_button, True)
+        self._update_all_button_states(running=True)
+
+        # Update start/stop button to show stop state
+        self.set_button_icon(self.buttons["start_stop"], self.get_icon("stop"))
+        self.set_button_tooltip(self.buttons["start_stop"], "Stop")
 
         # Start integration test thread if in integration test mode
         if self.integration_test_mode:
@@ -236,65 +309,39 @@ class HudAppMgr(PngAppMgrBase):
         if self.integration_test_mode:
             self._stop_integration_test_thread()
 
-        self.set_button_state(self.hide_show_button, False)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
-        self.set_button_tooltip(self.start_stop_button, "Start")
-        self.set_button_state(self.lock_button, False)
-        self.set_button_state(self.reset_button, False)
-        self.set_button_state(self.next_page_button, False)
+        self._update_all_button_states(running=False)
+
+        # Update start/stop button to show start state
+        self.set_button_icon(self.buttons["start_stop"], self.get_icon("start"))
+        self.set_button_tooltip(self.buttons["start_stop"], "Start")
 
     def start_stop_callback(self):
-        """Start or stop the backend application."""
-        # disable the button. enable in post_start/post_stop
-        self.set_button_state(self.hide_show_button, False)
-        self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.lock_button, False)
-        self.set_button_state(self.reset_button, False)
-        self.set_button_state(self.next_page_button, False)
+        """Start or stop the HUD subsystem."""
+        # Disable all buttons during transition
+        self._update_all_button_states(running=False)
+
         try:
-            # Call the start_stop method
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
-            # Log the error or handle it as needed
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
-            # If no exception, it will be handled in post_start/post_stop
-            self.set_button_state(self.hide_show_button, True)
-            self.set_button_state(self.start_stop_button, True)
-            self.set_button_state(self.lock_button, True)
-            self.set_button_state(self.reset_button, True)
-            self.set_button_state(self.next_page_button, True)
-
-    def set_lock_button_icon(self):
-        """Set the icon and tooltip for the lock button based on state"""
-        if self.locked:
-            self.set_button_icon(self.lock_button, self.get_icon("unlock"))
-            self.set_button_tooltip(self.lock_button, "Edit Overlays")
-        else:
-            self.set_button_icon(self.lock_button, self.get_icon("lock"))
-            self.set_button_tooltip(self.lock_button, "Lock Overlays")
+            # Re-enable buttons on error
+            self._update_all_button_states(running=True)
 
     def process_enabled_change(self):
         """
         Process the enabled state change and update the GUI accordingly.
 
-        If the application is enabled, start the backend application,
+        If the application is enabled, start the HUD subsystem,
         enable the start/stop button, update the lock button text and
         enable the ping button. If the application is disabled, stop
-        the backend application, disable the start/stop button and
+        the HUD subsystem, disable the start/stop button and
         disable the ping and lock buttons.
         """
-
         if self.enabled:
             self.start("Enabling HUD")
-            self.set_button_state(self.lock_button, True)
-            self.set_lock_button_icon()
-            self.set_button_state(self.hide_show_button, True)
         else:
             self.stop("Disabling HUD")
-            self.set_button_state(self.start_stop_button, False)
-            self.set_button_state(self.hide_show_button, False)
-            self.set_button_state(self.lock_button, False)
+            self._update_all_button_states(running=False)
 
     def _send_overlays_opacity_change(self, opacity: int) -> None:
         """Send overlays opacity change to HUD app
@@ -338,7 +385,7 @@ class HudAppMgr(PngAppMgrBase):
             self.next_page_callback()
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
+        """Handle changes in settings for the HUD subsystem
 
         :param new_settings: New settings
 
@@ -451,7 +498,7 @@ class HudAppMgr(PngAppMgrBase):
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
         # Position below button
-        btn = self.lock_button
+        btn = self.buttons["lock"]
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
         self.overlays_adj_popup.move(gpos)
         self.overlays_adj_popup.show()
