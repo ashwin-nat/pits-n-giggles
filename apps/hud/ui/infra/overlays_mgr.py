@@ -249,6 +249,10 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
+    def mfd_interact(self):
+        """Interact with MFD overlay"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'mfd_interact', {})
+
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
         """Apply a full overlays layout snapshot."""
         rsp = {

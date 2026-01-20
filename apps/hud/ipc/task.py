@@ -34,9 +34,10 @@ from lib.ipc import IpcServerSync, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
-from .handlers import (handle_lock_widgets, handle_next_page,
-                       handle_set_opacity, handle_set_overlays_layout,
-                       handle_set_ui_scale, handle_toggle_visibility)
+from .handlers import (handle_lock_widgets, handle_mfd_interact,
+                       handle_next_page, handle_set_opacity,
+                       handle_set_overlays_layout, handle_set_ui_scale,
+                       handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -49,6 +50,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "toggle-overlays-visibility": handle_toggle_visibility,
     "set-overlays-opacity": handle_set_opacity,
     "next-page": handle_next_page,
+    "mfd-interact": handle_mfd_interact,
     "set-overlays-layout": handle_set_overlays_layout,
     "set-ui-scale": handle_set_ui_scale,
 }

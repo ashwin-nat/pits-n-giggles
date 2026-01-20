@@ -62,7 +62,9 @@ class WeatherForecastPage(MfdPageBase):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
-            forecast_data_flat = data.get("weather-forecast-samples", [])[: self.MAX_SAMPLES]
+            forecast_data_flat = data.get("weather-forecast-samples", [])
+            if not forecast_data_flat:
+                return
 
             # Reset index if session changes
             incoming_session_uid = data["session-uid"]
@@ -74,16 +76,17 @@ class WeatherForecastPage(MfdPageBase):
             if forecast_data_flat == self._last_processed_samples:
                 return
 
-            page_item = self._page_item
-            if not page_item:
-                return
+            self._display_weather_data(forecast_data_flat)
 
-            session_title, session_forecast = self._get_session_info(forecast_data_flat)
-
-            page_item.setProperty("forecastData", session_forecast)
-            page_item.setProperty("sessionTitle", session_title or "")
-
-            self._last_processed_samples = forecast_data_flat
+        @self.on_event("mfd_interact")
+        def mfd_interact(data: Dict[str, Any]) -> None:
+            self.logger.debug("%s | Received mfd_interact command. args: %s", self.KEY, data)
+            # Cycle through the sessions
+            self.session_index = (self.session_index + 1) % self.num_sessions
+            last_data = self._last_processed_samples
+            self._invalidate_cache()
+            if last_data:
+                self._display_weather_data(last_data)
 
     @final
     def on_page_activated(self, item: QQuickItem):
@@ -101,11 +104,9 @@ class WeatherForecastPage(MfdPageBase):
 
         for item in data:
             session = item["session-type"]
-
             if session not in index:
                 index[session] = len(groups)
                 groups.append(SessionGroup(session_type=session))
-
             groups[index[session]].items.append(item)
 
         return groups
@@ -144,3 +145,22 @@ class WeatherForecastPage(MfdPageBase):
         self._last_processed_samples = []
         self.session_index = 0
         self.num_sessions = 0
+
+    def _display_weather_data(self, forecast_data_flat: List[Dict[str, Any]]) -> None:
+        """Display weather data.
+
+        Args:
+            forecast_data_flat (List[Dict[str, Any]]): Raw incoming weather forecast samples
+        """
+        assert forecast_data_flat
+
+        page_item = self._page_item
+        if not page_item:
+            return
+
+        session_title, session_forecast = self._get_session_info(forecast_data_flat)
+
+        page_item.setProperty("forecastData", session_forecast[: self.MAX_SAMPLES])
+        page_item.setProperty("sessionTitle", session_title or "")
+
+        self._last_processed_samples = forecast_data_flat
