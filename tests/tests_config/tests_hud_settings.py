@@ -59,6 +59,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
+        self.assertEqual(settings.mfd_interaction_udp_action_code, None)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
@@ -100,6 +101,7 @@ class TestHudSettings(TestF1ConfigBase):
             "cycle_mfd_udp_action_code",
             "track_map_toggle_udp_action_code",
             "input_overlay_toggle_udp_action_code",
+            "mfd_interaction_udp_action_code",
         ]
         for field in udp_action_code_fields:
             with self.subTest(field=field):

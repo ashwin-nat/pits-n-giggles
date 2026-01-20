@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import Field
 
@@ -44,7 +44,12 @@ class PortType(Enum):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def udp_action_field(description: str, *, default: Optional[int] = None, visible: Optional[bool] = True):
+def udp_action_field(
+        description: str,
+        *,
+        default: Optional[int] = None,
+        visible: Optional[bool] = True,
+        ext_info: Optional[List[str]] = []):
     """
     Create a UDP action code field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -59,7 +64,8 @@ def udp_action_field(description: str, *, default: Optional[int] = None, visible
         json_schema_extra={
             "ui": {
                 "type": "text_box",
-                "visible": visible
+                "visible": visible,
+                "ext_info": ext_info,
             },
             "udp_action_code": True,
         },

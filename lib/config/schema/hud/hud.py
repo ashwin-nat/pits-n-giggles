@@ -92,6 +92,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle MFD overlay UDP action code")
+    mfd_interaction_udp_action_code: Optional[int] = udp_action_field(
+        description="Interact with active MFD page - UDP action code",
+        ext_info=[
+            "Optional action code to interact with currently active MFD page. Currently, "
+            "the weather forecast page uses this to cycle through various sessions, if available. (only from F1 24+)"
+        ]
+    )
 
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay", default=False, visible=False)
     track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
