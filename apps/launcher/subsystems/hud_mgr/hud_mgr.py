@@ -148,6 +148,12 @@ class HudAppMgr(PngAppMgrBase):
                 callback=self.lock_callback,
                 tooltip="Edit Overlays"
             ),
+            ButtonConfig(
+                name="mfd_interact",
+                icon="mfd-interact",
+                callback=self.mfd_interact_callback,
+                tooltip="MFD Interact"
+            )
         ]
 
     def get_buttons(self) -> List[QPushButton]:
@@ -268,10 +274,18 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to persist default HUD layout: {e}")
 
     def next_page_callback(self):
-        """Open the dashboard viewer in a web browser."""
+        """Cycle to the next page of the HUD."""
         self.info_log("Sending next page command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
+        )
+        self.info_log(str(rsp))
+
+    def mfd_interact_callback(self):
+        """Interact with the MFD."""
+        self.info_log("Sending MFD interact command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(
+            command="mfd-interact", args={}
         )
         self.info_log(str(rsp))
 
