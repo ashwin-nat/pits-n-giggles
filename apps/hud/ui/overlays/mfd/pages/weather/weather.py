@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, final
 
@@ -30,8 +31,6 @@ from PySide6.QtCore import QTimer
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-
-from dataclasses import dataclass, field
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay

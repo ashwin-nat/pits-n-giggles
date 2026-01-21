@@ -246,12 +246,11 @@ class LapTimerOverlay(BaseOverlayQML):
             # Current lap is an improvement - predict new position
             table_entries.sort(key=lambda x: x["driver-info"]["position"])
             return self._predict_quali_position(table_entries, estimated_ms, ref_driver_index)
-        else:
-            # No improvement - position stays the same
-            if ref_driver := self._find_driver_by_index(table_entries, ref_driver_index):
-                return ref_driver["driver-info"]["position"]
-            else:
-                return None
+
+        # No improvement - position stays the same
+        if ref_driver := self._find_driver_by_index(table_entries, ref_driver_index):
+            return ref_driver["driver-info"]["position"]
+        return None
 
     def _find_driver_by_index(
         self, table_entries: List[Dict[str, Any]], driver_index: int
@@ -264,7 +263,7 @@ class LapTimerOverlay(BaseOverlayQML):
         table_entries: List[Dict[str, Any]],
         estimated_ms: int,
         ref_driver_index: int,
-    ) -> int | None:
+    ) -> Optional[int]:
         """
         Predict where the current estimated lap would place the driver.
         Returns 1-based position or None if prediction cannot be made.
@@ -283,11 +282,10 @@ class LapTimerOverlay(BaseOverlayQML):
             if driver_index == ref_driver_index:
                 # ref driver uses estimated lap
                 ranked.append((estimated_ms, True, driver_index))
-            else:
+            elif best_ms:
                 # only include others if they have set a lap
-                if best_ms:
-                    has_other_laps = True
-                    ranked.append((best_ms, False, driver_index))
+                has_other_laps = True
+                ranked.append((best_ms, False, driver_index))
 
         # If no one else has set a lap, ref driver is P1 by definition
         if not has_other_laps:

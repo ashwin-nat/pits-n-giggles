@@ -484,8 +484,7 @@ class F1TelemetryHandler:
             button_actions = [
                 (self.m_udp_action_codes.custom_marker, 'Custom Marker', self._processCustomMarkerCreate),
                 (self.m_udp_action_codes.tyre_delta, 'Tyre Delta', self._processTyreDeltaSound),
-                (self.m_udp_action_codes.toggle_all_overlays, 'Toggle all overlays',
-                    lambda: self._processToggleHud()),
+                (self.m_udp_action_codes.toggle_all_overlays, 'Toggle all overlays', self._processToggleHud),
                 (self.m_udp_action_codes.mfd_next_page, 'Cycle MFD', self._processCycleMFD),
                 (self.m_udp_action_codes.toggle_lap_timer_overlay, 'Toggle lap timer overlay',
                     lambda: self._processToggleHud('lap_timer')),

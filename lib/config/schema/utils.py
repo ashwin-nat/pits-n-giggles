@@ -49,7 +49,7 @@ def udp_action_field(
         *,
         default: Optional[int] = None,
         visible: Optional[bool] = True,
-        ext_info: Optional[List[str]] = []):
+        ext_info: Optional[List[str]] = None):
     """
     Create a UDP action code field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -65,7 +65,7 @@ def udp_action_field(
             "ui": {
                 "type": "text_box",
                 "visible": visible,
-                "ext_info": ext_info,
+                "ext_info": ext_info or [],
             },
             "udp_action_code": True,
         },
