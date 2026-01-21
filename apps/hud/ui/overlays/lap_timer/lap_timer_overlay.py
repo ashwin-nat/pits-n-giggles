@@ -179,51 +179,85 @@ class LapTimerOverlay(BaseOverlayQML):
         """Handle delta and estimated time calculations."""
         is_sc = self._is_safety_car(sc_status)
         best_ms = best_lap["lap-time-ms"] or 0
-        delta_ms_for_estimated = None
 
-        # SC delta takes priority
+        # Calculate delta based on safety car or racing conditions
+        delta_ms = self._calculate_and_update_delta(curr_lap, is_sc)
+
+        # Update estimated time with position prediction
+        est_str = self._calculate_estimated_time(
+            best_ms, delta_ms, session_type, table_entries, ref_driver_index
+        )
+        self._update_estimated(est_str)
+
+    def _calculate_and_update_delta(self, curr_lap: Dict[str, Any], is_sc: bool) -> Optional[int]:
+        """Calculate and update delta, returning delta in milliseconds."""
         if is_sc:
             delta_sc = curr_lap["delta-sc-sec"]
             if delta_sc is not None:
                 self._update_delta_sec(delta_sc, is_sc=True)
-                delta_ms_for_estimated = int(delta_sc * 1000)
-            else:
-                self._clear_delta()
+                return int(delta_sc * 1000)
         else:
-            # Normal racing delta
             delta_ms = curr_lap["delta-ms"]
             if delta_ms is not None:
                 self._update_delta_ms(delta_ms, is_sc=False)
-                delta_ms_for_estimated = delta_ms
-            else:
-                self._clear_delta()
+                return delta_ms
 
-        # Always update estimated time
-        if best_ms and delta_ms_for_estimated is not None:
-            estimated_ms = best_ms + delta_ms_for_estimated
-            est_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
-            if is_practice_session(session_type) or is_qualifying_session(session_type) and table_entries:
-                # Predict position only if the current lap is an improvement
-                if delta_ms <= 0:
-                    # the table entries are sorted in multiple places.
-                    # TODO: sort before sending data to the windows
-                    table_entries.sort(key=lambda x: x["driver-info"]["position"])
-                    predicted_pos = self._predict_quali_position(table_entries, estimated_ms, ref_driver_index)
-                    if predicted_pos:
-                        est_str += f" | (P{predicted_pos})"
-                else:
-                    # Prediction position is the same as actual prediction (i.e.) no improvement
-                    if 0 <= ref_driver_index < len(table_entries):
-                        ref_driver = next(
-                            (x for x in table_entries if x["driver-info"]["index"] == ref_driver_index), None
-                        )
-                        if ref_driver:
-                            predicted_pos = ref_driver["driver-info"]["position"]
-                            est_str += f" | (P{predicted_pos})"
+        self._clear_delta()
+        return None
 
+    def _calculate_estimated_time(
+        self,
+        best_ms: int,
+        delta_ms: Optional[int],
+        session_type: str,
+        table_entries: List[Dict[str, Any]],
+        ref_driver_index: int
+    ) -> str:
+        """Calculate estimated lap time with optional position prediction."""
+        if not best_ms or delta_ms is None:
+            return self.DEFAULT_TIME
+
+        estimated_ms = best_ms + delta_ms
+        est_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
+
+        # Add position prediction for practice/qualifying sessions
+        if self._should_predict_position(session_type, table_entries):
+            predicted_pos = self._get_predicted_position(
+                delta_ms, table_entries, estimated_ms, ref_driver_index
+            )
+            if predicted_pos:
+                est_str += f" | (P{predicted_pos})"
+
+        return est_str
+
+    def _should_predict_position(self, session_type: str, table_entries: List[Dict[str, Any]]) -> bool:
+        """Check if position prediction should be performed."""
+        return (is_practice_session(session_type) or is_qualifying_session(session_type)) and table_entries
+
+    def _get_predicted_position(
+        self,
+        delta_ms: int,
+        table_entries: List[Dict[str, Any]],
+        estimated_ms: int,
+        ref_driver_index: int
+    ) -> Optional[int]:
+        """Get predicted position based on delta and estimated time."""
+        if delta_ms <= 0:
+            # Current lap is an improvement - predict new position
+            table_entries.sort(key=lambda x: x["driver-info"]["position"])
+            return self._predict_quali_position(table_entries, estimated_ms, ref_driver_index)
         else:
-            est_str = self.DEFAULT_TIME
-        self._update_estimated(est_str)
+            # No improvement - position stays the same
+            if ref_driver := self._find_driver_by_index(table_entries, ref_driver_index):
+                return ref_driver["driver-info"]["position"]
+            else:
+                return None
+
+    def _find_driver_by_index(
+        self, table_entries: List[Dict[str, Any]], driver_index: int
+    ) -> Optional[Dict[str, Any]]:
+        """Find driver entry by index."""
+        return next((x for x in table_entries if x["driver-info"]["index"] == driver_index), None)
 
     def _predict_quali_position(
         self,
