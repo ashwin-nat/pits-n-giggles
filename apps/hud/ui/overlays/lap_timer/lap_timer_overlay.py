@@ -28,7 +28,8 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QTimer
 
-from apps.hud.common import get_ref_row, is_race_type_session
+from apps.hud.common import (get_ref_row, is_practice_session,
+                             is_qualifying_session, is_race_type_session)
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import LAP_TIMER_OVERLAY_ID, OverlayPosition
 from lib.f1_types import F1Utils
@@ -114,10 +115,12 @@ class LapTimerOverlay(BaseOverlayQML):
                 self._handle_new_session(incoming_session_uid)
 
             lap_info = ref_row["lap-info"]
+            ref_index = ref_row["driver-info"]["index"]
             last_lap = lap_info["last-lap"]
             best_lap = lap_info["best-lap"]
             curr_lap = lap_info["curr-lap"]
             sc_status = data["safety-car-status"]
+            table_entries = data["table-entries"]
 
             # Update static fields
             self._update_last_lap(last_lap["lap-time-ms"])
@@ -142,7 +145,7 @@ class LapTimerOverlay(BaseOverlayQML):
             self.last_lap_num = lap_info["current-lap"]
 
             self._handle_current_lap_display(curr_lap, session_type, sc_status)
-            self._handle_delta_and_estimated(curr_lap, best_lap, sc_status)
+            self._handle_delta_and_estimated(curr_lap, best_lap, session_type, sc_status, table_entries, ref_index)
 
     def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str, sc_status: str) -> None:
         """Handle current lap display.
@@ -168,7 +171,10 @@ class LapTimerOverlay(BaseOverlayQML):
         self,
         curr_lap: Dict[str, Any],
         best_lap: Dict[str, Any],
-        sc_status: str
+        session_type: str,
+        sc_status: str,
+        table_entries: List[Dict[str, Any]],
+        ref_driver_index: int
     ) -> None:
         """Handle delta and estimated time calculations."""
         is_sc = self._is_safety_car(sc_status)
@@ -196,9 +202,73 @@ class LapTimerOverlay(BaseOverlayQML):
         if best_ms and delta_ms_for_estimated is not None:
             estimated_ms = best_ms + delta_ms_for_estimated
             est_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
+            if is_practice_session(session_type) or is_qualifying_session(session_type) and table_entries:
+                # Predict position only if the current lap is an improvement
+                if delta_ms <= 0:
+                    # the table entries are sorted in multiple places.
+                    # TODO: sort before sending data to the windows
+                    table_entries.sort(key=lambda x: x["driver-info"]["position"])
+                    predicted_pos = self._predict_quali_position(table_entries, estimated_ms, ref_driver_index)
+                    if predicted_pos:
+                        est_str += f" | (P{predicted_pos})"
+                else:
+                    # Prediction position is the same as actual prediction (i.e.) no improvement
+                    if 0 <= ref_driver_index < len(table_entries):
+                        ref_driver = next(
+                            (x for x in table_entries if x["driver-info"]["index"] == ref_driver_index), None
+                        )
+                        if ref_driver:
+                            predicted_pos = ref_driver["driver-info"]["position"]
+                            est_str += f" | (P{predicted_pos})"
+
         else:
             est_str = self.DEFAULT_TIME
         self._update_estimated(est_str)
+
+    def _predict_quali_position(
+        self,
+        table_entries: List[Dict[str, Any]],
+        estimated_ms: int,
+        ref_driver_index: int,
+    ) -> int | None:
+        """
+        Predict where the current estimated lap would place the driver.
+        Returns 1-based position or None if prediction cannot be made.
+        """
+
+        if not table_entries or estimated_ms is None:
+            return None
+
+        ranked: list[tuple[int, bool, int]] = []
+        has_other_laps = False
+
+        for entry in table_entries:
+            driver_index = entry["driver-info"]["index"]
+            best_ms = entry["lap-info"]["best-lap"]["lap-time-ms"]
+
+            if driver_index == ref_driver_index:
+                # ref driver uses estimated lap
+                ranked.append((estimated_ms, True, driver_index))
+            else:
+                # only include others if they have set a lap
+                if best_ms:
+                    has_other_laps = True
+                    ranked.append((best_ms, False, driver_index))
+
+        # If no one else has set a lap, ref driver is P1 by definition
+        if not has_other_laps:
+            return 1
+
+        # Sort rules:
+        # 1. Faster lap first (lower ms)
+        # 2. On tie: ref driver loses (ref=True sorts AFTER False)
+        ranked.sort(key=lambda x: (x[0], x[1]))
+
+        for i, (_, _, driver_index) in enumerate(ranked, start=1):
+            if driver_index == ref_driver_index:
+                return i
+
+        return None
 
     def _handle_new_session(self, session_uid: str):
         """Handle new session detection.
