@@ -122,7 +122,7 @@ Window {
                     border.color: "#333333"
                     border.width: 1
 
-                    RowLayout {
+                    ColumnLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 4
                         anchors.rightMargin: 4
@@ -131,11 +131,11 @@ Window {
                         spacing: 3
 
                         Text {
-                            text: "ESTIMATED:"
+                            text: "ESTIMATED"
                             font.family: "Formula1"
                             font.pixelSize: root.fontSizeEstimated
                             color: "#888888"
-                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
                         }
 
                         Text {
@@ -144,7 +144,7 @@ Window {
                             font.pixelSize: root.fontSizeEstimatedValue
                             font.bold: true
                             color: "#FFFFFF"
-                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
                         }
                     }
                 }
