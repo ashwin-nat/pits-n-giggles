@@ -131,8 +131,6 @@ class TimingTowerOverlay(BaseOverlayQML):
                 return
 
             ref_index = ref_row["driver-info"]["index"]
-
-            table_entries.sort(key=lambda x: x["driver-info"]["position"])
             relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
             if is_race_type_session(session_type):

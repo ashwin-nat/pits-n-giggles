@@ -22,9 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import logging
-from typing import Any, Dict, Optional
+import os
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
@@ -155,8 +155,10 @@ class OverlaysMgr:
 
     # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
-    def race_table_update(self, data):
+    def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
+        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
+        table_entries.sort(key=lambda x: x["driver-info"]["position"])
         self.window_manager.broadcast_data('race_table_update', data)
 
     def stream_overlays_update(self, data):

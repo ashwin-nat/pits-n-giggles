@@ -244,7 +244,6 @@ class LapTimerOverlay(BaseOverlayQML):
         """Get predicted position based on delta and estimated time."""
         if delta_ms <= 0:
             # Current lap is an improvement - predict new position
-            table_entries.sort(key=lambda x: x["driver-info"]["position"])
             return self._predict_quali_position(table_entries, estimated_ms, ref_driver_index)
 
         # No improvement - position stays the same
