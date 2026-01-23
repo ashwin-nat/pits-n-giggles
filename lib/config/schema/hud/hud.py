@@ -32,6 +32,7 @@ from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
 from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
+from .timing_tower import TimingTowerColOptions
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -71,6 +72,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+    timing_tower_col_options: TimingTowerColOptions = Field(
+        default=TimingTowerColOptions(),
+        description="Timing Tower Column Options",
+        json_schema_extra={
+            "ui": {
                 "visible": True
             }
         }
