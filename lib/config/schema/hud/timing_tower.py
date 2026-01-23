@@ -28,7 +28,7 @@ from ..diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-class TimingTowerColOptions(BaseModel, ConfigDiffMixin):
+class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
     show_team_logos: bool = Field(
         default=True,
         description="Show team logos",
