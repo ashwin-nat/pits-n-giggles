@@ -85,6 +85,12 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.timing_tower_ui_scale,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+            show_team_logos=settings.HUD.timing_tower_col_options.show_team_logos,
+            show_tyre_info=settings.HUD.timing_tower_col_options.show_tyre_info,
+            show_deltas=settings.HUD.timing_tower_col_options.show_deltas,
+            show_ers_drs_info=settings.HUD.timing_tower_col_options.show_ers_drs_info,
+            show_pens=settings.HUD.timing_tower_col_options.show_pens,
+            show_tl_warns=settings.HUD.timing_tower_col_options.show_tl_warns,
         )
 
         self._register_overlay_if_enabled(

@@ -413,6 +413,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_lap_timer",
                 "show_timing_tower",
                 "timing_tower_max_rows",
+                "timing_tower_col_options",
                 "show_mfd",
                 "show_track_radar_overlay",
                 "mfd_settings",
