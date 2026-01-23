@@ -81,6 +81,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Timing Tower Column Options",
         json_schema_extra={
             "ui": {
+                "type" : "group_box",
                 "visible": True
             }
         }

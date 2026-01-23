@@ -672,18 +672,25 @@ class SettingsWindow(QDialog):
         return group_box
 
     def _build_group_box(self,
-                         field_name: str,
-                         field_value: BaseModel,
-                         field_path: str,
-                         field_info: FieldInfo
-                         ) -> QWidget:
-        """Build a group box - checks for reorderable collections inside"""
-        group_box = QGroupBox(field_info.description or field_name)
+                        field_name: str,
+                        field_value: BaseModel,
+                        field_path: str,
+                        field_info: FieldInfo
+                        ) -> QWidget:
+        """Build a group box - handles reorderable collections and simple fields"""
+        # Use a simple container instead of QGroupBox to avoid borders
+        container = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(4)
 
-        # Check all fields for reorderable collections
+        # Add title label
+        title_label = QLabel(field_info.description or field_name)
+        title_label.setFont(QFont("Roboto", 11, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #d4d4d4; background-color: transparent; padding: 4px 0px;")
+        main_layout.addWidget(title_label)
+
+        # Iterate through all fields in the BaseModel
         for nested_field_name, nested_field_info in type(field_value).model_fields.items():
             if not self._is_field_visible(nested_field_info):
                 continue
@@ -691,6 +698,7 @@ class SettingsWindow(QDialog):
             nested_value = getattr(field_value, nested_field_name)
             nested_path = f"{field_path}.{nested_field_name}"
 
+            # Handle different field types
             if isinstance(nested_value, dict):
                 collection_meta = ReorderableCollection(nested_field_info)
                 if collection_meta.is_reorderable:
@@ -698,16 +706,30 @@ class SettingsWindow(QDialog):
                         nested_field_name, nested_value, nested_path, nested_field_info
                     )
                     main_layout.addWidget(widget)
+                else:
+                    # Non-reorderable dict
+                    widget = self._build_dict_field(nested_field_name, nested_value, nested_path, nested_field_info)
+                    if widget:
+                        main_layout.addWidget(widget)
+            elif isinstance(nested_value, BaseModel):
+                # Nested BaseModel
+                widget = self._build_nested_group(nested_field_name, nested_value, nested_path, nested_field_info)
+                main_layout.addWidget(widget)
+            else:
+                # Simple field (bool, int, str, etc.)
+                widget = self._build_field_widget(nested_field_name, nested_value, nested_path, nested_field_info)
+                if widget:
+                    main_layout.addWidget(widget)
 
-        group_box.setLayout(main_layout)
-        return group_box
+        container.setLayout(main_layout)
+        return container
 
     def _build_reorderable_dict_group(self,
-                                      _title: str,
-                                      items_dict: Dict[str, BaseModel],
-                                      field_path: str,
-                                      field_info: FieldInfo) -> QWidget:
-        """Build a group for a dict of items with reordering"""
+                                    _title: str,
+                                    items_dict: Dict[str, BaseModel],
+                                    field_path: str,
+                                    field_info: FieldInfo) -> QWidget:
+        """Build a group for a dict of items with optional reordering"""
         container = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -721,10 +743,24 @@ class SettingsWindow(QDialog):
         container.collection_meta = collection_meta
 
         sorted_items = collection_meta.get_sorted_all_items(items_dict)
+
+        # Check if this is truly reorderable (has position field)
+        is_truly_reorderable = collection_meta.is_reorderable and any(
+            hasattr(item, collection_meta.position_field)
+            for _, item in sorted_items
+        )
+
         for item_name, item_settings in sorted_items:
-            item_row = self._build_reorderable_item_row(
-                item_name, item_settings, field_path, items_dict, container, collection_meta
-            )
+            if is_truly_reorderable:
+                # Build with up/down buttons and frame
+                item_row = self._build_reorderable_item_row(
+                    item_name, item_settings, field_path, items_dict, container, collection_meta
+                )
+            else:
+                # Build simple checkbox without frame
+                item_row = self._build_simple_item_row(
+                    item_name, item_settings, field_path, collection_meta
+                )
             layout.addWidget(item_row)
 
         container.setLayout(layout)
@@ -733,6 +769,38 @@ class SettingsWindow(QDialog):
         self.field_widgets[f"{field_path}_items_container"] = container
 
         return container
+
+    def _build_simple_item_row(self,
+                            item_name: str,
+                            item_settings: BaseModel,
+                            parent_path: str,
+                            collection_meta: ReorderableCollection) -> QWidget:
+        """Build a simple row for a non-reorderable item (just checkbox, no frame)"""
+        row_widget = QWidget()
+
+        # Store metadata on the widget
+        row_widget.item_key = item_name
+        row_widget.item_settings = item_settings
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Enabled checkbox
+        item_path = f"{parent_path}.{item_name}"
+        enabled_path = f"{item_path}.{collection_meta.enabled_field}"
+        enabled_cb = QCheckBox(item_name.replace("_", " ").title())
+        enabled_cb.setFont(QFont("Roboto", 10))
+        enabled_cb.setChecked(collection_meta.get_enabled(item_settings))
+        enabled_cb.stateChanged.connect(
+            lambda state, path=enabled_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
+        )
+        self.field_widgets[enabled_path] = enabled_cb
+        layout.addWidget(enabled_cb)
+
+        layout.addStretch()
+
+        row_widget.setLayout(layout)
+        return row_widget
 
     def _build_dict_item(self, key: str, value: BaseModel, parent_path: str) -> QWidget:
         """Build a widget for a dict item"""
