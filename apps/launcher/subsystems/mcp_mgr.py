@@ -117,7 +117,7 @@ class McpAppMgr(PngAppMgrBase):
             ],
             "Network": [
                 "broker_xpub_port",
-                # "server_port", # Enable when GET request support is added
+                "server_port",
             ],
         })
         self.debug_log(f"{self.display_name} Settings changed: {diff}")
