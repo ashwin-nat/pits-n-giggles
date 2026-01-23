@@ -56,7 +56,7 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--managed", action="store_true", help="Indicates if process is managed by parent")
-    parser.add_argument("--log-file", type=str, default="mcp.log", help="Log file name")
+    parser.add_argument("--log-file", type=str, default="png_mcp_stdio.log", help="Log file name")
 
     # Parse the command-line arguments
     return parser.parse_args()
