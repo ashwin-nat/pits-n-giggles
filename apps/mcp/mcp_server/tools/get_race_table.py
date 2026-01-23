@@ -33,6 +33,148 @@ from lib.ipc import IpcServerAsync
 
 from .common import _get_race_table_context
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+RACE_TABLE_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        # ---- base_rsp ----
+        "available": {"type": "boolean"},
+        "connected": {"type": "boolean"},
+        "last-update-timestamp": {"type": ["number", "null"]},
+
+        "ok": {"type": "boolean"},
+        "error": {"type": ["string", "null"]},
+
+        # ---- session identity ----
+        "identity": {
+            "type": "object",
+            "properties": {
+                "session_uid": {"type": ["string", "null"]},
+                "session_type": {"type": ["string", "null"]},
+                "formula_type": {"type": ["string", "null"]},
+                "circuit_name": {"type": ["string", "null"]},
+                "session-ended": {"type": ["boolean", "null"]},
+            },
+            "additionalProperties": False,
+        },
+
+        # ---- session progress ----
+        "progress": {
+            "type": "object",
+            "properties": {
+                "current_lap": {"type": ["integer", "null"]},
+                "total_laps": {"type": ["integer", "null"]},
+                "duration_elapsed_sec": {"type": ["number", "null"]},
+                "time_remaining_sec": {"type": ["number", "null"]},
+            },
+            "additionalProperties": False,
+        },
+
+        # ---- race standings ----
+        "standings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+
+                    # ---- driver info ----
+                    "driver_info": {
+                        "type": "object",
+                        "properties": {
+                            "driver_name": {"type": ["string", "null"]},
+                            "team_name": {"type": ["string", "null"]},
+                            "dnf_status": {"type": ["boolean", "null"]},
+                            "position": {"type": ["integer", "null"]},
+                            "index": {"type": ["integer", "null"]},
+                            "is_player": {"type": ["boolean", "null"]},
+                            "delta-to-leader-ms": {"type": ["number", "null"]},
+                        },
+                        "additionalProperties": False,
+                    },
+
+                    # ---- lap info ----
+                    "lap_info": {
+                        "type": "object",
+                        "properties": {
+                            "last_lap_time_ms": {"type": ["number", "null"]},
+                            "best_lap_time_ms": {"type": ["number", "null"]},
+                            "speed_trap_record_kmph": {"type": ["number", "null"]},
+                            "top_speed_kmph": {"type": ["number", "null"]},
+                        },
+                        "additionalProperties": False,
+                    },
+
+                    # ---- tyre info ----
+                    "tyre_info": {
+                        "type": "object",
+                        "properties": {
+                            "current_wear_percent": {"type": ["number", "null"]},
+                            "tyre_compound": {"type": ["string", "null"]},
+                            "tyre_age": {"type": ["integer", "null"]},
+
+                            "curr_tyre_wear": {
+                                "type": "object",
+                                "properties": {
+                                    "fl_wear_pct": {"type": ["number", "null"]},
+                                    "fr_wear_pct": {"type": ["number", "null"]},
+                                    "rl_wear_pct": {"type": ["number", "null"]},
+                                    "rr_wear_pct": {"type": ["number", "null"]},
+                                },
+                                "additionalProperties": False,
+                            },
+
+                            "tyre_wear_per_lap": {
+                                "type": "object",
+                                "properties": {
+                                    "available": {"type": "boolean"},
+                                    "fl_rate_pct_per_lap": {"type": ["number", "null"]},
+                                    "fr_rate_pct_per_lap": {"type": ["number", "null"]},
+                                    "rl_rate_pct_per_lap": {"type": ["number", "null"]},
+                                    "rr_rate_pct_per_lap": {"type": ["number", "null"]},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                        "additionalProperties": False,
+                    },
+
+                    # ---- car info ----
+                    "car_info": {
+                        "type": "object",
+                        "properties": {
+                            "curr_fuel_rate": {"type": ["number", "null"]},
+                            "fuel_surplus_laps_builtin_est": {"type": ["number", "null"]},
+                            "fuel_surplus_laps_live_est": {"type": ["number", "null"]},
+                            "last_lap_fuel_consumption": {"type": ["number", "null"]},
+                            "ers_percent": {"type": ["number", "null"]},
+                            "ers_mode": {"type": ["string", "null"]},
+                        },
+                        "additionalProperties": False,
+                    },
+
+                    # ---- damage info ----
+                    "damage_info": {
+                        "type": "object",
+                        "properties": {
+                            "fl_wing_damage": {"type": ["number", "null"]},
+                            "fr_wing_damage": {"type": ["number", "null"]},
+                        },
+                        "additionalProperties": False,
+                    },
+                },
+                "additionalProperties": False,
+            },
+        },
+    },
+
+    # base fields always exist
+    "required": ["available", "connected", "ok"],
+
+    # allow future expansion (extra base_rsp fields, versioning, etc.)
+    "additionalProperties": True,
+}
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def get_race_table(logger: logging.Logger) -> Dict[str, Any]:

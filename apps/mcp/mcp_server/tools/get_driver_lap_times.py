@@ -33,8 +33,64 @@ from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.f1_types import LapHistoryData
 
-from .common import fetch_driver_info
+from .common import fetch_driver_info, _DRIVER_INFO_REQ_STATUS_SCHEMA
 import aiohttp
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+DRIVER_LAP_TIMES_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+
+        # ---- status (always present) ----
+        **_DRIVER_INFO_REQ_STATUS_SCHEMA,
+
+        # ---- lap time history ----
+        "lap_time_history": {
+            "type": "object",
+            "properties": {
+                "best_lap_time_lap_num": {"type": ["integer", "null"]},
+                "best_sector_1_lap_num": {"type": ["integer", "null"]},
+                "best_sector_2_lap_num": {"type": ["integer", "null"]},
+                "best_sector_3_lap_num": {"type": ["integer", "null"]},
+                "curr_lap_num": {"type": ["integer", "null"]},
+
+                "lap_history_data": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "lap_num": {"type": "integer"},
+
+                            "lap_time_str": {"type": ["string", "null"]},
+                            "s1_time_str": {"type": ["string", "null"]},
+                            "s2_time_str": {"type": ["string", "null"]},
+                            "s3_time_str": {"type": ["string", "null"]},
+                            "top_speed_kmph": {"type": ["number", "null"]},
+
+                            # validity flags (bitmask results)
+                            "lap_valid": {"type": "integer"},
+                            "s1_valid": {"type": "integer"},
+                            "s2_valid": {"type": "integer"},
+                            "s3_valid": {"type": "integer"},
+                        },
+                        "required": ["lap_num"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "additionalProperties": False,
+        },
+    },
+
+    # status must always exist
+    "required": ["status"],
+
+    # allow future additions (eg. summary fields)
+    "additionalProperties": True,
+}
+
+
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

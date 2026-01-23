@@ -35,9 +35,9 @@ from mcp.types import Tool
 
 from meta.meta import APP_NAME
 
-from .tools.get_race_table import get_race_table
-from .tools.get_session_info import get_session_info
-from .tools.get_driver_lap_times import get_driver_lap_times
+from .tools.get_race_table import get_race_table, RACE_TABLE_OUTPUT_SCHEMA
+from .tools.get_session_info import get_session_info, SESSION_INFO_OUTPUT_SCHEMA
+from .tools.get_driver_lap_times import get_driver_lap_times, DRIVER_LAP_TIMES_OUTPUT_SCHEMA
 
 TransportType = Literal["http", "stdio"]
 
@@ -115,16 +115,12 @@ Rules:
 
     def _register_tools(self) -> None:
 
-
-        EMPTY_SCHEMA = {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": False,
-        }
-
         @self.mcp.tool(
             name="get_session_info",
             description="Get current session information",
+            title="Session Information - Globals",
+            tags={"session", "weather", "safetyCar"},
+            output_schema=SESSION_INFO_OUTPUT_SCHEMA,
         )
         async def get_session_info_tool():
             rsp = get_session_info(self.logger)
@@ -136,7 +132,15 @@ Rules:
 
         @self.mcp.tool(
             name="get_race_table",
-            description="Get current race table",
+            description="Full Race Snapshot",
+            title="Current Race State",
+            tags={
+                "race",
+                "standings",
+                "compare",
+                "snapshot",
+            },
+            output_schema=RACE_TABLE_OUTPUT_SCHEMA,
         )
         async def get_race_table_tool():
             rsp = get_race_table(self.logger)
@@ -148,7 +152,17 @@ Rules:
 
         @self.mcp.tool(
             name="get_driver_lap_times",
-            description="Get lap time history for the driver with the given index",
+            description="Get lap time history for the driver with the given index (0-21)",
+            title="Driver Lap Times (History)",
+            tags={
+                "driver",
+                "laps",
+                "timing",
+                "history",
+                "consistency",
+                "pace",
+            },
+            output_schema=DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
         )
         async def handle_get_driver_lap_times(driver_index: int) -> Dict[str, Any]:
             self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)

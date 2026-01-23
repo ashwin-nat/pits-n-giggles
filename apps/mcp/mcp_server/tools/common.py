@@ -33,6 +33,22 @@ import aiohttp
 
 from apps.mcp.state import get_state_data
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+_DRIVER_INFO_REQ_STATUS_SCHEMA = {
+    "status": {
+        "type": "object",
+        "properties": {
+            "ok": {"type": "boolean"},
+            "error": {"type": ["string", "null"]},
+            "status": {"type": ["integer", "null"]},
+            "details": {"type": ["string", "null"]},
+        },
+        "required": ["ok"],
+        "additionalProperties": False,
+    },
+}
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 def _get_race_table_context(
     logger: logging.Logger,

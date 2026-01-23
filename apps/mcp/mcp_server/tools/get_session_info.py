@@ -34,6 +34,84 @@ from lib.ipc import IpcServerAsync
 from apps.mcp.state import get_state_data
 from .common import _get_race_table_context
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+SESSION_INFO_OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        # ---- base_rsp (top-level) ----
+        "available": {"type": "boolean"},
+        "connected": {"type": "boolean"},
+        "last-update-timestamp": {"type": ["number", "null"]},
+
+        "ok": {"type": "boolean"},
+        "error": {"type": ["string", "null"]},
+
+        # ---- session identity ----
+        "identity": {
+            "type": "object",
+            "properties": {
+                "session_uid": {"type": ["string", "null"]},
+                "session_type": {"type": ["string", "null"]},
+                "formula_type": {"type": ["string", "null"]},
+                "circuit_name": {"type": ["string", "null"]},
+                "session-ended": {"type": ["boolean", "null"]},
+            },
+            "additionalProperties": False,
+        },
+
+        # ---- session progress ----
+        "progress": {
+            "type": "object",
+            "properties": {
+                "current_lap": {"type": ["integer", "null"]},
+                "total_laps": {"type": ["integer", "null"]},
+                "duration_elapsed_sec": {"type": ["number", "null"]},
+                "time_remaining_sec": {"type": ["number", "null"]},
+            },
+            "additionalProperties": False,
+        },
+
+        # ---- environment ----
+        "environment": {
+            "type": "object",
+            "properties": {
+                "air_temperature_c": {"type": ["number", "null"]},
+                "track_temperature_c": {"type": ["number", "null"]},
+                "weather_forecast": {
+                    "type": ["array", "null"],
+                    "items": {"type": "object"},
+                },
+            },
+            "additionalProperties": False,
+        },
+
+        # ---- race control ----
+        "race_control": {
+            "type": "object",
+            "properties": {
+                "is_spectating": {"type": ["boolean", "null"]},
+                "safety_car_status": {"type": ["string", "null"]},
+                "safety_car_deployments": {"type": ["integer", "null"]},
+                "virtual_safety_car_deployments": {"type": ["integer", "null"]},
+                "red_flag_count": {"type": ["integer", "null"]},
+            },
+            "additionalProperties": False,
+        },
+    },
+
+    # base_rsp fields should *always* exist
+    "required": [
+        "available",
+        "connected",
+        "ok",
+    ],
+
+    # Allow future expansion / extra base_rsp fields
+    "additionalProperties": True,
+}
+
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
