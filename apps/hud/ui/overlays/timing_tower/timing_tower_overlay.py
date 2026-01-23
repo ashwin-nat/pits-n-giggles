@@ -55,12 +55,11 @@ class TimingTowerOverlay(BaseOverlayQML):
         scale_factor: float,
         num_adjacent_cars: int,
         windowed_overlay: bool,
-        show_team_logos: bool = False, # TODO: remove default arg
-        show_tyre_info: bool = False, # TODO: remove default arg
-        show_deltas: bool = False, # TODO: remove default arg
-        show_ers_drs_info: bool = True, # TODO: remove default arg
-        show_pens: bool = False, # TODO: remove default arg
-
+        show_team_logos,
+        show_tyre_info,
+        show_deltas,
+        show_ers_drs_info,
+        show_pens,
     ):
         """Initialize timing tower overlay.
 
