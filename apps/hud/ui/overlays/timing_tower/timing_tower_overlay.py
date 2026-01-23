@@ -54,7 +54,13 @@ class TimingTowerOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         num_adjacent_cars: int,
-        windowed_overlay: bool
+        windowed_overlay: bool,
+        show_team_logos: bool = False, # TODO: remove default arg
+        show_tyre_info: bool = False, # TODO: remove default arg
+        show_deltas: bool = False, # TODO: remove default arg
+        show_ers_drs_info: bool = True, # TODO: remove default arg
+        show_pens: bool = False, # TODO: remove default arg
+
     ):
         """Initialize timing tower overlay.
 
@@ -66,9 +72,20 @@ class TimingTowerOverlay(BaseOverlayQML):
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
+            show_team_logos (bool, optional): Show team logos
+            show_tyre_info (bool, optional): Show tyre info
+            show_deltas (bool, optional): Show deltas
+            show_ers_drs_info (bool, optional): Show ERS/DRS info
+            show_pens (bool, optional): Show penalties
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
+
+        self.show_team_logos = show_team_logos
+        self.show_tyre_info = show_tyre_info
+        self.show_deltas = show_deltas
+        self.show_ers_drs_info = show_ers_drs_info
+        self.show_pens = show_pens
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}
@@ -96,6 +113,11 @@ class TimingTowerOverlay(BaseOverlayQML):
         super()._setup_window()
         if self._root:
             self._root.setProperty("numRows", self.total_rows)
+            self._root.setProperty("showTeamLogos", self.show_team_logos)
+            self._root.setProperty("showTyreInfo", self.show_tyre_info)
+            self._root.setProperty("showDeltas", self.show_deltas)
+            self._root.setProperty("showErsDrsInfo", self.show_ers_drs_info)
+            self._root.setProperty("showPens", self.show_pens)
 
     def render_frame(self):
         """Not used - this overlay uses event-driven updates."""
