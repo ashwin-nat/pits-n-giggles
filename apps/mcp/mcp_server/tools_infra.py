@@ -99,10 +99,41 @@ class ToolRegistry:
             for t in self._tools.values()
         ]
 
-    async def call_tool(self, name: str, arguments: Dict[str, Any], context: Any) -> List[Dict[str, Any]]:
-        """Execute a tool by name"""
+    async def call_tool(
+        self,
+        name: str,
+        arguments: Dict[str, Any],
+        context: Any,
+    ) -> Dict[str, Any]:
+        """Execute a tool by name with defensive error handling"""
+
         if name not in self._tools:
-            raise ValueError(f"Unknown tool: {name}")
+            return {
+                "error": {
+                    "type": "unknown_tool",
+                    "message": f"Unknown tool: {name}",
+                }
+            }
 
         tool = self._tools[name]
-        return await tool.handler(context, arguments)
+
+        try:
+            return await tool.handler(context, arguments)
+
+        except KeyError as e:
+            return {
+                "error": {
+                    "type": "invalid_arguments",
+                    "message": f"Missing required argument: {e.args[0]}",
+                    "required": tool.input_schema.get("required", []),
+                    "received": list(arguments.keys()),
+                }
+            }
+
+        except Exception as e:  # pylint: disable=broad-except
+            return {
+                "error": {
+                    "type": "tool_execution_error",
+                    "message": str(e),
+                }
+            }
