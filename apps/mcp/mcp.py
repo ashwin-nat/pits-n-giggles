@@ -73,7 +73,13 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
     tasks: List[asyncio.Task] = []
     transport = "http" if managed else "stdio"
     ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
-    mcp_bridge = MCPBridge(logger, version, transport=transport, port=settings.MCP.mcp_http_port)
+    mcp_bridge = MCPBridge(
+        core_server_port=settings.Network.server_port,
+        logger=logger,
+        version=version,
+        transport=transport,
+        port=settings.MCP.mcp_http_port
+    )
     mcp_task = asyncio.create_task(mcp_bridge.run(), name="MCP Server Task")
     tasks.append(mcp_task)
 

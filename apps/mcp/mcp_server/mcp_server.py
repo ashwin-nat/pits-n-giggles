@@ -37,6 +37,7 @@ from meta.meta import APP_NAME
 
 from .tools.get_race_table import get_race_table
 from .tools.get_session_info import get_session_info
+from .tools.get_driver_lap_times import get_driver_lap_times
 
 TransportType = Literal["http", "stdio"]
 
@@ -80,6 +81,7 @@ Rules:
 
     def __init__(
         self,
+        core_server_port: int,
         logger: logging.Logger,
         version: str,
         *,
@@ -92,12 +94,15 @@ Rules:
         self.transport = transport
         self.host = host
         self.port = port
+        self.core_server_port = core_server_port
 
 
         # FastMCP server
         self.mcp = FastMCP(
             name=f"{APP_NAME} MCP Server",
             instructions=self.WELCOME_MSG,
+            strict_input_validation=True,
+            version=self.version,
         )
 
         self._register_tools()
@@ -140,6 +145,18 @@ Rules:
                 rsp.get("available", False),
             )
             return rsp
+
+        @self.mcp.tool(
+            name="get_driver_lap_times",
+            description="Get lap time history for the driver with the given index",
+        )
+        async def handle_get_driver_lap_times(driver_index: int) -> Dict[str, Any]:
+            self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)
+            return await get_driver_lap_times(
+                core_server_port=self.core_server_port,
+                logger=self.logger,
+                driver_index=driver_index,
+            )
 
     # ------------------------------------------------------------------
     # Lifecycle
