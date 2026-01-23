@@ -37,7 +37,6 @@ from meta.meta import APP_NAME
 
 from .tools.get_race_table import get_race_table
 from .tools.get_session_info import get_session_info
-from .tools_infra import ToolRegistry
 
 TransportType = Literal["http", "stdio"]
 
@@ -94,7 +93,6 @@ Rules:
         self.host = host
         self.port = port
 
-        self.registry = ToolRegistry()
 
         # FastMCP server
         self.mcp = FastMCP(
@@ -103,27 +101,27 @@ Rules:
         )
 
         self._register_tools()
-        self._wire_registry_to_mcp()
 
-        self.logger.debug(
-            "MCPBridge initialized (transport=%s, tools=%s)",
-            transport,
-            list(self.registry._tools.keys()),
-        )
+        self.logger.debug("MCPBridge initialized (transport=%s)", transport)
 
     # ------------------------------------------------------------------
     # Tool registration (unchanged semantics)
     # ------------------------------------------------------------------
 
     def _register_tools(self) -> None:
-        @self.registry.tool(
+
+
+        EMPTY_SCHEMA = {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        }
+
+        @self.mcp.tool(
             name="get_session_info",
             description="Get current session information",
         )
-        async def handle_get_session_info(
-            context: "MCPBridge",
-            arguments: Dict[str, Any],
-        ) -> Dict[str, Any]:
+        async def get_session_info_tool():
             rsp = get_session_info(self.logger)
             self.logger.debug(
                 "get_session_info called: available=%s",
@@ -131,37 +129,17 @@ Rules:
             )
             return rsp
 
-        @self.registry.tool(
+        @self.mcp.tool(
             name="get_race_table",
             description="Get current race table",
         )
-        async def handle_get_race_table(
-            context: "MCPBridge",
-            arguments: Dict[str, Any],
-        ) -> Dict[str, Any]:
+        async def get_race_table_tool():
             rsp = get_race_table(self.logger)
             self.logger.debug(
                 "get_race_table called: available=%s",
                 rsp.get("available", False),
             )
             return rsp
-
-    # ------------------------------------------------------------------
-    # Registry → FastMCP wiring
-    # ------------------------------------------------------------------
-
-    def _wire_registry_to_mcp(self) -> None:
-        """
-        Expose all ToolRegistry tools as FastMCP tools.
-        """
-        for name, tool_def in self.registry._tools.items():
-
-            @self.mcp.tool(
-                name=tool_def.name,
-                description=tool_def.description,
-            )
-            async def _tool(arguments: Dict[str, Any], _name=name):
-                return await self.registry.call_tool(_name, arguments, self)
 
     # ------------------------------------------------------------------
     # Lifecycle
