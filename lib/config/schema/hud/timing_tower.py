@@ -58,3 +58,16 @@ class TimingTowerColOptions(BaseModel, ConfigDiffMixin):
         description="Show penalties",
         json_schema_extra={"ui": {"type": "check_box"}}
     )
+
+    show_tl_warns: bool = Field(
+        default=True,
+        description="Show Track Limit warnings",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "ext_info": [
+                    'Display track limit warns if the driver has no penalties instead of a blank cell'
+                ]
+            }
+        }
+    )
