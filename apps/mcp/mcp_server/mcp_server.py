@@ -23,23 +23,22 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 import logging
-from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional
+from typing import Any, Dict, Literal
 
 from fastmcp import FastMCP
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool
 
 from meta.meta import APP_NAME
 
-from .tools.get_race_table import get_race_table, RACE_TABLE_OUTPUT_SCHEMA
-from .tools.get_session_info import get_session_info, SESSION_INFO_OUTPUT_SCHEMA
-from .tools.get_driver_lap_times import get_driver_lap_times, DRIVER_LAP_TIMES_OUTPUT_SCHEMA
-from .tools.get_session_events_for_driver import get_session_events_for_driver, DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA
-from .tools.get_player_driver_info import get_player_driver_info, PLAYER_DRIVER_INFO_OUTPUT_SCHEMA
+from .tools.get_driver_lap_times import (DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
+                                         get_driver_lap_times)
+from .tools.get_player_driver_info import (PLAYER_DRIVER_INFO_OUTPUT_SCHEMA,
+                                           get_player_driver_info)
+from .tools.get_race_table import RACE_TABLE_OUTPUT_SCHEMA, get_race_table
+from .tools.get_session_events_for_driver import (
+    DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA, get_session_events_for_driver)
+from .tools.get_session_info import (SESSION_INFO_OUTPUT_SCHEMA,
+                                     get_session_info)
 
 TransportType = Literal["http", "stdio"]
 

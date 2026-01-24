@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from lib.ipc import IpcSubscriberAsync
 from lib.wdt import WatchDogTimer
@@ -58,7 +58,7 @@ class McpSubscriber:
             self.m_ipc_sub.logger.info("IPC Subscriber connected")
 
         @self.m_ipc_sub.on_disconnect
-        async def _on_disconnect(exc: Exception | None) -> None:
+        async def _on_disconnect(_exc: Optional[Exception]) -> None:
             self.m_ipc_sub.logger.info("IPC Subscriber disconnected")
 
     def _init_routes(self) -> None:

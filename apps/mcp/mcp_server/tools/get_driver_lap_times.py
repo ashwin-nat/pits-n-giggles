@@ -22,19 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, Field
-
-from lib.child_proc_mgmt import report_ipc_port_from_child
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.f1_types import LapHistoryData
 
-from .common import fetch_driver_info, _DRIVER_INFO_REQ_STATUS_SCHEMA
-import aiohttp
+from .common import _DRIVER_INFO_REQ_STATUS_SCHEMA, fetch_driver_info
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 

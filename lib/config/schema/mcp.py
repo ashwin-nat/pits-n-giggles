@@ -22,15 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from collections import defaultdict
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field, model_validator
-
-from meta.meta import APP_NAME
+from pydantic import BaseModel, Field
 
 from .diff import ConfigDiffMixin
-from .utils import PortType, port_field, udp_action_field
+from .utils import PortType, port_field
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

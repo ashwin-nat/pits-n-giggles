@@ -22,19 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from pydantic import BaseModel, Field
-
-from lib.child_proc_mgmt import report_ipc_port_from_child
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.f1_types import F1Utils
 
-from .common import fetch_driver_info, _DRIVER_INFO_REQ_STATUS_SCHEMA
-import aiohttp
+from .common import _DRIVER_INFO_REQ_STATUS_SCHEMA, fetch_driver_info
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -139,33 +132,33 @@ def render_details_cell(msg):
     if message_type == 'SESSION_START':
         return '---'
 
-    elif message_type == 'SESSION_END':
+    if message_type == 'SESSION_END':
         return '---'
 
-    elif message_type == 'FASTEST_LAP':
+    if message_type == 'FASTEST_LAP':
         d = msg.get('driver-info')
         ms = msg.get('lap-time-ms')
         return f"Driver: {get_driver_details_str(d)}, Lap Time: {F1Utils.millisecondsToMinutesSecondsMilliseconds(ms)}"
 
-    elif message_type == 'RETIREMENT':
+    if message_type == 'RETIREMENT':
         d = msg.get('driver-info')
         return f"Driver: {get_driver_details_str(d)}"
 
-    elif message_type == 'DRS_ENABLED':
+    if message_type == 'DRS_ENABLED':
         return '---'
 
-    elif message_type == 'DRS_DISABLED':
+    if message_type == 'DRS_DISABLED':
         reason = msg.get('reason')
         return f"Reason: {reason}"
 
-    elif message_type == 'CHEQUERED_FLAG':
+    if message_type == 'CHEQUERED_FLAG':
         return '---'
 
-    elif message_type == 'RACE_WINNER':
+    if message_type == 'RACE_WINNER':
         d = msg.get('driver-info')
         return get_driver_details_str(d)
 
-    elif message_type == 'PENALTY':
+    if message_type == 'PENALTY':
         d = msg.get('driver-info')
         pt = msg.get('penalty-type')
         it = msg.get('infringement-type')
@@ -173,51 +166,51 @@ def render_details_cell(msg):
         base = f"{get_driver_details_str(d, short=True)}, {pt} - {it}"
         return f"{base}, other driver: {get_driver_details_str(od, short=True)}" if od else base
 
-    elif message_type == 'SPEED_TRAP_RECORD':
+    if message_type == 'SPEED_TRAP_RECORD':
         d = msg.get('driver-info')
         speed = msg.get('speed')
         return f"Driver: {get_driver_details_str(d)}, Speed: {F1Utils.formatFloat(speed)} km/h"
 
-    elif message_type == 'START_LIGHTS':
+    if message_type == 'START_LIGHTS':
         num_lights = msg.get('num-lights')
         return f"Number of lights: {num_lights}"
 
-    elif message_type == 'LIGHTS_OUT':
+    if message_type == 'LIGHTS_OUT':
         return '---'
 
-    elif message_type == 'DRIVE_THROUGH_SERVED':
+    if message_type == 'DRIVE_THROUGH_SERVED':
         d = msg.get('driver-info')
         return f"Driver: {get_driver_details_str(d)}"
 
-    elif message_type == 'STOP_GO_SERVED':
+    if message_type == 'STOP_GO_SERVED':
         d = msg.get('driver-info')
         stop_time = msg.get('stop-time')
         return f"Driver: {get_driver_details_str(d)} - Stop Time: {F1Utils.formatFloat(stop_time)} s"
 
-    elif message_type == 'RED_FLAG':
+    if message_type == 'RED_FLAG':
         return '---'
 
-    elif message_type == 'OVERTAKE':
+    if message_type == 'OVERTAKE':
         overtaker = msg.get('overtaker-info')
         overtaken = msg.get('overtaken-info')
         return f"{get_driver_details_str(overtaker)} overtook {get_driver_details_str(overtaken)}"
 
-    elif message_type == 'SAFETY_CAR':
+    if message_type == 'SAFETY_CAR':
         sc_type = msg.get('sc-type')
         event_type = msg.get('event-type')
         return f"{sc_type} - {event_type}"
 
-    elif message_type == 'COLLISION':
+    if message_type == 'COLLISION':
         d1 = msg.get('driver-1-info')
         d2 = msg.get('driver-2-info')
         return f"{get_driver_details_str(d1)} and {get_driver_details_str(d2)}"
 
-    elif message_type == 'PITTING':
+    if message_type == 'PITTING':
         d = msg.get('driver-info')
         lap = msg.get('lap-number')
         return f"Driver: {get_driver_details_str(d)}, Lap: {lap}"
 
-    elif message_type == 'CAR_DAMAGE':
+    if message_type == 'CAR_DAMAGE':
         part = msg.get('damaged-part')
         old_value = msg.get('old-value')
         new_value = msg.get('new-value')
@@ -232,12 +225,12 @@ def render_details_cell(msg):
         base = f"Part: {part_str}, Old Value: {old_value}, New Value: {new_value}"
         return f"Driver: {get_driver_details_str(d)} - {base}" if d else base
 
-    elif message_type == 'WING_CHANGE':
+    if message_type == 'WING_CHANGE':
         d = msg.get('driver-info')
         lap = msg.get('lap-number')
         return f"Driver: {get_driver_details_str(d)}, Lap: {lap}"
 
-    elif message_type == 'TYRE_CHANGE':
+    if message_type == 'TYRE_CHANGE':
         d = msg.get('driver-info')
         lap = msg.get('lap-number')
         old_compound = msg.get('old-tyre-compound')
@@ -246,21 +239,25 @@ def render_details_cell(msg):
         new_index = msg.get('new-tyre-index')
         return f"Driver: {get_driver_details_str(d)}, Lap: {lap} - {old_compound}({old_index}) → {new_compound}({new_index})"
 
-    elif message_type == 'DRIVER_AI_STATUS_CHANGE':
+    if message_type == 'DRIVER_AI_STATUS_CHANGE':
         d = msg.get('driver-info')
         lap = msg.get('lap-number')
         old_state = msg.get('old-state')
         new_state = msg.get('new-state')
 
-        state_label = lambda s: "AI" if s else "Player"
-        return f"Driver: {get_driver_details_str(d)}, Lap: {lap} - State changed from {state_label(old_state)} to {state_label(new_state)}"
+        old_state_label = "AI" if old_state else "Player"
+        new_state_label = "AI" if new_state else "Player"
 
-    elif message_type == 'FLASHBACK':
+        return (
+            f"Driver: {get_driver_details_str(d)}, Lap: {lap} - "
+            f"State changed from {old_state_label} to {new_state_label}"
+        )
+
+    if message_type == 'FLASHBACK':
         return '---'
 
-    else:
-        # DEFAULT case
-        return f"Type: {message_type} - Placeholder details."
+    # DEFAULT case
+    return f"Type: {message_type} - Placeholder details."
 
 def get_driver_details_str(driver_info, short=False):
     """Format driver information as a string."""
@@ -272,5 +269,5 @@ def get_driver_details_str(driver_info, short=False):
         if short:
             return f"{name} ({team} {driver_number})"
         return f"{name} - {team} #{driver_number}"
-    else:
-        return "Unknown Driver"
+
+    return "Unknown Driver"

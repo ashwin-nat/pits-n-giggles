@@ -24,11 +24,8 @@
 
 import asyncio
 import logging
-import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from lib.child_proc_mgmt import report_ipc_port_from_child
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 import aiohttp
 
 from apps.mcp.state import get_state_data
@@ -134,7 +131,7 @@ async def fetch_driver_info(
 
                 try:
                     data = await resp.json()
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-except
                     logger.error(
                         f"[fetch_driver_info] Invalid JSON response: {e}"
                     )
@@ -200,7 +197,7 @@ async def fetch_driver_info(
             "data": None,
         }
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception(
             "[fetch_driver_info] Unexpected error"
         )
