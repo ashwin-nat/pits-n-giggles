@@ -38,6 +38,7 @@ from meta.meta import APP_NAME
 from .tools.get_race_table import get_race_table, RACE_TABLE_OUTPUT_SCHEMA
 from .tools.get_session_info import get_session_info, SESSION_INFO_OUTPUT_SCHEMA
 from .tools.get_driver_lap_times import get_driver_lap_times, DRIVER_LAP_TIMES_OUTPUT_SCHEMA
+from .tools.get_session_events_for_driver import get_session_events_for_driver, DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA
 
 TransportType = Literal["http", "stdio"]
 
@@ -167,6 +168,28 @@ Rules:
         async def handle_get_driver_lap_times(driver_index: int) -> Dict[str, Any]:
             self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)
             return await get_driver_lap_times(
+                core_server_port=self.core_server_port,
+                logger=self.logger,
+                driver_index=driver_index,
+            )
+
+        @self.mcp.tool(
+            name="get_session_events_for_driver",
+            description="Get race control messages for events in the current session for the driver with the given index (0-21)",
+            title="Driver Race Control Messages (History)",
+            tags={
+                "driver",
+                "events",
+                "key",
+                "notable",
+                "raceControl",
+                "incidents",
+            },
+            output_schema=DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA,
+        )
+        async def handle_get_session_events_for_driver(driver_index: int) -> Dict[str, Any]:
+            self.logger.debug("get_session_events_for_driver called: driver_index=%s", driver_index)
+            return await get_session_events_for_driver(
                 core_server_port=self.core_server_port,
                 logger=self.logger,
                 driver_index=driver_index,

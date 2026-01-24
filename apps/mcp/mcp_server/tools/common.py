@@ -75,6 +75,7 @@ def _get_race_table_context(
         "available": False,
         "connected": connected,
         "last-update-timestamp": None,
+        "ok": False,
     }
 
     if telemetry_update_entry is None:

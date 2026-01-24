@@ -50,11 +50,11 @@ RACE_TABLE_OUTPUT_SCHEMA = {
         "identity": {
             "type": "object",
             "properties": {
-                "session_uid": {"type": ["string", "null"]},
+                "session_uid": {"type": ["integer", "null"]},
                 "session_type": {"type": ["string", "null"]},
                 "formula_type": {"type": ["string", "null"]},
                 "circuit_name": {"type": ["string", "null"]},
-                "session-ended": {"type": ["boolean", "null"]},
+                "session_ended": {"type": ["boolean", "null"]},
             },
             "additionalProperties": False,
         },
@@ -84,7 +84,7 @@ RACE_TABLE_OUTPUT_SCHEMA = {
                         "properties": {
                             "driver_name": {"type": ["string", "null"]},
                             "team_name": {"type": ["string", "null"]},
-                            "dnf_status": {"type": ["boolean", "null"]},
+                            "dnf_status": {"type": ["string", "null"]},
                             "position": {"type": ["integer", "null"]},
                             "index": {"type": ["integer", "null"]},
                             "is_player": {"type": ["boolean", "null"]},
@@ -196,7 +196,8 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
         logger.debug("get_race_table: No table entries found in telemetry update")
         return base_rsp
 
-    return {
+    base_rsp["ok"] = True
+    ret = {
         **base_rsp,
 
         "identity": {
@@ -204,7 +205,7 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
             "session_type": telemetry_update.get("event-type"),
             "formula_type": telemetry_update.get("formula"),
             "circuit_name": telemetry_update.get("circuit"),
-            "session-ended": telemetry_update.get("race-ended"),
+            "session_ended": telemetry_update.get("race-ended"),
         },
 
         "progress": {
@@ -219,6 +220,7 @@ def get_race_table(logger: logging.Logger) -> Dict[str, Any]:
             for entry in table_entries
         ],
     }
+    return ret
 
 def _get_race_table_info_driver(entry: Dict[str, Any]) -> Dict[str, Any]:
     """Get race table info driver."""
