@@ -45,6 +45,7 @@ from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
 from .client_types import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
 class BaseWebServer:
     """Base class for a web server. Derived classes must implement their routes of interest"""
     def __init__(self,
@@ -54,8 +55,7 @@ class BaseWebServer:
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
-                 debug_mode: bool = False,
-                 enable_mcp: bool = False):
+                 debug_mode: bool = False):
         """
         Initialize the BaseWebServer.
 
@@ -74,11 +74,10 @@ class BaseWebServer:
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
-
-        self._enable_mcp: bool = enable_mcp
-        self._mcp_tools: Dict[str, Callable[[Dict[str, Any]], Awaitable[Any]]] = {}
-
-        self.m_client_event_mappings = client_event_mappings or {}
+        if client_event_mappings:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
+        else:
+            self.m_client_event_mappings: Dict[ClientType, List[str]] = {}
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 
@@ -108,110 +107,6 @@ class BaseWebServer:
         self._register_base_socketio_events()
         self._define_static_file_routes()
 
-        if self._enable_mcp:
-            self._register_mcp_routes()
-            self.m_logger.info("[MCP] MCP support ENABLED")
-
-            @self.m_app.route("/", methods=["POST"])
-            async def mcp_jsonrpc_root():
-                req = await quart_request.get_json(force=True)
-
-                jsonrpc = req.get("jsonrpc")
-                req_id = req.get("id")
-                method = req.get("method")
-
-                if jsonrpc != "2.0":
-                    return quart_jsonify({
-                        "jsonrpc": "2.0",
-                        "id": req_id,
-                        "error": {
-                            "code": -32600,
-                            "message": "Invalid JSON-RPC version"
-                        }
-                    })
-
-                # MCP handshake
-                if method == "initialize":
-                    return quart_jsonify({
-                        "jsonrpc": "2.0",
-                        "id": req_id,
-                        "result": {
-                            "protocolVersion": "2024-11-05",
-                            "capabilities": {
-                                "tools": {}
-                            },
-                            "serverInfo": {
-                                "name": "pits_n_giggles",
-                                "version": self.m_ver_str
-                            }
-                        }
-                    })
-
-                # Tool discovery
-                if method == "tools/list":
-                    return quart_jsonify({
-                        "jsonrpc": "2.0",
-                        "id": req_id,
-                        "result": {
-                            "tools": [
-                                {
-                                    "name": name,
-                                    "description": func.__doc__ or "",
-                                    "inputSchema": {
-                                        "type": "object",
-                                        "properties": {},
-                                        "additionalProperties": False
-                                    }
-                                }
-                                for name, func in self._mcp_tools.items()
-                            ]
-                        }
-                    })
-
-                # Tool execution
-                if method == "tools/call":
-                    params = req.get("params", {})
-                    tool_name = params.get("name")
-                    tool_input = params.get("arguments", {})
-
-                    if tool_name not in self._mcp_tools:
-                        return quart_jsonify({
-                            "jsonrpc": "2.0",
-                            "id": req_id,
-                            "error": {
-                                "code": -32601,
-                                "message": f"Unknown tool '{tool_name}'"
-                            }
-                        })
-
-                    try:
-                        result = await self._mcp_tools[tool_name](tool_input)
-                        return quart_jsonify({
-                            "jsonrpc": "2.0",
-                            "id": req_id,
-                            "result": result
-                        })
-                    except Exception as e:
-                        self.m_logger.exception("[MCP] Tool failed")
-                        return quart_jsonify({
-                            "jsonrpc": "2.0",
-                            "id": req_id,
-                            "error": {
-                                "code": -32000,
-                                "message": str(e)
-                            }
-                        })
-
-                # Unknown method
-                return quart_jsonify({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32601,
-                        "message": f"Method '{method}' not found"
-                    }
-                })
-
         # Automatically append version string to all static URL's
         # We're doing this because when version changes, we don't want the browser to load cached code
         #    as the code may have changed in the update. When the browser sees a new version appended as arg,
@@ -234,76 +129,12 @@ class BaseWebServer:
                 response.headers["Expires"] = "0"
             return response
 
-        @self.m_app.after_request
-        async def allow_all_cors(response):
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Max-Age"] = "86400"
-            return response
-
-        @self.m_app.route("/<path:_>", methods=["OPTIONS"])
-        async def cors_preflight(_):
-            return Response(status=204)
-
-    # -------------------------------------- MCP -----------------------------------------------------------------------
-
-    def mcp_tool(self, name: str) -> Callable:
-        """
-        Register an MCP tool.
-
-        Tool signature:
-            async def tool(input: dict) -> Any
-        """
-        def decorator(func: Callable[[Dict[str, Any]], Awaitable[Any]]):
-            if not self._enable_mcp:
-                raise RuntimeError(
-                    f"MCP is disabled; cannot register tool '{name}'"
-                )
-
-            self._mcp_tools[name] = func
-            self.m_logger.debug("[MCP] Registered tool: %s", name)
+    def http_route(self, path: str, **kwargs) -> Callable:
+        """Register a HTTP route."""
+        def decorator(func: Callable[..., Coroutine]) -> Callable:
+            self.m_app.route(path, **kwargs)(func)
             return func
         return decorator
-
-    def _register_mcp_routes(self) -> None:
-        @self.m_app.route("/mcp/tools", methods=["GET"])
-        async def mcp_list_tools():
-            return quart_jsonify({
-                "tools": [
-                    {
-                        "name": name,
-                        "description": func.__doc__ or ""
-                    }
-                    for name, func in self._mcp_tools.items()
-                ]
-            })
-
-        @self.m_app.route("/mcp/call", methods=["POST"])
-        async def mcp_call_tool():
-            payload = await quart_request.get_json()
-
-            if not payload:
-                return quart_jsonify({"error": "Missing JSON body"}), 400
-
-            tool_name = payload.get("tool")
-            tool_input = payload.get("input", {})
-
-            if tool_name not in self._mcp_tools:
-                return quart_jsonify(
-                    {"error": "Unknown tool", "tool": tool_name}
-                ), 404
-
-            try:
-                result = await self._mcp_tools[tool_name](tool_input)
-                return quart_jsonify({"result": result})
-            except Exception as e:
-                self.m_logger.exception("[MCP] Tool failed: %s", tool_name)
-                return quart_jsonify(
-                    {"error": "Tool execution failed", "message": str(e)}
-                ), 500
-
-    # -------------------------------------- SOCKET.IO ------------------------------------------------------------------
 
     def socketio_event(self, event: str) -> Callable:
         """Register a SocketIO event."""
@@ -432,35 +263,6 @@ class BaseWebServer:
         """Check if a room is empty"""
         participants = list(self.m_sio.manager.get_participants(namespace, room_name))
         return not participants
-
-    # -------------------------------------- HTTP HELPERS ---------------------------------------------------------------
-
-    def http_route(self, path: str, **kwargs) -> Callable:
-        def decorator(func: Callable[..., Coroutine]) -> Callable:
-            self.m_app.route(path, **kwargs)(func)
-            return func
-
-        return decorator
-
-    async def render_template(self, template_name: str, **context: Any) -> str:
-        return await quart_render_template(template_name, **context)
-
-    def jsonify(self, *args: Any, **kwargs: Any) -> Any:
-        return quart_jsonify(*args, **kwargs)
-
-    @property
-    def request(self) -> Any:
-        return quart_request
-
-    async def send_from_directory(
-        self,
-        directory: Union[str, os.PathLike],
-        filename: str,
-        **kwargs: Any,
-    ) -> Any:
-        return await quart_send_from_directory(directory, filename, **kwargs)
-
-    # -------------------------------------- SERVER LIFECYCLE -----------------------------------------------------------
 
     async def run(self) -> None:
         """

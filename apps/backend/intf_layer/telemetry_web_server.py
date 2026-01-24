@@ -87,8 +87,7 @@ class TelemetryWebServer(BaseWebServer):
             },
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
-            debug_mode=debug_mode,
-            enable_mcp=True)
+            debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
@@ -104,7 +103,6 @@ class TelemetryWebServer(BaseWebServer):
 
         self._defineTemplateFileRoutes()
         self._defineDataRoutes()
-        self._defineMcpServerTools()
 
     def _defineTemplateFileRoutes(self) -> None:
         """
@@ -188,20 +186,6 @@ class TelemetryWebServer(BaseWebServer):
                 Tuple[str, int]: JSON response and HTTP status code.
             """
             return StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
-
-    def _defineMcpServerTools(self) -> None:
-        """
-        Define MCP server tools routes.
-
-        This method sets up routes for MCP server tools.
-        """
-
-        @self.mcp_tool("get_race_state")
-        async def get_race_state(_payload: dict):
-            """Return current race snapshot"""
-            return {
-                "sample-key": "sample-value"
-            }
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """
