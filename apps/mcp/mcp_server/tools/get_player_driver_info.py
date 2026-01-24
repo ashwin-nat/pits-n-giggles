@@ -34,9 +34,11 @@ from lib.ipc import IpcServerAsync
 from apps.mcp.state import get_state_data
 from .common import _get_race_table_context
 
+from apps.hud.common import get_ref_row, is_race_type_session
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-SESSION_INFO_OUTPUT_SCHEMA = {
+PLAYER_DRIVER_INFO_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
         # ---- base_rsp (top-level) ----
@@ -47,54 +49,35 @@ SESSION_INFO_OUTPUT_SCHEMA = {
         "ok": {"type": "boolean"},
         "error": {"type": ["string", "null"]},
 
-        # ---- session identity ----
-        "identity": {
+        # ---- operation status ----
+        "status": {
+            "type": "string",
+            "enum": ["ok", "error"],
+        },
+
+        # ---- session info ----
+        "session_info": {
             "type": "object",
             "properties": {
                 "session_uid": {"type": ["integer", "null"]},
                 "session_type": {"type": ["string", "null"]},
                 "formula_type": {"type": ["string", "null"]},
                 "circuit_name": {"type": ["string", "null"]},
-                "session-ended": {"type": ["boolean", "null"]},
+                "session_ended": {"type": ["boolean", "null"]},
             },
             "additionalProperties": False,
         },
 
-        # ---- session progress ----
-        "progress": {
+        # ---- player driver info ----
+        "driver_info": {
             "type": "object",
             "properties": {
-                "current_lap": {"type": ["integer", "null"]},
-                "total_laps": {"type": ["integer", "null"]},
-                "duration_elapsed_sec": {"type": ["number", "null"]},
-                "time_remaining_sec": {"type": ["number", "null"]},
-            },
-            "additionalProperties": False,
-        },
-
-        # ---- environment ----
-        "environment": {
-            "type": "object",
-            "properties": {
-                "air_temperature_c": {"type": ["number", "null"]},
-                "track_temperature_c": {"type": ["number", "null"]},
-                "weather_forecast": {
-                    "type": ["array", "null"],
-                    "items": {"type": "object"},
-                },
-            },
-            "additionalProperties": False,
-        },
-
-        # ---- race control ----
-        "race_control": {
-            "type": "object",
-            "properties": {
-                "is_spectating": {"type": ["boolean", "null"]},
-                "safety_car_status": {"type": ["string", "null"]},
-                "safety_car_deployments": {"type": ["integer", "null"]},
-                "virtual_safety_car_deployments": {"type": ["integer", "null"]},
-                "red_flag_count": {"type": ["integer", "null"]},
+                "driver_index": {"type": ["integer", "null"]},
+                "name": {"type": ["string", "null"]},
+                "team": {"type": ["string", "null"]},
+                "is_player": {"type": "boolean"},
+                "is_spectating": {"type": "boolean"},
+                "telemetry_setting": {"type": ["string", "null"]},
             },
             "additionalProperties": False,
         },
@@ -107,14 +90,13 @@ SESSION_INFO_OUTPUT_SCHEMA = {
         "ok",
     ],
 
-    # Allow future expansion / extra base_rsp fields
+    # allow partial payloads on early returns
     "additionalProperties": True,
 }
 
-
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
+def get_player_driver_info(logger: logging.Logger) -> Dict[str, Any]:
     """Get session info from state data.
 
     Arguments:
@@ -128,35 +110,36 @@ def get_session_info(logger: logging.Logger) -> Dict[str, Any]:
     if telemetry_update is None:
         return base_rsp
 
-    return {
-        **base_rsp,
-
-        "identity": {
-            "session_uid": telemetry_update.get("session-uid"),
-            "session_type": telemetry_update.get("event-type"),
-            "formula_type": telemetry_update.get("formula"),
-            "circuit_name": telemetry_update.get("circuit"),
-            "session-ended": telemetry_update.get("race-ended"),
-        },
-
-        "progress": {
-            "current_lap": telemetry_update.get("current-lap"),
-            "total_laps": telemetry_update.get("total-laps"),
-            "duration_elapsed_sec": telemetry_update.get("session-duration-so-far"),
-            "time_remaining_sec": telemetry_update.get("session-time-left"),
-        },
-
-        "environment": {
-            "air_temperature_c": telemetry_update.get("air-temperature"),
-            "track_temperature_c": telemetry_update.get("track-temperature"),
-            "weather_forecast": telemetry_update.get("weather-forecast-samples"),
-        },
-
-        "race_control": {
-            "is_spectating": telemetry_update.get("is-spectating"),
-            "safety_car_status": telemetry_update.get("safety-car-status"),
-            "safety_car_deployments": telemetry_update.get("num-sc"),
-            "virtual_safety_car_deployments": telemetry_update.get("num-vsc"),
-            "red_flag_count": telemetry_update.get("num-red-flags"),
-        },
+    session_info = {
+        "session_uid": telemetry_update.get("session-uid"),
+        "session_type": telemetry_update.get("event-type"),
+        "formula_type": telemetry_update.get("formula"),
+        "circuit_name": telemetry_update.get("circuit"),
+        "session_ended": telemetry_update.get("race-ended"),
     }
+
+    ret = {
+        **base_rsp,
+        "session_info": session_info,
+    }
+
+    ref_row = get_ref_row(telemetry_update)
+    if not ref_row:
+        ret["status"] = "error"
+        ret["error"] = "No reference row found in telemetry update"
+        return ret
+
+    driver_info = ref_row.get("driver-info", {})
+
+    ret["driver_info"] = {
+        "driver_index": driver_info.get("index"),
+        "name": driver_info.get("name"),
+        "team": driver_info.get("team"),
+        "is_player": driver_info.get("is-player", False),
+        "is_spectating": not driver_info.get("is-player", False),
+        "telemetry_setting": driver_info.get("telemetry-setting"),
+    }
+    ret["status"] = "ok"
+    ret["error"] = None
+
+    return ret
