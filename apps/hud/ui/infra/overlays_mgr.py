@@ -124,7 +124,8 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
-            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            idle_opacity=settings.HUD.track_radar_idle_opacity,
         )
 
         if settings.HUD.show_mfd:
