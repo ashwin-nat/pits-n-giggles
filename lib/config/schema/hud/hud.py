@@ -25,7 +25,7 @@
 import copy
 from typing import Any, ClassVar, Dict, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
 from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
@@ -143,6 +143,23 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     track_radar_overlay_ui_scale: float = ui_scale_field(description="Track radar overlay UI scale")
     track_radar_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track radar overlay UDP action code")
+    track_radar_idle_opacity: int = Field(
+        default=30,
+        ge=0,
+        le=100,
+        description="Track radar overlay idle opacity percentage",
+        json_schema_extra={
+            "ui": {
+                "type" : "slider",
+                "visible": False,
+                "min": 0,
+                "max": 100,
+                "ext_info": [
+                    'Track Radar opacity when no other cars are nearby'
+                ]
+            }
+        }
+    )
 
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
         "Toggle all overlays UDP action code")
@@ -185,23 +202,39 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    def model_post_init(self, __context: Any) -> None: # pylint: disable=arguments-differ
-        """Validate file existence only if HTTPS is enabled."""
-        # Not allowed to enable HUD while all overlays are disabled
+    def model_post_init(self, __context: Any) -> None:  # pylint: disable=arguments-differ
+        # Normalize / merge layout unconditionally
         self.layout = merge_overlay_layout(self.layout)
 
+    @model_validator(mode="after")
+    def validate_hud_settings(self):
+        # If HUD is disabled, no further validation applies
         if not self.enabled:
-            return
+            return self
 
+        # ---- At least one overlay must be enabled ----
         if not any(
             getattr(self, field_name)
             for field_name, field in type(self).model_fields.items()
             if field.json_schema_extra.get("ui", {}).get("overlay_enable", False)
         ):
-            raise ValueError("HUD cannot be enabled while all overlays are disabled")
+            raise ValueError(
+                "HUD cannot be enabled while all overlays are disabled"
+            )
 
+        # ---- MFD pages must exist if MFD is enabled ----
         if self.show_mfd and not self.mfd_settings.sorted_enabled_pages():
-            raise ValueError("HUD cannot be enabled while all MFD pages are disabled")
+            raise ValueError(
+                "HUD cannot be enabled while all MFD pages are disabled"
+            )
+
+        # ---- Opacity relationship ----
+        if self.track_radar_idle_opacity > self.overlays_opacity:
+            raise ValueError(
+                "Track radar idle opacity cannot be greater than overlays opacity"
+            )
+
+        return self
 
     @field_validator("timing_tower_max_rows")
     def must_be_odd(cls, v): # pylint: disable=no-self-argument

@@ -54,9 +54,11 @@ class TrackRadarOverlay(BaseOverlayQML):
                  opacity: int,
                  scale_factor: float,
                  windowed_overlay: bool,
-                 refresh_interval_ms: int):
+                 refresh_interval_ms: int,
+                 idle_opacity: int,):
 
         assert refresh_interval_ms
+        self.idle_opacity = idle_opacity
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
 
@@ -64,14 +66,14 @@ class TrackRadarOverlay(BaseOverlayQML):
     def _setup_window(self):
         """Set the opacity property when the window is ready"""
         super()._setup_window()
-        self._set_opacity_property(self.opacity)
+        self._set_base_opacity_property(self.opacity)
 
     @final
     def set_opacity(self, opacity: int):
         """Set opacity."""
         self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting opacity to {opacity}')
         super().set_opacity(opacity)
-        self._set_opacity_property(opacity)
+        self._set_base_opacity_property(opacity)
 
     @final
     def set_locked_state(self, locked: bool):
@@ -167,9 +169,13 @@ class TrackRadarOverlay(BaseOverlayQML):
 
         return driver_list
 
-    def _set_opacity_property(self, opacity: int):
+    def _set_base_opacity_property(self, opacity: int):
         if self._root:
             self._root.setProperty("baseOpacity", opacity / 100.0)
+
+    def _set_idle_opacity_property(self, opacity: int):
+        if self._root:
+            self._root.setProperty("idleOpacity", opacity / 100.0)
 
     def _set_locked_property(self, locked: bool):
         if self._root:
