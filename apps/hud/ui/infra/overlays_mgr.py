@@ -22,9 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 import logging
-from typing import Any, Dict, Optional
+import os
+from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
@@ -85,6 +85,12 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.timing_tower_ui_scale,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+            show_team_logos=settings.HUD.timing_tower_col_options.show_team_logos,
+            show_tyre_info=settings.HUD.timing_tower_col_options.show_tyre_info,
+            show_deltas=settings.HUD.timing_tower_col_options.show_deltas,
+            show_ers_drs_info=settings.HUD.timing_tower_col_options.show_ers_drs_info,
+            show_pens=settings.HUD.timing_tower_col_options.show_pens,
+            show_tl_warns=settings.HUD.timing_tower_col_options.show_tl_warns,
         )
 
         self._register_overlay_if_enabled(
@@ -118,7 +124,8 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
-            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            idle_opacity=settings.HUD.track_radar_idle_opacity,
         )
 
         if settings.HUD.show_mfd:
@@ -155,8 +162,10 @@ class OverlaysMgr:
 
     # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
-    def race_table_update(self, data):
+    def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
+        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
+        table_entries.sort(key=lambda x: x["driver-info"]["position"])
         self.window_manager.broadcast_data('race_table_update', data)
 
     def stream_overlays_update(self, data):
@@ -249,6 +258,10 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
+    def mfd_interact(self):
+        """Interact with MFD overlay"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'mfd_interact', {})
+
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
         """Apply a full overlays layout snapshot."""
         rsp = {
@@ -286,6 +299,15 @@ class OverlaysMgr:
 
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
         self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
+
+    def set_track_radar_idle_opacity(self, opacity: int):
+        self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
+        self.window_manager.unicast_data(
+            overlay_id=TrackRadarOverlay.OVERLAY_ID,
+            event='set_track_radar_idle_opacity',
+            data={'opacity': opacity},
+            high_prio=True,
+        )
 
     # -------------------------------------- HELPERS -------------------------------------------------------------------
 

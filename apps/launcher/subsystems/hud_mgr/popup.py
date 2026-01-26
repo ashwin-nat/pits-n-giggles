@@ -39,6 +39,7 @@ class SliderItem:
     min: int
     max: int
     value: int
+    tooltip: Optional[str] = None
 
 @dataclass
 class SliderRow:
@@ -150,8 +151,33 @@ class OverlaysAdjustPopup(QWidget):
             row_layout.setSpacing(4)
 
             # Label
+            label_row = QHBoxLayout()
+            label_row.setContentsMargins(0, 0, 0, 0)
+            label_row.setSpacing(6)
+
             label = QLabel(item.label, row_widget)
-            row_layout.addWidget(label)
+            label_row.addWidget(label)
+
+            if item.tooltip:
+                info = QLabel("ⓘ", row_widget)
+                info.setToolTip(item.tooltip)
+                info.setCursor(Qt.CursorShape.WhatsThisCursor)
+                info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                info.setStyleSheet("""
+                    QLabel {
+                        color: rgba(255,255,255,150);
+                        font-size: 13px;
+                    }
+                    QLabel:hover {
+                        color: white;
+                    }
+                """)
+
+                label_row.addWidget(info)
+
+            label_row.addStretch(1)
+            row_layout.addLayout(label_row)
 
             # Slider + value
             h = QHBoxLayout()

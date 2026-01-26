@@ -39,8 +39,7 @@ class TyreInfoPage(MfdPageBase):
     QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
-    MED_WEAR = 50
-    DANGER_WEAR = 75
+    PUNCTURE_WEAR = 75
 
     def __init__(self, overlay, logger: logging.Logger):
         super().__init__(overlay, logger)
@@ -176,7 +175,7 @@ class TyreInfoPage(MfdPageBase):
 
         # Add predictions if available
         if predictions and len(predictions) > 0:
-            end_lap = predictions[-1]["lap-number"]
+            end_lap = self._select_end_lap(predictions)
 
             if pit_lap:
                 lap_sequence = [curr_lap, pit_lap, end_lap]
@@ -220,6 +219,26 @@ class TyreInfoPage(MfdPageBase):
         if not predictions:
             return None
         return min(predictions, key=lambda p: abs(p["lap-number"] - target_lap))
+
+    def _select_end_lap(self, predictions: List[Dict[str, Any]]) -> int:
+        """
+        Select the lap-number for the end lap.
+        First lap whose max tyre wear exceeds PUNCTURE_WEAR,
+        otherwise fall back to the last prediction.
+        """
+        for pred in predictions:
+            max_wear = max(
+                pred.get('front-left-wear', 0.0),
+                pred.get('front-right-wear', 0.0),
+                pred.get('rear-left-wear', 0.0),
+                pred.get('rear-right-wear', 0.0),
+            )
+
+            if max_wear >= self.PUNCTURE_WEAR:
+                return pred["lap-number"]
+
+        return predictions[-1]["lap-number"]
+
 
     def _is_wear_prediction_supported(self, data: Dict[str, Any]) -> bool:
         """Check if wear prediction is supported for this event."""

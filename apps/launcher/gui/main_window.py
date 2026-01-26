@@ -287,6 +287,7 @@ class PngLauncherWindow(QMainWindow):
             "download" : self._load_icon(icons_path_base / "download.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
+            "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
             "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
             "reset" : self._load_icon(icons_path_base / "reset.svg"),

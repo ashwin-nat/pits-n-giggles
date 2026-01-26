@@ -49,6 +49,14 @@
         "show_timing_tower": true,
         "timing_tower_ui_scale": 1.0,
         "timing_tower_max_rows": 11,
+        "timing_tower_col_options": {
+            "show_team_logos": true,
+            "show_tyre_info": true,
+            "show_deltas": true,
+            "show_ers_drs_info": true,
+            "show_pens": true,
+            "show_tl_warns": true
+        },
         "timing_tower_toggle_udp_action_code": null,
         "show_mfd": true,
         "mfd_ui_scale": 1.0,
@@ -85,6 +93,7 @@
             }
         },
         "mfd_toggle_udp_action_code": null,
+        "mfd_interaction_udp_action_code": null,
         "show_track_map": true,
         "track_map_ui_scale": 1.0,
         "track_map_toggle_udp_action_code": null,
@@ -95,6 +104,7 @@
         "show_track_radar_overlay": true,
         "track_radar_overlay_ui_scale": 1.0,
         "track_radar_overlay_toggle_udp_action_code": null,
+        "track_radar_idle_opacity": 30,
         "toggle_overlays_udp_action_code": 10,
         "cycle_mfd_udp_action_code": 9,
         "overlays_opacity": 100,
@@ -108,6 +118,10 @@
                 "x": 2722,
                 "y": 45
             },
+            "mfd": {
+                "x": 3332,
+                "y": 237
+            },
             "input_telemetry": {
                 "x": 3446,
                 "y": 569
@@ -115,10 +129,6 @@
             "track_radar": {
                 "x": 3073,
                 "y": 512
-            },
-            "mfd": {
-                "x": 3332,
-                "y": 237
             }
         }
     },
