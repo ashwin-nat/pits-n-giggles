@@ -25,7 +25,7 @@
 import logging
 import math
 from pathlib import Path
-from typing import Optional, final
+from typing import Any, Dict, Optional, final
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -61,6 +61,7 @@ class TrackRadarOverlay(BaseOverlayQML):
         self.idle_opacity = idle_opacity
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
+        self._register_handlers()
 
     @final
     def _setup_window(self):
@@ -81,6 +82,15 @@ class TrackRadarOverlay(BaseOverlayQML):
         self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
         super().set_locked_state(locked)
         self._set_locked_property(locked)
+
+    def _register_handlers(self):
+        @self.on_event("set_track_radar_idle_opacity")
+        def _handle_set_track_radar_idle_opacity(data: Dict[str, Any]):
+            """Set track radar idle opacity."""
+            self.logger.debug('%s | Received "set_track_radar_idle_opacity" event. Opacity: %s', self.OVERLAY_ID, data)
+            opacity = data["opacity"]
+            self.idle_opacity = opacity
+            self._set_idle_opacity_property(opacity)
 
     @final
     def render_frame(self):
