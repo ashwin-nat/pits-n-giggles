@@ -531,7 +531,8 @@ class HudAppMgr(PngAppMgrBase):
                 label="Track Radar Idle Opacity",
                 min=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["min"],
                 max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
-                value=hud_settings.track_radar_idle_opacity
+                value=hud_settings.track_radar_idle_opacity,
+                tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
             )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
