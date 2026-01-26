@@ -28,6 +28,7 @@ from .layout import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                      TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
                      OverlayPosition)
 from .mfd import MfdPageSettings, MfdSettings
+from .timing_tower import TimingTowerColOptions
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -36,6 +37,7 @@ __all__ = [
     'MfdSettings',
     'MfdPageSettings',
     'OverlayPosition',
+    'TimingTowerColOptions',
 
     'INPUT_TELEMETRY_OVERLAY_ID',
     'LAP_TIMER_OVERLAY_ID',

@@ -86,7 +86,6 @@ class PitRejoinPredictionPage(MfdPageBase):
             # Update pit time loss header
             pit_time_loss_str = f"Pit Time Loss: {pit_time_loss:.1f}s"
 
-            table_entries.sort(key=lambda x: x["driver-info"]["position"])
             updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
             relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
             insert_relative_deltas_race(relevant_rows, ref_index)

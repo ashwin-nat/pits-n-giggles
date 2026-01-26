@@ -8,10 +8,33 @@ Window {
 
     property real scaleFactor: 1.0
     property int numRows: 5  // Set by Python
-    readonly property int baseWidth: 570
     readonly property int rowHeight: 32
     readonly property int headerHeight: 40
     readonly property int margins: 25
+
+    // Column toggle properties - set by Python
+    property bool showTeamLogos: true
+    property bool showTyreInfo: true
+    property bool showDeltas: true
+    property bool showErsDrsInfo: true
+    property bool showPens: true
+
+    // Dynamic width calculation based on enabled columns
+    readonly property int baseWidth: {
+        var width = cols.pos + cols.name;
+        if (showTeamLogos) width += cols.team;
+        if (showDeltas) width += cols.delta;
+        if (showTyreInfo) width += cols.tyre;
+        if (showErsDrsInfo) {
+            // DRS bar needs extra space if pens are disabled
+            // In the main layout, it spills into the pens column
+            // this workaround is good enough
+            width += showPens ? cols.ers : cols.ers + 10;
+        }
+        if (showPens) width += cols.pens;
+        return width + 20; // Add padding
+    }
+
     readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
 
     width: baseWidth * scaleFactor
@@ -152,8 +175,9 @@ Window {
 
                                 // Team icon
                                 Item {
-                                    width: cols.team
+                                    width: showTeamLogos ? cols.team : 0
                                     height: parent.height
+                                    visible: showTeamLogos
 
                                     Image {
                                         anchors.centerIn: parent
@@ -184,7 +208,7 @@ Window {
 
                                 // Delta
                                 Text {
-                                    width: cols.delta
+                                    width: showDeltas ? cols.delta : 0
                                     height: parent.height
                                     text: modelData.delta
                                     font.family: "Consolas"
@@ -192,12 +216,14 @@ Window {
                                     color: "#ffffff"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
+                                    visible: showDeltas
                                 }
 
                                 // Tyre
                                 Item {
-                                    width: cols.tyre
+                                    width: showTyreInfo ? cols.tyre : 0
                                     height: parent.height
+                                    visible: showTyreInfo
 
                                     Row {
                                         anchors.centerIn: parent
@@ -228,9 +254,10 @@ Window {
 
                                 // ERS/DRS
                                 Rectangle {
-                                    width: cols.ers
+                                    width: showErsDrsInfo ? cols.ers : 0
                                     height: parent.height
                                     color: Qt.rgba(0.1, 0.1, 0.1, 0.7)
+                                    visible: showErsDrsInfo
 
                                     Row {
                                         anchors.fill: parent
@@ -286,9 +313,10 @@ Window {
 
                                 // Penalties
                                 Rectangle {
-                                    width: cols.pens
+                                    width: showPens ? cols.pens : 0
                                     height: parent.height
                                     color: "transparent"
+                                    visible: showPens
 
                                     Text {
                                         anchors.centerIn: parent
