@@ -126,16 +126,27 @@ Window {
             // Grid lines
             Repeater {
                 model: 4
-                delegate: Rectangle {
+                delegate: Canvas {
                     property real circleRadius: (index + 1) * (radarArea.width / 8)
                     x: radarArea.centerX - circleRadius
                     y: radarArea.centerY - circleRadius
                     width: circleRadius * 2
                     height: circleRadius * 2
-                    color: "transparent"
-                    border.color: Qt.rgba(1, 1, 1, 0.22)
-                    border.width: 1
-                    radius: circleRadius
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.clearRect(0, 0, width, height);
+
+                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.22);
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 5]); // Dashed pattern: 5px dash, 5px gap
+
+                        ctx.beginPath();
+                        ctx.arc(width / 2, height / 2, circleRadius, 0, 2 * Math.PI);
+                        ctx.stroke();
+                    }
+
+                    Component.onCompleted: requestPaint()
                 }
             }
 
