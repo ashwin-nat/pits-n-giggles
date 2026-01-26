@@ -25,7 +25,7 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, final
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtCore import QTimer
 from PySide6.QtQuick import QQuickItem
@@ -110,14 +110,15 @@ class WeatherForecastPage(MfdPageBase):
 
         return groups
 
-    def _get_session_info(self, data: List[Dict[str, Any]]) -> tuple[str, List[Dict[str, Any]]]:
+    def _get_session_info(self, data: List[Dict[str, Any]]) -> Tuple[Optional[str], Optional[List[Dict[str, Any]]]]:
+
         """Get session info.
 
         Args:
             data (List[Dict[str, Any]]): Raw incoming weather forecast samples
 
         Returns:
-            Tuple[str, List[Dict[str, Any]]]: Session title and weather forecast list
+            Tuple[Optional[str], Optional[List[Dict[str, Any]]]]: Session title and weather forecast list
         """
         if not data:
             return None, None

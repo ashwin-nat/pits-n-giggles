@@ -332,8 +332,9 @@ class HudAppMgr(PngAppMgrBase):
 
     def start_stop_callback(self):
         """Start or stop the HUD subsystem."""
-        # Disable all buttons during transition
-        self._update_all_button_states(running=False)
+        # REALLY disable all buttons - including start/stop
+        for btn in self.buttons.values():
+            self.set_button_state(btn, False)
 
         try:
             self.start_stop("Button pressed")

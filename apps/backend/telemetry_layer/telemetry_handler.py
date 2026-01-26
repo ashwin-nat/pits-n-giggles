@@ -481,28 +481,55 @@ class F1TelemetryHandler:
             """
 
             buttons: PacketEventData.Buttons = packet.mEventDetails
-            button_actions = [
-                (self.m_udp_action_codes.custom_marker, 'Custom Marker', self._processCustomMarkerCreate),
-                (self.m_udp_action_codes.tyre_delta, 'Tyre Delta', self._processTyreDeltaSound),
-                (self.m_udp_action_codes.toggle_all_overlays, 'Toggle all overlays', self._processToggleHud),
-                (self.m_udp_action_codes.mfd_next_page, 'Cycle MFD', self._processCycleMFD),
-                (self.m_udp_action_codes.toggle_lap_timer_overlay, 'Toggle lap timer overlay',
-                    lambda: self._processToggleHud('lap_timer')),
-                (self.m_udp_action_codes.toggle_timing_tower_overlay, 'Toggle timing tower overlay',
-                    lambda: self._processToggleHud('timing_tower')),
-                (self.m_udp_action_codes.toggle_mfd_overlay, 'Toggle MFD overlay',
-                    lambda: self._processToggleHud('mfd')),
-                (self.m_udp_action_codes.toggle_track_radar_overlay, 'Toggle track radar overlay',
-                    lambda: self._processToggleHud('track_radar')),
-                (self.m_udp_action_codes.toggle_input_overlay, 'Toggle input overlay',
-                    lambda: self._processToggleHud('input_telemetry')),
-                (self.m_udp_action_codes.mfd_interaction, 'MFD interaction', self._processMFDInteraction),
-            ]
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.custom_marker,
+                                    'Custom Marker',
+                                    self._processCustomMarkerCreate)
 
-            for action_code, action_name, handler in button_actions:
-                if self._isUdpActionButtonPressed(buttons, action_code):
-                    self.m_logger.info('UDP action %d pressed - %s', action_code, action_name)
-                    await handler()
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.tyre_delta,
+                                    'Tyre Delta',
+                                    self._processTyreDeltaSound)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_all_overlays,
+                                    'Toggle all overlays',
+                                    self._processToggleHud)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.mfd_next_page,
+                                    'Cycle MFD',
+                                    self._processCycleMFD)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_lap_timer_overlay,
+                                    'Toggle lap timer overlay',
+                                    lambda: self._processToggleHud('lap_timer'))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_timing_tower_overlay,
+                                    'Toggle timing tower overlay',
+                                    lambda: self._processToggleHud('timing_tower'))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_mfd_overlay,
+                                    'Toggle MFD overlay',
+                                    lambda: self._processToggleHud('mfd'))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_track_radar_overlay,
+                                    'Toggle track radar overlay',
+                                    lambda: self._processToggleHud('track_radar'))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_input_overlay,
+                                    'Toggle input overlay',
+                                    lambda: self._processToggleHud('input_telemetry'))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.mfd_interaction,
+                                    'MFD interaction',
+                                    self._processMFDInteraction)
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -712,3 +739,20 @@ class F1TelemetryHandler:
                 m_message=HudMfdInteractionNotification()
             )
         )
+
+    async def _handle_udp_action(self,
+                                 buttons: PacketEventData.Buttons,
+                                 code: int,
+                                 name: str,
+                                 coro: Callable[[], Awaitable[None]]) -> None:
+        """Handle a UDP action.
+
+        Args:
+            buttons (PacketEventData.Buttons): The buttons event packet.
+            code (int): The UDP action code.
+            name (str): The name of the UDP action.
+            coro (Callable[[], Awaitable[None]]): The coroutine to execute.
+        """
+        if self._isUdpActionButtonPressed(buttons, code):
+            self.m_logger.info('UDP action %d pressed - %s', code, name)
+            await coro()
