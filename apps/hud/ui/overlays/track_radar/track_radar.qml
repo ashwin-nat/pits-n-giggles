@@ -18,9 +18,14 @@ Window {
     // Radar properties
     property var driverData: []
     property real radarRange: 25.0  // meters - zoomed in for side awareness
+    property real baseOpacity: 1.0  // Externally controlled opacity
+    property bool lockedMode: true  // Enable/disable fade behavior
+    property bool carsNearby: true  // Track if cars are in vicinity
+    // Default value is true so that the radar stays faded in menu when the app is launched
 
     function updateTelemetry(drivers) {
         driverData = drivers || [];
+        carsNearby = hasCarInVicinity();
     }
 
     // Helper functions for side detection
@@ -58,6 +63,24 @@ Window {
         return false;
     }
 
+    // Check if any car is in vicinity (within radar range)
+    function hasCarInVicinity() {
+        var count = 0;
+        for (var i = 0; i < driverData.length; i++) {
+            var driver = driverData[i];
+            if (driver.is_ref) continue;
+
+            var relX = driver.relX || 0;
+            var relZ = driver.relZ || 0;
+            var distance = Math.sqrt(relX * relX + relZ * relZ);
+
+            if (distance <= radarRange) {
+                count++;
+            }
+        }
+        return count > 0;
+    }
+
     // ==========================================================
     // GLOBAL SCALING ROOT
     // ==========================================================
@@ -66,6 +89,16 @@ Window {
         anchors.centerIn: parent
         width: baseWidth
         height: baseHeight
+
+        // Fade in/out based on car vicinity (only if lockedMode is true)
+        opacity: {
+            let targetOpacity = lockedMode ? (carsNearby ? baseOpacity : baseOpacity * 0.3) : baseOpacity;
+            return targetOpacity;
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: 500 }
+        }
 
         transform: Scale {
             xScale: scaleFactor

@@ -25,7 +25,7 @@
 import logging
 import math
 from pathlib import Path
-from typing import Optional, override
+from typing import Optional, final
 
 from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
@@ -60,7 +60,27 @@ class TrackRadarOverlay(BaseOverlayQML):
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
 
-    @override
+    @final
+    def _setup_window(self):
+        """Set the opacity property when the window is ready"""
+        super()._setup_window()
+        self._set_opacity_property(self.opacity)
+
+    @final
+    def set_opacity(self, opacity: int):
+        """Set opacity."""
+        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting opacity to {opacity}')
+        super().set_opacity(opacity)
+        self._set_opacity_property(opacity)
+
+    @final
+    def set_locked_state(self, locked: bool):
+        """Set locked state."""
+        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+        super().set_locked_state(locked)
+        self._set_locked_property(locked)
+
+    @final
     def render_frame(self):
         """Render a new frame."""
         data = self.get_latest_hf_data(LiveSessionMotionInfo)
@@ -146,3 +166,11 @@ class TrackRadarOverlay(BaseOverlayQML):
             })
 
         return driver_list
+
+    def _set_opacity_property(self, opacity: int):
+        if self._root:
+            self._root.setProperty("baseOpacity", opacity / 100.0)
+
+    def _set_locked_property(self, locked: bool):
+        if self._root:
+            self._root.setProperty("lockedMode", locked)
