@@ -76,6 +76,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_track_radar_overlay, True)
         self.assertEqual(settings.track_radar_overlay_ui_scale, 1.0)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
+        self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -767,3 +768,33 @@ class TestHudSettings(TestF1ConfigBase):
                 "new_value": False
             }
         })
+
+    def test_idle_opacity(self):
+
+        idle_opacity = 50
+        hud_settings = HudSettings(track_radar_idle_opacity=idle_opacity)
+        self.assertEqual(hud_settings.track_radar_idle_opacity, idle_opacity)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=420)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=None)
+
+        # Boundary value: minimum (0)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=-1)
+        HudSettings(track_radar_idle_opacity=0)
+
+        # Boundary value: maximum (100)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=101)
+        HudSettings(track_radar_idle_opacity=100)
+
+        # Idle opacity more than overall opacity
+        with self.assertRaises(ValidationError):
+            HudSettings(enabled=True, overlays_opacity=70, track_radar_idle_opacity=80)
+

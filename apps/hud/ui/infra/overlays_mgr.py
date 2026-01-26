@@ -124,7 +124,8 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
-            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            idle_opacity=settings.HUD.track_radar_idle_opacity,
         )
 
         if settings.HUD.show_mfd:
@@ -298,6 +299,15 @@ class OverlaysMgr:
 
         self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
         self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
+
+    def set_track_radar_idle_opacity(self, opacity: int):
+        self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
+        self.window_manager.unicast_data(
+            overlay_id=TrackRadarOverlay.OVERLAY_ID,
+            event='set_track_radar_idle_opacity',
+            data={'opacity': opacity},
+            high_prio=True,
+        )
 
     # -------------------------------------- HELPERS -------------------------------------------------------------------
 

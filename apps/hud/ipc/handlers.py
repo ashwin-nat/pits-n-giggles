@@ -166,3 +166,24 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception(f"Error handling set-ui-scale command: {e}")
         return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
+
+def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-track-radar-idle-opacity' IPC command to set HUD widgets opacity.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.debug("Received set-track-radar-idle-opacity command. args: %s", msg)
+
+    args: dict = msg.get("args", {})
+    opacity = args.get("opacity")
+    if opacity is not None:
+        overlays_mgr.set_track_radar_idle_opacity(opacity)
+        return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
+    return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
