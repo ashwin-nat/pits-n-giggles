@@ -100,6 +100,23 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
+def handle_mfd_interact(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'mfd-interact' IPC command to show next page of HUD widgets.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received mfd-interact command. args: %s", msg)
+
+    overlays_mgr.mfd_interact()
+    return {"status": "success", "message": "mfd-interact handler executed."}
+
 def handle_set_overlays_layout(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'reset-overlays' IPC command to reset HUD widgets.
 
@@ -149,3 +166,24 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
     except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception(f"Error handling set-ui-scale command: {e}")
         return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
+
+def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'set-track-radar-idle-opacity' IPC command to set HUD widgets opacity.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.debug("Received set-track-radar-idle-opacity command. args: %s", msg)
+
+    args: dict = msg.get("args", {})
+    opacity = args.get("opacity")
+    if opacity is not None:
+        overlays_mgr.set_track_radar_idle_opacity(opacity)
+        return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
+    return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}

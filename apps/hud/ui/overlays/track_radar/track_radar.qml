@@ -18,9 +18,16 @@ Window {
     // Radar properties
     property var driverData: []
     property real radarRange: 25.0  // meters - zoomed in for side awareness
+    property real baseOpacity: 1.0  // Externally controlled opacity
+    property real idleOpacity: 0.3  // Opacity when no cars nearby (0.0 - 1.0)
+    property bool lockedMode: true  // Enable/disable fade behavior
+    property bool carsNearby: false  // Track if cars are in vicinity
+    // Default value is false so that the radar stays faded in menu when the app is launched
+    // When actual data starts coming, the correct computed value will be set
 
     function updateTelemetry(drivers) {
         driverData = drivers || [];
+        carsNearby = hasCarInVicinity();
     }
 
     // Helper functions for side detection
@@ -58,6 +65,24 @@ Window {
         return false;
     }
 
+    // Check if any car is in vicinity (within radar range)
+    function hasCarInVicinity() {
+        var count = 0;
+        for (var i = 0; i < driverData.length; i++) {
+            var driver = driverData[i];
+            if (driver.is_ref) continue;
+
+            var relX = driver.relX || 0;
+            var relZ = driver.relZ || 0;
+            var distance = Math.sqrt(relX * relX + relZ * relZ);
+
+            if (distance <= radarRange) {
+                count++;
+            }
+        }
+        return count > 0;
+    }
+
     // ==========================================================
     // GLOBAL SCALING ROOT
     // ==========================================================
@@ -66,6 +91,16 @@ Window {
         anchors.centerIn: parent
         width: baseWidth
         height: baseHeight
+
+        // Fade in/out based on car vicinity (only if lockedMode is true)
+        opacity: {
+            let targetOpacity = lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity;
+            return targetOpacity;
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: 500 }
+        }
 
         transform: Scale {
             xScale: scaleFactor
@@ -93,16 +128,27 @@ Window {
             // Grid lines
             Repeater {
                 model: 4
-                delegate: Rectangle {
+                delegate: Canvas {
                     property real circleRadius: (index + 1) * (radarArea.width / 8)
                     x: radarArea.centerX - circleRadius
                     y: radarArea.centerY - circleRadius
                     width: circleRadius * 2
                     height: circleRadius * 2
-                    color: "transparent"
-                    border.color: Qt.rgba(1, 1, 1, 0.22)
-                    border.width: 1
-                    radius: circleRadius
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.clearRect(0, 0, width, height);
+
+                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.22);
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 5]); // Dashed pattern: 5px dash, 5px gap
+
+                        ctx.beginPath();
+                        ctx.arc(width / 2, height / 2, circleRadius, 0, 2 * Math.PI);
+                        ctx.stroke();
+                    }
+
+                    Component.onCompleted: requestPaint()
                 }
             }
 

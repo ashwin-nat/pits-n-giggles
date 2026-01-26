@@ -33,7 +33,7 @@ from pydantic import ValidationError
 from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                         TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, MfdPageSettings, MfdSettings,
+                        HudSettings, MfdPageSettings, MfdSettings, TimingTowerColOptions,
                         OverlayPosition)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
@@ -56,9 +56,16 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.timing_tower_ui_scale, 1.0)
         self.assertEqual(settings.timing_tower_max_rows, 5)
         self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
+        self.assertTrue(settings.timing_tower_col_options.show_deltas)
+        self.assertTrue(settings.timing_tower_col_options.show_tyre_info)
+        self.assertTrue(settings.timing_tower_col_options.show_team_logos)
+        self.assertTrue(settings.timing_tower_col_options.show_ers_drs_info)
+        self.assertTrue(settings.timing_tower_col_options.show_pens)
+        self.assertTrue(settings.timing_tower_col_options.show_tl_warns)
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
+        self.assertEqual(settings.mfd_interaction_udp_action_code, None)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
@@ -69,6 +76,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_track_radar_overlay, True)
         self.assertEqual(settings.track_radar_overlay_ui_scale, 1.0)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
+        self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -100,6 +108,7 @@ class TestHudSettings(TestF1ConfigBase):
             "cycle_mfd_udp_action_code",
             "track_map_toggle_udp_action_code",
             "input_overlay_toggle_udp_action_code",
+            "mfd_interaction_udp_action_code",
         ]
         for field in udp_action_code_fields:
             with self.subTest(field=field):
@@ -717,3 +726,75 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(loaded_settings.layout[MFD_OVERLAY_ID], OverlayPosition(x=3, y=3))
         self.assertIn(TRACK_RADAR_OVERLAY_ID, loaded_settings.layout)
         self.assertEqual(loaded_settings.layout[TRACK_RADAR_OVERLAY_ID], OverlayPosition(x=4, y=4))
+
+    def test_col_options_diff(self):
+
+        # Diff from parent obj - no diff
+        old_settings = HudSettings()
+        new_settings = HudSettings()
+        self.assertFalse(old_settings.has_changed(new_settings))
+        self.assertEqual(old_settings.diff(new_settings), {})
+
+        # Diff from parent obj - real diff
+        new_settings = HudSettings(
+            timing_tower_col_options=TimingTowerColOptions(
+                show_ers_drs_info=False,
+            )
+        )
+        self.assertTrue(old_settings.has_changed(new_settings))
+        self.assertEqual(old_settings.diff(new_settings), {
+            "timing_tower_col_options": {
+                "show_ers_drs_info": {
+                    "old_value": True,
+                    "new_value": False
+                }
+            }
+        })
+
+        # Diff from obj directly - no diff
+        old_settings = TimingTowerColOptions()
+        new_settings = TimingTowerColOptions()
+        self.assertFalse(old_settings.has_changed(new_settings))
+        self.assertEqual(old_settings.diff(new_settings), {})
+
+        # Real diff
+        new_settings = TimingTowerColOptions(
+            show_ers_drs_info=False,
+        )
+        self.assertTrue(old_settings.has_changed(new_settings))
+        self.assertEqual(old_settings.diff(new_settings), {
+            "show_ers_drs_info": {
+                "old_value": True,
+                "new_value": False
+            }
+        })
+
+    def test_idle_opacity(self):
+
+        idle_opacity = 50
+        hud_settings = HudSettings(track_radar_idle_opacity=idle_opacity)
+        self.assertEqual(hud_settings.track_radar_idle_opacity, idle_opacity)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=420)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=None)
+
+        # Boundary value: minimum (0)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=-1)
+        HudSettings(track_radar_idle_opacity=0)
+
+        # Boundary value: maximum (100)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=101)
+        HudSettings(track_radar_idle_opacity=100)
+
+        # Idle opacity more than overall opacity
+        with self.assertRaises(ValidationError):
+            HudSettings(enabled=True, overlays_opacity=70, track_radar_idle_opacity=80)
+

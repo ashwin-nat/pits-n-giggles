@@ -34,6 +34,7 @@ Item {
 
     /* ---------- DATA ---------- */
     property var forecastData: []
+    property string sessionTitle: ""
 
     readonly property int maxCards: 5
     readonly property int separatorWidth: 1
@@ -50,42 +51,64 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
-        // No data message
-        Text {
-            visible: forecastData.length === 0
-            anchors.centerIn: parent
-            text: "WAITING FOR DATA ..."
-            font.family: "Formula1"
-            font.pixelSize: 14
-            font.weight: Font.Bold
-            color: dimTextColor
-            horizontalAlignment: Text.AlignHCenter
-        }
+        Column {
+            anchors.fill: parent
+            spacing: 8
 
-        // Weather cards
-        Row {
-            visible: forecastData.length > 0
-            anchors.centerIn: parent
-            spacing: cardSpacing
+            // Session title
+            Text {
+                visible: sessionTitle !== ""
+                text: sessionTitle
+                font.family: "Formula1"
+                font.pixelSize: 14
+                font.weight: Font.Bold
+                color: primaryTextColor
+                horizontalAlignment: Text.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
 
-            Repeater {
-                model: forecastData.length
+            Item {
+                width: parent.width
+                height: parent.height - (sessionTitle !== "" ? 30 : 0)
 
+                // No data message
+                Text {
+                    visible: forecastData.length === 0
+                    anchors.centerIn: parent
+                    text: "WAITING FOR DATA ..."
+                    font.family: "Formula1"
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
+                    color: dimTextColor
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                // Weather cards
                 Row {
+                    visible: forecastData.length > 0
+                    anchors.centerIn: parent
                     spacing: cardSpacing
 
-                    WeatherCard {
-                        width: cardWidth
-                        height: page.height - 20
-                        cardData: forecastData[index]
-                    }
+                    Repeater {
+                        model: forecastData.length
 
-                    Rectangle {
-                        visible: index < forecastData.length - 1
-                        width: separatorWidth
-                        height: Math.min(page.height * 0.6, 120)
-                        color: separatorColor
-                        anchors.verticalCenter: parent.verticalCenter
+                        Row {
+                            spacing: cardSpacing
+
+                            WeatherCard {
+                                width: cardWidth
+                                height: page.height - 20
+                                cardData: forecastData[index]
+                            }
+
+                            Rectangle {
+                                visible: index < forecastData.length - 1
+                                width: separatorWidth
+                                height: Math.min(page.height * 0.6, 120)
+                                color: separatorColor
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
                     }
                 }
             }

@@ -25,8 +25,10 @@
 import json
 import sys
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
+from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
@@ -41,6 +43,18 @@ from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
+
+
+# -------------------------------------- BUTTON CONFIGURATION ----------------------------------------------------------
+
+@dataclass
+class ButtonConfig:
+    """Configuration for a button"""
+    name: str
+    icon: str
+    callback: Callable
+    tooltip: str
+    enabled_when_stopped: bool = False
 
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -71,6 +85,10 @@ class HudAppMgr(PngAppMgrBase):
         self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
+
+        # Button registry
+        self.buttons: Dict[str, QPushButton] = {}
+
         super().__init__(
             module_path="apps.hud",
             display_name="HUD",
@@ -93,31 +111,89 @@ class HudAppMgr(PngAppMgrBase):
         self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
         self.overlays_adj_popup.hide()
 
+    def _get_button_configs(self) -> List[ButtonConfig]:
+        """Define button configurations
+
+        Returns:
+            List of button configurations in display order
+        """
+        return [
+            ButtonConfig(
+                name="start_stop",
+                icon="start",
+                callback=self.start_stop_callback,
+                tooltip="Start",
+                enabled_when_stopped=True
+            ),
+            ButtonConfig(
+                name="hide_show",
+                icon="show-hide",
+                callback=self.hide_show_callback,
+                tooltip="Hide/Show"
+            ),
+            ButtonConfig(
+                name="next_page",
+                icon="next-page",
+                callback=self.next_page_callback,
+                tooltip="Next MFD Page"
+            ),
+            ButtonConfig(
+                name="reset",
+                icon="reset",
+                callback=self.reset_callback,
+                tooltip="Reset Overlays Positions"
+            ),
+            ButtonConfig(
+                name="lock",
+                icon="unlock",
+                callback=self.lock_callback,
+                tooltip="Edit Overlays"
+            ),
+            ButtonConfig(
+                name="mfd_interact",
+                icon="mfd-interact",
+                callback=self.mfd_interact_callback,
+                tooltip="MFD Interact"
+            )
+        ]
+
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
         :return: List of button objects
         """
+        button_list = []
+        for config in self._get_button_configs():
+            btn = self.build_button(
+                self.get_icon(config.icon),
+                config.callback,
+                config.tooltip
+            )
+            self.buttons[config.name] = btn
 
-        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.hide_show_button = self.build_button(self.get_icon("show-hide"), self.hide_show_callback, "Hide/Show")
-        self.lock_button = self.build_button(self.get_icon("unlock"), self.lock_callback, "Edit Overlays")
-        self.reset_button = self.build_button(self.get_icon("reset"), self.reset_callback, "Reset Overlays Positions")
-        self.next_page_button = self.build_button(self.get_icon("next-page"), self.next_page_callback, "Next MFD Page")
+            # Set initial state based on enabled flag
+            if not self.enabled:
+                self.set_button_state(btn, False)
 
-        if not self.enabled:
-            self.set_button_state(self.start_stop_button, False)
-            self.set_button_state(self.hide_show_button, False)
-            self.set_button_state(self.lock_button, False)
-            self.set_button_state(self.reset_button, False)
-            self.set_button_state(self.next_page_button, False)
+            button_list.append(btn)
 
-        return [
-            self.start_stop_button,
-            self.hide_show_button,
-            self.next_page_button,
-            self.reset_button,
-            self.lock_button,
-        ]
+        return button_list
+
+    def _update_all_button_states(self, running: bool):
+        """Update all button states based on running state
+
+        Args:
+            running: Whether the HUD is currently running
+        """
+        configs = {cfg.name: cfg for cfg in self._get_button_configs()}
+
+        for name, btn in self.buttons.items():
+            config = configs.get(name)
+            if not config:
+                continue
+
+            # Enable button if running OR if it's enabled when stopped
+            should_enable = running or config.enabled_when_stopped
+            self.set_button_state(btn, should_enable)
 
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
@@ -134,7 +210,7 @@ class HudAppMgr(PngAppMgrBase):
             return
 
         self.debug_log("Toggling HUD lock state...")
-        self.set_button_state(self.lock_button, False)
+        self.set_button_state(self.buttons["lock"], False)
 
         requested_state = not self.locked
         success, rsp = self._request_lock_state_change(
@@ -143,10 +219,16 @@ class HudAppMgr(PngAppMgrBase):
         )
 
         self.locked = requested_state
-        self.set_button_state(self.lock_button, True)
+        self.set_button_state(self.buttons["lock"], True)
 
         if success:
-            self.set_lock_button_icon()
+            # Update lock button icon and tooltip based on new state
+            if self.locked:
+                self.set_button_icon(self.buttons["lock"], self.get_icon("unlock"))
+                self.set_button_tooltip(self.buttons["lock"], "Edit Overlays")
+            else:
+                self.set_button_icon(self.buttons["lock"], self.get_icon("lock"))
+                self.set_button_tooltip(self.buttons["lock"], "Lock Overlays")
 
             if self.locked:
                 try:
@@ -193,10 +275,18 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to persist default HUD layout: {e}")
 
     def next_page_callback(self):
-        """Open the dashboard viewer in a web browser."""
+        """Cycle to the next page of the HUD."""
         self.info_log("Sending next page command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
+        )
+        self.info_log(str(rsp))
+
+    def mfd_interact_callback(self):
+        """Interact with the MFD."""
+        self.info_log("Sending MFD interact command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(
+            command="mfd-interact", args={}
         )
         self.info_log(str(rsp))
 
@@ -218,13 +308,11 @@ class HudAppMgr(PngAppMgrBase):
 
     def post_start(self):
         """Update buttons after app start"""
-        self.set_button_state(self.hide_show_button, True)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
-        self.set_button_tooltip(self.start_stop_button, "Stop")
-        self.set_button_state(self.lock_button, True)
-        self.set_button_state(self.reset_button, True)
-        self.set_button_state(self.next_page_button, True)
+        self._update_all_button_states(running=True)
+
+        # Update start/stop button to show stop state
+        self.set_button_icon(self.buttons["start_stop"], self.get_icon("stop"))
+        self.set_button_tooltip(self.buttons["start_stop"], "Stop")
 
         # Start integration test thread if in integration test mode
         if self.integration_test_mode:
@@ -236,65 +324,40 @@ class HudAppMgr(PngAppMgrBase):
         if self.integration_test_mode:
             self._stop_integration_test_thread()
 
-        self.set_button_state(self.hide_show_button, False)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
-        self.set_button_tooltip(self.start_stop_button, "Start")
-        self.set_button_state(self.lock_button, False)
-        self.set_button_state(self.reset_button, False)
-        self.set_button_state(self.next_page_button, False)
+        self._update_all_button_states(running=False)
+
+        # Update start/stop button to show start state
+        self.set_button_icon(self.buttons["start_stop"], self.get_icon("start"))
+        self.set_button_tooltip(self.buttons["start_stop"], "Start")
 
     def start_stop_callback(self):
-        """Start or stop the backend application."""
-        # disable the button. enable in post_start/post_stop
-        self.set_button_state(self.hide_show_button, False)
-        self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.lock_button, False)
-        self.set_button_state(self.reset_button, False)
-        self.set_button_state(self.next_page_button, False)
+        """Start or stop the HUD subsystem."""
+        # REALLY disable all buttons - including start/stop
+        for btn in self.buttons.values():
+            self.set_button_state(btn, False)
+
         try:
-            # Call the start_stop method
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
-            # Log the error or handle it as needed
             self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
-            # If no exception, it will be handled in post_start/post_stop
-            self.set_button_state(self.hide_show_button, True)
-            self.set_button_state(self.start_stop_button, True)
-            self.set_button_state(self.lock_button, True)
-            self.set_button_state(self.reset_button, True)
-            self.set_button_state(self.next_page_button, True)
-
-    def set_lock_button_icon(self):
-        """Set the icon and tooltip for the lock button based on state"""
-        if self.locked:
-            self.set_button_icon(self.lock_button, self.get_icon("unlock"))
-            self.set_button_tooltip(self.lock_button, "Edit Overlays")
-        else:
-            self.set_button_icon(self.lock_button, self.get_icon("lock"))
-            self.set_button_tooltip(self.lock_button, "Lock Overlays")
+            # Re-enable buttons on error
+            self._update_all_button_states(running=True)
 
     def process_enabled_change(self):
         """
         Process the enabled state change and update the GUI accordingly.
 
-        If the application is enabled, start the backend application,
+        If the application is enabled, start the HUD subsystem,
         enable the start/stop button, update the lock button text and
         enable the ping button. If the application is disabled, stop
-        the backend application, disable the start/stop button and
+        the HUD subsystem, disable the start/stop button and
         disable the ping and lock buttons.
         """
-
         if self.enabled:
             self.start("Enabling HUD")
-            self.set_button_state(self.lock_button, True)
-            self.set_lock_button_icon()
-            self.set_button_state(self.hide_show_button, True)
         else:
             self.stop("Disabling HUD")
-            self.set_button_state(self.start_stop_button, False)
-            self.set_button_state(self.hide_show_button, False)
-            self.set_button_state(self.lock_button, False)
+            self._update_all_button_states(running=False)
 
     def _send_overlays_opacity_change(self, opacity: int) -> None:
         """Send overlays opacity change to HUD app
@@ -310,6 +373,21 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
             self.debug_log(f"Set overlays opacity response: {rsp}")
+
+    def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
+        """Send track radar idle opacity change to HUD app
+
+        Args:
+            opacity (int): New track radar idle opacity
+        """
+        self.debug_log("Sending set-track-radar-idle-opacity command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-idle-opacity", args={
+            "opacity": opacity,
+        })
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to set track radar idle opacity: {rsp}")
+        else:
+            self.debug_log(f"Set track radar idle opacity response: {rsp}")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
@@ -336,9 +414,10 @@ class HudAppMgr(PngAppMgrBase):
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
             self.next_page_callback()
+            self.mfd_interact_callback()
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
+        """Handle changes in settings for the HUD subsystem
 
         :param new_settings: New settings
 
@@ -352,6 +431,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_lap_timer",
                 "show_timing_tower",
                 "timing_tower_max_rows",
+                "timing_tower_col_options",
                 "show_mfd",
                 "show_track_radar_overlay",
                 "mfd_settings",
@@ -447,43 +527,96 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.overlays_opacity,
             ),
+
+            SliderItem(
+                key="track_radar_idle_opacity",
+                label="Track Radar Idle Opacity",
+                min=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
+                value=hud_settings.track_radar_idle_opacity,
+                tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
+            )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
         # Position below button
-        btn = self.lock_button
+        btn = self.buttons["lock"]
         gpos = btn.mapToGlobal(btn.rect().bottomLeft())
         self.overlays_adj_popup.move(gpos)
         self.overlays_adj_popup.show()
 
     def _overlays_adj_popup_on_confirm(self, values: dict[str, int]):
-        """Scale confirm callback. No guarantee that values have been changed"""
+        """
+        Confirm callback for the overlays adjust popup.
 
+        Applies slider values, forces Pydantic re-validation (including cross-field
+        constraints), sends IPC updates, and persists settings on success.
+        """
+
+        # ---- Build candidate settings (ALLOW invalid intermediate state here) ----
         new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
         new_settings.HUD.lap_timer_ui_scale = values[LAP_TIMER_OVERLAY_ID] / 100.0
+        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
         new_settings.HUD.mfd_ui_scale = values[MFD_OVERLAY_ID] / 100.0
-        new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
         new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
         new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
 
-        diff = self.curr_settings.HUD.diff(new_settings.HUD, [
-            "lap_timer_ui_scale",
-            "timing_tower_ui_scale",
-            "mfd_ui_scale",
-            "track_map_ui_scale",
-            "input_overlay_ui_scale",
-            "track_radar_overlay_ui_scale",
-        ])
-        self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
+        new_settings.HUD.overlays_opacity = values["overlays_opacity"]
+        new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
 
-        opacity_changed = self.curr_settings.HUD.overlays_opacity != new_settings.HUD.overlays_opacity
-        if opacity_changed:
-            self._send_overlays_opacity_change(new_settings.HUD.overlays_opacity)
+        # ---- FORCE VALIDATION (this is the important bit) ----
+        try:
+            validated_settings = type(new_settings).model_validate(
+                new_settings.model_dump()
+            )
+        except ValidationError as e:
+            self.error_log("Invalid HUD settings from slider popup:")
+            self.error_log(str(e))
+            error_text = e.errors()[0]["msg"]
+            self.error_log(error_text)
 
-        if diff:
-            key_to_oid: Dict[str, str] = {
+            self.show_error("Invalid HUD Settings", error_text)
+
+            # Optional: show user feedback later (QMessageBox / toast / inline)
+            return
+
+        # ---- Compute diffs AFTER validation ----
+        hud_diff = self.curr_settings.HUD.diff(
+            validated_settings.HUD,
+            [
+                "lap_timer_ui_scale",
+                "timing_tower_ui_scale",
+                "mfd_ui_scale",
+                "track_map_ui_scale",
+                "input_overlay_ui_scale",
+                "track_radar_overlay_ui_scale",
+            ],
+        )
+
+        global_opacity_changed = (
+            self.curr_settings.HUD.overlays_opacity
+            != validated_settings.HUD.overlays_opacity
+        )
+
+        track_radar_idle_opacity_changed = (
+            self.curr_settings.HUD.track_radar_idle_opacity
+            != validated_settings.HUD.track_radar_idle_opacity
+        )
+
+        # ---- Apply runtime effects ----
+        if global_opacity_changed:
+            self._send_overlays_opacity_change(
+                validated_settings.HUD.overlays_opacity
+            )
+
+        if track_radar_idle_opacity_changed:
+            self._send_track_radar_idle_opacity_change(
+                validated_settings.HUD.track_radar_idle_opacity
+            )
+
+        if hud_diff:
+            key_to_oid = {
                 "lap_timer_ui_scale": LAP_TIMER_OVERLAY_ID,
                 "timing_tower_ui_scale": TIMING_TOWER_OVERLAY_ID,
                 "mfd_ui_scale": MFD_OVERLAY_ID,
@@ -491,14 +624,16 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
                 "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
             }
-            for key, data in diff.items():
+
+            for key, data in hud_diff.items():
                 oid = key_to_oid[key]
                 self._send_ui_scale_change_cmd(oid, data)
 
-        if diff or opacity_changed:
-            # Update current settings and save to disk
-            self.window.update_settings(new_settings)
-            self.window.save_settings_to_disk(new_settings)
+        # ---- Persist only VALIDATED settings ----
+        if hud_diff or global_opacity_changed or track_radar_idle_opacity_changed:
+            self.window.update_settings(validated_settings)
+            self.window.save_settings_to_disk(validated_settings)
+
 
     def _request_lock_state_change(self, old_value: bool, new_value: bool) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """

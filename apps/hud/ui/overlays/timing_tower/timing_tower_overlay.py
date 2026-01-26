@@ -54,7 +54,13 @@ class TimingTowerOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         num_adjacent_cars: int,
-        windowed_overlay: bool
+        windowed_overlay: bool,
+        show_team_logos: bool,
+        show_tyre_info: bool,
+        show_deltas: bool,
+        show_ers_drs_info: bool,
+        show_pens: bool,
+        show_tl_warns: bool,
     ):
         """Initialize timing tower overlay.
 
@@ -66,9 +72,22 @@ class TimingTowerOverlay(BaseOverlayQML):
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
+            show_team_logos (bool): Show team logos
+            show_tyre_info (bool): Show tyre info
+            show_deltas (bool): Show deltas
+            show_ers_drs_info (bool): Show ERS/DRS info
+            show_pens (bool): Show penalties
+            show_tl_warns (bool): Show Track Limit warnings
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
+
+        self.show_team_logos = show_team_logos
+        self.show_tyre_info = show_tyre_info
+        self.show_deltas = show_deltas
+        self.show_ers_drs_info = show_ers_drs_info
+        self.show_pens = show_pens
+        self.show_tl_warns = show_tl_warns
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}
@@ -96,6 +115,11 @@ class TimingTowerOverlay(BaseOverlayQML):
         super()._setup_window()
         if self._root:
             self._root.setProperty("numRows", self.total_rows)
+            self._root.setProperty("showTeamLogos", self.show_team_logos)
+            self._root.setProperty("showTyreInfo", self.show_tyre_info)
+            self._root.setProperty("showDeltas", self.show_deltas)
+            self._root.setProperty("showErsDrsInfo", self.show_ers_drs_info)
+            self._root.setProperty("showPens", self.show_pens)
 
     def render_frame(self):
         """Not used - this overlay uses event-driven updates."""
@@ -131,8 +155,6 @@ class TimingTowerOverlay(BaseOverlayQML):
                 return
 
             ref_index = ref_row["driver-info"]["index"]
-
-            table_entries.sort(key=lambda x: x["driver-info"]["position"])
             relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
             if is_race_type_session(session_type):
@@ -231,11 +253,19 @@ class TimingTowerOverlay(BaseOverlayQML):
             num_dt = warns_pens_info.get("num-dt", 0)
             num_sg = warns_pens_info.get("num-sg", 0)
             pens_sec += (num_sg * 10) # SG counts as 10 seconds
-            pens_str = (
-                f"{num_dt}DT" if num_dt else
-                f"+{pens_sec}sec" if pens_sec else
-                ""
-            )
+
+            if pens_sec > 0:
+                pens_str = (
+                    f"{num_dt}DT" if num_dt else
+                    f"+{pens_sec}sec" if pens_sec else
+                    ""
+                )
+            elif self.show_tl_warns:
+                # Show track limits warnings if there are no pens
+                tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
+                pens_str = f"TL: {tl_warns}"
+            else:
+                pens_str = ""
 
             # Get icon URI
             team_icon_url = self.team_logo_uris[team]

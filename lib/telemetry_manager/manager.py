@@ -115,13 +115,6 @@ class AsyncF1TelemetryManager:
             self.m_logger.debug("Receiver task cancelled - shutting down.")
             await self.m_receiver.close()
 
-    async def stop(self) -> None:
-        """Stops the telemetry manager and its internals
-        """
-        self.m_logger.debug("Stopping telemetry manager...")
-        await self.m_receiver.close()
-        self.m_logger.debug("Telemetry manager stopped.")
-
     async def _processPacket(self,
                              pkt_factory: PacketParserFactory,
                              raw_packet: bytes) -> None:
