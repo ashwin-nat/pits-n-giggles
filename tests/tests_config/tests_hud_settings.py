@@ -66,6 +66,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
+        self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
@@ -798,3 +799,27 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(enabled=True, overlays_opacity=70, track_radar_idle_opacity=80)
 
+    def test_mfd_tyre_wear_threshold(self):
+
+        mfd_tyre_wear_threshold = 50
+        hud_settings = HudSettings(mfd_tyre_wear_threshold=mfd_tyre_wear_threshold)
+        self.assertEqual(hud_settings.mfd_tyre_wear_threshold, mfd_tyre_wear_threshold)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_threshold="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_threshold=420)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_threshold=None)
+
+        # Boundary value: minimum (0)
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_threshold=-1)
+        HudSettings(mfd_tyre_wear_threshold=0)
+
+        # Boundary value: maximum (100)
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_threshold=101)
+        HudSettings(mfd_tyre_wear_threshold=100)

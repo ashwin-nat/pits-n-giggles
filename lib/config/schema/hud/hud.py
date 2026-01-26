@@ -101,6 +101,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    mfd_tyre_wear_threshold: int = Field(
+        default=80,
+        ge=0,
+        le=100,
+        description="Tyre wear threshold for MFD (Tyre Wear Page)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info": [
+                    "Used by the Tyre Wear page in the MFD to select the end lap.\n"
+                    "The first lap exceeding this wear value is chosen; if none do, the final prediction lap is used."
+                ],
+            }
+        }
+    )
     mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle MFD overlay UDP action code")
     mfd_interaction_udp_action_code: Optional[int] = udp_action_field(
