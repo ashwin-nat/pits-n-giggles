@@ -20,8 +20,9 @@ Window {
     property real radarRange: 25.0  // meters - zoomed in for side awareness
     property real baseOpacity: 1.0  // Externally controlled opacity
     property bool lockedMode: true  // Enable/disable fade behavior
-    property bool carsNearby: true  // Track if cars are in vicinity
-    // Default value is true so that the radar stays faded in menu when the app is launched
+    property bool carsNearby: false  // Track if cars are in vicinity
+    // Default value is false so that the radar stays faded in menu when the app is launched
+    // When actual data starts coming, the correct computed value will be set
 
     function updateTelemetry(drivers) {
         driverData = drivers || [];
