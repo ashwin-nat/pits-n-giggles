@@ -28,6 +28,7 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
+from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
@@ -372,6 +373,21 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"Set overlays opacity response: {rsp}")
 
+    def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
+        """Send track radar idle opacity change to HUD app
+
+        Args:
+            opacity (int): New track radar idle opacity
+        """
+        self.debug_log("Sending set-track-radar-idle-opacity command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-idle-opacity", args={
+            "opacity": opacity,
+        })
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to set track radar idle opacity: {rsp}")
+        else:
+            self.debug_log(f"Set track radar idle opacity response: {rsp}")
+
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
         self.integration_test_stop_event.clear()
@@ -509,6 +525,14 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.overlays_opacity,
             ),
+
+            SliderItem(
+                key="track_radar_idle_opacity",
+                label="Track Radar Idle Opacity",
+                min=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
+                value=hud_settings.track_radar_idle_opacity
+            )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
@@ -519,33 +543,77 @@ class HudAppMgr(PngAppMgrBase):
         self.overlays_adj_popup.show()
 
     def _overlays_adj_popup_on_confirm(self, values: dict[str, int]):
-        """Scale confirm callback. No guarantee that values have been changed"""
+        """
+        Confirm callback for the overlays adjust popup.
 
+        Applies slider values, forces Pydantic re-validation (including cross-field
+        constraints), sends IPC updates, and persists settings on success.
+        """
+
+        # ---- Build candidate settings (ALLOW invalid intermediate state here) ----
         new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
         new_settings.HUD.lap_timer_ui_scale = values[LAP_TIMER_OVERLAY_ID] / 100.0
+        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
         new_settings.HUD.mfd_ui_scale = values[MFD_OVERLAY_ID] / 100.0
-        new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
         new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
         new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
 
-        diff = self.curr_settings.HUD.diff(new_settings.HUD, [
-            "lap_timer_ui_scale",
-            "timing_tower_ui_scale",
-            "mfd_ui_scale",
-            "track_map_ui_scale",
-            "input_overlay_ui_scale",
-            "track_radar_overlay_ui_scale",
-        ])
-        self.debug_log(f"Scale confirm callback with values: {values}. Diff: {diff}. Bool={bool(diff)}")
+        new_settings.HUD.overlays_opacity = values["overlays_opacity"]
+        new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
 
-        opacity_changed = self.curr_settings.HUD.overlays_opacity != new_settings.HUD.overlays_opacity
-        if opacity_changed:
-            self._send_overlays_opacity_change(new_settings.HUD.overlays_opacity)
+        # ---- FORCE VALIDATION (this is the important bit) ----
+        try:
+            validated_settings = type(new_settings).model_validate(
+                new_settings.model_dump()
+            )
+        except ValidationError as e:
+            self.error_log("Invalid HUD settings from slider popup:")
+            self.error_log(str(e))
+            error_text = e.errors()[0]["msg"]
+            self.error_log(error_text)
 
-        if diff:
-            key_to_oid: Dict[str, str] = {
+            self.show_error("Invalid HUD Settings", error_text)
+
+            # Optional: show user feedback later (QMessageBox / toast / inline)
+            return
+
+        # ---- Compute diffs AFTER validation ----
+        hud_diff = self.curr_settings.HUD.diff(
+            validated_settings.HUD,
+            [
+                "lap_timer_ui_scale",
+                "timing_tower_ui_scale",
+                "mfd_ui_scale",
+                "track_map_ui_scale",
+                "input_overlay_ui_scale",
+                "track_radar_overlay_ui_scale",
+            ],
+        )
+
+        global_opacity_changed = (
+            self.curr_settings.HUD.overlays_opacity
+            != validated_settings.HUD.overlays_opacity
+        )
+
+        track_radar_idle_opacity_changed = (
+            self.curr_settings.HUD.track_radar_idle_opacity
+            != validated_settings.HUD.track_radar_idle_opacity
+        )
+
+        # ---- Apply runtime effects ----
+        if global_opacity_changed:
+            self._send_overlays_opacity_change(
+                validated_settings.HUD.overlays_opacity
+            )
+
+        if track_radar_idle_opacity_changed:
+            self._send_track_radar_idle_opacity_change(
+                validated_settings.HUD.track_radar_idle_opacity
+            )
+
+        if hud_diff:
+            key_to_oid = {
                 "lap_timer_ui_scale": LAP_TIMER_OVERLAY_ID,
                 "timing_tower_ui_scale": TIMING_TOWER_OVERLAY_ID,
                 "mfd_ui_scale": MFD_OVERLAY_ID,
@@ -553,14 +621,16 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
                 "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
             }
-            for key, data in diff.items():
+
+            for key, data in hud_diff.items():
                 oid = key_to_oid[key]
                 self._send_ui_scale_change_cmd(oid, data)
 
-        if diff or opacity_changed:
-            # Update current settings and save to disk
-            self.window.update_settings(new_settings)
-            self.window.save_settings_to_disk(new_settings)
+        # ---- Persist only VALIDATED settings ----
+        if hud_diff or global_opacity_changed or track_radar_idle_opacity_changed:
+            self.window.update_settings(validated_settings)
+            self.window.save_settings_to_disk(validated_settings)
+
 
     def _request_lock_state_change(self, old_value: bool, new_value: bool) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
