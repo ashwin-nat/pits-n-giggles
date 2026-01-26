@@ -413,6 +413,7 @@ class HudAppMgr(PngAppMgrBase):
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
             self.next_page_callback()
+            self.mfd_interact_callback()
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the HUD subsystem
