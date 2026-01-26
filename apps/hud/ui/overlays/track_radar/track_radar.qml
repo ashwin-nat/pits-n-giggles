@@ -19,6 +19,7 @@ Window {
     property var driverData: []
     property real radarRange: 25.0  // meters - zoomed in for side awareness
     property real baseOpacity: 1.0  // Externally controlled opacity
+    property real idleOpacity: 0.3  // Opacity when no cars nearby (0.0 - 1.0)
     property bool lockedMode: true  // Enable/disable fade behavior
     property bool carsNearby: false  // Track if cars are in vicinity
     // Default value is false so that the radar stays faded in menu when the app is launched
@@ -93,7 +94,7 @@ Window {
 
         // Fade in/out based on car vicinity (only if lockedMode is true)
         opacity: {
-            let targetOpacity = lockedMode ? (carsNearby ? baseOpacity : baseOpacity * 0.3) : baseOpacity;
+            let targetOpacity = lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity;
             return targetOpacity;
         }
 
