@@ -68,6 +68,7 @@ class TrackRadarOverlay(BaseOverlayQML):
         """Set the opacity property when the window is ready"""
         super()._setup_window()
         self._set_base_opacity_property(self.opacity)
+        self._set_idle_opacity_property(self.idle_opacity)
 
     @final
     def set_opacity(self, opacity: int):

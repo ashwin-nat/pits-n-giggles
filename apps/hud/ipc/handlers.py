@@ -182,7 +182,8 @@ def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overl
     logger.debug("Received set-track-radar-idle-opacity command. args: %s", msg)
 
     args: dict = msg.get("args", {})
-    if opacity := args.get("opacity"):
+    opacity = args.get("opacity")
+    if opacity is not None:
         overlays_mgr.set_track_radar_idle_opacity(opacity)
         return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
     return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
