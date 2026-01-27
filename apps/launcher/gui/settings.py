@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
+from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Union, get_args, get_origin)
 
@@ -43,6 +44,18 @@ if TYPE_CHECKING:
     from .main_window import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+@dataclass
+class SearchableWidget:
+    """Represents a widget that can be searched in the settings dialog"""
+    widget: QWidget
+    description: str
+    field_name: str
+
+    def matches(self, search_text: str) -> bool:
+        """Check if this widget matches the search text"""
+        search_lower = search_text.lower()
+        return search_lower in self.description.lower() or search_lower in self.field_name.lower()
 
 class ReorderableCollection:
     """Helper class to encapsulate reorderable collection metadata"""
@@ -99,6 +112,14 @@ class SettingsWindow(QDialog):
 
         # Track widgets for validation and updates
         self.field_widgets: Dict[str, Any] = {}
+
+        # Track all searchable widgets (containers and group boxes) for search filtering
+        self.searchable_widgets: List[SearchableWidget] = []
+
+        # Track category information for search filtering
+        self.category_widgets: Dict[int, List[QWidget]] = {}  # category_index -> list of widgets
+        self.category_names: List[str] = []  # Original category names
+        self.current_category_index = 0
 
         self.setup_ui()
 
@@ -237,6 +258,24 @@ class SettingsWindow(QDialog):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
 
+        # Search bar
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search:")
+        search_label.setFixedWidth(60)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search settings by description...")
+        self.search_input.textChanged.connect(self._on_search_changed)
+
+        # Clear button for search
+        clear_search_btn = QPushButton("Clear")
+        clear_search_btn.setMaximumWidth(60)
+        clear_search_btn.clicked.connect(self.search_input.clear)
+
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(clear_search_btn)
+        main_layout.addLayout(search_layout)
+
         # Content area with list and stacked widget
         content_layout = QHBoxLayout()
 
@@ -250,6 +289,7 @@ class SettingsWindow(QDialog):
         self.stacked_widget = QStackedWidget()
 
         # Build categories
+        category_index = 0
         for category_name, category_model in self.working_settings:
             if not self._is_visible(category_model):
                 continue
@@ -259,8 +299,21 @@ class SettingsWindow(QDialog):
             display_name = field_info.description
 
             self.category_list.addItem(display_name)
+            self.category_names.append(display_name)
+
+            # Track the starting index for this category's widgets
+            widgets_start_index = len(self.searchable_widgets)
+
             category_widget = self._build_category_content(category_name, category_model)
             self.stacked_widget.addWidget(category_widget)
+
+            # Track which widgets belong to this category
+            widgets_end_index = len(self.searchable_widgets)
+            self.category_widgets[category_index] = [
+                sw.widget for sw in self.searchable_widgets[widgets_start_index:widgets_end_index]
+            ]
+
+            category_index += 1
 
         content_layout.addWidget(self.category_list)
         content_layout.addWidget(self.stacked_widget, stretch=1)
@@ -297,6 +350,7 @@ class SettingsWindow(QDialog):
     def on_category_changed(self, index: int):
         """Handle category selection change"""
         if index >= 0:
+            self.current_category_index = index
             self.stacked_widget.setCurrentIndex(index)
 
     def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
@@ -399,6 +453,12 @@ class SettingsWindow(QDialog):
                                                   ui_config, container, ext_info)
 
         container.setLayout(layout)
+        # Track container for search filtering
+        self.searchable_widgets.append(SearchableWidget(
+            widget=container,
+            description=description,
+            field_name=field_name
+        ))
         return container
 
     def _build_field_widget_check_box(self,
@@ -575,6 +635,12 @@ class SettingsWindow(QDialog):
             return self._build_reorderable_dict_group(field_name, field_value, field_path, field_info)
         # Just show the dict items
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self.searchable_widgets.append(SearchableWidget(
+            widget=group_box,
+            description=field_info.description or field_name,
+            field_name=field_name
+        ))
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -595,6 +661,12 @@ class SettingsWindow(QDialog):
                            ) -> QWidget:
         """Build a collapsible nested page"""
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self.searchable_widgets.append(SearchableWidget(
+            widget=group_box,
+            description=field_info.description or field_name,
+            field_name=field_name
+        ))
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -645,6 +717,12 @@ class SettingsWindow(QDialog):
                             ) -> QWidget:
         """Build a nested group of fields"""
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self.searchable_widgets.append(SearchableWidget(
+            widget=group_box,
+            description=field_info.description or field_name,
+            field_name=field_name
+        ))
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -1310,3 +1388,48 @@ class SettingsWindow(QDialog):
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
+
+    def _on_search_changed(self, search_text: str):
+        """Filter visible settings based on search text"""
+        search_text = search_text.lower().strip()
+
+        # If search is empty, show all widgets and reset category labels
+        if not search_text:
+            for sw in self.searchable_widgets:
+                sw.widget.setVisible(True)
+
+            # Reset category labels to original names and unhide all categories
+            for i, category_name in enumerate(self.category_names):
+                item = self.category_list.item(i)
+                item.setText(category_name)
+                item.setHidden(False)
+            return
+
+        # Count visible items per category
+        category_visible_counts = {i: 0 for i in range(len(self.category_names))}
+
+        # Hide/show widgets based on whether their description or field_name matches the search
+        for sw in self.searchable_widgets:
+            # Use the matches method from SearchableWidget
+            if sw.matches(search_text):
+                sw.widget.setVisible(True)
+                # Count which category this widget belongs to
+                for category_idx, category_widget_list in self.category_widgets.items():
+                    if sw.widget in category_widget_list:
+                        category_visible_counts[category_idx] += 1
+                        break
+            else:
+                sw.widget.setVisible(False)
+
+        # Update category labels with counts and hide empty categories
+        for i, category_name in enumerate(self.category_names):
+            item = self.category_list.item(i)
+            visible_count = category_visible_counts.get(i, 0)
+
+            if visible_count > 0:
+                # Show category with count
+                item.setText(f"{category_name} ({visible_count})")
+                item.setHidden(False)
+            else:
+                # Hide empty category
+                item.setHidden(True)
