@@ -51,11 +51,48 @@ class SearchableWidget:
     widget: QWidget
     description: str
     field_name: str
+    label_widget: Optional[QLabel] = None  # The label widget to highlight, if any
 
     def matches(self, search_text: str) -> bool:
         """Check if this widget matches the search text"""
         search_lower = search_text.lower()
         return search_lower in self.description.lower() or search_lower in self.field_name.lower()
+
+    def matches_description(self, search_text: str) -> bool:
+        """Check if search text matches the description (not just field name)"""
+        return search_text.lower() in self.description.lower()
+
+    def apply_highlight(self, search_text: str):
+        """Apply highlighting to the label if search matches description"""
+        if self.label_widget and search_text and self.matches_description(search_text):
+            # Find all occurrences (case-insensitive) and highlight them
+            highlighted = self.description
+            search_lower = search_text.lower()
+            desc_lower = self.description.lower()
+
+            # Find all positions where search_text appears
+            positions = []
+            start = 0
+            while True:
+                pos = desc_lower.find(search_lower, start)
+                if pos == -1:
+                    break
+                positions.append((pos, pos + len(search_text)))
+                start = pos + 1
+
+            # Build highlighted text from back to front to maintain positions
+            for start_pos, end_pos in reversed(positions):
+                original = self.description[start_pos:end_pos]
+                highlighted = (
+                    highlighted[:start_pos] +
+                    f'<span style="background-color: #e3dc09; color: #000000;">{original}</span>' +
+                    highlighted[end_pos:]
+                )
+
+            self.label_widget.setText(highlighted)
+        elif self.label_widget:
+            # Remove highlighting
+            self.label_widget.setText(self.description)
 
 class ReorderableCollection:
     """Helper class to encapsulate reorderable collection metadata"""
@@ -315,6 +352,14 @@ class SettingsWindow(QDialog):
 
             category_index += 1
 
+        # Add an empty placeholder widget for "no results" state
+        empty_widget = QWidget()
+        empty_layout = QVBoxLayout()
+        empty_layout.addStretch()
+        empty_widget.setLayout(empty_layout)
+        self.stacked_widget.addWidget(empty_widget)
+        self.empty_widget_index = self.stacked_widget.count() - 1
+
         content_layout.addWidget(self.category_list)
         content_layout.addWidget(self.stacked_widget, stretch=1)
 
@@ -439,17 +484,20 @@ class SettingsWindow(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
+        # Track the label widget for highlighting (if applicable)
+        label_widget = None
+
         if ui_type == "check_box":
-            self._build_field_widget_check_box(layout, description, field_value, field_path, ext_info)
+            label_widget = self._build_field_widget_check_box(layout, description, field_value, field_path, ext_info)
 
         elif ui_type == "slider":
-            self._build_field_widget_slider(layout, description, field_value, field_path, ui_config, ext_info)
+            label_widget = self._build_field_widget_slider(layout, description, field_value, field_path, ui_config, ext_info)
 
         elif ui_type == "text_box":
-            self._build_field_widget_text_box(layout, description, field_value, field_path, field_info, ext_info)
+            label_widget = self._build_field_widget_text_box(layout, description, field_value, field_path, field_info, ext_info)
 
         elif ui_type == "radio_buttons":
-            self._build_field_widget_radio_button(layout, description, field_value, field_path,
+            label_widget = self._build_field_widget_radio_button(layout, description, field_value, field_path,
                                                   ui_config, container, ext_info)
 
         container.setLayout(layout)
@@ -457,7 +505,8 @@ class SettingsWindow(QDialog):
         self.searchable_widgets.append(SearchableWidget(
             widget=container,
             description=description,
-            field_name=field_name
+            field_name=field_name,
+            label_widget=label_widget
         ))
         return container
 
@@ -466,11 +515,12 @@ class SettingsWindow(QDialog):
                                       description: str,
                                       field_value: bool,
                                       field_path: str,
-                                      ext_info: Optional[str] = None) -> None:
+                                      ext_info: Optional[str] = None) -> QCheckBox:
 
         checkbox = QCheckBox(description)
         checkbox.setFont(QFont("Roboto", 10))
         checkbox.setChecked(field_value)
+        # Note: QCheckBox supports rich text by default, no need to call setTextFormat
         checkbox.stateChanged.connect(
             lambda state, path=field_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
         )
@@ -483,6 +533,7 @@ class SettingsWindow(QDialog):
         else:
             layout.addWidget(checkbox)
 
+        return checkbox
     def _build_field_widget_slider(self,
                                    layout: QVBoxLayout,
                                    description: str,
@@ -490,10 +541,11 @@ class SettingsWindow(QDialog):
                                    field_path: str,
                                    ui_config: dict,
                                    ext_info: Optional[str] = None
-                                   ):
+                                   ) -> QLabel:
 
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         # Wrap label with info icons if ext_info is provided
         if ext_info:
@@ -541,6 +593,7 @@ class SettingsWindow(QDialog):
 
         self.field_widgets[field_path] = slider
 
+        return label
     def _build_field_widget_text_box(self,
                                      layout: QVBoxLayout,
                                      description: str,
@@ -548,10 +601,11 @@ class SettingsWindow(QDialog):
                                      field_path: str,
                                      field_info: FieldInfo,
                                      ext_info: Optional[str] = None
-                                     ):
+                                     ) -> QLabel:
 
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         # Wrap label with info icons if ext_info is provided
         if ext_info:
@@ -569,6 +623,7 @@ class SettingsWindow(QDialog):
         layout.addWidget(text_box)
         self.field_widgets[field_path] = text_box
 
+        return label
     def _build_field_widget_radio_button(self,
                                          layout: QVBoxLayout,
                                          description: str,
@@ -577,9 +632,10 @@ class SettingsWindow(QDialog):
                                          ui_config: dict,
                                          container: QWidget,
                                          ext_info: Optional[str] = None
-                                         ):
+                                         ) -> Optional[QLabel]:
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         if ext_info:
             label_widget = self._wrap_widget_with_info_icons(label, ext_info)
@@ -590,7 +646,7 @@ class SettingsWindow(QDialog):
         options = ui_config.get("options", [])
         if not options:
             self.parent_window.warning_log(f"No options provided for radio_buttons field {field_path}")
-            return
+            return None
 
         radio_container = QWidget()
         radio_layout = QHBoxLayout()
@@ -620,6 +676,7 @@ class SettingsWindow(QDialog):
 
         self.field_widgets[field_path] = button_group
 
+        return label
     def _build_dict_field(self,
                           field_name: str,
                           field_value: Dict[str, Any],
@@ -1397,6 +1454,7 @@ class SettingsWindow(QDialog):
         if not search_text:
             for sw in self.searchable_widgets:
                 sw.widget.setVisible(True)
+                sw.apply_highlight("")  # Remove highlighting
 
             # Reset category labels to original names and unhide all categories
             for i, category_name in enumerate(self.category_names):
@@ -1413,6 +1471,7 @@ class SettingsWindow(QDialog):
             # Use the matches method from SearchableWidget
             if sw.matches(search_text):
                 sw.widget.setVisible(True)
+                sw.apply_highlight(search_text)  # Apply highlighting
                 # Count which category this widget belongs to
                 for category_idx, category_widget_list in self.category_widgets.items():
                     if sw.widget in category_widget_list:
@@ -1420,8 +1479,10 @@ class SettingsWindow(QDialog):
                         break
             else:
                 sw.widget.setVisible(False)
+                sw.apply_highlight("")  # Remove highlighting from hidden widgets
 
         # Update category labels with counts and hide empty categories
+        first_visible_category = None
         for i, category_name in enumerate(self.category_names):
             item = self.category_list.item(i)
             visible_count = category_visible_counts.get(i, 0)
@@ -1430,6 +1491,20 @@ class SettingsWindow(QDialog):
                 # Show category with count
                 item.setText(f"{category_name} ({visible_count})")
                 item.setHidden(False)
+                # Track the first visible category
+                if first_visible_category is None:
+                    first_visible_category = i
             else:
                 # Hide empty category
                 item.setHidden(True)
+
+        # If the currently selected category is now hidden, switch to the first visible category
+        # or show empty widget if no categories have results
+        current_row = self.category_list.currentRow()
+        if current_row >= 0 and self.category_list.item(current_row).isHidden():
+            if first_visible_category is not None:
+                self.category_list.setCurrentRow(first_visible_category)
+            else:
+                # No categories have results, show empty widget and clear selection
+                self.category_list.setCurrentRow(-1)
+                self.stacked_widget.setCurrentIndex(self.empty_widget_index)
