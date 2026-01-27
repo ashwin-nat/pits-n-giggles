@@ -44,9 +44,9 @@ class TyreInfoPage(MfdPageBase):
     NUM_DECIMAL_PLACES = 2
 
     def __init__(self,
-                 overlay: MfdOverlay,
+                 overlay: "MfdOverlay",
                  logger: logging.Logger,
-                 tyre_wear_threshold: int = 75, # TODO: remove default value
+                 tyre_wear_threshold: int,
                  ):
         self.tyre_wear_threshold = tyre_wear_threshold
         super().__init__(overlay, logger)
