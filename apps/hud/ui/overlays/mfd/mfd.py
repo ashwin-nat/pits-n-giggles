@@ -107,18 +107,25 @@ class MfdOverlay(BaseOverlayQML):
                 if page.handles_event(event_type):
                     page.handle_event(event_type, data)
 
+    def _get_page_kwargs(self, settings: PngSettings) -> dict:
+        """Get initialization kwargs for pages from settings."""
+        return {
+            TyreInfoPage.KEY: {"tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold},
+        }
+
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
+        page_kwargs = self._get_page_kwargs(settings)
         self.enabled_pages = [
-            {"key": "collapsed", "cls": CollapsedPage, "position": 0},
+            {"key": "collapsed", "cls": CollapsedPage, "position": 0, "kwargs": {}},
             *[
                 {
                     "key": key,
                     "cls": self.PAGE_CLS_BY_KEY[key],
-                    "position": settings.position
+                    "position": page_settings.position,
+                    "kwargs": page_kwargs.get(key, {})
                 }
-                for key, settings in
-                settings.HUD.mfd_settings.sorted_enabled_pages()
+                for key, page_settings in settings.HUD.mfd_settings.sorted_enabled_pages()
             ]
         ]
 
@@ -130,7 +137,8 @@ class MfdOverlay(BaseOverlayQML):
 
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
-            self._mfd_pages.append(cls(self, self.logger))
+            kwargs = page_info.get("kwargs", {})
+            self._mfd_pages.append(cls(self, self.logger, **kwargs))
         self._current_index = 0
 
         # Set total pages in QML

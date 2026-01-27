@@ -24,12 +24,15 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+
+if TYPE_CHECKING:
+    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,9 +42,13 @@ class TyreInfoPage(MfdPageBase):
     QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
-    PUNCTURE_WEAR = 75
 
-    def __init__(self, overlay, logger: logging.Logger):
+    def __init__(self,
+                 overlay: "MfdOverlay",
+                 logger: logging.Logger,
+                 tyre_wear_threshold: int,
+                 ):
+        self.tyre_wear_threshold = tyre_wear_threshold
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -234,7 +241,7 @@ class TyreInfoPage(MfdPageBase):
                 pred.get('rear-right-wear', 0.0),
             )
 
-            if max_wear >= self.PUNCTURE_WEAR:
+            if max_wear >= self.tyre_wear_threshold:
                 return pred["lap-number"]
 
         return predictions[-1]["lap-number"]

@@ -284,8 +284,9 @@ class PngLauncherWindow(QMainWindow):
             "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
             "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
-            "download" : self._load_icon(icons_path_base / "download.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
+            "download" : self._load_icon(icons_path_base / "download.svg"),
+            "github" : self._load_icon(icons_path_base / "github.svg"),
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
             "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
@@ -382,6 +383,10 @@ class PngLauncherWindow(QMainWindow):
         self.download_btn = self.build_button(self.get_icon("download"), self.on_download_clicked,
                                               "Download Latest Releases")
         global_buttons_layout.addWidget(self.download_btn)
+
+        # Github button
+        self.github_btn = self.build_button(self.get_icon("github"), self.on_github_clicked, "Github Repository")
+        global_buttons_layout.addWidget(self.github_btn)
 
         top_bar_layout.addLayout(global_buttons_layout)
         main_layout.addLayout(top_bar_layout)
@@ -830,6 +835,10 @@ class PngLauncherWindow(QMainWindow):
     def on_download_clicked(self):
         """Handle download button click"""
         webbrowser.open("https://pitsngiggles.com/releases")
+
+    def on_github_clicked(self):
+        """Handle GitHub button click"""
+        webbrowser.open("https://github.com/ashwin-nat/pits-n-giggles")
 
     def on_settings_changed(self, new_settings: PngSettings):
         """Handle settings changed event"""

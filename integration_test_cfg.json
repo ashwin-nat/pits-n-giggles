@@ -92,6 +92,7 @@
                 }
             }
         },
+        "mfd_tyre_wear_threshold": 80,
         "mfd_toggle_udp_action_code": null,
         "mfd_interaction_udp_action_code": null,
         "show_track_map": true,
