@@ -22,7 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import html
 import json
+import re
+from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Union, get_args, get_origin)
 
@@ -43,6 +46,52 @@ if TYPE_CHECKING:
     from .main_window import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+@dataclass
+class SearchableWidget:
+    """Represents a widget that can be searched in the settings dialog"""
+    widget: QWidget
+    description: str
+    field_name: str
+    label_widget: Optional[QLabel] = None  # The label widget to highlight, if any
+    category_index: Optional[int] = None  # The category this widget belongs to
+
+    def matches(self, search_text: str) -> bool:
+        """Check if this widget matches the search text"""
+        search_lower = search_text.lower()
+        return search_lower in self.description.lower() or search_lower in self.field_name.lower()
+
+    def matches_description(self, search_text: str) -> bool:
+        """Check if search text matches the description (not just field name)"""
+        return search_text.lower() in self.description.lower()
+
+    def apply_highlight(self, search_text: str):
+        """Apply highlighting to the label if search matches description"""
+        if not self.label_widget:
+            return
+
+        if not search_text:
+            self.label_widget.setText(self.description)
+            return
+
+        if not self.matches_description(search_text):
+            self.label_widget.setText(self.description)
+            return
+
+        # HTML-escape the description to prevent injection
+        escaped_description = html.escape(self.description)
+
+        # Build regex pattern with escaped search text (case-insensitive)
+        pattern = re.escape(search_text)
+
+        def _repl(m: re.Match) -> str:
+            # The matched text is already HTML-escaped
+            original = m.group(0)
+            return f'<span style="background-color: #e3dc09; color: #000000;">{original}</span>'
+
+        # Apply highlighting with case-insensitive matching
+        highlighted = re.sub(pattern, _repl, escaped_description, flags=re.IGNORECASE)
+        self.label_widget.setText(highlighted)
 
 class ReorderableCollection:
     """Helper class to encapsulate reorderable collection metadata"""
@@ -99,6 +148,12 @@ class SettingsWindow(QDialog):
 
         # Track widgets for validation and updates
         self.field_widgets: Dict[str, Any] = {}
+
+        # Track all searchable widgets (containers and group boxes) for search filtering
+        self.searchable_widgets: List[SearchableWidget] = []
+
+        # Track category names for search filtering
+        self.category_names: List[str] = []  # Original category names
 
         self.setup_ui()
 
@@ -237,6 +292,24 @@ class SettingsWindow(QDialog):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
 
+        # Search bar
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search:")
+        search_label.setFixedWidth(60)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search settings by description...")
+        self.search_input.textChanged.connect(self._on_search_changed)
+
+        # Clear button for search
+        clear_search_btn = QPushButton("Clear")
+        clear_search_btn.setMaximumWidth(60)
+        clear_search_btn.clicked.connect(self.search_input.clear)
+
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(clear_search_btn)
+        main_layout.addLayout(search_layout)
+
         # Content area with list and stacked widget
         content_layout = QHBoxLayout()
 
@@ -250,7 +323,7 @@ class SettingsWindow(QDialog):
         self.stacked_widget = QStackedWidget()
 
         # Build categories
-        for category_name, category_model in self.working_settings:
+        for category_index, (category_name, category_model) in enumerate(self.working_settings):
             if not self._is_visible(category_model):
                 continue
 
@@ -259,8 +332,18 @@ class SettingsWindow(QDialog):
             display_name = field_info.description
 
             self.category_list.addItem(display_name)
+            self.category_names.append(display_name)
+
+            # Track the starting index for this category's widgets
+            widgets_start_index = len(self.searchable_widgets)
+
             category_widget = self._build_category_content(category_name, category_model)
             self.stacked_widget.addWidget(category_widget)
+
+            # Set category_index on all widgets added during category building
+            widgets_end_index = len(self.searchable_widgets)
+            for sw in self.searchable_widgets[widgets_start_index:widgets_end_index]:
+                sw.category_index = category_index
 
         content_layout.addWidget(self.category_list)
         content_layout.addWidget(self.stacked_widget, stretch=1)
@@ -298,6 +381,30 @@ class SettingsWindow(QDialog):
         """Handle category selection change"""
         if index >= 0:
             self.stacked_widget.setCurrentIndex(index)
+
+    def _register_searchable(
+        self,
+        widget: QWidget,
+        description: str,
+        field_name: str,
+        label_widget: Optional[QLabel] = None,
+    ) -> None:
+        """Register a widget as searchable
+
+        Args:
+            widget: The widget to make searchable
+            description: The description text to search against
+            field_name: The field name to search against
+            label_widget: Optional label widget to apply highlighting to
+        """
+        self.searchable_widgets.append(
+            SearchableWidget(
+                widget=widget,
+                description=description,
+                field_name=field_name,
+                label_widget=label_widget,
+            )
+        )
 
     def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
         """Build content for a settings category"""
@@ -385,20 +492,25 @@ class SettingsWindow(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
+        # Track the label widget for highlighting (if applicable)
+        label_widget = None
+
         if ui_type == "check_box":
-            self._build_field_widget_check_box(layout, description, field_value, field_path, ext_info)
+            label_widget = self._build_field_widget_check_box(layout, description, field_value, field_path, ext_info)
 
         elif ui_type == "slider":
-            self._build_field_widget_slider(layout, description, field_value, field_path, ui_config, ext_info)
+            label_widget = self._build_field_widget_slider(layout, description, field_value, field_path, ui_config, ext_info)
 
         elif ui_type == "text_box":
-            self._build_field_widget_text_box(layout, description, field_value, field_path, field_info, ext_info)
+            label_widget = self._build_field_widget_text_box(layout, description, field_value, field_path, field_info, ext_info)
 
         elif ui_type == "radio_buttons":
-            self._build_field_widget_radio_button(layout, description, field_value, field_path,
+            label_widget = self._build_field_widget_radio_button(layout, description, field_value, field_path,
                                                   ui_config, container, ext_info)
 
         container.setLayout(layout)
+        # Track container for search filtering
+        self._register_searchable(container, description, field_name, label_widget)
         return container
 
     def _build_field_widget_check_box(self,
@@ -406,23 +518,38 @@ class SettingsWindow(QDialog):
                                       description: str,
                                       field_value: bool,
                                       field_path: str,
-                                      ext_info: Optional[str] = None) -> None:
+                                      ext_info: Optional[str] = None) -> QLabel:
 
-        checkbox = QCheckBox(description)
-        checkbox.setFont(QFont("Roboto", 10))
+        # Create a label for the description (separate from checkbox for proper HTML highlighting)
+        label = QLabel(description)
+        label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
+
+        # Create checkbox without text (label provides the description)
+        checkbox = QCheckBox()
         checkbox.setChecked(field_value)
         checkbox.stateChanged.connect(
             lambda state, path=field_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
         )
         self.field_widgets[field_path] = checkbox
 
-        # Wrap checkbox with info icons if ext_info is provided
-        if ext_info:
-            checkbox_container = self._wrap_widget_with_info_icons(checkbox, ext_info)
-            layout.addWidget(checkbox_container)
-        else:
-            layout.addWidget(checkbox)
+        # Create horizontal layout for label and checkbox
+        checkbox_layout = QHBoxLayout()
+        checkbox_layout.setContentsMargins(0, 0, 0, 0)
+        checkbox_layout.addWidget(checkbox)
+        checkbox_layout.addWidget(label)
+        checkbox_layout.addStretch()
 
+        # Wrap with info icons if ext_info is provided
+        if ext_info:
+            checkbox_container = QWidget()
+            checkbox_container.setLayout(checkbox_layout)
+            checkbox_with_info = self._wrap_widget_with_info_icons(checkbox_container, ext_info)
+            layout.addWidget(checkbox_with_info)
+        else:
+            layout.addLayout(checkbox_layout)
+
+        return label
     def _build_field_widget_slider(self,
                                    layout: QVBoxLayout,
                                    description: str,
@@ -430,10 +557,11 @@ class SettingsWindow(QDialog):
                                    field_path: str,
                                    ui_config: dict,
                                    ext_info: Optional[str] = None
-                                   ):
+                                   ) -> QLabel:
 
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         # Wrap label with info icons if ext_info is provided
         if ext_info:
@@ -481,6 +609,7 @@ class SettingsWindow(QDialog):
 
         self.field_widgets[field_path] = slider
 
+        return label
     def _build_field_widget_text_box(self,
                                      layout: QVBoxLayout,
                                      description: str,
@@ -488,10 +617,11 @@ class SettingsWindow(QDialog):
                                      field_path: str,
                                      field_info: FieldInfo,
                                      ext_info: Optional[str] = None
-                                     ):
+                                     ) -> QLabel:
 
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         # Wrap label with info icons if ext_info is provided
         if ext_info:
@@ -509,6 +639,7 @@ class SettingsWindow(QDialog):
         layout.addWidget(text_box)
         self.field_widgets[field_path] = text_box
 
+        return label
     def _build_field_widget_radio_button(self,
                                          layout: QVBoxLayout,
                                          description: str,
@@ -517,9 +648,10 @@ class SettingsWindow(QDialog):
                                          ui_config: dict,
                                          container: QWidget,
                                          ext_info: Optional[str] = None
-                                         ):
+                                         ) -> Optional[QLabel]:
         label = QLabel(description)
         label.setFont(QFont("Roboto", 10))
+        label.setTextFormat(Qt.TextFormat.RichText)  # Enable rich text for highlighting
 
         if ext_info:
             label_widget = self._wrap_widget_with_info_icons(label, ext_info)
@@ -530,7 +662,7 @@ class SettingsWindow(QDialog):
         options = ui_config.get("options", [])
         if not options:
             self.parent_window.warning_log(f"No options provided for radio_buttons field {field_path}")
-            return
+            return None
 
         radio_container = QWidget()
         radio_layout = QHBoxLayout()
@@ -560,6 +692,7 @@ class SettingsWindow(QDialog):
 
         self.field_widgets[field_path] = button_group
 
+        return label
     def _build_dict_field(self,
                           field_name: str,
                           field_value: Dict[str, Any],
@@ -575,6 +708,12 @@ class SettingsWindow(QDialog):
             return self._build_reorderable_dict_group(field_name, field_value, field_path, field_info)
         # Just show the dict items
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self._register_searchable(
+            group_box,
+            field_info.description or field_name,
+            field_name
+        )
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -595,6 +734,12 @@ class SettingsWindow(QDialog):
                            ) -> QWidget:
         """Build a collapsible nested page"""
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self._register_searchable(
+            group_box,
+            field_info.description or field_name,
+            field_name
+        )
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -645,6 +790,12 @@ class SettingsWindow(QDialog):
                             ) -> QWidget:
         """Build a nested group of fields"""
         group_box = QGroupBox(field_info.description or field_name)
+        # Track for search
+        self._register_searchable(
+            group_box,
+            field_info.description or field_name,
+            field_name
+        )
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -1310,3 +1461,73 @@ class SettingsWindow(QDialog):
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
+
+    def _on_search_changed(self, search_text: str):
+        """Filter visible settings based on search text"""
+        search_text = search_text.lower().strip()
+
+        # If search is empty, show all widgets and reset category labels
+        if not search_text:
+            for sw in self.searchable_widgets:
+                sw.widget.setVisible(True)
+                sw.apply_highlight("")  # Remove highlighting
+
+            # Reset category labels to original names and unhide all categories
+            for i, category_name in enumerate(self.category_names):
+                item = self.category_list.item(i)
+                item.setText(category_name)
+                item.setHidden(False)
+
+            # Ensure stacked widget follows current selection
+            current_row = self.category_list.currentRow()
+            if current_row >= 0:
+                self.stacked_widget.setCurrentIndex(current_row)
+            elif self.category_list.count() > 0:
+                # If no selection, select the first category
+                self.category_list.setCurrentRow(0)
+                self.stacked_widget.setCurrentIndex(0)
+            return
+
+        # Count visible items per category
+        category_visible_counts: Dict[int, int] = {}
+
+        # Hide/show widgets based on whether their description or field_name matches the search
+        for sw in self.searchable_widgets:
+            if sw.matches(search_text):
+                sw.widget.setVisible(True)
+                sw.apply_highlight(search_text)  # Apply highlighting
+                # Count which category this widget belongs to
+                if sw.category_index is not None:
+                    category_visible_counts[sw.category_index] = (
+                        category_visible_counts.get(sw.category_index, 0) + 1
+                    )
+            else:
+                sw.widget.setVisible(False)
+                sw.apply_highlight("")  # Remove highlighting from hidden widgets
+
+        # Update category labels with counts and hide empty categories
+        first_visible_category = None
+        for i, category_name in enumerate(self.category_names):
+            item = self.category_list.item(i)
+            visible_count = category_visible_counts.get(i, 0)
+
+            if visible_count > 0:
+                # Show category with count
+                item.setText(f"{category_name} ({visible_count})")
+                item.setHidden(False)
+                # Track the first visible category
+                if first_visible_category is None:
+                    first_visible_category = i
+            else:
+                # Hide empty category
+                item.setHidden(True)
+
+        # Adjust current category and stacked widget
+        current_row = self.category_list.currentRow()
+        if current_row < 0 or self.category_list.item(current_row).isHidden():
+            if first_visible_category is not None:
+                self.category_list.setCurrentRow(first_visible_category)
+                self.stacked_widget.setCurrentIndex(first_visible_category)
+            else:
+                # No results: clear selection (stacked widget will show empty category content)
+                self.category_list.setCurrentRow(-1)

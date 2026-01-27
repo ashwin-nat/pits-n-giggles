@@ -435,6 +435,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_mfd",
                 "show_track_radar_overlay",
                 "mfd_settings",
+                "mfd_tyre_wear_threshold",
                 "use_windowed_overlays",
             ],
             "Network": [
