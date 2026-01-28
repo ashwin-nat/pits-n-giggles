@@ -82,7 +82,7 @@ RACE_TABLE_OUTPUT_SCHEMA = {
                             "position": {"type": ["integer", "null"]},
                             "index": {"type": ["integer", "null"]},
                             "is_player": {"type": ["boolean", "null"]},
-                            "delta-to-leader-ms": {"type": ["number", "null"]},
+                            "delta_to_leader_ms": {"type": ["number", "null"]},
                         },
                         "additionalProperties": False,
                     },
@@ -241,7 +241,7 @@ def _get_race_table_info_driver(entry: Dict[str, Any]) -> Dict[str, Any]:
             "position": driver_info.get("position"),
             "index": driver_info.get("index"),
             "is_player": driver_info.get("is-player"),
-            "delta-to-leader-ms": delta_info_dict.get("delta-to-leader-ms"),
+            "delta_to_leader_ms": delta_info_dict.get("delta-to-leader-ms"),
         },
         "lap_info": {
             "last_lap_time_ms": last_lap_dict.get("lap-time-ms"),
