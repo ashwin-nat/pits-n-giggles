@@ -30,7 +30,7 @@ from .display import DisplaySettings
 from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
 from .https import HttpsSettings
 from .hud import HudSettings
-from .mcp import McpSettings
+from .mcp_cfg import McpSettings
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2

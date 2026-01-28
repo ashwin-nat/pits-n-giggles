@@ -49,7 +49,7 @@ def _dispatch_frozen_submodule():
         "apps.save_viewer",
         "apps.hud",
         "apps.broker",
-        "apps.mcp",
+        "apps.mcp_server",
     }
 
     # Locate the module name and its args

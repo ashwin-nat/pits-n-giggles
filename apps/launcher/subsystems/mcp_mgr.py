@@ -61,7 +61,7 @@ class McpAppMgr(PngAppMgrBase):
         self.enabled = settings.MCP.mcp_http_server_enable
         super().__init__(
             window=window,
-            module_path="apps.mcp",
+            module_path="apps.mcp_server",
             display_name="MCP",
             short_name="MCP",
             settings=settings,

@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional
 
 import aiohttp
 
-from apps.mcp.state import get_state_data
+from apps.mcp_server.state import get_state_data
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 

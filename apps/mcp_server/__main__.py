@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from apps.mcp.mcp import entry_point
+from apps.mcp_server.mcp_main import entry_point
 
 if __name__ == "__main__":
     entry_point()
