@@ -32,6 +32,8 @@ from meta.meta import APP_NAME
 
 from .tools.get_driver_lap_times import (DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
                                          get_driver_lap_times)
+from .tools.get_drivers_list import (DRIVERS_LIST_OUTPUT_SCHEMA,
+                                     get_drivers_list)
 from .tools.get_player_driver_info import (PLAYER_DRIVER_INFO_OUTPUT_SCHEMA,
                                            get_player_driver_info)
 from .tools.get_race_table import RACE_TABLE_OUTPUT_SCHEMA, get_race_table
@@ -147,6 +149,25 @@ Rules:
             rsp = get_race_table(self.logger)
             self.logger.debug(
                 "get_race_table called: available=%s",
+                rsp.get("available", False),
+            )
+            return rsp
+
+        @self.mcp.tool(
+            name="get_drivers_list",
+            description="Get drivers list",
+            title="Drivers List",
+            tags={
+                "drivers",
+                "session",
+                "participants",
+            },
+            output_schema=DRIVERS_LIST_OUTPUT_SCHEMA,
+        )
+        async def get_drivers_list_tool():
+            rsp = get_drivers_list(self.logger)
+            self.logger.debug(
+                "get_drivers_list called: available=%s",
                 rsp.get("available", False),
             )
             return rsp

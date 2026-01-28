@@ -364,6 +364,7 @@ class DriversListRsp(BaseAPI):
             "drs-activated": self._getValueOrDefaultValue(driver_data.m_car_info.m_drs_activated, default_value=False),
             "drs-allowed": self._getValueOrDefaultValue(driver_data.m_car_info.m_drs_allowed, default_value=False),
             "drs-distance": self._getValueOrDefaultValue(driver_data.m_car_info.m_drs_distance, default_value=0),
+            "driver-number": self._getValueOrDefaultValue(driver_data.m_driver_info.driver_number, default_value=None),
         }
 
     def _getDeltaInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
