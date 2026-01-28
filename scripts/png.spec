@@ -33,7 +33,7 @@ import os
 import platform
 import shutil
 import tempfile
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata, collect_dynamic_libs
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
 
@@ -94,11 +94,29 @@ hiddenimports = (
     collect_submodules("apps.backend") +
     collect_submodules("apps.save_viewer") +
     collect_submodules("apps.hud") +
-    collect_submodules("apps.broker")
+    collect_submodules("apps.broker") +
+    collect_submodules("apps.mcp_server") +
+    collect_submodules("lupa") +
+    collect_submodules("fakeredis") +
+    [
+        "lupa.lua51",
+        "lupa.lua52",
+        "lupa.lua53",
+        "lupa.lua54",
+        "lupa.luajit2",
+        "pydocket",
+    ]
 )
 
 # Automatically collect all assets and frontend files
-datas = []
+datas = (
+    copy_metadata("fastmcp") +
+    copy_metadata("mcp") +
+    copy_metadata("fakeredis") +
+    copy_metadata("pydocket") +
+    copy_metadata("lupa") +
+    collect_data_files("fakeredis")
+)
 
 # Frontend assets (CSS, HTML, JS)
 datas.extend(collect_directory("apps/frontend/css", "apps/frontend/css"))
@@ -141,9 +159,9 @@ datas.extend([
 a = Analysis(
     [entry_script],
     pathex=[PROJECT_ROOT],
-    binaries=[],
+    binaries=collect_dynamic_libs("lupa"),
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=hiddenimports + ["fastmcp"],
     hookspath=[],
     runtime_hooks=[runtime_hook_path],
     excludes=[],
