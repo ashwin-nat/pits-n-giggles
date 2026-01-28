@@ -29,10 +29,11 @@ from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                      MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                      TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
                      CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
-                     NetworkSettings, OverlayPosition, PitTimeLossF1,
-                     PitTimeLossF2, PngSettings, PrivacySettings,
-                     StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions)
+                     HttpsSettings, HudSettings, McpSettings, MfdPageSettings,
+                     MfdSettings, NetworkSettings, OverlayPosition,
+                     PitTimeLossF1, PitTimeLossF2, PngSettings,
+                     PrivacySettings, StreamOverlaySettings, SubSysCtrl,
+                     TimingTowerColOptions)
 from .types import FilePathStr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
