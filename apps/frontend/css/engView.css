@@ -241,6 +241,13 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
+.driver-dnf {
+    display: inline-block;
+    color: #d40606;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+}
+
 .ag-header-cell-text {
     text-align: center;
 }
@@ -366,4 +373,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .toast-body {
   font-size: 16px; /* Standard font size */
   text-align: center; /* Centered text */
+}
+
+.weather-session-name {
+    color: #ffffff;
 }

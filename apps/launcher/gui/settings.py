@@ -538,7 +538,6 @@ class SettingsWindow(QDialog):
         checkbox_layout.setContentsMargins(0, 0, 0, 0)
         checkbox_layout.addWidget(checkbox)
         checkbox_layout.addWidget(label)
-        checkbox_layout.addStretch()
 
         # Wrap with info icons if ext_info is provided
         if ext_info:
@@ -547,6 +546,7 @@ class SettingsWindow(QDialog):
             checkbox_with_info = self._wrap_widget_with_info_icons(checkbox_container, ext_info)
             layout.addWidget(checkbox_with_info)
         else:
+            checkbox_layout.addStretch()
             layout.addLayout(checkbox_layout)
 
         return label
