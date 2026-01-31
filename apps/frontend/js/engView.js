@@ -1568,6 +1568,7 @@ class EngViewWeatherTable {
         document.getElementById('weatherSessionNextBtn').addEventListener('click', () => this.cycleSessionForward());
         this.currSessionIndex = 0;
         this.numSessions = 0;
+        this.numDisplayedSamples = 0;
         this.sessionUID = 0;
     }
 
@@ -1583,7 +1584,10 @@ class EngViewWeatherTable {
     }
 
     update(incomingData, incomingSessionUID) {
-        if (incomingData.length === 0) return;
+        if (incomingData.length === 0) {
+            this.clear();
+        }
+
         if (incomingSessionUID != this.sessionUID) {
             this.currSessionIndex = 0;
             this.sessionUID = incomingSessionUID
@@ -1623,10 +1627,15 @@ class EngViewWeatherTable {
     }
 
     clear() {
+        if (!this.numDisplayedSamples) return;
         this.tableBody.innerHTML = `
             <tr>${'<td>-</td>'.repeat(5)}</tr>
             <tr>${'<td>-</td>'.repeat(5)}</tr>
         `;
+        this.currSessionIndex = 0;
+        this.numSessions = 0;
+        this.sessionUID = 0;
+        this.numDisplayedSamples = 0;
     }
 }
 
