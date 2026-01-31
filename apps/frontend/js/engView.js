@@ -1563,11 +1563,45 @@ class EngViewRaceStatus {
 class EngViewWeatherTable {
     constructor() {
         this.tableBody = document.querySelector('.eng-view-weather-table tbody');
+        this.sessionNameElement = document.getElementById('weatherSessionName');
+        document.getElementById('weatherSessionPrevBtn').addEventListener('click', () => this.cycleSessionBackward());
+        document.getElementById('weatherSessionNextBtn').addEventListener('click', () => this.cycleSessionForward());
+        this.currSessionIndex = 0;
+        this.numSessions = 0;
+        this.sessionUID = 0;
     }
 
-    update(weatherData) {
-        const sessionWeather = (weatherData.length === 0) ? [] : transformForecast(weatherData)[0];
-        // Limit to first 5 entries
+    cycleSessionForward() {
+        if (this.numSessions === 0) return;
+        this.currSessionIndex = (this.currSessionIndex + 1) % this.numSessions;
+    }
+
+    cycleSessionBackward() {
+        if (this.numSessions === 0) return;
+        this.currSessionIndex =
+            (this.currSessionIndex - 1 + this.numSessions) % this.numSessions;
+    }
+
+    update(incomingData, incomingSessionUID) {
+        if (incomingData.length === 0) return;
+        if (incomingSessionUID != this.sessionUID) {
+            this.currSessionIndex = 0;
+            this.sessionUID = incomingSessionUID
+        }
+
+        const weatherBySession = groupWeatherSamplesBySessionType(incomingData);
+        this.numSessions = weatherBySession.length;
+        if (this.currSessionIndex < 0 ||
+            this.currSessionIndex >= weatherBySession.length) {
+            console.debug('Invalid session index. Resetting to 0.');
+            this.currSessionIndex = 0;
+        }
+
+        const currSession = weatherBySession[this.currSessionIndex];
+        const sessionType = currSession["session_type"];
+        this.sessionNameElement.textContent = `${sessionType} (${this.currSessionIndex + 1}/${this.numSessions})`;
+
+        const sessionWeather = currSession["items"];
         const limitedData = sessionWeather.slice(0, 5);
 
         // Create weather type row

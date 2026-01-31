@@ -550,3 +550,24 @@ function getRefRow(data) {
         return playerRow;
     }
 }
+
+function groupWeatherSamplesBySessionType(data) {
+    const groups = [];
+    const index = {}; // session-type -> group index
+
+    for (const item of data) {
+        const session = item["session-type"];
+
+        if (!(session in index)) {
+            index[session] = groups.length;
+            groups.push({
+                session_type: session,
+                items: []
+            });
+        }
+
+        groups[index[session]].items.push(item);
+    }
+
+    return groups;
+}
