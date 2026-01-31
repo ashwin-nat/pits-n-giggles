@@ -206,86 +206,132 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         # Hide error message
         self._root.setProperty("showError", False)
+        self._root.setProperty("tableData", [
+            self._create_driver_row(row_data, ref_index)
+            for row_data in relevant_rows
+        ])
 
-        # Convert data to QML-friendly format
-        qml_data = []
-        for row_data in relevant_rows:
-            driver_info = row_data.get("driver-info", {})
-            delta_info = row_data.get("delta-info", {})
-            tyre_info = row_data.get("tyre-info", {})
-            ers_info = row_data.get("ers-info", {})
-            warns_pens_info = row_data.get("warns-pens-info", {})
+    def _create_driver_row(self, row_data: Dict[str, Any], ref_index: int) -> dict:
+        """Create a single driver row for QML display.
 
-            telemetry_public = driver_info.get("telemetry-setting") == "Public"
-            position = driver_info.get("position", 0)
-            name = driver_info.get("name", "UNKNOWN")
-            team = driver_info.get("team", "UNKNOWN")
-            driver_idx = driver_info.get("index", -1)
-            is_pitting = driver_info.get("is_pitting", False)
-            drs = driver_info.get("drs", False)
+        Args:
+            row_data: Dictionary containing driver data
+            ref_index: Index of reference driver
 
-            delta = delta_info.get("relative-delta", 0)
-            delta_text = (
-                "PIT" if is_pitting else
-                "---" if driver_idx == ref_index or not delta else
-                F1Utils.formatFloat(delta / 1000, precision=3, signed=True)
-            )
+        Returns:
+            Dictionary with formatted driver data for QML
+        """
+        driver_info: dict = row_data.get("driver-info", {})
+        delta_info: dict = row_data.get("delta-info", {})
+        tyre_info: dict = row_data.get("tyre-info", {})
+        ers_info: dict = row_data.get("ers-info", {})
+        warns_pens_info: dict = row_data.get("warns-pens-info", {})
 
-            # Tyre info
-            tyre_compound = tyre_info.get("visual-tyre-compound", "UNKNOWN")
-            if telemetry_public:
-                max_wear = F1Utils.getMaxTyreWear(tyre_info["current-wear"])
-                tyre_wear_str = f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
-            else:
-                tyre_age = tyre_info.get("tyre-age", 0)
-                tyre_wear_str = f"{tyre_age}L"
+        driver_idx = driver_info.get("index", -1)
+        telemetry_public = driver_info.get("telemetry-setting") == "Public"
 
-            # ERS info
-            ers_mode = ers_info.get("ers-mode", "None")
-            ers_perc = ers_info.get("ers-percent-float", 0.0)
-            if telemetry_public:
-                ers_text = f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
-            else:
-                ers_text = "N/A"
+        return {
+            "position": driver_info.get("position", 0),
+            "teamIcon": self.team_logo_uris.get(driver_info.get("team", "UNKNOWN"), ""),
+            "name": driver_info.get("name", "UNKNOWN"),
+            "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index),
+            "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
+            "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
+            "ers": self._format_ers(ers_info, telemetry_public),
+            "ersMode": ers_info.get("ers-mode", "None"),
+            "drs": driver_info.get("drs", False),
+            "penalties": self._format_penalties(warns_pens_info),
+            "isReference": driver_idx == ref_index
+        }
 
-            # Penalties
-            pens_sec = warns_pens_info.get("time-penalties", 0)
-            num_dt = warns_pens_info.get("num-dt", 0)
-            num_sg = warns_pens_info.get("num-sg", 0)
-            pens_sec += (num_sg * 10) # SG counts as 10 seconds
+    def _format_delta(
+        self,
+        driver_info: Dict[str, Any],
+        delta_info: Dict[str, Any],
+        driver_idx: int,
+        ref_index: int
+    ) -> str:
+        """Format the delta time display.
 
-            if pens_sec > 0:
-                pens_str = (
-                    f"{num_dt}DT" if num_dt else
-                    f"+{pens_sec}sec" if pens_sec else
-                    ""
-                )
-            elif self.show_tl_warns:
-                # Show track limits warnings if there are no pens
-                tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
-                pens_str = f"TL: {tl_warns}"
-            else:
-                pens_str = ""
+        Args:
+            driver_info: Driver information dictionary
+            delta_info: Delta information dictionary
+            driver_idx: Current driver index
+            ref_index: Reference driver index
 
-            # Get icon URI
-            team_icon_url = self.team_logo_uris[team]
-            tyre_icon_url = self.tyre_icon_uris.get(tyre_compound, "")
+        Returns:
+            Formatted delta string
+        """
+        if driver_info.get("is_pitting", False):
+            return "PIT"
 
-            qml_data.append({
-                "position": position,
-                "teamIcon": team_icon_url,
-                "name": name,
-                "delta": delta_text,
-                "tyreIcon": tyre_icon_url,
-                "tyreWear": tyre_wear_str,
-                "ers": ers_text,
-                "ersMode": ers_mode,
-                "drs": drs,
-                "penalties": pens_str,
-                "isReference": driver_idx == ref_index
-            })
+        dnf_status = driver_info.get("dnf-status", "")
+        if dnf_status in ("DNF", "DSQ"):
+            return dnf_status
 
-        self._root.setProperty("tableData", qml_data)
+        delta = delta_info.get("relative-delta", 0)
+        if driver_idx == ref_index or not delta:
+            return "---"
+
+        return F1Utils.formatFloat(delta / 1000, precision=3, signed=True)
+
+    def _format_tyre_wear(self, tyre_info: Dict[str, Any], telemetry_public: bool) -> str:
+        """Format tyre wear display.
+
+        Args:
+            tyre_info: Tyre information dictionary
+            telemetry_public: Whether telemetry is public
+
+        Returns:
+            Formatted tyre wear string
+        """
+        if telemetry_public:
+            max_wear = F1Utils.getMaxTyreWear(tyre_info.get("current-wear", []))
+            return f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
+
+        tyre_age = tyre_info.get("tyre-age", 0)
+        return f"{tyre_age}L"
+
+    def _format_ers(self, ers_info: Dict[str, Any], telemetry_public: bool) -> str:
+        """Format ERS display.
+
+        Args:
+            ers_info: ERS information dictionary
+            telemetry_public: Whether telemetry is public
+
+        Returns:
+            Formatted ERS string
+        """
+        if not telemetry_public:
+            return "N/A"
+
+        ers_perc = ers_info.get("ers-percent-float", 0.0)
+        return f"{F1Utils.formatFloat(ers_perc, precision=0, signed=False)}%"
+
+    def _format_penalties(self, warns_pens_info: Dict[str, Any]) -> str:
+        """Format penalties display.
+
+        Args:
+            warns_pens_info: Warnings and penalties information dictionary
+
+        Returns:
+            Formatted penalties string
+        """
+        num_dt = warns_pens_info.get("num-dt", 0)
+        num_sg = warns_pens_info.get("num-sg", 0)
+        pens_sec = warns_pens_info.get("time-penalties", 0) + (num_sg * 10)
+
+        if num_dt > 0:
+            return f"{num_dt}DT"
+
+        if pens_sec > 0:
+            return f"+{pens_sec}sec"
+
+        if self.show_tl_warns:
+            tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
+            return f"TL: {tl_warns}"
+
+        return ""
 
     def clear(self):
         """Clear all timing data."""
