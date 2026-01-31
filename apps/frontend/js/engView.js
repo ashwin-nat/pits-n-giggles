@@ -954,7 +954,12 @@ class EngViewRaceTable {
             const position = driverInfo.position;
             let statusClass = '';
             let statusText = 'DRS';
-            if (driverInfo["driver-info"]["is-pitting"]) {
+            const dnfStatus = driverInfo["driver-info"]["dnf-status"];
+            if (dnfStatus === 'DNF' || dnfStatus === 'DSQ') {
+                statusText = dnfStatus;
+                statusClass = 'driver-dnf';
+            }
+            else if (driverInfo["driver-info"]["is-pitting"]) {
                 statusText = 'PIT';
                 statusClass = 'driver-pitting';
             }
