@@ -266,7 +266,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             return "PIT"
 
         dnf_status = driver_info.get("dnf-status", "")
-        if dnf_status in ("DNF", "DSQ"):
+        if dnf_status in {"DNF", "DSQ"}:
             return dnf_status
 
         delta = delta_info.get("relative-delta", 0)

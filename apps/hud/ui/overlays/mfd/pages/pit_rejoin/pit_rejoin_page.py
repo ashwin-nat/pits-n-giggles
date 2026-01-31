@@ -215,19 +215,18 @@ class PitRejoinPredictionPage(MfdPageBase):
             if dnf_status in {"DNF", "DSQ"}:
                 delta_str = dnf_status
                 delta_color = "white"
+            elif is_ref:
+                delta_str = '---'
+                delta_color = "white"
             else:
-                if is_ref:
-                    delta_str = '---'
-                    delta_color = "white"
+                delta_str = F1Utils.formatFloat(delta_value / 1000, precision=3, signed=True)
+                # Color based on delta (green for negative/ahead, red for positive/behind)
+                if delta_value < 0:
+                    delta_color = "#00FF00"  # Green
+                elif delta_value > 0:
+                    delta_color = "#FF0000"  # Red
                 else:
-                    delta_str = F1Utils.formatFloat(delta_value / 1000, precision=3, signed=True)
-                    # Color based on delta (green for negative/ahead, red for positive/behind)
-                    if delta_value < 0:
-                        delta_color = "#00FF00"  # Green
-                    elif delta_value > 0:
-                        delta_color = "#FF0000"  # Red
-                    else:
-                        delta_color = "white"
+                    delta_color = "white"
 
             compound = tyre_info.get("visual-tyre-compound", "")
             tyre_age = tyre_info.get("tyre-age", 0)
