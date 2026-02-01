@@ -24,10 +24,14 @@
 
 import asyncio
 import logging
+import socket
 from typing import Any, Dict, Literal
 
+import uvicorn
 from fastmcp import FastMCP
 
+from lib.error_status import PngError, PngHttpPortInUseError
+from lib.web_server import get_socket_for_uvicorn
 from meta.meta import APP_NAME
 
 from .tools.get_driver_lap_times import (DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
@@ -249,15 +253,27 @@ Rules:
 
         try:
             if self.transport == "http":
-                self.logger.info(
-                    "Starting MCP server (transport=%s port=%s)", self.transport, self.port
-                )
-                await self.mcp.run_async(
-                    transport="http",
+                # 1. Bind the socket ourselves — this is where port-conflict
+                #    errors surface cleanly, before uvicorn is involved at all.
+                sock = self._bind_socket()
+                self.logger.info("Starting MCP server (transport=%s port=%s)", self.transport, self.port)
+
+                # 2. Get the ASGI app out of FastMCP without starting a server.
+                asgi_app = self.mcp.http_app()
+
+                # 3. Configure uvicorn but tell it NOT to bind — we already did.
+                config = uvicorn.Config(
+                    app=asgi_app,
                     host=self.host,
                     port=self.port,
-                    show_banner=False,
+                    log_level="critical",   # we use our own logger
+                    access_log=False,
                 )
+
+                # 4. Use our signal-safe subclass and hand over the pre-bound socket.
+                server = uvicorn.Server(config)
+                await server.serve(sockets=[sock])
+
             elif self.transport == "stdio":
                 self.logger.info(
                     "Starting MCP server (transport=%s)", self.transport
@@ -272,5 +288,30 @@ Rules:
         except asyncio.CancelledError:
             return # silent handling - this is expected
 
+        except PngError as e: # Handled in main
+            raise
+
         except Exception as e: # pylint: disable=broad-except
             self.logger.exception("MCP server failed: %s", e)
+            raise
+
+    def _bind_socket(self) -> socket.socket:
+        """Create and bind a TCP socket, raising on port conflict.
+
+        Platform-specific options:
+        - Windows: SO_EXCLUSIVEADDRUSE makes bind() fail immediately when the
+          port is already in use.  Without it Windows silently allows the bind.
+        - Unix/Linux/macOS: SO_REUSEADDR lets us bind to a port that is in
+          TIME_WAIT (safe for quick restart) but still fails when another
+          process is actively listening.
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock = get_socket_for_uvicorn(self.port)
+            return sock
+        except PngHttpPortInUseError as e:
+            self.logger.exception("Port %d is already in use", self.port)
+            raise e
+        except OSError as e:
+            self.logger.exception("Failed to start server: %s", e)
+            raise

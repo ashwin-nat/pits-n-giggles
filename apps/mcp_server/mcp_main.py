@@ -92,7 +92,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
 
     try:
         logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         logger.debug("Main task was cancelled.")
         for task in tasks:

@@ -27,8 +27,7 @@ from typing import TYPE_CHECKING, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_XPUB_PORT_IN_USE,
-                              PNG_ERROR_CODE_XSUB_PORT_IN_USE)
+from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
 
 from .base_mgr import ExitReason, PngAppMgrBase
 
@@ -73,22 +72,13 @@ class McpAppMgr(PngAppMgrBase):
             post_start_cb=self.post_start,
             post_stop_cb=self.post_stop
         )
-        # TODO: fix error codes
-        self.register_exit_reason(PNG_ERROR_CODE_XPUB_PORT_IN_USE, ExitReason(
-            code=PNG_ERROR_CODE_XPUB_PORT_IN_USE,
-            status="Pit Wall Port conflict",
-            title="Pit Wall Downstream Port Conflict",
+        self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
+            code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,
+            status="MCP server HTTP Port conflict",
+            title="MCP server Port conflict",
             message="This TCP port is already in use by another process. Please close the other process and try again or change the port.",
             can_restart=False,
-            settings_field='Network -> "PitWall Downstream Port"'
-        ))
-        self.register_exit_reason(PNG_ERROR_CODE_XSUB_PORT_IN_USE, ExitReason(
-            code=PNG_ERROR_CODE_XSUB_PORT_IN_USE,
-            status="Pit Wall Port conflict",
-            title="Pit Wall Downstream Port Conflict",
-            message="This TCP port is already in use by another process. Please close the other process and try again or change the port.",
-            can_restart=False,
-            settings_field='Network -> "PitWall Upstream Port"'
+            settings_field='MCP Settings -> "MCP HTTP Server Port"'
         ))
 
     def get_buttons(self) -> List[QPushButton]:
