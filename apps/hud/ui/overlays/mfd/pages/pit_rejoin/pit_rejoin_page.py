@@ -101,6 +101,9 @@ class PitRejoinPredictionPage(MfdPageBase):
     ) -> List[Dict[str, Any]]:
         """
         Estimate where a driver would rejoin after a pit stop and update their deltas accordingly.
+
+        DNF / DSQ cars remain in the table but are ignored for all rejoin calculations,
+        since their deltas are stale.
         """
 
         assert ref_row is not None
@@ -113,20 +116,36 @@ class PitRejoinPredictionPage(MfdPageBase):
         ref_delta = ref_row["delta-info"]["delta-to-leader"]
         projected_gap = ref_delta + pit_time_loss_ms
 
-        # Step 2: Find rejoin position (where projected gap would place them)
-        rejoin_index = len(table_entries) - 1  # assume they rejoin last
+        # Step 2: determine rejoin index while SKIPPING DNF / DSQ cars
+        rejoin_index = None
+        last_active_index = None
+
         for i, row in enumerate(table_entries):
+            if not self._is_active_car(row) or row is ref_row:
+                continue
+
+            last_active_index = i
+
             if projected_gap < row["delta-info"]["delta-to-leader"]:
-                rejoin_index = i - 1
+                rejoin_index = max(i - 1, 0)
                 break
 
-        rejoin_index = max(rejoin_index, 0)
+        if rejoin_index is None:
+            # Rejoin after the last active car
+            rejoin_index = last_active_index if last_active_index is not None else 0
 
-        # Step 3: Update ref driver info
+        # Step 3: update ref deltas
         ref_row["delta-info"]["delta-to-leader"] = projected_gap
 
-        if rejoin_index >= 0:
-            front_driver = table_entries[rejoin_index]
+        # Find the nearest ACTIVE car in front
+        front_driver = None
+        for i in range(rejoin_index, -1, -1):
+            candidate = table_entries[i]
+            if candidate is not ref_row and self._is_active_car(candidate):
+                front_driver = candidate
+                break
+
+        if front_driver:
             ref_row["delta-info"]["delta-to-car-in-front"] = (
                 projected_gap - front_driver["delta-info"]["delta-to-leader"]
             )
@@ -140,15 +159,26 @@ class PitRejoinPredictionPage(MfdPageBase):
         # Step 5: Insert at new position
         table_entries.insert(rejoin_index + 1, ref_row)
 
-        # Step 6: Reassign positions
+        # Step 6: Reassign positions (DNF / DSQ included)
         for pos, row in enumerate(table_entries, start=1):
             row["driver-info"]["position"] = pos
 
-        # Step 7: Recompute delta-to-car-in-front for consistency
-        for i in range(1, len(table_entries)):
-            prev = table_entries[i - 1]["delta-info"]["delta-to-leader"]
-            curr = table_entries[i]["delta-info"]["delta-to-leader"]
-            table_entries[i]["delta-info"]["delta-to-car-in-front"] = curr - prev
+        # Step 7: recompute delta-to-car-in-front,
+        # skipping inactive cars when looking "forward"
+        last_active_row = None
+        for row in table_entries:
+            if not self._is_active_car(row):
+                continue
+
+            if last_active_row is None:
+                row["delta-info"]["delta-to-car-in-front"] = 0
+            else:
+                row["delta-info"]["delta-to-car-in-front"] = (
+                    row["delta-info"]["delta-to-leader"]
+                    - last_active_row["delta-info"]["delta-to-leader"]
+                )
+
+            last_active_row = row
 
         return table_entries
 
@@ -181,7 +211,11 @@ class PitRejoinPredictionPage(MfdPageBase):
             is_ref = (driver_idx == ref_index)
 
             # Format delta
-            if is_ref:
+            dnf_status = driver_info.get("dnf-status", "")
+            if dnf_status in {"DNF", "DSQ"}:
+                delta_str = dnf_status
+                delta_color = "white"
+            elif is_ref:
                 delta_str = '---'
                 delta_color = "white"
             else:
@@ -210,3 +244,8 @@ class PitRejoinPredictionPage(MfdPageBase):
 
         # Call QML function to update
         page_item.updateData(pit_time_loss_str, rows_data, ref_index)
+
+    def _is_active_car(self, row: Dict[str, Any]) -> bool:
+        """Check if driver is active car."""
+        status = row.get("driver-info", {}).get("dnf-status", "")
+        return status not in ("DNF", "DSQ")
