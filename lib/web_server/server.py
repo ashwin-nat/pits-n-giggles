@@ -24,8 +24,6 @@
 
 import logging
 import os
-import platform
-import socket
 from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Union)

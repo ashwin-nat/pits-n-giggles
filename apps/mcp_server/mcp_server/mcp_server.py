@@ -288,10 +288,11 @@ Rules:
         except asyncio.CancelledError:
             return # silent handling - this is expected
 
-        except PngError as e: # Handled in main
+        # Handled in main
+        except PngError:
             raise
 
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             self.logger.exception("MCP server failed: %s", e)
             raise
 

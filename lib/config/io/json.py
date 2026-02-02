@@ -63,7 +63,8 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_mi
         _maybe_update_config(raw, model, path, logger, updated, restored)
         _log_invalid_keys(raw, model, logger, restored)
         return model
-    elif fail_if_missing:
+
+    if fail_if_missing:
         raise FileNotFoundError(f"Config file not found: {path}")
 
     # No config file --> create full defaults

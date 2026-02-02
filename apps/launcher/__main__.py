@@ -47,7 +47,7 @@ def _maybe_detach_console():
         return
 
     try:
-        import ctypes
+        import ctypes # pylint: disable=import-outside-toplevel
         ctypes.windll.kernel32.FreeConsole()
     except Exception: # pylint: disable=broad-except
         pass
@@ -106,7 +106,7 @@ def _dispatch_submodule():
     try:
         runpy.run_module(module, run_name="__main__")
         sys.exit(0)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         print(f"[dispatcher] ERROR running {module}: {e}", file=sys.stderr)
         traceback.print_exc()
         sys.exit(3)
