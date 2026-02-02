@@ -34,7 +34,7 @@ from ..schema import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def load_config_from_json(path: str, logger: Optional[Logger] = None) -> PngSettings:
+def load_config_from_json(path: str, logger: Optional[Logger] = None, fail_if_missing: bool = False) -> PngSettings:
     """
     Load and validate configuration from JSON.
 
@@ -48,9 +48,13 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None) -> PngSett
     Args:
         path (str): Path to the JSON file.
         logger (Optional[Any]): Logger for debug/info logs.
+        fail_if_missing (bool): Whether to fail if the config file is missing.
 
     Returns:
         PngSettings: Fully validated config with missing or invalid parts repaired.
+
+    Raises:
+        FileNotFoundError: If fail_if_missing is True and the config file is missing.
     """
     if os.path.exists(path):
         raw = _load_raw_json(path, logger)
@@ -59,6 +63,8 @@ def load_config_from_json(path: str, logger: Optional[Logger] = None) -> PngSett
         _maybe_update_config(raw, model, path, logger, updated, restored)
         _log_invalid_keys(raw, model, logger, restored)
         return model
+    elif fail_if_missing:
+        raise FileNotFoundError(f"Config file not found: {path}")
 
     # No config file --> create full defaults
     model = PngSettings()

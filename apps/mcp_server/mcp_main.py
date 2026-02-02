@@ -103,7 +103,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
         sys.exit(e.exit_code)
 
 
-def entry_point():
+def _entry_point():
     """Entry point"""
     args = parseArgs()
     # TODO: make rotating logging configurable
@@ -115,8 +115,7 @@ def entry_point():
     version = get_version()
 
     png_logger.info("Starting %s MCP server, version %s...", APP_NAME, version)
-    # TODO: fail if config file is not available
-    configs = load_config_from_json(args.config_file, png_logger)
+    configs = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
@@ -128,5 +127,15 @@ def entry_point():
             ))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
+        sys.exit(0)
     except asyncio.CancelledError:
         png_logger.info("Program shutdown gracefully.")
+        sys.exit(0)
+
+def entry_point():
+    try:
+        _entry_point()
+    except FileNotFoundError as e:
+        # stderr is correct for stdio transport failures
+        print(f"Fatal: config file not found: {e}", file=sys.stderr)
+        sys.exit(1)
