@@ -25,7 +25,34 @@ import sys
 import runpy
 import traceback
 
-def _dispatch_frozen_submodule():
+def _rewrite_mcp_flag():
+    if "--mcp" in sys.argv:
+        # Remove --mcp
+        sys.argv.remove("--mcp")
+
+        # Inject the internal module dispatch
+        sys.argv.insert(1, "--module")
+        sys.argv.insert(2, "apps.mcp_server")
+
+def _maybe_detach_console():
+    """
+    Detach the Windows console when running in GUI mode.
+    Keep the console when running MCP or internal modules.
+    """
+    if os.name != "nt":
+        return
+
+    # Keep console if MCP or submodule mode is active
+    if "--mcp" in sys.argv:
+        return
+
+    try:
+        import ctypes
+        ctypes.windll.kernel32.FreeConsole()
+    except Exception: # pylint: disable=broad-except
+        pass
+
+def _dispatch_submodule():
     """
     Dispatcher for running specific submodules when the app is packaged with PyInstaller.
 
@@ -52,6 +79,8 @@ def _dispatch_frozen_submodule():
         "apps.mcp_server",
     }
 
+    _rewrite_mcp_flag()
+
     # Locate the module name and its args
     idx = sys.argv.index('--module')
     module = sys.argv[idx + 1]
@@ -60,37 +89,36 @@ def _dispatch_frozen_submodule():
     # Validate module
     if module not in ALLOWED_MODULES:
         print(f"[dispatcher] ERROR: Attempted to run unauthorized module: {module}")
-        sys.exit(1)
+        sys.exit(2)
 
-    # Add `sys._MEIPASS` to `sys.path`. This is required for PyInstaller builds, gets ignored in dev mode.
-    # Rewrite sys.argv so the submodule behaves like the main script
-    sys.path.insert(0, os.path.join(sys._MEIPASS))
+    # ---- CRITICAL PATH FIXUP ----
+    if getattr(sys, "frozen", False):
+        # PyInstaller: all packages live directly under _MEIPASS
+        sys.path.insert(0, sys._MEIPASS)
+    else:
+        # Dev mode: project root
+        project_root = os.path.abspath(os.path.dirname(__file__))
+        sys.path.insert(0, project_root)
+
+    # Rewrite argv so the submodule behaves like a real entrypoint
     sys.argv = [module] + args
 
     try:
         runpy.run_module(module, run_name="__main__")
         sys.exit(0)
-    except Exception as e: # pylint: disable=broad-exception-caught
-        print(f"[dispatcher] ERROR: Exception during run_module: {e}")
+    except Exception as e:
+        print(f"[dispatcher] ERROR running {module}: {e}", file=sys.stderr)
         traceback.print_exc()
-        sys.exit(1)
-
-# ------------------------------------------------------------------------------------
-# Decide whether to run a submodule dispatcher or the main launcher
-# ------------------------------------------------------------------------------------
-if getattr(sys, 'frozen', False) and '--module' in sys.argv:
-    _dispatch_frozen_submodule()
-
+        sys.exit(3)
 
 # ------------------------------------------------------------------------------------
 # Main launcher entry point (only runs if not in `--module` mode)
 # ------------------------------------------------------------------------------------
-if __name__ == "__main__":
-    try:
-        from apps.launcher.launcher import entry_point
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"[__main__.py] Failed to import launcher: {e}")
-        traceback.print_exc()
-        sys.exit(1)
 
+if __name__ == "__main__":
+    _maybe_detach_console()
+    if "--module" in sys.argv or "--mcp" in sys.argv:
+        _dispatch_submodule()
+
+    from apps.launcher.launcher import entry_point
     entry_point()
