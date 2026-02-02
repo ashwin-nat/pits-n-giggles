@@ -137,5 +137,5 @@ def entry_point():
         _entry_point()
     except FileNotFoundError as e:
         # stderr is correct for stdio transport failures
-        print(f"Fatal: config file not found: {e}", file=sys.stderr)
+        print(f"Fatal: config file not found: {e}. Run the pits n giggles launcher first.", file=sys.stderr)
         sys.exit(1)
