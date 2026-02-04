@@ -42,6 +42,9 @@ def _maybe_detach_console():
     if os.name != "nt":
         return
 
+    if not getattr(sys, "frozen", False):
+        return   # dev mode, do nothing
+
     # Keep console if MCP or submodule mode is active
     if "--mcp" in sys.argv:
         return
