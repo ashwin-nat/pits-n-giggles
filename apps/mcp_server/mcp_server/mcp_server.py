@@ -29,6 +29,8 @@ from typing import Any, Dict, Literal
 
 import uvicorn
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from lib.error_status import PngError, PngHttpPortInUseError
 from lib.web_server import get_socket_for_uvicorn
@@ -260,6 +262,7 @@ Rules:
 
                 # 2. Get the ASGI app out of FastMCP without starting a server.
                 asgi_app = self.mcp.http_app()
+                asgi_app.add_route("/test", self._test_endpoint, methods=["GET"])
 
                 # 3. Configure uvicorn but tell it NOT to bind — we already did.
                 config = uvicorn.Config(
@@ -316,3 +319,9 @@ Rules:
         except OSError as e:
             self.logger.exception("Failed to start server: %s", e)
             raise
+
+    async def _test_endpoint(self, _request: Request) -> str:
+        """Simple test endpoint that returns text."""
+        return JSONResponse({
+            "message": f"Pits n' Giggles MCP Server v{self.version}",
+        })
