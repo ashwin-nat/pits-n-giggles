@@ -63,11 +63,6 @@ def _get_race_table_context(
     assert connected_entry is not None, "Connected state data missing"
     connected: bool = connected_entry.data
 
-    logger.debug(
-        "_get_race_table_context: connected=%s, telemetry_update_entry=%s",
-        connected, telemetry_update_entry,
-    )
-
     base_rsp: Dict[str, Any] = {
         "available": False,
         "connected": connected,
