@@ -25,6 +25,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from typing import List
 
@@ -36,9 +37,9 @@ from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
 
+from .mcp_server import MCPBridge
 from .mgmt import init_ipc_task
 from .subscriber import init_subscriber_task
-from .mcp_server import MCPBridge
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -57,6 +58,7 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--managed", action="store_true", help="Indicates if process is managed by parent")
     parser.add_argument("--log-file", type=str, default="png_mcp_stdio.log", help="Log file name")
+    parser.add_argument("--wd", type=str, default=None, help="Working directory")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -106,6 +108,17 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
 def _entry_point():
     """Entry point"""
     args = parseArgs()
+
+    if args.wd:
+        try:
+            os.chdir(args.wd)
+        except FileNotFoundError:
+            print(f"Working directory does not exist: {args.wd}", file=sys.stderr)
+            sys.exit(1)
+        except NotADirectoryError:
+            print(f"Not a directory: {args.wd}", file=sys.stderr)
+            sys.exit(1)
+
     # TODO: make rotating logging configurable
     if args.managed:
         png_logger = get_logger("mcp", args.debug, jsonl=True) # Emit JSONL to stdout. Parent process will capture.
@@ -137,5 +150,6 @@ def entry_point():
         _entry_point()
     except FileNotFoundError as e:
         # stderr is correct for stdio transport failures
-        print(f"Fatal: config file not found: {e}. Run the pits n giggles launcher first.", file=sys.stderr)
+        print(f"Fatal: config file not found: {e}. Run the pits n giggles launcher first. CWD: {os.getcwd()}",
+              file=sys.stderr)
         sys.exit(1)
