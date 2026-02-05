@@ -273,9 +273,10 @@ Rules:
                     access_log=False,
                 )
 
-                # 4. Use our signal-safe subclass and hand over the pre-bound socket.
+                # Since we're running uvicorn ourselves, we need to lay hands on FastMCP's internals for cleanup
                 server = uvicorn.Server(config)
-                await server.serve(sockets=[sock])
+                async with self.mcp._lifespan_manager():
+                    await server.serve(sockets=[sock])
 
             elif self.transport == "stdio":
                 self.logger.info(

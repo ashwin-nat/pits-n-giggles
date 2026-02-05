@@ -95,6 +95,7 @@ class McpIpc:
         self.m_ipc_sub.m_wdt.stop()
         self.m_mcp_task.cancel()
         await self.m_ipc_sub.close()
+        self.m_logger.debug("MCP shutdown task completed")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
