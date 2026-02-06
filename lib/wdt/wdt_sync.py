@@ -22,9 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import time
 import threading
-from typing import Callable
+import time
+from typing import Callable, Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ class WatchDogTimerSync:
         self.active = False
 
         self._stop_event = threading.Event()
-        self._thread: threading.Thread | None = None
+        self._thread: Optional[threading.Thread] = None
 
     def kick(self) -> None:
         """

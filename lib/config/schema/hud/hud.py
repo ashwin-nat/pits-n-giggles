@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from enum import Enum
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -33,8 +34,6 @@ from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
 from .timing_tower import TimingTowerColOptions
-
-from enum import Enum
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
