@@ -35,7 +35,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
-from lib.config import MFD_OVERLAY_ID, OverlayPosition, PngSettings
+from lib.config import (MFD_OVERLAY_ID, OverlayPosition, PngSettings,
+                        WeatherMFDUIType)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -109,6 +110,8 @@ class MfdOverlay(BaseOverlayQML):
         """Get initialization kwargs for pages from settings."""
         return {
             TyreInfoPage.KEY: {"tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold},
+            WeatherForecastPage.KEY: {"graph_based_ui": (
+                settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
         }
 
     def _init_pages_order(self, settings: PngSettings):

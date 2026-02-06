@@ -49,12 +49,12 @@ class WeatherForecastPage(MfdPageBase):
 
     MAX_SAMPLES = 5
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, graph_based_ui: bool):
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
-        self.graph_based_ui: bool = True
+        self.graph_based_ui: bool = graph_based_ui
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
