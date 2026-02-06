@@ -211,9 +211,6 @@ class BaseOverlay():
     def set_window_position(self, config: OverlayPosition):
         raise NotImplementedError
 
-    def toggle_visibility(self):
-        raise NotImplementedError
-
     def set_visibility(self, visible: bool):
         raise NotImplementedError
 
