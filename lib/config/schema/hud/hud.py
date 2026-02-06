@@ -34,7 +34,13 @@ from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
 from .mfd import MfdSettings
 from .timing_tower import TimingTowerColOptions
 
+from enum import Enum
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+class WeatherMFDUIType(str, Enum):
+    CARDS = "Cards"
+    GRAPH = "Graph"
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -114,6 +120,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                     "Used by the Tyre Wear page in the MFD to select the end lap.\n"
                     "The first lap exceeding this wear value is chosen; if none do, the final prediction lap is used."
                 ],
+            }
+        }
+    )
+    mfd_weather_page_ui_type: WeatherMFDUIType = Field(
+        default=WeatherMFDUIType.CARDS,
+        description="MFD weather forecast page UI type",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in WeatherMFDUIType],
+                "visible": True,
             }
         }
     )

@@ -32,9 +32,9 @@ from pydantic import ValidationError
 
 from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, MfdPageSettings, MfdSettings, TimingTowerColOptions,
-                        OverlayPosition)
+                        TRACK_RADAR_OVERLAY_ID, HudSettings, MfdPageSettings,
+                        MfdSettings, OverlayPosition, TimingTowerColOptions,
+                        WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -67,6 +67,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
         self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
+        self.assertEqual(settings.mfd_weather_page_ui_type, WeatherMFDUIType.CARDS)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
@@ -823,3 +824,21 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(mfd_tyre_wear_threshold=101)
         HudSettings(mfd_tyre_wear_threshold=100)
+
+    def test_mfd_weather_page_ui_type(self):
+
+        ui_type = WeatherMFDUIType.CARDS
+        hud_settings = HudSettings(mfd_weather_page_ui_type=ui_type)
+        self.assertEqual(hud_settings.mfd_weather_page_ui_type, ui_type)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_weather_page_ui_type="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_weather_page_ui_type=None)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_weather_page_ui_type=420)
+
+        with self.assertRaises(AttributeError):
+            HudSettings(mfd_weather_page_ui_type=WeatherMFDUIType.UNKNOWN)
