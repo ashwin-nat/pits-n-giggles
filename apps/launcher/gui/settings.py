@@ -26,6 +26,7 @@ import html
 import json
 import re
 from dataclasses import dataclass
+from enum import Enum
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Union, get_args, get_origin)
 
@@ -1424,8 +1425,19 @@ class SettingsWindow(QDialog):
 
     def _on_radio_changed(self, field_path: str, option: Any, checked: bool):
         """Handle radio button change"""
-        if checked:
-            self._on_field_changed(field_path, option)
+        if not checked:
+            return
+
+        field_info = self._get_field_info_from_path(field_path)
+        annotation = field_info.annotation
+
+        # If this field is an Enum, convert the string to Enum
+        if isinstance(annotation, type) and issubclass(annotation, Enum):
+            value = annotation(option)
+        else:
+            value = option
+
+        self._on_field_changed(field_path, value)
 
     def _update_all_widgets(self):
         """Update all widgets from working_settings"""
