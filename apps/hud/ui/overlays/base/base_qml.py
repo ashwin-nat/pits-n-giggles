@@ -200,11 +200,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root.setOpacity(opacity / 100.0)
 
     @override
-    def set_locked_state(self, locked: bool):
-        self.locked = locked
-        self.update_window_flags()
-
-    @override
     def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.
@@ -249,14 +244,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
         self._fade_anim = anim
         anim.start()
-
-    @override
-    def toggle_visibility(self):
-
-        if self.get_visibility():
-            self.animate_fade(False)
-        else:
-            self.animate_fade(True)
 
     @override
     def set_visibility(self, visible: bool):

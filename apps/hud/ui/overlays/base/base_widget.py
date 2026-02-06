@@ -176,17 +176,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         self.config = config
 
     @override
-    def toggle_visibility(self):
-
-        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
-        if self.get_visibility():
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
-            self.animate_fade(show=False)
-        else:
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
-            self.animate_fade(show=True)
-
-    @override
     def set_visibility(self, visible):
         self.animate_fade(visible)
 
@@ -226,11 +215,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     @override
     def set_opacity(self, opacity: int):
         self.setWindowOpacity(opacity / 100.0)
-
-    @override
-    def set_locked_state(self, locked: bool):
-        self.locked = locked
-        self.update_window_flags()
 
     @override
     def set_ui_scale(self, ui_scale):

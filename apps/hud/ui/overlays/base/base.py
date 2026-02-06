@@ -138,6 +138,23 @@ class BaseOverlay():
         self._register_default_handlers()
 
     # ----------------------------------------------------------------------
+    # Common handlers
+    # ----------------------------------------------------------------------
+
+    def set_locked_state(self, locked: bool):
+        self.locked = locked
+        self.update_window_flags()
+
+    def toggle_visibility(self):
+        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
+        if self.get_visibility():
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
+            self.animate_fade(show=False)
+        else:
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
+            self.animate_fade(show=True)
+
+    # ----------------------------------------------------------------------
     # Abstract interface — implemented by QWidget and QML subclasses
     # ----------------------------------------------------------------------
     def _setup_window(self):
@@ -163,9 +180,6 @@ class BaseOverlay():
         raise NotImplementedError
 
     def set_opacity(self, opacity: int):
-        raise NotImplementedError
-
-    def set_locked_state(self, locked: bool):
         raise NotImplementedError
 
     def animate_fade(self, show: bool):
