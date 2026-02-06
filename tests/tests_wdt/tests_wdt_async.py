@@ -30,7 +30,7 @@ from typing import List
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tests_base import F1TelemetryUnitTestsBase
+from .tests_wdt_base import TestF1Wdt
 
 from lib.wdt import WatchDogTimerAsync
 
@@ -39,7 +39,7 @@ if sys.platform == 'win32':
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestWatchDogTimerAsync(F1TelemetryUnitTestsBase):
+class TestWatchDogTimerAsync(TestF1Wdt):
     async def asyncSetUp(self):
         self.state_changes: List[bool] = []
         self.fake_time: float = 0.0

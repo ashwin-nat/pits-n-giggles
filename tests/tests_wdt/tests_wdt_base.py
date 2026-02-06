@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,15 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
-# ------------------------- IMPORTS ------------------------------------------------------------------------------------
+import os
+import sys
 
-from .wdt_async import WatchDogTimerAsync
-from .wdt_sync import WatchDogTimerSync
+# Add the parent directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# ------------------------- EXPORTS ------------------------------------------------------------------------------------
+from tests_base import F1TelemetryUnitTestsBase
 
-__all__ = [
-    "WatchDogTimerAsync",
-    "WatchDogTimerSync",
-]
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestF1Wdt(F1TelemetryUnitTestsBase):
+    pass
