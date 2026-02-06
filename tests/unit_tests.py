@@ -87,7 +87,7 @@ from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
 from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_rate_limiter import TestRateLimiter
-from tests.tests_wdt import TestWatchDogTimer
+from tests.tests_wdt import TestWatchDogTimerAsync
 
 # Initialize colorama
 init(autoreset=True)
