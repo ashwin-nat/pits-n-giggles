@@ -46,7 +46,7 @@ from lib.inter_task_communicator import (
     HudToggleNotification, ITCMessage, TyreDeltaNotificationMessageCollection)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
-from lib.wdt import WatchDogTimer
+from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
 
@@ -167,7 +167,7 @@ class F1TelemetryHandler:
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_version: str = ver_str
-        self.m_wdt: WatchDogTimer = WatchDogTimer(
+        self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
