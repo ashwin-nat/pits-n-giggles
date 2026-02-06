@@ -225,7 +225,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         else:
             self.logger.warning(f"{self.OVERLAY_ID} | Cannot set UI scale - root window not initialized")
 
-    @override
     def animate_fade(self, show: bool):
 
         target_opacity = self.opacity / 100.0

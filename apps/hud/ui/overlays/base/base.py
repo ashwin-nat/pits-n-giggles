@@ -85,11 +85,8 @@ class BaseOverlay():
         - `apply_config()`       - apply geometry and opacity
         - `update_window_flags()`- locked mode / windowed overlay behavior
         - `set_opacity()`        - apply opacity to the backend window
-        - `set_locked_state()`   - enable/disable interaction
-        - `animate_fade()`       - fade in/out using toolkit-specific animation
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
-        - `toggle_visibility()`  - fade in/out
         - `set_ui_scale()`       - set scale factor
         - `get_visibility()`     - return current visibility state
 
@@ -123,6 +120,7 @@ class BaseOverlay():
         self.logger = logger
         self.opacity = opacity
         self.scale_factor = scale_factor
+        self.telemetry_active = False
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
@@ -145,14 +143,18 @@ class BaseOverlay():
         self.locked = locked
         self.update_window_flags()
 
+        if self.locked and not self.telemetry_active:
+            self.logger.debug("%s locking overlay. But hiding it since telemetry is not active", self.OVERLAY_ID)
+            self.set_visibility(False)
+
     def toggle_visibility(self):
         self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
         if self.get_visibility():
             self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
-            self.animate_fade(show=False)
+            self.set_visibility(False)
         else:
             self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
-            self.animate_fade(show=True)
+            self.set_visibility(True)
 
     # ----------------------------------------------------------------------
     # Abstract interface — implemented by QWidget and QML subclasses
@@ -180,9 +182,6 @@ class BaseOverlay():
         raise NotImplementedError
 
     def set_opacity(self, opacity: int):
-        raise NotImplementedError
-
-    def animate_fade(self, show: bool):
         raise NotImplementedError
 
     def get_window_info(self) -> OverlayPosition:

@@ -228,7 +228,6 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
     # ------------------------------------------------------------------
     # Fade
     # ------------------------------------------------------------------
-    @override
     def animate_fade(self, show: bool):
         target_opacity = self.opacity / 100.0
         start, end = (0, target_opacity) if show else (target_opacity, 0)
