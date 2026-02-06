@@ -120,7 +120,7 @@ class BaseOverlay():
         self.logger = logger
         self.opacity = opacity
         self.scale_factor = scale_factor
-        self.telemetry_active = False
+        self.telemetry_active = True
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
@@ -140,6 +140,7 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
 
     def set_locked_state(self, locked: bool):
+        """Common handler for setting locked state."""
         self.locked = locked
         self.update_window_flags()
 
@@ -148,6 +149,7 @@ class BaseOverlay():
             self.set_visibility(False)
 
     def toggle_visibility(self):
+        """Common handler for toggling visibility."""
         self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
         if self.get_visibility():
             self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
@@ -155,6 +157,25 @@ class BaseOverlay():
         else:
             self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
             self.set_visibility(True)
+
+    def set_telemetry_active(self, active: bool):
+        """Common handler for setting telemetry active state."""
+        if self.telemetry_active == active:
+            return
+
+        self.logger.debug("%s set_telemetry_active. current: %s, new: %s",
+                          self.OVERLAY_ID, self.telemetry_active, active)
+        self.telemetry_active = active
+
+        if not self.locked:
+            # In unlocked mode. user is probably editing the overlay.
+            # Hence no-op
+            return
+
+        if active:
+            self.set_visibility(True)
+        else:
+            self.set_visibility(False)
 
     # ----------------------------------------------------------------------
     # Abstract interface — implemented by QWidget and QML subclasses
@@ -292,6 +313,12 @@ class BaseOverlay():
             self.logger.debug(f"{self.OVERLAY_ID} | Setting UI scale to {scale_factor}")
             self.set_ui_scale(scale_factor)
             self.scale_factor = scale_factor
+
+        @self.on_event("__set_telemetry_active__")
+        def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
+            """Set telemetry active state."""
+            active = data["active"]
+            self.set_telemetry_active(active)
 
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots

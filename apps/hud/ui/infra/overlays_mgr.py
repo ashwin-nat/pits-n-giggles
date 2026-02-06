@@ -36,6 +36,7 @@ from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
+from lib.wdt import WatchDogTimerSync
 
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
@@ -64,6 +65,10 @@ class OverlaysMgr:
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
+        self.wdt = WatchDogTimerSync(
+            status_callback=self._wdt_status_callback,
+            timeout=5.0, # TODO: Make this configurable
+        )
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
@@ -149,11 +154,13 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
+        self.wdt.start()
         self.app.exec()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
+        self.wdt.stop()
         QMetaObject.invokeMethod(
             self.app,
             "quit",
@@ -164,9 +171,11 @@ class OverlaysMgr:
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
+        self.wdt.kick()
         table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
         table_entries.sort(key=lambda x: x["driver-info"]["position"])
         self.window_manager.broadcast_data('race_table_update', data)
+        self._handle_core_wdt_status(data)
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -364,4 +373,18 @@ class OverlaysMgr:
         )
 
     def _set_overlays_visibility(self, visible: bool):
-        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible})
+        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
+
+    def _set_telemetry_active(self, active: bool):
+        self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
+
+    def _wdt_status_callback(self, active: bool):
+        """Watchdog status callback. Only handles loss of data from core."""
+        self.logger.debug(f"Watchdog status callback: {active}")
+        if not active:
+            self._set_telemetry_active(False)
+
+    def _handle_core_wdt_status(self, data: Dict[str, Any]):
+        """Handle core watchdog status."""
+        core_wdt_status = data.get("wdt-status", False)
+        self._set_telemetry_active(core_wdt_status)
