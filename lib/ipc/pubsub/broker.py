@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import errno
 import logging
 import threading
 from typing import Optional
@@ -70,7 +71,7 @@ class IpcPubSubBroker:
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
             self.xpub.close(linger=0)
-            if e.errno == zmq.EADDRINUSE:
+            if e.errno in {zmq.EADDRINUSE, errno.EACCES, errno.EPERM}:
                 raise PngXsubPortInUseError(f"{self.name}: XSUB port already in use ({xsub_port})") from e
             raise
 
@@ -79,7 +80,7 @@ class IpcPubSubBroker:
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
             self.xpub.close(linger=0)
-            if e.errno == zmq.EADDRINUSE:
+            if e.errno in {zmq.EADDRINUSE, errno.EACCES, errno.EPERM}:
                 raise PngXpubPortInUseError(f"{self.name}: XPUB port already in use ({xpub_port})") from e
             raise
 
