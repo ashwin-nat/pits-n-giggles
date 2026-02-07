@@ -245,7 +245,7 @@ def _get_race_table_info_driver(entry: Dict[str, Any]) -> Dict[str, Any]:
         },
         "lap_info": {
             "last_lap_time_ms": last_lap_dict.get("lap-time-ms"),
-            "best_lap_time_ms": best_lap_dict.get("best-lap-ms"),
+            "best_lap_time_ms": best_lap_dict.get("lap-time-ms"),
             "speed_trap_record_kmph": lap_info_dict.get("speed-trap-record-kmph"),
             "top_speed_kmph": lap_info_dict.get("top-speed-kmph"),
         },

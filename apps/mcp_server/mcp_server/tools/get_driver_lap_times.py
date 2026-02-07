@@ -55,17 +55,17 @@ DRIVER_LAP_TIMES_OUTPUT_SCHEMA = {
                         "properties": {
                             "lap_num": {"type": "integer"},
 
-                            "lap_time_str": {"type": ["string", "null"]},
-                            "s1_time_str": {"type": ["string", "null"]},
-                            "s2_time_str": {"type": ["string", "null"]},
-                            "s3_time_str": {"type": ["string", "null"]},
-                            "top_speed_kmph": {"type": ["number", "null"]},
+                            "lap_time_ms": {"type": ["integer", "null"]},
+                            "s1_time_ms": {"type": ["integer", "null"]},
+                            "s2_time_ms": {"type": ["integer", "null"]},
+                            "s3_time_ms": {"type": ["integer", "null"]},
+                            "top_speed_kmph": {"type": ["integer", "null"]},
 
                             # validity flags (bitmask results)
-                            "lap_valid": {"type": "integer"},
-                            "s1_valid": {"type": "integer"},
-                            "s2_valid": {"type": "integer"},
-                            "s3_valid": {"type": "integer"},
+                            "lap_valid": {"type": "boolean"},
+                            "s1_valid": {"type": "boolean"},
+                            "s2_valid": {"type": "boolean"},
+                            "s3_valid": {"type": "boolean"},
                         },
                         "required": ["lap_num"],
                         "additionalProperties": False,
@@ -146,14 +146,14 @@ def _get_lap_time_history_rsp(data: Dict[str, Any]) -> Dict[str, Any]:
 def _lap_history_data_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
     valid_flags = entry.get("lap-valid-bit-flags", 0xFFFF)
     return {
-        "lap_time_str": entry.get("lap-time-str"),
-        "s1_time_str": entry.get("sector-1-time-str"),
-        "s2_time_str": entry.get("sector-2-time-str"),
-        "s3_time_str": entry.get("sector-3-time-str"),
+        "lap_time_ms": entry.get("lap-time-in-ms"),
+        "s1_time_ms": entry.get("sector-1-time-in-ms"),
+        "s2_time_ms": entry.get("sector-2-time-in-ms"),
+        "s3_time_ms": entry.get("sector-3-time-in-ms"),
         "top_speed_kmph": entry.get("top-speed-kmph"),
 
-        "lap_valid": valid_flags & LapHistoryData.FULL_LAP_VALID_BIT_MASK,
-        "s1_valid": valid_flags & LapHistoryData.SECTOR_1_VALID_BIT_MASK,
-        "s2_valid": valid_flags & LapHistoryData.SECTOR_2_VALID_BIT_MASK,
-        "s3_valid": valid_flags & LapHistoryData.SECTOR_3_VALID_BIT_MASK,
+        "lap_valid": bool(valid_flags & LapHistoryData.FULL_LAP_VALID_BIT_MASK),
+        "s1_valid": bool(valid_flags & LapHistoryData.SECTOR_1_VALID_BIT_MASK),
+        "s2_valid": bool(valid_flags & LapHistoryData.SECTOR_2_VALID_BIT_MASK),
+        "s3_valid": bool(valid_flags & LapHistoryData.SECTOR_3_VALID_BIT_MASK),
     }
