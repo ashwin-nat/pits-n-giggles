@@ -29,7 +29,7 @@ from typing import Any, Dict, Literal
 
 import uvicorn
 from fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+from mcp.types import Icon, ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -106,17 +106,22 @@ Rules:
         self.port = port
         self.core_server_port = core_server_port
 
-
         # FastMCP server
         self.mcp = FastMCP(
             name=f"{APP_NAME} MCP Server",
             instructions=self.WELCOME_MSG,
             strict_input_validation=True,
             version=self.version,
+            website_url="https://www.pitsngiggles.com/",
+            icons=[
+                 Icon(
+                      src="https://raw.githubusercontent.com/ashwin-nat/pits-n-giggles/refs/heads/main/assets/logo.png",
+                      mimeType="image/png",
+                 )
+            ]
         )
 
         self._register_tools()
-
         self.logger.debug("MCPBridge initialized (transport=%s)", transport)
 
     # ------------------------------------------------------------------
