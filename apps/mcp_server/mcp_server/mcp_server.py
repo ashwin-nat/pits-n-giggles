@@ -29,6 +29,7 @@ from typing import Any, Dict, Literal
 
 import uvicorn
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -130,6 +131,11 @@ Rules:
             title="Session Information - Globals",
             tags={"session", "weather", "safetyCar"},
             output_schema=SESSION_INFO_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Session Information",
+                readOnlyHint=True,
+                openWorldHint=False,
+            )
         )
         async def get_session_info_tool():
             rsp = get_session_info(self.logger)
@@ -150,6 +156,11 @@ Rules:
                 "snapshot",
             },
             output_schema=RACE_TABLE_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Current Race State",
+                readOnlyHint=True,
+                openWorldHint=False,
+            )
         )
         async def get_race_table_tool():
             rsp = get_race_table(self.logger)
@@ -169,6 +180,11 @@ Rules:
                 "participants",
             },
             output_schema=DRIVERS_LIST_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Drivers List",
+                readOnlyHint=True,
+                openWorldHint=False,
+            )
         )
         async def get_drivers_list_tool():
             rsp = get_drivers_list(self.logger)
@@ -191,6 +207,11 @@ Rules:
                 "pace",
             },
             output_schema=DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Driver Lap Times (History)",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
         )
         async def handle_get_driver_lap_times(driver_index: int) -> Dict[str, Any]:
             self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)
@@ -213,6 +234,11 @@ Rules:
                 "incidents",
             },
             output_schema=DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Driver Race Control Messages (History)",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
         )
         async def handle_get_session_events_for_driver(driver_index: int) -> Dict[str, Any]:
             self.logger.debug("get_session_events_for_driver called: driver_index=%s", driver_index)
@@ -235,6 +261,11 @@ Rules:
                 "info",
             },
             output_schema=PLAYER_DRIVER_INFO_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Player/Reference Driver Info",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
         )
         async def handle_get_player_driver_info():
             return get_player_driver_info(self.logger)
