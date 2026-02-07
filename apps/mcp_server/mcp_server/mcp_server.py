@@ -37,6 +37,7 @@ from lib.error_status import PngError, PngHttpPortInUseError
 from lib.web_server import get_socket_for_uvicorn
 from meta.meta import APP_NAME
 
+from .tools.get_car_damage import CAR_DAMAGE_OUTPUT_SCHEMA, get_car_damage
 from .tools.get_driver_lap_times import (DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
                                          get_driver_lap_times)
 from .tools.get_drivers_list import (DRIVERS_LIST_OUTPUT_SCHEMA,
@@ -274,6 +275,31 @@ Rules:
         )
         async def handle_get_player_driver_info():
             return get_player_driver_info(self.logger)
+
+        @self.mcp.tool(
+            name="get_car_damage",
+            description="Get car damage info for a driver with given index (0-21)",
+            title="Car Damage Info",
+            tags={
+                "driver",
+                "car",
+                "damage",
+                "info",
+            },
+            output_schema=CAR_DAMAGE_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Car Damage Info",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
+        )
+        async def handle_get_car_damage(driver_index: int) -> Dict[str, Any]:
+            self.logger.debug("get_car_damage called: driver_index=%s", driver_index)
+            return await get_car_damage(
+                core_server_port=self.core_server_port,
+                logger=self.logger,
+                driver_index=driver_index,
+            )
 
     # ------------------------------------------------------------------
     # Lifecycle
