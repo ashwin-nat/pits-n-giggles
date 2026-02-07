@@ -80,6 +80,9 @@ class WeatherForecastPage(MfdPageBase):
         @self.on_event("mfd_interact")
         def mfd_interact(data: Dict[str, Any]) -> None:
             self.logger.debug("%s | Received mfd_interact command. args: %s", self.KEY, data)
+            if not self.num_sessions:
+                self.logger.debug("%s | No sessions to cycle through.", self.KEY)
+                return
             # Cycle through the sessions
             self.session_index = (self.session_index + 1) % self.num_sessions
             last_data = self._last_processed_samples
