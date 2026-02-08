@@ -84,3 +84,12 @@ class TestRollingHistory(F1TelemetryUnitTestsBase):
     def test_invalid_maxlen_raises(self) -> None:
         with self.assertRaises(ValueError):
             RollingHistory[int](maxlen=0)
+
+    def test_bool(self) -> None:
+        history = RollingHistory[int](maxlen=3)
+
+        self.assertFalse(history)
+        history.push(1)
+        self.assertTrue(history)
+        history.clear()
+        self.assertFalse(history)

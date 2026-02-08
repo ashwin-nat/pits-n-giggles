@@ -102,3 +102,13 @@ class RollingHistory(Generic[T]):
     def __iter__(self) -> Iterable[T]:
         """Iterate over values from oldest to newest."""
         return iter(self._data)
+
+    def __bool__(self) -> bool:
+        """
+        Return True if at least one value exists.
+
+        Enables:
+            if history:
+                ...
+        """
+        return bool(self._data)
