@@ -810,20 +810,21 @@ class SessionState:
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
             obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
-            obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
+            obj_to_be_updated.m_tyre_info.tyre_wear.push(TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 desc="curr tyre wear"
-            )
+            ))
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
 
             # Update delayed tyre change data if events are pending
             if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
-                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
+                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(
+                    obj_to_be_updated.m_tyre_info.tyre_wear.latest)
                 obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:

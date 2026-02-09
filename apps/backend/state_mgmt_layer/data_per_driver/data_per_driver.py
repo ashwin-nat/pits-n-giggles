@@ -340,7 +340,10 @@ class DataPerDriver:
             JSON object: JSON object containing the current tyre wear
         """
 
-        return self.m_tyre_info.tyre_wear.toJSON() if self.m_tyre_info.tyre_wear else None
+        wear = self.m_tyre_info.tyre_wear.latest
+        if not wear:
+            return None
+        return wear.toJSON()
 
     def _getTyreSetHistoryJSON(self, include_wear_history: Optional[bool] = True) -> List[Dict[str, Any]]:
         """Get the list of tyre sets used in JSON format
@@ -710,7 +713,7 @@ class DataPerDriver:
                                         str(self), self.m_lap_info.m_current_lap)
 
                         # Store current tyre wear in instance variable
-                        self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
+                        self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear.latest)
                         self.m_pending_events_mgr.register(
                             events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT})
                 else:
@@ -787,7 +790,7 @@ class DataPerDriver:
             if F1Utils.isFinishLineAfterPitGarage(track):
                 # note down curr tyre wear for delayed tyre set change handling
                 # take a deepcopy since this obj is volatile
-                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
+                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear.latest)
             self.m_race_ctrl.add_message(DriverPittingRaceCtrlMsg(
                 timestamp=time.time(),
                 driver_index=self.m_index,
@@ -809,11 +812,11 @@ class DataPerDriver:
                 "Driver %s - delayed tyre set change called but no data available. "
                 "Current tyre wear: %s, No pending events but data wasn't captured.",
                 str(self),
-                self.m_tyre_info.tyre_wear
+                self.m_tyre_info.tyre_wear.latest
             )
             # Fall back to current tyre wear as best effort
-            if self.m_tyre_info.tyre_wear:
-                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear)
+            if self.m_tyre_info.tyre_wear.latest:
+                self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear.latest)
             else:
                 self.m_logger.critical("Driver %s - Cannot process delayed tyre change, no tyre data available at all", str(self))
                 return

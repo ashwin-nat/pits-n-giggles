@@ -30,8 +30,11 @@ from typing import Any, Dict, List, Optional
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
+from lib.rolling_history import RollingHistory
 
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+# -------------------------------------- CONTSTANTS --------------------------------------------------------------------
+
+_ROLLING_HISTORY_MAXLEN = 50
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
@@ -358,7 +361,8 @@ class TyreInfo:
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
     tyre_act_compound: Optional[ActualTyreCompound] = None
-    tyre_wear: Optional[TyreWearPerLap] = None
+    tyre_wear: RollingHistory[TyreWearPerLap] = field(default_factory=lambda: RollingHistory(
+        maxlen=_ROLLING_HISTORY_MAXLEN))
     tyre_surface_temp: Optional[float] = None
     tyre_inner_temp: Optional[float] = None
     tyre_life_remaining_laps: Optional[int] = None
