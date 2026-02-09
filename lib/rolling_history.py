@@ -73,6 +73,7 @@ class RollingHistory(Generic[T]):
         """
         self._data.append(value)
 
+    @property
     def latest(self) -> T | None:
         """
         Return the most recently added value.

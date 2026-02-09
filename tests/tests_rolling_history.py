@@ -38,7 +38,7 @@ class TestRollingHistory(F1TelemetryUnitTestsBase):
         history = RollingHistory[int](maxlen=3)
 
         self.assertEqual(len(history), 0)
-        self.assertIsNone(history.latest())
+        self.assertIsNone(history.latest)
         self.assertEqual(history.values(), [])
 
     def test_push_and_latest(self) -> None:
@@ -47,7 +47,7 @@ class TestRollingHistory(F1TelemetryUnitTestsBase):
         history.push(1)
         history.push(2)
 
-        self.assertEqual(history.latest(), 2)
+        self.assertEqual(history.latest, 2)
         self.assertEqual(history.values(), [1, 2])
 
     def test_respects_maxlen(self) -> None:
@@ -69,7 +69,7 @@ class TestRollingHistory(F1TelemetryUnitTestsBase):
         history.clear()
 
         self.assertEqual(len(history), 0)
-        self.assertIsNone(history.latest())
+        self.assertIsNone(history.latest)
         self.assertEqual(history.values(), [])
 
     def test_iteration_order(self) -> None:
