@@ -27,7 +27,6 @@ import json
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Union, get_args, get_origin)
 
@@ -448,9 +447,10 @@ class SettingsWindow(QDialog):
         header_layout.setSpacing(8)
         header.setLayout(header_layout)
 
-        toggle_label = QLabel("▼")
-        toggle_label.setFixedWidth(16)
-        toggle_label.setStyleSheet("color: #858585; font-size: 9pt; background: transparent; border: none;")
+        toggle_label = QLabel()
+        toggle_label.setFixedSize(20, 20)
+        toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
+        toggle_label.setStyleSheet("background: transparent; border: none;")
         header_layout.addWidget(toggle_label)
 
         title_label = QLabel(title)
@@ -488,7 +488,8 @@ class SettingsWindow(QDialog):
         def _toggle(_event=None):
             outer.is_collapsed = not outer.is_collapsed
             content_wrapper.setVisible(not outer.is_collapsed)
-            toggle_label.setText("▶" if outer.is_collapsed else "▼")
+            icon_key = 'caret-right' if outer.is_collapsed else 'caret-down'
+            toggle_label.setPixmap(self.icons_dict[icon_key].pixmap(16, 16))
 
         header.mousePressEvent = _toggle
 
@@ -1573,20 +1574,8 @@ class SettingsWindow(QDialog):
 
     def _on_radio_changed(self, field_path: str, option: Any, checked: bool):
         """Handle radio button change"""
-        if not checked:
-            return
-
-        field_info = self._get_field_info_from_path(field_path)
-        annotation = field_info.annotation
-
-        # If this field is an Enum, convert the string to Enum
-        if isinstance(annotation, type) and issubclass(annotation, Enum):
-            value = annotation(option)
-        else:
-            value = option
-
-        self._on_field_changed(field_path, value)
-
+        if checked:
+            self._on_field_changed(field_path, option)
 
     def _on_search_changed(self, search_text: str):
         """Filter visible settings based on search text, auto-expanding groups that contain matches."""
@@ -1604,7 +1593,7 @@ class SettingsWindow(QDialog):
                     if group_container.is_collapsed:
                         group_container.is_collapsed = False
                         group_container.content_wrapper.setVisible(True)
-                        group_container.toggle_label.setText("▼")
+                        group_container.toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
 
             # Reset category labels to original names and unhide all categories
             for i, category_name in enumerate(self.category_names):
@@ -1651,7 +1640,7 @@ class SettingsWindow(QDialog):
                 if has_visible_child and group_container.is_collapsed:
                     group_container.is_collapsed = False
                     group_container.content_wrapper.setVisible(True)
-                    group_container.toggle_label.setText("▼")
+                    group_container.toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
 
         # Update category labels with counts and hide empty categories
         first_visible_category = None
