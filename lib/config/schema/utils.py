@@ -49,7 +49,8 @@ def udp_action_field(
         *,
         default: Optional[int] = None,
         visible: Optional[bool] = True,
-        ext_info: Optional[List[str]] = None):
+        ext_info: Optional[List[str]] = None,
+        group: Optional[str] = None):
     """
     Create a UDP action code field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -66,6 +67,7 @@ def udp_action_field(
                 "type": "text_box",
                 "visible": visible,
                 "ext_info": ext_info or [],
+                "group": group,
             },
             "udp_action_code": True,
         },
@@ -93,7 +95,8 @@ def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
         },
     )
 
-def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True):
+def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True,
+                         group: Optional[str] = None):
     """
     Create an overlay enable field with standard schema extras.
     Only the description varies per leaf.
@@ -105,7 +108,8 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
             "ui": {
                 "type": "check_box",
                 "visible": visible,
-                "overlay_enable": True
+                "overlay_enable": True,
+                "group": group,
             }
         }
     )
