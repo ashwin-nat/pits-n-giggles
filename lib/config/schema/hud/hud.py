@@ -35,17 +35,6 @@ from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
 from .mfd import MfdSettings
 from .timing_tower import TimingTowerColOptions
 
-# -------------------------------------- HELPER FUNCTION ---------------------------------------------------------------
-
-def _add_ui_group(field_info, group_name: str):
-    """Helper to add UI group to a field's json_schema_extra"""
-    if field_info.json_schema_extra is None:
-        field_info.json_schema_extra = {}
-    if "ui" not in field_info.json_schema_extra:
-        field_info.json_schema_extra["ui"] = {}
-    field_info.json_schema_extra["ui"]["group"] = group_name
-    return field_info
-
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class WeatherMFDUIType(str, Enum):
@@ -224,7 +213,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "visible": False,
                 "min": 0,
                 "max": 100,
-                "group": "Track Radar",
                 "ext_info": [
                     'Track Radar opacity when no other cars are nearby'
                 ]

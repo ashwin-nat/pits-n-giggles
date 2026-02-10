@@ -22,11 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import html
 import json
-import re
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Union, get_args, get_origin)
 
@@ -43,87 +40,14 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
 
 from lib.config import PngSettings
 
+from .collapsible_group import CollapsibleGroup
+from .reorderable_collection import ReorderableCollection
+from .searchable_widget import SearchableWidget
+
 if TYPE_CHECKING:
-    from .main_window import PngLauncherWindow
+    from ..main_window import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-@dataclass
-class SearchableWidget:
-    """Represents a widget that can be searched in the settings dialog"""
-    widget: QWidget
-    description: str
-    field_name: str
-    label_widget: Optional[QLabel] = None  # The label widget to highlight, if any
-    category_index: Optional[int] = None  # The category this widget belongs to
-
-    def matches(self, search_text: str) -> bool:
-        """Check if this widget matches the search text"""
-        search_lower = search_text.lower()
-        return search_lower in self.description.lower() or search_lower in self.field_name.lower()
-
-    def matches_description(self, search_text: str) -> bool:
-        """Check if search text matches the description (not just field name)"""
-        return search_text.lower() in self.description.lower()
-
-    def apply_highlight(self, search_text: str):
-        """Apply highlighting to the label if search matches description"""
-        if not self.label_widget:
-            return
-
-        if not search_text:
-            self.label_widget.setText(self.description)
-            return
-
-        if not self.matches_description(search_text):
-            self.label_widget.setText(self.description)
-            return
-
-        # HTML-escape the description to prevent injection
-        escaped_description = html.escape(self.description)
-
-        # Build regex pattern with escaped search text (case-insensitive)
-        pattern = re.escape(search_text)
-
-        def _repl(m: re.Match) -> str:
-            # The matched text is already HTML-escaped
-            original = m.group(0)
-            return f'<span style="background-color: #e3dc09; color: #000000;">{original}</span>'
-
-        # Apply highlighting with case-insensitive matching
-        highlighted = re.sub(pattern, _repl, escaped_description, flags=re.IGNORECASE)
-        self.label_widget.setText(highlighted)
-
-class ReorderableCollection:
-    """Helper class to encapsulate reorderable collection metadata"""
-
-    def __init__(self, field_info: FieldInfo):
-        ui_config = (field_info.json_schema_extra or {}).get("ui", {})
-        self.is_reorderable = ui_config.get("reorderable_collection", False)
-        self.enabled_field = ui_config.get("item_enabled_field", "enabled")
-        self.position_field = ui_config.get("item_position_field", "position")
-
-    def get_enabled(self, item: Any) -> bool:
-        """Get enabled state from an item"""
-        return getattr(item, self.enabled_field, True)
-
-    def set_enabled(self, item: Any, value: bool):
-        """Set enabled state on an item"""
-        if hasattr(item, self.enabled_field):
-            setattr(item, self.enabled_field, value)
-
-    def get_position(self, item: Any) -> int:
-        """Get position from an item"""
-        return getattr(item, self.position_field, 0)
-
-    def set_position(self, item: Any, value: int):
-        """Set position on an item"""
-        if hasattr(item, self.position_field):
-            setattr(item, self.position_field, value)
-
-    def get_sorted_all_items(self, items_dict: Dict[str, Any]) -> List[Tuple[str, Any]]:
-        """Get sorted list of all items (enabled and disabled)."""
-        return sorted(items_dict.items(), key=lambda x: self.get_position(x[1]))
 
 class SettingsWindow(QDialog):
     """Dynamic settings window that builds UI from PngSettings schema"""
@@ -414,80 +338,8 @@ class SettingsWindow(QDialog):
             )
         )
 
-    # -------------------------------------- COLLAPSIBLE GROUP SUPPORT -------------------------------------------------
-
-    def _create_collapsible_group(self, title: str) -> QWidget:
-        """
-        Create a collapsible group container that visually groups related fields.
-        The group title acts as a clickable header to expand/collapse its contents.
-        Fields are placed into the returned widget's `content_layout` attribute.
-        """
-        outer = QWidget()
-        outer_layout = QVBoxLayout()
-        outer_layout.setContentsMargins(0, 4, 0, 4)
-        outer_layout.setSpacing(0)
-        outer.setLayout(outer_layout)
-
-        # --- Header frame (clickable) ---
-        header = QFrame()
-        header.setFrameShape(QFrame.Shape.StyledPanel)
-        header.setCursor(Qt.CursorShape.PointingHandCursor)
-        header.setStyleSheet("""
-            QFrame {
-                background-color: #2d2d30;
-                border: 1px solid #4a4a4a;
-                border-radius: 4px;
-                padding: 2px;
-            }
-            QFrame:hover {
-                background-color: #37373d;
-                border-color: #0e639c;
-            }
-        """)
-
-        header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(10, 6, 10, 6)
-        header_layout.setSpacing(8)
-        header.setLayout(header_layout)
-
-        toggle_label = QLabel()
-        toggle_label.setFixedSize(20, 20)
-        toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
-        toggle_label.setStyleSheet("background: transparent; border: none;")
-        header_layout.addWidget(toggle_label)
-
-        title_label = QLabel(title)
-        title_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
-        title_label.setStyleSheet("color: #cccccc; background: transparent; border: none;")
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
-
-        outer_layout.addWidget(header)
-
-        # --- Content area ---
-        content_wrapper = QWidget()
-        content_wrapper.setStyleSheet("background-color: #1e1e1e;")
-        content_layout = QVBoxLayout()
-        content_layout.setContentsMargins(12, 8, 8, 8)
-        content_layout.setSpacing(8)
-        content_wrapper.setLayout(content_layout)
-        outer_layout.addWidget(content_wrapper)
-
-        # Expose for callers
-        outer.content_layout = content_layout
-        outer.content_wrapper = content_wrapper
-        outer.toggle_label = toggle_label
-        outer.is_collapsed = False
-
-        def _toggle(_event=None):
-            outer.is_collapsed = not outer.is_collapsed
-            content_wrapper.setVisible(not outer.is_collapsed)
-            icon_key = 'caret-right' if outer.is_collapsed else 'caret-down'
-            toggle_label.setPixmap(self.icons_dict[icon_key].pixmap(16, 16))
-
-        header.mousePressEvent = _toggle
-
-        return outer
+    def _create_collapsible_group(self, title: str) -> CollapsibleGroup:
+        return CollapsibleGroup(title, self.icons_dict, self)
 
     def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
         """Build content for a settings category, grouping fields that carry a 'group' UI key
