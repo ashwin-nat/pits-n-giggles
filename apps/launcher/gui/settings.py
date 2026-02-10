@@ -192,6 +192,9 @@ class SettingsWindow(QDialog):
             QListWidget::item:hover {
                 background-color: #3e3e3e;
             }
+            QWidget {
+                border: none;
+            }
             QGroupBox {
                 border: 1px solid #3e3e3e;
                 border-radius: 4px;
@@ -463,16 +466,7 @@ class SettingsWindow(QDialog):
 
         # --- Content area ---
         content_wrapper = QWidget()
-        content_wrapper.setStyleSheet("""
-            QWidget {
-                background-color: #1e1e1e;
-                border-left: 2px solid #2d2d30;
-                border-bottom: 1px solid #2d2d30;
-                border-right: 1px solid #2d2d30;
-                border-bottom-left-radius: 4px;
-                border-bottom-right-radius: 4px;
-            }
-        """)
+        content_wrapper.setStyleSheet("background-color: #1e1e1e;")
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(12, 8, 8, 8)
         content_layout.setSpacing(8)
