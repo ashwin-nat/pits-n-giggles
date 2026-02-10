@@ -71,6 +71,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    toggle_overlays_udp_action_code: Optional[int] = udp_action_field("Toggle all overlays UDP action code")
+    use_windowed_overlays: bool = Field(
+        default=False,
+        description="Use Windowed Overlays (Required for OBS window capture)",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+            }
+        }
+    )
 
     # ============== LAP TIMER OVERLAY ==============
     show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer")
@@ -222,7 +233,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== GLOBAL OVERLAY CONTROLS ==============
-    toggle_overlays_udp_action_code: Optional[int] = udp_action_field("Toggle all overlays UDP action code", group="Global Controls")
 
     overlays_opacity: int = Field(
         default=100,
@@ -235,18 +245,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "visible": False,
                 "min": 0,
                 "max": 100,
-                "group": "Global Controls"
-            }
-        }
-    )
-
-    use_windowed_overlays: bool = Field(
-        default=False,
-        description="Use Windowed Overlays (Required for OBS window capture)",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True,
                 "group": "Global Controls"
             }
         }
