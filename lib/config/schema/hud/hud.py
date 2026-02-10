@@ -35,6 +35,17 @@ from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
 from .mfd import MfdSettings
 from .timing_tower import TimingTowerColOptions
 
+# -------------------------------------- HELPER FUNCTION ---------------------------------------------------------------
+
+def _add_ui_group(field_info, group_name: str):
+    """Helper to add UI group to a field's json_schema_extra"""
+    if field_info.json_schema_extra is None:
+        field_info.json_schema_extra = {}
+    if "ui" not in field_info.json_schema_extra:
+        field_info.json_schema_extra["ui"] = {}
+    field_info.json_schema_extra["ui"]["group"] = group_name
+    return field_info
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class WeatherMFDUIType(str, Enum):
@@ -61,13 +72,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay")
+    # ============== LAP TIMER OVERLAY ==============
+    show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer")
     lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
-    lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle lap timer overlay UDP action code")
+    lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(description="Toggle lap timer overlay UDP action code",
+                                                                        group="Lap Timer")
 
-
-    show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay")
+    # ============== TIMING TOWER OVERLAY ==============
+    show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay", group="Timing Tower")
     timing_tower_ui_scale: float = ui_scale_field(description="Timing tower UI scale")
     timing_tower_max_rows: int = Field(
         default=5,
@@ -77,7 +89,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
-                "visible": True
+                "visible": True,
+                "group": "Timing Tower"
             }
         }
     )
@@ -87,14 +100,16 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "group_box",
-                "visible": True
+                "visible": True,
+                "group": "Timing Tower"
             }
         }
     )
     timing_tower_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle timing tower overlay UDP action code")
+        description="Toggle timing tower overlay UDP action code", group="Timing Tower")
 
-    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay")
+    # ============== MFD OVERLAY ==============
+    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD")
     mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
@@ -102,7 +117,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "reorderable_view",
-                "visible": True
+                "visible": True,
+                "group": "MFD"
             }
         }
     )
@@ -115,6 +131,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "text_box",
                 "visible": True,
+                "group": "MFD",
                 "ext_info": [
                     "Used by the Tyre Wear page in the MFD to select the end lap.\n"
                     "The first lap exceeding this wear value is chosen; if none do, the final prediction lap is used."
@@ -130,28 +147,36 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "type": "radio_buttons",
                 "options": [e.value for e in WeatherMFDUIType],
                 "visible": True,
+                "group": "MFD",
             }
         }
     )
     mfd_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle MFD overlay UDP action code")
+        description="Toggle MFD overlay UDP action code", group="MFD")
     mfd_interaction_udp_action_code: Optional[int] = udp_action_field(
-        description="Interact with active MFD page - UDP action code",
-        ext_info=[
-            "Optional action code to interact with currently active MFD page. Currently, "
-            "the weather forecast page uses this to cycle through various sessions, if available. (only from F1 24+)"
-        ]
-    )
+            description="Interact with active MFD page - UDP action code",
+            ext_info=[
+                "Optional action code to interact with currently active MFD page. Currently, "
+                "the weather forecast page uses this to cycle through various sessions, if available. (only from F1 24+)"
+            ],
+            group="MFD",
+        )
+    cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
+        "Cycle MFD pages UDP action code", group="MFD")
 
-    show_track_map: bool = overlay_enable_field(description="Enable track map overlay", default=False, visible=False)
-    track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
+    # ============== TRACK MAP OVERLAY ==============
+    show_track_map: bool = overlay_enable_field(description="Enable track map overlay",
+                                                default=False, visible=False, group="Track Map")
+    track_map_ui_scale: float = ui_scale_field(description="Track map UI scale" )
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle track map overlay UDP action code", visible=False)
+        description="Toggle track map overlay UDP action code", visible=False, group="Track Map")
 
-    show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay")
+    # ============== INPUT TELEMETRY OVERLAY ==============
+    show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay",
+                                                    group="Input Telemetry")
     input_overlay_ui_scale: float = ui_scale_field(description="Input telemetry overlay UI scale")
     input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle input telemetry overlay UDP action code")
+        description="Toggle input telemetry overlay UDP action code", group="Input Telemetry")
     input_overlay_buffer_duration_sec: float = Field(
         default=5.0,
         ge=1.0,
@@ -161,6 +186,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "text_box",
                 "visible": True,
+                "group": "Input Telemetry",
                 "ext_info": [
                     "Controls how much recent throttle, brake, and steering input history is shown in the overlay. "
                     "Higher values show a longer time window, while lower values make input changes appear more responsive.\n"
@@ -171,10 +197,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay")
+    # ============== TRACK RADAR OVERLAY ==============
+    show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay", group="Track Radar")
     track_radar_overlay_ui_scale: float = ui_scale_field(description="Track radar overlay UI scale")
     track_radar_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
-        description="Toggle track radar overlay UDP action code")
+        description="Toggle track radar overlay UDP action code", group="Track Radar")
     track_radar_idle_opacity: int = Field(
         default=30,
         ge=0,
@@ -186,6 +213,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "visible": False,
                 "min": 0,
                 "max": 100,
+                "group": "Track Radar",
                 "ext_info": [
                     'Track Radar opacity when no other cars are nearby'
                 ]
@@ -193,10 +221,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    toggle_overlays_udp_action_code: Optional[int] = udp_action_field(
-        "Toggle all overlays UDP action code")
-    cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
-        "Cycle MFD pages UDP action code")
+    # ============== GLOBAL OVERLAY CONTROLS ==============
+    toggle_overlays_udp_action_code: Optional[int] = udp_action_field("Toggle all overlays UDP action code", group="Global Controls")
 
     overlays_opacity: int = Field(
         default=100,
@@ -208,7 +234,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "type" : "slider",
                 "visible": False,
                 "min": 0,
-                "max": 100
+                "max": 100,
+                "group": "Global Controls"
             }
         }
     )
@@ -219,7 +246,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
-                "visible": True
+                "visible": True,
+                "group": "Global Controls"
             }
         }
     )
