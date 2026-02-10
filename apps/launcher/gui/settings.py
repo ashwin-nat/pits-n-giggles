@@ -25,6 +25,7 @@
 import html
 import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
@@ -155,6 +156,10 @@ class SettingsWindow(QDialog):
 
         # Track category names for search filtering
         self.category_names: List[str] = []  # Original category names
+
+        # Track collapsible group header widgets keyed by group title, per category
+        # { category_index: { group_title: collapsible_container_widget } }
+        self.collapsible_groups: Dict[int, Dict[str, QWidget]] = {}
 
         self.setup_ui()
 
@@ -407,8 +412,91 @@ class SettingsWindow(QDialog):
             )
         )
 
+    # -------------------------------------- COLLAPSIBLE GROUP SUPPORT -------------------------------------------------
+
+    def _create_collapsible_group(self, title: str) -> QWidget:
+        """
+        Create a collapsible group container that visually groups related fields.
+        The group title acts as a clickable header to expand/collapse its contents.
+        Fields are placed into the returned widget's `content_layout` attribute.
+        """
+        outer = QWidget()
+        outer_layout = QVBoxLayout()
+        outer_layout.setContentsMargins(0, 4, 0, 4)
+        outer_layout.setSpacing(0)
+        outer.setLayout(outer_layout)
+
+        # --- Header frame (clickable) ---
+        header = QFrame()
+        header.setFrameShape(QFrame.Shape.StyledPanel)
+        header.setCursor(Qt.CursorShape.PointingHandCursor)
+        header.setStyleSheet("""
+            QFrame {
+                background-color: #2d2d30;
+                border: 1px solid #4a4a4a;
+                border-radius: 4px;
+                padding: 2px;
+            }
+            QFrame:hover {
+                background-color: #37373d;
+                border-color: #0e639c;
+            }
+        """)
+
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(10, 6, 10, 6)
+        header_layout.setSpacing(8)
+        header.setLayout(header_layout)
+
+        toggle_label = QLabel("▼")
+        toggle_label.setFixedWidth(16)
+        toggle_label.setStyleSheet("color: #858585; font-size: 9pt; background: transparent; border: none;")
+        header_layout.addWidget(toggle_label)
+
+        title_label = QLabel(title)
+        title_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #cccccc; background: transparent; border: none;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+
+        outer_layout.addWidget(header)
+
+        # --- Content area ---
+        content_wrapper = QWidget()
+        content_wrapper.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+                border-left: 2px solid #2d2d30;
+                border-bottom: 1px solid #2d2d30;
+                border-right: 1px solid #2d2d30;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }
+        """)
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(12, 8, 8, 8)
+        content_layout.setSpacing(8)
+        content_wrapper.setLayout(content_layout)
+        outer_layout.addWidget(content_wrapper)
+
+        # Expose for callers
+        outer.content_layout = content_layout
+        outer.content_wrapper = content_wrapper
+        outer.toggle_label = toggle_label
+        outer.is_collapsed = False
+
+        def _toggle(_event=None):
+            outer.is_collapsed = not outer.is_collapsed
+            content_wrapper.setVisible(not outer.is_collapsed)
+            toggle_label.setText("▶" if outer.is_collapsed else "▼")
+
+        header.mousePressEvent = _toggle
+
+        return outer
+
     def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
-        """Build content for a settings category"""
+        """Build content for a settings category, grouping fields that carry a 'group' UI key
+        into collapsible sections. Fields without a group are rendered at the top level as before."""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -432,49 +520,89 @@ class SettingsWindow(QDialog):
         separator.setStyleSheet("background-color: #3e3e3e;")
         layout.addWidget(separator)
 
-        # Iterate through fields in the category
+        # Partition fields into ungrouped (rendered inline) and grouped (rendered in collapsible boxes).
+        # Insertion order of group names is preserved so groups appear in the order their first field
+        # is encountered, which matches the field declaration order in the model.
+        ungrouped: List[Tuple[str, Any, FieldInfo]] = []
+        grouped: Dict[str, List[Tuple[str, Any, FieldInfo]]] = defaultdict(list)
+        group_order: List[str] = []  # Tracks insertion order of group names
+
         for field_name, field_info in type(category_model).model_fields.items():
             if not self._is_field_visible(field_info):
                 continue
 
             field_value = getattr(category_model, field_name)
-            field_path = f"{category_name}.{field_name}"
+            ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+            group_name = ui_config.get("group")
 
-            # Get UI metadata
-            ui_meta = field_info.json_schema_extra or {}
-            ui_config = ui_meta.get("ui", {})
-            ui_type = ui_config.get("type", "text_box")
-
-            # Handle complex types (nested BaseModel or dict)
-            if isinstance(field_value, BaseModel):
-                if ui_type == "reorderable_view":
-                    # Nested reorderable_view - create expandable section
-                    widget = self._build_reorderable_view(field_name, field_value, field_path, field_info)
-                    layout.addWidget(widget)
-                elif ui_type == "group_box":
-                    # Group box with potentially reorderable items
-                    widget = self._build_group_box(field_name, field_value, field_path, field_info)
-                    layout.addWidget(widget)
-                else:
-                    # Default: treat as nested group
-                    widget = self._build_nested_group(field_name, field_value, field_path, field_info)
-                    layout.addWidget(widget)
-            elif isinstance(field_value, dict):
-                # Handle dict fields
-                widget = self._build_dict_field(field_name, field_value, field_path, field_info)
-                if widget:
-                    layout.addWidget(widget)
+            if group_name:
+                if group_name not in grouped:
+                    group_order.append(group_name)
+                grouped[group_name].append((field_name, field_value, field_info))
             else:
-                # Simple field
-                widget = self._build_field_widget(field_name, field_value, field_path, field_info)
-                if widget:
-                    layout.addWidget(widget)
+                ungrouped.append((field_name, field_value, field_info))
+
+        # --- Render ungrouped fields first ---
+        for field_name, field_value, field_info in ungrouped:
+            field_path = f"{category_name}.{field_name}"
+            self._render_field(field_name, field_value, field_path, field_info, layout)
+
+        # --- Render grouped fields in collapsible sections ---
+        # Remember which collapsible containers belong to this category for search integration
+        category_idx = len(self.category_names)  # Will be set after this call; store reference by title
+        category_collapsibles: Dict[str, QWidget] = {}
+
+        for group_name in group_order:
+            fields = grouped[group_name]
+            group_container = self._create_collapsible_group(group_name)
+            group_layout = group_container.content_layout
+
+            for field_name, field_value, field_info in fields:
+                field_path = f"{category_name}.{field_name}"
+                self._render_field(field_name, field_value, field_path, field_info, group_layout)
+
+            layout.addWidget(group_container)
+            category_collapsibles[group_name] = group_container
+
+        # Store so search can expand groups on match
+        self.collapsible_groups[category_idx] = category_collapsibles
 
         layout.addStretch()
         content_widget.setLayout(layout)
         scroll.setWidget(content_widget)
 
         return scroll
+
+    def _render_field(self,
+                      field_name: str,
+                      field_value: Any,
+                      field_path: str,
+                      field_info: FieldInfo,
+                      layout: QVBoxLayout) -> None:
+        """Dispatch a single field to the correct builder and add it to *layout*."""
+        ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+        ui_type = ui_config.get("type", "text_box")
+
+        if isinstance(field_value, BaseModel):
+            if ui_type == "reorderable_view":
+                widget = self._build_reorderable_view(field_name, field_value, field_path, field_info)
+                layout.addWidget(widget)
+            elif ui_type == "group_box":
+                widget = self._build_group_box(field_name, field_value, field_path, field_info)
+                layout.addWidget(widget)
+            else:
+                widget = self._build_nested_group(field_name, field_value, field_path, field_info)
+                layout.addWidget(widget)
+        elif isinstance(field_value, dict):
+            widget = self._build_dict_field(field_name, field_value, field_path, field_info)
+            if widget:
+                layout.addWidget(widget)
+        else:
+            widget = self._build_field_widget(field_name, field_value, field_path, field_info)
+            if widget:
+                layout.addWidget(widget)
+
+    # -------------------------------------- FIELD WIDGET BUILDERS -----------------------------------------------------
 
     def _build_field_widget(self,
                             field_name: str,
@@ -551,6 +679,7 @@ class SettingsWindow(QDialog):
             layout.addLayout(checkbox_layout)
 
         return label
+
     def _build_field_widget_slider(self,
                                    layout: QVBoxLayout,
                                    description: str,
@@ -611,6 +740,7 @@ class SettingsWindow(QDialog):
         self.field_widgets[field_path] = slider
 
         return label
+
     def _build_field_widget_text_box(self,
                                      layout: QVBoxLayout,
                                      description: str,
@@ -641,6 +771,7 @@ class SettingsWindow(QDialog):
         self.field_widgets[field_path] = text_box
 
         return label
+
     def _build_field_widget_radio_button(self,
                                          layout: QVBoxLayout,
                                          description: str,
@@ -694,6 +825,7 @@ class SettingsWindow(QDialog):
         self.field_widgets[field_path] = button_group
 
         return label
+
     def _build_dict_field(self,
                           field_name: str,
                           field_value: Dict[str, Any],
@@ -1159,6 +1291,8 @@ class SettingsWindow(QDialog):
         if animation_group.animationCount() > 0:
             animation_group.start()
 
+    # -------------------------------------- EVENT HANDLERS & UTILITIES ------------------------------------------------
+
     def _on_field_changed(self, field_path: str, value: Any):
         """Handle field value change"""
         try:
@@ -1283,6 +1417,18 @@ class SettingsWindow(QDialog):
 
                 if isinstance(widget, QCheckBox):
                     widget.setChecked(value)
+
+                elif isinstance(widget, QButtonGroup):
+                    for button in widget.buttons():
+                        try:
+                            btn_value = int(button.text())
+                        except ValueError:
+                            btn_value = button.text()
+
+                        if btn_value == value:
+                            button.setChecked(True)
+                            break
+
                 elif isinstance(widget, QSlider):
                     field_info = self._get_field_info_from_path(field_path)
                     ui_config = (field_info.json_schema_extra or {}).get("ui", {})
@@ -1291,9 +1437,11 @@ class SettingsWindow(QDialog):
                         widget.setValue(int(value * 100))
                     else:
                         widget.setValue(value)
+
                 elif isinstance(widget, QLineEdit):
                     widget.setText(str(value) if value is not None else "")
-            except Exception as e: # pylint: disable=broad-exception-caught
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
 
     def _get_nested_value(self, obj: Any, path: str) -> Any:
@@ -1439,43 +1587,9 @@ class SettingsWindow(QDialog):
 
         self._on_field_changed(field_path, value)
 
-    def _update_all_widgets(self):
-        """Update all widgets from working_settings"""
-        for field_path, widget in self.field_widgets.items():
-            try:
-                value = self._get_nested_value(self.working_settings, field_path)
-
-                if isinstance(widget, QCheckBox):
-                    widget.setChecked(value)
-
-                elif isinstance(widget, QButtonGroup):
-                    for button in widget.buttons():
-                        try:
-                            btn_value = int(button.text())
-                        except ValueError:
-                            btn_value = button.text()
-
-                        if btn_value == value:
-                            button.setChecked(True)
-                            break
-
-                elif isinstance(widget, QSlider):
-                    field_info = self._get_field_info_from_path(field_path)
-                    ui_config = (field_info.json_schema_extra or {}).get("ui", {})
-
-                    if ui_config.get("convert") == "percent":
-                        widget.setValue(int(value * 100))
-                    else:
-                        widget.setValue(value)
-
-                elif isinstance(widget, QLineEdit):
-                    widget.setText(str(value) if value is not None else "")
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
 
     def _on_search_changed(self, search_text: str):
-        """Filter visible settings based on search text"""
+        """Filter visible settings based on search text, auto-expanding groups that contain matches."""
         search_text = search_text.lower().strip()
 
         # If search is empty, show all widgets and reset category labels
@@ -1483,6 +1597,14 @@ class SettingsWindow(QDialog):
             for sw in self.searchable_widgets:
                 sw.widget.setVisible(True)
                 sw.apply_highlight("")  # Remove highlighting
+
+            # Restore all collapsible groups to their natural (expanded) state
+            for groups_in_category in self.collapsible_groups.values():
+                for group_container in groups_in_category.values():
+                    if group_container.is_collapsed:
+                        group_container.is_collapsed = False
+                        group_container.content_wrapper.setVisible(True)
+                        group_container.toggle_label.setText("▼")
 
             # Reset category labels to original names and unhide all categories
             for i, category_name in enumerate(self.category_names):
@@ -1516,6 +1638,20 @@ class SettingsWindow(QDialog):
             else:
                 sw.widget.setVisible(False)
                 sw.apply_highlight("")  # Remove highlighting from hidden widgets
+
+        # Auto-expand any collapsible group that has at least one visible (matching) child
+        for groups_in_category in self.collapsible_groups.values():
+            for group_container in groups_in_category.values():
+                content_layout = group_container.content_layout
+                has_visible_child = any(
+                    content_layout.itemAt(i).widget() is not None
+                    and content_layout.itemAt(i).widget().isVisible()
+                    for i in range(content_layout.count())
+                )
+                if has_visible_child and group_container.is_collapsed:
+                    group_container.is_collapsed = False
+                    group_container.content_wrapper.setVisible(True)
+                    group_container.toggle_label.setText("▼")
 
         # Update category labels with counts and hide empty categories
         first_visible_category = None
