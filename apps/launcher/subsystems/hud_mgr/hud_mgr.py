@@ -369,10 +369,11 @@ class HudAppMgr(PngAppMgrBase):
         rsp = IpcClientSync(self.ipc_port).request(command="set-overlays-opacity", args={
             "opacity": opacity,
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
-            self.debug_log(f"Set overlays opacity response: {rsp}")
+            self.info_log(f"Set overlays opacity command was successful")
 
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
@@ -384,10 +385,11 @@ class HudAppMgr(PngAppMgrBase):
         rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-idle-opacity", args={
             "opacity": opacity,
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set track radar idle opacity: {rsp}")
         else:
-            self.debug_log(f"Set track radar idle opacity response: {rsp}")
+            self.info_log(f"Set track radar idle opacity command was successful")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
@@ -467,10 +469,11 @@ class HudAppMgr(PngAppMgrBase):
             "oid": oid,
             "scale_factor": data["new_value"]
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set {oid} UI scale: {rsp}")
         else:
-            self.debug_log(f"Set {oid} UI scale response: {rsp}")
+            self.info_log(f"Set UI scale command for {oid} was successful")
 
     def show_scale_popup(self):
         """Show the scale popup"""
