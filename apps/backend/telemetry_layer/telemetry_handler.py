@@ -269,11 +269,13 @@ class F1TelemetryHandler:
             """
 
             if packet.m_sessionDuration == 0:
-                self.m_logger.info("Session duration is 0. clearing data structures")
+                self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
+                                   packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session duration is 0")
 
             elif await self.m_session_state_ref.processSessionUpdate(packet):
-                self.m_logger.info("Session UID changed. clearing data structures")
+                self.m_logger.info("Session UID changed. clearing data structures. UID %d",
+                                   packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session UID changed")
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
@@ -361,13 +363,13 @@ class F1TelemetryHandler:
             if not self.m_session_state_ref.m_session_info.is_valid:
                 self.m_logger.error('Final classification event. Session data not available. Not saving data.')
                 return
-            self.m_logger.info('Received Final Classification Packet.')
+            self.m_logger.info('Received Final Classification Packet. UID = %d', packet.m_header.m_sessionUID)
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
             # Perform the auto save stuff only if configured
             if self._shouldSaveData():
-                await self.postGameDumpToFile(final_json)
+                await self.postGameDumpToFile(final_json, session_uid=packet.m_header.m_sessionUID)
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -538,7 +540,8 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier} "
+                               f"UID = {packet.m_header.m_sessionUID}")
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -551,8 +554,9 @@ class F1TelemetryHandler:
             # In case session start was missed, clear data structures
             self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
             if packet.mEventDetails.numLights == 1:
-                self.m_logger.info("Session start was missed. Clearing data structures in start lights event")
                 session_uid = packet.m_header.m_sessionUID
+                self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
+                                   session_uid)
 
                 if session_uid != self.m_last_session_uid:
                     self.m_last_session_uid = session_uid
@@ -610,12 +614,13 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
 
-    async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
+    async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
 
         Arguments:
             final_json (Dict): Dictionary containing JSON data after final classification
+            session_uid (int): Session UID for which the final classification was received.
         """
 
         event_str = self.m_session_state_ref.getEventInfoStr()
@@ -641,8 +646,8 @@ class F1TelemetryHandler:
         })
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name,
-                               self.m_session_state_ref.m_pkt_count)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", final_json_file_name,
+                               self.m_session_state_ref.m_pkt_count, session_uid)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
