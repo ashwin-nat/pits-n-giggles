@@ -222,7 +222,7 @@ class DataPerDriver:
         final_json["team"] = self.m_driver_info.team
         final_json["telemetry-settings"] = str(self.m_driver_info.telemetry_setting)
         final_json["current-lap"] = self.m_lap_info.m_current_lap
-        final_json["top-speed-kmph"] = self.m_lap_info.m_top_speed_kmph_this_lap
+        final_json["top-speed-kmph"] = self.m_lap_info.m_top_speed_kmph_overall
 
         # Insert packet copies if available
         final_json["car-damage"] = self.m_packet_copies.m_packet_car_damage.toJSON() if self.m_packet_copies.m_packet_car_damage else None

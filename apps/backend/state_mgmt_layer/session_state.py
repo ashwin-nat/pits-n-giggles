@@ -649,6 +649,12 @@ class SessionState:
                 if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None
                 else max(car_telemetry_data.m_speed, obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
             )
+            obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall = (
+                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap
+                if obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall is None
+                else max(obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall,
+                         obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
+            )
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
