@@ -144,17 +144,17 @@ class HudAppMgr(PngAppMgrBase):
                 tooltip="Reset Overlays Positions"
             ),
             ButtonConfig(
+                name="mfd_interact",
+                icon="mfd-interact",
+                callback=self.mfd_interact_callback,
+                tooltip="MFD Interact"
+            ),
+            ButtonConfig(
                 name="lock",
                 icon="unlock",
                 callback=self.lock_callback,
                 tooltip="Edit Overlays"
             ),
-            ButtonConfig(
-                name="mfd_interact",
-                icon="mfd-interact",
-                callback=self.mfd_interact_callback,
-                tooltip="MFD Interact"
-            )
         ]
 
     def get_buttons(self) -> List[QPushButton]:
@@ -484,6 +484,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.lap_timer_ui_scale * 100),
+                visible=hud_settings.show_lap_timer,
             ),
             SliderItem(
                 key=TIMING_TOWER_OVERLAY_ID,
@@ -491,6 +492,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.timing_tower_ui_scale * 100),
+                visible=hud_settings.show_timing_tower,
             ),
             SliderItem(
                 key=MFD_OVERLAY_ID,
@@ -498,6 +500,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
+                visible=hud_settings.show_mfd,
             ),
             # SliderItem(
             #     key=TRACK_MAP_OVERLAY_ID,
@@ -505,6 +508,7 @@ class HudAppMgr(PngAppMgrBase):
             #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
             #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
             #     value=int(hud_settings.track_map_ui_scale * 100),
+            #     visible=hud_settings.show_track_map_overlay,
             # ),
             SliderItem(
                 key=INPUT_TELEMETRY_OVERLAY_ID,
@@ -512,6 +516,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.input_overlay_ui_scale * 100),
+                visible=hud_settings.show_input_overlay,
             ),
             SliderItem(
                 key=TRACK_RADAR_OVERLAY_ID,
@@ -519,6 +524,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.track_radar_overlay_ui_scale * 100),
+                visible=hud_settings.show_track_radar_overlay,
             ),
 
             # Opacity at the bottom
@@ -528,6 +534,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["min"],
                 max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.overlays_opacity,
+                visible=True,
             ),
 
             SliderItem(
@@ -537,6 +544,7 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.track_radar_idle_opacity,
                 tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
+                visible=hud_settings.show_track_radar_overlay,
             )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
@@ -574,8 +582,17 @@ class HudAppMgr(PngAppMgrBase):
             )
         except ValidationError as e:
             self.error_log("Invalid HUD settings from slider popup:")
-            self.error_log(str(e))
-            error_text = e.errors()[0]["msg"]
+            for err in e.errors():
+                field = ".".join(str(p) for p in err.get("loc", []))
+                message = err.get("msg", "Invalid value")
+
+                self.error_log(f"HUD validation failed at '{field}': {message}")
+                raw_msg = e.errors()[0]["msg"]
+                prefix = "Value error, "
+                if raw_msg.startswith(prefix):
+                    error_text = raw_msg[len(prefix):]
+                else:
+                    error_text = raw_msg
             self.error_log(error_text)
 
             self.show_error("Invalid HUD Settings", error_text)
