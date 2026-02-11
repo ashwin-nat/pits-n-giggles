@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from collections import deque
-from typing import Deque, Generic, Iterable, TypeVar
+from typing import Deque, Generic, Iterator, TypeVar
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -100,7 +100,7 @@ class RollingHistory(Generic[T]):
         """Return the number of stored values."""
         return len(self._data)
 
-    def __iter__(self) -> Iterable[T]:
+    def __iter__(self) -> Iterator[T]:
         """Iterate over values from oldest to newest."""
         return iter(self._data)
 
