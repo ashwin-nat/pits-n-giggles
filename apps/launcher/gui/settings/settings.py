@@ -79,6 +79,7 @@ class SettingsWindow(QDialog):
 
         # Track category names for search filtering
         self.category_names: List[str] = []  # Original category names
+        self.category_field_names: List[str] = []  # Model field names, parallel to category_names
 
         # Track collapsible group header widgets keyed by group title, per category
         # { category_index: { group_title: collapsible_container_widget } }
@@ -265,6 +266,7 @@ class SettingsWindow(QDialog):
 
             self.category_list.addItem(display_name)
             self.category_names.append(display_name)
+            self.category_field_names.append(category_name)
 
             # Track the starting index for this category's widgets
             widgets_start_index = len(self.searchable_widgets)
@@ -293,6 +295,10 @@ class SettingsWindow(QDialog):
         reset_btn = QPushButton("Reset to Defaults")
         reset_btn.clicked.connect(self.on_reset)
         button_layout.addWidget(reset_btn)
+
+        reset_section_btn = QPushButton("Reset Section to Defaults")
+        reset_section_btn.clicked.connect(self.on_reset_section)
+        button_layout.addWidget(reset_section_btn)
 
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
@@ -1239,7 +1245,7 @@ class SettingsWindow(QDialog):
 
         if reply == QMessageBox.StandardButton.Yes:
             self.working_settings = self.original_settings.model_copy(deep=True)
-            self._update_all_widgets()
+            self._populate_widgets_from_settings()
             self.parent_window.info_log("Settings reset to last saved values")
 
     def on_reset(self):
@@ -1253,12 +1259,46 @@ class SettingsWindow(QDialog):
 
         if reply == QMessageBox.StandardButton.Yes:
             self.working_settings = PngSettings()
-            self._update_all_widgets()
+            self._populate_widgets_from_settings()
             self.parent_window.info_log("Settings reset to factory default values")
 
-    def _update_all_widgets(self):
-        """Update all widgets from working_settings"""
+    def on_reset_section(self):
+        """Reset only the currently selected settings section to default values"""
+        current_row = self.category_list.currentRow()
+        if current_row < 0 or current_row >= len(self.category_field_names):
+            return
+
+        category_name = self.category_field_names[current_row]
+        display_name = self.category_names[current_row]
+
+        reply = QMessageBox.question(
+            self,
+            "Reset Section to Defaults",
+            f"Reset all settings in \"{display_name}\" to their factory default values?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # Instantiate only the relevant section's model with its defaults
+        section_type = self._get_field_info_from_path(category_name).annotation
+        setattr(self.working_settings, category_name, section_type())
+        self._populate_widgets_from_settings(category_name)
+        self.parent_window.info_log(f'Settings section "{display_name}" reset to factory defaults')
+
+    def _populate_widgets_from_settings(self, category_name: Optional[str] = None):
+        """Update widgets from working_settings.
+
+        Args:
+            category_name: If given, only widgets whose field path starts with
+                           ``category_name.`` are refreshed.  If None, all
+                           widgets are refreshed.
+        """
+        prefix = f"{category_name}." if category_name else None
         for field_path, widget in self.field_widgets.items():
+            if prefix and not field_path.startswith(prefix):
+                continue
             try:
                 value = self._get_nested_value(self.working_settings, field_path)
 
@@ -1271,7 +1311,6 @@ class SettingsWindow(QDialog):
                             btn_value = int(button.text())
                         except ValueError:
                             btn_value = button.text()
-
                         if btn_value == value:
                             button.setChecked(True)
                             break
@@ -1279,7 +1318,6 @@ class SettingsWindow(QDialog):
                 elif isinstance(widget, QSlider):
                     field_info = self._get_field_info_from_path(field_path)
                     ui_config = (field_info.json_schema_extra or {}).get("ui", {})
-
                     if ui_config.get("convert") == "percent":
                         widget.setValue(int(value * 100))
                     else:
