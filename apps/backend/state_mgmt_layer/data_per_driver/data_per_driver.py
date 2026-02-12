@@ -42,7 +42,7 @@ from .car_info import CarInfo
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
-from .pending_events import DriverPendingEvents, PendingEventsManager
+from lib.pending_events import DriverPendingEvents, PendingEventsManager
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory

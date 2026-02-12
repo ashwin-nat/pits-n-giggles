@@ -28,8 +28,7 @@ import time
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
-                                                           DriverPendingEvents)
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -54,6 +53,7 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
+from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
