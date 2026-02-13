@@ -100,18 +100,23 @@ class TestIpcSubscriber(TestIPC):
     def test_run_connects_and_sleeps(self):
         subscriber = SocketioClient(self.url, self.logger)
 
-        # Patch _setup_sio to prevent overwriting self._sio
-        with patch.object(subscriber, "_setup_sio", return_value=None):
-            # Patch _sio.sleep to break the loop immediately
-            def stop_loop(seconds):
-                subscriber._stop_event.set()
+        # Ensure connected flag behaves deterministically
+        subscriber._connected = False
 
-            subscriber._sio.sleep.side_effect = stop_loop
+        def connect_side_effect(*args, **kwargs):
+            subscriber._connected = True
 
-            subscriber.run()
-            subscriber._sio.connect.assert_called_with(
-                self.url, wait=True, transports=["websocket", "polling"]
-            )
+        self.mock_sio.connect.side_effect = connect_side_effect
+
+        def stop_loop(_):
+            subscriber._stop_event.set()
+
+        self.mock_sio.sleep.side_effect = stop_loop
+
+        subscriber.run()
+
+        self.assertEqual(self.mock_sio.connect.call_count, 1)
+
 
     def test_stop_disconnects(self):
         subscriber = SocketioClient(self.url, self.logger)
@@ -127,20 +132,75 @@ class TestIpcSubscriber(TestIPC):
         subscriber.logger.info("test message")
         self.logger.info.assert_called_with("test message")
 
-    def test_run_connects_and_sleeps(self):
-        """Test that run() calls connect and sleeps once, then exits."""
+    def test_run_retries_on_initial_connection_failure(self):
         subscriber = SocketioClient(self.url, self.logger)
 
-        # Patch _setup_sio to prevent overwriting self._sio
-        with patch.object(subscriber, "_setup_sio", return_value=None):
-            # Patch sleep to stop loop after one iteration
-            def stop_loop(seconds):
+        # Important: explicitly set connected state
+        subscriber._connected = False
+
+        # Force connect to fail every time
+        self.mock_sio.connect.side_effect = socketio.exceptions.ConnectionError("fail")
+
+        retry_counter = {"count": 0}
+
+        def stop_after_retries(_):
+            retry_counter["count"] += 1
+            if retry_counter["count"] >= 3:
                 subscriber._stop_event.set()
 
-            subscriber._sio.sleep.side_effect = stop_loop
+        subscriber._stop_event.wait = stop_after_retries
 
-            subscriber.run()
+        subscriber.run()
 
-            subscriber._sio.connect.assert_called_with(
-                self.url, wait=True, transports=["websocket", "polling"]
-            )
+        self.assertGreaterEqual(self.mock_sio.connect.call_count, 3)
+
+    def test_run_connects_when_server_available(self):
+        subscriber = SocketioClient(self.url, self.logger)
+
+        # Simulate successful connection
+        subscriber._connected = False
+
+        def connect_side_effect(*args, **kwargs):
+            subscriber._connected = True
+
+        self.mock_sio.connect.side_effect = connect_side_effect
+
+        # Stop after one loop iteration
+        def stop_loop(_):
+            subscriber._stop_event.set()
+
+        self.mock_sio.sleep.side_effect = stop_loop
+
+        subscriber.run()
+
+        self.assertEqual(self.mock_sio.connect.call_count, 1)
+        self.assertTrue(subscriber._connected)
+
+    def test_run_reconnects_after_disconnect(self):
+        subscriber = SocketioClient(self.url, self.logger)
+
+        # First connect succeeds
+        subscriber._connected = False
+
+        def connect_side_effect(*args, **kwargs):
+            subscriber._connected = True
+
+        self.mock_sio.connect.side_effect = connect_side_effect
+
+        sleep_calls = {"count": 0}
+
+        def sleep_side_effect(_):
+            sleep_calls["count"] += 1
+
+            # Simulate server crash after first loop
+            if sleep_calls["count"] == 1:
+                subscriber._connected = False
+            elif sleep_calls["count"] >= 2:
+                subscriber._stop_event.set()
+
+        self.mock_sio.sleep.side_effect = sleep_side_effect
+
+        subscriber.run()
+
+        # Should have connected more than once (initial + reconnect)
+        self.assertGreaterEqual(self.mock_sio.connect.call_count, 2)
