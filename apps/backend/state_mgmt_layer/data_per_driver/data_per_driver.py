@@ -715,7 +715,7 @@ class DataPerDriver:
                         # Store current tyre wear in instance variable
                         self.m_delayed_tyre_change_data = deepcopy(self.m_tyre_info.tyre_wear.latest)
                         self.m_pending_events_mgr.register(
-                            events={DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT})
+                            events=[DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT])
                 else:
                     initial_tyre_wear = TyreWearPerLap(
                         fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
