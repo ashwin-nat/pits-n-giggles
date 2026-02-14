@@ -100,9 +100,9 @@ class CarTelemetryWidget {
 
     updateGraph(data) {
         // Update data arrays
-        this.graphData.throttle.push(data.throttle);
+        this.graphData.throttle.push(this.#transformValue(data.throttle));
         this.graphData.throttle.shift();
-        this.graphData.brake.push(data.brake);
+        this.graphData.brake.push(this.#transformValue(data.brake));
         this.graphData.brake.shift();
         this.graphData.steering.push(data.steering);
         this.graphData.steering.shift();
@@ -131,5 +131,9 @@ class CarTelemetryWidget {
     update(data) {
         this.updateBars(data);
         this.updateGraph(data);
+    }
+
+    #transformValue(value) {
+        return (value * 2) - 100;
     }
 }
