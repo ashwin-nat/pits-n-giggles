@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from collections import deque
-from typing import Deque, Generic, Iterator, TypeVar
+from typing import Deque, Generic, Iterator, Optional, TypeVar
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ class RollingHistory(Generic[T]):
         self._data.append(value)
 
     @property
-    def latest(self) -> T | None:
+    def latest(self) -> Optional[T]:
         """
         Return the most recently added value.
 

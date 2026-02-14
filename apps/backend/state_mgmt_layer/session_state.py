@@ -25,7 +25,6 @@
 import json
 import logging
 import time
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
@@ -538,7 +537,7 @@ class SessionState:
         driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
 
         # Process pitting status
-        driver_obj.processPittingStatus(lap_data, self.m_session_info.m_track)
+        driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
         driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
@@ -829,8 +828,6 @@ class SessionState:
 
             # Update delayed tyre change data if events are pending
             if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
-                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(
-                    obj_to_be_updated.m_tyre_info.tyre_wear.latest)
                 obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:

@@ -25,16 +25,16 @@
 import json
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
-from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.rolling_history import RollingHistory
+from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 
 # -------------------------------------- CONTSTANTS --------------------------------------------------------------------
 
-_ROLLING_HISTORY_MAXLEN = 50
+_ROLLING_HISTORY_MAXLEN = 1500  # 60 Hz telemetry × ~25 seconds of history
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
@@ -338,6 +338,47 @@ class TyreSetHistoryManager:
 
         return tyre_set_history
 
+class TyreWearRecentHistory(RollingHistory[TyreWearPerLap]):
+    """
+    Rolling history specialized for TyreWearPerLap objects.
+
+    Adds domain-specific helpers such as identifying the lap
+    with the highest average tyre wear in the current window.
+    """
+
+    def get_max_average(self) -> Optional[TyreWearPerLap]:
+        """
+        Return the TyreWearPerLap instance with the highest average wear.
+
+        Returns:
+            The object with the maximum m_average value,
+            or None if history is empty.
+        """
+        if not self:
+            return None
+
+        return max(self)
+
+    def get_max_average_with_index(self) -> Optional[Tuple[int, TyreWearPerLap]]:
+        """
+        Return the index and TyreWearPerLap instance with the highest
+        average wear.
+
+        Index is relative to the current window:
+            0 = oldest
+            len(history)-1 = newest
+
+        Returns:
+            (index, object) or None if empty.
+        """
+        if not self:
+            return None, None
+
+        return max(
+            ((i, v) for i, v in enumerate(self)),
+            key=lambda pair: pair[1].m_average,
+        )
+
 @dataclass(slots=True)
 class TyreInfo:
     """
@@ -361,7 +402,7 @@ class TyreInfo:
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
     tyre_act_compound: Optional[ActualTyreCompound] = None
-    tyre_wear: RollingHistory[TyreWearPerLap] = field(default_factory=lambda: RollingHistory(
+    tyre_wear: TyreWearRecentHistory = field(default_factory=lambda: TyreWearRecentHistory(
         maxlen=_ROLLING_HISTORY_MAXLEN))
     tyre_surface_temp: Optional[float] = None
     tyre_inner_temp: Optional[float] = None
