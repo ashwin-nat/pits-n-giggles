@@ -54,8 +54,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "type" : "check_box",
                 "visible": True,
                 "ext_info": [
-                    'Recommended to also configure "Toggle all overlays UDP action code" and \n'
-                        '"Cycle MFD pages UDP action code" as well.'
+                    'Recommended to also configure "Toggle all overlays UDP action code"'
                 ]
             }
         }
@@ -109,7 +108,10 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Toggle timing tower overlay UDP action code", group="Timing Tower")
 
     # ============== MFD OVERLAY ==============
-    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD")
+    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD", ext_info=[
+        'Recommended to also configure atleast the "Next MFD page UDP action code" or '
+        '"Previous MFD page UDP action code"'
+    ])
     mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
@@ -118,7 +120,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "reorderable_view",
                 "visible": True,
-                "group": "MFD"
+                "group": "MFD",
             }
         }
     )
@@ -162,7 +164,9 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             group="MFD",
         )
     cycle_mfd_udp_action_code: Optional[int] = udp_action_field(
-        "Cycle MFD pages UDP action code", group="MFD")
+        "Next MFD page UDP action code", group="MFD")
+    prev_mfd_page_udp_action_code: Optional[int] = udp_action_field(
+        "Previous MFD page UDP action code", group="MFD")
 
     # ============== TRACK MAP OVERLAY ==============
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay",
@@ -294,6 +298,10 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         if self.timing_tower_max_rows == 22:
             return 11
         return (self.timing_tower_max_rows - 1) // 2
+
+    @property
+    def next_mfd_page_udp_action_code(self) -> Optional[int]:
+        return self.cycle_mfd_udp_action_code
 
     @classmethod
     def get_layout_dict_from_json(cls, json_dict: Dict[str, Dict[str, int]]) -> Dict[str, OverlayPosition]:
