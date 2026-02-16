@@ -43,7 +43,8 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
     HudCycleMfdNotification, HudMfdInteractionNotification,
-    HudToggleNotification, ITCMessage, TyreDeltaNotificationMessageCollection)
+    HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
+    TyreDeltaNotificationMessageCollection)
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimerAsync
@@ -56,6 +57,7 @@ class UdpActionCodes:
     tyre_delta: Optional[int] = None
     toggle_all_overlays: Optional[int] = None
     mfd_next_page: Optional[int] = None
+    mfd_prev_page: Optional[int] = None
     toggle_lap_timer_overlay: Optional[int] = None
     toggle_timing_tower_overlay: Optional[int] = None
     toggle_mfd_overlay: Optional[int] = None
@@ -71,6 +73,7 @@ class UdpActionCodes:
         "timing_tower_toggle_udp_action_code": "toggle_timing_tower_overlay",
         "mfd_toggle_udp_action_code": "toggle_mfd_overlay",
         "cycle_mfd_udp_action_code": "mfd_next_page",
+        "prev_mfd_page_udp_action_code": "mfd_prev_page",
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
         "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
         "mfd_interaction_udp_action_code": "mfd_interaction",
@@ -177,6 +180,7 @@ class F1TelemetryHandler:
             tyre_delta=settings.Network.udp_tyre_delta_action_code,
             toggle_all_overlays=settings.HUD.toggle_overlays_udp_action_code,
             mfd_next_page=settings.HUD.cycle_mfd_udp_action_code,
+            mfd_prev_page=settings.HUD.prev_mfd_page_udp_action_code,
             toggle_lap_timer_overlay=settings.HUD.lap_timer_toggle_udp_action_code,
             toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
             toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
@@ -504,6 +508,11 @@ class F1TelemetryHandler:
                                     self._processCycleMFD)
 
             await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.mfd_prev_page,
+                                    'Previous MFD page',
+                                    self._processPrevPageMFD)
+
+            await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_lap_timer_overlay,
                                     'Toggle lap timer overlay',
                                     lambda: self._processToggleHud('lap_timer'))
@@ -732,6 +741,16 @@ class F1TelemetryHandler:
             ITCMessage(
                 m_message_type=ITCMessage.MessageType.HUD_CYCLE_MFD_NOTIFICATION,
                 m_message=HudCycleMfdNotification()
+            )
+        )
+
+    async def _processPrevPageMFD(self) -> None:
+        """Send the previous page MFD notification to the HUD manager."""
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_PREV_PAGE_MFD_NOTIFICATION,
+                m_message=HudPrevPageMfdNotification() # same message, different type. No extra info needed for prev page
             )
         )
 
