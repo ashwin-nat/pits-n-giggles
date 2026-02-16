@@ -132,6 +132,12 @@ class HudAppMgr(PngAppMgrBase):
                 tooltip="Hide/Show"
             ),
             ButtonConfig(
+                name="prev_page",
+                icon="prev-page",
+                callback=self.prev_page_callback,
+                tooltip="Previous MFD Page"
+            ),
+            ButtonConfig(
                 name="next_page",
                 icon="next-page",
                 callback=self.next_page_callback,
@@ -168,6 +174,8 @@ class HudAppMgr(PngAppMgrBase):
                 config.callback,
                 config.tooltip
             )
+            assert btn, f"Failed to build button for {config.name}"
+            assert config.name not in self.buttons, f"Duplicate button name: {config.name}"
             self.buttons[config.name] = btn
 
             # Set initial state based on enabled flag
@@ -279,6 +287,14 @@ class HudAppMgr(PngAppMgrBase):
         self.info_log("Sending next page command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
+        )
+        self.info_log(str(rsp))
+
+    def prev_page_callback(self):
+        """Cycle to the previous page of the HUD."""
+        self.info_log("Sending previous page command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(
+            command="prev-page", args={}
         )
         self.info_log(str(rsp))
 
