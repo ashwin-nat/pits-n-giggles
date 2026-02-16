@@ -390,7 +390,7 @@ class HudAppMgr(PngAppMgrBase):
         if status != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
-            self.info_log(f"Set overlays opacity command was successful")
+            self.info_log("Set overlays opacity command was successful")
 
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
@@ -406,7 +406,7 @@ class HudAppMgr(PngAppMgrBase):
         if status != "success":
             self.error_log(f"Failed to set track radar idle opacity: {rsp}")
         else:
-            self.info_log(f"Set track radar idle opacity command was successful")
+            self.info_log("Set track radar idle opacity command was successful")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
