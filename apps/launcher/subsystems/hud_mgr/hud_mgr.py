@@ -132,6 +132,12 @@ class HudAppMgr(PngAppMgrBase):
                 tooltip="Hide/Show"
             ),
             ButtonConfig(
+                name="prev_page",
+                icon="prev-page",
+                callback=self.prev_page_callback,
+                tooltip="Previous MFD Page"
+            ),
+            ButtonConfig(
                 name="next_page",
                 icon="next-page",
                 callback=self.next_page_callback,
@@ -168,6 +174,8 @@ class HudAppMgr(PngAppMgrBase):
                 config.callback,
                 config.tooltip
             )
+            assert btn, f"Failed to build button for {config.name}"
+            assert config.name not in self.buttons, f"Duplicate button name: {config.name}"
             self.buttons[config.name] = btn
 
             # Set initial state based on enabled flag
@@ -282,6 +290,14 @@ class HudAppMgr(PngAppMgrBase):
         )
         self.info_log(str(rsp))
 
+    def prev_page_callback(self):
+        """Cycle to the previous page of the HUD."""
+        self.info_log("Sending previous page command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(
+            command="prev-page", args={}
+        )
+        self.info_log(str(rsp))
+
     def mfd_interact_callback(self):
         """Interact with the MFD."""
         self.info_log("Sending MFD interact command to HUD...")
@@ -372,7 +388,7 @@ class HudAppMgr(PngAppMgrBase):
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
-            self.debug_log(f"Set overlays opacity response: {rsp}")
+            self.info_log("Set overlays opacity command was successful")
 
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
@@ -387,7 +403,7 @@ class HudAppMgr(PngAppMgrBase):
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to set track radar idle opacity: {rsp}")
         else:
-            self.debug_log(f"Set track radar idle opacity response: {rsp}")
+            self.info_log("Set track radar idle opacity command was successful")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
@@ -411,10 +427,18 @@ class HudAppMgr(PngAppMgrBase):
 
     def _integration_test_worker(self):
         """Worker thread that periodically calls next_page_callback"""
+        i = 1
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
-            self.next_page_callback()
+
+            # Just cover all code paths in integration test mode
+            if i:
+                self.next_page_callback()
+            else:
+                self.prev_page_callback()
             self.mfd_interact_callback()
+
+            i = (i + 1) % 5
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the HUD subsystem

@@ -149,6 +149,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "timing_tower_toggle_udp_action_code",
                 "mfd_toggle_udp_action_code",
                 "cycle_mfd_udp_action_code",
+                "prev_mfd_page_udp_action_code",
                 "input_overlay_toggle_udp_action_code",
                 "track_radar_overlay_toggle_udp_action_code",
                 "mfd_interaction_udp_action_code",
