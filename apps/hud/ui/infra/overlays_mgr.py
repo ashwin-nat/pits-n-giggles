@@ -267,6 +267,10 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
+    def prev_page(self):
+        """Go to the previous page in MFD overlay"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'prev_page', {})
+
     def mfd_interact(self):
         """Interact with MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'mfd_interact', {})

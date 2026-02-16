@@ -100,6 +100,23 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
+def handle_prev_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'prev-page' IPC command to show previous page of HUD widgets.
+
+    Args:
+        msg (dict): IPC command message
+        logger (logging.Logger): Logger
+        overlays_mgr (OverlaysMgr): Overlays manager
+
+    Returns:
+        dict: IPC response
+    """
+
+    logger.info("Received prev-page command. args: %s", msg)
+
+    overlays_mgr.prev_page()
+    return {"status": "success", "message": "prev-page handler executed."}
+
 def handle_mfd_interact(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'mfd-interact' IPC command to show next page of HUD widgets.
 

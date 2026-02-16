@@ -81,7 +81,8 @@ class TelemetryWebServer(BaseWebServer):
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
                 ClientType.HUD: [
                     'hud-toggle-notification',
-                    'hud-cycle-mfd-notification'
+                    'hud-cycle-mfd-notification',
+                    'hud-prev-page-mfd-notification',
                 ],
                 ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
             },

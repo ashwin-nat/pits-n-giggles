@@ -73,3 +73,9 @@ class HudClient(SocketioClient):
             """Cycle MFD notification handler."""
             self.logger.debug("[HudClient] Received Cycle MFD notification")
             self.m_overlays_mgr.next_page()
+
+        @self.on('hud-prev-page-mfd-notification')
+        def handle_hud_prev_page_mfd_notification(_data):
+            """Previous page MFD notification handler."""
+            self.logger.debug("[HudClient] Received Previous page MFD notification")
+            self.m_overlays_mgr.prev_page()

@@ -69,6 +69,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
         self.assertEqual(settings.mfd_weather_page_ui_type, WeatherMFDUIType.CARDS)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
+        self.assertEqual(settings.prev_mfd_page_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.track_map_ui_scale, 1.0)
         self.assertEqual(settings.show_input_overlay, True)
@@ -108,6 +109,7 @@ class TestHudSettings(TestF1ConfigBase):
             "timing_tower_toggle_udp_action_code",
             "mfd_toggle_udp_action_code",
             "cycle_mfd_udp_action_code",
+            "prev_mfd_page_udp_action_code",
             "track_map_toggle_udp_action_code",
             "input_overlay_toggle_udp_action_code",
             "mfd_interaction_udp_action_code",

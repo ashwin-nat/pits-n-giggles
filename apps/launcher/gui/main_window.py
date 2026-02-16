@@ -286,6 +286,7 @@ class PngLauncherWindow(QMainWindow):
             "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
             "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
+            "prev-page" : self._load_icon(icons_path_base / "prev-page.svg"),
             "reset" : self._load_icon(icons_path_base / "reset.svg"),
             "save" : self._load_icon(icons_path_base / "save.svg"),
             "settings" : self._load_icon(icons_path_base / "settings.svg"),
