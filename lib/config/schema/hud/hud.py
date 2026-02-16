@@ -109,7 +109,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== MFD OVERLAY ==============
     show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD", ext_info=[
-        'Recommended to also configure atleast the "Next MFD page UDP action code" or '
+        'Recommended to also configure at least the "Next MFD page UDP action code" or '
         '"Previous MFD page UDP action code"'
     ])
     mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")

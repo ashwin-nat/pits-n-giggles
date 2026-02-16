@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-import random
 import sys
 import threading
 from dataclasses import dataclass
@@ -430,20 +429,18 @@ class HudAppMgr(PngAppMgrBase):
 
     def _integration_test_worker(self):
         """Worker thread that periodically calls next_page_callback"""
-        prob_next = 85
+        i = 1
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
 
             # Just cover all code paths in integration test mode
-            if self._probability_true(prob_next):
+            if i:
                 self.next_page_callback()
             else:
                 self.prev_page_callback()
             self.mfd_interact_callback()
 
-    def _probability_true(self, probability: float) -> bool:
-        """Helper function to return True with a given probability"""
-        return random.random() < (probability / 100)
+            i = (i + 1) % 5
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the HUD subsystem
