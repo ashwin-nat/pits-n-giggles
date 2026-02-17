@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import webbrowser
+from dataclasses import replace
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
@@ -31,7 +32,7 @@ from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
-from .base_mgr import ExitReason, PngAppMgrBase
+from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -40,40 +41,32 @@ if TYPE_CHECKING:
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.save_viewer"
+    DISPLAY_NAME = "Save Viewer"
+    SHORT_NAME = "SAVE"
+
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 coverage_enabled: bool):
-        """Initialize the backend manager
-        :param window: Reference to the GUI window object
-        :param settings: Settings object
-        :param args: Additional Command line arguments to pass to the backend
-        :param debug_mode: Whether to run the backend in debug mode
-        :param replay_server: Whether to run the replay server
-        :param coverage_enabled: Whether to enable coverage
+                 common_cfg: PngAppMgrConfig):
+        """Initialize the save viewer manager
+        :param common_cfg: Common configuration for the save viewer app manager
         """
 
         extra_args = []
-        if debug_mode:
+        if common_cfg.debug_mode:
             extra_args.append("--debug")
-        temp_args = args + extra_args
-        self.port = settings.Network.save_viewer_port
-        self.proto = settings.HTTPS.proto
+        temp_args = common_cfg.args + extra_args
+        self.port = common_cfg.settings.Network.save_viewer_port
+        self.proto = common_cfg.settings.HTTPS.proto
+
+        config = replace(common_cfg,
+                         args=temp_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop
+        )
+
         super().__init__(
-            window=window,
-            module_path="apps.save_viewer",
-            display_name="Save Viewer",
-            short_name="SAVE",
-            settings=settings,
-            start_by_default=True,
-            should_display=True,
-            args=temp_args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop
+            config=config,
         )
         self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
             code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,
@@ -134,7 +127,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         diff = self.curr_settings.diff(new_settings, {
             "Network": ["save_viewer_port"],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
         should_restart = (self.port != new_settings.Network.save_viewer_port)
         self.port = new_settings.Network.save_viewer_port
@@ -168,6 +161,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
