@@ -25,7 +25,7 @@
 import json
 import sys
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     override)
 
@@ -67,25 +67,15 @@ class HudAppMgr(PngAppMgrBase):
     SHORT_NAME = "HUD"
 
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 integration_test_mode: bool,
-                 coverage_enabled: bool):
-        """Initialize the save viewer manager
-        :param console_app: Reference to a console interface for logging
-        :param settings: Settings object
-        :param args: Command line arguments to pass to the save viewer subsystem
-        :param debug_mode: Whether to run the save viewer in debug mode
-        :param integration_test_mode: Whether to run the save viewer in integration test mode
+                 common_cfg: PngAppMgrConfig):
+        """Initialize the HUD subsystem manager
+        :param common_cfg: Common configuration for the HUD app manager
         """
-        self.port = settings.Network.save_viewer_port
+        self.port = common_cfg.settings.Network.save_viewer_port
         self.supported = (sys.platform == "win32") # Only supported on Windows
-        self.enabled = settings.HUD.enabled
-        self.integration_test_mode = integration_test_mode
+        self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0
-        self.args = args + ["--debug"] if debug_mode else (args or [])
+        final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
         self.locked = True # HUD starts locked by default
         self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
@@ -94,17 +84,12 @@ class HudAppMgr(PngAppMgrBase):
         # Button registry
         self.buttons: Dict[str, QPushButton] = {}
 
-        config = PngAppMgrConfig(
-            settings=settings,
-            args=self.args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop,
-        )
+        config = replace(common_cfg,
+                         args=final_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop)
 
         super().__init__(
-            window=window,
             config=config,
         )
         if not self.enabled:

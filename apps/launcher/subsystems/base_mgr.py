@@ -58,8 +58,9 @@ class ExitReason:
     can_restart: bool
     settings_field: Optional[str] = None
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class PngAppMgrConfig:
+    window: "PngLauncherWindow"
     settings: PngSettings
     args: Optional[List[str]] = None
     debug_mode: bool = False
@@ -69,6 +70,7 @@ class PngAppMgrConfig:
     auto_restart: bool = True
     max_restart_attempts: int = 3
     restart_delay: float = 2.0
+    integration_test_mode: bool = False
 
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
@@ -113,13 +115,11 @@ class PngAppMgrBase(QObject):
     SHOULD_DISPLAY: bool = True
 
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 config: PngAppMgrConfig,):
+                 config: PngAppMgrConfig):
         """
         Initialize the subsystem manager
 
         Args:
-            window: Reference to the main GUI window
             config: Configuration object
         """
 
@@ -130,11 +130,12 @@ class PngAppMgrBase(QObject):
         super().__init__()
         self.exit_reasons = copy.deepcopy(self.BASE_EXIT_REASONS)
 
-        self.window = window
+        self.window = config.window
         self.args = config.args or []
         self.debug_mode = config.debug_mode
         self.coverage_enabled = config.coverage_enabled
         self.curr_settings = config.settings
+        self.integration_test_mode = config.integration_test_mode
 
         # Process management
         self.process: Optional[subprocess.Popen] = None

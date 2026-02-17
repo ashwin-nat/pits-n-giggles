@@ -40,7 +40,8 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
-                                      PngAppMgrBase, SaveViewerAppMgr)
+                                      PngAppMgrBase, PngAppMgrConfig,
+                                      SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -214,43 +215,26 @@ class PngLauncherWindow(QMainWindow):
         args = [
             "--config-file", self.config_file_path_new,
         ]
+
+        common_cfg = PngAppMgrConfig(
+            window=self,
+            settings=self.settings,
+            args=args,
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled,
+            integration_test_mode=integration_test_mode
+        )
+
         self.subsystems: List[PngAppMgrBase] = [
-            BackendAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               replay_server=replay_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            SaveViewerAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            HudAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               integration_test_mode=integration_test_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            BrokerAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               coverage_enabled=coverage_enabled
-            )
+            BackendAppMgr(common_cfg, replay_server=replay_mode),
+            SaveViewerAppMgr(common_cfg),
+            HudAppMgr(common_cfg),
+            BrokerAppMgr(common_cfg),
         ]
         for subsystem in self.subsystems:
             assert subsystem.SHORT_NAME
             assert subsystem.SHORT_NAME not in self.subsystems_short_names
             self.subsystems_short_names.add(subsystem.SHORT_NAME)
-
 
         self.show_success_signal.connect(self._show_success_safe)
         self.show_error_signal.connect(self._show_error_safe)

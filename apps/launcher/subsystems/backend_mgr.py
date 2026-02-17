@@ -24,6 +24,7 @@
 
 import json
 import webbrowser
+from dataclasses import replace
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
@@ -48,42 +49,30 @@ class BackendAppMgr(PngAppMgrBase):
     SHORT_NAME = "CORE"
 
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 replay_server: bool,
-                 coverage_enabled: bool):
+                 common_cfg: PngAppMgrConfig,
+                 replay_server: bool):
         """Initialize the backend manager
-        :param window: Reference to the GUI window object
-        :param settings: Settings object
-        :param args: Additional Command line arguments to pass to the backend
-        :param debug_mode: Whether to run the backend in debug mode
+        :param common_cfg: Common configuration for the backend app manager
         :param replay_server: Whether to run the replay server
-        :param coverage_enabled: Whether to enable coverage
         """
 
         extra_args = []
         extra_args.append("--run-ipc-server")
-        if debug_mode:
+        if common_cfg.debug_mode:
             extra_args.append("--debug")
         if replay_server:
             extra_args.append("--replay-server")
-        temp_args = args + extra_args
-        self.port = settings.Network.server_port
-        self.proto = settings.HTTPS.proto
+        final_args = [*common_cfg.args, *extra_args]
+        self.port = common_cfg.settings.Network.server_port
+        self.proto = common_cfg.settings.HTTPS.proto
 
-        config = PngAppMgrConfig(
-            settings=settings,
-            args=temp_args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop,
+        config = replace(common_cfg,
+                         args=final_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop
         )
 
         super().__init__(
-            window=window,
             config=config,
         )
         self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
