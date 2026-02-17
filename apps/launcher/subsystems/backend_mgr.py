@@ -33,7 +33,7 @@ from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
                               PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE)
 from lib.ipc import IpcClientSync
 
-from .base_mgr import ExitReason, PngAppMgrBase
+from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -72,14 +72,19 @@ class BackendAppMgr(PngAppMgrBase):
         temp_args = args + extra_args
         self.port = settings.Network.server_port
         self.proto = settings.HTTPS.proto
-        super().__init__(
-            window=window,
+
+        config = PngAppMgrConfig(
             settings=settings,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
             post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop
+            post_stop_cb=self.post_stop,
+        )
+
+        super().__init__(
+            window=window,
+            config=config,
         )
         self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
             code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,

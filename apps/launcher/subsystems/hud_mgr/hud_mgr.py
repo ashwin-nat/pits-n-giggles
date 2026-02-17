@@ -39,7 +39,7 @@ from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
-from ..base_mgr import PngAppMgrBase
+from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
@@ -56,7 +56,6 @@ class ButtonConfig:
     callback: Callable
     tooltip: str
     enabled_when_stopped: bool = False
-
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -95,14 +94,18 @@ class HudAppMgr(PngAppMgrBase):
         # Button registry
         self.buttons: Dict[str, QPushButton] = {}
 
-        super().__init__(
-            window=window,
+        config = PngAppMgrConfig(
             settings=settings,
             args=self.args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
             post_start_cb=self.post_start,
             post_stop_cb=self.post_stop,
+        )
+
+        super().__init__(
+            window=window,
+            config=config,
         )
         if not self.enabled:
             self._update_status("Disabled")

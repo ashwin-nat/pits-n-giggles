@@ -60,13 +60,7 @@ class ExitReason:
 
 @dataclass(slots=True)
 class PngAppMgrConfig:
-    module_path: str
-    display_name: str
-    short_name: str
     settings: PngSettings
-
-    start_by_default: bool = False
-    should_display: bool = True
     args: Optional[List[str]] = None
     debug_mode: bool = False
     coverage_enabled: bool = False
@@ -120,31 +114,13 @@ class PngAppMgrBase(QObject):
 
     def __init__(self,
                  window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: Optional[List[str]] = None,
-                 debug_mode: bool = False,
-                 coverage_enabled: bool = False,
-                 post_start_cb: Optional[Callable[[], None]] = None,
-                 post_stop_cb: Optional[Callable[[], None]] = None,
-                 auto_restart: bool = True,
-                 max_restart_attempts: int = 3,
-                 restart_delay: float = 2.0):
+                 config: PngAppMgrConfig,):
         """
         Initialize the subsystem manager
 
         Args:
-            module_path: Python module path to run (e.g., 'my_app.server')
-            display_name: Human-readable name for UI display
-            short_name: Short name for logging
-            settings: Settings object
-            start_by_default: Whether to auto-start this subsystem
-            should_display: Whether to show this subsystem in the UI
-            args: Additional command-line arguments
-            debug_mode: Enable debug mode (disables heartbeat timeout)
-            coverage_enabled: Enable code coverage tracking
-            auto_restart: Enable automatic restart on unexpected exits
-            max_restart_attempts: Maximum number of restart attempts (default: 3)
-            restart_delay: Delay in seconds between restart attempts (default: 2.0)
+            window: Reference to the main GUI window
+            config: Configuration object
         """
 
         assert self.MODULE_PATH is not None
@@ -155,10 +131,10 @@ class PngAppMgrBase(QObject):
         self.exit_reasons = copy.deepcopy(self.BASE_EXIT_REASONS)
 
         self.window = window
-        self.args = args or []
-        self.debug_mode = debug_mode
-        self.coverage_enabled = coverage_enabled
-        self.curr_settings = settings
+        self.args = config.args or []
+        self.debug_mode = config.debug_mode
+        self.coverage_enabled = config.coverage_enabled
+        self.curr_settings = config.settings
 
         # Process management
         self.process: Optional[subprocess.Popen] = None
@@ -173,16 +149,16 @@ class PngAppMgrBase(QObject):
         self.status = "Stopped"
 
         # Auto-restart configuration
-        self.auto_restart = auto_restart
-        self.max_restart_attempts = max_restart_attempts
-        self.restart_delay = restart_delay
+        self.auto_restart = config.auto_restart
+        self.max_restart_attempts = config.max_restart_attempts
+        self.restart_delay = config.restart_delay
         self._restart_count = 0
         self._last_crash_time: Optional[float] = None
         self._restart_window = 60.0  # Reset counter if stable for 60 seconds
 
         # Hooks
-        self._post_start_hook: Optional[Callable[[], None]] = post_start_cb
-        self._post_stop_hook: Optional[Callable[[], None]] = post_stop_cb
+        self._post_start_hook: Optional[Callable[[], None]] = config.post_start_cb
+        self._post_stop_hook: Optional[Callable[[], None]] = config.post_stop_cb
         if self._post_start_hook:
             self.post_start_signal.connect(self._post_start_hook)
 
