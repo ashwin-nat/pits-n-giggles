@@ -674,6 +674,21 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
 
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j,
+                car_status_data.m_ersDeployedThisLap
+            )
+
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguk_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguk_j,
+                car_status_data.m_ersHarvestedThisLapMGUK
+            )
+
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguh_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguh_j,
+                car_status_data.m_ersHarvestedThisLapMGUH
+            )
+
     def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """
         Updates internal state with data from final classification packet.
@@ -1501,11 +1516,8 @@ class SessionState:
         for obj_to_be_updated in self.m_driver_data:
             if not obj_to_be_updated or not obj_to_be_updated.is_valid:
                 continue
-            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
-                packet.m_safetyCarStatus
-                if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
-                else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
-            )
+            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = self._safeMax(
+                obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status, packet.m_safetyCarStatus)
             obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
 
         return session_changed
@@ -1663,3 +1675,8 @@ class SessionState:
             tyre_stints_end_laps_6=0,
             tyre_stints_end_laps_7=0
         )
+
+    def _safeMax(self, curr: Optional[Any], new: Optional[Any]):
+        """Returns the maximum of two values, where curr value may be None.
+            If curr value is None, returns the other value."""
+        return new if curr is None else max(curr, new)

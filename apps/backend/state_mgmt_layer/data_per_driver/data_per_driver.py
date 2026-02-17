@@ -573,6 +573,9 @@ class DataPerDriver:
             tyre_sets=self.m_packet_copies.m_packet_tyre_sets,
             track_position=self.m_driver_info.position,
             top_speed_kmph=self.m_lap_info.m_top_speed_kmph_this_lap,
+            ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
+            ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
+            ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
         )
 
         # Add the tyre wear data into the tyre stint history
@@ -611,6 +614,7 @@ class DataPerDriver:
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
+        self.m_car_info.onLapChange()
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
