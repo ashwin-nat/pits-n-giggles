@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+import os
 import random
 import subprocess
 import sys
@@ -300,6 +301,7 @@ class PngAppMgrBase(QObject):
                 self.error_log(f"Failed to start {self.DISPLAY_NAME}: {e}")
                 self._update_status("Crashed")
                 self.is_running = False
+                self._integration_fail(f"Failed to start {self.DISPLAY_NAME}: {e}")
 
     def stop(self, reason: str):
         """Stop the subsystem process"""
@@ -489,7 +491,9 @@ class PngAppMgrBase(QObject):
 
     def _handle_unexpected_exit(self, ret_code: int):
         """Handle unexpected process termination"""
-        self.error_log(f"{self.DISPLAY_NAME} exited unexpectedly (code: {ret_code})")
+        err_msg = f"{self.DISPLAY_NAME} exited unexpectedly (code: {ret_code})"
+        self.error_log(err_msg)
+        self._integration_fail(err_msg)
 
         with self._process_lock:
             self.is_running = False
@@ -696,3 +700,10 @@ class PngAppMgrBase(QObject):
     def select_file(self, title="Select File", file_filter="All Files (*.*)") -> str:
         """Open a file dialog and return path or None."""
         return self.window.select_file(title, file_filter)
+
+    def _integration_fail(self, message: str):
+        """Handle integration test failure by logging and exiting immediately."""
+        if not self.integration_test_mode:
+            return
+        self.error_log(f"[INTEGRATION TEST MODE] {message}")
+        os._exit(1)
