@@ -22,19 +22,21 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from dataclasses import dataclass
 from .base import HighFreqBase
-from .car_motion import LiveSessionMotionInfo, DriverMotionInfo
-from .input_telemetry import InputTelemetryData
-from .template import DummyHFType
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "HighFreqBase",
-    "InputTelemetryData",
-    "LiveSessionMotionInfo",
-    "DriverMotionInfo",
+@dataclass
+class DummyHFType(HighFreqBase):
+    a: int
+    b: str
+    c: float
 
-
-    "DummyHFType",
-]
+    @classmethod
+    def from_json(cls, json_data: dict) -> "DummyHFType":
+        return cls (
+            a = json_data["a"],
+            b = json_data["b"],
+            c = json_data["c"],
+        )
