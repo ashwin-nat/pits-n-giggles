@@ -94,7 +94,9 @@ class PerLapSnapshotEntry:
             "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
             "track-position" : self.m_track_position or None,
             "top-speed-kmph" : self.m_top_speed_kmph,
-            "ers-harv-mguh-j" : self.m_ers_harv_mguh_j,
-            "ers-harv-mguk-j" : self.m_ers_harv_mguk_j,
-            "ers-deployed-j" : self.m_ers_deployed_j,
+            "ers-stats" : {
+                "ers-harv-mguh-j" : self.m_ers_harv_mguh_j,
+                "ers-harv-mguk-j" : self.m_ers_harv_mguk_j,
+                "ers-deployed-j" : self.m_ers_deployed_j,
+            },
         }

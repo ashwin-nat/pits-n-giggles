@@ -507,9 +507,18 @@ class DriverModalPopulator {
                     if ("car-status-data" in lapInfo) {
                         const maxErsCapacity = lapInfo["car-status-data"]["ers-max-capacity"];
                         const ersRemainingVal = lapInfo["car-status-data"]["ers-store-energy"];
-                        const ersDeployedThisLapVal = lapInfo["car-status-data"]["ers-deployed-this-lap"];
-                        const ersHarvestedThisLapMguHVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguh"];
-                        const ersHarvestedThisLapMguKVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguk"];
+
+                        let ersDeployedThisLapVal, ersHarvestedThisLapMguHVal, ersHarvestedThisLapMguKVal;
+                        if ("ers-stats" in lapInfo) {
+                            const ersStats = lapInfo["ers-stats"];
+                            ersDeployedThisLapVal = ersStats["ers-deployed-j"];
+                            ersHarvestedThisLapMguHVal = ersStats["ers-harv-mguh-j"];
+                            ersHarvestedThisLapMguKVal = ersStats["ers-harv-mguk-j"];
+                        } else {
+                            ersDeployedThisLapVal = lapInfo["car-status-data"]["ers-deployed-this-lap"];
+                            ersHarvestedThisLapMguHVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguh"];
+                            ersHarvestedThisLapMguKVal = lapInfo["car-status-data"]["ers-harvested-this-lap-mguk"];
+                        }
 
                         ersRemainingPerc = formatFloat(
                             (ersRemainingVal / maxErsCapacity) * 100) + "%";
