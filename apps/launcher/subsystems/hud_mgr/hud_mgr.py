@@ -26,7 +26,8 @@ import json
 import sys
 import threading
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    override)
 
 from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
@@ -61,6 +62,11 @@ class ButtonConfig:
 
 class HudAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.hud"
+    DISPLAY_NAME = "HUD"
+    SHORT_NAME = "HUD"
+
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
@@ -90,11 +96,6 @@ class HudAppMgr(PngAppMgrBase):
         self.buttons: Dict[str, QPushButton] = {}
 
         super().__init__(
-            module_path="apps.hud",
-            display_name="HUD",
-            short_name="HUD",
-            start_by_default=(self.supported and self.enabled),
-            should_display=True,
             window=window,
             settings=settings,
             args=self.args,
@@ -308,14 +309,14 @@ class HudAppMgr(PngAppMgrBase):
 
     def start(self, reason: str):
         """Check for enabled flag before starting"""
-        self.debug_log(f"Starting {self.display_name}... Reason: {reason}")
+        self.debug_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
         if not self.enabled:
-            self.debug_log(f"{self.display_name} is not enabled.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not enabled.")
             self._update_status("Disabled")
             return
 
         if not self.supported:
-            self.debug_log(f"{self.display_name} is not supported.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not supported.")
             self._update_status("Unsupported")
             return
 
@@ -355,7 +356,7 @@ class HudAppMgr(PngAppMgrBase):
         try:
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # Re-enable buttons on error
             self._update_all_button_states(running=True)
 
@@ -738,3 +739,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.layout = new_layout
         self.window.update_settings(new_settings)
         self.window.save_settings_to_disk(new_settings)
+
+    @override
+    def get_start_by_default(self):
+        return self.supported and self.enabled

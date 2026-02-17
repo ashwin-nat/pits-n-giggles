@@ -42,6 +42,11 @@ if TYPE_CHECKING:
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
+
+    MODULE_PATH = "apps.backend"
+    DISPLAY_NAME = "Core"
+    SHORT_NAME = "CORE"
+
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
@@ -69,12 +74,7 @@ class BackendAppMgr(PngAppMgrBase):
         self.proto = settings.HTTPS.proto
         super().__init__(
             window=window,
-            module_path="apps.backend",
-            display_name="Core",
-            short_name="CORE",
             settings=settings,
-            start_by_default=True,
-            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -160,7 +160,7 @@ class BackendAppMgr(PngAppMgrBase):
                     new_value = diff["new_value"]
                     self.send_udp_action_code_change(field, new_value)
         else:
-            self.debug_log(f"{self.display_name} UDP action codes NO CHANGE")
+            self.debug_log(f"{self.DISPLAY_NAME} UDP action codes NO CHANGE")
 
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
@@ -180,10 +180,10 @@ class BackendAppMgr(PngAppMgrBase):
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
         }):
-            self.debug_log(f"{self.display_name} Restart required fields change: "
+            self.debug_log(f"{self.DISPLAY_NAME} Restart required fields change: "
                            f"{json.dumps(restart_required_fields_diff, indent=2)}")
         else:
-            self.debug_log(f"{self.display_name} Restart required fields NO CHANGE")
+            self.debug_log(f"{self.DISPLAY_NAME} Restart required fields NO CHANGE")
 
         # Restart if diff is not empty
         return bool(restart_required_fields_diff)
@@ -250,6 +250,6 @@ class BackendAppMgr(PngAppMgrBase):
             self.start_stop("Stop button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)

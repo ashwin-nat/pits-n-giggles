@@ -247,9 +247,9 @@ class PngLauncherWindow(QMainWindow):
             )
         ]
         for subsystem in self.subsystems:
-            assert subsystem.short_name
-            assert subsystem.short_name not in self.subsystems_short_names
-            self.subsystems_short_names.add(subsystem.short_name)
+            assert subsystem.SHORT_NAME
+            assert subsystem.SHORT_NAME not in self.subsystems_short_names
+            self.subsystems_short_names.add(subsystem.SHORT_NAME)
 
 
         self.show_success_signal.connect(self._show_success_safe)
@@ -445,7 +445,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Add subsystem cards in a grid
         for idx, subsystem in enumerate(self.subsystems):
-            if not subsystem.should_display:
+            if not subsystem.SHOULD_DISPLAY:
                 continue
             row = idx // NUM_SUBSYS_PER_ROW
             col = idx % NUM_SUBSYS_PER_ROW
@@ -510,8 +510,8 @@ class PngLauncherWindow(QMainWindow):
     def auto_start_subsystems(self):
         """Auto-start subsystems marked for auto-start"""
         for subsystem in self.subsystems:
-            if subsystem.start_by_default:
-                self.debug_log(f"Auto-starting {subsystem.display_name}...")
+            if subsystem.get_start_by_default():
+                self.debug_log(f"Auto-starting {subsystem.DISPLAY_NAME}...")
                 subsystem.start("Initial auto-start")
 
     def format_log_message_colored_self(self, timestamp: str, message: str, level: str) -> str:
@@ -686,7 +686,7 @@ class PngLauncherWindow(QMainWindow):
         self.process_events()
 
         for subsystem in self.subsystems:
-            self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
+            self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.DISPLAY_NAME}...")
             task = StopSubsystemTask(subsystem, "Launcher shutting down")
             self.thread_pool.start(task)
 
@@ -841,7 +841,7 @@ class PngLauncherWindow(QMainWindow):
         self.save_settings_to_disk(new_settings)
 
         for subsystem in self.subsystems:
-            self.debug_log(f"On settings change for {subsystem.display_name}...")
+            self.debug_log(f"On settings change for {subsystem.DISPLAY_NAME}...")
             task = SettingsChangeTask(subsystem, new_settings)
             self.thread_pool.start(task)
 

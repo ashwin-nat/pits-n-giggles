@@ -39,6 +39,13 @@ if TYPE_CHECKING:
 
 class BrokerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.broker"
+    DISPLAY_NAME = "Pit Wall"
+    SHORT_NAME = "WALL"
+
+    SHOULD_DISPLAY = False
+
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
@@ -60,12 +67,7 @@ class BrokerAppMgr(PngAppMgrBase):
         temp_args = args + extra_args
         super().__init__(
             window=window,
-            module_path="apps.broker",
-            display_name="Pit Wall",
-            short_name="WALL",
             settings=settings,
-            start_by_default=True,
-            should_display=False,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -114,14 +116,14 @@ class BrokerAppMgr(PngAppMgrBase):
                 "broker_xsub_port",
             ],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
         should_restart = bool(diff)
         return should_restart
 
     def post_start(self):
         """Update buttons after app start"""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
@@ -130,7 +132,7 @@ class BrokerAppMgr(PngAppMgrBase):
 
     def post_stop(self):
         """Update buttons after app stop"""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
@@ -139,7 +141,7 @@ class BrokerAppMgr(PngAppMgrBase):
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         # disable the button. enable in post_start/post_stop
@@ -149,6 +151,6 @@ class BrokerAppMgr(PngAppMgrBase):
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)

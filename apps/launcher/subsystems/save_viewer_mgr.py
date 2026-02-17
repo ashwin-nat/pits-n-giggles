@@ -40,6 +40,11 @@ if TYPE_CHECKING:
 
 class SaveViewerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.save_viewer"
+    DISPLAY_NAME = "Save Viewer"
+    SHORT_NAME = "SAVE"
+
     def __init__(self,
                  window: "PngLauncherWindow",
                  settings: PngSettings,
@@ -63,12 +68,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.proto = settings.HTTPS.proto
         super().__init__(
             window=window,
-            module_path="apps.save_viewer",
-            display_name="Save Viewer",
-            short_name="SAVE",
             settings=settings,
-            start_by_default=True,
-            should_display=True,
             args=temp_args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
@@ -134,7 +134,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         diff = self.curr_settings.diff(new_settings, {
             "Network": ["save_viewer_port"],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
         should_restart = (self.port != new_settings.Network.save_viewer_port)
         self.port = new_settings.Network.save_viewer_port
@@ -168,6 +168,6 @@ class SaveViewerAppMgr(PngAppMgrBase):
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
