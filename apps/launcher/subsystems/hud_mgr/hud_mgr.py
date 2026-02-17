@@ -25,8 +25,9 @@
 import json
 import sys
 import threading
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass, replace
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    override)
 
 from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
@@ -38,7 +39,7 @@ from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
-from ..base_mgr import PngAppMgrBase
+from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
@@ -56,31 +57,25 @@ class ButtonConfig:
     tooltip: str
     enabled_when_stopped: bool = False
 
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class HudAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.hud"
+    DISPLAY_NAME = "HUD"
+    SHORT_NAME = "HUD"
+
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 integration_test_mode: bool,
-                 coverage_enabled: bool):
-        """Initialize the save viewer manager
-        :param console_app: Reference to a console interface for logging
-        :param settings: Settings object
-        :param args: Command line arguments to pass to the save viewer subsystem
-        :param debug_mode: Whether to run the save viewer in debug mode
-        :param integration_test_mode: Whether to run the save viewer in integration test mode
+                 common_cfg: PngAppMgrConfig):
+        """Initialize the HUD subsystem manager
+        :param common_cfg: Common configuration for the HUD app manager
         """
-        self.port = settings.Network.save_viewer_port
+        self.port = common_cfg.settings.Network.save_viewer_port
         self.supported = (sys.platform == "win32") # Only supported on Windows
-        self.enabled = settings.HUD.enabled
-        self.integration_test_mode = integration_test_mode
+        self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0
-        self.args = args + ["--debug"] if debug_mode else (args or [])
+        final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
         self.locked = True # HUD starts locked by default
         self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
@@ -89,19 +84,13 @@ class HudAppMgr(PngAppMgrBase):
         # Button registry
         self.buttons: Dict[str, QPushButton] = {}
 
+        config = replace(common_cfg,
+                         args=final_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop)
+
         super().__init__(
-            module_path="apps.hud",
-            display_name="HUD",
-            short_name="HUD",
-            start_by_default=(self.supported and self.enabled),
-            should_display=True,
-            window=window,
-            settings=settings,
-            args=self.args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop,
+            config=config,
         )
         if not self.enabled:
             self._update_status("Disabled")
@@ -308,14 +297,14 @@ class HudAppMgr(PngAppMgrBase):
 
     def start(self, reason: str):
         """Check for enabled flag before starting"""
-        self.debug_log(f"Starting {self.display_name}... Reason: {reason}")
+        self.debug_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
         if not self.enabled:
-            self.debug_log(f"{self.display_name} is not enabled.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not enabled.")
             self._update_status("Disabled")
             return
 
         if not self.supported:
-            self.debug_log(f"{self.display_name} is not supported.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not supported.")
             self._update_status("Unsupported")
             return
 
@@ -355,7 +344,7 @@ class HudAppMgr(PngAppMgrBase):
         try:
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # Re-enable buttons on error
             self._update_all_button_states(running=True)
 
@@ -738,3 +727,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.layout = new_layout
         self.window.update_settings(new_settings)
         self.window.save_settings_to_disk(new_settings)
+
+    @override
+    def get_start_by_default(self):
+        return self.supported and self.enabled

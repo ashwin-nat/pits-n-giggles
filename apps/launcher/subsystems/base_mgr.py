@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+import os
 import random
 import subprocess
 import sys
@@ -58,6 +59,20 @@ class ExitReason:
     can_restart: bool
     settings_field: Optional[str] = None
 
+@dataclass(slots=True, frozen=True)
+class PngAppMgrConfig:
+    window: "PngLauncherWindow"
+    settings: PngSettings
+    args: Optional[List[str]] = None
+    debug_mode: bool = False
+    coverage_enabled: bool = False
+    post_start_cb: Optional[Callable[[], None]] = None
+    post_stop_cb: Optional[Callable[[], None]] = None
+    auto_restart: bool = True
+    max_restart_attempts: int = 3
+    restart_delay: float = 2.0
+    integration_test_mode: bool = False
+
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
 
@@ -91,52 +106,37 @@ class PngAppMgrBase(QObject):
         ),
     }
 
+    # Derived classes MUST override these with specific values
+    MODULE_PATH: str = None
+    DISPLAY_NAME: str = None
+    SHORT_NAME: str = None
+
+    # Derived classes MAY override these
+    START_BY_DEFAULT: bool = True
+    SHOULD_DISPLAY: bool = True
+
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 module_path: str,
-                 display_name: str,
-                 short_name: str,
-                 settings: PngSettings,
-                 start_by_default: bool = False,
-                 should_display: bool = True,
-                 args: Optional[List[str]] = None,
-                 debug_mode: bool = False,
-                 coverage_enabled: bool = False,
-                 post_start_cb: Optional[Callable[[], None]] = None,
-                 post_stop_cb: Optional[Callable[[], None]] = None,
-                 auto_restart: bool = True,
-                 max_restart_attempts: int = 3,
-                 restart_delay: float = 2.0):
+                 config: PngAppMgrConfig):
         """
         Initialize the subsystem manager
 
         Args:
-            module_path: Python module path to run (e.g., 'my_app.server')
-            display_name: Human-readable name for UI display
-            short_name: Short name for logging
-            settings: Settings object
-            start_by_default: Whether to auto-start this subsystem
-            should_display: Whether to show this subsystem in the UI
-            args: Additional command-line arguments
-            debug_mode: Enable debug mode (disables heartbeat timeout)
-            coverage_enabled: Enable code coverage tracking
-            auto_restart: Enable automatic restart on unexpected exits
-            max_restart_attempts: Maximum number of restart attempts (default: 3)
-            restart_delay: Delay in seconds between restart attempts (default: 2.0)
+            config: Configuration object
         """
+
+        assert self.MODULE_PATH is not None
+        assert self.DISPLAY_NAME is not None
+        assert self.SHORT_NAME is not None
+
         super().__init__()
         self.exit_reasons = copy.deepcopy(self.BASE_EXIT_REASONS)
 
-        self.window = window
-        self.module_path = module_path
-        self.display_name = display_name
-        self.short_name = short_name
-        self.start_by_default = start_by_default
-        self.should_display = should_display
-        self.args = args or []
-        self.debug_mode = debug_mode
-        self.coverage_enabled = coverage_enabled
-        self.curr_settings = settings
+        self.window = config.window
+        self.args = config.args or []
+        self.debug_mode = config.debug_mode
+        self.coverage_enabled = config.coverage_enabled
+        self.curr_settings = config.settings
+        self.integration_test_mode = config.integration_test_mode
 
         # Process management
         self.process: Optional[subprocess.Popen] = None
@@ -151,16 +151,16 @@ class PngAppMgrBase(QObject):
         self.status = "Stopped"
 
         # Auto-restart configuration
-        self.auto_restart = auto_restart
-        self.max_restart_attempts = max_restart_attempts
-        self.restart_delay = restart_delay
+        self.auto_restart = config.auto_restart
+        self.max_restart_attempts = config.max_restart_attempts
+        self.restart_delay = config.restart_delay
         self._restart_count = 0
         self._last_crash_time: Optional[float] = None
         self._restart_window = 60.0  # Reset counter if stable for 60 seconds
 
         # Hooks
-        self._post_start_hook: Optional[Callable[[], None]] = post_start_cb
-        self._post_stop_hook: Optional[Callable[[], None]] = post_stop_cb
+        self._post_start_hook: Optional[Callable[[], None]] = config.post_start_cb
+        self._post_stop_hook: Optional[Callable[[], None]] = config.post_stop_cb
         if self._post_start_hook:
             self.post_start_signal.connect(self._post_start_hook)
 
@@ -204,11 +204,19 @@ class PngAppMgrBase(QObject):
         """
         raise NotImplementedError
 
+    def get_start_by_default(self) -> bool:
+        """Base implementation just uses the class attribute, but this can be overridden for more complex logic"""
+        return self.START_BY_DEFAULT
+
+    def get_should_display(self) -> bool:
+        """Base implementation just uses the class attribute, but this can be overridden for more complex logic"""
+        return self.SHOULD_DISPLAY
+
     def get_launch_command(self) -> List[str]:
         """Build the subprocess launch command"""
         if getattr(sys, "frozen", False):
             # PyInstaller frozen executable
-            cmd = [sys.executable, "--module", self.module_path]
+            cmd = [sys.executable, "--module", self.MODULE_PATH]
         elif self.coverage_enabled:
             # Coverage mode
             cmd = [
@@ -217,11 +225,11 @@ class PngAppMgrBase(QObject):
                 'run',
                 '--parallel-mode',
                 '--rcfile', 'scripts/.coveragerc_integration',
-                '-m', self.module_path
+                '-m', self.MODULE_PATH
             ]
         else:
             # Normal Python execution
-            cmd = [sys.executable, "-m", self.module_path]
+            cmd = [sys.executable, "-m", self.MODULE_PATH]
 
         # Add additional arguments
         cmd.extend(self.args)
@@ -232,11 +240,11 @@ class PngAppMgrBase(QObject):
 
         with self._process_lock:
             if self.is_running:
-                self.debug_log(f"{self.display_name} is already running")
+                self.debug_log(f"{self.DISPLAY_NAME} is already running")
                 return
 
             if reason != "Initial auto-start":
-                self.info_log(f"Starting {self.display_name}... Reason: {reason}")
+                self.info_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
             self._update_status("Starting")
 
             # Reset startup signaling state for this new start
@@ -267,13 +275,13 @@ class PngAppMgrBase(QObject):
                 threading.Thread(
                     target=self._capture_output,
                     daemon=True,
-                    name=f"{self.display_name}-output"
+                    name=f"{self.DISPLAY_NAME}-output"
                 ).start()
 
                 threading.Thread(
                     target=self._monitor_exit,
                     daemon=True,
-                    name=f"{self.display_name}-monitor"
+                    name=f"{self.DISPLAY_NAME}-monitor"
                 ).start()
 
                 # Fresh heartbeat lifecycle for every start
@@ -284,24 +292,25 @@ class PngAppMgrBase(QObject):
                     target=self._send_heartbeat,
                     args=(hb_gen,),
                     daemon=True,
-                    name=f"{self.display_name}-heartbeat-{hb_gen}"
+                    name=f"{self.DISPLAY_NAME}-heartbeat-{hb_gen}"
                 ).start()
 
-                self.debug_log(f"{self.display_name} started (PID: {self.child_pid})")
+                self.debug_log(f"{self.DISPLAY_NAME} started (PID: {self.child_pid})")
 
             except Exception as e: # pylint: disable=broad-exception-caught
-                self.error_log(f"Failed to start {self.display_name}: {e}")
+                self.error_log(f"Failed to start {self.DISPLAY_NAME}: {e}")
                 self._update_status("Crashed")
                 self.is_running = False
+                self._integration_fail(f"Failed to start {self.DISPLAY_NAME}: {e}")
 
     def stop(self, reason: str):
         """Stop the subsystem process"""
         with self._process_lock:
             if not self.is_running:
-                self.debug_log(f"{self.display_name} is not running")
+                self.debug_log(f"{self.DISPLAY_NAME} is not running")
                 return
 
-            self.debug_log(f"Inside Stopping {self.display_name}... Reason: {reason}")
+            self.debug_log(f"Inside Stopping {self.DISPLAY_NAME}... Reason: {reason}")
             self._is_stopping.set()
             self._update_status("Stopping")
 
@@ -312,9 +321,9 @@ class PngAppMgrBase(QObject):
             if self._send_ipc_shutdown(reason):
                 try:
                     self.process.wait(timeout=10)
-                    self.debug_log(f"{self.display_name} exited gracefully")
+                    self.debug_log(f"{self.DISPLAY_NAME} exited gracefully")
                 except subprocess.TimeoutExpired:
-                    self.debug_log(f"{self.display_name} did not exit in time, forcing...")
+                    self.debug_log(f"{self.DISPLAY_NAME} did not exit in time, forcing...")
                     self._terminate_process()
             else:
                 self._terminate_process()
@@ -340,7 +349,7 @@ class PngAppMgrBase(QObject):
     def restart(self, reason: str):
         """Restart the subsystem"""
         self._is_restarting.set()
-        self.debug_log(f"Restarting {self.display_name}...")
+        self.debug_log(f"Restarting {self.DISPLAY_NAME}...")
         _reason = f"Restarting: {reason}"
 
         if self.is_running:
@@ -357,7 +366,7 @@ class PngAppMgrBase(QObject):
         else:
             # Reset restart counter on manual stop
             self._restart_count = 0
-            self.debug_log(f"{self.display_name} Reset restart counter on manual stop")
+            self.debug_log(f"{self.DISPLAY_NAME} Reset restart counter on manual stop")
             self.start(reason)
 
     def _should_auto_restart(self, exit_code: int) -> bool:
@@ -371,7 +380,7 @@ class PngAppMgrBase(QObject):
 
         if self._restart_count >= self.max_restart_attempts:
             self.error_log(
-                f"{self.display_name} has reached maximum restart attempts ({self.max_restart_attempts})"
+                f"{self.DISPLAY_NAME} has reached maximum restart attempts ({self.max_restart_attempts})"
             )
             return False
 
@@ -382,7 +391,7 @@ class PngAppMgrBase(QObject):
         self._restart_count += 1
 
         self.warning_log(
-            f"{self.display_name} auto-restart attempt {self._restart_count}/{self.max_restart_attempts}"
+            f"{self.DISPLAY_NAME} auto-restart attempt {self._restart_count}/{self.max_restart_attempts}"
         )
         self._update_status(f"Restarting ({self._restart_count}/{self.max_restart_attempts})")
 
@@ -406,7 +415,7 @@ class PngAppMgrBase(QObject):
                 return
             stdout = process.stdout
 
-        self.debug_log(f"Capturing {self.display_name} output...")
+        self.debug_log(f"Capturing {self.DISPLAY_NAME} output...")
 
         for raw_line in stdout:
             if not raw_line:
@@ -422,7 +431,7 @@ class PngAppMgrBase(QObject):
                     current_pid = self.process.pid if self.process else None
                     changed = (current_pid is not None and current_pid != pid)
                     self.child_pid = pid
-                self.debug_log(f"{self.display_name} PID update: {pid} changed={changed}")
+                self.debug_log(f"{self.DISPLAY_NAME} PID update: {pid} changed={changed}")
                 continue
 
             # ---------------------------------------------------------
@@ -431,7 +440,7 @@ class PngAppMgrBase(QObject):
             if port := extract_ipc_port_from_line(line):
                 with self._process_lock:
                     self.ipc_port = port
-                self.debug_log(f"{self.display_name} IPC port reported: {port}")
+                self.debug_log(f"{self.DISPLAY_NAME} IPC port reported: {port}")
                 self._maybe_fire_post_start()
                 continue
 
@@ -439,7 +448,7 @@ class PngAppMgrBase(QObject):
             # 3. INIT COMPLETE token
             # ---------------------------------------------------------
             if is_init_complete(line):
-                self.debug_log(f"{self.display_name} initialization complete")
+                self.debug_log(f"{self.DISPLAY_NAME} initialization complete")
                 with self._process_lock:
                     self._init_complete_received = True
                     self._update_status("Running")
@@ -449,7 +458,7 @@ class PngAppMgrBase(QObject):
             # ---------------------------------------------------------
             # 4. Regular stdout (non-token) - send to info log
             # ---------------------------------------------------------
-            self.info_log(line, src=self.short_name)
+            self.info_log(line, src=self.SHORT_NAME)
 
     def _monitor_exit(self):
         """Monitor for unexpected process exit"""
@@ -477,12 +486,14 @@ class PngAppMgrBase(QObject):
                 self._handle_unexpected_exit(ret_code)
 
         finally:
-            self.debug_log(f"{self.display_name} Setting heartbeat stop flag...")
+            self.debug_log(f"{self.DISPLAY_NAME} Setting heartbeat stop flag...")
             self._stop_heartbeat.set()
 
     def _handle_unexpected_exit(self, ret_code: int):
         """Handle unexpected process termination"""
-        self.error_log(f"{self.display_name} exited unexpectedly (code: {ret_code})")
+        err_msg = f"{self.DISPLAY_NAME} exited unexpectedly (code: {ret_code})"
+        self.error_log(err_msg)
+        self._integration_fail(err_msg)
 
         with self._process_lock:
             self.is_running = False
@@ -513,11 +524,11 @@ class PngAppMgrBase(QObject):
             threading.Thread(
                 target=self._auto_restart,
                 daemon=True,
-                name=f"{self.display_name}-auto-restart"
+                name=f"{self.DISPLAY_NAME}-auto-restart"
             ).start()
         elif self.auto_restart:
             self.error_log(
-                f"{self.display_name} will not auto-restart (max attempts reached)"
+                f"{self.DISPLAY_NAME} will not auto-restart (max attempts reached)"
             )
 
     def _send_heartbeat(self, hb_gen: int):
@@ -530,37 +541,37 @@ class PngAppMgrBase(QObject):
         time.sleep(random.uniform(0, 2.0))
 
         failed_count = 0
-        self.debug_log(f"{self.display_name}: Heartbeat job starting...")
+        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
         assert timeout_ms > 0
         assert not self._stop_heartbeat.is_set(), "Heartbeat thread started with stop flag already set" # TODO: remove
 
         while not self._stop_heartbeat.is_set():
             if hb_gen != self._heartbeat_gen_num:
-                self.debug_log(f"{self.display_name}: Heartbeat exiting (stale generation {hb_gen})")
+                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting (stale generation {hb_gen})")
                 break
 
             # If we are stopping or restarting, do not treat missing port as failure
             if self._is_stopping.is_set() or self._is_restarting.is_set():
-                self.debug_log(f"{self.display_name}: Heartbeat exiting due to stop/restart flag.")
+                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting due to stop/restart flag.")
                 break
 
-            self.debug_log(f"{self.display_name}: Sending heartbeat to port {self.ipc_port}...")
+            self.debug_log(f"{self.DISPLAY_NAME}: Sending heartbeat to port {self.ipc_port}...")
             port = self.ipc_port
 
             if not port:
                 # No port means child hasn't initialised yet - treat as a missed heartbeat
                 failed_count += 1
-                self.debug_log(f"{self.display_name}: No IPC port yet, missed heartbeat count={failed_count}")
+                self.debug_log(f"{self.DISPLAY_NAME}: No IPC port yet, missed heartbeat count={failed_count}")
             else:
                 try:
                     rsp = IpcClientSync(port, timeout_ms).heartbeat()
                     if rsp.get("status") == "success":
                         failed_count = 0
-                        self.debug_log(f"{self.display_name}: Heartbeat success response: {rsp} on port {port}")
+                        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat success response: {rsp} on port {port}")
                     else:
                         failed_count += 1
-                        self.debug_log(f"{self.display_name}: Heartbeat failed with response: {rsp} on port {port}")
+                        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat failed with response: {rsp} on port {port}")
                 except Exception as e: # pylint: disable=broad-exception-caught
                     self.debug_log(f"Heartbeat error: {e}")
                     failed_count += 1
@@ -568,14 +579,14 @@ class PngAppMgrBase(QObject):
             # Check for excessive failures
             if failed_count > self.num_missable_heartbeats and not self.debug_mode:
                 self.error_log(
-                    f"{self.display_name} missed {failed_count} heartbeats, stopping..."
+                    f"{self.DISPLAY_NAME} missed {failed_count} heartbeats, stopping..."
                 )
                 self.stop("Heartbeat failure")
                 break
 
             self._stop_heartbeat.wait(self.heartbeat_interval)
 
-        self.debug_log(f"{self.display_name}: Heartbeat job exiting...")
+        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job exiting...")
         self._stop_heartbeat.clear()
 
     def _send_ipc_shutdown(self, reason: str) -> bool:
@@ -628,17 +639,17 @@ class PngAppMgrBase(QObject):
                 self._post_start_fired = True
 
         if should_fire:
-            self.debug_log(f"{self.display_name}: All startup signals received - firing post-start hook")
+            self.debug_log(f"{self.DISPLAY_NAME}: All startup signals received - firing post-start hook")
             if self._post_start_hook:
                 try:
                     self.post_start_signal.emit()
                 except Exception as e: # pylint: disable=broad-exception-caught
-                    self.error_log(f"{self.display_name}: Error in post-start hook: {e}")
+                    self.error_log(f"{self.DISPLAY_NAME}: Error in post-start hook: {e}")
 
     def _update_status(self, status: str):
         """Update status and emit signal"""
         self.status = status
-        if self.should_display:
+        if self.SHOULD_DISPLAY:
             self.status_changed.emit(status)
 
     # Logging methods
@@ -689,3 +700,14 @@ class PngAppMgrBase(QObject):
     def select_file(self, title="Select File", file_filter="All Files (*.*)") -> str:
         """Open a file dialog and return path or None."""
         return self.window.select_file(title, file_filter)
+
+    def _integration_fail(self, message: str):
+        """Handle integration test failure by logging and exiting immediately."""
+        if not self.integration_test_mode:
+            return
+
+        # In integration mode we intentionally hard-exit the app
+        # We do NOT attempt graceful Qt shutdown because CI should fail fast
+        # and auto-restart must never mask instability.
+        self.error_log(f"[INTEGRATION TEST MODE] {message}")
+        os._exit(1)
