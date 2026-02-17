@@ -509,8 +509,7 @@ class DataPerDriver:
             del self.m_per_lap_snapshots[lap_num]
 
         # Remove outdated laps from managed objects
-        self.m_tyre_info.m_tyre_wear_extrapolator.remove(outdated_laps)
-        self.m_tyre_info.m_tyre_set_history_manager.remove(outdated_laps)
+        self.m_tyre_info.handleFlashback(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
         self.m_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)

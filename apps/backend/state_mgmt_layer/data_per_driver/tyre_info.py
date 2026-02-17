@@ -439,3 +439,16 @@ class TyreInfo:
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
         self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+
+    def handleFlashback(self, outdated_laps: List[int]) -> None:
+        """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator
+
+        Args:
+            outdated_laps (List[int]): The list of lap numbers that are outdated due to flashback
+        """
+        self.m_tyre_set_history_manager.remove(outdated_laps)
+        self.m_tyre_wear_extrapolator.remove(outdated_laps)
+
+        # Flashback is too error prone with tyre wear rolling history, so we just clear it.
+        # User made the bed, they can lie in it.
+        self.tyre_wear.clear()
