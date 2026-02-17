@@ -219,9 +219,21 @@ class TyreSetHistoryManager:
         Args:
             tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
         """
+        self.overwriteLatestTyreWear(tyre_wear_info)
+
+    def overwriteTyreWear(self, tyre_wear_info: TyreWearPerLap, stint_index: int = -1, lap_index: int = -1) -> None:
+        """Overwrite tyre wear info for the specified tyre wear history item at the given index
+
+        Args:
+            tyre_wear_info (TyreWearPerLap): Tyre wear of latest
+            stint_index (int): The index of the tyre stint to be updated. Defaults to -1 (latest/current stint).
+            lap_index (int): The index of the lap within the stint to be updated. Defaults to -1 (latest lap).
+        """
         if not self.m_history:
             raise IndexError("Tyre history is empty, cannot overwrite tyre wear info")
-        self.m_history[-1].m_tyre_wear_history[-1] = tyre_wear_info
+        old_obj = self.m_history[stint_index].m_tyre_wear_history[lap_index]
+        self.m_history[stint_index].m_tyre_wear_history[lap_index] = tyre_wear_info
+        return old_obj
 
     def remove(self, laps: List[int]) -> None:
         """Remove the specified laps from the tyre set history
@@ -337,6 +349,15 @@ class TyreSetHistoryManager:
             tyre_set_history.append(entry_json)
 
         return tyre_set_history
+
+    def __repr__(self) -> str:
+        """Get the string representation of this object
+
+        Returns:
+            str: String representation of this object
+        """
+        stints = "  ".join(str(stint) for stint in self.m_history)
+        return f"TyreSetHistoryManager with {self.length} stints: {stints}"
 
 class TyreWearRecentHistory(RollingHistory[TyreWearPerLap]):
     """

@@ -582,16 +582,22 @@ class DataPerDriver:
         )
 
         # Add the tyre wear data into the tyre stint history
+        tyre_set_key = self._getCurrentTyreSetKey()
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
-            self.m_tyre_info.m_tyre_set_history_manager.addTyreWear(TyreWearPerLap(
+            wear = TyreWearPerLap(
                 fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=self.m_driver_info.m_curr_lap_max_sc_status,
-                desc=f"end of lap {old_lap_number} snapshot"
-            ))
+                desc=f"end of lap {old_lap_number} snapshot. {tyre_set_key}"
+            )
+            self.m_tyre_info.m_tyre_set_history_manager.addTyreWear(wear)
+
+            # TODO: remove
+            if self.m_driver_info.is_player:
+                self.m_logger.debug("[ASHWIN] - Added tyre wear %s", wear)
 
         # Add the tyre wear data into the extrapolator
         if tyre_set_id := self._getCurrentTyreSetKey():
@@ -611,13 +617,15 @@ class DataPerDriver:
                 self.m_packet_copies.m_packet_car_status.m_fuelInTank,
                 old_lap_number,
                 (self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR), # is_racing_lap
-                desc=f"end of lap {old_lap_number} snapshot"
+                desc=f"end of lap {old_lap_number} snapshot {tyre_set_key}"
             )
 
         # Now clear the per lap max stuff
         self.m_lap_info.m_top_speed_kmph_this_lap = None
         self.m_driver_info.m_curr_lap_max_sc_status = None
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
+        if self.m_driver_info.is_player: # TODO: remove
+            self.m_logger.debug("[ASHWIN] - lap changed to %d", old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -690,14 +698,17 @@ class DataPerDriver:
                             rr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                             lap_number=0,
                             is_racing_lap=True,
-                            desc="end of zeroth lap data point"
+                            desc=f"end of zeroth lap data point {fitted_tyre_set_key}"
                         )
-                        self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
-                                                    start_lap=self.m_lap_info.m_current_lap,
-                                                    index=fitted_index,
-                                                    tyre_set_key=fitted_tyre_set_key,
-                                                    initial_tyre_wear=initial_tyre_wear,
-                        ))
+                        entry = TyreSetHistoryEntry(
+                            start_lap=self.m_lap_info.m_current_lap,
+                            index=fitted_index,
+                            tyre_set_key=fitted_tyre_set_key,
+                            initial_tyre_wear=initial_tyre_wear,
+                        )
+                        self.m_tyre_info.m_tyre_set_history_manager.add(entry)
+                        if self.m_driver_info.is_player: # TODO: remove
+                            self.m_logger.debug("[ASHWIN] - Added new entry %s", entry)
                     else:
                         self.m_logger.debug("Driver %s - zeroth lap snapshot available but no car damage packet. "
                                          "Hence clearing the zeroth lap snapshot to trigger it to happen again",
@@ -706,18 +717,19 @@ class DataPerDriver:
 
             elif fitted_index != self.m_tyre_info.m_tyre_set_history_manager.getLastEntry().m_fitted_index:
                 # Tyre set change detected
-                if F1Utils.isFinishLineAfterPitGarage(track) and \
-                    not self.m_pending_events_mgr_weird_track.areEventsPending():
+                is_weird = F1Utils.isFinishLineAfterPitGarage(track)
+                if is_weird:
                     # In these tracks, the tyre set change happens before lap completion. this causes the prev lap's
-                    # tyre wear data could get lost. Hence, the tyre set change operation is delayed and handled after
+                    # tyre wear data could get lost. Hence, tyre set change operation is delayed and handled after
                     #     - lap change
                     #     - car damage packet (new updated tyre wear for the new tyre set)
-                    self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
-                                    str(self), self.m_lap_info.m_current_lap)
-                    self.m_pending_events_mgr_weird_track.register(
-                        events=[DriverPendingEvents.CAR_DMG_PKT_EVENT, DriverPendingEvents.LAP_CHANGE_EVENT])
+                    event_mgr = self.m_pending_events_mgr_weird_track
+                    events = [
+                        DriverPendingEvents.LAP_CHANGE_EVENT,
+                        DriverPendingEvents.CAR_DMG_PKT_EVENT,
+                    ]
 
-                elif not self.m_pending_events_mgr_normal_track.areEventsPending():
+                else:
                     # The game's telemetry emitting task is periodic. It cycles through all types of packets, and
                     #   sleeping between emits based on configured frequency
                     # This means that even the following sequence of events is possible
@@ -729,10 +741,13 @@ class DataPerDriver:
                     #   could be negative, fully breaking the extrapolation logic
                     # Simple fix - delay tyre change event until new car dmg pkt arrives. This will contain the new
                     #   tyre's wear data
+                    event_mgr = self.m_pending_events_mgr_normal_track
+                    events = [DriverPendingEvents.CAR_DMG_PKT_EVENT]
+
+                if not event_mgr.areEventsPending():
+                    event_mgr.register(events=events)
                     self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
-                                    str(self), self.m_lap_info.m_current_lap)
-                    self.m_pending_events_mgr_normal_track.register(
-                        events=[DriverPendingEvents.CAR_DMG_PKT_EVENT])
+                                        str(self), self.m_lap_info.m_current_lap)
 
     def onTyreSetChange(self, fitted_index: int, fitted_tyre_set_key: str, lap_number: int, initial_tyre_wear: TyreWearPerLap) -> None:
         """Update the tyre set history list, if required.
@@ -744,12 +759,15 @@ class DataPerDriver:
             initial_tyre_wear (TyreWearPerLap): The initial tyre wear
         """
 
-        self.m_tyre_info.m_tyre_set_history_manager.add(TyreSetHistoryEntry(
+        entry = TyreSetHistoryEntry(
                                     start_lap=lap_number,
                                     index=fitted_index,
                                     tyre_set_key=fitted_tyre_set_key,
                                     initial_tyre_wear=initial_tyre_wear,
-        ))
+        )
+        self.m_tyre_info.m_tyre_set_history_manager.add(entry)
+        if self.m_driver_info.is_player: # TODO: remove
+            self.m_logger.debug("[ASHWIN] - Added new entry %s", entry)
 
         # Tyre set change detected. clear the extrapolation data
         self.m_tyre_info.m_tyre_wear_extrapolator.clear()
@@ -816,12 +834,15 @@ class DataPerDriver:
         """
 
         self.m_logger.debug("Driver %s - processing delayed tyre set change for weird track", str(self))
-        initial_tyre_wear = self._getDelayedTyreChangeDataWeird()
+        last_stint_max_wear = self._getDelayedTyreChangeDataWeird()
         tyre_set_key = self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey()
-        initial_tyre_wear.desc = f"Delayed tyre set change weird. old tyre val. key={tyre_set_key}"
+        last_stint_max_wear.desc = f"Delayed tyre set change weird. old tyre val. key={tyre_set_key}"
 
-        # First, overwrite the end of lap-1 snapshot's tyre wear
-        self.m_tyre_info.m_tyre_set_history_manager.overwriteLatestTyreWear(initial_tyre_wear)
+        # First, overwrite the end of last stint's wear history
+        old_val = self.m_tyre_info.m_tyre_set_history_manager.overwriteTyreWear(last_stint_max_wear, stint_index=-1)
+        if self.m_driver_info.is_player: # TODO: remove
+            self.m_logger.debug("[ASHWIN] - Overwrote latest tyre wear for delayed tyre set change on weird track"
+                                ". old val: %s, new val: %s", str(old_val), str(last_stint_max_wear))
 
         curr_tyre_wear = TyreWearPerLap(
             fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
@@ -830,7 +851,7 @@ class DataPerDriver:
             rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
             lap_number=self.m_lap_info.m_current_lap-1,
             is_racing_lap=True,
-            desc=f"Delayed tyre set change weird. new tyre val. key={str(self.m_packet_copies.m_packet_tyre_sets.getFittedTyreSetKey())}"
+            desc=f"Delayed tyre set change weird. new tyre val. key={self._getCurrentTyreSetKey()}"
         )
         self.onTyreSetChange(
             fitted_index=self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx,
@@ -839,8 +860,9 @@ class DataPerDriver:
             initial_tyre_wear=curr_tyre_wear
         )
         self.m_logger.debug("Driver %s - completed processing delayed tyre set change for weird track. "
-                            "Initial tyre wear: [%s] New tyre wear: [%s]",
-                                str(self), str(initial_tyre_wear), str(curr_tyre_wear))
+                            "Initial tyre wear: [%s] New tyre wear: [%s]. History: [%s]",
+                                str(self), str(last_stint_max_wear), str(curr_tyre_wear),
+                                str(self.m_tyre_info.m_tyre_set_history_manager))
 
     def _delayedTyreSetsChangeNormal(self) -> None:
         """Process the delayed tyre set change for non-weird tracks (where garages are AFTER the finish line)"""
