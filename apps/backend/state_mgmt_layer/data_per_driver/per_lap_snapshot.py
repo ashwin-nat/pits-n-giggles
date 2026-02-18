@@ -64,6 +64,9 @@ class PerLapSnapshotEntry:
             tyre_sets (PacketTyreSetsData): The Tyre Sets packet
             track_position (int): The lap's track position
             top_speed_kmph (float): The lap's top speed in kmph
+            ers_harv_mguh_j (float): The lap's total ERS energy harvested by MGU-H in joules
+            ers_harv_mguk_j (float): The lap's total ERS energy harvested by MGU-K in joules
+            ers_deployed_j (float): The lap's total ERS energy deployed in joules
         """
 
         self.m_car_damage_packet: CarDamageData = car_damage
