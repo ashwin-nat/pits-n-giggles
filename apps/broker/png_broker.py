@@ -115,7 +115,11 @@ def _proc_mgr_shutdown_callback(_args: dict, logger: logging.Logger, broker: Ipc
     """Shutdown callback"""
     logger.debug("Received IPC shutdown. Shutting down the broker...")
     broker.close()
-    return {"status": "success"}
+    stats = broker.get_stats()
+    return {
+        "status": "success",
+        "stats": stats,
+    }
 
 def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""

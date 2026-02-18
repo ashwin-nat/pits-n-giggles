@@ -24,11 +24,13 @@
 
 import logging
 import threading
-from typing import Optional
+import time
+from typing import List, Optional
 
 import zmq
 
 from lib.error_status import PngXpubPortInUseError, PngXsubPortInUseError
+from lib.event_counter import EventCounter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -38,6 +40,13 @@ class IpcPubSubBroker:
     - Binds sockets in __init__
     - Runs a blocking proxy loop
     - Lifecycle is fully owned by the process manager
+    - Collects packet and byte statistics (incoming/outgoing per topic)
+
+    Statistics structure:
+        "__OVERALL__" -> "__INCOMING__"  -> {count, bytes}
+        "__OVERALL__" -> "__OUTGOING__"  -> {count, bytes}
+        "<topic>" -> "__INCOMING__"  -> {count, bytes}
+        "<topic>" -> "__OUTGOING__"  -> {count, bytes}
     """
 
     def __init__(
@@ -55,6 +64,9 @@ class IpcPubSubBroker:
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
         self.logger = logger
+
+        self.stats = EventCounter()
+        self._start_time = time.time()
 
         self.ctx = zmq.Context()
 
@@ -110,9 +122,32 @@ class IpcPubSubBroker:
     # Public API
     # ------------------------------------------------------------------
 
+    def _handle_message_forward(self, msg: List[bytes]) -> None:
+        """Handle incoming message and forward to subscribers"""
+        if not msg:
+            return
+
+        topic = msg[0].decode('utf-8', errors='replace')
+        total_size = sum(len(part) for part in msg)
+
+        # Track incoming
+        self.stats.track("__OVERALL__", "__INCOMING__", total_size)
+        self.stats.track(topic, "__INCOMING__", total_size)
+
+        # Forward to subscribers
+        self.xpub.send_multipart(msg)
+
+        # Track outgoing
+        self.stats.track("__OVERALL__", "__OUTGOING__", total_size)
+        self.stats.track(topic, "__OUTGOING__", total_size)
+
+    def _handle_subscription(self, msg: list) -> None:
+        """Handle subscription messages"""
+        self.xsub.send_multipart(msg)
+
     def run(self):
         """
-        Blocking broker loop.
+        Blocking broker loop with statistics collection.
         This should be run in its own process OR thread.
         """
         self.logger.debug(
@@ -120,13 +155,25 @@ class IpcPubSubBroker:
             f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
         )
 
+        poller = zmq.Poller()
+        poller.register(self.xsub, zmq.POLLIN)
+        poller.register(self.xpub, zmq.POLLIN)
+        poller.register(self._control_client, zmq.POLLIN)
+
         try:
-            zmq.proxy_steerable(
-                self.xsub,
-                self.xpub,
-                None,
-                self._control_client
-            )
+            while True:
+                events = dict(poller.poll())
+
+                if self._control_client in events:
+                    if self._control_client.recv() == b"TERMINATE":
+                        break
+
+                if self.xsub in events:
+                    self._handle_message_forward(self.xsub.recv_multipart())
+
+                if self.xpub in events:
+                    self._handle_subscription(self.xpub.recv_multipart())
+
         except zmq.ZMQError as e:
             self.logger.debug("Broker proxy exited: %s", e)
         finally:
@@ -146,6 +193,25 @@ class IpcPubSubBroker:
         )
         self._thread.start()
         return self._thread
+
+    def get_stats(self) -> dict:
+        """
+        Get current statistics snapshot.
+
+        Returns:
+            dict with uptime and all statistics
+        """
+        uptime = time.time() - self._start_time
+
+        return {
+            "uptime_seconds": uptime,
+            **self.stats.get_stats()
+        }
+
+    def reset_stats(self):
+        """Reset all statistics to zero"""
+        self.stats = EventCounter()
+        self._start_time = time.time()
 
     def close(self):
         try:
