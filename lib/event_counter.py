@@ -22,12 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
-
-from lib.f1_types import F1PacketType
+from typing import Dict
 
 # -------------------------------------- FUNCTIONS --------------------------------------------------------------------
 

@@ -700,7 +700,7 @@ class PngLauncherWindow(QMainWindow):
 
         stats = {subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems}
         self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
-        self.logger.info(f"Final subsystem stats: {json.dumps(stats, indent=2)}")
+        self.logger.info("Final subsystem stats: %s", json.dumps(stats, indent=2))
         event.accept()
 
     def run(self):
