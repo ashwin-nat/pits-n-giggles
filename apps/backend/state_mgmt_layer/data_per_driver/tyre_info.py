@@ -25,13 +25,16 @@
 import json
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
                           VisualTyreCompound)
+from lib.rolling_history import RollingHistory
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+# -------------------------------------- CONTSTANTS --------------------------------------------------------------------
+
+_ROLLING_HISTORY_MAXLEN = 1500  # 60 Hz telemetry × ~25 seconds of history
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
@@ -216,9 +219,21 @@ class TyreSetHistoryManager:
         Args:
             tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
         """
+        self.overwriteLatestTyreWear(tyre_wear_info)
+
+    def overwriteTyreWear(self, tyre_wear_info: TyreWearPerLap, stint_index: int = -1, lap_index: int = -1) -> None:
+        """Overwrite tyre wear info for the specified tyre wear history item at the given index
+
+        Args:
+            tyre_wear_info (TyreWearPerLap): Tyre wear of latest
+            stint_index (int): The index of the tyre stint to be updated. Defaults to -1 (latest/current stint).
+            lap_index (int): The index of the lap within the stint to be updated. Defaults to -1 (latest lap).
+        """
         if not self.m_history:
             raise IndexError("Tyre history is empty, cannot overwrite tyre wear info")
-        self.m_history[-1].m_tyre_wear_history[-1] = tyre_wear_info
+        old_obj = self.m_history[stint_index].m_tyre_wear_history[lap_index]
+        self.m_history[stint_index].m_tyre_wear_history[lap_index] = tyre_wear_info
+        return old_obj
 
     def remove(self, laps: List[int]) -> None:
         """Remove the specified laps from the tyre set history
@@ -335,6 +350,56 @@ class TyreSetHistoryManager:
 
         return tyre_set_history
 
+    def __repr__(self) -> str:
+        """Get the string representation of this object
+
+        Returns:
+            str: String representation of this object
+        """
+        stints = "  ".join(str(stint) for stint in self.m_history)
+        return f"TyreSetHistoryManager with {self.length} stints: {stints}"
+
+class TyreWearRecentHistory(RollingHistory[TyreWearPerLap]):
+    """
+    Rolling history specialized for TyreWearPerLap objects.
+
+    Adds domain-specific helpers such as identifying the lap
+    with the highest average tyre wear in the current window.
+    """
+
+    def get_max_average(self) -> Optional[TyreWearPerLap]:
+        """
+        Return the TyreWearPerLap instance with the highest average wear.
+
+        Returns:
+            The object with the maximum m_average value,
+            or None if history is empty.
+        """
+        if not self:
+            return None
+
+        return max(self)
+
+    def get_max_average_with_index(self) -> Optional[Tuple[int, TyreWearPerLap]]:
+        """
+        Return the index and TyreWearPerLap instance with the highest
+        average wear.
+
+        Index is relative to the current window:
+            0 = oldest
+            len(history)-1 = newest
+
+        Returns:
+            (index, object) or None if empty.
+        """
+        if not self:
+            return None, None
+
+        return max(
+            ((i, v) for i, v in enumerate(self)),
+            key=lambda pair: pair[1].m_average,
+        )
+
 @dataclass(slots=True)
 class TyreInfo:
     """
@@ -358,7 +423,8 @@ class TyreInfo:
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
     tyre_act_compound: Optional[ActualTyreCompound] = None
-    tyre_wear: Optional[TyreWearPerLap] = None
+    tyre_wear: TyreWearRecentHistory = field(default_factory=lambda: TyreWearRecentHistory(
+        maxlen=_ROLLING_HISTORY_MAXLEN))
     tyre_surface_temp: Optional[float] = None
     tyre_inner_temp: Optional[float] = None
     tyre_life_remaining_laps: Optional[int] = None
@@ -373,3 +439,16 @@ class TyreInfo:
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
         self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+
+    def handleFlashback(self, outdated_laps: List[int]) -> None:
+        """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator
+
+        Args:
+            outdated_laps (List[int]): The list of lap numbers that are outdated due to flashback
+        """
+        self.m_tyre_set_history_manager.remove(outdated_laps)
+        self.m_tyre_wear_extrapolator.remove(outdated_laps)
+
+        # Flashback is too error prone with tyre wear rolling history, so we just clear it.
+        # User made the bed, they can lie in it.
+        self.tyre_wear.clear()

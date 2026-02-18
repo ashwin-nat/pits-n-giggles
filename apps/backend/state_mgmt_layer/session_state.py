@@ -25,11 +25,9 @@
 import json
 import logging
 import time
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
-                                                           DriverPendingEvents)
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -54,6 +52,7 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
+from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
@@ -513,7 +512,8 @@ class SessionState:
             )
 
             driver_obj.m_lap_info.m_current_lap = new_lap
-            driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+            driver_obj.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+            driver_obj.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
     def _updateDriverStatus(self,
                             driver_obj: DataPerDriver,
@@ -538,7 +538,7 @@ class SessionState:
         driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
 
         # Process pitting status
-        driver_obj.processPittingStatus(lap_data, self.m_session_info.m_track)
+        driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
         driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
@@ -815,22 +815,22 @@ class SessionState:
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
             obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
+            tyre_set_key = obj_to_be_updated._getCurrentTyreSetKey()
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
-            obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
+            obj_to_be_updated.m_tyre_info.tyre_wear.push(TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                desc="curr tyre wear"
-            )
+                desc=f"curr tyre wear {tyre_set_key}",
+            ))
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
 
             # Update delayed tyre change data if events are pending
-            if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
-                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
-                obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            obj_to_be_updated.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields

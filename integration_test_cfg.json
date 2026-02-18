@@ -43,6 +43,8 @@
     },
     "HUD": {
         "enabled": true,
+        "toggle_overlays_udp_action_code": 10,
+        "use_windowed_overlays": false,
         "show_lap_timer": true,
         "lap_timer_ui_scale": 1.0,
         "lap_timer_toggle_udp_action_code": null,
@@ -89,8 +91,10 @@
             }
         },
         "mfd_tyre_wear_threshold": 80,
+        "mfd_weather_page_ui_type": "Cards",
         "mfd_toggle_udp_action_code": null,
         "mfd_interaction_udp_action_code": null,
+        "cycle_mfd_udp_action_code": 9,
         "show_track_map": true,
         "track_map_ui_scale": 1.0,
         "track_map_toggle_udp_action_code": null,
@@ -102,10 +106,7 @@
         "track_radar_overlay_ui_scale": 1.0,
         "track_radar_overlay_toggle_udp_action_code": null,
         "track_radar_idle_opacity": 30,
-        "toggle_overlays_udp_action_code": 10,
-        "cycle_mfd_udp_action_code": 9,
         "overlays_opacity": 100,
-        "use_windowed_overlays": false,
         "layout": {
             "lap_timer": {
                 "x": 3306,
