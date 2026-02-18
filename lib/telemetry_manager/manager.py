@@ -29,11 +29,11 @@ from datetime import datetime
 from logging import Logger
 from typing import Awaitable, Callable, Dict, Optional
 
-from lib.f1_types import (F1PacketBase, F1PacketType)
+from lib.event_counter import EventCounter
+from lib.f1_types import F1PacketBase, F1PacketType
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
 from .factory import PacketParserFactory, telemetry_receiver_factory
-from .stats_tracker import PacketStatsTracker
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ class AsyncF1TelemetryManager:
         """
 
         self.m_replay_server = replay_server
-        self.m_stats = PacketStatsTracker()
+        self.m_stats = EventCounter()
         self.m_port_number = port_number
         self.m_logger = logger
         self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
@@ -135,7 +135,7 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
-        self.m_stats.track_raw(len(raw_packet))
+        self.m_stats.track("__RAW__", "__RAW__", len(raw_packet))
         # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)
@@ -144,20 +144,24 @@ class AsyncF1TelemetryManager:
         if not parsed_obj:
             # TODO: enhance with more info about the malformed packet if possible (e.g. header info)
             # Get parser failure reason and put that as a subcategory
-            self.m_stats.track_custom_raw("MALFORMED_PKT", "", len(raw_packet))
+            reason = "PLACEHOLDER_REASON"
+            self.m_stats.track("MALFORMED_PKT", reason, len(raw_packet))
             return
-
-        self.m_stats.track_parsed(
-            parsed_obj.m_header.m_packetId,
-            len(raw_packet),
-        )
 
         # Perform the registered callback
         try:
             await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
+            self.m_stats.track(
+                "__PROCESSED__",
+                str(parsed_obj.m_header.m_packetId),
+                len(raw_packet),
+            )
         except Exception as e:
             packet_file = self._dumpPacketToFile(parsed_obj)
-            self.m_stats.track_custom("CALLBACK_EXCEPTION", parsed_obj.m_header.m_packetId, len(raw_packet))
+            self.m_stats.track(
+                "__EXCEPTION_CB__",
+                parsed_obj.m_header.m_packetId,
+                len(raw_packet))
             self.m_logger.exception(
                 "Exception while handling packet callback.\n"
                 "Packet type: %s\nException type: %s\nMessage: %s\n"
