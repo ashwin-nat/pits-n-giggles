@@ -157,6 +157,7 @@ class PngAppMgrBase(QObject):
         self._restart_count = 0
         self._last_crash_time: Optional[float] = None
         self._restart_window = 60.0  # Reset counter if stable for 60 seconds
+        self._stats: Optional[dict] = None
 
         # Hooks
         self._post_start_hook: Optional[Callable[[], None]] = config.post_start_cb
@@ -251,6 +252,7 @@ class PngAppMgrBase(QObject):
             self._init_complete_received = False
             self._post_start_fired = False
             self.ipc_port = None # Child process will report its IPC port
+            self._stats = None
 
             # Build and execute launch command
             launch_cmd = self.get_launch_command()
@@ -368,6 +370,10 @@ class PngAppMgrBase(QObject):
             self._restart_count = 0
             self.debug_log(f"{self.DISPLAY_NAME} Reset restart counter on manual stop")
             self.start(reason)
+
+    def get_stats(self) -> Optional[dict]:
+        """Get the latest stats from the child process, if available"""
+        return self._stats
 
     def _should_auto_restart(self, exit_code: int) -> bool:
         reason = self.exit_reasons.get(exit_code)
@@ -597,6 +603,7 @@ class PngAppMgrBase(QObject):
 
         try:
             rsp = IpcClientSync(self.ipc_port).shutdown_child(reason)
+            self._stats = rsp.get("stats")
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"IPC shutdown failed: {e}")
