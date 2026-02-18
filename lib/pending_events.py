@@ -23,16 +23,15 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum, auto
-from typing import Callable, Set
+from typing import Callable, List
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class DriverPendingEvents(Enum):
+class PendingEventType(Enum):
     """
-    Enum class representing possible pending events for a driver.
+    Base enum class for event types.
+    All specific event type enums should derive from this class.
     """
-    LAP_CHANGE_EVENT = auto()
-    CAR_DMG_PKT_EVENT = auto()
 
     def __repr__(self) -> str:
         """
@@ -52,46 +51,68 @@ class DriverPendingEvents(Enum):
         """
         return self.name
 
+class DriverPendingEvents(PendingEventType):
+    """
+    Enum class representing possible pending events for a driver.
+    """
+    LAP_CHANGE_EVENT = auto()
+    CAR_DMG_PKT_EVENT = auto()
+
 class PendingEventsManager:
     """
     Manages a set of pending events. When all registered events have occurred at least once,
     the callback is triggered with optional keyword arguments provided during registration.
     """
 
-    def __init__(self, callback: Callable[..., None]):
+    def __init__(self, callback: Callable[..., None], in_order: bool = False):
         """
         Initializes the PendingEventsManager.
 
         Args:
             callback (Callable[..., None]): Function to call once all registered events have occurred.
                                             Can accept keyword arguments.
+            in_order (bool): If True, events must occur in the order they were registered.
+                           If False, events can occur in any order. Defaults to False.
         """
-        self._pending_events: Set[DriverPendingEvents] = set()
+        self._pending_events: List[PendingEventType] = []
         self._callback: Callable[..., None] = callback
+        self._in_order: bool = in_order
 
     def register(self,
-                 events: Set[DriverPendingEvents]) -> None:
+                 events: List[PendingEventType]) -> None:
         """
         Registers the set of events to wait for and optional keyword arguments for the callback.
 
         Args:
-            events (Set[DriverPendingEvents]): Events that must occur before the callback is triggered.
+            events (List[PendingEventType]): Events that must occur before the callback is triggered.
         """
-        self._pending_events = set(events)
+        self._pending_events = events
 
-    def onEvent(self, event: DriverPendingEvents) -> None:
+    def onEvent(self, event: PendingEventType) -> None:
         """
         Called when an event occurs. If the event is one of the registered pending events,
         it is removed. If all pending events have occurred, the callback is triggered
         with the previously registered keyword arguments.
 
         Args:
-            event (DriverPendingEvents): The event that occurred.
+            event (PendingEventType): The event that occurred.
         """
-        if event not in self._pending_events:
-            return
+        if self._in_order:
+            # In order mode: only process if it's the first pending event
+            if self._pending_events and self._pending_events[0] == event:
+                del self._pending_events[0]
+        else:
+            # Any order mode: remove the event if it exists anywhere in the list
+            idx = next(
+                (i for i, e in enumerate(self._pending_events) if e == event),
+                None,
+            )
 
-        self._pending_events.remove(event)
+            if idx is None:
+                return
+
+            del self._pending_events[idx]
+
         if not self._pending_events:
             self._callback()
 

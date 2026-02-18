@@ -85,6 +85,10 @@ class SettingsWindow(QDialog):
         # { category_index: { group_title: collapsible_container_widget } }
         self.collapsible_groups: Dict[int, Dict[str, QWidget]] = {}
 
+        # Track collapsible group header widgets keyed by group title, per category
+        # { category_index: { group_title: collapsible_container_widget } }
+        self.collapsible_groups: Dict[int, Dict[str, QWidget]] = {}
+
         self.setup_ui()
 
     def setup_ui(self):
