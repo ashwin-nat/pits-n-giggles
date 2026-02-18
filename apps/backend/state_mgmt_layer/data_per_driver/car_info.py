@@ -37,7 +37,7 @@ class CarInfo:
     """
     Class that models the car-related data for a race driver.
     """
-    total_laps: int = field(repr=False)  # 👈 Must come first
+    total_laps: int = field(repr=False)
 
     m_ers_perc: Optional[float] = None
     m_drs_activated: Optional[bool] = None
@@ -47,6 +47,10 @@ class CarInfo:
     m_fr_wing_damage: Optional[int] = None
     m_rear_wing_damage: Optional[int] = None
 
+    m_curr_lap_ers_harv_mguk_j: Optional[float] = None
+    m_curr_lap_ers_harv_mguh_j: Optional[float] = None
+    m_curr_lap_ers_deployed_j: Optional[float] = None
+
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
 
     def __post_init__(self):
@@ -55,3 +59,9 @@ class CarInfo:
             total_laps=self.total_laps,
             min_fuel_kg=CarStatusData.MIN_FUEL_KG
         )
+
+    def onLapChange(self):
+        """Clear the lap-specific data on a lap change"""
+        self.m_curr_lap_ers_harv_mguk_j = None
+        self.m_curr_lap_ers_harv_mguh_j = None
+        self.m_curr_lap_ers_deployed_j = None
