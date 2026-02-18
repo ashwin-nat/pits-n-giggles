@@ -135,13 +135,16 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
-        self.m_stats.track_raw(raw_packet)
+        self.m_stats.track_raw(len(raw_packet))
         # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)
 
         parsed_obj = pkt_factory.parse(raw_packet)
         if not parsed_obj:
+            # TODO: enhance with more info about the malformed packet if possible (e.g. header info)
+            # Get parser failure reason and put that as a subcategory
+            self.m_stats.track_custom_raw("MALFORMED_PKT", "", len(raw_packet))
             return
 
         self.m_stats.track_parsed(
@@ -154,6 +157,7 @@ class AsyncF1TelemetryManager:
             await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
         except Exception as e:
             packet_file = self._dumpPacketToFile(parsed_obj)
+            self.m_stats.track_custom("CALLBACK_EXCEPTION", parsed_obj.m_header.m_packetId, len(raw_packet))
             self.m_logger.exception(
                 "Exception while handling packet callback.\n"
                 "Packet type: %s\nException type: %s\nMessage: %s\n"
