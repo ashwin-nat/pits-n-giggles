@@ -601,18 +601,10 @@ class PngLauncherWindow(QMainWindow):
             filename = obj['filename']
             lineno = obj['lineno']
             text = obj['message']
+            stack = obj.get("stack")
 
-            # --- console message (NO STACKTRACE) ---
-            if stack := obj.get("stack"):
-                console_text = f"{text} (stack trace written to log file)"
-            else:
-                console_text = text
+            # ---------------- FILE MESSAGE (always written) ----------------
 
-            console_msg = self.format_log_message_colored_child(
-                timestamp, console_text, level, src
-            )
-
-            # --- file log message (WITH STACKTRACE if present) ---
             if stack:
                 file_text = f"{text}\n{stack}"
             else:
@@ -622,8 +614,23 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, file_text, level, filename, lineno, src
             )
 
+            # ---------------- CONSOLE MESSAGE (skip if SILENT) ----------------
+
+            console_msg = None
+            if level != "SILENT":
+                if stack:
+                    console_text = f"{text} (stack trace written to log file)"
+                else:
+                    console_text = text
+
+                console_msg = self.format_log_message_colored_child(
+                    timestamp, console_text, level, src
+                )
+
         except json.JSONDecodeError:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+            # Unknown messages always go everywhere
             console_msg = self.format_log_unknown_message_colored_child(
                 timestamp, message, src
             )
@@ -631,11 +638,13 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, message, src
             )
 
-        # Write to console widget (short message)
-        if self.console:
+        # ---------------- WRITE OUTPUT ----------------
+
+        # Console (only if not SILENT)
+        if self.console and console_msg is not None:
             self.console.append_log(console_msg)
 
-        # Write to rotating file logger (full message)
+        # File (always)
         self.logger.info(log_msg)
 
     def _write_log_self(self, message: str, level: str):

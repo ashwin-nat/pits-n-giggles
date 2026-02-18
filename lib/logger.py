@@ -29,6 +29,28 @@ import json
 from datetime import datetime
 from typing import Optional
 
+
+# -------------------------------------- CUSTOM LOG LEVEL ---------------------------------------------------------------
+
+SILENT_LEVEL = 15  # Between DEBUG (10) and INFO (20)
+
+logging.addLevelName(SILENT_LEVEL, "SILENT")
+
+
+# -------------------------------------- LOGGER CLASS ------------------------------------------------------------------
+
+class PngLogger(logging.Logger):
+    """Custom logger with SILENT level support."""
+
+    def silent(self, message: str, *args, **kwargs) -> None:
+        if self.isEnabledFor(SILENT_LEVEL):
+            self._log(SILENT_LEVEL, message, args, **kwargs)
+
+
+# Tell logging module to use our logger class
+logging.setLoggerClass(PngLogger)
+
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def get_logger(
@@ -36,7 +58,7 @@ def get_logger(
     debug_mode: bool = False,
     jsonl: bool = False,
     file_path: Optional[str] = None,
-) -> logging.Logger:
+) -> PngLogger:
     """Initialize and configure the logger.
 
     Args:
@@ -46,52 +68,47 @@ def get_logger(
         file_path (Optional[str], optional): The path to the log file. Defaults to None.
 
     Returns:
-        logging.Logger: The configured logger.
+        PngLogger: The configured logger instance.
     """
 
-    png_logger = logging.getLogger(name)
-    png_logger.propagate = False
+    logger = logging.getLogger(name)
+    logger.propagate = False
 
-    # Optionally enforce "create once" rule
-    assert not png_logger.handlers, f"Logger '{name}' already initialized"
+    assert not logger.handlers, f"Logger '{name}' already initialized"
 
-    png_logger.setLevel(logging.DEBUG if debug_mode else logging.INFO)
+    # DEBUG mode -> everything
+    # Normal mode -> SILENT and above
+    logger.setLevel(logging.DEBUG if debug_mode else SILENT_LEVEL)
 
-    # Choose formatters
+    # Choose formatter
     if jsonl:
         ts_fmt = "%Y-%m-%d %H:%M:%S.%f"
         console_formatter = JsonlFormatter(datefmt=ts_fmt)
-        file_formatter    = JsonlFormatter(datefmt=ts_fmt)
+        file_formatter = JsonlFormatter(datefmt=ts_fmt)
     else:
         text_fmt = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
-        ts_fmt   = "%Y-%m-%d %H:%M:%S"
+        ts_fmt = "%Y-%m-%d %H:%M:%S"
         console_formatter = logging.Formatter(text_fmt, ts_fmt)
-        file_formatter    = logging.Formatter(text_fmt, ts_fmt)
+        file_formatter = logging.Formatter(text_fmt, ts_fmt)
 
-    # Console handler (always)
+    # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(console_formatter)
-    png_logger.addHandler(console_handler)
+    logger.addHandler(console_handler)
 
-    # File handler (optional)
+    # Optional file handler
     if file_path:
         _clearFileIfRequired(file_path, max_size=1000000)
         file_handler = logging.FileHandler(
             file_path, mode="a", encoding="utf-8", delay=False
         )
         file_handler.setFormatter(file_formatter)
-        png_logger.addHandler(file_handler)
+        logger.addHandler(file_handler)
 
-    return png_logger
+    return logger
+
 
 def _clearFileIfRequired(file_name: str, max_size: int) -> None:
-    """Clear the file if it is larger than 1 MB.
-
-    Args:
-        file_name (str): The name of the file to clear.
-        max_size (int): The maximum size of the file in bytes.
-    """
-
     if os.path.exists(file_name):
         file_size = os.path.getsize(file_name)
         if file_size > max_size:
