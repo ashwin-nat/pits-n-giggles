@@ -25,6 +25,7 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -236,6 +237,10 @@ class F1TelemetryHandler:
             self.m_manager_task.cancel()
         self.m_wdt.stop()
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
+
+        stats = self.m_manager.getStats()
+        assert stats
+        self.m_logger.info(f"Telemetry stats at shutdown: {json.dumps(stats, indent=2)}")
 
     def getWatchdogTask(self) -> Coroutine:
         """
