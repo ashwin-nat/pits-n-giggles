@@ -142,10 +142,10 @@ class AsyncF1TelemetryManager:
 
         parsed_obj = pkt_factory.parse(raw_packet)
         if not parsed_obj:
-            # TODO: enhance with more info about the malformed packet if possible (e.g. header info)
-            # Get parser failure reason and put that as a subcategory
-            reason = "PLACEHOLDER_REASON"
-            self.m_stats.track("MALFORMED_PKT", reason, len(raw_packet))
+            self.m_stats.track(
+                "__DROPPED_PACKETS__",
+                pkt_factory.last_failure_reason or "N/A",
+                len(raw_packet))
             return
 
         # Perform the registered callback
