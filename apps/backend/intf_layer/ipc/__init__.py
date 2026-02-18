@@ -60,7 +60,7 @@ def registerIpcTask(
         server = IpcServerAsync(name="Backend")
         report_ipc_port_from_child(server.port)
         logger.debug("Started IPC server on port %d", server.port)
-        server.register_shutdown_callback(partial(handleShutdown, logger=logger))
+        server.register_shutdown_callback(partial(handleShutdown, logger=logger, telemetry_handler=telemetry_handler))
         server.register_heartbeat_missed_callback(partial(handleHeartbeatMissed, logger=logger))
         tasks.append(asyncio.create_task(server.run(partial(
             processIpcCommand, logger=logger, session_state=session_state, telemetry_handler=telemetry_handler)),

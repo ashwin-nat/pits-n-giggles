@@ -666,6 +666,14 @@ class F1TelemetryHandler:
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
 
+    def getStats(self) -> Dict[str, Any]:
+        """Get telemetry handler stats.
+
+        Returns:
+            Dict[str, Any]: The telemetry handler stats.
+        """
+        return self.m_manager.getStats()
+
     def _shouldSaveData(self) -> bool:
         """
         Check if data should be saved based on the current session type.
