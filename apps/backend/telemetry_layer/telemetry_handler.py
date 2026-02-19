@@ -32,6 +32,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
+from lib.event_counter import EventCounter
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -168,6 +169,7 @@ class F1TelemetryHandler:
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_version: str = ver_str
@@ -668,7 +670,10 @@ class F1TelemetryHandler:
         Returns:
             Dict[str, Any]: The telemetry handler stats.
         """
-        return self.m_manager.getStats()
+        return {
+            "__UDP_ACTION_BUTTONS__" : self.m_udp_action_stats.get_stats(),
+            **self.m_manager.getStats()
+        }
 
     def _shouldSaveData(self) -> bool:
         """
@@ -787,5 +792,7 @@ class F1TelemetryHandler:
             coro (Callable[[], Awaitable[None]]): The coroutine to execute.
         """
         if self._isUdpActionButtonPressed(buttons, code):
+            self.m_udp_action_stats.track('__UDP_ACTIONS__', name, 0)
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
+
