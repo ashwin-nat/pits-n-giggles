@@ -129,9 +129,14 @@ def _shutdown_handler(
     """
 
     logger.debug("In shutdown handler")
+    stats = overlays_mgr.get_stats()
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
                      name="Shutdown tasks").start()
-    return {"status": "success", "message": "Shutting down HUD manager"}
+    return {
+        "status": "success",
+        "message": "Shutting down HUD manager",
+        "stats": stats,
+    }
 
 def _stop_other_tasks(
         args: dict,

@@ -122,6 +122,7 @@ class BaseOverlay():
         self.opacity = opacity
         self.scale_factor = scale_factor
         self.telemetry_active = True
+
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
@@ -262,9 +263,12 @@ class BaseOverlay():
         return self._stats.get_stats()
 
     def _track_event(self, event_type: str) -> None:
-        self._stats.track("events", "__total__", 0)
-        self._stats.track("events", event_type, 0)
+        self._stats.track("__EVENTS__", "__TOTAL__", 0)
+        self._stats.track("__EVENTS__", event_type, 0)
 
+    def _track_hf_event(self, event_type: str) -> None:
+        self._stats.track("__HF_EVENTS__", "__TOTAL__", 0)
+        self._stats.track("__HF_EVENTS__", event_type, 0)
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -277,11 +281,11 @@ class BaseOverlay():
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
 
-        @self.on_request("get_stats")
+        @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
-            """Return overlay stats."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_stats"')
-            return serialise_data(self.get_stats())
+            """Return current window stats."""
+            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
+            return serialise_data(self._stats.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -356,6 +360,8 @@ class BaseOverlay():
             raise # We want to crash on assertions for debugging
         except Exception as e: # pylint: disable=broad-except
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
+            self._stats.track("__EXCEPTION__", cmd, len(data))
+            raise # Re-raise to ensure the error is visible and can be debugged
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
@@ -397,9 +403,9 @@ class BaseOverlay():
 
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload
+            self._track_hf_event(payload.__hf_type__)
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
-            self._track_event(payload.__hf_type__)
             try:
                 handler(payload)
             except AssertionError:
