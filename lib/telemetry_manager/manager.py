@@ -160,7 +160,7 @@ class AsyncF1TelemetryManager:
             packet_file = self._dumpPacketToFile(parsed_obj)
             self.m_stats.track_packet(
                 "__EXCEPTION_CB__",
-                parsed_obj.m_header.m_packetId,
+                str(parsed_obj.m_header.m_packetId),
                 len(raw_packet))
             self.m_logger.exception(
                 "Exception while handling packet callback.\n"

@@ -25,7 +25,7 @@
 import logging
 import threading
 import time
-from typing import List, Optional
+from typing import Optional
 
 import zmq
 
@@ -77,11 +77,16 @@ class IpcPubSubBroker:
         self.xpub.setsockopt(zmq.LINGER, 0)
         self.xpub.setsockopt(zmq.XPUB_VERBOSE, 1)
 
+        self._capture: zmq.Socket = self.ctx.socket(zmq.PUB)
+        self._capture.setsockopt(zmq.LINGER, 0)
+        self._capture.bind(f"inproc://{self.name}-capture")
+
         try:
             self.xsub.bind(f"tcp://{self.host}:{xsub_port}")
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
             self.xpub.close(linger=0)
+            self._capture.close(linger=0)
             if e.errno == zmq.EADDRINUSE:
                 raise PngXsubPortInUseError(f"{self.name}: XSUB port already in use ({xsub_port})") from e
             raise
@@ -91,6 +96,7 @@ class IpcPubSubBroker:
         except zmq.ZMQError as e:
             self.xsub.close(linger=0)
             self.xpub.close(linger=0)
+            self._capture.close(linger=0)
             if e.errno == zmq.EADDRINUSE:
                 raise PngXpubPortInUseError(f"{self.name}: XPUB port already in use ({xpub_port})") from e
             raise
@@ -117,63 +123,29 @@ class IpcPubSubBroker:
         )
 
         self._thread: Optional[threading.Thread] = None
+        self._stats_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def _handle_message_forward(self, msg: List[bytes]) -> None:
-        """Handle incoming message and forward to subscribers"""
-        if not msg:
-            return
-
-        topic = msg[0].decode('utf-8', errors='replace')
-        total_size = sum(len(part) for part in msg)
-
-        # Track incoming
-        self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
-        self.stats.track_packet(topic, "__INCOMING__", total_size)
-
-        # Forward to subscribers
-        self.xpub.send_multipart(msg)
-
-        # Track outgoing
-        self.stats.track_packet("__OVERALL__", "__OUTGOING__", total_size)
-        self.stats.track_packet(topic, "__OUTGOING__", total_size)
-
-    def _handle_subscription(self, msg: list) -> None:
-        """Handle subscription messages"""
-        self.xsub.send_multipart(msg)
-
     def run(self):
         """
-        Blocking broker loop with statistics collection.
+        Blocking broker loop with steerable proxy and capture stream.
         This should be run in its own process OR thread.
         """
         self.logger.debug(
             f"{self.name} running: "
             f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
         )
-
-        poller = zmq.Poller()
-        poller.register(self.xsub, zmq.POLLIN)
-        poller.register(self.xpub, zmq.POLLIN)
-        poller.register(self._control_client, zmq.POLLIN)
-
         try:
-            while True:
-                events = dict(poller.poll())
-
-                if self._control_client in events:
-                    if self._control_client.recv() == b"TERMINATE":
-                        break
-
-                if self.xsub in events:
-                    self._handle_message_forward(self.xsub.recv_multipart())
-
-                if self.xpub in events:
-                    self._handle_subscription(self.xpub.recv_multipart())
-
+            zmq.proxy_steerable(
+                self.xsub,
+                self.xpub,
+                self._capture,
+                self._control_client,
+            )
         except zmq.ZMQError as e:
             self.logger.debug("Broker proxy exited: %s", e)
         finally:
@@ -186,12 +158,23 @@ class IpcPubSubBroker:
         if self._thread and self._thread.is_alive():
             return self._thread
 
+        self._stop_event.clear()
+
         self._thread = threading.Thread(
             target=self.run,
             daemon=True,
             name=name,
         )
         self._thread.start()
+
+        if not self._stats_thread or not self._stats_thread.is_alive():
+            self._stats_thread = threading.Thread(
+                target=self._capture_loop,
+                daemon=True,
+                name=f"{name}-stats",
+            )
+            self._stats_thread.start()
+
         return self._thread
 
     def get_stats(self) -> dict:
@@ -208,12 +191,9 @@ class IpcPubSubBroker:
             **self.stats.get_stats()
         }
 
-    def reset_stats(self):
-        """Reset all statistics to zero"""
-        self.stats = EventCounter()
-        self._start_time = time.time()
-
     def close(self):
+        self._stop_event.set()
+
         try:
             self.control.send(b"TERMINATE")
         except Exception:
@@ -222,7 +202,16 @@ class IpcPubSubBroker:
         if self._thread:
             self._thread.join(timeout=0.2)
 
-        for sock in (self.xsub, self.xpub, self.control, self._control_client):
+        if self._stats_thread:
+            self._stats_thread.join(timeout=0.2)
+
+        for sock in (
+            self.xsub,
+            self.xpub,
+            self._capture,
+            self.control,
+            self._control_client,
+        ):
             try:
                 sock.close(linger=0)
             except Exception:
@@ -234,3 +223,42 @@ class IpcPubSubBroker:
             pass
 
         self.logger.debug("%s closed", self.name)
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _capture_loop(self) -> None:
+        """Receive proxied traffic from capture socket and update packet stats."""
+        sock = self.ctx.socket(zmq.SUB)
+        sock.setsockopt(zmq.LINGER, 0)
+        sock.setsockopt(zmq.SUBSCRIBE, b"")
+        sock.connect(f"inproc://{self.name}-capture")
+
+        try:
+            poller = zmq.Poller()
+            poller.register(sock, zmq.POLLIN)
+
+            while not self._stop_event.is_set():
+                events = dict(poller.poll(timeout=100))
+                if sock not in events:
+                    continue
+
+                try:
+                    msg = sock.recv_multipart(flags=zmq.NOBLOCK)
+                except zmq.Again:
+                    continue
+                if not msg:
+                    continue
+
+                topic = msg[0].decode("utf-8", errors="replace")
+                total_size = sum(len(part) for part in msg)
+
+                self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
+                self.stats.track_packet(topic, "__INCOMING__", total_size)
+                self.stats.track_packet("__OVERALL__", "__OUTGOING__", total_size)
+                self.stats.track_packet(topic, "__OUTGOING__", total_size)
+        except zmq.ZMQError:
+            pass
+        finally:
+            sock.close(linger=0)

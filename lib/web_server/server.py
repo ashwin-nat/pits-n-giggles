@@ -80,6 +80,7 @@ class BaseWebServer:
             self.m_client_event_mappings: Dict[ClientType, List[str]] = {}
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_register_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
+        self._on_client_disconnect_callback: Optional[Callable[[str], Awaitable[None]]] = None
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -337,12 +338,12 @@ class BaseWebServer:
         """
         self._on_client_register_callback = callback
 
-    def register_on_client_disconnect_callback(self, callback: Callable[[ClientType, str], Awaitable[None]]) -> None:
+    def register_on_client_disconnect_callback(self, callback: Callable[[str], Awaitable[None]]) -> None:
         """
         Register a coroutine to run when a client disconnects.
 
         Args:
-            callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client disconnects
+            callback (Callable[[str], Awaitable[None]]): An async function to be run when a client disconnects
                 Should support 1 arguments: the session ID.
         """
         self._on_client_disconnect_callback = callback
