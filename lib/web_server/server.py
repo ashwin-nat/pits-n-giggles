@@ -79,7 +79,7 @@ class BaseWebServer:
         else:
             self.m_client_event_mappings: Dict[ClientType, List[str]] = {}
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
-        self._on_client_connect_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
+        self._on_client_register_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -165,6 +165,8 @@ class BaseWebServer:
                 sid (str): Session ID of the disconnected client.
             """
             self.m_logger.debug("Client disconnected: %s", sid)
+            if self._on_client_disconnect_callback:
+                await self._on_client_disconnect_callback(sid)
 
         @self.m_sio.on('register-client')
         async def handleClientRegistration(sid: str, data: Dict[str, str]) -> None:
@@ -184,8 +186,8 @@ class BaseWebServer:
 
             if client_type in {'player-stream-overlay', 'race-table', 'hud'}:
                 await self.m_sio.enter_room(sid, client_type)
-                if self._on_client_connect_callback:
-                    await self._on_client_connect_callback(ClientType(client_type), sid)
+                if self._on_client_register_callback:
+                    await self._on_client_register_callback(ClientType(client_type), sid)
                 if self.m_debug_mode:
                     self.m_logger.debug('[CLIENT_REG] Client %s joined room %s', sid, client_type)
 
@@ -325,15 +327,25 @@ class BaseWebServer:
         """
         self._post_start_callback = callback
 
-    def register_on_client_connect_callback(self, callback: Callable[[ClientType, str], Awaitable[None]]) -> None:
+    def register_on_client_register_callback(self, callback: Callable[[ClientType, str], Awaitable[None]]) -> None:
         """
-        Register a coroutine to run when a client connects.
+        Register a coroutine to run when a client registers.
 
         Args:
-            callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client connects.
+            callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client registers
                 Should support two arguments: the client type and the session ID.
         """
-        self._on_client_connect_callback = callback
+        self._on_client_register_callback = callback
+
+    def register_on_client_disconnect_callback(self, callback: Callable[[ClientType, str], Awaitable[None]]) -> None:
+        """
+        Register a coroutine to run when a client disconnects.
+
+        Args:
+            callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client disconnects
+                Should support two arguments: the client type and the session ID.
+        """
+        self._on_client_disconnect_callback = callback
 
     def _define_static_file_routes(self) -> None:
         """
