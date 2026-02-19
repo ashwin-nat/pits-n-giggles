@@ -86,7 +86,7 @@ def run_ipc_task(
     logger.debug("Started IPC server on port %d", ipc_server.port)
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
-        shm_reader=ipc_sub))
+        ipc_sub=ipc_sub))
     ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
@@ -112,8 +112,8 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
 def _shutdown_handler(
-        args: dict, logger:
-        logging.Logger,
+        args: dict,
+        logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
         ipc_sub: IpcSubscriberSync
@@ -128,6 +128,7 @@ def _shutdown_handler(
         ipc_sub (PngShmReader): Shared memory reader
     """
 
+    logger.debug("In shutdown handler")
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
                      name="Shutdown tasks").start()
     return {"status": "success", "message": "Shutting down HUD manager"}
