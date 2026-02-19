@@ -77,7 +77,7 @@ class MfdPageBase:
             try:
                 handler(data)
             except Exception:
-                self._stats.track("__EXCEPTION__", event_type, 0)
+                self._stats.track_event("__EXCEPTION__", event_type)
                 raise
 
     def get_stats(self) -> dict:
@@ -85,8 +85,8 @@ class MfdPageBase:
         return self._stats.get_stats()
 
     def _track_event(self, event_type: str) -> None:
-        self._stats.track("__EVENTS__", "__TOTAL__", 0)
-        self._stats.track("__EVENTS__", event_type, 0)
+        self._stats.track_event("__EVENTS__", "__TOTAL__")
+        self._stats.track_event("__EVENTS__", event_type)
 
     @property
     def root(self):
@@ -99,13 +99,13 @@ class MfdPageBase:
     def on_page_activated(self, item: QQuickItem):
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = item
-        self._stats.track("__LIFECYCLE__", "activated", 0)
+        self._stats.track_event("__LIFECYCLE__", "activated")
         self.logger.debug(f"{self.KEY} | Page activated")
 
     def on_page_deactivated(self):
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = None
-        self._stats.track("__LIFECYCLE__", "deactivated", 0)
+        self._stats.track_event("__LIFECYCLE__", "deactivated")
         self.logger.debug(f"{self.KEY} | Page deactivated")
 
     @property

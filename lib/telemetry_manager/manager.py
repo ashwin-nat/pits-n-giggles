@@ -135,14 +135,14 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
-        self.m_stats.track("__RAW__", "__RAW__", len(raw_packet))
+        self.m_stats.track_packet("__RAW__", "__RAW__", len(raw_packet))
         # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)
 
         parsed_obj = pkt_factory.parse(raw_packet)
         if not parsed_obj:
-            self.m_stats.track(
+            self.m_stats.track_packet(
                 "__DROPPED_PACKETS__",
                 pkt_factory.last_failure_reason or "N/A",
                 len(raw_packet))
@@ -151,14 +151,14 @@ class AsyncF1TelemetryManager:
         # Perform the registered callback
         try:
             await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
-            self.m_stats.track(
+            self.m_stats.track_packet(
                 "__PROCESSED__",
                 str(parsed_obj.m_header.m_packetId),
                 len(raw_packet),
             )
         except Exception as e:
             packet_file = self._dumpPacketToFile(parsed_obj)
-            self.m_stats.track(
+            self.m_stats.track_packet(
                 "__EXCEPTION_CB__",
                 parsed_obj.m_header.m_packetId,
                 len(raw_packet))

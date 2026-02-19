@@ -25,7 +25,6 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
@@ -792,7 +791,7 @@ class F1TelemetryHandler:
             coro (Callable[[], Awaitable[None]]): The coroutine to execute.
         """
         if self._isUdpActionButtonPressed(buttons, code):
-            self.m_udp_action_stats.track('__UDP_ACTIONS__', name, 0)
+            self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
 

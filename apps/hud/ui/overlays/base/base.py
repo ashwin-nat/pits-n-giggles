@@ -263,12 +263,12 @@ class BaseOverlay():
         return self._stats.get_stats()
 
     def _track_event(self, event_type: str) -> None:
-        self._stats.track("__EVENTS__", "__TOTAL__", 0)
-        self._stats.track("__EVENTS__", event_type, 0)
+        self._stats.track_event("__EVENTS__", "__TOTAL__")
+        self._stats.track_event("__EVENTS__", event_type)
 
     def _track_hf_event(self, event_type: str) -> None:
-        self._stats.track("__HF_EVENTS__", "__TOTAL__", 0)
-        self._stats.track("__HF_EVENTS__", event_type, 0)
+        self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
+        self._stats.track_event("__HF_EVENTS__", event_type)
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -360,7 +360,7 @@ class BaseOverlay():
             raise # We want to crash on assertions for debugging
         except Exception as e:
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
-            self._stats.track("__EXCEPTION__", cmd, len(data))
+            self._stats.track_event("__EXCEPTION__", cmd)
             raise # Re-raise to ensure the error is visible and can be debugged
 
     @Slot(str, str, dict)

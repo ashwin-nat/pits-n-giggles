@@ -31,7 +31,23 @@ from typing import Dict
 @dataclass(slots=True)
 class Stat:
     count: int = 0
+
+    def increment(self) -> None:
+        self.count += 1
+
+    def to_dict(self) -> dict:
+        return {
+            "count": self.count,
+        }
+
+
+@dataclass(slots=True)
+class PacketStat(Stat):
     bytes: int = 0
+
+    def increment_with_size(self, size: int) -> None:
+        self.count += 1
+        self.bytes += size
 
     def to_dict(self) -> dict:
         return {
@@ -46,30 +62,38 @@ class EventCounter:
     Structure:
         category -> subcategory -> Stat
 
-    Example:
-        tracker.track("udp", "raw", 1200)
-        tracker.track("udp", "parsed", 800)
-        tracker.track("zmq", "forwarded", 1024)
+    Caller is responsible for using the correct API:
+        - track_event()
+        - track_packet()
     """
 
     def __init__(self) -> None:
-        self._stats: Dict[str, Dict[str, Stat]] = defaultdict(
-            lambda: defaultdict(Stat)
-        )
+        # Only outer level uses defaultdict
+        self._stats: Dict[str, Dict[str, Stat]] = defaultdict(dict)
 
     # --------------------------------------------------
-    # Tracking
+    # Tracking APIs
     # --------------------------------------------------
 
-    def track(
-        self,
-        category: str,
-        subcategory: str,
-        size: int,
-    ) -> None:
-        stat = self._stats[category][subcategory]
-        stat.count += 1
-        stat.bytes += size
+    def track_event(self, category: str, subcategory: str) -> None:
+        bucket = self._stats[category]
+
+        stat = bucket.get(subcategory)
+        if stat is None:
+            stat = Stat()
+            bucket[subcategory] = stat
+
+        stat.increment()
+
+    def track_packet(self, category: str, subcategory: str, size: int) -> None:
+        bucket = self._stats[category]
+
+        stat = bucket.get(subcategory)
+        if stat is None:
+            stat = PacketStat()
+            bucket[subcategory] = stat
+
+        stat.increment_with_size(size)
 
     # --------------------------------------------------
     # Access
@@ -83,4 +107,3 @@ class EventCounter:
             }
             for category, bucket in self._stats.items()
         }
-

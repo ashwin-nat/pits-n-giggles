@@ -307,7 +307,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self.render_frame()
 
     def _track_frame(self) -> None:
-        self._stats.track("__FRAMES__", "__RENDERED__", 0)
+        self._stats.track_event("__FRAMES__", "__RENDERED__")
 
     def render_frame(self):
         """Derived classes must implement this method."""

@@ -131,15 +131,15 @@ class IpcPubSubBroker:
         total_size = sum(len(part) for part in msg)
 
         # Track incoming
-        self.stats.track("__OVERALL__", "__INCOMING__", total_size)
-        self.stats.track(topic, "__INCOMING__", total_size)
+        self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
+        self.stats.track_packet(topic, "__INCOMING__", total_size)
 
         # Forward to subscribers
         self.xpub.send_multipart(msg)
 
         # Track outgoing
-        self.stats.track("__OVERALL__", "__OUTGOING__", total_size)
-        self.stats.track(topic, "__OUTGOING__", total_size)
+        self.stats.track_packet("__OVERALL__", "__OUTGOING__", total_size)
+        self.stats.track_packet(topic, "__OUTGOING__", total_size)
 
     def _handle_subscription(self, msg: list) -> None:
         """Handle subscription messages"""
