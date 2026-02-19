@@ -76,7 +76,7 @@ class MfdPageBase:
             self._track_event(event_type)
             try:
                 handler(data)
-            except Exception: # pylint: disable=broad-exception-caught
+            except Exception:
                 self._stats.track("__EXCEPTION__", event_type, 0)
                 raise
 

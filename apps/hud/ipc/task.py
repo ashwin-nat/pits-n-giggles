@@ -36,6 +36,7 @@ from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 from .handlers import (handle_lock_widgets, handle_mfd_interact,
                        handle_next_page, handle_prev_page, handle_set_opacity,
+                       handle_get_stats,
                        handle_set_overlays_layout,
                        handle_set_track_radar_idle_opacity,
                        handle_set_ui_scale, handle_toggle_visibility)
@@ -56,6 +57,7 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "set-overlays-layout": handle_set_overlays_layout,
     "set-ui-scale": handle_set_ui_scale,
     "set-track-radar-idle-opacity": handle_set_track_radar_idle_opacity,
+    "get-stats": handle_get_stats,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -129,13 +131,11 @@ def _shutdown_handler(
     """
 
     logger.debug("In shutdown handler")
-    stats = overlays_mgr.get_stats()
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
                      name="Shutdown tasks").start()
     return {
         "status": "success",
         "message": "Shutting down HUD manager",
-        "stats": stats,
     }
 
 def _stop_other_tasks(

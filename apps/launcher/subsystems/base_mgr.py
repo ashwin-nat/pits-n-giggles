@@ -602,8 +602,15 @@ class PngAppMgrBase(QObject):
             return False
 
         try:
-            rsp = IpcClientSync(self.ipc_port).shutdown_child(reason)
-            self._stats = rsp.get("stats")
+            ipc_client = IpcClientSync(self.ipc_port)
+            stats_rsp = ipc_client.get_stats()
+            if stats_rsp.get("status") == "success":
+                self._stats = stats_rsp.get("stats")
+            else:
+                self.debug_log(f"IPC get-stats failed: {stats_rsp}")
+                self._stats = None
+
+            rsp = ipc_client.shutdown_child(reason)
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"IPC shutdown failed: {e}")

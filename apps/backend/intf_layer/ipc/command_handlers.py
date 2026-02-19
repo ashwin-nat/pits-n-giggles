@@ -42,16 +42,25 @@ async def handleManualSave(
     """Handle manual save command"""
     return await ManualSaveRsp(logger, session_state).saveToDisk()
 
-async def handleShutdown(msg: dict, logger: logging.Logger, telemetry_handler: F1TelemetryHandler) -> dict:
+async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     """Handle shutdown command"""
 
     reason = msg.get('reason', 'N/A')
     logger.info(f"Received shutdown command. Reason: {reason}")
-    stats = telemetry_handler.getStats()
     await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
     return {
         'status': 'success',
-        'stats': stats,
+    }
+
+async def handleGetStats(
+        _msg: dict,
+        _logger: logging.Logger,
+        _session_state: SessionState,
+        telemetry_handler: F1TelemetryHandler) -> dict:
+    """Handle get-stats command."""
+    return {
+        "status": "success",
+        "stats": telemetry_handler.getStats(),
     }
 
 async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
