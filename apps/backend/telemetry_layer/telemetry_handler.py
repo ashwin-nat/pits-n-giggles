@@ -25,13 +25,13 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
+from lib.event_counter import EventCounter
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -45,6 +45,7 @@ from lib.inter_task_communicator import (
     HudCycleMfdNotification, HudMfdInteractionNotification,
     HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
     TyreDeltaNotificationMessageCollection)
+from lib.logger import PngLogger
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
 from lib.wdt import WatchDogTimerAsync
@@ -94,7 +95,7 @@ def setupTelemetryTask(
         settings: PngSettings,
         replay_server: bool,
         session_state: SessionState,
-        logger: logging.Logger,
+        logger: PngLogger,
         ver_str: str,
         tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
@@ -103,7 +104,7 @@ def setupTelemetryTask(
         settings (PngSettings): App settings
         replay_server (bool): Whether to enable the TCP replay debug server.
         session_state (SessionState): Handle to the session state
-        logger (logging.Logger): Logger instance
+        logger (PngLogger): Logger instance
         ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
 
@@ -135,7 +136,7 @@ class F1TelemetryHandler:
 
     def __init__(self,
         settings: PngSettings,
-        logger: logging.Logger,
+        logger: PngLogger,
         session_state: SessionState,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
@@ -146,7 +147,7 @@ class F1TelemetryHandler:
             - settings (PngSettings): Png settings
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
-            - logger (logging.Logger): Logger
+            - logger (PngLogger): Logger
             - capture_settings (CaptureSettings): Capture settings
             - wdt_interval (float): Watchdog interval
             - udp_custom_action_code (Optional[int]): UDP custom action code.
@@ -159,7 +160,7 @@ class F1TelemetryHandler:
             logger=logger,
             replay_server=replay_server
         )
-        self.m_logger: logging.Logger = logger
+        self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
 
         self.m_last_session_uid: Optional[int] = None
@@ -167,6 +168,7 @@ class F1TelemetryHandler:
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_version: str = ver_str
@@ -661,6 +663,17 @@ class F1TelemetryHandler:
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
 
+    def getStats(self) -> Dict[str, Any]:
+        """Get telemetry handler stats.
+
+        Returns:
+            Dict[str, Any]: The telemetry handler stats.
+        """
+        return {
+            "__UDP_ACTION_BUTTONS__" : self.m_udp_action_stats.get_stats(),
+            **self.m_manager.getStats()
+        }
+
     def _shouldSaveData(self) -> bool:
         """
         Check if data should be saved based on the current session type.
@@ -778,5 +791,7 @@ class F1TelemetryHandler:
             coro (Callable[[], Awaitable[None]]): The coroutine to execute.
         """
         if self._isUdpActionButtonPressed(buttons, code):
+            self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
+

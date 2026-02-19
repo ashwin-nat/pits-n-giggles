@@ -167,6 +167,17 @@ class OverlaysMgr:
             Qt.ConnectionType.QueuedConnection
         )
 
+    def get_stats(self) -> Dict[str, Any]:
+        """Get current stats for all overlays
+
+        Returns:
+            Dict[str, Any]: A dictionary containing stats for each overlay
+        """
+        return {
+            overlay_id: self._get_overlay_stats(overlay_id)
+            for overlay_id in self.window_manager.overlays
+        }
+
     # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
     def race_table_update(self, data: Dict[str, Any]):
@@ -335,6 +346,11 @@ class OverlaysMgr:
         if not ret:
             return None
         return OverlayPosition.fromJSON(ret)
+
+    def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
+        """Thread-safe query for specific window info."""
+        self.logger.debug(f"Requesting window stats for {overlay_id}")
+        return self.window_manager.request(overlay_id, "get_window_stats", timeout_ms=timeout_ms)
 
     def _register_overlay_if_enabled(
         self,

@@ -204,3 +204,10 @@ def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overl
         overlays_mgr.set_track_radar_idle_opacity(opacity)
         return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
     return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
+
+def handle_get_stats(_msg: dict, _logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+    """Handle the 'get-stats' IPC command."""
+    return {
+        "status": "success",
+        "stats": overlays_mgr.get_stats(),
+    }

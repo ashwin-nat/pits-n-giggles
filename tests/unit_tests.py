@@ -90,6 +90,7 @@ from tests.tests_rate_limiter import TestRateLimiter
 from tests.tests_rolling_history import TestRollingHistory
 from tests.tests_wdt import TestWatchDogTimerAsync, TestWatchDogTimerSync
 from tests.tests_pending_events import TestPendingEventsManager
+from tests.tests_event_counter import TestEventCounter
 
 # Initialize colorama
 init(autoreset=True)

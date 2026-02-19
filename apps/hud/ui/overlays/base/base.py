@@ -34,6 +34,7 @@ from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
+from lib.event_counter import EventCounter
 from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -121,11 +122,13 @@ class BaseOverlay():
         self.opacity = opacity
         self.scale_factor = scale_factor
         self.telemetry_active = True
+
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
         self._hf_subscriptions: Set[str] = set()
+        self._stats = EventCounter()
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
@@ -255,6 +258,17 @@ class BaseOverlay():
         """Get the latest high frequency data of a specific type."""
         return self._latest_hf.get(type_.__hf_type__)
 
+    def get_stats(self) -> dict:
+        """Get overlay runtime stats."""
+        return self._stats.get_stats()
+
+    def _track_event(self, event_type: str) -> None:
+        self._stats.track_event("__EVENTS__", "__TOTAL__")
+        self._stats.track_event("__EVENTS__", event_type)
+
+    def _track_hf_event(self, event_type: str) -> None:
+        self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
+        self._stats.track_event("__HF_EVENTS__", event_type)
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -266,6 +280,12 @@ class BaseOverlay():
             """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
+
+        @self.on_request("get_window_stats")
+        def _get_stats(_data: dict):
+            """Return current window stats."""
+            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
+            return serialise_data(self.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -331,14 +351,17 @@ class BaseOverlay():
         handler = self._command_handlers.get(cmd)
         if not handler:
             return
+        self._track_event(cmd)
         parsed = deserialise_data(data)
         try:
             handler(parsed)
         except AssertionError:
             self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
             raise # We want to crash on assertions for debugging
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
+            self._stats.track_event("__EXCEPTION__", cmd)
+            raise # Re-raise to ensure the error is visible and can be debugged
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
@@ -380,6 +403,7 @@ class BaseOverlay():
 
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload
+            self._track_hf_event(payload.__hf_type__)
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
             try:

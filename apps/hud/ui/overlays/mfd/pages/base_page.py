@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict
 
 from PySide6.QtQuick import QQuickItem
 
+from lib.event_counter import EventCounter
+
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd import MfdOverlay
 
@@ -51,6 +53,7 @@ class MfdPageBase:
         self._page_item = None
         self.logger = logger
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+        self._stats = EventCounter()
 
     def on_event(self, event_type: str):
         """Decorator to register an event handler for this page."""
@@ -70,7 +73,20 @@ class MfdPageBase:
     def handle_event(self, event_type: str, data: Dict[str, Any]):
         """Handle an event if this page has a handler registered for it."""
         if handler := self._handlers.get(event_type):
-            handler(data)
+            self._track_event(event_type)
+            try:
+                handler(data)
+            except Exception:
+                self._stats.track_event("__EXCEPTION__", event_type)
+                raise
+
+    def get_stats(self) -> dict:
+        """Get page runtime stats."""
+        return self._stats.get_stats()
+
+    def _track_event(self, event_type: str) -> None:
+        self._stats.track_event("__EVENTS__", "__TOTAL__")
+        self._stats.track_event("__EVENTS__", event_type)
 
     @property
     def root(self):
@@ -83,11 +99,13 @@ class MfdPageBase:
     def on_page_activated(self, item: QQuickItem):
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = item
+        self._stats.track_event("__LIFECYCLE__", "activated")
         self.logger.debug(f"{self.KEY} | Page activated")
 
     def on_page_deactivated(self):
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = None
+        self._stats.track_event("__LIFECYCLE__", "deactivated")
         self.logger.debug(f"{self.KEY} | Page deactivated")
 
     @property
