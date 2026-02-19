@@ -34,6 +34,7 @@ from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
+from lib.event_counter import EventCounter
 from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -126,6 +127,7 @@ class BaseOverlay():
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
         self._hf_subscriptions: Set[str] = set()
+        self._stats = EventCounter()
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
@@ -255,6 +257,14 @@ class BaseOverlay():
         """Get the latest high frequency data of a specific type."""
         return self._latest_hf.get(type_.__hf_type__)
 
+    def get_stats(self) -> dict:
+        """Get overlay runtime stats."""
+        return self._stats.get_stats()
+
+    def _track_event(self, event_type: str) -> None:
+        self._stats.track("events", "__total__", 0)
+        self._stats.track("events", event_type, 0)
+
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -266,6 +276,12 @@ class BaseOverlay():
             """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
+
+        @self.on_request("get_stats")
+        def _get_stats(_data: dict):
+            """Return overlay stats."""
+            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_stats"')
+            return serialise_data(self.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -331,6 +347,7 @@ class BaseOverlay():
         handler = self._command_handlers.get(cmd)
         if not handler:
             return
+        self._track_event(cmd)
         parsed = deserialise_data(data)
         try:
             handler(parsed)
@@ -382,6 +399,7 @@ class BaseOverlay():
             self._latest_hf[payload.__hf_type__] = payload
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
+            self._track_event(payload.__hf_type__)
             try:
                 handler(payload)
             except AssertionError:

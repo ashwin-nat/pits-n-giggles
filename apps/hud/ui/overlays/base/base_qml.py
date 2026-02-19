@@ -303,7 +303,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if not self._root or not self.get_visibility():
             return
 
+        self._track_frame()
         self.render_frame()
+
+    def _track_frame(self) -> None:
+        self._stats.track("frames", "__rendered__", 0)
 
     def render_frame(self):
         """Derived classes must implement this method."""
