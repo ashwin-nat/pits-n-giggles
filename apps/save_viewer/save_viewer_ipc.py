@@ -123,7 +123,7 @@ class SaveViewerIpc:
         """Handle the 'get-stats' IPC command."""
         return {
             "status": "success",
-            "stats": {},
+            "stats": self.m_server.get_stats(),
         }
 
     async def _heartbeat_missed_handler(self, count: int) -> dict:

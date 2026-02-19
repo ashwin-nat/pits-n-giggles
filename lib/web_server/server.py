@@ -343,7 +343,7 @@ class BaseWebServer:
 
         Args:
             callback (Callable[[ClientType, str], Awaitable[None]]): An async function to be run when a client disconnects
-                Should support two arguments: the client type and the session ID.
+                Should support 1 arguments: the session ID.
         """
         self._on_client_disconnect_callback = callback
 
