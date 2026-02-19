@@ -218,6 +218,18 @@ class MfdOverlay(BaseOverlayQML):
             self._next_page()
         super().set_locked_state(locked)
 
+    @final
+    def get_stats(self) -> dict:
+        overlay_stats = super().get_stats()
+        page_stats = {
+            page.KEY: page.get_stats()
+            for page in self._mfd_pages
+        }
+        return {
+            **overlay_stats,
+            "__PAGES__": page_stats,
+        }
+
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
         """Forward event to page.
 

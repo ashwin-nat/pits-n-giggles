@@ -285,7 +285,7 @@ class BaseOverlay():
         def _get_stats(_data: dict):
             """Return current window stats."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
-            return serialise_data(self._stats.get_stats())
+            return serialise_data(self.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -358,7 +358,7 @@ class BaseOverlay():
         except AssertionError:
             self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
             raise # We want to crash on assertions for debugging
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
             self._stats.track("__EXCEPTION__", cmd, len(data))
             raise # Re-raise to ensure the error is visible and can be debugged
