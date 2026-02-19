@@ -195,6 +195,7 @@ class IpcServerSync:
                 self.sock.send_json(response)
 
             except Exception as e:  # pylint: disable=broad-except
+                self.logger.exception("%s: Error in serve loop: cmd: %s error: %s", self.name, cmd, e)
                 if self._running:
                     self.sock.send_json({"error": str(e)})
 
