@@ -32,7 +32,7 @@ from lib.f1_types import LapData
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
 @dataclass(slots=True)
-class DriverInfo:
+class PitInfo:
     """
     Class that models the information stored per race driver.
 

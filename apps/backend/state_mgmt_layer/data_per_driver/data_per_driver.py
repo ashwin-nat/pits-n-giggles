@@ -45,6 +45,7 @@ from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
+from .pit_info import PitInfo
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -60,6 +61,7 @@ class DataPerDriver:
         m_driver_info (DriverInfo): Contains driver's position, name, and team.
         m_lap_info (LapInfo): Details regarding the driver's lap times.
         m_tyre_info (TyreInfo): Information about the driver's tire usage and condition.
+        m_pit_info (PitInfo): Information about the driver's pit stops.
         m_car_info (CarInfo): Data related to the driver's car performance.
         m_collision_records (List[CollisionRecord]): List of collision records involving the driver.
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
@@ -79,6 +81,7 @@ class DataPerDriver:
         "m_driver_info",
         "m_lap_info",
         "m_tyre_info",
+        "m_pit_info",
         "m_car_info",
         "m_collision_records",
         "m_warning_penalty_history",
@@ -136,7 +139,7 @@ class DataPerDriver:
         self.m_driver_info: DriverInfo = DriverInfo()
         self.m_lap_info: LapInfo = LapInfo()
         self.m_tyre_info: TyreInfo = TyreInfo(total_laps, self.m_logger)
-
+        self.m_pit_info: PitInfo = PitInfo()
         self.m_car_info: CarInfo = CarInfo(total_laps)
 
         self.m_collision_records: List[CollisionRecord] = []
@@ -808,7 +811,7 @@ class DataPerDriver:
 
         self.m_lap_info.m_is_pitting = lap_data.m_pitStatus in \
                 [LapData.PitStatus.PITTING, LapData.PitStatus.IN_PIT_AREA]
-        self.m_driver_info.m_num_pitstops = lap_data.m_numPitStops
+        self.m_pit_info.m_num_stops = lap_data.m_numPitStops
 
     def _getDelayedTyreChangeDataWeird(self) -> Optional[TyreWearPerLap]:
         """Get the initial tyre wear data for the delayed tyre set change handling"""

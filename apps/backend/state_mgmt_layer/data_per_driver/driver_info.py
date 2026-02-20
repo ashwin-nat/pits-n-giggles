@@ -44,7 +44,6 @@ class DriverInfo:
         is_player (Optional[bool]): Indicates whether the driver is the player.
         telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
         driver_number (Optional[int]): The race number of the driver.
-        m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
         m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
         m_curr_lap_sc_status (Optional[SafetyCarType]): The current lap's safety car status.
     """
@@ -55,6 +54,5 @@ class DriverInfo:
     is_player: Optional[bool] = None
     telemetry_setting: Optional[TelemetrySetting] = None
     driver_number: Optional[int] = None
-    m_num_pitstops: Optional[int] = None
     m_dnf_status_code: Optional[str] = None
     m_curr_lap_max_sc_status: Optional[SafetyCarType] = None
