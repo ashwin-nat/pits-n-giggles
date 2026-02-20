@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from lib.f1_types import LapData
 
@@ -54,3 +54,14 @@ class PitInfo:
     m_pit_lane_timer_ms: Optional[int] = None
     m_pit_stop_timer_ms: Optional[int] = None
     m_pit_stop_should_serve_pen: Optional[bool] = None
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of the PitInfo object."""
+        return {
+            "pit-status": str(self.m_pit_status),
+            "num-stops": self.m_num_stops,
+            "pit-lane-timer-active": self.m_pit_lane_timer_active,
+            "pit-lane-timer-ms": self.m_pit_lane_timer_ms,
+            "pit-stop-timer-ms": self.m_pit_stop_timer_ms,
+            "pit-stop-should-serve-pen": self.m_pit_stop_should_serve_pen
+        }

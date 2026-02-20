@@ -332,6 +332,7 @@ class DriversListRsp(BaseAPI):
             "tyre-info": self._getTyreInfoJSON(driver_data),
             "damage-info": self._getDamageInfoJSON(driver_data),
             "fuel-info": driver_data.getFuelStatsJSON(),
+            "pit-info": driver_data.getPitInfoJSON(),
         }
 
     def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
