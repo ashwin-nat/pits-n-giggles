@@ -231,9 +231,7 @@ class TyreSetHistoryManager:
         """
         if not self.m_history:
             raise IndexError("Tyre history is empty, cannot overwrite tyre wear info")
-        old_obj = self.m_history[stint_index].m_tyre_wear_history[lap_index]
         self.m_history[stint_index].m_tyre_wear_history[lap_index] = tyre_wear_info
-        return old_obj
 
     def remove(self, laps: List[int]) -> None:
         """Remove the specified laps from the tyre set history

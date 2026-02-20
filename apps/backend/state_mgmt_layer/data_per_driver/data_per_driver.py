@@ -597,10 +597,6 @@ class DataPerDriver:
             )
             self.m_tyre_info.m_tyre_set_history_manager.addTyreWear(wear)
 
-            # TODO: remove
-            if self.m_driver_info.is_player:
-                self.m_logger.debug("[ASHWIN] - Added tyre wear %s", wear)
-
         # Add the tyre wear data into the extrapolator
         if tyre_set_id := self._getCurrentTyreSetKey():
             self.m_tyre_info.m_tyre_wear_extrapolator.add(TyreWearPerLap(
@@ -627,8 +623,6 @@ class DataPerDriver:
         self.m_driver_info.m_curr_lap_max_sc_status = None
         self.m_car_info.onLapChange()
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
-        if self.m_driver_info.is_player: # TODO: remove
-            self.m_logger.debug("[ASHWIN] - lap changed to %d", old_lap_number)
 
     def shouldCaptureZerothLapSnapshot(self) -> bool:
         """
@@ -710,8 +704,6 @@ class DataPerDriver:
                             initial_tyre_wear=initial_tyre_wear,
                         )
                         self.m_tyre_info.m_tyre_set_history_manager.add(entry)
-                        if self.m_driver_info.is_player: # TODO: remove
-                            self.m_logger.debug("[ASHWIN] - Added new entry %s", entry)
                     else:
                         self.m_logger.debug("Driver %s - zeroth lap snapshot available but no car damage packet. "
                                          "Hence clearing the zeroth lap snapshot to trigger it to happen again",
@@ -769,8 +761,6 @@ class DataPerDriver:
                                     initial_tyre_wear=initial_tyre_wear,
         )
         self.m_tyre_info.m_tyre_set_history_manager.add(entry)
-        if self.m_driver_info.is_player: # TODO: remove
-            self.m_logger.debug("[ASHWIN] - Added new entry %s", entry)
 
         # Tyre set change detected. clear the extrapolation data
         self.m_tyre_info.m_tyre_wear_extrapolator.clear()
@@ -842,10 +832,7 @@ class DataPerDriver:
         last_stint_max_wear.desc = f"Delayed tyre set change weird. old tyre val. key={tyre_set_key}"
 
         # First, overwrite the end of last stint's wear history
-        old_val = self.m_tyre_info.m_tyre_set_history_manager.overwriteTyreWear(last_stint_max_wear, stint_index=-1)
-        if self.m_driver_info.is_player: # TODO: remove
-            self.m_logger.debug("[ASHWIN] - Overwrote latest tyre wear for delayed tyre set change on weird track"
-                                ". old val: %s, new val: %s", str(old_val), str(last_stint_max_wear))
+        self.m_tyre_info.m_tyre_set_history_manager.overwriteTyreWear(last_stint_max_wear, stint_index=-1)
 
         curr_tyre_wear = TyreWearPerLap(
             fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
