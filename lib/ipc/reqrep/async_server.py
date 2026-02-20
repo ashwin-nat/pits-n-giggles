@@ -40,6 +40,8 @@ class IpcServerAsync:
     Includes optional heartbeat monitoring.
     """
 
+    BUILTIN_COMMANDS = {"__terminate__", "__heartbeat__", "__shutdown__", "__ping__"}
+
     def __init__(self, port: int | None = None, name: str = "IpcChildAsync",
              max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0,
              logger: Optional[logging.Logger] = None):
@@ -70,14 +72,16 @@ class IpcServerAsync:
             self.sock.bind(self.endpoint)
 
         self._running = False
-        self._shutdown_callback = None
+        self._shutdown_callback: Optional[Callable[[dict], Awaitable[dict]]] = None
+        self._command_handlers: dict[str, Callable[[dict], Awaitable[dict]]] = {}
+        self._register_builtin_handlers()
 
         # Heartbeat monitoring (only active if callback is registered)
         self.max_missed_heartbeats = max_missed_heartbeats
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = self._def_heartbeat_missed_callback
+        self._heartbeat_missed_callback: Optional[Callable[[int], Awaitable[None] | None]] = None
         self._heartbeat_task = None
 
         if logger is None:
@@ -86,20 +90,33 @@ class IpcServerAsync:
             logger.propagate = False
         self.logger = logger
 
-    def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
-        """
-        Registers an async callback to be called before shutdown.
-        Callback must return a dict with 'status' and 'message' keys.
-        """
-        self._shutdown_callback = callback
+    def _register_builtin_handlers(self) -> None:
+        """Registers builtin command handlers."""
+        self._command_handlers["__terminate__"] = self._handle_terminate
+        self._command_handlers["__heartbeat__"] = self._handle_heartbeat
+        self._command_handlers["__shutdown__"] = self._handle_shutdown
+        self._command_handlers["__ping__"] = self._handle_ping
 
-    def register_heartbeat_missed_callback(self, callback: Callable[[int], Awaitable[None]]):
-        """
-        Registers an async callback to be called when max consecutive heartbeats are missed.
-        Callback receives the number of missed heartbeats.
-        Registering this callback automatically enables heartbeat monitoring.
-        """
+    def on_command(self, cmd_name: str) -> Callable[[Callable[[dict], Awaitable[dict]]], Callable[[dict], Awaitable[dict]]]:
+        """Registers a handler for a non-builtin command using decorator syntax."""
+        if cmd_name in self.BUILTIN_COMMANDS:
+            raise ValueError(f"'{cmd_name}' is a reserved builtin command")
+
+        def decorator(callback: Callable[[dict], Awaitable[dict]]) -> Callable[[dict], Awaitable[dict]]:
+            self._command_handlers[cmd_name] = callback
+            return callback
+
+        return decorator
+
+    def on_shutdown(self, callback: Callable[[dict], Awaitable[dict]]) -> Callable[[dict], Awaitable[dict]]:
+        """Registers a shutdown callback using decorator syntax."""
+        self._shutdown_callback = callback
+        return callback
+
+    def on_heartbeats_missed(self, callback: Callable[[int], Awaitable[None] | None]) -> Callable[[int], Awaitable[None] | None]:
+        """Registers a heartbeat-missed callback using decorator syntax."""
         self._heartbeat_missed_callback = callback
+        return callback
 
     @property
     def is_running(self) -> bool:
@@ -136,12 +153,20 @@ class IpcServerAsync:
                 # Check if we've missed too many consecutive heartbeats
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
-                        await self._heartbeat_missed_callback(self._missed_heartbeats)
+                        callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
+                        result = callback(self._missed_heartbeats)
+                        if asyncio.iscoroutine(result):
+                            await result
                         break
                     except Exception as e: # pylint: disable=broad-exception-caught
                         self.logger.exception("%s: Error in heartbeat missed callback. %s", self.name, e)
 
-    def _handle_heartbeat(self) -> dict:
+    async def _handle_terminate(self, _args: dict) -> dict:
+        """Handles force termination."""
+        self._running = False
+        return {"status": "success", "message": "terminated", "source": self.name}
+
+    async def _handle_heartbeat(self, _args: dict) -> dict:
         """
         Handles incoming heartbeat and resets missed counter.
         """
@@ -149,18 +174,44 @@ class IpcServerAsync:
         self._missed_heartbeats = 0
         return {"status": "success", "reply": "__heartbeat_ack__", "source": self.name}
 
-    async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
+    async def _handle_shutdown(self, args: dict) -> dict:
+        """Handles graceful shutdown."""
+        if self._shutdown_callback:
+            response = await self._shutdown_callback(args)
+        else:
+            response = {
+                "status": "success",
+                "message": "default shutdown complete",
+            }
+        self._running = False
+        return response
+
+    async def _handle_ping(self, _args: dict) -> dict:
+        """Handles ping command."""
+        return {"reply": "__pong__", "source": self.name}
+
+    async def _dispatch_command(self, msg: dict) -> dict:
+        """Routes a command to builtin handlers or user-registered handlers."""
+        cmd = msg.get("cmd")
+        args = msg.get("args", {})
+
+        handler = self._command_handlers.get(cmd)
+        if handler is None:
+            return {"status": "error", "message": f"unknown command: {cmd}", "source": self.name}
+
+        return await handler(args)
+
+    async def run(self, timeout: Optional[int] = None) -> None:
         """
-        Starts the async request loop. Calls await handler_fn(msg) on each request.
-        Stops if a 'quit' command is received.
-        :param handler_fn: Coroutine function to handle commands
+        Starts the async request loop and routes commands to registered handlers.
         :param timeout: Optional timeout for recv in seconds
         """
         self._running = True
 
         # Start heartbeat monitoring only if callback is registered
-        self._last_heartbeat = time.time()
-        self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
+        if self._heartbeat_missed_callback is not None:
+            self._last_heartbeat = time.time()
+            self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
 
         try:
             while self._running:
@@ -174,31 +225,9 @@ class IpcServerAsync:
                     self.logger.warning("%s: Timeout waiting for request", self.name)
                     continue  # go back and recv again
 
-                cmd = msg.get("cmd")
-
                 # 2) dispatch + error handling
                 try:
-                    if cmd == "__terminate__":
-                        break
-
-                    if cmd == "__heartbeat__":
-                        response = self._handle_heartbeat()
-
-                    elif cmd == "__ping__":
-                        response = {"reply": "__pong__", "source": self.name}
-
-                    elif cmd == "__shutdown__":
-                        if self._shutdown_callback:
-                            response = await self._shutdown_callback(msg.get("args", {}))
-                        else:
-                            response = {
-                                "status": "success",
-                                "message": "default shutdown complete",
-                            }
-                        self._running = False
-
-                    else:
-                        response = await handler_fn(msg)
+                    response = await self._dispatch_command(msg)
 
                 except Exception as e: # pylint: disable=broad-except
                     response = {
@@ -221,7 +250,7 @@ class IpcServerAsync:
             self.close()
             self._running = False
 
-    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
         """Default heartbeat missed callback. no-op"""
         return
 

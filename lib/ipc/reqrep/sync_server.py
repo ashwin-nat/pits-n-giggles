@@ -39,6 +39,8 @@ class IpcServerSync:
     Includes optional heartbeat monitoring (only active if callback registered).
     """
 
+    BUILTIN_COMMANDS = {"__terminate__", "__heartbeat__", "__shutdown__", "__ping__"}
+
     def __init__(self, port: int | None = None, name: str = "IpcChildSync",
                 max_missed_heartbeats: int = 3, heartbeat_timeout: float = 5.0,
                 logger: Optional[logging.Logger] = None):
@@ -65,15 +67,18 @@ class IpcServerSync:
             self.sock.bind(self.endpoint)
 
         self._thread: Optional[threading.Thread] = None
+        self._serve_thread_id: Optional[int] = None
         self._running = False
-        self._shutdown_callback = None
+        self._shutdown_callback: Optional[Callable[[dict], dict]] = None
+        self._command_handlers: dict[str, Callable[[dict], dict]] = {}
+        self._register_builtin_handlers()
 
         # Heartbeat parameters
         self.max_missed_heartbeats = max_missed_heartbeats
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = None
+        self._heartbeat_missed_callback: Optional[Callable[[int], None]] = None
         self._heartbeat_thread: Optional[threading.Thread] = None
 
         if logger is None:
@@ -82,22 +87,35 @@ class IpcServerSync:
             logger.propagate = False
         self.logger = logger
 
-    # -------------------------------------- CALLBACKS ------------------------------------------------------------------
+    # -------------------------------------- DECORATORS -----------------------------------------------------------------
 
-    def register_shutdown_callback(self, callback: Callable[[dict], dict]) -> None:
-        """
-        Registers a callback to be called on shutdown command.
-        :param callback: Function to call on shutdown command.
-        """
+    def _register_builtin_handlers(self) -> None:
+        """Registers builtin command handlers."""
+        self._command_handlers["__terminate__"] = self._handle_terminate
+        self._command_handlers["__heartbeat__"] = self._handle_heartbeat
+        self._command_handlers["__shutdown__"] = self._handle_shutdown
+        self._command_handlers["__ping__"] = self._handle_ping
+
+    def on_command(self, cmd_name: str) -> Callable[[Callable[[dict], dict]], Callable[[dict], dict]]:
+        """Registers a handler for a non-builtin command using decorator syntax."""
+        if cmd_name in self.BUILTIN_COMMANDS:
+            raise ValueError(f"'{cmd_name}' is a reserved builtin command")
+
+        def decorator(callback: Callable[[dict], dict]) -> Callable[[dict], dict]:
+            self._command_handlers[cmd_name] = callback
+            return callback
+
+        return decorator
+
+    def on_shutdown(self, callback: Callable[[dict], dict]) -> Callable[[dict], dict]:
+        """Registers a shutdown callback using decorator syntax."""
         self._shutdown_callback = callback
+        return callback
 
-    def register_heartbeat_missed_callback(self, callback: Callable[[int], None]) -> None:
-        """
-        Registers a callback to be called when max consecutive heartbeats are missed.
-        Callback receives the number of missed heartbeats.
-        Registering this callback automatically enables heartbeat monitoring.
-        """
+    def on_heartbeats_missed(self, callback: Callable[[int], None]) -> Callable[[int], None]:
+        """Registers a heartbeat-missed callback using decorator syntax."""
         self._heartbeat_missed_callback = callback
+        return callback
 
     # -------------------------------------- HEARTBEAT ------------------------------------------------------------------
 
@@ -105,11 +123,43 @@ class IpcServerSync:
         """Default heartbeat missed callback. no-op"""
         return
 
-    def _handle_heartbeat(self) -> dict:
+    def _handle_terminate(self, _args: dict) -> dict:
+        """Handles force termination."""
+        self._running = False
+        return {"status": "success", "message": "terminated", "source": self.name}
+
+    def _handle_heartbeat(self, _args: dict) -> dict:
         """Handles incoming heartbeat and resets missed counter."""
         self._last_heartbeat = time.time()
         self._missed_heartbeats = 0
         return {"status": "success", "reply": "__heartbeat_ack__", "source": self.name}
+
+    def _handle_shutdown(self, args: dict) -> dict:
+        """Handles graceful shutdown."""
+        if self._shutdown_callback:
+            response = self._shutdown_callback(args)
+        else:
+            response = {
+                "status": "success",
+                "message": "default shutdown complete",
+            }
+        self._running = False
+        return response
+
+    def _handle_ping(self, _args: dict) -> dict:
+        """Handles ping command."""
+        return {"reply": "__pong__", "source": self.name}
+
+    def _dispatch_command(self, msg: dict) -> dict:
+        """Routes a command to builtin handlers or user-registered handlers."""
+        cmd = msg.get("cmd")
+        args = msg.get("args", {})
+
+        handler = self._command_handlers.get(cmd)
+        if handler is None:
+            return {"status": "error", "message": f"unknown command: {cmd}", "source": self.name}
+
+        return handler(args)
 
     def _heartbeat_monitor(self) -> None:
         """Runs in a background thread to monitor heartbeats."""
@@ -136,13 +186,13 @@ class IpcServerSync:
 
     # -------------------------------------- MAIN LOOP ------------------------------------------------------------------
 
-    def serve(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None) -> None:
+    def serve(self, timeout: Optional[float] = None) -> None:
         """
-        Starts the request loop. Calls handler_fn on each request.
-        :param handler_fn: Function to handle each request.
+        Starts the request loop. Routes incoming requests to command handlers.
         :param timeout: Optional timeout (in seconds) for recv_json.
                         Ensures loop remains responsive even with no messages.
         """
+        self._serve_thread_id = threading.get_ident()
         self._running = True
 
         # Start heartbeat monitor only if callback is registered
@@ -155,57 +205,33 @@ class IpcServerSync:
         poller = zmq.Poller()
         poller.register(self.sock, zmq.POLLIN)
 
-        while self._running:
-            # pylint: disable=too-many-try-statements
+        try:
+            while self._running:
+                # pylint: disable=too-many-try-statements
+                try:
+                    socks = dict(poller.poll(timeout * 1000 if timeout else None))
+                    if self.sock not in socks:
+                        # No message received within timeout; continue loop
+                        continue
+
+                    msg = self.sock.recv_json()
+                    response = self._dispatch_command(msg)
+                    self.sock.send_json(response)
+
+                except Exception as e:  # pylint: disable=broad-except
+                    self.logger.exception("%s: Error in serve loop: error: %s", self.name, e)
+                    if self._running:
+                        self.sock.send_json({"error": str(e)})
+        finally:
             try:
-                socks = dict(poller.poll(timeout * 1000 if timeout else None))
-                if self.sock not in socks:
-                    # No message received within timeout; continue loop
-                    continue
+                self.close()
+            finally:
+                self._serve_thread_id = None
 
-                msg = self.sock.recv_json()
-                cmd = msg.get("cmd")
-
-                if cmd == "__terminate__":
-                    self._running = False
-                    break
-
-                if cmd == "__heartbeat__":
-                    response = self._handle_heartbeat()
-                    self.sock.send_json(response)
-                    continue
-
-                if cmd == "__ping__":
-                    response = {"reply": "__pong__", "source": self.name}
-                    self.sock.send_json(response)
-                    continue
-
-                if cmd == "__shutdown__":
-                    if self._shutdown_callback:
-                        response = self._shutdown_callback(msg.get("args", {}))
-                    else:
-                        response = {
-                            "status": "success",
-                            "message": "default shutdown complete",
-                        }
-                    self._running = False
-                else:
-                    response = handler_fn(msg)
-
-                self.sock.send_json(response)
-
-            except Exception as e:  # pylint: disable=broad-except
-                self.logger.exception("%s: Error in serve loop: error: %s", self.name, e)
-                if self._running:
-                    self.sock.send_json({"error": str(e)})
-
-        self.close()
-
-    def serve_in_thread(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None, name: Optional[str] = None) -> threading.Thread:
+    def serve_in_thread(self, timeout: Optional[float] = None, name: Optional[str] = None) -> threading.Thread:
         """Starts the serve loop in a background thread.
 
         Args:
-            handler_fn (Callable[[dict], dict]): Function to handle each request.
             timeout (Optional[float]): Optional timeout (in seconds) for recv_json.
                                        Ensures loop remains responsive even with no messages.
             name (Optional[str]): Optional name for the thread.
@@ -214,17 +240,18 @@ class IpcServerSync:
             threading.Thread: The thread handle.
         """
         tname = name or f"IPC listener for {self.name}"
-        self._thread = threading.Thread(target=self.serve, args=(handler_fn, timeout), daemon=True, name=tname)
+        self._thread = threading.Thread(target=self.serve, args=(timeout,), daemon=True, name=tname)
         self._thread.start()
         return self._thread
 
     def close(self) -> None:
         """Closes the socket and stops all threads cleanly."""
-        if not self._running:
-            return  # Already closed
-
         self._running = False
         self.logger.debug("%s closing", self.name)
+
+        # If serve loop is running in another thread, let it perform final ZMQ teardown.
+        if self._serve_thread_id is not None and threading.get_ident() != self._serve_thread_id:
+            return
 
         # Gracefully stop heartbeat monitor if active
         if self._heartbeat_thread and self._heartbeat_thread.is_alive():
