@@ -147,6 +147,11 @@ class AsyncF1TelemetryManager:
                 pkt_factory.last_failure_reason or "N/A",
                 len(raw_packet))
             return
+        # TODO: comment out. let it be for debugging
+        self.m_logger.silent(f"Packet meta: frameId={parsed_obj.m_header.m_frameIdentifier}, "
+                             f"packetId={parsed_obj.m_header.m_packetId}, "
+                             f"overallFrameId={parsed_obj.m_header.m_overallFrameIdentifier}, "
+                             f"sessionUID={parsed_obj.m_header.m_sessionUID}, ")
 
         # Perform the registered callback
         try:
