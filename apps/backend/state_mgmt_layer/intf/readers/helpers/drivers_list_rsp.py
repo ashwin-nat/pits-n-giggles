@@ -63,6 +63,7 @@ class DriversListRsp(BaseAPI):
         self.m_fastest_s1_ms: Optional[int] = None
         self.m_fastest_s2_ms: Optional[int] = None
         self.m_fastest_s3_ms: Optional[int] = None
+        self.m_curr_lap: Optional[int] = None
         self.m_is_tt_mode : bool = is_tt_mode
         if self.m_is_tt_mode:
             self.__initTTDict()
@@ -83,6 +84,9 @@ class DriversListRsp(BaseAPI):
         Returns:
             Optional[int]: The lap number. None if no race is ongoing
         """
+
+        if self.m_curr_lap is not None:
+            return self.m_curr_lap
 
         if len(self.m_json_rsp) == 0:
             return None
@@ -166,6 +170,14 @@ class DriversListRsp(BaseAPI):
         """
         return [self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms]
 
+    def getCurrLap(self) -> Optional[int]:
+        """Get current lap.
+
+        Returns:
+            Optional[int]: The lap number. None if no race is ongoing
+        """
+        return self.m_curr_lap
+
     def __getDRSValue(self,
             drs_activated: bool,
             drs_available: bool,
@@ -216,6 +228,9 @@ class DriversListRsp(BaseAPI):
                 continue
             if not 1 <= driver_data.m_driver_info.position <= self.m_session_state.m_num_active_cars:
                 continue
+
+            if driver_data.m_driver_info.position == 1:
+                self.m_curr_lap = driver_data.m_lap_info.m_current_lap
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
 
     def __initTTDict(self) -> None:
@@ -255,6 +270,7 @@ class DriversListRsp(BaseAPI):
             self.m_fastest_lap = None
             self.m_fastest_lap_tyre = None
         self.m_fastest_lap_driver = player_obj.m_driver_info.name
+        self.m_curr_lap = player_obj.m_lap_info.m_current_lap
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,

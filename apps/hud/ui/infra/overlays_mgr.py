@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
+from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
                                   LapTimerOverlay, MfdOverlay,
                                   TimingTowerOverlay, TrackRadarOverlay)
@@ -183,8 +184,7 @@ class OverlaysMgr:
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
         self.wdt.kick()
-        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
-        table_entries.sort(key=lambda x: x["driver-info"]["position"])
+        self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
         self._handle_core_wdt_status(data)
 
@@ -408,3 +408,10 @@ class OverlaysMgr:
         """Handle core watchdog status."""
         core_wdt_status = data.get("wdt-status", False)
         self._set_telemetry_active(core_wdt_status)
+
+    def _prep_race_table_data(self, data: Dict[str, Any]):
+        """Prepare race table data for overlays."""
+        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
+        table_entries.sort(key=lambda x: x["driver-info"]["position"])
+        ref_row_idx = get_ref_row_index(data)
+        data["ref-row-index"] = ref_row_idx

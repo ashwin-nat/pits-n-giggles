@@ -329,7 +329,7 @@ class RaceStatsModalPopulator {
         chartDiv.className = 'bar-chart-container h-100 d-flex flex-column';
         const chart = new BarChart(chartDiv);
         let chartData = [];
-        const unit = g_pref_speedUnitMetric ? "km/h" : "mph";
+        const unit = g_pref_speedUnitMetric === false ? "mph" : "km/h";
         this.data["speed-trap-records"].forEach((record) => {
             chartData.push({ label: record["name"], value: this.getSpeedInCustomUnit(record["speed-trap-record-kmph"]),
                              color: this.getF1TeamColor(record["team"]) });

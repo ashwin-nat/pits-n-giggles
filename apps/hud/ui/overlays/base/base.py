@@ -358,10 +358,9 @@ class BaseOverlay():
         except AssertionError:
             self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
             raise # We want to crash on assertions for debugging
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
             self._stats.track_event("__EXCEPTION__", cmd)
-            raise # Re-raise to ensure the error is visible and can be debugged
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
