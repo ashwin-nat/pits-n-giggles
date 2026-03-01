@@ -80,7 +80,7 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
 
         reason = self.gate.get_last_drop_reason()
         self.assertIsNotNone(reason)
-        self.assertIn("Backward frame detected", reason)
+        self.assertEqual(reason, self.gate._BACKWARD_REASON)
 
     def test_duplicate_packet_type_same_frame_dropped(self) -> None:
         frame = 100
@@ -90,8 +90,7 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertFalse(self.gate.should_accept(DummyPacket(1, frame, pkt_type)))
 
         reason = self.gate.get_last_drop_reason()
-        self.assertIsNotNone(reason)
-        self.assertIn("Duplicate packet type in frame", reason)
+        self.assertEqual(reason, self.gate._DUPLICATE_REASON)
 
     def test_different_packet_types_same_frame_allowed(self) -> None:
         frame = 200

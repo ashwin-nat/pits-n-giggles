@@ -79,6 +79,7 @@ class SessionFrameGate:
             False if packet should be dropped.
         """
 
+        self._last_drop_reason = None
         if not self._enabled:
             return True
 
@@ -86,8 +87,6 @@ class SessionFrameGate:
         session_uid = header.m_sessionUID
         frame = header.m_frameIdentifier
         packet_type = header.m_packetId
-
-        self._last_drop_reason = None
 
         # First packet
         if self._last_session_uid is None:
