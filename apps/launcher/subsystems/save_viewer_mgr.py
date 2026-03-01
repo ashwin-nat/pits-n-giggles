@@ -106,7 +106,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """Open the dashboard made by Fabrizio in a web browser."""
         # Analytics tool built by Fabrizio Rinaldi from the community
         # https://github.com/linuz90/f1-telemetry-viewer
-        webbrowser.open(f'https://telemetry.fabrizio.so', new=2)
+        webbrowser.open('https://telemetry.fabrizio.so', new=2)
 
     def open_file(self):
         """Open a file dialog and send the selected file path to the backend process."""
