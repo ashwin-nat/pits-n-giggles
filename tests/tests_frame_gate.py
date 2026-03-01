@@ -140,3 +140,17 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
 
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 11, self.packet_types[0])))
         self.assertIsNone(self.gate.get_last_drop_reason())
+
+    def test_disabled_mode_always_accepts(self) -> None:
+        gate = SessionFrameGate(enabled=False)
+
+        pkt_type = self.packet_types[0]
+
+        # Send chaotic sequence
+        self.assertTrue(gate.should_accept(DummyPacket(1, 10, pkt_type)))
+        self.assertTrue(gate.should_accept(DummyPacket(1, 9, pkt_type)))   # backward
+        self.assertTrue(gate.should_accept(DummyPacket(1, 9, pkt_type)))   # duplicate
+        self.assertTrue(gate.should_accept(DummyPacket(2, 5, pkt_type)))   # session change
+        self.assertTrue(gate.should_accept(DummyPacket(2, 0, pkt_type)))   # frame 0
+
+        self.assertIsNone(gate.get_last_drop_reason())

@@ -42,16 +42,22 @@ class SessionFrameGate:
     """
 
     __slots__ = (
+        "_enabled",
         "_last_session_uid",
         "_last_frame",
         "_seen_packet_types",
         "_last_drop_reason",
     )
 
-    def __init__(self) -> None:
+
+    def __init__(self, enabled: bool = True) -> None:
         """
-        Initialize internal ordering state.
+        Initialize the SessionFrameGate.
+
+        Args:
+            enabled: If False, all packets are accepted without validation.
         """
+        self._enabled: bool = enabled
         self._last_session_uid: Optional[int] = None
         self._last_frame: Optional[int] = None
         self._seen_packet_types: Set[F1PacketType] = set()
@@ -68,6 +74,10 @@ class SessionFrameGate:
             True if packet should be processed.
             False if packet should be dropped.
         """
+
+        if not self._enabled:
+            return True
+
         header = packet.m_header
         session_uid = header.m_sessionUID
         frame = header.m_frameIdentifier
