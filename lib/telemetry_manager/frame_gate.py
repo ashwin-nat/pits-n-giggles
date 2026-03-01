@@ -33,12 +33,14 @@ class SessionFrameGate:
     Enforces monotonic ordering and per-frame packet-type uniqueness
     based on (sessionUID, frameIdentifier, packetId).
 
+    If disabled, all packets are accepted.
+
     Rules:
-        • First packet is accepted.
-        • New sessionUID resets internal ordering.
-        • frameIdentifier == 0 resets ordering.
-        • Frame must be monotonic (no backward frames).
-        • Only one packet per packet type is allowed per frame.
+        - First packet is accepted.
+        - New sessionUID resets internal ordering.
+        - frameIdentifier == 0 resets ordering.
+        - Frame must be monotonic (no backward frames).
+        - Only one packet per packet type is allowed per frame.
     """
 
     __slots__ = (
@@ -49,6 +51,8 @@ class SessionFrameGate:
         "_last_drop_reason",
     )
 
+    _BACKWARD_REASON = "BACKWARD_FRAME"
+    _DUPLICATE_REASON = "DUPLICATE_PACKET_TYPE"
 
     def __init__(self, enabled: bool = True) -> None:
         """
@@ -108,14 +112,9 @@ class SessionFrameGate:
             return True
 
         # ---- From here on, frame > 0 ----
-
         # Backward frame
         if self._last_frame is not None and self._last_frame != 0 and frame < self._last_frame:
-            self._last_drop_reason = (
-                f"Backward frame detected: "
-                f"session={session_uid}, frame={frame}, "
-                f"last_frame={self._last_frame}"
-            )
+            self._last_drop_reason = self._BACKWARD_REASON
             return False
 
         # New forward frame
@@ -124,21 +123,37 @@ class SessionFrameGate:
             self._seen_packet_types = {packet_type}
             return True
 
-        # Same frame → enforce uniqueness
+        # Same frame -> enforce uniqueness
         if packet_type in self._seen_packet_types:
-            self._last_drop_reason = (
-                f"Duplicate packet type in frame: "
-                f"session={session_uid}, frame={frame}, "
-                f"packet_type={packet_type}"
-            )
+            self._last_drop_reason = self._DUPLICATE_REASON
             return False
 
         self._seen_packet_types.add(packet_type)
         return True
 
+    def should_drop(self, packet: F1PacketBase) -> bool:
+        """
+        Determine whether a packet should be dropped.
+
+        Args:
+            packet: Parsed telemetry packet.
+
+        Returns:
+            True if packet should be dropped.
+            False if packet should be processed.
+        """
+        return not self.should_accept(packet)
+
     def get_last_drop_reason(self) -> Optional[str]:
         """
-        Returns the reason for the most recently dropped packet,
-        or None if last packet was accepted.
+        Retrieve the reason for the most recently dropped packet.
+
+        Returns:
+            A short reason string or None.
         """
+        return self._last_drop_reason
+
+    @property
+    def last_drop_reason(self) -> Optional[str]:
+        """Can be none if packet was not dropped. It is the caller's responsibility to check."""
         return self._last_drop_reason

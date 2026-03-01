@@ -158,7 +158,8 @@ class F1TelemetryHandler:
         self.m_manager = AsyncF1TelemetryManager(
             port_number=settings.Network.telemetry_port,
             logger=logger,
-            replay_server=replay_server
+            replay_server=replay_server,
+            frame_gate_enabled=settings.Network.enable_pkt_ordering
         )
         self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
