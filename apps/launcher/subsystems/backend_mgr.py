@@ -136,6 +136,7 @@ class BackendAppMgr(PngAppMgrBase):
             "Network": [
                 "udp_tyre_delta_action_code",
                 "udp_custom_action_code",
+                "enable_pkt_ordering",
             ],
             "HUD": [
                 "toggle_overlays_udp_action_code",
