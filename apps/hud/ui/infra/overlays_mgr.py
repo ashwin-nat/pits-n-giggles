@@ -186,7 +186,7 @@ class OverlaysMgr:
         self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
-        self._handle_core_wdt_status(data)
+        # self._handle_core_wdt_status(data) #TODO: fix
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
