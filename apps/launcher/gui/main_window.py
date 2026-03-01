@@ -277,6 +277,7 @@ class PngLauncherWindow(QMainWindow):
             "show-hide" : self._load_icon(icons_path_base / "show-hide.svg"),
             "start" : self._load_icon(icons_path_base / "start.svg"),
             "stop" : self._load_icon(icons_path_base / "stop.svg"),
+            "tp-dashboard" : self._load_icon(icons_path_base / "fab-dashboard.svg"),
             "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
             "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
             "updates" : self._load_icon(icons_path_base / "updates.svg"),

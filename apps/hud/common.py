@@ -69,13 +69,22 @@ def get_ref_row_index(data: Dict[str, Any]) -> Optional[int]:
     if not data or "table-entries" not in data or not data["table-entries"]:
         return None
 
+    pre_computed_idx = data.get("ref-row-index")
+    if pre_computed_idx is not None:
+        return pre_computed_idx
+
     is_spectating = data.get("is-spectating", False)
     spectator_index = data.get("spectator-car-index")
 
     if is_spectating and spectator_index is not None:
-        if 0 <= spectator_index < len(data["table-entries"]):
-            return spectator_index
-        return None
+        return next(
+            (
+                index
+                for index, row in enumerate(data["table-entries"])
+                if row.get("driver-info", {}).get("index") == spectator_index
+            ),
+            None,
+        )
 
     return next(
         (
@@ -96,8 +105,12 @@ def get_ref_row(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         Optional[Dict[str, Any]]: The reference row, or None if not found.
     """
 
+    table_entries = data.get("table-entries")
     ref_index = get_ref_row_index(data)
-    return None if ref_index is None else data["table-entries"][ref_index]
+    if ref_index is None:
+        return None
+
+    return table_entries[ref_index]
 
 def get_relevant_race_table_rows(
     sorted_table_entries: Dict[str, Any],
