@@ -51,8 +51,8 @@ class SessionFrameGate:
         "_last_drop_reason",
     )
 
-    _BACKWARD_REASON = "BACKWARD_FRAME"
-    _DUPLICATE_REASON = "DUPLICATE_PACKET_TYPE"
+    _OOO_REASON = "OUT_OF_ORDER_PKT"
+    _DUP_REASON = "DUPLICATE_PACKET_TYPE"
 
     def __init__(self, enabled: bool = True) -> None:
         """
@@ -113,7 +113,7 @@ class SessionFrameGate:
         # ---- From here on, frame > 0 ----
         # Backward frame
         if self._last_frame is not None and self._last_frame != 0 and frame < self._last_frame:
-            self._last_drop_reason = self._BACKWARD_REASON
+            self._last_drop_reason = self._OOO_REASON
             return False
 
         # New forward frame
@@ -124,7 +124,7 @@ class SessionFrameGate:
 
         # Same frame -> enforce uniqueness
         if packet_type in self._seen_packet_types:
-            self._last_drop_reason = self._DUPLICATE_REASON
+            self._last_drop_reason = self._DUP_REASON
             return False
 
         self._seen_packet_types.add(packet_type)
@@ -142,15 +142,6 @@ class SessionFrameGate:
             False if packet should be processed.
         """
         return not self.should_accept(packet)
-
-    def get_last_drop_reason(self) -> Optional[str]:
-        """
-        Retrieve the reason for the most recently dropped packet.
-
-        Returns:
-            A short reason string or None.
-        """
-        return self._last_drop_reason
 
     @property
     def last_drop_reason(self) -> Optional[str]:

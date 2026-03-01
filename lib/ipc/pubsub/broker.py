@@ -251,7 +251,15 @@ class IpcPubSubBroker:
                 if not msg:
                     continue
 
-                topic = msg[0].decode("utf-8", errors="replace")
+                topic_raw = msg[0]
+
+                # Subscription control frames start with 0x01 (sub) or 0x00 (unsub) — skip them
+                if topic_raw and topic_raw[0] in (0, 1):
+                    action = "subscribe" if topic_raw[0] == 1 else "unsubscribe"
+                    self.stats.track_event("__SUBSCRIPTIONS__", action)
+                    continue
+
+                topic = topic_raw.decode("utf-8", errors="replace")
                 total_size = sum(len(part) for part in msg)
 
                 self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
