@@ -66,21 +66,21 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
     def test_first_packet_accepted(self) -> None:
         pkt = DummyPacket(1, 10, self.packet_types[0])
         self.assertTrue(self.gate.should_accept(pkt))
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
     def test_monotonic_frames(self) -> None:
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 1, self.packet_types[0])))
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 2, self.packet_types[0])))
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 3, self.packet_types[0])))
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
-    def test_backward_frame_dropped(self) -> None:
+    def test_OUT_OF_ORDER_PKT_dropped(self) -> None:
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 10, self.packet_types[0])))
         self.assertFalse(self.gate.should_accept(DummyPacket(1, 9, self.packet_types[0])))
 
-        reason = self.gate.get_last_drop_reason()
+        reason = self.gate.last_drop_reason
         self.assertIsNotNone(reason)
-        self.assertEqual(reason, self.gate._BACKWARD_REASON)
+        self.assertEqual(reason, self.gate._OOO_REASON)
 
     def test_duplicate_packet_type_same_frame_dropped(self) -> None:
         frame = 100
@@ -89,8 +89,8 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame, pkt_type)))
         self.assertFalse(self.gate.should_accept(DummyPacket(1, frame, pkt_type)))
 
-        reason = self.gate.get_last_drop_reason()
-        self.assertEqual(reason, self.gate._DUPLICATE_REASON)
+        reason = self.gate.last_drop_reason
+        self.assertEqual(reason, self.gate._DUP_REASON)
 
     def test_different_packet_types_same_frame_allowed(self) -> None:
         frame = 200
@@ -98,7 +98,7 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame, self.packet_types[0])))
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame, self.packet_types[1])))
 
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
     def test_new_frame_clears_seen_packet_types(self) -> None:
         frame = 300
@@ -106,7 +106,7 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
 
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame, pkt_type)))
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame + 1, pkt_type)))
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
     def test_frame_zero_resets(self) -> None:
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 50, self.packet_types[0])))
@@ -122,7 +122,7 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertTrue(self.gate.should_accept(DummyPacket(1, frame, pkt_type)))
         self.assertTrue(self.gate.should_accept(DummyPacket(2, frame, pkt_type)))
 
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
     def test_duplicate_after_session_change_isolated(self) -> None:
         frame = 500
@@ -135,10 +135,10 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
     def test_drop_reason_cleared_after_accept(self) -> None:
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 10, self.packet_types[0])))
         self.assertFalse(self.gate.should_accept(DummyPacket(1, 10, self.packet_types[0])))
-        self.assertIsNotNone(self.gate.get_last_drop_reason())
+        self.assertIsNotNone(self.gate.last_drop_reason)
 
         self.assertTrue(self.gate.should_accept(DummyPacket(1, 11, self.packet_types[0])))
-        self.assertIsNone(self.gate.get_last_drop_reason())
+        self.assertIsNone(self.gate.last_drop_reason)
 
     def test_disabled_mode_always_accepts(self) -> None:
         gate = SessionFrameGate(enabled=False)
@@ -152,4 +152,4 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertTrue(gate.should_accept(DummyPacket(2, 5, pkt_type)))   # session change
         self.assertTrue(gate.should_accept(DummyPacket(2, 0, pkt_type)))   # frame 0
 
-        self.assertIsNone(gate.get_last_drop_reason())
+        self.assertIsNone(gate.last_drop_reason)
