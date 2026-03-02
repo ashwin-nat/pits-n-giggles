@@ -34,19 +34,15 @@ from lib.f1_types import LapData
 @dataclass(slots=True)
 class PitInfo:
     """
-    Class that models the information stored per race driver.
+    Pit-state information for a driver.
 
     Attributes:
-        name (Optional[str]): The name of the driver.
-        position (Optional[int]): The current position of the driver in the race.
-        grid_position (Optional[int]): The starting grid position of the driver.
-        team (Optional[str]): The team to which the driver belongs.
-        is_player (Optional[bool]): Indicates whether the driver is the player.
-        telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
-        driver_number (Optional[int]): The race number of the driver.
-        m_num_pitstops (Optional[int]): The number of pitstops made by the driver.
-        m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
-        m_curr_lap_sc_status (Optional[SafetyCarType]): The current lap's safety car status.
+        m_pit_status (Optional[LapData.PitStatus]): Current pit status of the driver.
+        m_num_stops (Optional[int]): Number of pit stops completed so far.
+        m_pit_lane_timer_active (Optional[bool]): Whether pit-lane elapsed timer is active.
+        m_pit_lane_timer_ms (Optional[int]): Elapsed time in pit lane in milliseconds.
+        m_pit_stop_timer_ms (Optional[int]): Elapsed time in current pit stop in milliseconds.
+        m_pit_stop_should_serve_pen (Optional[bool]): Whether a penalty should be served on this stop.
     """
     m_pit_status: Optional[LapData.PitStatus] = None
     m_num_stops: Optional[int] = None

@@ -815,7 +815,7 @@ class DataPerDriver:
         self.m_pit_info.m_pit_status = lap_data.m_pitStatus
 
         self.m_pit_info.m_pit_lane_timer_active = lap_data.m_pitLaneTimerActive
-        self.m_pit_info.m_pit_lane_timer_ms = lap_data.m_pitStopTimerInMS
+        self.m_pit_info.m_pit_lane_timer_ms = lap_data.m_pitLaneTimeInLaneInMS
         self.m_pit_info.m_pit_stop_timer_ms = lap_data.m_pitStopTimerInMS
         self.m_pit_info.m_pit_stop_should_serve_pen = lap_data.m_pitStopShouldServePen
 
