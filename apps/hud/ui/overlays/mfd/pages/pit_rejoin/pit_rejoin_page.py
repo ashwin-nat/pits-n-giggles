@@ -36,6 +36,7 @@ from lib.f1_types import F1Utils
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PitRejoinPredictionPage(MfdPageBase):
@@ -104,6 +105,33 @@ class PitRejoinPredictionPage(MfdPageBase):
             # Update the table
             self._update_table(pit_time_loss_str, relevant_rows, ref_index, page_item)
 
+    def _get_rival_effective_delta(self, row: Dict[str, Any], pit_time_loss_ms: float) -> float:
+        """Return a rival's effective delta-to-leader, adjusted if they are currently in the pit lane.
+
+        A rival's stored delta is a snapshot from when their data was last updated. If they are
+        mid-pit, their real gap is growing. We estimate their gap at pit exit by adding their
+        remaining pit time loss.
+
+        Example: rival is 5 s behind with 8 s of a 20 s pit already served.
+            remaining = 12 s  ->  effective delta = 17 s.
+
+        Args:
+            row: Rival's race table row.
+            pit_time_loss_ms: Total expected pit time loss in milliseconds.
+
+        Returns:
+            Effective delta-to-leader in milliseconds.
+        """
+        pit_info = row.get("pit-info", {})
+        raw_delta = row["delta-info"]["delta-to-leader"]
+
+        if not pit_info.get("pit-lane-timer-active", False):
+            return raw_delta
+
+        time_spent_ms = pit_info.get("pit-lane-timer-ms", 0)
+        remaining_ms = max(pit_time_loss_ms - time_spent_ms, 0.0)
+        return raw_delta + remaining_ms
+
     def _add_pit_time_loss(
         self,
         table_entries: List[Dict[str, Any]],
@@ -111,16 +139,17 @@ class PitRejoinPredictionPage(MfdPageBase):
         ref_row: Dict[str, Any],
         time_already_in_pit_ms: float = 0.0,
     ) -> List[Dict[str, Any]]:
-        """
-        Estimate where a driver would rejoin after a pit stop and update their deltas accordingly.
+        """Estimate where the ref driver rejoins after a pit stop.
 
-        If the ref car is already in the pit lane, ``time_already_in_pit_ms`` represents how
-        long they have been in there. Only the *remaining* time loss is added to their gap, so
-        rivals only need to cover that reduced gap.
+        Handles two pit-adjusted scenarios:
 
-        Example: pit_time_loss = 20 s, time_already_in_pit_ms = 10 000 ms.
-            remaining_pit_loss = 10 s.
-            A rival currently 12 s behind will be 2 s behind on exit.
+        1. Ref on track, rival pitting: rival's effective delta is inflated by their remaining
+           pit time so they are correctly slotted behind their exit position, not their stale
+           on-track position.
+
+        2. Ref already pitting: only the remaining pit time loss (total - elapsed) is added to
+           the ref's projected gap, so the prediction tightens in real time as the ref moves
+           through the pit lane.
 
         DNF / DSQ cars remain in the table but are ignored for all rejoin calculations,
         since their deltas are stale.
@@ -160,7 +189,8 @@ class PitRejoinPredictionPage(MfdPageBase):
 
             last_active_index = i
 
-            if projected_gap < row["delta-info"]["delta-to-leader"]:
+            rival_effective_delta = self._get_rival_effective_delta(row, pit_time_loss_ms)
+            if projected_gap < rival_effective_delta:
                 rejoin_index = max(i - 1, 0)
                 break
 
@@ -219,7 +249,11 @@ class PitRejoinPredictionPage(MfdPageBase):
         """Display empty table."""
         page_item.showEmptyTable()
 
-    def _update_table(self, pit_time_loss_str: str, relevant_rows: List[Dict[str, Any]], ref_index: int, page_item: QQuickItem):
+    def _update_table(self,
+                      pit_time_loss_str: str,
+                      relevant_rows: List[Dict[str, Any]],
+                      ref_index: int,
+                      page_item: QQuickItem):
         """Update the table with new data.
 
         Args:
