@@ -83,10 +83,21 @@ class PitRejoinPredictionPage(MfdPageBase):
                 self._show_empty_table(page_item)
                 return
 
+            # Compute how much pit time the ref car has already served (0 if not yet in pits).
+            # Guard with pit-lane-timer-active so we don't accidentally use a stale timer
+            # value from the previous stint.
+            ref_pit_info = ref_row.get("pit-info", {})
+            pit_lane_timer_active = ref_pit_info.get("pit-lane-timer-active", False)
+            time_already_in_pit_ms = (
+                ref_pit_info.get("pit-lane-timer-ms", 0) if pit_lane_timer_active else 0
+            )
+
             # Update pit time loss header
             pit_time_loss_str = f"Pit Time Loss: {pit_time_loss:.1f}s"
 
-            updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
+            updated_entries = self._add_pit_time_loss(
+                table_entries, pit_time_loss, ref_row, time_already_in_pit_ms
+            )
             relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
             insert_relative_deltas_race(relevant_rows, ref_index)
 
@@ -98,12 +109,31 @@ class PitRejoinPredictionPage(MfdPageBase):
         table_entries: List[Dict[str, Any]],
         pit_time_loss: float,
         ref_row: Dict[str, Any],
+        time_already_in_pit_ms: float = 0.0,
     ) -> List[Dict[str, Any]]:
         """
         Estimate where a driver would rejoin after a pit stop and update their deltas accordingly.
 
+        If the ref car is already in the pit lane, ``time_already_in_pit_ms`` represents how
+        long they have been in there. Only the *remaining* time loss is added to their gap, so
+        rivals only need to cover that reduced gap.
+
+        Example: pit_time_loss = 20 s, time_already_in_pit_ms = 10 000 ms.
+            remaining_pit_loss = 10 s.
+            A rival currently 12 s behind will be 2 s behind on exit.
+
         DNF / DSQ cars remain in the table but are ignored for all rejoin calculations,
         since their deltas are stale.
+
+        Args:
+            table_entries (List[Dict[str, Any]]): Full race table.
+            pit_time_loss (float): Total expected pit time loss in seconds.
+            ref_row (Dict[str, Any]): Reference (POV) driver row.
+            time_already_in_pit_ms (float): Milliseconds the ref car has already spent in the
+                pit lane this stop. Defaults to 0 (not yet in pits).
+
+        Returns:
+            List[Dict[str, Any]]: Updated table entries with the ref driver repositioned.
         """
 
         assert ref_row is not None
@@ -112,11 +142,15 @@ class PitRejoinPredictionPage(MfdPageBase):
         # Convert pit loss from seconds --> milliseconds for consistent comparison
         pit_time_loss_ms = pit_time_loss * 1000.0
 
-        # Step 1: Compute projected gap to leader after pit
-        ref_delta = ref_row["delta-info"]["delta-to-leader"]
-        projected_gap = ref_delta + pit_time_loss_ms
+        # Remaining time the ref car still has to spend in the pits.
+        # Clamped to 0 so we never project a negative (beneficial) pit stop.
+        remaining_pit_loss_ms = max(pit_time_loss_ms - time_already_in_pit_ms, 0.0)
 
-        # Step 2: determine rejoin index while SKIPPING DNF / DSQ cars
+        # Step 1: Compute projected gap to leader after pit using only the *remaining* loss
+        ref_delta = ref_row["delta-info"]["delta-to-leader"]
+        projected_gap = ref_delta + remaining_pit_loss_ms
+
+        # Step 2: Determine rejoin index while SKIPPING DNF / DSQ cars
         rejoin_index = None
         last_active_index = None
 
@@ -134,7 +168,7 @@ class PitRejoinPredictionPage(MfdPageBase):
             # Rejoin after the last active car
             rejoin_index = last_active_index if last_active_index is not None else 0
 
-        # Step 3: update ref deltas
+        # Step 3: Update ref deltas
         ref_row["delta-info"]["delta-to-leader"] = projected_gap
 
         # Find the nearest ACTIVE car in front
@@ -163,8 +197,7 @@ class PitRejoinPredictionPage(MfdPageBase):
         for pos, row in enumerate(table_entries, start=1):
             row["driver-info"]["position"] = pos
 
-        # Step 7: recompute delta-to-car-in-front,
-        # skipping inactive cars when looking "forward"
+        # Step 7: Recompute delta-to-car-in-front, skipping inactive cars when looking "forward"
         last_active_row = None
         for row in table_entries:
             if not self._is_active_car(row):
