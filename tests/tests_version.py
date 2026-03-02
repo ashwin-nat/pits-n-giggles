@@ -111,9 +111,15 @@ class TestGetVersion(F1TelemetryUnitTestsBase):
     def test_returns_env_value(self):
         self.assertEqual(get_version(), '2.1.0')
 
+    @patch("lib.version._get_git_metadata", return_value=("main", "abc1234", "clean"))
     @patch.dict(os.environ, {}, clear=True)
-    def test_returns_default_when_env_missing(self):
-        self.assertEqual(get_version(), 'dev')
+    def test_returns_git_derived_default_when_env_missing(self, _mock_git_metadata):
+        self.assertEqual(get_version(), 'dev_main_abc1234_clean')
+
+    @patch("lib.version._get_git_metadata", return_value=("feature/new-ui", "deadbee", "dirty"))
+    @patch.dict(os.environ, {}, clear=True)
+    def test_returns_dirty_git_derived_default_when_env_missing(self, _mock_git_metadata):
+        self.assertEqual(get_version(), 'dev_feature/new-ui_deadbee_dirty')
 
     @patch.dict(os.environ, {'PNG_VERSION': ''})
     def test_returns_empty_string_if_env_is_empty(self):
