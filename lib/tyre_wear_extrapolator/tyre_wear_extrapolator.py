@@ -66,6 +66,35 @@ class TyreWearExtrapolator:
 
         self._initMembers(initial_data, total_laps)
 
+    def _sanitize_regression(self, reg: SimpleLinearRegression) -> None:
+        """
+        Tyre wear cannot decrease over time.
+        """
+        if reg is None:
+            return
+
+        if reg.slope <= 0.0:
+            reg.m = 0.0
+
+    def _clamp_wear(self, predicted: float, current: float) -> float:
+        """
+        Enforce physical bounds on tyre wear.
+        """
+        return max(current, max(0.0, predicted))
+
+    def _enforce_monotonicity(self) -> None:
+        """
+        Ensure predicted wear never decreases lap-to-lap.
+        """
+        for i in range(1, len(self.m_predicted_tyre_wear)):
+            prev = self.m_predicted_tyre_wear[i - 1]
+            curr = self.m_predicted_tyre_wear[i]
+
+            curr.fl_tyre_wear = max(curr.fl_tyre_wear, prev.fl_tyre_wear)
+            curr.fr_tyre_wear = max(curr.fr_tyre_wear, prev.fr_tyre_wear)
+            curr.rl_tyre_wear = max(curr.rl_tyre_wear, prev.rl_tyre_wear)
+            curr.rr_tyre_wear = max(curr.rr_tyre_wear, prev.rr_tyre_wear)
+
     def isDataSufficient(self) -> bool:
         """Check if the amount of data available for extrapolation is sufficient.
 
@@ -219,6 +248,12 @@ class TyreWearExtrapolator:
         self.m_rl_regression.fit(laps, rl_wear)
         self.m_rr_regression.fit(laps, rr_wear)
 
+        # Enforce physical constraints
+        self._sanitize_regression(self.m_fl_regression)
+        self._sanitize_regression(self.m_fr_regression)
+        self._sanitize_regression(self.m_rl_regression)
+        self._sanitize_regression(self.m_rr_regression)
+
         assert self.m_initial_data[-1].lap_number is not None
         assert self.m_total_laps is not None
         self.m_remaining_laps = self.m_total_laps - self.m_initial_data[-1].lap_number
@@ -302,10 +337,12 @@ class TyreWearExtrapolator:
 
             self.m_predicted_tyre_wear = []
             for lap in range(self.m_total_laps - self.m_remaining_laps + 1, self.m_total_laps + 1):
-                fl_wear = self.m_fl_regression.predict(lap)
-                fr_wear = self.m_fr_regression.predict(lap)
-                rl_wear = self.m_rl_regression.predict(lap)
-                rr_wear = self.m_rr_regression.predict(lap)
+                prev = self.m_predicted_tyre_wear[-1] if self.m_predicted_tyre_wear else self.m_initial_data[-1]
+
+                fl_wear = self._clamp_wear(self.m_fl_regression.predict(lap),prev.fl_tyre_wear)
+                fr_wear = self._clamp_wear(self.m_fr_regression.predict(lap),prev.fr_tyre_wear)
+                rl_wear = self._clamp_wear(self.m_rl_regression.predict(lap),prev.rl_tyre_wear)
+                rr_wear = self._clamp_wear(self.m_rr_regression.predict(lap),prev.rr_tyre_wear)
 
                 # Add the predicted tyre wear for the current lap
                 predicted_tyre = TyreWearPerLap(
@@ -316,6 +353,7 @@ class TyreWearExtrapolator:
                     lap_number=lap,
                 )
                 self.m_predicted_tyre_wear.append(predicted_tyre)
+        self._enforce_monotonicity()
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
