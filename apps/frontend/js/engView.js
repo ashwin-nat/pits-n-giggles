@@ -1586,6 +1586,7 @@ class EngViewWeatherTable {
     update(incomingData, incomingSessionUID) {
         if (incomingData.length === 0) {
             this.clear();
+            return;
         }
 
         if (incomingSessionUID != this.sessionUID) {
