@@ -36,7 +36,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
-from lib.config import MFD_OVERLAY_ID, OverlayPosition, PngSettings
+from lib.config import (MFD_OVERLAY_ID, OverlayPosition, PngSettings,
+                        WeatherMFDUIType)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -111,6 +112,8 @@ class MfdOverlay(BaseOverlayQML):
         """Get initialization kwargs for pages from settings."""
         return {
             TyreInfoPage.KEY: {"tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold},
+            WeatherForecastPage.KEY: {"graph_based_ui": (
+                settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
         }
 
     def _init_pages_order(self, settings: PngSettings):
@@ -194,6 +197,10 @@ class MfdOverlay(BaseOverlayQML):
         def _handle_next_page(_data: Dict[str, Any]):
             self._next_page()
 
+        @self.on_event("prev_page")
+        def _handle_prev_page(_data: Dict[str, Any]):
+            self._prev_page()
+
         @self.on_event("race_table_update")
         def _handle_race_update(data: Dict[str, Any]):
             self._handle_event("race_table_update", data)
@@ -212,6 +219,18 @@ class MfdOverlay(BaseOverlayQML):
             self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
             self._next_page()
         super().set_locked_state(locked)
+
+    @final
+    def get_stats(self) -> dict:
+        overlay_stats = super().get_stats()
+        page_stats = {
+            page.KEY: page.get_stats()
+            for page in self._mfd_pages
+        }
+        return {
+            **overlay_stats,
+            "__PAGES__": page_stats,
+        }
 
     def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
         """Forward event to page.
@@ -243,6 +262,18 @@ class MfdOverlay(BaseOverlayQML):
 
         old = self._current_index
         self._current_index = (old + 1) % len(self._mfd_pages)
+
+        self._apply_current_page()
+        self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")
+
+    def _prev_page(self):
+        """Go to the previous page in MFD overlay"""
+        if not self._mfd_pages:
+            self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
+            return
+
+        old = self._current_index
+        self._current_index = (old - 1) % len(self._mfd_pages)
 
         self._apply_current_page()
         self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")

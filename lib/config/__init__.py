@@ -33,7 +33,7 @@ from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                      MfdSettings, NetworkSettings, OverlayPosition,
                      PitTimeLossF1, PitTimeLossF2, PngSettings,
                      PrivacySettings, StreamOverlaySettings, SubSysCtrl,
-                     TimingTowerColOptions)
+                     TimingTowerColOptions, WeatherMFDUIType)
 from .types import FilePathStr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -55,6 +55,7 @@ __all__ = [
     'MfdSettings',
     'MfdPageSettings',
     'TimingTowerColOptions',
+    'WeatherMFDUIType',
 
     'FilePathStr',
 

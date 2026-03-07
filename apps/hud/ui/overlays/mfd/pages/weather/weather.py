@@ -49,11 +49,12 @@ class WeatherForecastPage(MfdPageBase):
 
     MAX_SAMPLES = 5
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, graph_based_ui: bool):
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
+        self.graph_based_ui: bool = graph_based_ui
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -81,8 +82,9 @@ class WeatherForecastPage(MfdPageBase):
         def mfd_interact(data: Dict[str, Any]) -> None:
             self.logger.debug("%s | Received mfd_interact command. args: %s", self.KEY, data)
             if not self.num_sessions:
-                self.logger.debug("%s | No sessions to cycle through.", self.KEY)
+                self.logger.debug("%s | No sessions available. Ignoring mfd_interact command.", self.KEY)
                 return
+
             # Cycle through the sessions
             self.session_index = (self.session_index + 1) % self.num_sessions
             last_data = self._last_processed_samples
@@ -92,6 +94,7 @@ class WeatherForecastPage(MfdPageBase):
 
     @final
     def on_page_activated(self, item: QQuickItem):
+        item.setProperty("graphBasedUI", self.graph_based_ui)
         super().on_page_activated(item)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)

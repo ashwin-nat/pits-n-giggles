@@ -27,7 +27,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from lib.ipc import IpcSubscriberAsync
-from lib.wdt import WatchDogTimer
+from lib.wdt import WatchDogTimerAsync
 
 from .state import set_state_data
 
@@ -44,7 +44,7 @@ class McpSubscriber:
         """
         self.m_ipc_sub = IpcSubscriberAsync(port=port, logger=logger)
         set_state_data("connected", False)
-        self.m_wdt = WatchDogTimer(
+        self.m_wdt = WatchDogTimerAsync(
             status_callback=self._wdt_callback,
             timeout=timeout
         )

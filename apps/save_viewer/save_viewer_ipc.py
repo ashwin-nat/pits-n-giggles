@@ -72,6 +72,8 @@ class SaveViewerIpc:
 
         if cmd == "open-file":
             return await self._handle_open_file(args)
+        if cmd == "get-stats":
+            return await self._handle_get_stats()
 
         return {"status": "error", "message": f"Unknown command: {cmd}"}
 
@@ -116,6 +118,13 @@ class SaveViewerIpc:
         self.m_logger.info(f"Shutting down. Reason: {reason}")
         await self.m_server.stop()
         return {"status": "success"}
+
+    async def _handle_get_stats(self) -> Dict[str, Any]:
+        """Handle the 'get-stats' IPC command."""
+        return {
+            "status": "success",
+            "stats": self.m_server.get_stats(),
+        }
 
     async def _heartbeat_missed_handler(self, count: int) -> dict:
         """Handle terminate command"""

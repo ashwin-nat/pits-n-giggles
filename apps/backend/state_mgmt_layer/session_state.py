@@ -25,11 +25,9 @@
 import json
 import logging
 import time
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
-from apps.backend.state_mgmt_layer.data_per_driver import (DataPerDriver,
-                                                           DriverPendingEvents)
+from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -54,6 +52,7 @@ from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
+from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
@@ -513,7 +512,8 @@ class SessionState:
             )
 
             driver_obj.m_lap_info.m_current_lap = new_lap
-            driver_obj.m_pending_events_mgr.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+            driver_obj.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+            driver_obj.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
 
     def _updateDriverStatus(self,
                             driver_obj: DataPerDriver,
@@ -538,7 +538,7 @@ class SessionState:
         driver_obj.m_lap_info.m_current_lap = lap_data.m_currentLapNum
 
         # Process pitting status
-        driver_obj.processPittingStatus(lap_data, self.m_session_info.m_track)
+        driver_obj.processPittingStatus(lap_data)
 
         # Update DNF status
         driver_obj.m_driver_info.m_dnf_status_code = RESULT_STATUS_MAP.get(
@@ -611,6 +611,7 @@ class SessionState:
             obj_to_be_updated.m_driver_info.driver_number = participant.m_raceNumber
             obj_to_be_updated.m_driver_info.is_player = (index == packet.m_header.m_playerCarIndex)
             obj_to_be_updated.m_driver_info.telemetry_setting = participant.m_yourTelemetry
+            obj_to_be_updated.m_tyre_info.m_tyre_wear_extrapolator.name = participant.name
 
             if obj_to_be_updated.m_packet_copies.m_packet_particpant_data:
                 # Capture all AI state transitions
@@ -649,6 +650,12 @@ class SessionState:
                 if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None
                 else max(car_telemetry_data.m_speed, obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
             )
+            obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall = (
+                obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap
+                if obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall is None
+                else max(obj_to_be_updated.m_lap_info.m_top_speed_kmph_overall,
+                         obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap)
+            )
             obj_to_be_updated.m_packet_copies.m_packet_car_telemetry = car_telemetry_data
 
     def processCarStatusUpdate(self, packet: PacketCarStatusData) -> None:
@@ -667,6 +674,21 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_drs_allowed = bool(car_status_data.m_drsAllowed)
             obj_to_be_updated.m_car_info.m_drs_distance = car_status_data.m_drsActivationDistance
             obj_to_be_updated.m_packet_copies.m_packet_car_status = car_status_data
+
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_deployed_j,
+                car_status_data.m_ersDeployedThisLap
+            )
+
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguk_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguk_j,
+                car_status_data.m_ersHarvestedThisLapMGUK
+            )
+
+            obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguh_j = self._safeMax(
+                obj_to_be_updated.m_car_info.m_curr_lap_ers_harv_mguh_j,
+                car_status_data.m_ersHarvestedThisLapMGUH
+            )
 
     def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """
@@ -809,22 +831,22 @@ class SessionState:
         for index, car_damage in enumerate(packet.m_carDamageData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car damage update')
             obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
+            tyre_set_key = obj_to_be_updated._getCurrentTyreSetKey()
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
-            obj_to_be_updated.m_tyre_info.tyre_wear = TyreWearPerLap(
+            obj_to_be_updated.m_tyre_info.tyre_wear.push(TyreWearPerLap(
                 fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
                 fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
                 rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
-                desc="curr tyre wear"
-            )
+                desc=f"curr tyre wear {tyre_set_key}",
+            ))
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
 
             # Update delayed tyre change data if events are pending
-            if obj_to_be_updated.m_pending_events_mgr.areEventsPending():
-                obj_to_be_updated.m_delayed_tyre_change_data = deepcopy(obj_to_be_updated.m_tyre_info.tyre_wear)
-                obj_to_be_updated.m_pending_events_mgr.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            obj_to_be_updated.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields
@@ -1495,11 +1517,8 @@ class SessionState:
         for obj_to_be_updated in self.m_driver_data:
             if not obj_to_be_updated or not obj_to_be_updated.is_valid:
                 continue
-            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = (
-                packet.m_safetyCarStatus
-                if obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status is None
-                else max(packet.m_safetyCarStatus, obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status)
-            )
+            obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = self._safeMax(
+                obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status, packet.m_safetyCarStatus)
             obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
 
         return session_changed
@@ -1657,3 +1676,8 @@ class SessionState:
             tyre_stints_end_laps_6=0,
             tyre_stints_end_laps_7=0
         )
+
+    def _safeMax(self, curr: Optional[Any], new: Optional[Any]):
+        """Returns the maximum of two values, where curr value may be None.
+            If curr value is None, returns the other value."""
+        return new if curr is None else max(curr, new)

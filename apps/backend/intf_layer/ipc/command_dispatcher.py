@@ -29,7 +29,8 @@ from typing import Awaitable, Callable, Dict
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
 
-from .command_handlers import handleManualSave, handleUdpActionCodeChange
+from .command_handlers import (handleGetStats, handleManualSave,
+                               handleUdpActionCodeChange)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -41,6 +42,7 @@ CommandHandler = Callable[[dict, logging.Logger, SessionState, F1TelemetryHandle
 COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "manual-save": handleManualSave,
     "udp-action-code-change": handleUdpActionCodeChange,
+    "get-stats": handleGetStats,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------

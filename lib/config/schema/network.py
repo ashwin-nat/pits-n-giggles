@@ -81,6 +81,19 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    enable_pkt_ordering: bool = Field(
+        default=False,
+        description="[EXPERIMENTAL] | Enable UDP Packet Ordering",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "ext_info": [
+                    'The telemetry core will attempt to detect out of order packets and drop them accordingly.'
+                ]
+            }
+        }
+    )
+
     @model_validator(mode="after")
     def check_action_codes(self) -> "NetworkSettings":
         fields_map = type(self).model_fields

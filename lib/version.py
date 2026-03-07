@@ -22,10 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Dict, Any, Optional, List
-
 import json
 import os
+import subprocess
+from typing import Any, Dict, List, Optional
+
 import requests
 from packaging import version
 
@@ -41,7 +42,51 @@ def get_version() -> str:
         str: Version string
     """
 
-    return os.environ.get('PNG_VERSION', 'dev')
+    env_ver = os.environ.get('PNG_VERSION')
+    if env_ver is not None:
+        return env_ver
+
+    branch_name, latest_commit, working_tree_state = _get_git_metadata()
+    return f"dev_{branch_name}_{latest_commit}_{working_tree_state}"
+
+
+def _get_git_metadata() -> tuple[str, str, str]:
+    """Get branch, latest commit hash and working tree state from git.
+
+    Returns:
+        tuple[str, str, str]: (branch_name, latest_commit, dirty_or_clean)
+    """
+
+    def _run_git_command(args: list[str]) -> str:
+        try:
+            completed = subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                return "unknown"
+            output = completed.stdout.strip()
+            return output if output else "unknown"
+        except OSError:
+            return "unknown"
+
+    branch_name = _run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+    latest_commit = _run_git_command(["rev-parse", "--short", "HEAD"])
+
+    try:
+        completed = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        working_tree_state = "dirty" if completed.returncode == 0 and completed.stdout.strip() else "clean"
+    except OSError:
+        working_tree_state = "unknown"
+
+    return branch_name, latest_commit, working_tree_state
 
 def get_releases_info(timeout: float = 5.0, api_endpoint: str = PNG_RELEASES_API) -> Optional[List[Dict[str, Any]]]:
     """Get releases info from GitHub

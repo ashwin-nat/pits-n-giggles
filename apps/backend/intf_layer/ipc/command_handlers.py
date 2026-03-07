@@ -48,7 +48,20 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     reason = msg.get('reason', 'N/A')
     logger.info(f"Received shutdown command. Reason: {reason}")
     await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
-    return {'status': 'success'}
+    return {
+        'status': 'success',
+    }
+
+async def handleGetStats(
+        _msg: dict,
+        _logger: logging.Logger,
+        _session_state: SessionState,
+        telemetry_handler: F1TelemetryHandler) -> dict:
+    """Handle get-stats command."""
+    return {
+        "status": "success",
+        "stats": telemetry_handler.getStats(),
+    }
 
 async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
