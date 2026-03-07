@@ -97,7 +97,8 @@ class TyreWearExtrapolator:
         """
         Enforce physical bounds on tyre wear.
         """
-        return max(current, max(0.0, predicted))
+        predicted = max(0.0, predicted)
+        return max(current, predicted)
 
     def _warning(self, message: str, *args) -> None:
         """Emit a warning with an extrapolator name prefix."""
