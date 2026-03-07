@@ -153,3 +153,38 @@ class TestSessionFrameGate(F1TelemetryUnitTestsBase):
         self.assertTrue(gate.should_accept(DummyPacket(2, 0, pkt_type)))   # frame 0
 
         self.assertIsNone(gate.last_drop_reason)
+
+    def test_flashback_does_not_trigger_backward_drop(self) -> None:
+        """
+        Flashback causes frameIdentifier to rewind, but
+        overallFrameIdentifier continues increasing.
+
+        Since the gate keys frames off overallFrameIdentifier,
+        packets after flashback should be accepted and treated
+        as new frames.
+        """
+
+        pkt_type = self.packet_types[0]
+
+        # Normal progression
+        pkt1 = DummyPacket(1, frame_id=1000, packet_type=pkt_type)
+        pkt1.m_header.m_overallFrameIdentifier = 1000
+
+        pkt2 = DummyPacket(1, frame_id=1001, packet_type=pkt_type)
+        pkt2.m_header.m_overallFrameIdentifier = 1001
+
+        self.assertTrue(self.gate.should_accept(pkt1))
+        self.assertTrue(self.gate.should_accept(pkt2))
+
+        # Flashback occurs: frame rewinds but overall frame increases
+        pkt_flashback = DummyPacket(1, frame_id=900, packet_type=pkt_type)
+        pkt_flashback.m_header.m_overallFrameIdentifier = 1002
+
+        # Must be accepted
+        self.assertTrue(self.gate.should_accept(pkt_flashback))
+
+        # Same simulation frame but new overall frame -> still accepted
+        pkt_next = DummyPacket(1, frame_id=900, packet_type=pkt_type)
+        pkt_next.m_header.m_overallFrameIdentifier = 1003
+
+        self.assertTrue(self.gate.should_accept(pkt_next))

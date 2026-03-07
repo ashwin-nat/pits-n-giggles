@@ -31,14 +31,14 @@ from lib.f1_types import F1PacketBase, F1PacketType
 class SessionFrameGate:
     """
     Enforces monotonic ordering and per-frame packet-type uniqueness
-    based on (sessionUID, frameIdentifier, packetId).
+    based on (sessionUID, overallFrameIdentifier, packetId).
 
     If disabled, all packets are accepted.
 
     Rules:
         - First packet is accepted.
         - New sessionUID resets internal ordering.
-        - frameIdentifier == 0 resets ordering.
+        - overallFrameIdentifier == 0 resets ordering.
         - Frame must be monotonic (no backward frames).
         - Only one packet per packet type is allowed per frame.
     """
@@ -71,6 +71,12 @@ class SessionFrameGate:
         """
         Determine whether a packet should be accepted.
 
+        Rules enforced:
+            - Packets must arrive in non-decreasing overallFrameIdentifier order.
+            - Only one packet per packet type is allowed per overall frame.
+            - Session changes reset internal state.
+            - overallFrameIdentifier == 0 is treated as a reset and always accepted.
+
         Args:
             packet: Parsed telemetry packet.
 
@@ -85,7 +91,7 @@ class SessionFrameGate:
 
         header = packet.m_header
         session_uid = header.m_sessionUID
-        frame = header.m_frameIdentifier
+        frame = header.m_overallFrameIdentifier
         packet_type = header.m_packetId
 
         # First packet
@@ -112,7 +118,7 @@ class SessionFrameGate:
 
         # ---- From here on, frame > 0 ----
         # Backward frame
-        if self._last_frame is not None and self._last_frame != 0 and frame < self._last_frame:
+        if self._last_frame is not None and frame < self._last_frame:
             self._last_drop_reason = self._OOO_REASON
             return False
 
