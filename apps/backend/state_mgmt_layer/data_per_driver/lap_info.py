@@ -50,6 +50,7 @@ class LapInfo:
         m_delta_to_car_in_front (Optional[int]): Time difference to the car in front in milliseconds.
         m_delta_to_leader (Optional[int]): Time difference to the race leader in milliseconds.
         m_top_speed_kmph_this_lap (Optional[int]): The top speed achieved during the current lap in km/h.
+        m_top_speed_kmph_overall (Optional[int]): The top speed achieved overall across all laps
         m_speed_trap_record (Optional[float]): The speed trap record for the driver in km/h.
         m_is_pitting (Optional[bool]): Indicates whether the driver is currently in the pit lane.
         m_total_race_time (Optional[float]): Total race time in seconds.
@@ -74,6 +75,7 @@ class LapInfo:
     m_delta_to_car_in_front: Optional[int] = None
     m_delta_to_leader: Optional[int] = None
     m_top_speed_kmph_this_lap: Optional[int] = None
+    m_top_speed_kmph_overall: Optional[int] = None
     m_speed_trap_record: Optional[float] = None
     m_is_pitting: Optional[bool] = None
     m_total_race_time: Optional[float] = None

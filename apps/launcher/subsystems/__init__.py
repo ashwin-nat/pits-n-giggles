@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .backend_mgr import BackendAppMgr
-from .base_mgr import PngAppMgrBase
+from .base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .broker_mgr import BrokerAppMgr
 from .hud_mgr import HudAppMgr
 from .save_viewer_mgr import SaveViewerAppMgr
@@ -35,5 +35,6 @@ __all__ = [
     "BrokerAppMgr",
     "HudAppMgr",
     "PngAppMgrBase",
+    "PngAppMgrConfig",
     "SaveViewerAppMgr",
 ]

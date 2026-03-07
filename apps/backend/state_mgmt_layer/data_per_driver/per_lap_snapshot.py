@@ -50,7 +50,11 @@ class PerLapSnapshotEntry:
         max_sc_status  : SafetyCarType,
         tyre_sets  : PacketTyreSetsData,
         track_position: int,
-        top_speed_kmph: float = 0.0):
+        top_speed_kmph: int,
+        ers_harv_mguh_j: float,
+        ers_harv_mguk_j: float,
+        ers_deployed_j: float
+        ):
         """Init the snapshot entry object
 
         Args:
@@ -60,6 +64,9 @@ class PerLapSnapshotEntry:
             tyre_sets (PacketTyreSetsData): The Tyre Sets packet
             track_position (int): The lap's track position
             top_speed_kmph (float): The lap's top speed in kmph
+            ers_harv_mguh_j (float): The lap's total ERS energy harvested by MGU-H in joules
+            ers_harv_mguk_j (float): The lap's total ERS energy harvested by MGU-K in joules
+            ers_deployed_j (float): The lap's total ERS energy deployed in joules
         """
 
         self.m_car_damage_packet: CarDamageData = car_damage
@@ -68,6 +75,9 @@ class PerLapSnapshotEntry:
         self.m_tyre_sets_packet: PacketTyreSetsData = tyre_sets
         self.m_track_position: int = track_position
         self.m_top_speed_kmph: float = top_speed_kmph
+        self.m_ers_harv_mguh_j: float = ers_harv_mguh_j
+        self.m_ers_harv_mguk_j: float = ers_harv_mguk_j
+        self.m_ers_deployed_j: float = ers_deployed_j
 
     def toJSON(self, lap_number : int) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -87,4 +97,9 @@ class PerLapSnapshotEntry:
             "tyre-sets-data" : self.m_tyre_sets_packet.toJSON() if self.m_tyre_sets_packet else None,
             "track-position" : self.m_track_position or None,
             "top-speed-kmph" : self.m_top_speed_kmph,
+            "ers-stats" : {
+                "ers-harv-mguh-j" : self.m_ers_harv_mguh_j,
+                "ers-harv-mguk-j" : self.m_ers_harv_mguk_j,
+                "ers-deployed-j" : self.m_ers_deployed_j,
+            },
         }

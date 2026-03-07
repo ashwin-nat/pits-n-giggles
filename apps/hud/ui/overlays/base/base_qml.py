@@ -200,11 +200,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root.setOpacity(opacity / 100.0)
 
     @override
-    def set_locked_state(self, locked: bool):
-        self.locked = locked
-        self.update_window_flags()
-
-    @override
     def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.
@@ -230,7 +225,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         else:
             self.logger.warning(f"{self.OVERLAY_ID} | Cannot set UI scale - root window not initialized")
 
-    @override
     def animate_fade(self, show: bool):
 
         target_opacity = self.opacity / 100.0
@@ -249,14 +243,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
         self._fade_anim = anim
         anim.start()
-
-    @override
-    def toggle_visibility(self):
-
-        if self.get_visibility():
-            self.animate_fade(False)
-        else:
-            self.animate_fade(True)
 
     @override
     def set_visibility(self, visible: bool):
@@ -317,7 +303,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if not self._root or not self.get_visibility():
             return
 
+        self._track_frame()
         self.render_frame()
+
+    def _track_frame(self) -> None:
+        self._stats.track_event("__FRAMES__", "__RENDERED__")
 
     def render_frame(self):
         """Derived classes must implement this method."""

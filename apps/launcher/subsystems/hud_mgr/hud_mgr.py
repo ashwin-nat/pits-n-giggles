@@ -25,8 +25,9 @@
 import json
 import sys
 import threading
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass, replace
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    override)
 
 from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
@@ -38,7 +39,7 @@ from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
-from ..base_mgr import PngAppMgrBase
+from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
@@ -56,31 +57,25 @@ class ButtonConfig:
     tooltip: str
     enabled_when_stopped: bool = False
 
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class HudAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.hud"
+    DISPLAY_NAME = "HUD"
+    SHORT_NAME = "HUD"
+
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 integration_test_mode: bool,
-                 coverage_enabled: bool):
-        """Initialize the save viewer manager
-        :param console_app: Reference to a console interface for logging
-        :param settings: Settings object
-        :param args: Command line arguments to pass to the save viewer subsystem
-        :param debug_mode: Whether to run the save viewer in debug mode
-        :param integration_test_mode: Whether to run the save viewer in integration test mode
+                 common_cfg: PngAppMgrConfig):
+        """Initialize the HUD subsystem manager
+        :param common_cfg: Common configuration for the HUD app manager
         """
-        self.port = settings.Network.save_viewer_port
+        self.port = common_cfg.settings.Network.save_viewer_port
         self.supported = (sys.platform == "win32") # Only supported on Windows
-        self.enabled = settings.HUD.enabled
-        self.integration_test_mode = integration_test_mode
+        self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0
-        self.args = args + ["--debug"] if debug_mode else (args or [])
+        final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
         self.locked = True # HUD starts locked by default
         self.debouncer = ButtonDebouncer(debounce_time=0.5)
         self.integration_test_thread = None
@@ -89,19 +84,13 @@ class HudAppMgr(PngAppMgrBase):
         # Button registry
         self.buttons: Dict[str, QPushButton] = {}
 
+        config = replace(common_cfg,
+                         args=final_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop)
+
         super().__init__(
-            module_path="apps.hud",
-            display_name="HUD",
-            short_name="HUD",
-            start_by_default=(self.supported and self.enabled),
-            should_display=True,
-            window=window,
-            settings=settings,
-            args=self.args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop,
+            config=config,
         )
         if not self.enabled:
             self._update_status("Disabled")
@@ -132,6 +121,12 @@ class HudAppMgr(PngAppMgrBase):
                 tooltip="Hide/Show"
             ),
             ButtonConfig(
+                name="prev_page",
+                icon="prev-page",
+                callback=self.prev_page_callback,
+                tooltip="Previous MFD Page"
+            ),
+            ButtonConfig(
                 name="next_page",
                 icon="next-page",
                 callback=self.next_page_callback,
@@ -144,17 +139,17 @@ class HudAppMgr(PngAppMgrBase):
                 tooltip="Reset Overlays Positions"
             ),
             ButtonConfig(
+                name="mfd_interact",
+                icon="mfd-interact",
+                callback=self.mfd_interact_callback,
+                tooltip="MFD Interact"
+            ),
+            ButtonConfig(
                 name="lock",
                 icon="unlock",
                 callback=self.lock_callback,
                 tooltip="Edit Overlays"
             ),
-            ButtonConfig(
-                name="mfd_interact",
-                icon="mfd-interact",
-                callback=self.mfd_interact_callback,
-                tooltip="MFD Interact"
-            )
         ]
 
     def get_buttons(self) -> List[QPushButton]:
@@ -168,6 +163,8 @@ class HudAppMgr(PngAppMgrBase):
                 config.callback,
                 config.tooltip
             )
+            assert btn, f"Failed to build button for {config.name}"
+            assert config.name not in self.buttons, f"Duplicate button name: {config.name}"
             self.buttons[config.name] = btn
 
             # Set initial state based on enabled flag
@@ -282,6 +279,14 @@ class HudAppMgr(PngAppMgrBase):
         )
         self.info_log(str(rsp))
 
+    def prev_page_callback(self):
+        """Cycle to the previous page of the HUD."""
+        self.info_log("Sending previous page command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(
+            command="prev-page", args={}
+        )
+        self.info_log(str(rsp))
+
     def mfd_interact_callback(self):
         """Interact with the MFD."""
         self.info_log("Sending MFD interact command to HUD...")
@@ -292,14 +297,14 @@ class HudAppMgr(PngAppMgrBase):
 
     def start(self, reason: str):
         """Check for enabled flag before starting"""
-        self.debug_log(f"Starting {self.display_name}... Reason: {reason}")
+        self.debug_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
         if not self.enabled:
-            self.debug_log(f"{self.display_name} is not enabled.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not enabled.")
             self._update_status("Disabled")
             return
 
         if not self.supported:
-            self.debug_log(f"{self.display_name} is not supported.")
+            self.debug_log(f"{self.DISPLAY_NAME} is not supported.")
             self._update_status("Unsupported")
             return
 
@@ -339,7 +344,7 @@ class HudAppMgr(PngAppMgrBase):
         try:
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # Re-enable buttons on error
             self._update_all_button_states(running=True)
 
@@ -369,10 +374,11 @@ class HudAppMgr(PngAppMgrBase):
         rsp = IpcClientSync(self.ipc_port).request(command="set-overlays-opacity", args={
             "opacity": opacity,
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
-            self.debug_log(f"Set overlays opacity response: {rsp}")
+            self.info_log("Set overlays opacity command was successful")
 
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
@@ -384,10 +390,11 @@ class HudAppMgr(PngAppMgrBase):
         rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-idle-opacity", args={
             "opacity": opacity,
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set track radar idle opacity: {rsp}")
         else:
-            self.debug_log(f"Set track radar idle opacity response: {rsp}")
+            self.info_log("Set track radar idle opacity command was successful")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
@@ -411,10 +418,18 @@ class HudAppMgr(PngAppMgrBase):
 
     def _integration_test_worker(self):
         """Worker thread that periodically calls next_page_callback"""
+        i = 1
         while (not self.integration_test_stop_event.is_set()) and \
             (not self.integration_test_stop_event.wait(timeout=self.integration_test_interval)):
-            self.next_page_callback()
+
+            # Just cover all code paths in integration test mode
+            if i:
+                self.next_page_callback()
+            else:
+                self.prev_page_callback()
             self.mfd_interact_callback()
+
+            i = (i + 1) % 5
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the HUD subsystem
@@ -436,7 +451,9 @@ class HudAppMgr(PngAppMgrBase):
                 "show_track_radar_overlay",
                 "mfd_settings",
                 "mfd_tyre_wear_threshold",
+                "mfd_weather_page_ui_type",
                 "use_windowed_overlays",
+                "input_overlay_buffer_duration_sec",
             ],
             "Network": [
                 "broker_xpub_port",
@@ -445,7 +462,7 @@ class HudAppMgr(PngAppMgrBase):
                 "refresh_interval",
                 "realtime_overlay_fps",
                 "use_gpu_acceleration",
-            ]
+            ],
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")
@@ -466,10 +483,11 @@ class HudAppMgr(PngAppMgrBase):
             "oid": oid,
             "scale_factor": data["new_value"]
         })
-        if not rsp or rsp.get("status") != "success":
+        status = rsp.get("status")
+        if status != "success":
             self.error_log(f"Failed to set {oid} UI scale: {rsp}")
         else:
-            self.debug_log(f"Set {oid} UI scale response: {rsp}")
+            self.info_log(f"Set UI scale command for {oid} was successful")
 
     def show_scale_popup(self):
         """Show the scale popup"""
@@ -483,6 +501,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.lap_timer_ui_scale * 100),
+                visible=hud_settings.show_lap_timer,
             ),
             SliderItem(
                 key=TIMING_TOWER_OVERLAY_ID,
@@ -490,6 +509,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.timing_tower_ui_scale * 100),
+                visible=hud_settings.show_timing_tower,
             ),
             SliderItem(
                 key=MFD_OVERLAY_ID,
@@ -497,6 +517,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.mfd_ui_scale * 100),
+                visible=hud_settings.show_mfd,
             ),
             # SliderItem(
             #     key=TRACK_MAP_OVERLAY_ID,
@@ -504,6 +525,7 @@ class HudAppMgr(PngAppMgrBase):
             #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
             #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
             #     value=int(hud_settings.track_map_ui_scale * 100),
+            #     visible=hud_settings.show_track_map_overlay,
             # ),
             SliderItem(
                 key=INPUT_TELEMETRY_OVERLAY_ID,
@@ -511,6 +533,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.input_overlay_ui_scale * 100),
+                visible=hud_settings.show_input_overlay,
             ),
             SliderItem(
                 key=TRACK_RADAR_OVERLAY_ID,
@@ -518,6 +541,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
                 value=int(hud_settings.track_radar_overlay_ui_scale * 100),
+                visible=hud_settings.show_track_radar_overlay,
             ),
 
             # Opacity at the bottom
@@ -527,6 +551,7 @@ class HudAppMgr(PngAppMgrBase):
                 min=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["min"],
                 max=HudSettings.model_fields["overlays_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.overlays_opacity,
+                visible=True,
             ),
 
             SliderItem(
@@ -536,6 +561,7 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["max"],
                 value=hud_settings.track_radar_idle_opacity,
                 tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
+                visible=hud_settings.show_track_radar_overlay,
             )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
@@ -573,8 +599,17 @@ class HudAppMgr(PngAppMgrBase):
             )
         except ValidationError as e:
             self.error_log("Invalid HUD settings from slider popup:")
-            self.error_log(str(e))
-            error_text = e.errors()[0]["msg"]
+            for err in e.errors():
+                field = ".".join(str(p) for p in err.get("loc", []))
+                message = err.get("msg", "Invalid value")
+
+                self.error_log(f"HUD validation failed at '{field}': {message}")
+                raw_msg = e.errors()[0]["msg"]
+                prefix = "Value error, "
+                if raw_msg.startswith(prefix):
+                    error_text = raw_msg[len(prefix):]
+                else:
+                    error_text = raw_msg
             self.error_log(error_text)
 
             self.show_error("Invalid HUD Settings", error_text)
@@ -693,3 +728,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.layout = new_layout
         self.window.update_settings(new_settings)
         self.window.save_settings_to_disk(new_settings)
+
+    @override
+    def get_start_by_default(self):
+        return self.supported and self.enabled

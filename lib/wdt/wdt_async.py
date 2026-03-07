@@ -28,7 +28,7 @@ from typing import Callable
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class WatchDogTimer:
+class WatchDogTimerAsync:
     """
     Generic watchdog timer that monitors activity and triggers a status callback
     when input becomes inactive for a configured timeout.

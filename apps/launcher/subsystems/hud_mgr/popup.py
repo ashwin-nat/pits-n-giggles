@@ -40,6 +40,7 @@ class SliderItem:
     max: int
     value: int
     tooltip: Optional[str] = None
+    visible: bool = True
 
 @dataclass
 class SliderRow:
@@ -146,6 +147,7 @@ class OverlaysAdjustPopup(QWidget):
             row_widget = QWidget(self.inner)
             row_widget.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
             row_widget.setStyleSheet("background: transparent; border: none;")
+            row_widget.setVisible(item.visible)
             row_layout = QVBoxLayout(row_widget)
             row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(4)

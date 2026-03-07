@@ -55,6 +55,16 @@ class TyreWearPerLap:
         """
         return (self.fl_tyre_wear + self.fr_tyre_wear + self.rl_tyre_wear + self.rr_tyre_wear) / 4.0
 
+    def __lt__(self, other: "TyreWearPerLap") -> bool:
+        """
+        Compare tyre wear objects by average tyre wear.
+
+        Enables usage with max(), min(), sorted(), etc.
+        """
+        if not isinstance(other, TyreWearPerLap):
+            return NotImplemented
+        return self.m_average < other.m_average
+
     def toJSON(self) -> Dict[str, Any]:
         """
         Return a dictionary representing the object in JSON format.

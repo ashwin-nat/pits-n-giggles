@@ -35,9 +35,11 @@ from lib.ipc import IpcServerSync, IpcSubscriberSync
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 from .handlers import (handle_lock_widgets, handle_mfd_interact,
-                       handle_next_page, handle_set_opacity, handle_set_track_radar_idle_opacity,
-                       handle_set_overlays_layout, handle_set_ui_scale,
-                       handle_toggle_visibility)
+                       handle_next_page, handle_prev_page, handle_set_opacity,
+                       handle_get_stats,
+                       handle_set_overlays_layout,
+                       handle_set_track_radar_idle_opacity,
+                       handle_set_ui_scale, handle_toggle_visibility)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -50,10 +52,12 @@ COMMAND_HANDLERS: Dict[str, CommandHandler] = {
     "toggle-overlays-visibility": handle_toggle_visibility,
     "set-overlays-opacity": handle_set_opacity,
     "next-page": handle_next_page,
+    "prev-page": handle_prev_page,
     "mfd-interact": handle_mfd_interact,
     "set-overlays-layout": handle_set_overlays_layout,
     "set-ui-scale": handle_set_ui_scale,
     "set-track-radar-idle-opacity": handle_set_track_radar_idle_opacity,
+    "get-stats": handle_get_stats,
 }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -84,7 +88,7 @@ def run_ipc_task(
     logger.debug("Started IPC server on port %d", ipc_server.port)
     ipc_server.register_shutdown_callback(partial(
         _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
-        shm_reader=ipc_sub))
+        ipc_sub=ipc_sub))
     ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
     return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
 
@@ -110,8 +114,8 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
     return {"status": "error", "message": f"Unknown command: {cmd}"}
 
 def _shutdown_handler(
-        args: dict, logger:
-        logging.Logger,
+        args: dict,
+        logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
         ipc_sub: IpcSubscriberSync
@@ -126,9 +130,13 @@ def _shutdown_handler(
         ipc_sub (PngShmReader): Shared memory reader
     """
 
+    logger.debug("In shutdown handler")
     threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
                      name="Shutdown tasks").start()
-    return {"status": "success", "message": "Shutting down HUD manager"}
+    return {
+        "status": "success",
+        "message": "Shutting down HUD manager",
+    }
 
 def _stop_other_tasks(
         args: dict,

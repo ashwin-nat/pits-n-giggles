@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
+from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
                                   LapTimerOverlay, MfdOverlay,
                                   TimingTowerOverlay, TrackRadarOverlay)
@@ -36,6 +37,7 @@ from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
+from lib.wdt import WatchDogTimerSync
 
 from .hf_types import InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
@@ -64,6 +66,10 @@ class OverlaysMgr:
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
+        self.wdt = WatchDogTimerSync(
+            status_callback=self._wdt_status_callback,
+            timeout=5.0, # TODO: Make this configurable
+        )
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
@@ -149,24 +155,38 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
+        self.wdt.start()
         self.app.exec()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
+        self.wdt.stop()
         QMetaObject.invokeMethod(
             self.app,
             "quit",
             Qt.ConnectionType.QueuedConnection
         )
 
+    def get_stats(self) -> Dict[str, Any]:
+        """Get current stats for all overlays
+
+        Returns:
+            Dict[str, Any]: A dictionary containing stats for each overlay
+        """
+        return {
+            overlay_id: self._get_overlay_stats(overlay_id)
+            for overlay_id in self.window_manager.overlays
+        }
+
     # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
-        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
-        table_entries.sort(key=lambda x: x["driver-info"]["position"])
+        self.wdt.kick()
+        self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
+        # self._handle_core_wdt_status(data) #TODO: fix
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -258,6 +278,10 @@ class OverlaysMgr:
         """Go to the next page in MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
+    def prev_page(self):
+        """Go to the previous page in MFD overlay"""
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'prev_page', {})
+
     def mfd_interact(self):
         """Interact with MFD overlay"""
         self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'mfd_interact', {})
@@ -323,6 +347,11 @@ class OverlaysMgr:
             return None
         return OverlayPosition.fromJSON(ret)
 
+    def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
+        """Thread-safe query for specific window info."""
+        self.logger.debug(f"Requesting window stats for {overlay_id}")
+        return self.window_manager.request(overlay_id, "get_window_stats", timeout_ms=timeout_ms)
+
     def _register_overlay_if_enabled(
         self,
         *,
@@ -364,4 +393,25 @@ class OverlaysMgr:
         )
 
     def _set_overlays_visibility(self, visible: bool):
-        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible})
+        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
+
+    def _set_telemetry_active(self, active: bool):
+        self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
+
+    def _wdt_status_callback(self, active: bool):
+        """Watchdog status callback. Only handles loss of data from core."""
+        self.logger.debug(f"Watchdog status callback: {active}")
+        if not active:
+            self._set_telemetry_active(False)
+
+    def _handle_core_wdt_status(self, data: Dict[str, Any]):
+        """Handle core watchdog status."""
+        core_wdt_status = data.get("wdt-status", False)
+        self._set_telemetry_active(core_wdt_status)
+
+    def _prep_race_table_data(self, data: Dict[str, Any]):
+        """Prepare race table data for overlays."""
+        table_entries: List[Dict[str, Any]] = data.get("table-entries", [])
+        table_entries.sort(key=lambda x: x["driver-info"]["position"])
+        ref_row_idx = get_ref_row_index(data)
+        data["ref-row-index"] = ref_row_idx

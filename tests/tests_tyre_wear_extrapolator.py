@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 from typing import List
+from unittest.mock import MagicMock
 
 from tests_base import F1TelemetryUnitTestsBase
 
@@ -155,6 +156,50 @@ class TestTyreWearExtrapolator(TestTyreWearPrediction):
         self.assertFalse(extrapolator.isDataSufficient())
         # num_samples should be 0
         self.assertEqual(extrapolator.num_samples, 0)
+
+    def test_enforce_monotonicity_clamps_decreasing_tyre_wear(self):
+        self.extrapolator.m_logger = MagicMock()
+        self.extrapolator.m_predicted_tyre_wear = [
+            TyreWearPerLap(50.0, 51.0, 52.0, 53.0, lap_number=5),
+            TyreWearPerLap(49.0, 48.0, 52.0, 52.5, lap_number=6),
+            TyreWearPerLap(48.5, 48.0, 51.0, 52.4, lap_number=7),
+        ]
+
+        self.extrapolator._enforce_monotonicity()
+
+        lap6 = self.extrapolator.m_predicted_tyre_wear[1]
+        lap7 = self.extrapolator.m_predicted_tyre_wear[2]
+
+        # lap6: FL/FR/RR should be clamped to lap5 values; RL unchanged.
+        self.assertEqual(lap6.fl_tyre_wear, 50.0)
+        self.assertEqual(lap6.fr_tyre_wear, 51.0)
+        self.assertEqual(lap6.rl_tyre_wear, 52.0)
+        self.assertEqual(lap6.rr_tyre_wear, 53.0)
+
+        # lap7 should be clamped against already-adjusted lap6.
+        self.assertEqual(lap7.fl_tyre_wear, 50.0)
+        self.assertEqual(lap7.fr_tyre_wear, 51.0)
+        self.assertEqual(lap7.rl_tyre_wear, 52.0)
+        self.assertEqual(lap7.rr_tyre_wear, 53.0)
+
+        # Violations: lap6 (FL, FR, RR) + lap7 (FL, FR, RL, RR) = 7 warnings.
+        self.assertEqual(self.extrapolator.m_logger.warning.call_count, 7)
+
+    def test_enforce_monotonicity_keeps_valid_sequence_unchanged(self):
+        self.extrapolator.m_logger = MagicMock()
+        self.extrapolator.m_predicted_tyre_wear = [
+            TyreWearPerLap(10.0, 11.0, 12.0, 13.0, lap_number=5),
+            TyreWearPerLap(10.0, 11.5, 12.0, 13.1, lap_number=6),
+            TyreWearPerLap(10.2, 11.5, 12.8, 13.2, lap_number=7),
+        ]
+
+        self.extrapolator._enforce_monotonicity()
+
+        self.assertEqual(self.extrapolator.m_predicted_tyre_wear[0].fl_tyre_wear, 10.0)
+        self.assertEqual(self.extrapolator.m_predicted_tyre_wear[1].fr_tyre_wear, 11.5)
+        self.assertEqual(self.extrapolator.m_predicted_tyre_wear[2].rl_tyre_wear, 12.8)
+        self.assertEqual(self.extrapolator.m_predicted_tyre_wear[2].rr_tyre_wear, 13.2)
+        self.extrapolator.m_logger.warning.assert_not_called()
 
 class TestTyreWearExtrapolatorWithNonRacingLaps(TestTyreWearPrediction):
     def setUp(self):

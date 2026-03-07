@@ -89,3 +89,7 @@ class IpcClientSync:
         :return: A dict with 'status' and 'message'.
         """
         return self.request("__shutdown__", {"reason": reason})
+
+    def get_stats(self) -> dict:
+        """Requests runtime stats from the child process."""
+        return self.request("get-stats")

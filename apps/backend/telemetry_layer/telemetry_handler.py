@@ -25,13 +25,13 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
+from lib.event_counter import EventCounter
 from lib.config import CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -43,10 +43,12 @@ from lib.f1_types import (F1PacketType, PacketCarDamageData,
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
     HudCycleMfdNotification, HudMfdInteractionNotification,
-    HudToggleNotification, ITCMessage, TyreDeltaNotificationMessageCollection)
+    HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
+    TyreDeltaNotificationMessageCollection)
+from lib.logger import PngLogger
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager
-from lib.wdt import WatchDogTimer
+from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
 
@@ -56,6 +58,7 @@ class UdpActionCodes:
     tyre_delta: Optional[int] = None
     toggle_all_overlays: Optional[int] = None
     mfd_next_page: Optional[int] = None
+    mfd_prev_page: Optional[int] = None
     toggle_lap_timer_overlay: Optional[int] = None
     toggle_timing_tower_overlay: Optional[int] = None
     toggle_mfd_overlay: Optional[int] = None
@@ -71,6 +74,7 @@ class UdpActionCodes:
         "timing_tower_toggle_udp_action_code": "toggle_timing_tower_overlay",
         "mfd_toggle_udp_action_code": "toggle_mfd_overlay",
         "cycle_mfd_udp_action_code": "mfd_next_page",
+        "prev_mfd_page_udp_action_code": "mfd_prev_page",
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
         "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
         "mfd_interaction_udp_action_code": "mfd_interaction",
@@ -91,7 +95,7 @@ def setupTelemetryTask(
         settings: PngSettings,
         replay_server: bool,
         session_state: SessionState,
-        logger: logging.Logger,
+        logger: PngLogger,
         ver_str: str,
         tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
@@ -100,7 +104,7 @@ def setupTelemetryTask(
         settings (PngSettings): App settings
         replay_server (bool): Whether to enable the TCP replay debug server.
         session_state (SessionState): Handle to the session state
-        logger (logging.Logger): Logger instance
+        logger (PngLogger): Logger instance
         ver_str (str): Version string
         tasks (List[asyncio.Task]): List of tasks to be executed
 
@@ -132,7 +136,7 @@ class F1TelemetryHandler:
 
     def __init__(self,
         settings: PngSettings,
-        logger: logging.Logger,
+        logger: PngLogger,
         session_state: SessionState,
         replay_server: bool = False,
         ver_str: str = "dev") -> None:
@@ -143,7 +147,7 @@ class F1TelemetryHandler:
             - settings (PngSettings): Png settings
             - port (int): The port number for telemetry.
             - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
-            - logger (logging.Logger): Logger
+            - logger (PngLogger): Logger
             - capture_settings (CaptureSettings): Capture settings
             - wdt_interval (float): Watchdog interval
             - udp_custom_action_code (Optional[int]): UDP custom action code.
@@ -154,9 +158,10 @@ class F1TelemetryHandler:
         self.m_manager = AsyncF1TelemetryManager(
             port_number=settings.Network.telemetry_port,
             logger=logger,
-            replay_server=replay_server
+            replay_server=replay_server,
+            frame_gate_enabled=settings.Network.enable_pkt_ordering
         )
-        self.m_logger: logging.Logger = logger
+        self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
 
         self.m_last_session_uid: Optional[int] = None
@@ -164,10 +169,11 @@ class F1TelemetryHandler:
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_version: str = ver_str
-        self.m_wdt: WatchDogTimer = WatchDogTimer(
+        self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
@@ -177,6 +183,7 @@ class F1TelemetryHandler:
             tyre_delta=settings.Network.udp_tyre_delta_action_code,
             toggle_all_overlays=settings.HUD.toggle_overlays_udp_action_code,
             mfd_next_page=settings.HUD.cycle_mfd_udp_action_code,
+            mfd_prev_page=settings.HUD.prev_mfd_page_udp_action_code,
             toggle_lap_timer_overlay=settings.HUD.lap_timer_toggle_udp_action_code,
             toggle_timing_tower_overlay=settings.HUD.timing_tower_toggle_udp_action_code,
             toggle_mfd_overlay=settings.HUD.mfd_toggle_udp_action_code,
@@ -269,11 +276,13 @@ class F1TelemetryHandler:
             """
 
             if packet.m_sessionDuration == 0:
-                self.m_logger.info("Session duration is 0. clearing data structures")
+                self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
+                                   packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session duration is 0")
 
             elif await self.m_session_state_ref.processSessionUpdate(packet):
-                self.m_logger.info("Session UID changed. clearing data structures")
+                self.m_logger.info("Session UID changed. clearing data structures. UID %d",
+                                   packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session UID changed")
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
@@ -361,13 +370,13 @@ class F1TelemetryHandler:
             if not self.m_session_state_ref.m_session_info.is_valid:
                 self.m_logger.error('Final classification event. Session data not available. Not saving data.')
                 return
-            self.m_logger.info('Received Final Classification Packet.')
+            self.m_logger.info('Received Final Classification Packet. UID = %d', packet.m_header.m_sessionUID)
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
             # Perform the auto save stuff only if configured
             if self._shouldSaveData():
-                await self.postGameDumpToFile(final_json)
+                await self.postGameDumpToFile(final_json, session_uid=packet.m_header.m_sessionUID)
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -502,6 +511,11 @@ class F1TelemetryHandler:
                                     self._processCycleMFD)
 
             await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.mfd_prev_page,
+                                    'Previous MFD page',
+                                    self._processPrevPageMFD)
+
+            await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_lap_timer_overlay,
                                     'Toggle lap timer overlay',
                                     lambda: self._processToggleHud('lap_timer'))
@@ -538,7 +552,8 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier}")
+            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier} "
+                               f"UID = {packet.m_header.m_sessionUID}")
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -551,8 +566,9 @@ class F1TelemetryHandler:
             # In case session start was missed, clear data structures
             self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
             if packet.mEventDetails.numLights == 1:
-                self.m_logger.info("Session start was missed. Clearing data structures in start lights event")
                 session_uid = packet.m_header.m_sessionUID
+                self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
+                                   session_uid)
 
                 if session_uid != self.m_last_session_uid:
                     self.m_last_session_uid = session_uid
@@ -610,12 +626,13 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session = True
         self.m_final_classification_processed = False
 
-    async def postGameDumpToFile(self, final_json: Dict[str, Any]) -> None:
+    async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
 
         Arguments:
             final_json (Dict): Dictionary containing JSON data after final classification
+            session_uid (int): Session UID for which the final classification was received.
         """
 
         event_str = self.m_session_state_ref.getEventInfoStr()
@@ -641,11 +658,22 @@ class F1TelemetryHandler:
         })
         try:
             await save_json_to_file(final_json, final_json_file_name)
-            self.m_logger.info("Wrote race info to %s. Num pkts %d", final_json_file_name,
-                               self.m_session_state_ref.m_pkt_count)
+            self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", final_json_file_name,
+                               self.m_session_state_ref.m_pkt_count, session_uid)
         except Exception: # pylint: disable=broad-except
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
+
+    def getStats(self) -> Dict[str, Any]:
+        """Get telemetry handler stats.
+
+        Returns:
+            Dict[str, Any]: The telemetry handler stats.
+        """
+        return {
+            "__UDP_ACTION_BUTTONS__" : self.m_udp_action_stats.get_stats(),
+            **self.m_manager.getStats()
+        }
 
     def _shouldSaveData(self) -> bool:
         """
@@ -730,6 +758,16 @@ class F1TelemetryHandler:
             )
         )
 
+    async def _processPrevPageMFD(self) -> None:
+        """Send the previous page MFD notification to the HUD manager."""
+        await AsyncInterTaskCommunicator().send(
+            "hud-notifier",
+            ITCMessage(
+                m_message_type=ITCMessage.MessageType.HUD_PREV_PAGE_MFD_NOTIFICATION,
+                m_message=HudPrevPageMfdNotification() # same message, different type. No extra info needed for prev page
+            )
+        )
+
     async def _processMFDInteraction(self) -> None:
         """Send the MFD interaction notification to the HUD manager."""
         await AsyncInterTaskCommunicator().send(
@@ -754,5 +792,7 @@ class F1TelemetryHandler:
             coro (Callable[[], Awaitable[None]]): The coroutine to execute.
         """
         if self._isUdpActionButtonPressed(buttons, code):
+            self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
+

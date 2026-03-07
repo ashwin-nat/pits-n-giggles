@@ -34,6 +34,7 @@ from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
+from lib.event_counter import EventCounter
 from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -85,11 +86,8 @@ class BaseOverlay():
         - `apply_config()`       - apply geometry and opacity
         - `update_window_flags()`- locked mode / windowed overlay behavior
         - `set_opacity()`        - apply opacity to the backend window
-        - `set_locked_state()`   - enable/disable interaction
-        - `animate_fade()`       - fade in/out using toolkit-specific animation
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
-        - `toggle_visibility()`  - fade in/out
         - `set_ui_scale()`       - set scale factor
         - `get_visibility()`     - return current visibility state
 
@@ -123,11 +121,14 @@ class BaseOverlay():
         self.logger = logger
         self.opacity = opacity
         self.scale_factor = scale_factor
+        self.telemetry_active = True
+
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
         self._hf_subscriptions: Set[str] = set()
+        self._stats = EventCounter()
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
@@ -136,6 +137,48 @@ class BaseOverlay():
 
         # Register default handlers
         self._register_default_handlers()
+
+    # ----------------------------------------------------------------------
+    # Common handlers
+    # ----------------------------------------------------------------------
+
+    def set_locked_state(self, locked: bool):
+        """Common handler for setting locked state."""
+        self.locked = locked
+        self.update_window_flags()
+
+        if self.locked and not self.telemetry_active:
+            self.logger.debug("%s locking overlay. But hiding it since telemetry is not active", self.OVERLAY_ID)
+            self.set_visibility(False)
+
+    def toggle_visibility(self):
+        """Common handler for toggling visibility."""
+        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
+        if self.get_visibility():
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
+            self.set_visibility(False)
+        else:
+            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
+            self.set_visibility(True)
+
+    def set_telemetry_active(self, active: bool):
+        """Common handler for setting telemetry active state."""
+        if self.telemetry_active == active:
+            return
+
+        self.logger.debug("%s set_telemetry_active. current: %s, new: %s",
+                          self.OVERLAY_ID, self.telemetry_active, active)
+        self.telemetry_active = active
+
+        if not self.locked:
+            # In unlocked mode. user is probably editing the overlay.
+            # Hence no-op
+            return
+
+        if active:
+            self.set_visibility(True)
+        else:
+            self.set_visibility(False)
 
     # ----------------------------------------------------------------------
     # Abstract interface — implemented by QWidget and QML subclasses
@@ -165,19 +208,10 @@ class BaseOverlay():
     def set_opacity(self, opacity: int):
         raise NotImplementedError
 
-    def set_locked_state(self, locked: bool):
-        raise NotImplementedError
-
-    def animate_fade(self, show: bool):
-        raise NotImplementedError
-
     def get_window_info(self) -> OverlayPosition:
         raise NotImplementedError
 
     def set_window_position(self, config: OverlayPosition):
-        raise NotImplementedError
-
-    def toggle_visibility(self):
         raise NotImplementedError
 
     def set_visibility(self, visible: bool):
@@ -224,6 +258,17 @@ class BaseOverlay():
         """Get the latest high frequency data of a specific type."""
         return self._latest_hf.get(type_.__hf_type__)
 
+    def get_stats(self) -> dict:
+        """Get overlay runtime stats."""
+        return self._stats.get_stats()
+
+    def _track_event(self, event_type: str) -> None:
+        self._stats.track_event("__EVENTS__", "__TOTAL__")
+        self._stats.track_event("__EVENTS__", event_type)
+
+    def _track_hf_event(self, event_type: str) -> None:
+        self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
+        self._stats.track_event("__HF_EVENTS__", event_type)
 
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
@@ -235,6 +280,12 @@ class BaseOverlay():
             """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
             return serialise_data(self.get_window_info().toJSON())
+
+        @self.on_request("get_window_stats")
+        def _get_stats(_data: dict):
+            """Return current window stats."""
+            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
+            return serialise_data(self.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -280,6 +331,12 @@ class BaseOverlay():
             self.set_ui_scale(scale_factor)
             self.scale_factor = scale_factor
 
+        @self.on_event("__set_telemetry_active__")
+        def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
+            """Set telemetry active state."""
+            active = data["active"]
+            self.set_telemetry_active(active)
+
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
     # ----------------------------------------------------------------------
@@ -294,14 +351,16 @@ class BaseOverlay():
         handler = self._command_handlers.get(cmd)
         if not handler:
             return
+        self._track_event(cmd)
         parsed = deserialise_data(data)
         try:
             handler(parsed)
         except AssertionError:
             self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
             raise # We want to crash on assertions for debugging
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
+            self._stats.track_event("__EXCEPTION__", cmd)
 
     @Slot(str, str, dict)
     def _handle_request(self, recipient: str, request_type: str, request_data: str):
@@ -343,6 +402,7 @@ class BaseOverlay():
 
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload
+            self._track_hf_event(payload.__hf_type__)
 
         if handler := self._high_freq_handlers.get(payload.__hf_type__):
             try:

@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.wdt import WatchDogTimer
+from lib.wdt import WatchDogTimerAsync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -47,7 +47,7 @@ class TestWatchDogTimer(F1TelemetryUnitTestsBase):
         def fake_clock() -> float:
             return self.fake_time
 
-        self.wdt = WatchDogTimer(
+        self.wdt = WatchDogTimerAsync(
             status_callback=self.state_changes.append,
             timeout=0.5,
             clock=fake_clock,

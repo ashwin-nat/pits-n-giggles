@@ -40,7 +40,8 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
-                                      PngAppMgrBase, SaveViewerAppMgr)
+                                      PngAppMgrBase, PngAppMgrConfig,
+                                      SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -214,43 +215,26 @@ class PngLauncherWindow(QMainWindow):
         args = [
             "--config-file", self.config_file_path_new,
         ]
+
+        common_cfg = PngAppMgrConfig(
+            window=self,
+            settings=self.settings,
+            args=args,
+            debug_mode=debug_mode,
+            coverage_enabled=coverage_enabled,
+            integration_test_mode=integration_test_mode
+        )
+
         self.subsystems: List[PngAppMgrBase] = [
-            BackendAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               replay_server=replay_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            SaveViewerAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            HudAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               integration_test_mode=integration_test_mode,
-               coverage_enabled=coverage_enabled
-            ),
-            BrokerAppMgr(
-               window=self,
-               settings=self.settings,
-               args=args,
-               debug_mode=debug_mode,
-               coverage_enabled=coverage_enabled
-            )
+            BackendAppMgr(common_cfg, replay_server=replay_mode),
+            SaveViewerAppMgr(common_cfg),
+            HudAppMgr(common_cfg),
+            BrokerAppMgr(common_cfg),
         ]
         for subsystem in self.subsystems:
-            assert subsystem.short_name
-            assert subsystem.short_name not in self.subsystems_short_names
-            self.subsystems_short_names.add(subsystem.short_name)
-
+            assert subsystem.SHORT_NAME
+            assert subsystem.SHORT_NAME not in self.subsystems_short_names
+            self.subsystems_short_names.add(subsystem.SHORT_NAME)
 
         self.show_success_signal.connect(self._show_success_safe)
         self.show_error_signal.connect(self._show_error_safe)
@@ -276,6 +260,8 @@ class PngLauncherWindow(QMainWindow):
         self.icons: Dict[str, QIcon] = {
             "arrow-down" : self._load_icon(icons_path_base / "arrow-down.svg"),
             "arrow-up" : self._load_icon(icons_path_base / "arrow-up.svg"),
+            "caret-right" : self._load_icon(icons_path_base / "caret-right.svg"),
+            "caret-down" : self._load_icon(icons_path_base / "caret-down.svg"),
             "dashboard" : self._load_icon(icons_path_base / "dashboard.svg"),
             "discord" : self._load_icon(icons_path_base / "discord.svg"),
             "download" : self._load_icon(icons_path_base / "download.svg"),
@@ -284,12 +270,14 @@ class PngLauncherWindow(QMainWindow):
             "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
             "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
+            "prev-page" : self._load_icon(icons_path_base / "prev-page.svg"),
             "reset" : self._load_icon(icons_path_base / "reset.svg"),
             "save" : self._load_icon(icons_path_base / "save.svg"),
             "settings" : self._load_icon(icons_path_base / "settings.svg"),
             "show-hide" : self._load_icon(icons_path_base / "show-hide.svg"),
             "start" : self._load_icon(icons_path_base / "start.svg"),
             "stop" : self._load_icon(icons_path_base / "stop.svg"),
+            "tp-dashboard" : self._load_icon(icons_path_base / "fab-dashboard.png"),
             "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
             "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
             "updates" : self._load_icon(icons_path_base / "updates.svg"),
@@ -442,7 +430,7 @@ class PngLauncherWindow(QMainWindow):
 
         # Add subsystem cards in a grid
         for idx, subsystem in enumerate(self.subsystems):
-            if not subsystem.should_display:
+            if not subsystem.SHOULD_DISPLAY:
                 continue
             row = idx // NUM_SUBSYS_PER_ROW
             col = idx % NUM_SUBSYS_PER_ROW
@@ -507,8 +495,8 @@ class PngLauncherWindow(QMainWindow):
     def auto_start_subsystems(self):
         """Auto-start subsystems marked for auto-start"""
         for subsystem in self.subsystems:
-            if subsystem.start_by_default:
-                self.debug_log(f"Auto-starting {subsystem.display_name}...")
+            if subsystem.get_start_by_default():
+                self.debug_log(f"Auto-starting {subsystem.DISPLAY_NAME}...")
                 subsystem.start("Initial auto-start")
 
     def format_log_message_colored_self(self, timestamp: str, message: str, level: str) -> str:
@@ -614,18 +602,10 @@ class PngLauncherWindow(QMainWindow):
             filename = obj['filename']
             lineno = obj['lineno']
             text = obj['message']
+            stack = obj.get("stack")
 
-            # --- console message (NO STACKTRACE) ---
-            if stack := obj.get("stack"):
-                console_text = f"{text} (stack trace written to log file)"
-            else:
-                console_text = text
+            # ---------------- FILE MESSAGE (always written) ----------------
 
-            console_msg = self.format_log_message_colored_child(
-                timestamp, console_text, level, src
-            )
-
-            # --- file log message (WITH STACKTRACE if present) ---
             if stack:
                 file_text = f"{text}\n{stack}"
             else:
@@ -635,8 +615,23 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, file_text, level, filename, lineno, src
             )
 
+            # ---------------- CONSOLE MESSAGE (skip if SILENT) ----------------
+
+            console_msg = None
+            if level != "SILENT":
+                if stack:
+                    console_text = f"{text} (stack trace written to log file)"
+                else:
+                    console_text = text
+
+                console_msg = self.format_log_message_colored_child(
+                    timestamp, console_text, level, src
+                )
+
         except json.JSONDecodeError:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+            # Unknown messages always go everywhere
             console_msg = self.format_log_unknown_message_colored_child(
                 timestamp, message, src
             )
@@ -644,11 +639,13 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, message, src
             )
 
-        # Write to console widget (short message)
-        if self.console:
+        # ---------------- WRITE OUTPUT ----------------
+
+        # Console (only if not SILENT)
+        if self.console and console_msg is not None:
             self.console.append_log(console_msg)
 
-        # Write to rotating file logger (full message)
+        # File (always)
         self.logger.info(log_msg)
 
     def _write_log_self(self, message: str, level: str):
@@ -683,7 +680,7 @@ class PngLauncherWindow(QMainWindow):
         self.process_events()
 
         for subsystem in self.subsystems:
-            self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.display_name}...")
+            self.info_log(f"Shutting down {APP_NAME} {self.ver_str} - Stopping subsystem {subsystem.DISPLAY_NAME}...")
             task = StopSubsystemTask(subsystem, "Launcher shutting down")
             self.thread_pool.start(task)
 
@@ -702,7 +699,9 @@ class PngLauncherWindow(QMainWindow):
                 forced_shutdown = True
                 break
 
-        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
+        stats = {subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems}
+        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}). "
+                      f"Final subsystem stats: {json.dumps(stats, sort_keys=True)}")
         event.accept()
 
     def run(self):
@@ -838,7 +837,7 @@ class PngLauncherWindow(QMainWindow):
         self.save_settings_to_disk(new_settings)
 
         for subsystem in self.subsystems:
-            self.debug_log(f"On settings change for {subsystem.display_name}...")
+            self.debug_log(f"On settings change for {subsystem.DISPLAY_NAME}...")
             task = SettingsChangeTask(subsystem, new_settings)
             self.thread_pool.start(task)
 
