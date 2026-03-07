@@ -22,6 +22,7 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
+import logging
 from typing import List, Optional, Tuple
 
 from .simple_linear_regression import SimpleLinearRegression
@@ -55,14 +56,30 @@ class TyreWearExtrapolator:
             new data points are added
     """
 
-    def __init__(self, initial_data: List[TyreWearPerLap], total_laps: int):
+    def __init__(
+        self,
+        initial_data: List[TyreWearPerLap],
+        total_laps: int,
+        logger: Optional[logging.Logger] = None,
+        name: Optional[str] = None,
+    ):
         """
         Initialize a TyreWearExtrapolator object.
 
         Args:
             initial_data (List[TyreWearPerLap]): Initial tyre wear data.
             total_laps (int): Total number of laps in the race.
+            logger (Optional[logging.Logger], optional): Logger instance for extrapolator logs.
+                If None, a null logger is used.
+            name (Optional[str], optional): Name prefix for all extrapolator log lines.
         """
+
+        if logger is None:
+            logger = logging.getLogger("{__name__}.TyreWearExtrapolator")
+            logger.addHandler(logging.NullHandler())
+            logger.propagate = False
+        self.m_logger = logger
+        self.m_name = name if name else self.__class__.__name__
 
         self._initMembers(initial_data, total_laps)
 
@@ -82,18 +99,40 @@ class TyreWearExtrapolator:
         """
         return max(current, max(0.0, predicted))
 
+    def _warning(self, message: str, *args) -> None:
+        """Emit a warning with an extrapolator name prefix."""
+        self.m_logger.warning(f"[{self.m_name}] {message}", *args)
+
+    def _enforce_tyre_monotonicity(self, prev: TyreWearPerLap, curr: TyreWearPerLap, attr: str, tyre: str) -> None:
+        """Clamp one tyre wear attribute to be non-decreasing and log violations."""
+        prev_wear = getattr(prev, attr)
+        curr_wear = getattr(curr, attr)
+
+        if curr_wear < prev_wear:
+            self._warning(
+                "Tyre wear monotonicity violated on lap %s for %s: %.3f < %.3f",
+                curr.lap_number,
+                tyre,
+                curr_wear,
+                prev_wear,
+            )
+            setattr(curr, attr, prev_wear)
+
     def _enforce_monotonicity(self) -> None:
         """
         Ensure predicted wear never decreases lap-to-lap.
         """
+        tyre_specs = [
+            ("fl_tyre_wear", "FL"),
+            ("fr_tyre_wear", "FR"),
+            ("rl_tyre_wear", "RL"),
+            ("rr_tyre_wear", "RR"),
+        ]
         for i in range(1, len(self.m_predicted_tyre_wear)):
             prev = self.m_predicted_tyre_wear[i - 1]
             curr = self.m_predicted_tyre_wear[i]
-
-            curr.fl_tyre_wear = max(curr.fl_tyre_wear, prev.fl_tyre_wear)
-            curr.fr_tyre_wear = max(curr.fr_tyre_wear, prev.fr_tyre_wear)
-            curr.rl_tyre_wear = max(curr.rl_tyre_wear, prev.rl_tyre_wear)
-            curr.rr_tyre_wear = max(curr.rr_tyre_wear, prev.rr_tyre_wear)
+            for attr, tyre in tyre_specs:
+                self._enforce_tyre_monotonicity(prev=prev, curr=curr, attr=attr, tyre=tyre)
 
     def isDataSufficient(self) -> bool:
         """Check if the amount of data available for extrapolation is sufficient.
@@ -169,6 +208,14 @@ class TyreWearExtrapolator:
             int: The number of laps remaining in the race
         """
         return self.m_remaining_laps
+
+    @property
+    def name(self) -> str:
+        return self.m_name
+
+    @name.setter
+    def name(self, value: str):
+        self.m_name = value
 
     @property
     def fl_rate(self) -> float:
