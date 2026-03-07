@@ -262,10 +262,8 @@ class IpcPubSubBroker:
                 topic = topic_raw.decode("utf-8", errors="replace")
                 total_size = sum(len(part) for part in msg)
 
-                self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
-                self.stats.track_packet(topic, "__INCOMING__", total_size)
-                self.stats.track_packet("__OVERALL__", "__OUTGOING__", total_size)
-                self.stats.track_packet(topic, "__OUTGOING__", total_size)
+                self.stats.track_packet("__OVERALL__", "traffic", total_size)
+                self.stats.track_packet("__TOPIC__", topic, total_size)
         except zmq.ZMQError:
             pass
         finally:
