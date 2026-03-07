@@ -155,30 +155,44 @@ class SocketioClient:
     # ------------------- Public API -------------------
 
     def run(self) -> None:
-        """[BLOCKING] Run the client in a loop."""
-        try:
-            self.logger.debug("Connecting to %s ...", self.url)
-            self._sio.connect(self.url, wait=True, transports=["websocket", "polling"])
-            self.logger.debug("Connection established")
+        """[BLOCKING] Run the client with automatic retry supervision."""
+        self.logger.debug("Starting IPC subscriber run loop")
 
-            # Just wait - let Socket.IO handle reconnection automatically
-            while not self._stop_event.is_set():
-                self._sio.sleep(0.1)
+        while not self._stop_event.is_set():
 
-        except (socketio.exceptions.ConnectionError,
+            try:
+                if not self._connected:
+                    self.logger.debug("Attempting connection to %s ...", self.url)
+                    self._sio.connect(
+                        self.url,
+                        wait=True,
+                        transports=["websocket", "polling"],
+                    )
+                    self.logger.debug("Connection established")
+
+                while not self._stop_event.is_set() and self._connected:
+                    self._sio.sleep(0.1)
+
+            except (
+                socketio.exceptions.ConnectionError,
                 engineio.exceptions.ConnectionError,
-                ConnectionRefusedError):
-            # Server went away / refused connection
-            self.logger.debug("Socket.IO server unavailable, shutting down subscriber")
+                ConnectionRefusedError,
+            ) as e:
+                self.logger.debug("Connection error (%s). Will retry...", e)
 
-        except Exception as e: # pylint: disable=broad-except
-            self.logger.exception("Connection error: %s", e)
-        finally:
-            if self._sio.connected:
-                try:
-                    self._sio.disconnect()
-                except Exception: # pylint: disable=broad-except
-                    pass
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.exception("Unexpected error: %s", e)
+
+            finally:
+                if self._connected:
+                    try:
+                        self._sio.disconnect()
+                    except Exception:  # pylint: disable=broad-except
+                        pass
+
+            if not self._stop_event.is_set():
+                self.logger.debug("Waiting before retry...")
+                self._stop_event.wait(2.0)
 
         self.logger.debug("IPC subscriber. Finished run loop")
 

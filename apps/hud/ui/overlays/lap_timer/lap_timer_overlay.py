@@ -218,6 +218,10 @@ class LapTimerOverlay(BaseOverlayQML):
             return self.DEFAULT_TIME
 
         estimated_ms = best_ms + delta_ms
+        if estimated_ms <= 0:
+            self.logger.debug("%s | Negative estimated lap time. %d + %d", self.OVERLAY_ID, best_ms, delta_ms)
+            return self.DEFAULT_TIME
+
         est_str = F1Utils.millisecondsToMinutesSecondsMilliseconds(estimated_ms)
 
         # Add position prediction for practice/qualifying sessions

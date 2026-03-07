@@ -22,9 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-
 from logging import Logger
-from typing import Set, Type
+from typing import Optional, Set, Type
 
 from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
@@ -78,6 +77,7 @@ class PacketParserFactory:
         """
         self._interested_packets = interested_packets
         self._logger = logger
+        self._last_failure_reason: Optional[str] = None
 
     def parse(self, raw_packet: bytes) -> F1PacketBase:
         """
@@ -87,34 +87,44 @@ class PacketParserFactory:
             (packet_obj, callback) — either may be None if not processable.
         """
         if len(raw_packet) < PacketHeader.PACKET_LEN:
+            self._last_failure_reason = "Incomplete packet"
             return None # Incomplete packet
 
         # Parse header
         header = PacketHeader(raw_packet[:PacketHeader.PACKET_LEN])
-
         if not header.is_supported_packet_type:
+            self._last_failure_reason = f"Unsupported packet type. Packet ID = {header.m_packetId}"
             return None
 
         if header.m_packetFormat < self._MIN_PACKET_FORMAT:
+            self._last_failure_reason = f"Unsupported packet format. Packet format = {header.m_packetFormat}"
             raise UnsupportedPacketFormat(header.m_packetFormat)
 
         if header.m_packetId not in self._interested_packets:
+            self._last_failure_reason = f"Uninterested packet type. Packet ID = {header.m_packetId}"
             return None
 
         # Parse payload
         parser_cls = self._PACKET_TYPE_MAP.get(header.m_packetId)
         if not parser_cls:
+            self._last_failure_reason = f"No parser registered for packet type. Packet ID = {header.m_packetId}"
             raise UnsupportedPacketType(header.m_packetId)
 
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
         try:
             packet = parser_cls(header, payload_raw)
         except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError) as e:
+            self._last_failure_reason = f"Packet parsing error: {str(e)}"
             self._logger.error("Cannot parse packet of type %s. Error = %s",
                                 str(header.m_packetId), str(e))
             return None
 
+        self._last_failure_reason = None
         return packet
+
+    @property
+    def last_failure_reason(self) -> Optional[str]:
+        return self._last_failure_reason
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

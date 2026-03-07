@@ -52,6 +52,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertIsNone(settings.udp_tyre_delta_action_code)
         self.assertEqual(settings.broker_xpub_port, 53838)
         self.assertEqual(settings.broker_xsub_port, 53835)
+        self.assertEqual(settings.enable_pkt_ordering, False)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -215,3 +216,19 @@ class TestNetworkSettings(TestF1ConfigBase):
                 save_viewer_port=7000,
                 broker_xpub_port=7000,
             )
+
+    def test_enable_pkt_ordering(self):
+        net = NetworkSettings(enable_pkt_ordering=True)
+        self.assertTrue(net.enable_pkt_ordering)
+
+        net = NetworkSettings(enable_pkt_ordering=False)
+        self.assertFalse(net.enable_pkt_ordering)
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(enable_pkt_ordering="cat")
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(enable_pkt_ordering=None)
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(enable_pkt_ordering=69420)

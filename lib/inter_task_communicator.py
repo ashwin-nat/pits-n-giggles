@@ -234,6 +234,30 @@ class HudCycleMfdNotification:
             "dummy": "dummy"
         }
 
+class HudPrevPageMfdNotification:
+    def __init__(self) -> None:
+        """Initialize the HudPrevPageMfdNotification object.
+        """
+        pass
+
+    def __repr__(self) -> str:
+        """Return a string representation of the HudPrevPageMfdNotification object."""
+        return "HudPrevPageMfdNotification()"
+
+    def __str__(self) -> str:
+        """Return a string representation of the HudPrevPageMfdNotification object."""
+        return self.__repr__()
+
+    def toJSON(self) -> Dict[str, Any]:
+        """Get the JSON representation of this object.
+
+        Returns:
+            Dict[str, Any]: The JSON representation of this object.
+        """
+        return {
+            "dummy": "dummy"
+        }
+
 class HudMfdInteractionNotification:
     def __init__(self) -> None:
         """Initialize the HudMfdInteractionNotification object.
@@ -268,6 +292,7 @@ class ITCMessage:
         FINAL_CLASSIFICATION_NOTIFICATION  = "final-classification-notification"
         HUD_TOGGLE_NOTIFICATION            = "hud-toggle-notification"
         HUD_CYCLE_MFD_NOTIFICATION         = "hud-cycle-mfd-notification"
+        HUD_PREV_PAGE_MFD_NOTIFICATION     = "hud-prev-page-mfd-notification"
         HUD_MFD_INTERACTION_NOTIFICATION   = "hud-mfd-interaction-notification"
 
         def __str__(self) -> str:

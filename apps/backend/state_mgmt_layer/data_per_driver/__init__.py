@@ -25,7 +25,6 @@ from .data_per_driver import DataPerDriver
 from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
-from .pending_events import DriverPendingEvents
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .tyre_info import (TyreInfo, TyreSetHistoryEntry, TyreSetHistoryManager,
                         TyreSetInfo)
@@ -52,5 +51,4 @@ __all__ = [
 
     'DataPerDriver',
 
-    'DriverPendingEvents',
 ]

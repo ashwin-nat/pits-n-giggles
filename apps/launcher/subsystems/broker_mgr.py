@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
@@ -30,7 +31,7 @@ from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_XPUB_PORT_IN_USE,
                               PNG_ERROR_CODE_XSUB_PORT_IN_USE)
 
-from .base_mgr import ExitReason, PngAppMgrBase
+from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
@@ -39,38 +40,32 @@ if TYPE_CHECKING:
 
 class BrokerAppMgr(PngAppMgrBase):
     """Implementation of PngApp for save viewer"""
+
+    MODULE_PATH = "apps.broker"
+    DISPLAY_NAME = "Pit Wall"
+    SHORT_NAME = "WALL"
+
+    SHOULD_DISPLAY = False
+
     def __init__(self,
-                 window: "PngLauncherWindow",
-                 settings: PngSettings,
-                 args: list[str],
-                 debug_mode: bool,
-                 coverage_enabled: bool):
+                 common_cfg: PngAppMgrConfig):
         """Initialize the backend manager
-        :param window: Reference to the GUI window object
-        :param settings: Settings object
-        :param args: Additional Command line arguments to pass to the backend
-        :param debug_mode: Whether to run the backend in debug mode
-        :param replay_server: Whether to run the replay server
-        :param coverage_enabled: Whether to enable coverage
+        :param common_cfg: Common configuration for the backend app manager
         """
 
         extra_args = []
-        if debug_mode:
+        if common_cfg.debug_mode:
             extra_args.append("--debug")
-        temp_args = args + extra_args
+        temp_args = common_cfg.args + extra_args
+
+        config = replace(common_cfg,
+                         args=temp_args,
+                         post_start_cb=self.post_start,
+                         post_stop_cb=self.post_stop
+        )
+
         super().__init__(
-            window=window,
-            module_path="apps.broker",
-            display_name="Pit Wall",
-            short_name="WALL",
-            settings=settings,
-            start_by_default=True,
-            should_display=False,
-            args=temp_args,
-            debug_mode=debug_mode,
-            coverage_enabled=coverage_enabled,
-            post_start_cb=self.post_start,
-            post_stop_cb=self.post_stop
+            config=config,
         )
         self.register_exit_reason(PNG_ERROR_CODE_XPUB_PORT_IN_USE, ExitReason(
             code=PNG_ERROR_CODE_XPUB_PORT_IN_USE,
@@ -114,14 +109,14 @@ class BrokerAppMgr(PngAppMgrBase):
                 "broker_xsub_port",
             ],
         })
-        self.debug_log(f"{self.display_name} Settings changed: {diff}")
+        self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
         should_restart = bool(diff)
         return should_restart
 
     def post_start(self):
         """Update buttons after app start"""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
@@ -130,7 +125,7 @@ class BrokerAppMgr(PngAppMgrBase):
 
     def post_stop(self):
         """Update buttons after app stop"""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
@@ -139,7 +134,7 @@ class BrokerAppMgr(PngAppMgrBase):
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
-        if not self.should_display:
+        if not self.SHOULD_DISPLAY:
             return
 
         # disable the button. enable in post_start/post_stop
@@ -149,6 +144,6 @@ class BrokerAppMgr(PngAppMgrBase):
             self.start_stop("Button pressed")
         except Exception as e: # pylint: disable=broad-exception-caught
             # Log the error or handle it as needed
-            self.debug_log(f"{self.display_name}:Error during start/stop: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)

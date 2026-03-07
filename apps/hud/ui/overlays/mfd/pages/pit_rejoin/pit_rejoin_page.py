@@ -36,6 +36,7 @@ from lib.f1_types import F1Utils
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PitRejoinPredictionPage(MfdPageBase):
@@ -83,27 +84,85 @@ class PitRejoinPredictionPage(MfdPageBase):
                 self._show_empty_table(page_item)
                 return
 
+            # Compute how much pit time the ref car has already served (0 if not yet in pits).
+            # Guard with pit-lane-timer-active so we don't accidentally use a stale timer
+            # value from the previous stint.
+            ref_pit_info = ref_row.get("pit-info", {})
+            pit_lane_timer_active = ref_pit_info.get("pit-lane-timer-active", False)
+            time_already_in_pit_ms = (
+                ref_pit_info.get("pit-lane-timer-ms", 0) if pit_lane_timer_active else 0
+            )
+
             # Update pit time loss header
             pit_time_loss_str = f"Pit Time Loss: {pit_time_loss:.1f}s"
 
-            updated_entries = self._add_pit_time_loss(table_entries, pit_time_loss, ref_row)
+            updated_entries = self._add_pit_time_loss(
+                table_entries, pit_time_loss, ref_row, time_already_in_pit_ms
+            )
             relevant_rows = get_relevant_race_table_rows(updated_entries, self.num_adjacent_cars, ref_index)
             insert_relative_deltas_race(relevant_rows, ref_index)
 
             # Update the table
             self._update_table(pit_time_loss_str, relevant_rows, ref_index, page_item)
 
+    def _get_rival_effective_delta(self, row: Dict[str, Any], pit_time_loss_ms: float) -> float:
+        """Return a rival's effective delta-to-leader, adjusted if they are currently in the pit lane.
+
+        A rival's stored delta is a snapshot from when their data was last updated. If they are
+        mid-pit, their real gap is growing. We estimate their gap at pit exit by adding their
+        remaining pit time loss.
+
+        Example: rival is 5 s behind with 8 s of a 20 s pit already served.
+            remaining = 12 s  ->  effective delta = 17 s.
+
+        Args:
+            row: Rival's race table row.
+            pit_time_loss_ms: Total expected pit time loss in milliseconds.
+
+        Returns:
+            Effective delta-to-leader in milliseconds.
+        """
+        pit_info = row.get("pit-info", {})
+        raw_delta = row["delta-info"]["delta-to-leader"]
+
+        if not pit_info.get("pit-lane-timer-active", False):
+            return raw_delta
+
+        time_spent_ms = pit_info.get("pit-lane-timer-ms", 0)
+        remaining_ms = max(pit_time_loss_ms - time_spent_ms, 0.0)
+        return raw_delta + remaining_ms
+
     def _add_pit_time_loss(
         self,
         table_entries: List[Dict[str, Any]],
         pit_time_loss: float,
         ref_row: Dict[str, Any],
+        time_already_in_pit_ms: float = 0.0,
     ) -> List[Dict[str, Any]]:
-        """
-        Estimate where a driver would rejoin after a pit stop and update their deltas accordingly.
+        """Estimate where the ref driver rejoins after a pit stop.
+
+        Handles two pit-adjusted scenarios:
+
+        1. Ref on track, rival pitting: rival's effective delta is inflated by their remaining
+           pit time so they are correctly slotted behind their exit position, not their stale
+           on-track position.
+
+        2. Ref already pitting: only the remaining pit time loss (total - elapsed) is added to
+           the ref's projected gap, so the prediction tightens in real time as the ref moves
+           through the pit lane.
 
         DNF / DSQ cars remain in the table but are ignored for all rejoin calculations,
         since their deltas are stale.
+
+        Args:
+            table_entries (List[Dict[str, Any]]): Full race table.
+            pit_time_loss (float): Total expected pit time loss in seconds.
+            ref_row (Dict[str, Any]): Reference (POV) driver row.
+            time_already_in_pit_ms (float): Milliseconds the ref car has already spent in the
+                pit lane this stop. Defaults to 0 (not yet in pits).
+
+        Returns:
+            List[Dict[str, Any]]: Updated table entries with the ref driver repositioned.
         """
 
         assert ref_row is not None
@@ -112,11 +171,15 @@ class PitRejoinPredictionPage(MfdPageBase):
         # Convert pit loss from seconds --> milliseconds for consistent comparison
         pit_time_loss_ms = pit_time_loss * 1000.0
 
-        # Step 1: Compute projected gap to leader after pit
-        ref_delta = ref_row["delta-info"]["delta-to-leader"]
-        projected_gap = ref_delta + pit_time_loss_ms
+        # Remaining time the ref car still has to spend in the pits.
+        # Clamped to 0 so we never project a negative (beneficial) pit stop.
+        remaining_pit_loss_ms = max(pit_time_loss_ms - time_already_in_pit_ms, 0.0)
 
-        # Step 2: determine rejoin index while SKIPPING DNF / DSQ cars
+        # Step 1: Compute projected gap to leader after pit using only the *remaining* loss
+        ref_delta = ref_row["delta-info"]["delta-to-leader"]
+        projected_gap = ref_delta + remaining_pit_loss_ms
+
+        # Step 2: Determine rejoin index while SKIPPING DNF / DSQ cars
         rejoin_index = None
         last_active_index = None
 
@@ -126,7 +189,8 @@ class PitRejoinPredictionPage(MfdPageBase):
 
             last_active_index = i
 
-            if projected_gap < row["delta-info"]["delta-to-leader"]:
+            rival_effective_delta = self._get_rival_effective_delta(row, pit_time_loss_ms)
+            if projected_gap < rival_effective_delta:
                 rejoin_index = max(i - 1, 0)
                 break
 
@@ -134,7 +198,7 @@ class PitRejoinPredictionPage(MfdPageBase):
             # Rejoin after the last active car
             rejoin_index = last_active_index if last_active_index is not None else 0
 
-        # Step 3: update ref deltas
+        # Step 3: Update ref deltas
         ref_row["delta-info"]["delta-to-leader"] = projected_gap
 
         # Find the nearest ACTIVE car in front
@@ -163,8 +227,7 @@ class PitRejoinPredictionPage(MfdPageBase):
         for pos, row in enumerate(table_entries, start=1):
             row["driver-info"]["position"] = pos
 
-        # Step 7: recompute delta-to-car-in-front,
-        # skipping inactive cars when looking "forward"
+        # Step 7: Recompute delta-to-car-in-front, skipping inactive cars when looking "forward"
         last_active_row = None
         for row in table_entries:
             if not self._is_active_car(row):
@@ -186,7 +249,11 @@ class PitRejoinPredictionPage(MfdPageBase):
         """Display empty table."""
         page_item.showEmptyTable()
 
-    def _update_table(self, pit_time_loss_str: str, relevant_rows: List[Dict[str, Any]], ref_index: int, page_item: QQuickItem):
+    def _update_table(self,
+                      pit_time_loss_str: str,
+                      relevant_rows: List[Dict[str, Any]],
+                      ref_index: int,
+                      page_item: QQuickItem):
         """Update the table with new data.
 
         Args:
