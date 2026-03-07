@@ -125,12 +125,20 @@ function insertRejoinPositions(drivers, pitLoss, refIndex) {
     // No rival found with a larger gap — the ref rejoins behind the last
     // active car on track.
     if (rejoinIndex === null) {
-        rejoinIndex = lastActiveIndex ?? 0;
+        // If there are no active rivals at all, the ref is effectively P1.
+        if (lastActiveIndex === null) {
+            rejoinIndex = -1;
+        } else {
+            rejoinIndex = lastActiveIndex;
+        }
     }
 
     // rejoinIndex is 0-based and points to the car the ref slots in behind.
     // +1 converts to 1-based positions, +1 again places the ref after that car.
-    const rejoinPosition = rejoinIndex + 2;
+    const rejoinPosition = Math.min(
+        Math.max(rejoinIndex + 2, 1),
+        drivers.length
+    );
 
     // For every driver that is NOT the ref, store their current position as
     // the rejoin estimate (they are unaffected by the ref's stop). For the
