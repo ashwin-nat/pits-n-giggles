@@ -24,12 +24,13 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, ClassVar
 
 # -------------------------------------- FUNCTIONS --------------------------------------------------------------------
 
 @dataclass(slots=True)
 class Stat:
+    TYPE: ClassVar[str] = "__COUNT__"
     count: int = 0
 
     def increment(self) -> None:
@@ -37,12 +38,14 @@ class Stat:
 
     def to_dict(self) -> dict:
         return {
+            "type": self.TYPE,
             "count": self.count,
         }
 
 
 @dataclass(slots=True)
 class PacketStat(Stat):
+    TYPE: ClassVar[str] = "__PACKET__"
     bytes: int = 0
 
     def increment_with_size(self, size: int) -> None:
@@ -51,6 +54,7 @@ class PacketStat(Stat):
 
     def to_dict(self) -> dict:
         return {
+            "type": self.TYPE,
             "count": self.count,
             "bytes": self.bytes,
         }

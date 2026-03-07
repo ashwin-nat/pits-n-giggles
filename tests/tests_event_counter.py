@@ -33,6 +33,11 @@ from tests_base import F1TelemetryUnitTestsBase
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestEventCounter(F1TelemetryUnitTestsBase):
+    def _assert_packet_stat_type(self, stat):
+        self.assertEqual(stat["type"], "__PACKET__")
+
+    def _assert_event_stat_type(self, stat):
+        self.assertEqual(stat["type"], "__COUNT__")
 
     # --------------------------------------------------
     # Basic Behavior - Packet Tracking
@@ -50,6 +55,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 1200)
 
@@ -62,6 +68,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 3)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 600)
 
@@ -73,6 +80,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
+        self._assert_packet_stat_type(stats["udp"]["parsed"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["parsed"]["count"], 1)
 
@@ -86,6 +95,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         self.assertIn("udp", stats)
         self.assertIn("zmq", stats)
+        self._assert_packet_stat_type(stats["udp"]["raw"])
+        self._assert_packet_stat_type(stats["zmq"]["forwarded"])
 
     # --------------------------------------------------
     # Basic Behavior - Event Tracking
@@ -98,6 +109,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_event_stat_type(stats["lifecycle"]["startup"])
         self.assertEqual(stats["lifecycle"]["startup"]["count"], 1)
         self.assertNotIn("bytes", stats["lifecycle"]["startup"])
 
@@ -109,6 +121,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_event_stat_type(stats["ui"]["window_open"])
         self.assertEqual(stats["ui"]["window_open"]["count"], 2)
         self.assertNotIn("bytes", stats["ui"]["window_open"])
 
@@ -120,9 +133,11 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_event_stat_type(stats["udp"]["socket_open"])
         self.assertEqual(stats["udp"]["socket_open"]["count"], 1)
         self.assertNotIn("bytes", stats["udp"]["socket_open"])
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 100)
 
@@ -137,6 +152,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 0)
 
@@ -151,6 +167,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["raw"]["bytes"], -100)
 
@@ -164,6 +181,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["bytes"], 2 * large_size)
 
     def test_many_unique_categories_packet(self):
@@ -175,6 +193,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         stats = counter.get_stats()
 
         self.assertEqual(len(stats), 50)
+        for i in range(50):
+            self._assert_packet_stat_type(stats[f"cat_{i}"]["sub"])
 
     def test_many_unique_subcategories_packet(self):
         counter = EventCounter()
@@ -185,6 +205,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         stats = counter.get_stats()
 
         self.assertEqual(len(stats["udp"]), 50)
+        for i in range(50):
+            self._assert_packet_stat_type(stats["udp"][f"sub_{i}"])
 
     # --------------------------------------------------
     # Structural Integrity
@@ -199,6 +221,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         self.assertIsNot(stats1, stats2)
         self.assertIsNot(stats1["udp"], stats2["udp"])
+        self._assert_packet_stat_type(stats1["udp"]["raw"])
+        self._assert_packet_stat_type(stats2["udp"]["raw"])
 
     def test_mutating_returned_stats_does_not_affect_internal(self):
         counter = EventCounter()
@@ -208,6 +232,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         stats["udp"]["raw"]["count"] = 999
 
         fresh_stats = counter.get_stats()
+        self._assert_packet_stat_type(fresh_stats["udp"]["raw"])
         self.assertEqual(fresh_stats["udp"]["raw"]["count"], 1)
 
     # --------------------------------------------------
@@ -223,6 +248,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         stats2 = counter.get_stats()
 
         self.assertEqual(stats1, stats2)
+        self._assert_packet_stat_type(stats1["udp"]["raw"])
+        self._assert_packet_stat_type(stats2["udp"]["raw"])
 
     def test_tracking_after_get_stats(self):
         counter = EventCounter()
@@ -233,5 +260,6 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
         stats = counter.get_stats()
 
+        self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 2)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 300)
