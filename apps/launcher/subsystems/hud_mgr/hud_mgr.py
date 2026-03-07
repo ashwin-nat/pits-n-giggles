@@ -453,6 +453,7 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_tyre_wear_threshold",
                 "mfd_weather_page_ui_type",
                 "use_windowed_overlays",
+                "input_overlay_buffer_duration_sec",
             ],
             "Network": [
                 "broker_xpub_port",
@@ -461,7 +462,7 @@ class HudAppMgr(PngAppMgrBase):
                 "refresh_interval",
                 "realtime_overlay_fps",
                 "use_gpu_acceleration",
-            ]
+            ],
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")

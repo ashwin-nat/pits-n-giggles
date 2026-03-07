@@ -136,7 +136,6 @@ class BackendAppMgr(PngAppMgrBase):
             "Network": [
                 "udp_tyre_delta_action_code",
                 "udp_custom_action_code",
-                "enable_pkt_ordering",
             ],
             "HUD": [
                 "toggle_overlays_udp_action_code",
@@ -163,6 +162,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "server_port",
                 "wdt_interval_sec",
                 "broker_xsub_port",
+                "enable_pkt_ordering",
             ],
             "Capture" : [],
             "Display" : [

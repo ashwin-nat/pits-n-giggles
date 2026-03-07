@@ -79,3 +79,9 @@ class HudClient(SocketioClient):
             """Previous page MFD notification handler."""
             self.logger.debug("[HudClient] Received Previous page MFD notification")
             self.m_overlays_mgr.prev_page()
+
+        @self.on('hud-mfd-interaction-notification')
+        def handle_hud_mfd_interact_notification(_data):
+            """MFD interact notification handler."""
+            self.logger.debug("[HudClient] Received MFD interact notification")
+            self.m_overlays_mgr.mfd_interact()

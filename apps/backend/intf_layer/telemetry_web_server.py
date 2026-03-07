@@ -83,6 +83,7 @@ class TelemetryWebServer(BaseWebServer):
                     'hud-toggle-notification',
                     'hud-cycle-mfd-notification',
                     'hud-prev-page-mfd-notification',
+                    'hud-mfd-interaction-notification',
                 ],
                 ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
             },
