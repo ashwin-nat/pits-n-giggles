@@ -436,7 +436,7 @@ class TyreInfo:
         """Init the utility objects and store logger"""
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
-        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps, logger=self.m_logger)
 
     def handleFlashback(self, outdated_laps: List[int]) -> None:
         """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator
