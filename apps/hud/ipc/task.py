@@ -25,12 +25,10 @@
 import logging
 import os
 import threading
-from functools import partial
-from typing import Callable, Dict
 
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcServerSync, IpcSubscriberSync
+from lib.ipc import IpcServerSyncRouter, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
@@ -40,25 +38,6 @@ from .handlers import (handle_lock_widgets, handle_mfd_interact,
                        handle_set_overlays_layout,
                        handle_set_track_radar_idle_opacity,
                        handle_set_ui_scale, handle_toggle_visibility)
-
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Define a type for handler functions
-CommandHandler = Callable[[dict, logging.Logger, OverlaysMgr], dict]
-
-# Registry of command handlers
-COMMAND_HANDLERS: Dict[str, CommandHandler] = {
-    "lock-widgets": handle_lock_widgets,
-    "toggle-overlays-visibility": handle_toggle_visibility,
-    "set-overlays-opacity": handle_set_opacity,
-    "next-page": handle_next_page,
-    "prev-page": handle_prev_page,
-    "mfd-interact": handle_mfd_interact,
-    "set-overlays-layout": handle_set_overlays_layout,
-    "set-ui-scale": handle_set_ui_scale,
-    "set-track-radar-idle-opacity": handle_set_track_radar_idle_opacity,
-    "get-stats": handle_get_stats,
-}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -80,38 +59,83 @@ def run_ipc_task(
         threading.Thread: IPC thread handle
     """
     logger.debug("Starting IPC server")
-    ipc_server = IpcServerSync(
+    ipc_server = IpcServerSyncRouter(
         # port=port,
         name="hud"
     )
     report_ipc_port_from_child(ipc_server.port)
     logger.debug("Started IPC server on port %d", ipc_server.port)
-    ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
-        ipc_sub=ipc_sub))
-    ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
-    return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
+    _register_routes(
+        ipc_server=ipc_server,
+        logger=logger,
+        overlays_mgr=overlays_mgr,
+        socketio_client=socketio_client,
+        ipc_sub=ipc_sub,
+    )
+    return ipc_server.serve_in_thread()
 
-def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
-    """Handles incoming IPC messages and dispatches commands.
+def _register_routes(
+        ipc_server: IpcServerSyncRouter,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        ipc_sub: IpcSubscriberSync,
+        ) -> None:
+    """Register all IPC routes using decorator-style handlers."""
 
-    Args:
-        msg (dict): IPC message
-        logger (logging.Logger): Logger
-        overlays_mgr (OverlaysMgr): Overlays manager
+    @ipc_server.on("lock-widgets")
+    def _lock_widgets(msg: dict) -> dict:
+        return handle_lock_widgets(msg, logger, overlays_mgr)
 
-    Returns:
-        dict: IPC response
-    """
-    logger.debug(f"Received IPC message: {msg}")
+    @ipc_server.on("toggle-overlays-visibility")
+    def _toggle_visibility(msg: dict) -> dict:
+        return handle_toggle_visibility(msg, logger, overlays_mgr)
 
-    if not (cmd := msg.get("cmd")):
-        return {"status": "error", "message": "Missing command name"}
+    @ipc_server.on("set-overlays-opacity")
+    def _set_opacity(msg: dict) -> dict:
+        return handle_set_opacity(msg, logger, overlays_mgr)
 
-    if (handler := COMMAND_HANDLERS.get(cmd)):
-        return handler(msg, logger, overlays_mgr)
+    @ipc_server.on("next-page")
+    def _next_page(msg: dict) -> dict:
+        return handle_next_page(msg, logger, overlays_mgr)
 
-    return {"status": "error", "message": f"Unknown command: {cmd}"}
+    @ipc_server.on("prev-page")
+    def _prev_page(msg: dict) -> dict:
+        return handle_prev_page(msg, logger, overlays_mgr)
+
+    @ipc_server.on("mfd-interact")
+    def _mfd_interact(msg: dict) -> dict:
+        return handle_mfd_interact(msg, logger, overlays_mgr)
+
+    @ipc_server.on("set-overlays-layout")
+    def _set_overlays_layout(msg: dict) -> dict:
+        return handle_set_overlays_layout(msg, logger, overlays_mgr)
+
+    @ipc_server.on("set-ui-scale")
+    def _set_ui_scale(msg: dict) -> dict:
+        return handle_set_ui_scale(msg, logger, overlays_mgr)
+
+    @ipc_server.on("set-track-radar-idle-opacity")
+    def _set_track_radar_idle_opacity(msg: dict) -> dict:
+        return handle_set_track_radar_idle_opacity(msg, logger, overlays_mgr)
+
+    @ipc_server.on("get-stats")
+    def _get_stats(msg: dict) -> dict:
+        return handle_get_stats(msg, logger, overlays_mgr)
+
+    @ipc_server.on_shutdown
+    def _shutdown(args: dict) -> dict:
+        return _shutdown_handler(
+            args,
+            logger=logger,
+            overlays_mgr=overlays_mgr,
+            socketio_client=socketio_client,
+            ipc_sub=ipc_sub,
+        )
+
+    @ipc_server.on_heartbeat_missed
+    def _heartbeat_missed(count: int) -> None:
+        _handle_heartbeat_missed(count, logger=logger)
 
 def _shutdown_handler(
         args: dict,
@@ -119,7 +143,7 @@ def _shutdown_handler(
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
         ipc_sub: IpcSubscriberSync
-        ) -> None:
+        ) -> dict:
     """Handles shutdown command.
 
     Args:
@@ -162,7 +186,7 @@ def _stop_other_tasks(
 
     logger.info("Exiting HUD subsystem")
 
-def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
+def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> None:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
