@@ -34,10 +34,8 @@ from lib.inter_task_communicator import AsyncInterTaskCommunicator
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 async def handleManualSave(
-        _msg: dict,
         logger: logging.Logger,
         session_state: SessionState,
-        _telemetry_handler: F1TelemetryHandler
         ) -> dict:
     """Handle manual save command"""
     return await ManualSaveRsp(logger, session_state).saveToDisk()
@@ -53,9 +51,6 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     }
 
 async def handleGetStats(
-        _msg: dict,
-        _logger: logging.Logger,
-        _session_state: SessionState,
         telemetry_handler: F1TelemetryHandler) -> dict:
     """Handle get-stats command."""
     return {
@@ -72,7 +67,6 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
 async def handleUdpActionCodeChange(
         msg: dict,
         logger: logging.Logger,
-        _session_state: SessionState,
         telemetry_handler: F1TelemetryHandler) -> dict:
     """Handle udp action code change command"""
 
