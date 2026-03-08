@@ -29,11 +29,11 @@ from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_lock_widgets(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'lock-widgets' IPC command to lock or unlock HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -41,16 +41,14 @@ def handle_lock_widgets(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         dict: IPC response
     """
 
-    logger.debug("Received lock-widgets command. args: %s", msg)
-    if args := msg.get("args", {}):
-        return overlays_mgr.on_locked_state_change(args)
-    return {"status": "error", "message": "Missing args in lock-widgets command."}
+    logger.debug("Received lock-widgets command")
+    return overlays_mgr.on_locked_state_change(args)
 
-def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_toggle_visibility(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'toggle-visibility' IPC command to show or hide HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -58,16 +56,15 @@ def handle_toggle_visibility(msg: dict, logger: logging.Logger, overlays_mgr: Ov
         dict: IPC response
     """
 
-    logger.debug("Received toggle-visibility command. args: %s", msg)
-
+    logger.debug("Received toggle-visibility command. args: %s", args)
     overlays_mgr.toggle_overlays_visibility()
     return {"status": "success", "message": "toggle-visibility handler executed."}
 
-def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_opacity(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'set-opacity' IPC command to set HUD widgets opacity.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -75,19 +72,19 @@ def handle_set_opacity(msg: dict, logger: logging.Logger, overlays_mgr: Overlays
         dict: IPC response
     """
 
-    logger.debug("Received set-opacity command. args: %s", msg)
+    logger.debug("Received set-opacity command. args: %s", args)
 
-    args = msg.get("args", {})
     if opacity := args.get("opacity"):
         overlays_mgr.set_overlays_opacity(opacity)
         return {"status": "success", "message": "set-opacity handler executed."}
+
     return {"status": "error", "message": "Missing opacity value in set-opacity command."}
 
-def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_next_page(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'next-page' IPC command to show next page of HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -95,16 +92,16 @@ def handle_next_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
         dict: IPC response
     """
 
-    logger.info("Received next-page command. args: %s", msg)
+    logger.info("Received next-page command. args: %s", args)
 
     overlays_mgr.next_page()
     return {"status": "success", "message": "next-page handler executed."}
 
-def handle_prev_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_prev_page(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'prev-page' IPC command to show previous page of HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -112,16 +109,16 @@ def handle_prev_page(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMg
         dict: IPC response
     """
 
-    logger.info("Received prev-page command. args: %s", msg)
+    logger.info("Received prev-page command. args: %s", args)
 
     overlays_mgr.prev_page()
     return {"status": "success", "message": "prev-page handler executed."}
 
-def handle_mfd_interact(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_mfd_interact(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'mfd-interact' IPC command to show next page of HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -129,16 +126,16 @@ def handle_mfd_interact(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         dict: IPC response
     """
 
-    logger.info("Received mfd-interact command. args: %s", msg)
+    logger.info("Received mfd-interact command. args: %s", args)
 
     overlays_mgr.mfd_interact()
     return {"status": "success", "message": "mfd-interact handler executed."}
 
-def handle_set_overlays_layout(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_overlays_layout(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'reset-overlays' IPC command to reset HUD widgets.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -146,19 +143,21 @@ def handle_set_overlays_layout(msg: dict, logger: logging.Logger, overlays_mgr: 
         dict: IPC response
     """
 
-    logger.debug("Received reset-overlays command. args: %s", msg)
-    args: dict = msg.get("args", {})
+    logger.debug("Received reset-overlays command. args: %s", args)
     if not args:
         return {"status": "error", "message": "Missing args in set-overlays-layout command."}
 
-    layout: Dict[str, Dict[str, int]] = args.get("layout", {})
+    layout: Dict[str, Dict[str, int]] = args.get("layout")
+    if not layout:
+        return {"status": "error", "message": "Missing layout in set-overlays-layout command."}
+
     return overlays_mgr.set_overlays_layout(layout)
 
-def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_ui_scale(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'set-ui-scale' IPC command to set HUD widgets UI scale.
 
     Args:
-        msg (dict): IPC command msg
+        args (dict): IPC command msg args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -166,8 +165,7 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         dict: IPC response
     """
 
-    logger.debug("Received set-ui-scale command. args: %s", msg)
-    args = msg.get("args", {})
+    logger.debug("Received set-ui-scale command. args: %s", args)
 
     oid = args.get('oid')
     if not oid:
@@ -184,11 +182,11 @@ def handle_set_ui_scale(msg: dict, logger: logging.Logger, overlays_mgr: Overlay
         logger.exception(f"Error handling set-ui-scale command: {e}")
         return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
 
-def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_set_track_radar_idle_opacity(args: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'set-track-radar-idle-opacity' IPC command to set HUD widgets opacity.
 
     Args:
-        msg (dict): IPC command message
+        args (dict): IPC command message args
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
 
@@ -196,16 +194,15 @@ def handle_set_track_radar_idle_opacity(msg: dict, logger: logging.Logger, overl
         dict: IPC response
     """
 
-    logger.debug("Received set-track-radar-idle-opacity command. args: %s", msg)
+    logger.debug("Received set-track-radar-idle-opacity command. args: %s", args)
 
-    args: dict = msg.get("args", {})
     opacity = args.get("opacity")
     if opacity is not None:
         overlays_mgr.set_track_radar_idle_opacity(opacity)
         return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
     return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
 
-def handle_get_stats(_msg: dict, _logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
+def handle_get_stats(_args: dict, _logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
     """Handle the 'get-stats' IPC command."""
     return {
         "status": "success",
