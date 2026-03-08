@@ -133,7 +133,8 @@ class IpcServerAsyncRouter:
         if not handler:
             return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-        result = handler(msg)
+        args = msg.get("args", {})
+        result = handler(args)
         return await _resolve_async_result(result)
 
     async def _dispatch_shutdown(self, args: dict) -> dict[str, Any]:
@@ -224,7 +225,8 @@ class IpcServerSyncRouter:
         if not handler:
             return {"status": "error", "message": f"Unknown command: {cmd}"}
 
-        result = handler(msg)
+        args = msg.get("args", {})
+        result = handler(args)
         return _resolve_sync_result(result)
 
     def _dispatch_shutdown(self, args: dict) -> dict[str, Any]:

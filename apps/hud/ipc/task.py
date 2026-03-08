@@ -84,44 +84,44 @@ def _register_routes(
     """Register all IPC routes using decorator-style handlers."""
 
     @ipc_server.on("lock-widgets")
-    def _lock_widgets(msg: dict) -> dict:
-        return handle_lock_widgets(msg, logger, overlays_mgr)
+    def _lock_widgets(args: dict) -> dict:
+        return handle_lock_widgets({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("toggle-overlays-visibility")
-    def _toggle_visibility(msg: dict) -> dict:
-        return handle_toggle_visibility(msg, logger, overlays_mgr)
+    def _toggle_visibility(args: dict) -> dict:
+        return handle_toggle_visibility({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("set-overlays-opacity")
-    def _set_opacity(msg: dict) -> dict:
-        return handle_set_opacity(msg, logger, overlays_mgr)
+    def _set_opacity(args: dict) -> dict:
+        return handle_set_opacity({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("next-page")
-    def _next_page(msg: dict) -> dict:
-        return handle_next_page(msg, logger, overlays_mgr)
+    def _next_page(args: dict) -> dict:
+        return handle_next_page({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("prev-page")
-    def _prev_page(msg: dict) -> dict:
-        return handle_prev_page(msg, logger, overlays_mgr)
+    def _prev_page(args: dict) -> dict:
+        return handle_prev_page({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("mfd-interact")
-    def _mfd_interact(msg: dict) -> dict:
-        return handle_mfd_interact(msg, logger, overlays_mgr)
+    def _mfd_interact(args: dict) -> dict:
+        return handle_mfd_interact({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("set-overlays-layout")
-    def _set_overlays_layout(msg: dict) -> dict:
-        return handle_set_overlays_layout(msg, logger, overlays_mgr)
+    def _set_overlays_layout(args: dict) -> dict:
+        return handle_set_overlays_layout({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("set-ui-scale")
-    def _set_ui_scale(msg: dict) -> dict:
-        return handle_set_ui_scale(msg, logger, overlays_mgr)
+    def _set_ui_scale(args: dict) -> dict:
+        return handle_set_ui_scale({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("set-track-radar-idle-opacity")
-    def _set_track_radar_idle_opacity(msg: dict) -> dict:
-        return handle_set_track_radar_idle_opacity(msg, logger, overlays_mgr)
+    def _set_track_radar_idle_opacity(args: dict) -> dict:
+        return handle_set_track_radar_idle_opacity({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on("get-stats")
-    def _get_stats(msg: dict) -> dict:
-        return handle_get_stats(msg, logger, overlays_mgr)
+    def _get_stats(args: dict) -> dict:
+        return handle_get_stats({"args": args}, logger, overlays_mgr)
 
     @ipc_server.on_shutdown
     def _shutdown(args: dict) -> dict:

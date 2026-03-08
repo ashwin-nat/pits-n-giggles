@@ -72,8 +72,8 @@ class TestIpcParentChild(TestIPC):
         child = IpcServerSyncRouter(port=self.port, name=self.id())
 
         @child.on("ping")
-        def handler(msg):
-            return {"status": "success", "reply": "pong", "echo": msg.get("args", {})}
+        def handler(args):
+            return {"status": "success", "reply": "pong", "echo": args}
 
         child_thread = threading.Thread(target=child.serve, daemon=True)
         child_thread.start()
@@ -84,6 +84,10 @@ class TestIpcParentChild(TestIPC):
         self.assertEqual(resp.get("status"), "success")
         self.assertEqual(resp.get("reply"), "pong")
         self.assertEqual(resp.get("echo"), {"k": "v"})
+
+        empty_args = parent.request("ping")
+        self.assertEqual(empty_args.get("status"), "success")
+        self.assertEqual(empty_args.get("echo"), {})
 
         unknown = parent.request("nope")
         self.assertEqual(unknown.get("status"), "error")
@@ -99,8 +103,8 @@ class TestIpcParentChild(TestIPC):
         shutdown_state = {"called": False, "reason": ""}
 
         @child.on("ping")
-        async def handler(msg):
-            return {"status": "success", "reply": "pong-async", "echo": msg.get("args", {})}
+        async def handler(args):
+            return {"status": "success", "reply": "pong-async", "echo": args}
 
         @child.on_shutdown
         async def shutdown_handler(args):
@@ -122,6 +126,10 @@ class TestIpcParentChild(TestIPC):
         self.assertEqual(resp.get("status"), "success")
         self.assertEqual(resp.get("reply"), "pong-async")
         self.assertEqual(resp.get("echo"), {"id": 42})
+
+        empty_args = parent.request("ping")
+        self.assertEqual(empty_args.get("status"), "success")
+        self.assertEqual(empty_args.get("echo"), {})
 
         shutdown_resp = parent.shutdown_child("unit-test")
         self.assertEqual(shutdown_resp.get("status"), "ok")
@@ -146,7 +154,7 @@ class TestIpcParentChild(TestIPC):
         )
 
         @child.on("ping")
-        def handler(_msg):
+        def handler(_args):
             return {"status": "success"}
 
         @child.on_heartbeat_missed
