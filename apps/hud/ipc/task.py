@@ -28,7 +28,7 @@ import threading
 
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcServerSyncRouter, IpcSubscriberSync
+from lib.ipc import IpcServerSync, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
@@ -59,7 +59,7 @@ def run_ipc_task(
         threading.Thread: IPC thread handle
     """
     logger.debug("Starting IPC server")
-    ipc_server = IpcServerSyncRouter(
+    ipc_server = IpcServerSync(
         # port=port,
         name="hud"
     )
@@ -75,7 +75,7 @@ def run_ipc_task(
     return ipc_server.serve_in_thread()
 
 def _register_routes(
-        ipc_server: IpcServerSyncRouter,
+        ipc_server: IpcServerSync,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,

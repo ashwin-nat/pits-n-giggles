@@ -24,15 +24,13 @@
 
 import asyncio
 import logging
-from functools import partial
 from typing import List
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.ipc import IpcServerAsync, IpcServerAsyncRouter
+from lib.ipc import IpcServerAsync
 from lib.child_proc_mgmt import report_ipc_port_from_child
 
-from .command_dispatcher import processIpcCommand
 from .command_handlers import (handleGetStats, handleManualSave, handleHeartbeatMissed, handleShutdown,
                                handleUdpActionCodeChange)
 
@@ -60,7 +58,7 @@ def registerIpcTask(
         return
 
     logger.debug("Starting IPC server")
-    server = IpcServerAsyncRouter(name="Backend")
+    server = IpcServerAsync(name="Backend")
     report_ipc_port_from_child(server.port)
     logger.debug("Started IPC server on port %d", server.port)
 

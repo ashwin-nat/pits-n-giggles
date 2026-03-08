@@ -32,7 +32,7 @@ import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.child_proc_mgmt import report_ipc_port_from_child
-from lib.ipc import IpcServerAsyncRouter
+from lib.ipc import IpcServerAsync
 from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -48,7 +48,7 @@ class SaveViewerIpc:
         self.m_logger = logger
         self.m_server = server
         self.m_should_open_ui = True
-        self.m_ipc_server = IpcServerAsyncRouter(name="Save Viewer")
+        self.m_ipc_server = IpcServerAsync(name="Save Viewer")
         self._register_routes()
         report_ipc_port_from_child(self.m_ipc_server.port)
 
