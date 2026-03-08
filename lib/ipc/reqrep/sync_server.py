@@ -22,8 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import inspect
 import threading
 import time
 import logging
@@ -31,29 +29,13 @@ from typing import Any, Awaitable, Callable, Optional
 
 import zmq
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- TYPES -----------------------------------------------------------------------
 
 RouteCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
 ShutdownCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
 HeartbeatCallback = Callable[[int], None | Awaitable[None]]
 
-
-def _resolve_sync_result(result: Any) -> Any:
-    if not inspect.isawaitable(result):
-        return result
-
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        async def _await_result():
-            return await result
-
-        return asyncio.run(_await_result())
-
-    raise RuntimeError(
-        "Received an awaitable callback result in sync mode while an event loop is already running."
-    )
-
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class IpcServerSync:
     """
@@ -178,7 +160,7 @@ class IpcServerSync:
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
                         callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
-                        _resolve_sync_result(callback(self._missed_heartbeats))
+                        callback(self._missed_heartbeats)
                         break
                     except Exception:  # pylint: disable=broad-except
                         break
@@ -195,7 +177,7 @@ class IpcServerSync:
             return {"status": "error", "message": f"Unknown command: {cmd}"}
 
         args = msg.get("args", {})
-        return _resolve_sync_result(handler(args))
+        return handler(args)
 
     def serve(
         self,
@@ -249,7 +231,7 @@ class IpcServerSync:
 
                 if cmd == "__shutdown__":
                     if self._shutdown_callback:
-                        response = _resolve_sync_result(self._shutdown_callback(msg.get("args", {})))
+                        response = self._shutdown_callback(msg.get("args", {}))
                     else:
                         response = {
                             "status": "success",
@@ -258,7 +240,7 @@ class IpcServerSync:
                     self._running = False
                 else:
                     if handler_fn is not None:
-                        response = _resolve_sync_result(handler_fn(msg))
+                        response = handler_fn(msg)
                     else:
                         response = self._dispatch_request(msg)
 
