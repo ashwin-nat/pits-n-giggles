@@ -32,8 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import (IpcClientSync, IpcServerAsync, IpcServerAsyncRouter,
-                     IpcServerSyncRouter, get_free_tcp_port, IpcServerSync)
+from lib.ipc import IpcClientSync, IpcServerAsync, IpcServerSync, get_free_tcp_port
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -69,7 +68,7 @@ class TestIpcParentChild(TestIPC):
 
     def test_router_sync_route_registration(self):
         """Test decorator-based command routing on sync server."""
-        child = IpcServerSyncRouter(port=self.port, name=self.id())
+        child = IpcServerSync(port=self.port, name=self.id())
 
         @child.on("ping")
         def handler(args):
@@ -99,7 +98,7 @@ class TestIpcParentChild(TestIPC):
 
     def test_router_async_route_and_shutdown_registration(self):
         """Test decorator-based routing and shutdown callback on async server."""
-        child = IpcServerAsyncRouter(port=self.port, name=self.id())
+        child = IpcServerAsync(port=self.port, name=self.id())
         shutdown_state = {"called": False, "reason": ""}
 
         @child.on("ping")
@@ -146,7 +145,7 @@ class TestIpcParentChild(TestIPC):
         heartbeat_triggered = {}
         heartbeat_event = threading.Event()
 
-        child = IpcServerSyncRouter(
+        child = IpcServerSync(
             port=self.port,
             name=self.id(),
             max_missed_heartbeats=2,

@@ -22,14 +22,38 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
+import inspect
 import threading
 import time
 import logging
-from typing import Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 import zmq
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+RouteCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
+ShutdownCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
+HeartbeatCallback = Callable[[int], None | Awaitable[None]]
+
+
+def _resolve_sync_result(result: Any) -> Any:
+    if not inspect.isawaitable(result):
+        return result
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        async def _await_result():
+            return await result
+
+        return asyncio.run(_await_result())
+
+    raise RuntimeError(
+        "Received an awaitable callback result in sync mode while an event loop is already running."
+    )
+
 
 class IpcServerSync:
     """
@@ -66,14 +90,15 @@ class IpcServerSync:
 
         self._thread: Optional[threading.Thread] = None
         self._running = False
-        self._shutdown_callback = None
+        self._shutdown_callback: Optional[ShutdownCallback] = None
+        self._route_handlers: dict[str, RouteCallback] = {}
 
         # Heartbeat parameters
         self.max_missed_heartbeats = max_missed_heartbeats
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = None
+        self._heartbeat_missed_callback: Optional[HeartbeatCallback] = None
         self._heartbeat_thread: Optional[threading.Thread] = None
 
         if logger is None:
@@ -84,20 +109,40 @@ class IpcServerSync:
 
     # -------------------------------------- CALLBACKS ------------------------------------------------------------------
 
-    def register_shutdown_callback(self, callback: Callable[[dict], dict]) -> None:
+    def register_shutdown_callback(self, callback: ShutdownCallback) -> None:
         """
         Registers a callback to be called on shutdown command.
         :param callback: Function to call on shutdown command.
         """
         self._shutdown_callback = callback
 
-    def register_heartbeat_missed_callback(self, callback: Callable[[int], None]) -> None:
+    def register_heartbeat_missed_callback(self, callback: HeartbeatCallback) -> None:
         """
         Registers a callback to be called when max consecutive heartbeats are missed.
         Callback receives the number of missed heartbeats.
         Registering this callback automatically enables heartbeat monitoring.
         """
         self._heartbeat_missed_callback = callback
+
+    # -------------------------------------- ROUTING API ----------------------------------------------------------------
+
+    def on(self, cmd_name: str) -> Callable[[RouteCallback], RouteCallback]:
+        if not cmd_name:
+            raise ValueError("cmd_name cannot be empty")
+
+        def decorator(func: RouteCallback) -> RouteCallback:
+            self._route_handlers[cmd_name] = func
+            return func
+
+        return decorator
+
+    def on_shutdown(self, func: ShutdownCallback) -> ShutdownCallback:
+        self.register_shutdown_callback(func)
+        return func
+
+    def on_heartbeat_missed(self, func: HeartbeatCallback) -> HeartbeatCallback:
+        self.register_heartbeat_missed_callback(func)
+        return func
 
     @property
     def is_running(self) -> bool:
@@ -133,17 +178,35 @@ class IpcServerSync:
                 if self._missed_heartbeats >= self.max_missed_heartbeats:
                     try:
                         callback = self._heartbeat_missed_callback or self._def_heartbeat_missed_callback
-                        callback(self._missed_heartbeats)
+                        _resolve_sync_result(callback(self._missed_heartbeats))
                         break
                     except Exception:  # pylint: disable=broad-except
                         break
 
     # -------------------------------------- MAIN LOOP ------------------------------------------------------------------
 
-    def serve(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None) -> None:
+    def _dispatch_request(self, msg: dict) -> dict[str, Any]:
+        cmd = msg.get("cmd")
+        if not cmd:
+            return {"status": "error", "message": "Missing command name"}
+
+        handler = self._route_handlers.get(cmd)
+        if not handler:
+            return {"status": "error", "message": f"Unknown command: {cmd}"}
+
+        args = msg.get("args", {})
+        return _resolve_sync_result(handler(args))
+
+    def serve(
+        self,
+        handler_fn: Optional[Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
         """
-        Starts the request loop. Calls handler_fn on each request.
-        :param handler_fn: Function to handle each request.
+        Starts the request loop.
+        If handler_fn is provided, calls handler_fn(msg) on each request.
+        Otherwise uses decorator-registered route handlers via `on`.
+        :param handler_fn: Optional function to handle each request.
         :param timeout: Optional timeout (in seconds) for recv_json.
                         Ensures loop remains responsive even with no messages.
         """
@@ -186,7 +249,7 @@ class IpcServerSync:
 
                 if cmd == "__shutdown__":
                     if self._shutdown_callback:
-                        response = self._shutdown_callback(msg.get("args", {}))
+                        response = _resolve_sync_result(self._shutdown_callback(msg.get("args", {})))
                     else:
                         response = {
                             "status": "success",
@@ -194,7 +257,10 @@ class IpcServerSync:
                         }
                     self._running = False
                 else:
-                    response = handler_fn(msg)
+                    if handler_fn is not None:
+                        response = _resolve_sync_result(handler_fn(msg))
+                    else:
+                        response = self._dispatch_request(msg)
 
                 self.sock.send_json(response)
 
@@ -205,11 +271,16 @@ class IpcServerSync:
 
         self.close()
 
-    def serve_in_thread(self, handler_fn: Callable[[dict], dict], timeout: Optional[float] = None, name: Optional[str] = None) -> threading.Thread:
+    def serve_in_thread(
+        self,
+        handler_fn: Optional[Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]] = None,
+        timeout: Optional[float] = None,
+        name: Optional[str] = None,
+    ) -> threading.Thread:
         """Starts the serve loop in a background thread.
 
         Args:
-            handler_fn (Callable[[dict], dict]): Function to handle each request.
+            handler_fn (Optional[Callable[[dict], dict]]): Optional function to handle each request.
             timeout (Optional[float]): Optional timeout (in seconds) for recv_json.
                                        Ensures loop remains responsive even with no messages.
             name (Optional[str]): Optional name for the thread.

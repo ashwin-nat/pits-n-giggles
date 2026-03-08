@@ -26,7 +26,6 @@ from .pubsub.broker import IpcPubSubBroker
 from .pubsub.publisher import IpcPublisherAsync
 from .pubsub.subscriber import IpcSubscriberSync
 from .reqrep.async_server import IpcServerAsync
-from .reqrep.route_server import IpcServerAsyncRouter, IpcServerSyncRouter
 from .reqrep.sync_client import IpcClientSync
 from .reqrep.sync_server import IpcServerSync
 from .socketio_client import SocketioClient
@@ -37,9 +36,7 @@ from .utils import get_free_tcp_port
 __all__ = [
     'IpcClientSync',
     'IpcServerAsync',
-    'IpcServerAsyncRouter',
     'IpcServerSync',
-    'IpcServerSyncRouter',
     'SocketioClient',
     'IpcPublisherAsync',
     'IpcSubscriberSync',
