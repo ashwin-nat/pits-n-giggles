@@ -99,6 +99,10 @@ class IpcServerSync:
         """
         self._heartbeat_missed_callback = callback
 
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
     # -------------------------------------- HEARTBEAT ------------------------------------------------------------------
 
     def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:

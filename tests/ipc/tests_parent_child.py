@@ -32,7 +32,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcClientSync, IpcServerAsync, get_free_tcp_port, IpcServerSync
+from lib.ipc import (IpcClientSync, IpcServerAsync, IpcServerAsyncRouter,
+                     IpcServerSyncRouter, get_free_tcp_port, IpcServerSync)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -65,6 +66,104 @@ class TestIpcParentChild(TestIPC):
         parent.terminate_child()
         parent.close()
         child_thread.join(timeout=2)
+
+    def test_router_sync_route_registration(self):
+        """Test decorator-based command routing on sync server."""
+        child = IpcServerSyncRouter(port=self.port, name=self.id())
+
+        @child.on("ping")
+        def handler(msg):
+            return {"status": "success", "reply": "pong", "echo": msg.get("args", {})}
+
+        child_thread = threading.Thread(target=child.serve, daemon=True)
+        child_thread.start()
+
+        time.sleep(0.1)
+        parent = IpcClientSync(self.port, timeout_ms=500)
+        resp = parent.request("ping", {"k": "v"})
+        self.assertEqual(resp.get("status"), "success")
+        self.assertEqual(resp.get("reply"), "pong")
+        self.assertEqual(resp.get("echo"), {"k": "v"})
+
+        unknown = parent.request("nope")
+        self.assertEqual(unknown.get("status"), "error")
+        self.assertIn("Unknown command", unknown.get("message", ""))
+
+        parent.terminate_child()
+        parent.close()
+        child_thread.join(timeout=2)
+
+    def test_router_async_route_and_shutdown_registration(self):
+        """Test decorator-based routing and shutdown callback on async server."""
+        child = IpcServerAsyncRouter(port=self.port, name=self.id())
+        shutdown_state = {"called": False, "reason": ""}
+
+        @child.on("ping")
+        async def handler(msg):
+            return {"status": "success", "reply": "pong-async", "echo": msg.get("args", {})}
+
+        @child.on_shutdown
+        async def shutdown_handler(args):
+            shutdown_state["called"] = True
+            shutdown_state["reason"] = args.get("reason", "")
+            return {"status": "ok", "message": "cleanup done"}
+
+        def run_async_child():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(child.run())
+
+        thread = threading.Thread(target=run_async_child, daemon=True)
+        thread.start()
+
+        time.sleep(0.1)
+        parent = IpcClientSync(self.port, timeout_ms=500)
+        resp = parent.request("ping", {"id": 42})
+        self.assertEqual(resp.get("status"), "success")
+        self.assertEqual(resp.get("reply"), "pong-async")
+        self.assertEqual(resp.get("echo"), {"id": 42})
+
+        shutdown_resp = parent.shutdown_child("unit-test")
+        self.assertEqual(shutdown_resp.get("status"), "ok")
+        self.assertEqual(shutdown_resp.get("message"), "cleanup done")
+
+        parent.close()
+        thread.join(timeout=2)
+
+        self.assertTrue(shutdown_state["called"])
+        self.assertEqual(shutdown_state["reason"], "unit-test")
+
+    def test_router_sync_heartbeat_missed_registration(self):
+        """Test decorator-based heartbeat missed callback on sync server."""
+        heartbeat_triggered = {}
+        heartbeat_event = threading.Event()
+
+        child = IpcServerSyncRouter(
+            port=self.port,
+            name=self.id(),
+            max_missed_heartbeats=2,
+            heartbeat_timeout=0.2,
+        )
+
+        @child.on("ping")
+        def handler(_msg):
+            return {"status": "success"}
+
+        @child.on_heartbeat_missed
+        def heartbeat_handler(count):
+            heartbeat_triggered["count"] = count
+            heartbeat_event.set()
+
+        child_thread = threading.Thread(target=child.serve, daemon=True)
+        child_thread.start()
+
+        callback_triggered = heartbeat_event.wait(timeout=1.0)
+
+        child.close()
+        child_thread.join(timeout=1.0)
+
+        self.assertTrue(callback_triggered)
+        self.assertGreaterEqual(heartbeat_triggered.get("count", 0), 2)
 
     def test_sync_to_async(self):
         """Test: Parent (sync) -> Child (async) communication"""
