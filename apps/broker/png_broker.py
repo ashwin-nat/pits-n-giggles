@@ -97,6 +97,7 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
             "stats": broker.get_stats(),
         }
 
+    proc_mgr.serve()
     broker_thread.join(timeout=3.0)
     proc_mgr.close()
 
