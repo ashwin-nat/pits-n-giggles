@@ -28,11 +28,12 @@ from typing import List
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.ipc import IpcServerAsync
+from lib.ipc import IpcServerAsync, IpcPublisherAsync
 from lib.child_proc_mgmt import report_ipc_port_from_child
 
 from .command_handlers import (handleGetStats, handleManualSave, handleHeartbeatMissed, handleShutdown,
                                handleUdpActionCodeChange)
+from ..telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -41,6 +42,8 @@ def registerIpcTask(
         logger: logging.Logger,
         session_state: SessionState,
         telemetry_handler: F1TelemetryHandler,
+        ipc_pub: IpcPublisherAsync,
+        web_server: TelemetryWebServer,
         tasks: List[asyncio.Task]
         ) -> None:
     """Register the IPC task
@@ -80,7 +83,7 @@ def registerIpcTask(
 
     @server.on("get-stats")
     async def _handle_get_stats(_args: dict):
-        return await handleGetStats(telemetry_handler)
+        return await handleGetStats(telemetry_handler, ipc_pub, web_server)
 
     tasks.append(asyncio.create_task(server.run(), name="IPC Server"))
 

@@ -164,9 +164,14 @@ def _register_routes(
     def _get_stats(_args: dict) -> dict:
         return {
             "status": "success",
-            "stats": overlays_mgr.get_stats(),
+            "stats": {
+                "overlays": overlays_mgr.get_stats(),
+                "ingress" : {
+                    "socketio": socketio_client.get_stats(),
+                    "subscriber": ipc_sub.get_stats(),
+                }
+            }
         }
-
 
     @ipc_server.on_shutdown
     def _shutdown(args: dict) -> dict:

@@ -142,7 +142,7 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
-        self.m_stats.track_packet("__RAW__", "__RAW__", len(raw_packet))
+        self.m_stats.track_packet("__RAW__", "__TOTAL__", len(raw_packet))
         # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)

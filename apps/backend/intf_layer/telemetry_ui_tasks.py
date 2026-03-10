@@ -114,7 +114,7 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
     return web_server, ipc_pub
 
 async def lowFreqLocalUpdateTask(
