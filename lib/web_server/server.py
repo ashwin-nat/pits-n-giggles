@@ -257,7 +257,7 @@ class BaseWebServer:
             client_type (ClientType): The client type to send the event to.
         """
         packed = msgpack.packb(data, use_bin_type=True)
-        self._track_socket_emit(packed, room=str(client_type))
+        self._track_socket_emit_mcast(packed, room=str(client_type))
         await self.m_sio.emit(event, packed, room=str(client_type))
 
     async def send_to_clients_interested_in_event(self, event: str, data: Dict[str, Any]) -> None:
@@ -269,7 +269,7 @@ class BaseWebServer:
             data (Dict[str, Any]): The data to send with the event.
         """
         packed = msgpack.packb(data, use_bin_type=True)
-        self._track_socket_emit(packed, room=event)
+        self._track_socket_emit_mcast(packed, room=event)
         await self.m_sio.emit(event, packed, room=event)
 
     async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
@@ -282,19 +282,18 @@ class BaseWebServer:
             client_id (str): The client ID to send the event to.
         """
         packed = msgpack.packb(data, use_bin_type=True)
-        self._track_socket_emit(packed)
+        self.m_stats.track_packet("__SOCKET_OUT__", "__UNICAST__", len(packed))
         await self.m_sio.emit(event, packed, to=client_id)
 
-    def _track_socket_emit(self,
+    def _track_socket_emit_mcast(self,
                            payload: bytes,
-                           room: Optional[str] = None) -> None:
+                           by_event_type: bool,
+                           room: str) -> None:
         """Track outbound socket payload fan-out bytes/counter."""
-        recipients = 1
-        if room is not None:
-            recipients = len(list(self.m_sio.manager.get_participants("/", room)))
+        recipients = len(list(self.m_sio.manager.get_participants("/", room)))
 
         # Account for each recipient separately so packet count reflects actual fan-out.
-        self.m_stats.track_packet("__SOCKET_OUT__", "__PAYLOAD__", len(payload) * recipients)
+        self.m_stats.track_packet("__SOCKET_OUT__", f"__EVENT_{room}__", len(payload) * recipients)
 
     def is_client_of_type_connected(self, client_type: ClientType) -> bool:
         """Check if a client of a specific type is connected
