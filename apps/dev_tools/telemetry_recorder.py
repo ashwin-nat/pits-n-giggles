@@ -25,16 +25,16 @@ import asyncio
 import logging
 import sys
 import os
+import socket
 import time
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from typing import List, Tuple
+from typing import Tuple
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
-from lib.telemetry_manager import AsyncF1TelemetryManager
 from threading import Thread, Lock, Condition
 import queue
 
@@ -168,7 +168,7 @@ class SimpleApp:
                                             f"Number of packets is {num_packets}")
 
 async def async_telemetry_main():
-    """Main function for async telemetry. This runs its own asyncio event loop"""
+    """Main function for async telemetry capture."""
     global g_port_num
     global g_start_condition
 
@@ -182,19 +182,19 @@ async def async_telemetry_main():
     port = await loop.run_in_executor(None, wait_for_port)
 
     print(f"[async telemetry] Starting server on port {port}")
-    null_logger = logging.getLogger("null")
-    null_logger.addHandler(logging.NullHandler())
-    telemetry_manager = AsyncF1TelemetryManager(port_number=port, logger=null_logger)
-    @telemetry_manager.on_raw_packet()
-    async def handleRawPacket(packet: List[bytes]) -> None:
-        """
-        Handle raw telemetry packet.
-        Parameters:
-            packet (List[bytes]): The raw telemetry packet.
-        """
-        global g_capture_table
-        g_capture_table.add(packet)
-    await telemetry_manager.run()
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    udp_socket.setblocking(False)
+    udp_socket.bind(("0.0.0.0", port))
+
+    loop = asyncio.get_running_loop()
+    try:
+        while True:
+            packet, _ = await loop.sock_recvfrom(udp_socket, 4096)
+            g_capture_table.add(packet)
+    finally:
+        udp_socket.close()
 
 if __name__ == "__main__":
 

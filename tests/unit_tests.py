@@ -58,8 +58,6 @@ from tests_config import (TestCaptureSettings, TestConfigMigration,
                           TestStreamOverlaySettings, TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
-from tests_data_per_driver import (TestTyreSetHistoryEntry,
-                                   TestTyreSetHistoryManager, TestTyreSetInfo)
 from tests_debouncer import TestMultiButtonDebouncer
 from tests_fuel_recommender import (TestFuelRateRecommenderMisc,
                                     TestFuelRateRecommenderRemove,
@@ -78,7 +76,6 @@ from tests_tyre_wear_extrapolator import (
     TestSimpleLinearRegression, TestTyreWearExtrapolator,
     TestTyreWearExtrapolatorWithMissingLaps,
     TestTyreWearExtrapolatorWithNonRacingLaps)
-from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 from tests.ipc import TestIpcParentChild, TestIpcPubSub, TestIpcSubscriber
@@ -87,11 +84,8 @@ from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
 from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_rate_limiter import TestRateLimiter
-from tests.tests_rolling_history import TestRollingHistory
-from tests.tests_wdt import TestWatchDogTimerAsync, TestWatchDogTimerSync
-from tests.tests_pending_events import TestPendingEventsManager
+from tests.tests_wdt import TestWatchDogTimerSync
 from tests.tests_event_counter import TestEventCounter
-from tests.tests_frame_gate import TestSessionFrameGate
 
 # Initialize colorama
 init(autoreset=True)

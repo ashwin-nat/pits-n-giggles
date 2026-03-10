@@ -22,12 +22,10 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from .wdt_async import WatchDogTimerAsync
 from .wdt_sync import WatchDogTimerSync
 
 # ------------------------- EXPORTS ------------------------------------------------------------------------------------
 
 __all__ = [
-    "WatchDogTimerAsync",
     "WatchDogTimerSync",
 ]

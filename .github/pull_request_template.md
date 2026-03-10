@@ -22,9 +22,9 @@ Fixes #<issue_number> <!-- optional -->
 
 ---
 
-## 🧪 Backend Test Reports (required for Python/backend changes)
+## 🧪 Backend Test Reports (required for backend/runtime changes)
 
-> ⚠️ If your PR includes backend Python changes, please fill out the sections below.
+> ⚠️ If your PR includes launcher, backend, IPC, packaging, or telemetry runtime changes, please fill out the sections below.
 
 ### ✅ Integration Tests
 

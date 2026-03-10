@@ -23,12 +23,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .tests_wdt_async import TestWatchDogTimerAsync
 from .tests_wdt_sync import TestWatchDogTimerSync
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TestWatchDogTimerAsync",
     "TestWatchDogTimerSync"
 ]
