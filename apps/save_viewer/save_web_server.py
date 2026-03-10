@@ -23,209 +23,278 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import json
 import logging
+import mimetypes
+import platform
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Tuple
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Dict, List, Optional
+from urllib.parse import parse_qs, urlsplit
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
 from lib.event_counter import EventCounter
-from lib.web_server import BaseWebServer, ClientType
 
-# -------------------------------------- CLASSES ----------------------------------------------------------------
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-class SaveViewerWebServer(BaseWebServer):
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_FRONTEND_DIR = _REPO_ROOT / "apps" / "frontend"
+_TEMPLATE_PATH = _FRONTEND_DIR / "html" / "driver-view.html"
+_ASSETS_DIR = _REPO_ROOT / "assets"
+_STATIC_ROUTE_MAP = {
+    "/favicon.ico": (_ASSETS_DIR / "favicon.ico", "image/vnd.microsoft.icon"),
+    "/tyre-icons/soft.svg": (_ASSETS_DIR / "tyre-icons" / "soft_tyre.svg", "image/svg+xml"),
+    "/tyre-icons/super-soft.svg": (_ASSETS_DIR / "tyre-icons" / "super_soft_tyre.svg", "image/svg+xml"),
+    "/tyre-icons/medium.svg": (_ASSETS_DIR / "tyre-icons" / "medium_tyre.svg", "image/svg+xml"),
+    "/tyre-icons/hard.svg": (_ASSETS_DIR / "tyre-icons" / "hard_tyre.svg", "image/svg+xml"),
+    "/tyre-icons/intermediate.svg": (_ASSETS_DIR / "tyre-icons" / "intermediate_tyre.svg", "image/svg+xml"),
+    "/tyre-icons/wet.svg": (_ASSETS_DIR / "tyre-icons" / "wet_tyre.svg", "image/svg+xml"),
+}
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class _ReusableThreadingHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = platform.system() != "Windows"
+
+
+class _SaveViewerRequestHandler(BaseHTTPRequestHandler):
+    server_version = "PitsNGigglesSaveViewer/1.0"
+
+    @property
+    def png_server(self) -> "SaveViewerWebServer":
+        return self.server.png_server
+
+    def log_message(self, format: str, *args) -> None:
+        self.png_server.m_logger.debug("Save viewer HTTP: " + format, *args)
+
+    def do_GET(self) -> None:
+        parsed = urlsplit(self.path)
+        path = parsed.path
+        self.png_server.m_stats.track_event("__HTTP__", path)
+
+        if path == "/":
+            self._send_html(self.png_server.render_driver_view())
+            return
+        if path == "/telemetry-info":
+            self._send_json(SaveViewerState.getTelemetryInfo())
+            return
+        if path == "/race-info":
+            self._send_json(SaveViewerState.getRaceInfo())
+            return
+        if path == "/driver-info":
+            self._handle_driver_info(parsed.query)
+            return
+        if path.startswith("/static/"):
+            self._serve_static_file(path[len("/static/"):])
+            return
+        if path in _STATIC_ROUTE_MAP:
+            file_path, mime_type = _STATIC_ROUTE_MAP[path]
+            self._serve_file(file_path, mime_type)
+            return
+
+        self._send_json(
+            {
+                "error": "Not Found",
+                "message": f"Unsupported path: {path}",
+            },
+            status=HTTPStatus.NOT_FOUND,
+        )
+
+    def _handle_driver_info(self, raw_query: str) -> None:
+        query = parse_qs(raw_query)
+        index_values = query.get("index")
+
+        if not index_values or not index_values[0]:
+            self._send_json(
+                {
+                    "error": "Invalid parameters",
+                    "message": 'Provide "index" parameter',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        index = index_values[0]
+        if not index.isdigit():
+            self._send_json(
+                {
+                    "error": "Invalid parameter value",
+                    "message": '"index" parameter must be numeric',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        driver_info = SaveViewerState.getDriverInfo(int(index))
+        if driver_info:
+            self._send_json(driver_info, status=HTTPStatus.OK)
+            return
+
+        self._send_json(
+            {
+                "error": "Invalid parameter value",
+                "message": "Invalid index",
+            },
+            status=HTTPStatus.NOT_FOUND,
+        )
+
+    def _serve_static_file(self, relative_path: str) -> None:
+        sanitized_path = Path(relative_path)
+        if sanitized_path.is_absolute() or ".." in sanitized_path.parts:
+            self._send_json(
+                {
+                    "error": "Invalid path",
+                    "message": "Static path traversal is not allowed",
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        full_path = _FRONTEND_DIR / sanitized_path
+        mime_type, _ = mimetypes.guess_type(str(full_path))
+        self._serve_file(full_path, mime_type or "application/octet-stream")
+
+    def _serve_file(self, file_path: Path, mime_type: str) -> None:
+        if not file_path.is_file():
+            self._send_json(
+                {
+                    "error": "Not Found",
+                    "message": f"File not found: {file_path.name}",
+                },
+                status=HTTPStatus.NOT_FOUND,
+            )
+            return
+
+        payload = file_path.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", mime_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_html(self, body: str, status: HTTPStatus = HTTPStatus.OK) -> None:
+        payload = body.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_json(self, body: Dict, status: HTTPStatus = HTTPStatus.OK) -> None:
+        payload = json.dumps(body).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+
+class SaveViewerWebServer:
     """
-    A web server class for handling telemetry-related web services and socket communications.
+    A small threaded HTTP server for the save viewer.
 
-    This class sets up HTTP and WebSocket routes for serving telemetry data,
-    static files, and managing client connections.
+    Socket.IO is intentionally not supported here. The frontend already has a
+    polling fallback, which keeps the save viewer functional without the old
+    Quart/Socket.IO dependency stack.
     """
 
-    def __init__(self,
-                 port: int,
-                 ver_str: str,
-                 logger: logging.Logger,
-                 cert_path: Optional[str] = None,
-                 key_path: Optional[str] = None,
-                 debug_mode: bool = False):
-        """
-        Initialize the TelemetryWebServer.
-
-        Args:
-            port (int): The port number to run the server on.
-            ver_str (str): The version string.
-            logger (logging.Logger): The logger instance.
-            cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
-            key_path (Optional[str], optional): Path to the key file. Defaults to None.
-            debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
-        """
-        super().__init__(port, ver_str, logger, cert_path, key_path, debug_mode)
+    def __init__(
+        self,
+        port: int,
+        ver_str: str,
+        logger: logging.Logger,
+        cert_path: Optional[str] = None,
+        key_path: Optional[str] = None,
+        debug_mode: bool = False,
+    ):
+        self.m_port = port
+        self.m_ver_str = ver_str
+        self.m_logger = logger
+        self.m_cert_path = cert_path
+        self.m_key_path = key_path
+        self.m_debug_mode = debug_mode
         self.m_stats = EventCounter()
-        self.define_routes()
-        self.register_post_start_callback(self._post_start)
-        self.register_on_client_register_callback(self._on_client_connect)
-        self.register_on_client_disconnect_callback(self._on_client_disconnect)
+        self._httpd: Optional[_ReusableThreadingHTTPServer] = None
+        self._driver_view_template = _TEMPLATE_PATH.read_text(encoding="utf-8")
 
-    def define_routes(self) -> None:
-        """
-        Define all HTTP routes for the web server.
+    def render_driver_view(self) -> str:
+        template = _apply_conditional_block(
+            self._driver_view_template,
+            "{% if live_data_mode %}",
+            "{% endif %}",
+            False,
+        )
+        template = _apply_conditional_block(
+            template,
+            "{% if not live_data_mode %}",
+            "{% endif %}",
+            True,
+        )
+        return (
+            template.replace(
+                "{{ 'Live' if live_data_mode else 'Save Data' }}",
+                "Save Data",
+            )
+            .replace("{{ version }}", self.m_ver_str)
+            .replace("{{ url_for('static', filename='", "/static/")
+            .replace("') }}", f"?v={self.m_ver_str}")
+        )
 
-        This method calls sub-methods to set up file and data routes.
-        """
+    async def run(self) -> None:
+        try:
+            httpd = _ReusableThreadingHTTPServer(("0.0.0.0", self.m_port), _SaveViewerRequestHandler)
+        except OSError as exc:
+            if is_port_in_use_error(exc.errno):
+                self.m_logger.error("Port %s is already in use", self.m_port)
+                raise PngHttpPortInUseError() from exc
+            raise
 
-        self._defineTemplateFileRoutes()
-        self._defineDataRoutes()
-
-    def _defineTemplateFileRoutes(self) -> None:
-        """
-        Define routes for rendering HTML templates.
-
-        Sets up routes for the main index page and stream overlay page.
-        """
-        @self.http_route('/')
-        async def index() -> str:
-            """
-            Render the main index page.
-
-            Returns:
-                str: Rendered HTML content for the index page.
-            """
-            self.m_stats.track_event("__HTTP__", "/")
-            return await self.render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
-
-    def _defineDataRoutes(self) -> None:
-        """
-        Define HTTP routes for retrieving telemetry and race-related data.
-
-        Sets up endpoints for fetching race info, telemetry info,
-        driver info, and stream overlay info.
-        """
-        @self.http_route('/telemetry-info')
-        async def telemetryInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide telemetry information via HTTP.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
-            self.m_stats.track_event("__HTTP__", "/telemetry-info")
-            return SaveViewerState.getTelemetryInfo()
-
-        @self.http_route('/race-info')
-        async def raceInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide overall race statistics via HTTP.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
-            self.m_stats.track_event("__HTTP__", "/race-info")
-            return SaveViewerState.getRaceInfo()
-
-        @self.http_route('/driver-info')
-        async def driverInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide driver information based on the index parameter.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
-
-            self.m_stats.track_event("__HTTP__", "/driver-info")
-            index: str = self.request.args.get('index')
-
-            # Check if only one parameter is provided
-            if not index:
-                error_response = {
-                    'error': 'Invalid parameters',
-                    'message': 'Provide "index" parameter'
-                }
-                return error_response, HTTPStatus.BAD_REQUEST
-
-            # Check if the provided value for index is numeric
-            if not index.isdigit():
-                error_response = {
-                    'error': 'Invalid parameter value',
-                    'message': '"index" parameter must be numeric'
-                }
-                return error_response, HTTPStatus.BAD_REQUEST
-
-            # Process parameters and generate response
-            index_int = int(index)
-
-            if driver_info := SaveViewerState.getDriverInfo(index_int):
-                return driver_info, HTTPStatus.OK
-            error_response = {
-                'error' : 'Invalid parameter value',
-                'message' : 'Invalid index'
-            }
-            return error_response, HTTPStatus.NOT_FOUND
-
-    async def _post_start(self) -> None:
-        """
-        Notify the parent process that the web server is initialized.
-        """
+        httpd.png_server = self
+        self._httpd = httpd
         notify_parent_init_complete()
+        await asyncio.to_thread(httpd.serve_forever, 0.25)
 
-    async def _on_client_connect(self, client_type: ClientType, client_id: str) -> None:
-        """Send race table to the newly connected client
+    async def stop(self) -> None:
+        if self._httpd is None:
+            return
 
-        Args:
-            client_type (ClientType): Client type
-            client_id (str): Client ID
-        """
-        self.m_stats.track_event("__SOCKET_IN__", "__CONNECT__")
-        self.m_stats.track_event("__SOCKET_IN__", f"__CONNECT__{str(client_type)}")
-        if client_type == ClientType.RACE_TABLE:
-            await self._send_race_table(client_id)
-
-    async def _on_client_disconnect(self, _sid: str) -> None:
-        """Called when a client disconnects
-        """
-        self.m_stats.track_event("__SOCKET_IN__", "__DISCONNECT__")
-
-    async def _send_race_table(self, client_id: str) -> None:
-        """Send race table to all connected clients
-
-        Args:
-            client_id (str): Client ID
-        """
-        await self.send_to_client('race-table-update',
-                                    SaveViewerState.getTelemetryInfo(),
-                                    client_id)
-        self.m_logger.debug("Sending race table update")
-
-    async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
-        await super().send_to_clients_of_type(event, data, client_type)
-
-    async def send_to_clients_interested_in_event(self, event: str, data: Dict[str, Any]) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
-        await super().send_to_clients_interested_in_event(event, data)
-
-    async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
-        await super().send_to_client(event, data, client_id)
+        httpd = self._httpd
+        self._httpd = None
+        await asyncio.to_thread(httpd.shutdown)
+        await asyncio.to_thread(httpd.server_close)
+        self.m_logger.debug("Save viewer web server stopped")
 
     def get_stats(self) -> dict:
-        """Get current web server stats."""
         return self.m_stats.get_stats()
+
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
+def _apply_conditional_block(template: str, block_start: str, block_end: str, include_inner: bool) -> str:
+    output = template
+    while True:
+        start = output.find(block_start)
+        if start == -1:
+            break
+        search_from = start + len(block_start)
+        end_relative = output[search_from:].find(block_end)
+        if end_relative == -1:
+            break
+        end = search_from + end_relative
+        replacement = output[search_from:end] if include_inner else ""
+        output = output[:start] + replacement + output[end + len(block_end):]
+    return output
+
+
 def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task]) -> SaveViewerWebServer:
-    """Initialize the web server and return the server object for proper cleanup
-
-    Args:
-        port (int): Port number
-        ver_str (str): Version string
-        logger (logging.Logger): Logger
-        tasks (List[asyncio.Task]): List of tasks to be executed
-
-    Returns:
-        SaveViewerWebServer: Web server
-    """
-    _server = SaveViewerWebServer(port, ver_str, logger)
-    tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
-    return _server
+    """Initialize the web server and return the server object for proper cleanup."""
+    server = SaveViewerWebServer(port, ver_str, logger)
+    tasks.append(asyncio.create_task(server.run(), name="Web Server Task"))
+    return server

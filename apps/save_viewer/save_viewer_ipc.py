@@ -30,10 +30,9 @@ from typing import Any, Dict, List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.child_proc_mgmt import report_ipc_port_from_child
+from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcServerAsync
-from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -95,13 +94,6 @@ class SaveViewerIpc:
         if self.m_should_open_ui:
             self.m_should_open_ui = False
             webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
-
-        # Update all clients
-        await self.m_server.send_to_clients_of_type(
-            event='race-table-update',
-            data=SaveViewerState.getTelemetryInfo(),
-            client_type=ClientType.RACE_TABLE,
-        )
 
         return {"status": "success"}
 

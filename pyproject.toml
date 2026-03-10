@@ -4,18 +4,14 @@ description = "F1 Sim Racing Telemetry Analysis"
 authors = [
     {name = "Ashwin Natarajan",email = "ashwin.nat@gmail.com"}
 ]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "jinja2 (>=3.1.6,<4.0.0)",
     "pyinstaller (>=6.12.0,<7.0.0)",
     "python-socketio (>=5.12.1,<6.0.0)",
-    "quart (>=0.20.0,<0.21.0)",
-    "gevent (>=24.11.1,<25.0.0)",
     "psutil (>=7.0.0,<8.0.0)",
     "pydantic (>=2.11.5,<3.0.0)",
-    "uvicorn (>=0.35.0,<0.36.0)",
     "packaging (>=25.0,<26.0)",
     "msgpack (>=1.1.1,<2.0.0)",
     "pyzmq (>=27.0.0,<28.0.0)",
@@ -37,11 +33,8 @@ package-mode = false
 [tool.poetry.group.dev.dependencies]
 tqdm = "^4.67.1"
 deepdiff = "^8.4.2"
-yappi = "^1.6.10"
-snakeviz = "^2.2.2"
 gdown = "^5.2.0"
 colorama = "^0.4.6"
 tabulate = "^0.9.0"
 pylint = "3.2.6"
 coverage = "^7.11.0"
-

@@ -84,6 +84,7 @@ from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
 from tests.tests_delta import TestF1Delta
 from tests.tests_race_ctrl import TestRaceControlMessages
 from tests.tests_rate_limiter import TestRateLimiter
+from tests.tests_save_viewer_web_server import TestSaveViewerWebServer
 from tests.tests_wdt import TestWatchDogTimerSync
 from tests.tests_event_counter import TestEventCounter
 

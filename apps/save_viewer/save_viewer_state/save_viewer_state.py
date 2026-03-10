@@ -24,6 +24,7 @@
 
 import json
 import logging
+import threading
 from typing import Any, Dict, List
 
 import lib.overtake_analyzer as OvertakeAnalyzer
@@ -38,6 +39,7 @@ from .get_telemetry_info import _getTelemetryInfo
 
 _json_data: Dict[str, Any] = {}
 _logger: logging.Logger = None
+_state_lock = threading.RLock()
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -54,12 +56,14 @@ def getTelemetryInfo() -> Dict[str, Any]:
         Complete telemetry data structure with session info and driver entries
     """
     global _json_data
-    return _getTelemetryInfo(_json_data)
+    with _state_lock:
+        return _getTelemetryInfo(_json_data)
 
 def getRaceInfo() -> Dict[str, Any]:
     """Get the race info."""
     global _json_data, _logger
-    return _getRaceInfo(_json_data, _logger)
+    with _state_lock:
+        return _getRaceInfo(_json_data, _logger)
 
 def getDriverInfo(index: int) -> Dict[str, Any]:
     """Get the driver info for the given index. Assumes the index is an int. Type checking is caller's responsibility
@@ -71,15 +75,19 @@ def getDriverInfo(index: int) -> Dict[str, Any]:
         Dict[str, Any]: Driver info.
     """
     global _json_data
-    return _getDriverInfo(_json_data, index)
+    with _state_lock:
+        return _getDriverInfo(_json_data, index)
 
 async def open_file_helper(file_path):
     """Load the JSON file and parse it and update the module global."""
     try:
-        with open(file_path, 'r+', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            new_json_data = json.load(f)
+            _check_recompute_json(new_json_data)
+
+        with _state_lock:
             global _json_data
-            _json_data = json.load(f)
-            _check_recompute_json(_json_data)
+            _json_data = new_json_data
 
         _logger.info(f"Opened file: {file_path}")
         return {"status": "success"}
@@ -252,4 +260,3 @@ def _ensure_records_container(json_data: Dict[str, Any]) -> bool:
         }
         return True
     return False
-
