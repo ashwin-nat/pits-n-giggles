@@ -1,0 +1,16 @@
+[package]
+name = "telemetry-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "telemetry_core"
+path = "src/lib.rs"
+
+[dependencies]
+f1-types = { path = "../f1-types" }
+tokio = { version = "1.45", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1.45", features = ["io-util", "macros", "net", "rt-multi-thread", "test-util", "time"] }

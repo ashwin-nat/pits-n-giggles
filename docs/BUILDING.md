@@ -47,7 +47,8 @@ poetry run python scripts/build.py
 Pits n' Giggles uses a modular launcher architecture to simplify distribution and reduce antivirus issues:
 
 - ✅ The **main launcher** is built as a single executable.
-- ✅ **Subsystems** (e.g., backend, save viewer) are launched as Python modules using the **main binary’s interpreter**.
+- ✅ Python subsystems (for example save viewer and HUD) are launched as Python modules using the **main binary’s interpreter**.
+- ✅ The backend is packaged as a separate Rust companion binary and launched directly by the launcher.
 
 ### 📦 Version Management
 
@@ -84,7 +85,6 @@ To add a new subsystem to the suite:
    ```python
    hiddenimports = (
        collect_submodules("apps.launcher") +
-       collect_submodules("apps.backend") +
        collect_submodules("apps.save_viewer") +
        collect_submodules("apps.your_subsystem")  # 👈 Add this line
    )
@@ -146,12 +146,13 @@ To test the launcher:
 dist/pits_n_giggles_2.8.0.exe
 ```
 
-To run subsystems directly (for debugging):
+To run Python subsystems directly (for debugging):
 
 ```bash
-dist/pits_n_giggles_2.8.0.exe --module apps.backend
 dist/pits_n_giggles_2.8.0.exe --module apps.save_viewer
 dist/pits_n_giggles_2.8.0.exe --module apps.your_subsystem
 ```
+
+The backend is no longer a Python module. Packaged builds include it as a Rust companion binary and the launcher starts it directly.
 
 ---

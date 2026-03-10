@@ -22,9 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
+import shutil
+import sys
 import json
 import webbrowser
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
@@ -44,9 +48,10 @@ if TYPE_CHECKING:
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
 
-    MODULE_PATH = "apps.backend"
+    MODULE_PATH = "backend-rust"
     DISPLAY_NAME = "Core"
     SHORT_NAME = "CORE"
+    RUST_BINARY_NAMES = ("png-backend", "png-backend.exe", "backend", "backend.exe")
 
     def __init__(self,
                  common_cfg: PngAppMgrConfig,
@@ -65,7 +70,6 @@ class BackendAppMgr(PngAppMgrBase):
         final_args = [*common_cfg.args, *extra_args]
         self.port = common_cfg.settings.Network.server_port
         self.proto = common_cfg.settings.HTTPS.proto
-
         config = replace(common_cfg,
                          args=final_args,
                          post_start_cb=self.post_start,
@@ -91,6 +95,25 @@ class BackendAppMgr(PngAppMgrBase):
             can_restart=False,
             settings_field='Network -> "F1 UDP Telemetry Port"'
         ))
+
+    def get_launch_command(self) -> List[str]:
+        """Launch the Rust backend. Python backend fallback has been removed."""
+
+        preferred = os.environ.get("PNG_BACKEND_IMPL", "").strip().lower()
+        if preferred == "python":
+            self.warning_log(f"{self.DISPLAY_NAME}: PNG_BACKEND_IMPL=python is no longer supported; using Rust backend")
+
+        if self.coverage_enabled:
+            self.debug_log(f"{self.DISPLAY_NAME}: coverage mode uses the Rust backend and does not enable Python coverage")
+
+        if rust_cmd := self._resolve_rust_backend_command():
+            return [*rust_cmd, *self.args]
+
+        raise RuntimeError(
+            "Rust backend launch command was not found. "
+            "Set PNG_RUST_BACKEND_BIN, use a packaged build that includes the backend companion binary, "
+            "or install cargo and keep apps/backend/rust/Cargo.toml available."
+        )
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -168,6 +191,7 @@ class BackendAppMgr(PngAppMgrBase):
             "Display" : [
                 "refresh_interval",
             ],
+            "HTTPS": [],
             "Logging" : [],
             "Privacy" : [],
             "Forwarding" : [],
@@ -248,3 +272,38 @@ class BackendAppMgr(PngAppMgrBase):
             self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
+
+    def _resolve_rust_backend_command(self) -> List[str] | None:
+        if env_bin := os.environ.get("PNG_RUST_BACKEND_BIN"):
+            if os.path.isfile(env_bin):
+                return [env_bin]
+
+        if getattr(sys, "frozen", False):
+            search_dirs = []
+            meipass = getattr(sys, "_MEIPASS", None)
+            if meipass:
+                search_dirs.append(Path(meipass))
+            search_dirs.append(Path(sys.executable).resolve().parent)
+
+            for search_dir in search_dirs:
+                for candidate_name in self.RUST_BINARY_NAMES:
+                    candidate = search_dir / candidate_name
+                    if candidate.is_file():
+                        return [str(candidate)]
+            return None
+
+        cargo = shutil.which("cargo")
+        project_root = Path(__file__).resolve().parents[3]
+        manifest_path = project_root / "apps" / "backend" / "rust" / "Cargo.toml"
+        if cargo and manifest_path.is_file():
+            return [
+                cargo,
+                "run",
+                "--manifest-path",
+                str(manifest_path),
+                "-p",
+                "backend",
+                "--",
+            ]
+
+        return None

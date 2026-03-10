@@ -27,3 +27,4 @@ png-venv/
 htmlcov/
 coverage_reports/
 *.diff
+target/

@@ -25,14 +25,17 @@
 # PyInstaller Spec File for Pits n' Giggles
 # Onefile build with embedded dispatcher (via --module)
 
-# Add 'scripts/' to sys.path so 'version.py' can be imported
-import sys
-sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
-
 import os
 import platform
 import shutil
+import sys
 import tempfile
+
+# Add 'scripts/' to sys.path so 'version.py' can be imported
+PROJECT_ROOT = os.path.abspath(os.environ.get("PNG_PROJECT_ROOT", "."))
+SPEC_DIR = os.path.join(PROJECT_ROOT, "scripts")
+sys.path.insert(0, SPEC_DIR)
+sys.path.insert(0, PROJECT_ROOT)
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
@@ -46,7 +49,6 @@ ICON_PATH_MAC = "../assets/logo.icns"
 
 APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
 COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
-PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
 # Runtime hook: inject PNG_VERSION env var before app starts
@@ -85,17 +87,29 @@ def collect_directory(src_dir, dest_dir):
 
     return items
 
+def collect_rust_backend_binary():
+    rust_backend_bin = os.environ.get("PNG_RUST_BACKEND_BIN")
+    if not rust_backend_bin:
+        print("Warning: PNG_RUST_BACKEND_BIN not set, packaged build will not include Rust backend companion binary")
+        return []
+
+    if not os.path.isfile(rust_backend_bin):
+        raise FileNotFoundError(f"Rust backend binary not found: {rust_backend_bin}")
+
+    return [(rust_backend_bin, ".")]
+
 # --------------------------------------------------------------------------------------------------
 # Modules and Assets
 # --------------------------------------------------------------------------------------------------
 
 hiddenimports = (
     collect_submodules("apps.launcher") +
-    collect_submodules("apps.backend") +
     collect_submodules("apps.save_viewer") +
     collect_submodules("apps.hud") +
     collect_submodules("apps.broker")
 )
+
+rust_binaries = collect_rust_backend_binary()
 
 # Automatically collect all assets and frontend files
 datas = []
@@ -141,7 +155,7 @@ datas.extend([
 a = Analysis(
     [entry_script],
     pathex=[PROJECT_ROOT],
-    binaries=[],
+    binaries=rust_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

@@ -26,6 +26,9 @@ jobs:
         run: |
           poetry install --no-root --without dev
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build with PyInstaller
         run: |
           poetry run python scripts/build.py

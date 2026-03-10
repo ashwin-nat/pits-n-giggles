@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Simple integration test for Pits n Giggles App
+Launcher integration test for the live app stack.
+
+This starts the Python launcher, which in turn starts the Rust backend, then
+replays telemetry and validates the main frontend-facing routes.
 """
 
 import asyncio
@@ -199,7 +202,7 @@ def fetch_test_files() -> list[str]:
 
 
 def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess.Popen:
-    """Start the application process."""
+    """Start the launcher process for integration testing."""
     app_cmd_base = [
         "-m", "apps.launcher",
         "--ipc-port", str(port),

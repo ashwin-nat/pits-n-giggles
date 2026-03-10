@@ -18,11 +18,11 @@ poetry run python scripts/coverage_ut.py
 
 ## 2. Integration Tests
 
-Integration tests cover the main application code, specifically `apps/backend` and `lib/`.
+Integration tests cover the main application runtime, specifically the launcher, `apps/backend/rust`, and `lib/`.
 
 To run integration tests:
 ```bash
-poetry run python scripts/integration_test/runner.py
+poetry run python tests/integration_test/runner.py
 ```
 
 To run integration tests with code coverage:
