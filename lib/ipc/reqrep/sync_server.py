@@ -25,15 +25,15 @@
 import threading
 import time
 import logging
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Callable, Optional
 
 import zmq
 
 # -------------------------------------- TYPES -----------------------------------------------------------------------
 
-RouteCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
-ShutdownCallback = Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]
-HeartbeatCallback = Callable[[int], None | Awaitable[None]]
+RouteCallback = Callable[[dict], dict[str, Any]]
+ShutdownCallback = Callable[[dict], dict[str, Any]]
+HeartbeatCallback = Callable[[int], None]
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -181,7 +181,7 @@ class IpcServerSync:
 
     def serve(
         self,
-        handler_fn: Optional[Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]] = None,
+        handler_fn: Optional[Callable[[dict], dict[str, Any]]] = None,
         timeout: Optional[float] = None,
     ) -> None:
         """
@@ -255,7 +255,7 @@ class IpcServerSync:
 
     def serve_in_thread(
         self,
-        handler_fn: Optional[Callable[[dict], dict[str, Any] | Awaitable[dict[str, Any]]]] = None,
+        handler_fn: Optional[Callable[[dict], dict[str, Any]]] = None,
         timeout: Optional[float] = None,
         name: Optional[str] = None,
     ) -> threading.Thread:

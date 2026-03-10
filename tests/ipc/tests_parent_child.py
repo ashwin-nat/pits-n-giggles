@@ -140,6 +140,52 @@ class TestIpcParentChild(TestIPC):
         self.assertTrue(shutdown_state["called"])
         self.assertEqual(shutdown_state["reason"], "unit-test")
 
+    async def _run_async_heartbeat_missed_server(
+        self,
+        callback_state,
+        max_missed_heartbeats=2,
+        heartbeat_timeout=0.2,
+        run_duration=1.0,
+    ):
+        """Run an async server long enough for missed-heartbeat callback to fire."""
+        child = IpcServerAsync(
+            port=self.port,
+            name=self.id(),
+            max_missed_heartbeats=max_missed_heartbeats,
+            heartbeat_timeout=heartbeat_timeout,
+        )
+
+        @child.on_heartbeat_missed
+        async def on_heartbeat_missed(missed_count):
+            callback_state["called"] = True
+            callback_state["args"] = missed_count
+
+        run_task = asyncio.create_task(child.run())
+        try:
+            await asyncio.sleep(run_duration)
+        finally:
+            child.close()
+            try:
+                await asyncio.wait_for(run_task, timeout=1.0)
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+    def test_router_async_heartbeat_missed_registration(self):
+        """Ensure async heartbeat-missed decorator callback is invoked."""
+        callback_state = {"called": False, "args": None}
+        asyncio.run(
+            self._run_async_heartbeat_missed_server(
+                callback_state=callback_state,
+                max_missed_heartbeats=2,
+                heartbeat_timeout=0.2,
+                run_duration=1.0,
+            )
+        )
+
+        self.assertTrue(callback_state["called"])
+        self.assertIsNotNone(callback_state["args"])
+        self.assertGreaterEqual(callback_state["args"], 2)
+
     def test_router_sync_heartbeat_missed_registration(self):
         """Test decorator-based heartbeat missed callback on sync server."""
         heartbeat_triggered = {}

@@ -269,7 +269,7 @@ class IpcServerAsync:
             self.close()
             self._running = False
 
-    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
         """Default heartbeat missed callback. no-op"""
         return
 
