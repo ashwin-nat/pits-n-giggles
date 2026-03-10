@@ -23,10 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import time
 from typing import Callable, Dict, Optional
 
 import orjson
 import zmq
+
+from lib.event_counter import EventCounter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -55,6 +58,7 @@ class IpcSubscriberSync:
 
         self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
+        self.stats = EventCounter()
 
         self._running = False
         self.socket: Optional[zmq.Socket] = None
@@ -115,7 +119,8 @@ class IpcSubscriberSync:
             try:
                 events = dict(poller.poll(100))
             except zmq.ZMQError:
-                self.logger.warning("Poll failed — reconnecting SUB socket")
+                self.stats.track_event("__ERROR__", "poll_failed")
+                self.logger.warning("Poll failed - reconnecting SUB socket")
                 self._create_and_connect()
                 poller = zmq.Poller()
                 poller.register(self.socket, zmq.POLLIN)
@@ -125,25 +130,38 @@ class IpcSubscriberSync:
                 try:
                     frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
                 except zmq.ZMQError:
-                    self.logger.warning("Receive failed — reconnecting SUB socket")
+                    self.stats.track_event("__ERROR__", "recv_failed")
+                    self.logger.warning("Receive failed - reconnecting SUB socket")
                     self._create_and_connect()
                     poller = zmq.Poller()
                     poller.register(self.socket, zmq.POLLIN)
                     continue
 
                 if len(frames) != 2:
+                    self.stats.track_event("__DROP__", "invalid_frame_count")
                     continue
 
                 topic_bytes, payload = frames
                 topic = topic_bytes.decode()
+                total_size = len(topic_bytes) + len(payload)
+
+                self.stats.track_packet("__INCOMING__", "__TOTAL__", total_size)
+                self.stats.track_packet("__TOPIC_INCOMING__", topic, total_size)
 
                 handler = self._routes.get(topic)
                 if handler:
                     try:
                         data = orjson.loads(payload)
                         handler(data)
+                        self.stats.track_event("__HANDLER__", "success")
+                        self.stats.track_event("__HANDLED_TOPIC__", topic)
                     except Exception as e:
+                        self.stats.track_event("__ERROR__", "handler_exception")
+                        self.stats.track_event("__HANDLER_ERROR_TOPIC__", topic)
                         self.logger.exception(f"Handler error for {topic}: {e}")
+                else:
+                    self.stats.track_event("__DROP__", "unrouted_topic")
+                    self.stats.track_event("__UNROUTED_TOPIC__", topic)
 
         # clean shutdown
         try:
@@ -157,6 +175,10 @@ class IpcSubscriberSync:
             pass
 
         self.logger.debug("IpcSubscriberSync stopped")
+
+    def get_stats(self) -> dict:
+        """Get current subscriber stats snapshot."""
+        return self.stats.get_stats()
 
     # ---------------------------------------------------------
     # External shutdown

@@ -24,10 +24,13 @@
 
 import asyncio
 import logging
+import time
 from typing import Optional
 
 import orjson
 import zmq
+
+from lib.event_counter import EventCounter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -67,6 +70,7 @@ class IpcPublisherAsync:
         self._connected = False
         self._running = True
         self._reconnect_task = None
+        self.stats = EventCounter()
 
     def get_task(self) -> asyncio.Task:
         """
@@ -107,12 +111,15 @@ class IpcPublisherAsync:
         while self._running:
             if not self._connected:
                 try:
+                    self.stats.track_event("__RECONNECT__", "attempt")
                     self.socket = self._create_socket()
                     self._connected = True
                     delay = self.RECONNECT_MIN_DELAY
+                    self.stats.track_event("__RECONNECT__", "success")
 
                 except Exception:
                     self._connected = False
+                    self.stats.track_event("__RECONNECT__", "failure")
                     await asyncio.sleep(delay)
                     delay = min(delay * 2, self.RECONNECT_MAX_DELAY)
                     continue
@@ -125,21 +132,30 @@ class IpcPublisherAsync:
     # ---------------------------------------------------------
     async def publish(self, topic: str, data: dict):
         if not self._connected:
+            self.stats.track_event("__DROP__", "disconnected")
+            self.stats.track_event("__DROP_TOPIC__", topic)
             return  # drop silently (ZeroMQ semantics)
 
         topic_bytes = topic.encode("utf-8")
         payload = orjson.dumps(data)
+        total_size = len(topic_bytes) + len(payload)
 
         try:
             self.socket.send_multipart([topic_bytes, payload], flags=zmq.DONTWAIT)
+            self.stats.track_packet("__OUTGOING__", "__TOTAL__", total_size)
+            self.stats.track_packet("__TOPIC_OUTGOING__", topic, total_size)
 
         except zmq.Again:
             # HWM full -> drop silently
+            self.stats.track_packet("__DROP_HWM__", "__TOTAL__", total_size)
+            self.stats.track_packet("__DROP_HWM_TOPIC__", topic, total_size)
             self.logger.debug("IpcPublisherAsync dropped message (HWM full)")
 
         except zmq.ZMQError:
             # Socket died -> mark disconnected, reconnect loop will fix
             self._connected = False
+            self.stats.track_event("__ERROR__", "send_zmq_error")
+            self.stats.track_packet("__DROP_ZMQ_ERROR__", "__TOTAL__", total_size)
             try:
                 self.socket.close(linger=0)
             except:
@@ -160,3 +176,7 @@ class IpcPublisherAsync:
                 pass
 
         self.logger.debug("IpcPublisherAsync closed")
+
+    def get_stats(self) -> dict:
+        """Get current publisher stats snapshot."""
+        return self.stats.get_stats()
