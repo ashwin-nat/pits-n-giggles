@@ -613,7 +613,7 @@ class PngAppMgrBase(QObject):
             rsp = ipc_client.shutdown_child(reason)
             return rsp.get("status") == "success"
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.debug_log(f"IPC shutdown failed: {e}")
+            self.debug_log(f"{self.DISPLAY_NAME} | IPC shutdown failed: {e}")
             return False
 
     def _terminate_process(self):

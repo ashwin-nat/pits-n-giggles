@@ -24,11 +24,17 @@
 
 import asyncio
 import time
-from typing import Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 import zmq
 import zmq.asyncio
 import logging
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+RouteCallback = Callable[[dict], Awaitable[dict[str, Any]]]
+ShutdownCallback = Callable[[dict], Awaitable[dict[str, Any]]]
+HeartbeatCallback = Callable[[int], Awaitable[None]]
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -70,14 +76,15 @@ class IpcServerAsync:
             self.sock.bind(self.endpoint)
 
         self._running = False
-        self._shutdown_callback = None
+        self._shutdown_callback: Optional[ShutdownCallback] = None
+        self._route_handlers: dict[str, RouteCallback] = {}
 
         # Heartbeat monitoring (only active if callback is registered)
         self.max_missed_heartbeats = max_missed_heartbeats
         self.heartbeat_timeout = heartbeat_timeout
         self._last_heartbeat = None
         self._missed_heartbeats = 0
-        self._heartbeat_missed_callback = self._def_heartbeat_missed_callback
+        self._heartbeat_missed_callback: HeartbeatCallback = self._def_heartbeat_missed_callback
         self._heartbeat_task = None
 
         if logger is None:
@@ -86,20 +93,40 @@ class IpcServerAsync:
             logger.propagate = False
         self.logger = logger
 
-    def register_shutdown_callback(self, callback: Callable[[dict], Awaitable[dict]]):
+    def register_shutdown_callback(self, callback: ShutdownCallback):
         """
         Registers an async callback to be called before shutdown.
         Callback must return a dict with 'status' and 'message' keys.
         """
         self._shutdown_callback = callback
 
-    def register_heartbeat_missed_callback(self, callback: Callable[[int], Awaitable[None]]):
+    def register_heartbeat_missed_callback(self, callback: HeartbeatCallback):
         """
         Registers an async callback to be called when max consecutive heartbeats are missed.
         Callback receives the number of missed heartbeats.
         Registering this callback automatically enables heartbeat monitoring.
         """
         self._heartbeat_missed_callback = callback
+
+    # -------------------------------------- ROUTING API ----------------------------------------------------------------
+
+    def on(self, cmd_name: str) -> Callable[[RouteCallback], RouteCallback]:
+        if not cmd_name:
+            raise ValueError("cmd_name cannot be empty")
+
+        def decorator(func: RouteCallback) -> RouteCallback:
+            self._route_handlers[cmd_name] = func
+            return func
+
+        return decorator
+
+    def on_shutdown(self, func: ShutdownCallback) -> ShutdownCallback:
+        self.register_shutdown_callback(func)
+        return func
+
+    def on_heartbeat_missed(self, func: HeartbeatCallback) -> HeartbeatCallback:
+        self.register_heartbeat_missed_callback(func)
+        return func
 
     @property
     def is_running(self) -> bool:
@@ -149,11 +176,29 @@ class IpcServerAsync:
         self._missed_heartbeats = 0
         return {"status": "success", "reply": "__heartbeat_ack__", "source": self.name}
 
-    async def run(self, handler_fn: Callable[[dict], Awaitable[dict]], timeout: Optional[int] = None) -> None:
+    async def _dispatch_request(self, msg: dict) -> dict[str, Any]:
+        cmd = msg.get("cmd")
+        if not cmd:
+            return {"status": "error", "message": "Missing command name"}
+
+        handler = self._route_handlers.get(cmd)
+        if not handler:
+            return {"status": "error", "message": f"Unknown command: {cmd}"}
+
+        args = msg.get("args", {})
+        return await handler(args)
+
+    async def run(
+        self,
+        handler_fn: Optional[Callable[[dict], Awaitable[dict[str, Any]]]] = None,
+        timeout: Optional[int] = None,
+    ) -> None:
         """
-        Starts the async request loop. Calls await handler_fn(msg) on each request.
+        Starts the async request loop.
+        If handler_fn is provided, calls handler_fn(msg) for each request.
+        Otherwise uses decorator-registered route handlers via `on`.
         Stops if a 'quit' command is received.
-        :param handler_fn: Coroutine function to handle commands
+        :param handler_fn: Optional function/coroutine function to handle commands
         :param timeout: Optional timeout for recv in seconds
         """
         self._running = True
@@ -198,7 +243,10 @@ class IpcServerAsync:
                         self._running = False
 
                     else:
-                        response = await handler_fn(msg)
+                        if handler_fn is not None:
+                            response = await handler_fn(msg)
+                        else:
+                            response = await self._dispatch_request(msg)
 
                 except Exception as e: # pylint: disable=broad-except
                     response = {
@@ -221,7 +269,7 @@ class IpcServerAsync:
             self.close()
             self._running = False
 
-    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> Awaitable[None]:
+    async def _def_heartbeat_missed_callback(self, _missed_heartbeats: int) -> None:
         """Default heartbeat missed callback. no-op"""
         return
 

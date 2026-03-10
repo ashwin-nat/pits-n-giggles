@@ -25,8 +25,6 @@
 import logging
 import os
 import threading
-from functools import partial
-from typing import Callable, Dict
 
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
@@ -34,31 +32,6 @@ from lib.ipc import IpcServerSync, IpcSubscriberSync
 
 from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
-from .handlers import (handle_lock_widgets, handle_mfd_interact,
-                       handle_next_page, handle_prev_page, handle_set_opacity,
-                       handle_get_stats,
-                       handle_set_overlays_layout,
-                       handle_set_track_radar_idle_opacity,
-                       handle_set_ui_scale, handle_toggle_visibility)
-
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-# Define a type for handler functions
-CommandHandler = Callable[[dict, logging.Logger, OverlaysMgr], dict]
-
-# Registry of command handlers
-COMMAND_HANDLERS: Dict[str, CommandHandler] = {
-    "lock-widgets": handle_lock_widgets,
-    "toggle-overlays-visibility": handle_toggle_visibility,
-    "set-overlays-opacity": handle_set_opacity,
-    "next-page": handle_next_page,
-    "prev-page": handle_prev_page,
-    "mfd-interact": handle_mfd_interact,
-    "set-overlays-layout": handle_set_overlays_layout,
-    "set-ui-scale": handle_set_ui_scale,
-    "set-track-radar-idle-opacity": handle_set_track_radar_idle_opacity,
-    "get-stats": handle_get_stats,
-}
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -86,32 +59,128 @@ def run_ipc_task(
     )
     report_ipc_port_from_child(ipc_server.port)
     logger.debug("Started IPC server on port %d", ipc_server.port)
-    ipc_server.register_shutdown_callback(partial(
-        _shutdown_handler, logger=logger, overlays_mgr=overlays_mgr, socketio_client=socketio_client,
-        ipc_sub=ipc_sub))
-    ipc_server.register_heartbeat_missed_callback(partial(_handle_heartbeat_missed, logger=logger))
-    return ipc_server.serve_in_thread(partial(_ipc_handler, logger=logger, overlays_mgr=overlays_mgr))
+    _register_routes(
+        ipc_server=ipc_server,
+        logger=logger,
+        overlays_mgr=overlays_mgr,
+        socketio_client=socketio_client,
+        ipc_sub=ipc_sub,
+    )
+    return ipc_server.serve_in_thread()
 
-def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -> dict:
-    """Handles incoming IPC messages and dispatches commands.
+def _register_routes(
+        ipc_server: IpcServerSync,
+        logger: logging.Logger,
+        overlays_mgr: OverlaysMgr,
+        socketio_client: HudClient,
+        ipc_sub: IpcSubscriberSync,
+        ) -> None:
+    """Register all IPC routes using decorator-style handlers."""
 
-    Args:
-        msg (dict): IPC message
-        logger (logging.Logger): Logger
-        overlays_mgr (OverlaysMgr): Overlays manager
+    @ipc_server.on("lock-widgets")
+    def _lock_widgets(args: dict) -> dict:
+        logger.debug("Received lock-widgets command")
+        return overlays_mgr.on_locked_state_change(args)
 
-    Returns:
-        dict: IPC response
-    """
-    logger.debug(f"Received IPC message: {msg}")
+    @ipc_server.on("toggle-overlays-visibility")
+    def _toggle_visibility(args: dict) -> dict:
+        logger.debug("Received toggle-visibility command. args: %s", args)
+        overlays_mgr.toggle_overlays_visibility()
+        return {"status": "success", "message": "toggle-visibility handler executed."}
 
-    if not (cmd := msg.get("cmd")):
-        return {"status": "error", "message": "Missing command name"}
+    @ipc_server.on("set-overlays-opacity")
+    def _set_opacity(args: dict) -> dict:
+        logger.debug("Received set-opacity command. args: %s", args)
 
-    if (handler := COMMAND_HANDLERS.get(cmd)):
-        return handler(msg, logger, overlays_mgr)
+        if opacity := args.get("opacity"):
+            overlays_mgr.set_overlays_opacity(opacity)
+            return {"status": "success", "message": "set-opacity handler executed."}
 
-    return {"status": "error", "message": f"Unknown command: {cmd}"}
+        return {"status": "error", "message": "Missing opacity value in set-opacity command."}
+
+    @ipc_server.on("next-page")
+    def _next_page(args: dict) -> dict:
+        logger.info("Received next-page command. args: %s", args)
+
+        overlays_mgr.next_page()
+        return {"status": "success", "message": "next-page handler executed."}
+
+    @ipc_server.on("prev-page")
+    def _prev_page(args: dict) -> dict:
+        logger.info("Received prev-page command. args: %s", args)
+
+        overlays_mgr.prev_page()
+        return {"status": "success", "message": "prev-page handler executed."}
+
+    @ipc_server.on("mfd-interact")
+    def _mfd_interact(args: dict) -> dict:
+        logger.info("Received mfd-interact command. args: %s", args)
+
+        overlays_mgr.mfd_interact()
+        return {"status": "success", "message": "mfd-interact handler executed."}
+
+    @ipc_server.on("set-overlays-layout")
+    def _set_overlays_layout(args: dict) -> dict:
+        logger.debug("Received reset-overlays command. args: %s", args)
+        if not args:
+            return {"status": "error", "message": "Missing args in set-overlays-layout command."}
+
+        layout: dict = args.get("layout")
+        if not layout:
+            return {"status": "error", "message": "Missing layout in set-overlays-layout command."}
+
+        return overlays_mgr.set_overlays_layout(layout)
+
+    @ipc_server.on("set-ui-scale")
+    def _set_ui_scale(args: dict) -> dict:
+        logger.debug("Received set-ui-scale command. args: %s", args)
+
+        oid = args.get('oid')
+        if not oid:
+            return {"status": "error", "message": "Missing overlay id in set-ui-scale command."}
+
+        scale_factor = args.get('scale_factor')
+        if not scale_factor:
+            return {"status": "error", "message": "Missing scale_factor in set-ui-scale command."}
+
+        try:
+            overlays_mgr.set_scale_factor(oid, scale_factor)
+            return {"status": "success", "message": "set-ui-scale handler executed."}
+        except Exception as e: # pylint: disable=broad-exception-caught
+            logger.exception(f"Error handling set-ui-scale command: {e}")
+            return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
+
+    @ipc_server.on("set-track-radar-idle-opacity")
+    def _set_track_radar_idle_opacity(args: dict) -> dict:
+        logger.debug("Received set-track-radar-idle-opacity command. args: %s", args)
+
+        opacity = args.get("opacity")
+        if opacity is not None:
+            overlays_mgr.set_track_radar_idle_opacity(opacity)
+            return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
+        return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
+
+    @ipc_server.on("get-stats")
+    def _get_stats(_args: dict) -> dict:
+        return {
+            "status": "success",
+            "stats": overlays_mgr.get_stats(),
+        }
+
+
+    @ipc_server.on_shutdown
+    def _shutdown(args: dict) -> dict:
+        return _shutdown_handler(
+            args,
+            logger=logger,
+            overlays_mgr=overlays_mgr,
+            socketio_client=socketio_client,
+            ipc_sub=ipc_sub,
+        )
+
+    @ipc_server.on_heartbeat_missed
+    def _heartbeat_missed(count: int) -> None:
+        _handle_heartbeat_missed(count, logger=logger)
 
 def _shutdown_handler(
         args: dict,
@@ -119,7 +188,7 @@ def _shutdown_handler(
         overlays_mgr: OverlaysMgr,
         socketio_client: HudClient,
         ipc_sub: IpcSubscriberSync
-        ) -> None:
+        ) -> dict:
     """Handles shutdown command.
 
     Args:
@@ -162,7 +231,7 @@ def _stop_other_tasks(
 
     logger.info("Exiting HUD subsystem")
 
-def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
+def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> None:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
