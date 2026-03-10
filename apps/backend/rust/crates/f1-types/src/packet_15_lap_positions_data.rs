@@ -24,6 +24,7 @@ impl PacketLapPositionsData {
         lap_start: u8,
         lap_positions: Vec<Vec<u8>>,
     ) -> Self {
+        let num_laps = Self::normalized_num_laps(num_laps);
         Self {
             header,
             num_laps,
@@ -46,6 +47,13 @@ impl PacketLapPositionsData {
         }
 
         let num_laps = packet[0];
+        if usize::from(num_laps) > Self::MAX_LAPS {
+            return Err(InvalidPacketLengthError::new(format!(
+                "Received num laps {} exceeds max {}",
+                num_laps,
+                Self::MAX_LAPS
+            )));
+        }
         let lap_start = packet[1];
         let flat_array = &packet[2..];
         let lap_positions = (0..usize::from(num_laps))
@@ -64,16 +72,17 @@ impl PacketLapPositionsData {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
+        let num_laps = Self::normalized_num_laps(self.num_laps);
         let mut bytes = Vec::with_capacity(PacketHeader::PACKET_LEN + Self::PAYLOAD_LEN);
         bytes.extend_from_slice(&self.header.to_bytes());
-        bytes.push(self.num_laps);
+        bytes.push(num_laps);
         bytes.push(self.lap_start);
 
         let mut flat = vec![0u8; Self::TOTAL_BYTES];
         for (lap_index, row) in self
             .lap_positions
             .iter()
-            .take(self.num_laps as usize)
+            .take(usize::from(num_laps))
             .enumerate()
         {
             let start = lap_index * Self::MAX_CARS;
@@ -83,6 +92,10 @@ impl PacketLapPositionsData {
         }
         bytes.extend_from_slice(&flat);
         bytes
+    }
+
+    fn normalized_num_laps(num_laps: u8) -> u8 {
+        num_laps.min(Self::MAX_LAPS as u8)
     }
 }
 

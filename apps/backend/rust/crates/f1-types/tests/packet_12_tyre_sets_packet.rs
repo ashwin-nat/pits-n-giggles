@@ -135,3 +135,46 @@ fn packet_tyre_sets_rejects_wrong_length() {
         ))
     );
 }
+
+#[test]
+fn packet_tyre_sets_from_values_pads_to_fixed_layout() {
+    let packet =
+        PacketTyreSetsData::from_values(sample_header(2025), 6, vec![sample_tyre_set(2025, 0)], 0);
+
+    assert_eq!(
+        packet.tyre_set_data.len(),
+        PacketTyreSetsData::MAX_TYRE_SETS
+    );
+
+    let bytes = packet.to_bytes();
+    assert_eq!(
+        bytes.len(),
+        PacketHeader::PACKET_LEN + PacketTyreSetsData::PAYLOAD_LEN
+    );
+
+    let header = PacketHeader::parse(&bytes[..PacketHeader::PACKET_LEN]).expect("parse header");
+    let reparsed = PacketTyreSetsData::parse(header, &bytes[PacketHeader::PACKET_LEN..])
+        .expect("parse packet");
+    assert_eq!(
+        reparsed.tyre_set_data.len(),
+        PacketTyreSetsData::MAX_TYRE_SETS
+    );
+}
+
+#[test]
+fn packet_tyre_sets_from_values_truncates_extra_entries() {
+    let tyre_set_data = (0..(PacketTyreSetsData::MAX_TYRE_SETS as u8 + 3))
+        .map(|index| sample_tyre_set(2024, index))
+        .collect::<Vec<_>>();
+
+    let packet = PacketTyreSetsData::from_values(sample_header(2024), 6, tyre_set_data, 6);
+
+    assert_eq!(
+        packet.tyre_set_data.len(),
+        PacketTyreSetsData::MAX_TYRE_SETS
+    );
+    assert_eq!(
+        packet.tyre_set_data.last().map(|entry| entry.wear),
+        Some(10 + (PacketTyreSetsData::MAX_TYRE_SETS as u8 - 1))
+    );
+}

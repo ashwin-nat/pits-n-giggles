@@ -95,6 +95,21 @@ impl TyreSetData {
         bytes[9] = self.fitted as u8;
         bytes
     }
+
+    fn empty(packet_format: u16) -> Self {
+        Self {
+            packet_format,
+            actual_tyre_compound: ActualTyreCompound::Unknown,
+            visual_tyre_compound: VisualTyreCompound::Unknown,
+            wear: 0,
+            available: false,
+            recommended_session: 0,
+            life_span: 0,
+            usable_life: 0,
+            lap_delta_time: 0,
+            fitted: false,
+        }
+    }
 }
 
 impl fmt::Display for TyreSetData {
@@ -185,7 +200,7 @@ impl PacketTyreSetsData {
         Self {
             header,
             car_index,
-            tyre_set_data,
+            tyre_set_data: Self::normalize_tyre_set_data(header.packet_format, tyre_set_data),
             fitted_index,
         }
     }
@@ -216,11 +231,28 @@ impl PacketTyreSetsData {
         let mut bytes = Vec::with_capacity(PacketHeader::PACKET_LEN + Self::PAYLOAD_LEN);
         bytes.extend_from_slice(&self.header.to_bytes());
         bytes.push(self.car_index);
-        for tyre_set in &self.tyre_set_data {
+        for tyre_set in self.tyre_set_data.iter().take(Self::MAX_TYRE_SETS) {
             bytes.extend_from_slice(&tyre_set.to_bytes());
+        }
+        for _ in self.tyre_set_data.len().min(Self::MAX_TYRE_SETS)..Self::MAX_TYRE_SETS {
+            bytes.extend_from_slice(&TyreSetData::empty(self.header.packet_format).to_bytes());
         }
         bytes.push(self.fitted_index);
         bytes
+    }
+
+    fn normalize_tyre_set_data(
+        packet_format: u16,
+        tyre_set_data: Vec<TyreSetData>,
+    ) -> Vec<TyreSetData> {
+        let mut normalized = tyre_set_data
+            .into_iter()
+            .take(Self::MAX_TYRE_SETS)
+            .collect::<Vec<_>>();
+        while normalized.len() < Self::MAX_TYRE_SETS {
+            normalized.push(TyreSetData::empty(packet_format));
+        }
+        normalized
     }
 }
 

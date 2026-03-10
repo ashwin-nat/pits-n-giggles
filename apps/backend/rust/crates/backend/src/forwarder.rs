@@ -38,6 +38,9 @@ impl PacketForwarderWorker {
         let Some(sender) = self.sender.as_ref() else {
             return;
         };
-        let _ = sender.try_send(payload.to_vec());
+        let Ok(permit) = sender.try_reserve() else {
+            return;
+        };
+        permit.send(payload.to_vec());
     }
 }

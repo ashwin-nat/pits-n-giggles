@@ -1,6 +1,7 @@
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError, sync_channel};
 use std::thread::{self, JoinHandle};
 
+use chrono::{Datelike, Utc};
 use reqwest::blocking::Client;
 use serde_json::Value;
 use state::MostRecentPoleLap;
@@ -95,7 +96,7 @@ fn fetch_most_recent_pole_lap(
     }
     let circuit_key = openf1_circuit_key(request.track_id_raw)?;
     let circuit_label = track_label(request.track_id_raw).to_string();
-    let current_year = 2026u16;
+    let current_year = Utc::now().year().clamp(0, i32::from(u16::MAX)) as u16;
 
     for year in (current_year.saturating_sub(2)..=current_year).rev() {
         let Some(quali_session_key) = fetch_qualifying_session_key(client, circuit_key, year)

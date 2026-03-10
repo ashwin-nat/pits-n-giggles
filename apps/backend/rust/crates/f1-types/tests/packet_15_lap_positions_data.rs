@@ -77,3 +77,22 @@ fn lap_positions_reject_wrong_length() {
         ))
     );
 }
+
+#[test]
+fn lap_positions_reject_num_laps_above_max() {
+    let mut payload = vec![0u8; PacketLapPositionsData::PAYLOAD_LEN];
+    payload[0] = (PacketLapPositionsData::MAX_LAPS as u8).saturating_add(1);
+    payload[1] = 3;
+
+    let error =
+        PacketLapPositionsData::parse(sample_header(), &payload).expect_err("invalid num_laps");
+
+    assert_eq!(
+        error,
+        InvalidPacketLengthError::new(format!(
+            "Received num laps {} exceeds max {}",
+            PacketLapPositionsData::MAX_LAPS as u8 + 1,
+            PacketLapPositionsData::MAX_LAPS
+        ))
+    );
+}

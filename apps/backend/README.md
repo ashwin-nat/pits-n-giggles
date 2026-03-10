@@ -1,6 +1,6 @@
 # Pits n' Giggles Backend
 
-The backend now lives in Rust under [`apps/backend/rust`](/Users/vankata/Desktop/Projects/pits-n-giggles/apps/backend/rust).
+The backend now lives in Rust under [`apps/backend/rust`](./rust).
 
 What it owns:
 - telemetry ingest
@@ -32,9 +32,9 @@ cargo run --manifest-path apps/backend/rust/Cargo.toml -p backend -- --config-fi
 
 ## Layout
 
-- [`apps/backend/rust/crates/f1-types`](/Users/vankata/Desktop/Projects/pits-n-giggles/apps/backend/rust/crates/f1-types)
-- [`apps/backend/rust/crates/telemetry-core`](/Users/vankata/Desktop/Projects/pits-n-giggles/apps/backend/rust/crates/telemetry-core)
-- [`apps/backend/rust/crates/state`](/Users/vankata/Desktop/Projects/pits-n-giggles/apps/backend/rust/crates/state)
-- [`apps/backend/rust/crates/backend`](/Users/vankata/Desktop/Projects/pits-n-giggles/apps/backend/rust/crates/backend)
+- [`apps/backend/rust/crates/f1-types`](./rust/crates/f1-types)
+- [`apps/backend/rust/crates/telemetry-core`](./rust/crates/telemetry-core)
+- [`apps/backend/rust/crates/state`](./rust/crates/state)
+- [`apps/backend/rust/crates/backend`](./rust/crates/backend)
 
 The legacy Python backend has been removed. The launcher and packaged builds now start the Rust backend directly.

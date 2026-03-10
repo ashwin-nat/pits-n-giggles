@@ -87,6 +87,7 @@ impl BackendIpcServer {
             thread::Builder::new()
                 .name("png-ipc-server".to_string())
                 .spawn(move || {
+                    let _context = context;
                     while running.load(Ordering::Relaxed) {
                         let mut items = [socket.as_poll_item(zmq::POLLIN)];
                         if zmq::poll(&mut items, 100).is_err() {
