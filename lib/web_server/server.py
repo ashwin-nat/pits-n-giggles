@@ -287,7 +287,6 @@ class BaseWebServer:
 
     def _track_socket_emit_mcast(self,
                            payload: bytes,
-                           by_event_type: bool,
                            room: str) -> None:
         """Track outbound socket payload fan-out bytes/counter."""
         recipients = len(list(self.m_sio.manager.get_participants("/", room)))

@@ -24,8 +24,7 @@
 
 import asyncio
 import logging
-import time
-from typing import Optional
+from typing import Dict, Optional
 
 import orjson
 import zmq
@@ -70,6 +69,7 @@ class IpcPublisherAsync:
         self._connected = False
         self._running = True
         self._reconnect_task = None
+        self._topic_message_ids: Dict[str, int] = {}
         self.stats = EventCounter()
 
     def get_task(self) -> asyncio.Task:
@@ -96,7 +96,10 @@ class IpcPublisherAsync:
     def _create_socket(self) -> zmq.Socket:
         sock: zmq.Socket = self._context.socket(zmq.PUB)
         sock.setsockopt(zmq.LINGER, 0)
-        sock.setsockopt(zmq.SNDHWM, 1)
+        # SNDHWM=3: At 30Hz (33ms/frame), a value of 1 caused ~10% silent kernel-level drops
+        # (never surfacing as zmq.Again). 3 gives enough slack for scheduler jitter while
+        # still discarding stale frames under genuine backpressure.
+        sock.setsockopt(zmq.SNDHWM, 3)
         endpoint = f"tcp://{self.host}:{self.port}"
         sock.connect(endpoint)
         self.logger.debug(f"IpcPublisherAsync configured endpoint {endpoint}")
@@ -128,16 +131,34 @@ class IpcPublisherAsync:
             await asyncio.sleep(0.05)
 
     # ---------------------------------------------------------
+    # Message envelope helpers
+    # ---------------------------------------------------------
+    def _next_message_id(self, topic: str) -> int:
+        current = self._topic_message_ids.get(topic, 0) + 1
+        self._topic_message_ids[topic] = current
+        return current
+
+    def _build_envelope(self, topic: str, data: dict) -> dict:
+        return {
+            "__meta__": {
+                "message_id": self._next_message_id(topic),
+            },
+            "__payload__": data,
+        }
+
+    # ---------------------------------------------------------
     # Publish
     # ---------------------------------------------------------
     async def publish(self, topic: str, data: dict):
+        envelope = self._build_envelope(topic, data)
+
         if not self._connected:
             self.stats.track_event("__DROP__", "disconnected")
             self.stats.track_event("__DROP_TOPIC__", topic)
             return  # drop silently (ZeroMQ semantics)
 
         topic_bytes = topic.encode("utf-8")
-        payload = orjson.dumps(data)
+        payload = orjson.dumps(envelope)
         total_size = len(topic_bytes) + len(payload)
 
         try:

@@ -23,8 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-import time
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import orjson
 import zmq
@@ -58,6 +57,7 @@ class IpcSubscriberSync:
 
         self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
+        self._last_message_id_by_topic: Dict[str, int] = {}
         self.stats = EventCounter()
 
         self._running = False
@@ -106,6 +106,41 @@ class IpcSubscriberSync:
         return decorator
 
     # ---------------------------------------------------------
+    # Message envelope helpers
+    # ---------------------------------------------------------
+    def _track_missed_messages(self, topic: str, count: int) -> None:
+        for _ in range(count):
+            self.stats.track_event("__MISSED__", "__TOTAL__")
+            self.stats.track_event("__MISSED_TOPIC__", topic)
+
+    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int]:
+        message = orjson.loads(payload)
+        return message["__payload__"], message["__meta__"]["message_id"]
+
+    def _track_sequence(self, topic: str, message_id: int) -> None:
+        last_message_id = self._last_message_id_by_topic.get(topic)
+        if last_message_id is None:
+            self._last_message_id_by_topic[topic] = message_id
+            return
+
+        expected_next = last_message_id + 1
+        if message_id > expected_next:
+            missed = message_id - expected_next
+            self._track_missed_messages(topic, missed)
+            self.logger.warning(
+                "Detected %d missed messages on topic %s (expected %d, got %d)",
+                missed,
+                topic,
+                expected_next,
+                message_id,
+            )
+        elif message_id <= last_message_id:
+            self.stats.track_event("__SEQ_ANOMALY__", "__TOTAL__")
+            self.stats.track_event("__SEQ_ANOMALY_TOPIC__", topic)
+
+        self._last_message_id_by_topic[topic] = message_id
+
+    # ---------------------------------------------------------
     # Main loop with auto-reconnect
     # ---------------------------------------------------------
     def start(self):
@@ -151,7 +186,14 @@ class IpcSubscriberSync:
                 handler = self._routes.get(topic)
                 if handler:
                     try:
-                        data = orjson.loads(payload)
+                        data, message_id = self._parse_envelope(payload)
+                        self._track_sequence(topic, message_id)
+                    except Exception:
+                        self.stats.track_event("__DROP__", "invalid_envelope")
+                        self.stats.track_event("__INVALID_ENVELOPE_TOPIC__", topic)
+                        continue
+
+                    try:
                         handler(data)
                         self.stats.track_event("__HANDLER__", "success")
                         self.stats.track_event("__HANDLED_TOPIC__", topic)

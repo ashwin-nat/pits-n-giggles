@@ -363,6 +363,21 @@ class TestIpcPubSub(TestIPC):
         # Test passes if we get here
         self.assertTrue(True)
 
+    def test_subscriber_detects_missed_messages_from_message_id_gap(self):
+        sub = IpcSubscriberSync(port=self.xpub_port)
+        try:
+            sub._track_sequence("gap", 1)
+            sub._track_sequence("gap", 4)
+
+            stats = sub.get_stats()
+            self.assertEqual(stats["__MISSED__"]["__TOTAL__"]["count"], 2)
+            self.assertEqual(stats["__MISSED_TOPIC__"]["gap"]["count"], 2)
+        finally:
+            try:
+                sub.socket.close(linger=0)
+            except Exception:
+                pass
+
     # ----------------------------------------------------------
     # Broker lifecycle semantics
 
