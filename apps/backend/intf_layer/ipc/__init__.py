@@ -53,6 +53,8 @@ def registerIpcTask(
         logger (logging.Logger): Logger
         session_state (SessionState): Handle to the session state object
         telemetry_handler (F1TelemetryHandler): Telemetry handler
+        ipc_pub (IpcPublisherAsync): IPC publisher
+        web_server (TelemetryWebServer): Telemetry web server
         tasks (List[asyncio.Task]): List of tasks
     """
 

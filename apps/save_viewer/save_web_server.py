@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.event_counter import EventCounter
 from lib.web_server import BaseWebServer, ClientType
 
 # -------------------------------------- CLASSES ----------------------------------------------------------------

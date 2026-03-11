@@ -24,7 +24,6 @@
 
 import logging
 import threading
-import time
 from typing import Callable, Optional
 
 import engineio.exceptions
