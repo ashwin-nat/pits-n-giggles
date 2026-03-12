@@ -28,7 +28,8 @@ import math
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.event_counter import EventCounter, FrameRenderStat
+from lib.event_counter import EventCounter
+from lib.event_counter.frame_render import FrameRenderStat
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
