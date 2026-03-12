@@ -28,7 +28,7 @@ import math
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.event_counter import EventCounter
+from lib.event_counter import EventCounter, FrameRenderStat
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -42,6 +42,9 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
 
     def _assert_latency_stat_type(self, stat):
         self.assertEqual(stat["type"], "__LATENCY__")
+
+    def _assert_frame_render_stat_type(self, stat):
+        self.assertEqual(stat["type"], "__FRAME_RENDER__")
 
     # --------------------------------------------------
     # Basic Behavior - Packet Tracking
@@ -220,6 +223,74 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 37.5)
         self.assertAlmostEqual(stats["udp"]["ingest"]["variance_ns"], 218.75, places=6)
         self.assertAlmostEqual(stats["udp"]["ingest"]["stddev_ns"], math.sqrt(218.75), places=6)
+
+    # --------------------------------------------------
+    # Basic Behavior - Frame Render Tracking
+    # --------------------------------------------------
+
+    def test_frame_render_stat_to_dict_with_zero_count(self):
+        stat = FrameRenderStat(frame_budget_ns=16_666_666)
+        serialized = stat.to_dict()
+
+        self._assert_frame_render_stat_type(serialized)
+        self.assertEqual(serialized["count"], 0)
+        self.assertEqual(serialized["min_ns"], 0)
+        self.assertEqual(serialized["max_ns"], 0)
+        self.assertEqual(serialized["avg_ns"], 0.0)
+        self.assertEqual(serialized["variance_ns"], 0.0)
+        self.assertEqual(serialized["stddev_ns"], 0.0)
+        self.assertEqual(serialized["missed_budget"], 0)
+
+    def test_single_frame_render_track(self):
+        counter = EventCounter()
+
+        # 60 FPS budget: 16,666,666 ns. 18 ms is over budget.
+        counter.track_frame_render("qml_overlay", "hud", 18_000_000, 60)
+        stats = counter.get_stats()
+
+        self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
+        self.assertEqual(stats["qml_overlay"]["hud"]["count"], 1)
+        self.assertEqual(stats["qml_overlay"]["hud"]["min_ns"], 18_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["max_ns"], 18_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["avg_ns"], 18_000_000.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["variance_ns"], 0.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["stddev_ns"], 0.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 1)
+
+    def test_multiple_frame_render_tracks_accumulate(self):
+        counter = EventCounter()
+
+        # 60 FPS budget: 16,666,666 ns. Durations: 10ms, 20ms, 30ms.
+        counter.track_frame_render("qml_overlay", "hud", 10_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 20_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 30_000_000, 60)
+
+        stats = counter.get_stats()
+
+        self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
+        self.assertEqual(stats["qml_overlay"]["hud"]["count"], 3)
+        self.assertEqual(stats["qml_overlay"]["hud"]["min_ns"], 10_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["max_ns"], 30_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["avg_ns"], 20_000_000.0)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["variance_ns"], 200_000_000_000_000 / 3, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["stddev_ns"],
+                               math.sqrt(200_000_000_000_000 / 3), places=6)
+        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 2)
+
+    def test_frame_render_budget_uses_initial_fps_for_existing_stat(self):
+        counter = EventCounter()
+
+        # Initial stat created with 60 FPS budget: 16,666,666 ns.
+        counter.track_frame_render("qml_overlay", "hud", 17_000_000, 60)
+
+        # If budget were updated to 30 FPS (~33,333,333 ns), this would not miss.
+        # Existing-stat behavior should keep original budget and count as miss.
+        counter.track_frame_render("qml_overlay", "hud", 20_000_000, 30)
+
+        stats = counter.get_stats()
+        self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
+        self.assertEqual(stats["qml_overlay"]["hud"]["count"], 2)
+        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 2)
 
     # --------------------------------------------------
     # Edge Cases - Packet
