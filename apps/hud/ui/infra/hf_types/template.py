@@ -27,7 +27,7 @@ from .base import HighFreqBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class DummyHFType(HighFreqBase):
     a: int
     b: str
