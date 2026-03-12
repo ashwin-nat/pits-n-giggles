@@ -26,6 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, ClassVar, Optional
 
+import math
 import time
 
 # -------------------------------------- FUNCTIONS --------------------------------------------------------------------
@@ -87,6 +88,7 @@ class LatencyStat(Stat):
         - `bad_latency_count`: number of invalid samples (negative latency).
         - `min` / `max`: extrema of valid latencies.
         - `avg` / `variance`: running population statistics of valid latencies.
+        - `stddev`: running population standard deviation of valid latencies.
     """
 
     TYPE: ClassVar[str] = "__LATENCY__"
@@ -130,6 +132,10 @@ class LatencyStat(Stat):
             return 0.0
         return self.m2 / self.count
 
+    def stddev(self) -> float:
+        """Return population standard deviation of valid latency samples."""
+        return math.sqrt(self.variance())
+
     def to_dict(self) -> dict:
         """Serialize this latency stat to a JSON-friendly dictionary."""
         min_val = self.min if self.count > 0 else 0
@@ -139,10 +145,11 @@ class LatencyStat(Stat):
             "type": self.TYPE,
             "count": self.count,
             "bad_latency_count": self.bad_latency_count,
-            "min": min_val,
-            "max": max_val,
-            "avg": self.mean,
-            "variance": self.variance(),
+            "min_ns": min_val,
+            "max_ns": max_val,
+            "avg_ns": self.mean,
+            "variance_ns": self.variance(),
+            "stddev_ns": self.stddev(),
         }
 
 class EventCounter:

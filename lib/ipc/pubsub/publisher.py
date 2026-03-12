@@ -24,6 +24,7 @@
 
 import asyncio
 import logging
+import time
 from typing import Dict, Optional
 
 import orjson
@@ -142,6 +143,7 @@ class IpcPublisherAsync:
         return {
             "__meta__": {
                 "message_id": self._next_message_id(topic),
+                "send_ts_ns": time.time_ns(),
             },
             "__payload__": data,
         }

@@ -23,6 +23,7 @@
 
 import os
 import sys
+import math
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -158,10 +159,11 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self._assert_latency_stat_type(stats["udp"]["ingest"])
         self.assertEqual(stats["udp"]["ingest"]["count"], 1)
         self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 0)
-        self.assertEqual(stats["udp"]["ingest"]["min"], 15)
-        self.assertEqual(stats["udp"]["ingest"]["max"], 15)
-        self.assertEqual(stats["udp"]["ingest"]["avg"], 15.0)
-        self.assertEqual(stats["udp"]["ingest"]["variance"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["min_ns"], 15)
+        self.assertEqual(stats["udp"]["ingest"]["max_ns"], 15)
+        self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 15.0)
+        self.assertEqual(stats["udp"]["ingest"]["variance_ns"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["stddev_ns"], 0.0)
 
     def test_multiple_packet_latency_tracks_accumulate(self):
         counter = EventCounter()
@@ -176,10 +178,11 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self._assert_latency_stat_type(stats["udp"]["ingest"])
         self.assertEqual(stats["udp"]["ingest"]["count"], 3)
         self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 0)
-        self.assertEqual(stats["udp"]["ingest"]["min"], 10)
-        self.assertEqual(stats["udp"]["ingest"]["max"], 50)
-        self.assertEqual(stats["udp"]["ingest"]["avg"], 30.0)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["variance"], 800 / 3, places=6)
+        self.assertEqual(stats["udp"]["ingest"]["min_ns"], 10)
+        self.assertEqual(stats["udp"]["ingest"]["max_ns"], 50)
+        self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 30.0)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["variance_ns"], 800 / 3, places=6)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["stddev_ns"], math.sqrt(800 / 3), places=6)
 
     def test_negative_packet_latency_is_not_used_in_model(self):
         counter = EventCounter()
@@ -191,10 +194,11 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self._assert_latency_stat_type(stats["udp"]["ingest"])
         self.assertEqual(stats["udp"]["ingest"]["count"], 0)
         self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 1)
-        self.assertEqual(stats["udp"]["ingest"]["min"], 0)
-        self.assertEqual(stats["udp"]["ingest"]["max"], 0)
-        self.assertEqual(stats["udp"]["ingest"]["avg"], 0.0)
-        self.assertEqual(stats["udp"]["ingest"]["variance"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["min_ns"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["max_ns"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["variance_ns"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["stddev_ns"], 0.0)
 
     def test_one_negative_latency_among_five_packets(self):
         counter = EventCounter()
@@ -211,10 +215,11 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self._assert_latency_stat_type(stats["udp"]["ingest"])
         self.assertEqual(stats["udp"]["ingest"]["count"], 4)
         self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 1)
-        self.assertEqual(stats["udp"]["ingest"]["min"], 20)
-        self.assertEqual(stats["udp"]["ingest"]["max"], 60)
-        self.assertEqual(stats["udp"]["ingest"]["avg"], 37.5)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["variance"], 218.75, places=6)
+        self.assertEqual(stats["udp"]["ingest"]["min_ns"], 20)
+        self.assertEqual(stats["udp"]["ingest"]["max_ns"], 60)
+        self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 37.5)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["variance_ns"], 218.75, places=6)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["stddev_ns"], math.sqrt(218.75), places=6)
 
     # --------------------------------------------------
     # Edge Cases - Packet

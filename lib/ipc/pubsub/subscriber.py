@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import time
 from typing import Callable, Dict, Optional, Tuple
 
 import orjson
@@ -110,12 +111,34 @@ class IpcSubscriberSync:
     # ---------------------------------------------------------
     def _track_missed_messages(self, topic: str, count: int) -> None:
         for _ in range(count):
-            self.stats.track_event("__MISSED__", "__TOTAL__")
-            self.stats.track_event("__MISSED_TOPIC__", topic)
+            self.stats.track_event("__TOTAL__", "__MISSED__")
+            self.stats.track_event(topic, "__MISSED__")
 
-    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int]:
+    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
         message = orjson.loads(payload)
-        return message["__payload__"], message["__meta__"]["message_id"]
+        meta = message["__meta__"]
+        send_ts_ns = meta.get("send_ts_ns")
+
+        if not isinstance(send_ts_ns, int):
+            send_ts_ns = None
+
+        return message["__payload__"], meta["message_id"], send_ts_ns
+
+    def _track_latency(
+        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
+    ) -> None:
+        if send_ts_ns is None:
+            return
+
+        if recv_ts_ns is None:
+            recv_ts_ns = time.time_ns()
+
+        self.stats.track_packet_latency(
+            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+        self.stats.track_packet_latency(
+            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
 
     def _track_sequence(self, topic: str, message_id: int) -> None:
         last_message_id = self._last_message_id_by_topic.get(topic)
@@ -135,8 +158,8 @@ class IpcSubscriberSync:
                 message_id,
             )
         elif message_id <= last_message_id:
-            self.stats.track_event("__SEQ_ANOMALY__", "__TOTAL__")
-            self.stats.track_event("__SEQ_ANOMALY_TOPIC__", topic)
+            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
+            self.stats.track_event(topic, "__SEQ_ANOMALY__")
 
         self._last_message_id_by_topic[topic] = message_id
 
@@ -180,30 +203,29 @@ class IpcSubscriberSync:
                 topic = topic_bytes.decode()
                 total_size = len(topic_bytes) + len(payload)
 
-                self.stats.track_packet("__INCOMING__", "__TOTAL__", total_size)
-                self.stats.track_packet("__TOPIC_INCOMING__", topic, total_size)
+                self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
+                self.stats.track_packet(topic, "__PACKETS__", total_size)
 
                 handler = self._routes.get(topic)
                 if handler:
                     try:
-                        data, message_id = self._parse_envelope(payload)
+                        data, message_id, send_ts_ns = self._parse_envelope(payload)
                         self._track_sequence(topic, message_id)
+                        self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
                     except Exception:
                         self.stats.track_event("__DROP__", "invalid_envelope")
-                        self.stats.track_event("__INVALID_ENVELOPE_TOPIC__", topic)
                         continue
 
                     try:
                         handler(data)
-                        self.stats.track_event("__HANDLER__", "success")
-                        self.stats.track_event("__HANDLED_TOPIC__", topic)
+                        self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
+                        self.stats.track_event(topic, "__HANDLER_OK__")
                     except Exception as e:
-                        self.stats.track_event("__ERROR__", "handler_exception")
-                        self.stats.track_event("__HANDLER_ERROR_TOPIC__", topic)
+                        self.stats.track_event("__TOTAL__", "__HANDLER_ERR__")
+                        self.stats.track_event(topic, "__HANDLER_ERR__")
                         self.logger.exception(f"Handler error for {topic}: {e}")
                 else:
-                    self.stats.track_event("__DROP__", "unrouted_topic")
-                    self.stats.track_event("__UNROUTED_TOPIC__", topic)
+                    self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
 
         # clean shutdown
         try:

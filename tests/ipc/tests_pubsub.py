@@ -27,6 +27,7 @@ import time
 import sys
 import os
 import zmq
+import orjson
 from unittest.mock import Mock
 
 # Add the parent directory to the Python path
@@ -370,8 +371,8 @@ class TestIpcPubSub(TestIPC):
             sub._track_sequence("gap", 4)
 
             stats = sub.get_stats()
-            self.assertEqual(stats["__MISSED__"]["__TOTAL__"]["count"], 2)
-            self.assertEqual(stats["__MISSED_TOPIC__"]["gap"]["count"], 2)
+            self.assertEqual(stats["__TOTAL__"]["__MISSED__"]["count"], 2)
+            self.assertEqual(stats["gap"]["__MISSED__"]["count"], 2)
         finally:
             try:
                 sub.socket.close(linger=0)
