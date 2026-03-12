@@ -39,6 +39,9 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
     def _assert_event_stat_type(self, stat):
         self.assertEqual(stat["type"], "__COUNT__")
 
+    def _assert_latency_stat_type(self, stat):
+        self.assertEqual(stat["type"], "__LATENCY__")
+
     # --------------------------------------------------
     # Basic Behavior - Packet Tracking
     # --------------------------------------------------
@@ -140,6 +143,78 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self._assert_packet_stat_type(stats["udp"]["raw"])
         self.assertEqual(stats["udp"]["raw"]["count"], 1)
         self.assertEqual(stats["udp"]["raw"]["bytes"], 100)
+
+    # --------------------------------------------------
+    # Basic Behavior - Latency Tracking
+    # --------------------------------------------------
+
+    def test_single_packet_latency_track(self):
+        counter = EventCounter()
+
+        counter.track_packet_latency("udp", "ingest", 10, 25)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["ingest"])
+        self.assertEqual(stats["udp"]["ingest"]["count"], 1)
+        self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["min"], 15)
+        self.assertEqual(stats["udp"]["ingest"]["max"], 15)
+        self.assertEqual(stats["udp"]["ingest"]["avg"], 15.0)
+        self.assertEqual(stats["udp"]["ingest"]["variance"], 0.0)
+
+    def test_multiple_packet_latency_tracks_accumulate(self):
+        counter = EventCounter()
+
+        # Latencies: 10, 30, 50
+        counter.track_packet_latency("udp", "ingest", 100, 110)
+        counter.track_packet_latency("udp", "ingest", 100, 130)
+        counter.track_packet_latency("udp", "ingest", 100, 150)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["ingest"])
+        self.assertEqual(stats["udp"]["ingest"]["count"], 3)
+        self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["min"], 10)
+        self.assertEqual(stats["udp"]["ingest"]["max"], 50)
+        self.assertEqual(stats["udp"]["ingest"]["avg"], 30.0)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["variance"], 800 / 3, places=6)
+
+    def test_negative_packet_latency_is_not_used_in_model(self):
+        counter = EventCounter()
+
+        counter.track_packet_latency("udp", "ingest", 200, 150)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["ingest"])
+        self.assertEqual(stats["udp"]["ingest"]["count"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 1)
+        self.assertEqual(stats["udp"]["ingest"]["min"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["max"], 0)
+        self.assertEqual(stats["udp"]["ingest"]["avg"], 0.0)
+        self.assertEqual(stats["udp"]["ingest"]["variance"], 0.0)
+
+    def test_one_negative_latency_among_five_packets(self):
+        counter = EventCounter()
+
+        # Valid latencies used in model: [30, 40, 60, 20]
+        counter.track_packet_latency("udp", "ingest", 100, 130)
+        counter.track_packet_latency("udp", "ingest", 100, 90)   # negative -> ignored
+        counter.track_packet_latency("udp", "ingest", 100, 140)
+        counter.track_packet_latency("udp", "ingest", 100, 160)
+        counter.track_packet_latency("udp", "ingest", 100, 120)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["ingest"])
+        self.assertEqual(stats["udp"]["ingest"]["count"], 4)
+        self.assertEqual(stats["udp"]["ingest"]["bad_latency_count"], 1)
+        self.assertEqual(stats["udp"]["ingest"]["min"], 20)
+        self.assertEqual(stats["udp"]["ingest"]["max"], 60)
+        self.assertEqual(stats["udp"]["ingest"]["avg"], 37.5)
+        self.assertAlmostEqual(stats["udp"]["ingest"]["variance"], 218.75, places=6)
 
     # --------------------------------------------------
     # Edge Cases - Packet
