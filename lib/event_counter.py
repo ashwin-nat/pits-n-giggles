@@ -196,15 +196,18 @@ class EventCounter:
         stat.increment_with_size(size)
 
     def track_packet_latency(self, category: str, subcategory: str, send_ts_ns: int,
-                             recv_ts_ns: Optional[int] = time.time_ns()) -> None:
+                             recv_ts_ns: Optional[int] = None) -> None:
         """Record a packet latency sample under `category/subcategory`.
 
         Args:
             category: Top-level group name (for example, `udp`).
             subcategory: Nested stat name (for example, `ingest`).
             send_ts_ns: Sender timestamp in nanoseconds.
-            recv_ts_ns: Receiver timestamp in nanoseconds.
+            recv_ts_ns: Receiver timestamp in nanoseconds (Optional).
         """
+        if recv_ts_ns is None:
+            recv_ts_ns = time.time_ns()
+
         bucket = self._stats[category]
 
         stat = bucket.get(subcategory)
