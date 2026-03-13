@@ -25,6 +25,7 @@
 import ctypes
 import logging
 from pathlib import Path
+from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
 
 from PySide6.QtCore import Signal, Slot
@@ -270,6 +271,10 @@ class BaseOverlay():
         self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
         self._stats.track_event("__HF_EVENTS__", event_type)
 
+    def _track_hf_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
     # ----------------------------------------------------------------------
@@ -399,6 +404,14 @@ class BaseOverlay():
             # All high-frequency data is treated as low prio
             # This channel is not meant for high-priority/control messages
             return
+
+        payload_ts_ns = getattr(payload, "__timestamp__", None)
+        if isinstance(payload_ts_ns, int):
+            self._track_hf_pipeline_latency(
+                payload.__hf_type__,
+                payload_ts_ns,
+                perf_counter_ns(),
+            )
 
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload

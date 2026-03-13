@@ -29,7 +29,7 @@ import math
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.event_counter import EventCounter
-from lib.event_counter.frame_render import FrameRenderStat
+from lib.event_counter.frame_render import FrameTimingStat
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stat["type"], "__LATENCY__")
 
     def _assert_frame_render_stat_type(self, stat):
-        self.assertEqual(stat["type"], "__FRAME_RENDER__")
+        self.assertEqual(stat["type"], "__FRAME_TIMING__")
 
     # --------------------------------------------------
     # Basic Behavior - Packet Tracking
@@ -230,68 +230,96 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
     # --------------------------------------------------
 
     def test_frame_render_stat_to_dict_with_zero_count(self):
-        stat = FrameRenderStat(frame_budget_ns=16_666_666)
+        stat = FrameTimingStat(frame_budget_ns=16_666_666)
         serialized = stat.to_dict()
 
         self._assert_frame_render_stat_type(serialized)
         self.assertEqual(serialized["count"], 0)
-        self.assertEqual(serialized["min_ns"], 0)
-        self.assertEqual(serialized["max_ns"], 0)
-        self.assertEqual(serialized["avg_ns"], 0.0)
-        self.assertEqual(serialized["variance_ns"], 0.0)
-        self.assertEqual(serialized["stddev_ns"], 0.0)
-        self.assertEqual(serialized["missed_budget"], 0)
+        self.assertEqual(serialized["interval_ns"]["min"], 0)
+        self.assertEqual(serialized["interval_ns"]["max"], 0)
+        self.assertEqual(serialized["interval_ns"]["avg"], 0.0)
+        self.assertEqual(serialized["interval_ns"]["variance"], 0.0)
+        self.assertEqual(serialized["interval_ns"]["stddev"], 0.0)
+        self.assertEqual(serialized["fps"]["avg"], 0.0)
+        self.assertEqual(serialized["fps"]["min"], 0.0)
+        self.assertEqual(serialized["fps"]["max"], 0.0)
+        self.assertAlmostEqual(serialized["fps"]["target"], 1e9 / 16_666_666, places=6)
+        self.assertEqual(serialized["budget"]["missed_frames"], 0)
+        self.assertEqual(serialized["budget"]["miss_ratio"], 0.0)
+        self.assertEqual(serialized["budget"]["max_miss_streak"], 0)
+        self.assertEqual(serialized["pacing_error_ns"]["avg"], 0.0)
+        self.assertEqual(serialized["pacing_error_ns"]["max"], 0)
 
     def test_single_frame_render_track(self):
         counter = EventCounter()
 
-        # 60 FPS budget: 16,666,666 ns. 18 ms is over budget.
-        counter.track_frame_render("qml_overlay", "hud", 18_000_000, 60)
+        # 60 FPS budget: 16,666,666 ns. One observed interval at 18ms.
+        counter.track_frame_render("qml_overlay", "hud", 100_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 118_000_000, 60)
         stats = counter.get_stats()
 
         self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
         self.assertEqual(stats["qml_overlay"]["hud"]["count"], 1)
-        self.assertEqual(stats["qml_overlay"]["hud"]["min_ns"], 18_000_000)
-        self.assertEqual(stats["qml_overlay"]["hud"]["max_ns"], 18_000_000)
-        self.assertEqual(stats["qml_overlay"]["hud"]["avg_ns"], 18_000_000.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["variance_ns"], 0.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["stddev_ns"], 0.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 1)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["min"], 18_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["max"], 18_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["avg"], 18_000_000.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["variance"], 0.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["stddev"], 0.0)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["avg"], 1e9 / 18_000_000, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["min"], 1e9 / 18_000_000, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["max"], 1e9 / 18_000_000, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["target"], 1e9 / 16_666_666, places=6)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["missed_frames"], 1)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["miss_ratio"], 1.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["max_miss_streak"], 1)
+        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["avg"], 1_333_334.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["max"], 1_333_334)
 
     def test_multiple_frame_render_tracks_accumulate(self):
         counter = EventCounter()
 
-        # 60 FPS budget: 16,666,666 ns. Durations: 10ms, 20ms, 30ms.
-        counter.track_frame_render("qml_overlay", "hud", 10_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 20_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 30_000_000, 60)
+        # 60 FPS budget: 16,666,666 ns. Intervals: 10ms, 20ms, 30ms.
+        counter.track_frame_render("qml_overlay", "hud", 1_000_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 1_010_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 1_030_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 1_060_000_000, 60)
 
         stats = counter.get_stats()
 
         self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
         self.assertEqual(stats["qml_overlay"]["hud"]["count"], 3)
-        self.assertEqual(stats["qml_overlay"]["hud"]["min_ns"], 10_000_000)
-        self.assertEqual(stats["qml_overlay"]["hud"]["max_ns"], 30_000_000)
-        self.assertEqual(stats["qml_overlay"]["hud"]["avg_ns"], 20_000_000.0)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["variance_ns"], 200_000_000_000_000 / 3, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["stddev_ns"],
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["min"], 10_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["max"], 30_000_000)
+        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["avg"], 20_000_000.0)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["interval_ns"]["variance"], 200_000_000_000_000 / 3, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["interval_ns"]["stddev"],
                                math.sqrt(200_000_000_000_000 / 3), places=6)
-        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 2)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["avg"], 50.0, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["min"], 1e9 / 30_000_000, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["max"], 1e9 / 10_000_000, places=6)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["target"], 1e9 / 16_666_666, places=6)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["missed_frames"], 2)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["budget"]["miss_ratio"], 2 / 3, places=6)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["max_miss_streak"], 2)
+        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["avg"], 7_777_778.0)
+        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["max"], 13_333_334)
 
     def test_frame_render_budget_uses_initial_fps_for_existing_stat(self):
         counter = EventCounter()
 
         # Initial stat created with 60 FPS budget: 16,666,666 ns.
-        counter.track_frame_render("qml_overlay", "hud", 17_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 500_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", 517_000_000, 60)
 
         # If budget were updated to 30 FPS (~33,333,333 ns), this would not miss.
         # Existing-stat behavior should keep original budget and count as miss.
-        counter.track_frame_render("qml_overlay", "hud", 20_000_000, 30)
+        counter.track_frame_render("qml_overlay", "hud", 537_000_000, 30)
 
         stats = counter.get_stats()
         self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
         self.assertEqual(stats["qml_overlay"]["hud"]["count"], 2)
-        self.assertEqual(stats["qml_overlay"]["hud"]["missed_budget"], 2)
+        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["target"], 1e9 / 16_666_666, places=6)
+        self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["missed_frames"], 2)
 
     # --------------------------------------------------
     # Edge Cases - Packet

@@ -28,7 +28,7 @@ from typing import Dict, Optional
 import time
 
 from .base import Stat
-from .frame_render import FrameRenderStat
+from .frame_render import FrameTimingStat
 from .latency import LatencyStat
 from .packet import PacketStat
 
@@ -116,7 +116,7 @@ class EventCounter:
 
         stat = bucket.get(subcategory)
         if stat is None:
-            stat = FrameRenderStat(frame_budget_ns=1_000_000_000 // fps)
+            stat = FrameTimingStat(frame_budget_ns=1_000_000_000 // fps)
             bucket[subcategory] = stat
 
         stat.observe_frame(duration_ns)
