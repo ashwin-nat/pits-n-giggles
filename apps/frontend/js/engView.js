@@ -294,35 +294,13 @@ class EngViewRaceTable {
 
     createSectorCellRendererCurrLap(sectorKey, timeKey) {
         return (params) => {
-            const driverInfo = params.data;
-            const driverId = driverInfo.id;
-            const delayedData = this.delayedLapData.get(driverId);
-            const currentTime = Date.now();
-            const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
-
-            let lapInfo;
-            let sectorStatus;
-
-            if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
-                // Use delayed data
-                lapInfo = delayedData.oldLapData;
-                sectorStatus = lapInfo["sector-status"];
-            } else {
-                // Use current data
-                lapInfo = driverInfo["lap-info"]["curr-lap"];
-                sectorStatus = lapInfo["sector-status"];
-            }
+            const lapInfo = this.getCurrentLapInfo(params.data);
+            const sectorStatus = lapInfo["sector-status"];
 
             const timeMs = lapInfo[timeKey];
-            let cellText = '';
-            const status = lapInfo["driver-status"];
-            if (status === "FLYING_LAP" || status === "ON_TRACK" || timeKey !== 'lap-time-ms') {
-                cellText = (sectorKey === 'lap')
-                    ? formatLapTime(timeMs)
-                    : formatSectorTime(timeMs);
-            } else {
-                cellText = status;
-            }
+            const cellText = (sectorKey === 'lap')
+                ? formatLapTime(timeMs)
+                : formatSectorTime(timeMs);
 
             let timeClass = '';
             if (sectorStatus && sectorKey !== 'lap' && sectorKey !== 'delta') {
@@ -336,6 +314,27 @@ class EngViewRaceTable {
                   }
             }
             return this.createSingleLineCell(cellText, {className: timeClass});
+        };
+    }
+
+    getCurrentLapInfo(driverInfo) {
+        const driverId = driverInfo.id;
+        const delayedData = this.delayedLapData.get(driverId);
+        const currentTime = Date.now();
+        const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
+
+        if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
+            return delayedData.oldLapData;
+        }
+
+        return driverInfo["lap-info"]["curr-lap"];
+    }
+
+    createStatusCellRendererCurrLap() {
+        return (params) => {
+            const lapInfo = this.getCurrentLapInfo(params.data);
+            const status = lapInfo["driver-status"] ?? "---";
+            return this.createSingleLineCell(status);
         };
     }
 
@@ -645,6 +644,16 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: 'ag-cell-single-line',
                         equals: this.createSectorTimeEqualsComparator('curr-lap', 's3', 's3-time-ms'),
+                    },
+                    {
+                        headerName: "Status",
+                        colId: "curr-lap-status",
+                        context: {displayName: "Driver Status", },
+                        field: `lap-info`,
+                        cellRenderer: this.createStatusCellRendererCurrLap(),
+                        sortable: false,
+                        flex: 2.5,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
                         headerName: "Delta",
