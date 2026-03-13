@@ -1040,7 +1040,8 @@ class EngViewRaceTable {
 
         // Sort, compute and insert rejoin positions
         drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
-        insertRejoinPositions(drivers, pitTimeLoss);
+        const refIndex = refEntry?.["driver-info"]?.["index"] ?? null;
+        insertRejoinPositions(drivers, pitTimeLoss, refIndex);
         const newTableData = drivers.map(driver => ({
             ...driver,
             id: driver['driver-info']['index'],
