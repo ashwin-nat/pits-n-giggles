@@ -23,10 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
-from typing import Callable, Dict, Optional
+import time
+from typing import Callable, Dict, Optional, Tuple
 
 import orjson
 import zmq
+
+from lib.event_counter import EventCounter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -55,6 +58,8 @@ class IpcSubscriberSync:
 
         self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
+        self._last_message_id_by_topic: Dict[str, int] = {}
+        self.stats = EventCounter()
 
         self._running = False
         self.socket: Optional[zmq.Socket] = None
@@ -102,6 +107,62 @@ class IpcSubscriberSync:
         return decorator
 
     # ---------------------------------------------------------
+    # Message envelope helpers
+    # ---------------------------------------------------------
+    def _track_missed_messages(self, topic: str, count: int) -> None:
+        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
+        self.stats.track_event(topic, "__MISSED__", count=count)
+
+    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
+        message = orjson.loads(payload)
+        meta = message["__meta__"]
+        send_ts_ns = meta.get("send_ts_ns")
+
+        if not isinstance(send_ts_ns, int):
+            send_ts_ns = None
+
+        return message["__payload__"], meta["message_id"], send_ts_ns
+
+    def _track_latency(
+        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
+    ) -> None:
+        if send_ts_ns is None:
+            return
+
+        if recv_ts_ns is None:
+            recv_ts_ns = time.time_ns()
+
+        self.stats.track_packet_latency(
+            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+        self.stats.track_packet_latency(
+            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+
+    def _track_sequence(self, topic: str, message_id: int) -> None:
+        last_message_id = self._last_message_id_by_topic.get(topic)
+        if last_message_id is None:
+            self._last_message_id_by_topic[topic] = message_id
+            return
+
+        expected_next = last_message_id + 1
+        if message_id > expected_next:
+            missed = message_id - expected_next
+            self._track_missed_messages(topic, missed)
+            self.logger.warning(
+                "Detected %d missed messages on topic %s (expected %d, got %d)",
+                missed,
+                topic,
+                expected_next,
+                message_id,
+            )
+        elif message_id <= last_message_id:
+            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
+            self.stats.track_event(topic, "__SEQ_ANOMALY__")
+
+        self._last_message_id_by_topic[topic] = message_id
+
+    # ---------------------------------------------------------
     # Main loop with auto-reconnect
     # ---------------------------------------------------------
     def start(self):
@@ -115,7 +176,8 @@ class IpcSubscriberSync:
             try:
                 events = dict(poller.poll(100))
             except zmq.ZMQError:
-                self.logger.warning("Poll failed — reconnecting SUB socket")
+                self.stats.track_event("__ERROR__", "poll_failed")
+                self.logger.warning("Poll failed - reconnecting SUB socket")
                 self._create_and_connect()
                 poller = zmq.Poller()
                 poller.register(self.socket, zmq.POLLIN)
@@ -125,25 +187,44 @@ class IpcSubscriberSync:
                 try:
                     frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
                 except zmq.ZMQError:
-                    self.logger.warning("Receive failed — reconnecting SUB socket")
+                    self.stats.track_event("__ERROR__", "recv_failed")
+                    self.logger.warning("Receive failed - reconnecting SUB socket")
                     self._create_and_connect()
                     poller = zmq.Poller()
                     poller.register(self.socket, zmq.POLLIN)
                     continue
 
                 if len(frames) != 2:
+                    self.stats.track_event("__DROP__", "invalid_frame_count")
                     continue
 
                 topic_bytes, payload = frames
                 topic = topic_bytes.decode()
+                total_size = len(topic_bytes) + len(payload)
+
+                self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
+                self.stats.track_packet(topic, "__PACKETS__", total_size)
 
                 handler = self._routes.get(topic)
                 if handler:
                     try:
-                        data = orjson.loads(payload)
+                        data, message_id, send_ts_ns = self._parse_envelope(payload)
+                        self._track_sequence(topic, message_id)
+                        self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
+                    except Exception:
+                        self.stats.track_event("__DROP__", "invalid_envelope")
+                        continue
+
+                    try:
                         handler(data)
+                        self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
+                        self.stats.track_event(topic, "__HANDLER_OK__")
                     except Exception as e:
+                        self.stats.track_event("__TOTAL__", "__HANDLER_ERR__")
+                        self.stats.track_event(topic, "__HANDLER_ERR__")
                         self.logger.exception(f"Handler error for {topic}: {e}")
+                else:
+                    self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
 
         # clean shutdown
         try:
@@ -157,6 +238,10 @@ class IpcSubscriberSync:
             pass
 
         self.logger.debug("IpcSubscriberSync stopped")
+
+    def get_stats(self) -> dict:
+        """Get current subscriber stats snapshot."""
+        return self.stats.get_stats()
 
     # ---------------------------------------------------------
     # External shutdown

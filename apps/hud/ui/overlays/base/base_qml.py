@@ -24,6 +24,7 @@
 
 import logging
 from pathlib import Path
+from time import perf_counter_ns
 from typing import Optional, TypeVar, final, override
 
 from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
@@ -113,6 +114,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._drag_pos: Optional[QPoint] = None
 
         self._refresh_interval_ms = refresh_interval_ms
+        if refresh_interval_ms:
+            self._fps = max(1, round(1000 / self._refresh_interval_ms))
+        else:
+            self._fps = 0
         self._frame_timer = QTimer(self)
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
@@ -303,11 +308,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if not self._root or not self.get_visibility():
             return
 
-        self._track_frame()
         self.render_frame()
-
-    def _track_frame(self) -> None:
-        self._stats.track_event("__FRAMES__", "__RENDERED__")
+        assert self._refresh_interval_ms
+        assert self._fps
+        self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
 
     def render_frame(self):
         """Derived classes must implement this method."""

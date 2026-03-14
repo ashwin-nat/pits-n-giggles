@@ -28,8 +28,8 @@ from .base import HighFreqBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-@dataclass
-class Vec3f(HighFreqBase):
+@dataclass(slots=True, frozen=True)
+class Vec3f:
     x: float
     y: float
     z: float
@@ -42,8 +42,8 @@ class Vec3f(HighFreqBase):
             z = json_data["z"],
         )
 
-@dataclass
-class Orientation(HighFreqBase):
+@dataclass(slots=True, frozen=True)
+class Orientation:
     yaw: float
     pitch: float
     roll: float
@@ -56,8 +56,8 @@ class Orientation(HighFreqBase):
             roll = json_data["roll"],
         )
 
-@dataclass
-class GForce(HighFreqBase):
+@dataclass(slots=True, frozen=True)
+class GForce:
     lateral: float
     longitudinal: float
     vertical: float
@@ -70,8 +70,8 @@ class GForce(HighFreqBase):
             vertical = json_data["vertical"],
         )
 
-@dataclass
-class CarMotion(HighFreqBase):
+@dataclass(slots=True, frozen=True)
+class CarMotion:
     world_position: Vec3f
     world_velocity: Vec3f
     world_forward_dir: Vec3f
@@ -93,8 +93,8 @@ class CarMotion(HighFreqBase):
             orientation = Orientation.from_json(json_data["orientation"])
         )
 
-@dataclass
-class DriverMotionInfo(HighFreqBase):
+@dataclass(slots=True, frozen=True)
+class DriverMotionInfo:
     name: str
     team: str
     track_position: float
@@ -103,22 +103,17 @@ class DriverMotionInfo(HighFreqBase):
     car_motion: CarMotion
 
     @classmethod
-    def from_json(cls, json_data: dict):
-        # default is_ref=False
-        # must be explicitly set via apply_ref_index
+    def from_json(cls, json_data: dict, ref_index: int):
         return cls(
             name=json_data["name"],
             team=json_data["team"],
             track_position=json_data["track-position"],
             index=json_data["index"],
-            is_ref=False,
+            is_ref=(json_data["index"] == ref_index),
             car_motion=CarMotion.from_json(json_data["motion"]),
         )
 
-    def apply_ref_index(self, ref_index: int) -> None:
-        self.is_ref = (self.index == ref_index)
-
-@dataclass
+@dataclass(slots=True, frozen=True)
 class LiveSessionMotionInfo(HighFreqBase):
     motion_data: list[DriverMotionInfo]
 
@@ -127,14 +122,7 @@ class LiveSessionMotionInfo(HighFreqBase):
         ref_index = json_data["ref-index"]
 
         motion_data = [
-            DriverMotionInfo(
-                name=driver_json["name"],
-                team=driver_json["team"],
-                track_position=driver_json["track-position"],
-                index=driver_json["index"],
-                is_ref=(driver_json["index"] == ref_index),
-                car_motion=CarMotion.from_json(driver_json["motion"]),
-            )
+            DriverMotionInfo.from_json(driver_json, ref_index)
             for driver_json in json_data["motion"]
         ]
 

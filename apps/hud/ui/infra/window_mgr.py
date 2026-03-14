@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Set
 
 from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
@@ -136,7 +137,7 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit(set(), high_prio, cmd, serialise_data(data))
+        self.generic_cmd_signal.emit(set(), high_prio, cmd, self._marshal_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
         """Unicast event data to a specific overlay using signal.
@@ -149,7 +150,7 @@ class WindowManager(QObject):
         """
         assert overlay_id
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit({overlay_id}, high_prio, event, serialise_data(data))
+        self.generic_cmd_signal.emit({overlay_id}, high_prio, event, self._marshal_data(data))
 
     def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any], high_prio: bool = False):
         """Multicast event data to multiple overlays using signal.
@@ -162,7 +163,7 @@ class WindowManager(QObject):
         """
         assert overlay_ids
         # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-        self.generic_cmd_signal.emit(overlay_ids, high_prio, event, serialise_data(data))
+        self.generic_cmd_signal.emit(overlay_ids, high_prio, event, self._marshal_data(data))
 
     def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
         """Unicast high-frequency data to a specific overlay using signal.
@@ -173,3 +174,12 @@ class WindowManager(QObject):
         """
         assert overlay_id
         self.mgmt_high_freq_signal.emit({overlay_id}, data)
+
+    def _marshal_data(self, payload: Dict[str, Any]) -> str:
+        """Add timestamp to payload and return a serialized string."""
+        return serialise_data({
+            "__meta__" : {
+                "__timestamp__" : perf_counter_ns(),
+            },
+            "__payload__": payload
+        })

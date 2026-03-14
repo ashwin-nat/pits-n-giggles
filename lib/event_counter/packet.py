@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,34 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from .base import HighFreqBase
+from typing import ClassVar
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+from .base import Stat
 
-@dataclass(slots=True, frozen=True)
-class DummyHFType(HighFreqBase):
-    a: int
-    b: str
-    c: float
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-    @classmethod
-    def from_json(cls, json_data: dict) -> "DummyHFType":
-        return cls (
-            a = json_data["a"],
-            b = json_data["b"],
-            c = json_data["c"],
-        )
+
+@dataclass(slots=True)
+class PacketStat(Stat):
+    """Packet throughput counter with cumulative payload size.
+
+    Tracks:
+        - `count`: number of packets observed.
+        - `bytes`: total payload bytes across observed packets.
+    """
+
+    TYPE: ClassVar[str] = "__PACKET__"
+    bytes: int = 0
+
+    def increment_with_size(self, size: int) -> None:
+        """Record one packet and add its payload size to total bytes."""
+        self.count += 1
+        self.bytes += size
+
+    def to_dict(self) -> dict:
+        """Serialize this packet stat to a JSON-friendly dictionary."""
+        return {
+            "type": self.TYPE,
+            "count": self.count,
+            "bytes": self.bytes,
+        }

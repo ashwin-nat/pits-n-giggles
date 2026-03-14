@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,29 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from .base import HighFreqBase
+from typing import ClassVar
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-@dataclass(slots=True, frozen=True)
-class DummyHFType(HighFreqBase):
-    a: int
-    b: str
-    c: float
 
-    @classmethod
-    def from_json(cls, json_data: dict) -> "DummyHFType":
-        return cls (
-            a = json_data["a"],
-            b = json_data["b"],
-            c = json_data["c"],
-        )
+@dataclass(slots=True)
+class Stat:
+    """Generic simple event counter for non-payload events.
+
+    Tracks:
+        - `count`: number of occurrences of an event.
+    """
+
+    TYPE: ClassVar[str] = "__COUNT__"
+    count: int = 0
+
+    def increment(self, delta: int = 1) -> None:
+        """Increase the event count by the provided delta."""
+        self.count += delta
+
+    def to_dict(self) -> dict:
+        """Serialize this stat to a JSON-friendly dictionary."""
+        return {
+            "type": self.TYPE,
+            "count": self.count,
+        }

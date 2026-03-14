@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,21 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
-from .base import HighFreqBase
+from .counter import EventCounter
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-@dataclass(slots=True, frozen=True)
-class DummyHFType(HighFreqBase):
-    a: int
-    b: str
-    c: float
-
-    @classmethod
-    def from_json(cls, json_data: dict) -> "DummyHFType":
-        return cls (
-            a = json_data["a"],
-            b = json_data["b"],
-            c = json_data["c"],
-        )
+__all__ = [
+    "EventCounter",
+]
