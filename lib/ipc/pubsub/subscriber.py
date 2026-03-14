@@ -110,9 +110,8 @@ class IpcSubscriberSync:
     # Message envelope helpers
     # ---------------------------------------------------------
     def _track_missed_messages(self, topic: str, count: int) -> None:
-        for _ in range(count):
-            self.stats.track_event("__TOTAL__", "__MISSED__")
-            self.stats.track_event(topic, "__MISSED__")
+        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
+        self.stats.track_event(topic, "__MISSED__", count=count)
 
     def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
         message = orjson.loads(payload)

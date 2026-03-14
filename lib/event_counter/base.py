@@ -39,9 +39,9 @@ class Stat:
     TYPE: ClassVar[str] = "__COUNT__"
     count: int = 0
 
-    def increment(self) -> None:
-        """Increase the event count by one."""
-        self.count += 1
+    def increment(self, delta: int = 1) -> None:
+        """Increase the event count by the provided delta."""
+        self.count += delta
 
     def to_dict(self) -> dict:
         """Serialize this stat to a JSON-friendly dictionary."""

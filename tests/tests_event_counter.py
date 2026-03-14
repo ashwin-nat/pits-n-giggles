@@ -24,6 +24,7 @@
 import os
 import sys
 import math
+from unittest.mock import patch
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -169,6 +170,22 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["udp"]["ingest"]["variance_ns"], 0.0)
         self.assertEqual(stats["udp"]["ingest"]["stddev_ns"], 0.0)
 
+    @patch("time.time_ns", return_value=2000)
+    def test_packet_latency_uses_time_ns_when_recv_ts_missing(self, _mock_time_ns):
+        counter = EventCounter()
+
+        send_ts_ns = 1000
+        counter.track_packet_latency("udp", "raw", send_ts_ns, recv_ts_ns=None)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["raw"])
+        self.assertEqual(stats["udp"]["raw"]["count"], 1)
+        self.assertEqual(stats["udp"]["raw"]["bad_latency_count"], 0)
+        self.assertEqual(stats["udp"]["raw"]["min_ns"], 1000)
+        self.assertEqual(stats["udp"]["raw"]["max_ns"], 1000)
+        self.assertEqual(stats["udp"]["raw"]["avg_ns"], 1000.0)
+
     def test_multiple_packet_latency_tracks_accumulate(self):
         counter = EventCounter()
 
@@ -254,8 +271,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         counter = EventCounter()
 
         # 60 FPS budget: 16,666,666 ns. One observed interval at 18ms.
-        counter.track_frame_render("qml_overlay", "hud", 100_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 118_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=100_000_000, fps=60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=118_000_000, fps=60)
         stats = counter.get_stats()
 
         self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])
@@ -279,10 +296,10 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         counter = EventCounter()
 
         # 60 FPS budget: 16,666,666 ns. Intervals: 10ms, 20ms, 30ms.
-        counter.track_frame_render("qml_overlay", "hud", 1_000_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 1_010_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 1_030_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 1_060_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=1_000_000_000, fps=60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=1_010_000_000, fps=60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=1_030_000_000, fps=60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=1_060_000_000, fps=60)
 
         stats = counter.get_stats()
 
@@ -308,12 +325,12 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         counter = EventCounter()
 
         # Initial stat created with 60 FPS budget: 16,666,666 ns.
-        counter.track_frame_render("qml_overlay", "hud", 500_000_000, 60)
-        counter.track_frame_render("qml_overlay", "hud", 517_000_000, 60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=500_000_000, fps=60)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=517_000_000, fps=60)
 
         # If budget were updated to 30 FPS (~33,333,333 ns), this would not miss.
         # Existing-stat behavior should keep original budget and count as miss.
-        counter.track_frame_render("qml_overlay", "hud", 537_000_000, 30)
+        counter.track_frame_render("qml_overlay", "hud", now_ns=537_000_000, fps=30)
 
         stats = counter.get_stats()
         self._assert_frame_render_stat_type(stats["qml_overlay"]["hud"])

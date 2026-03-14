@@ -175,8 +175,8 @@ class WindowManager(QObject):
         assert overlay_id
         self.mgmt_high_freq_signal.emit({overlay_id}, data)
 
-    def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Add timestamp to payload."""
+    def _marshal_data(self, payload: Dict[str, Any]) -> str:
+        """Add timestamp to payload and return a serialized string."""
         return serialise_data({
             "__meta__" : {
                 "__timestamp__" : perf_counter_ns(),

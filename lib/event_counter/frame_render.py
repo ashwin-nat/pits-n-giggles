@@ -82,11 +82,8 @@ class FrameTimingStat(Stat):
 
         self.count += 1
 
-        if interval < self.min:
-            self.min = interval
-
-        if interval > self.max:
-            self.max = interval
+        self.min = min(self.min, interval)
+        self.max = max(self.max, interval)
 
         # Welford running variance
         delta = interval - self.mean
@@ -100,8 +97,7 @@ class FrameTimingStat(Stat):
                 self.missed_frames += 1
                 self.current_miss_streak += 1
 
-                if self.current_miss_streak > self.max_miss_streak:
-                    self.max_miss_streak = self.current_miss_streak
+                self.max_miss_streak = max(self.max_miss_streak, self.current_miss_streak)
             else:
                 self.current_miss_streak = 0
 
@@ -111,8 +107,7 @@ class FrameTimingStat(Stat):
 
             self.pacing_error_sum += abs_error
 
-            if abs_error > self.max_pacing_error:
-                self.max_pacing_error = abs_error
+            self.max_pacing_error = max(self.max_pacing_error, abs_error)
 
     def variance(self) -> float:
         """Return population variance of observed frame intervals."""

@@ -58,8 +58,14 @@ class EventCounter:
     # Tracking APIs
     # --------------------------------------------------
 
-    def track_event(self, category: str, subcategory: str) -> None:
-        """Record a generic count-only event under `category/subcategory`."""
+    def track_event(self, category: str, subcategory: str, count: int = 1) -> None:
+        """Record count-only event occurrences under `category/subcategory`.
+
+        Args:
+            category: Top-level group name.
+            subcategory: Nested stat name.
+            count: Number of occurrences to add to the counter.
+        """
         bucket = self._stats[category]
 
         stat = bucket.get(subcategory)
@@ -67,7 +73,7 @@ class EventCounter:
             stat = Stat()
             bucket[subcategory] = stat
 
-        stat.increment()
+        stat.increment(count)
 
     def track_packet(self, category: str, subcategory: str, size: int) -> None:
         """Record a packet event and accumulate its payload size in bytes."""
@@ -102,14 +108,14 @@ class EventCounter:
 
         stat.observe_packet(send_ts_ns, recv_ts_ns)
 
-    def track_frame_render(self, category: str, subcategory: str, duration_ns: int,
+    def track_frame_render(self, category: str, subcategory: str, now_ns: int,
                            fps: int) -> None:
-        """Record a frame render duration sample under `category/subcategory`.
+        """Record a frame timestamp sample under `category/subcategory`.
 
         Args:
             category: Top-level group name (for example, `qml_overlay`).
             subcategory: Nested stat name (for example, `hud`).
-            duration_ns: Frame render time in nanoseconds.
+            now_ns: Current frame timestamp in nanoseconds.
             fps: Target frames per second used to derive frame budget.
         """
         bucket = self._stats[category]
@@ -119,7 +125,7 @@ class EventCounter:
             stat = FrameTimingStat(frame_budget_ns=1_000_000_000 // fps)
             bucket[subcategory] = stat
 
-        stat.observe_frame(duration_ns)
+        stat.observe_frame(now_ns)
 
     # --------------------------------------------------
     # Access

@@ -67,10 +67,8 @@ class LatencyStat(Stat):
 
         self.count += 1
 
-        if latency < self.min:
-            self.min = latency
-        if latency > self.max:
-            self.max = latency
+        self.min = min(self.min, latency)
+        self.max = max(self.max, latency)
 
         # Welford running mean/variance
         delta = latency - self.mean
