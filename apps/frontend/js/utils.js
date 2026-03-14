@@ -485,7 +485,9 @@ function getRelevantRaceTableRows(data, numAdjacentCars, shouldInsertRejoinPosit
     // Sort the list by position before computing relevant positions and update rejoin positions
     const sortedTableEntries = tableEntries.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
     if (shouldInsertRejoinPositions) {
-        insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null);
+        const refRow = getRefRow(data);
+        const refIndex = refRow?.["driver-info"]?.["index"] ?? null;
+        insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null, refIndex);
     }
 
     // TODO: for spectator mode, add support for relevant rows
