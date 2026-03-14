@@ -22,10 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .get_segment_info import get_segment_info
+from .segments import TrackSegments
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "get_segment_info",
+    "TrackSegments",
 ]
