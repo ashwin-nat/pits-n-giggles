@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import bisect
 from typing import Any, Dict, List, Optional
 
-from .types import SegmentInfo
+from .types import CornerSegmentInfo, SegmentInfo, StraightSegmentInfo
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -39,6 +40,7 @@ class TrackSegments:
     def __init__(self) -> None:
         self._track_data: Optional[Dict[str, Any]] = None
         self._segments: List[Dict[str, Any]] = []
+        self._starts: List[float] = []  # sorted start_m values, parallel to _segments
 
     def load_track_data(self, track_data: Dict[str, Any]) -> None:
         """
@@ -89,13 +91,17 @@ class TrackSegments:
             is_corner
                 True if the segment represents a corner, False if it is a straight.
 
-            corner_type
-                Optional descriptive label for the corner type
-                (e.g. "hairpin_left", "high_speed", "chicane").
+            corner_number
+                (corners only) Required integer corner number.
+
+            corner_name
+                (corners only) Optional human-readable corner name
+                (e.g. "La Source", "Eau Rouge"). May be omitted or null.
         """
 
         self._track_data = track_data
         self._segments = track_data.get("segments", [])
+        self._starts = [seg["start_m"] for seg in self._segments if "start_m" in seg]
 
     def get_segment_info(self, lap_distance: float) -> Optional[SegmentInfo]:
         """
@@ -113,22 +119,26 @@ class TrackSegments:
             a defined segment, otherwise None.
         """
 
-        if not self._segments:
+        if not self._starts:
             return None
 
-        for seg in self._segments:
-            start = seg.get("start_m")
-            end = seg.get("end_m")
+        # Find the rightmost segment whose start_m <= lap_distance
+        idx = bisect.bisect_right(self._starts, lap_distance) - 1
+        if idx < 0:
+            return None
 
-            if start is None or end is None:
-                continue
+        seg = self._segments[idx]
+        if lap_distance >= seg.get("end_m", float("-inf")):
+            return None
 
-            if start <= lap_distance < end:
-                return SegmentInfo(
-                    segment_id=seg.get("id", -1),
-                    name=seg.get("name", "Unknown Segment"),
-                    is_corner=seg.get("is_corner", False),
-                    corner_type=seg.get("corner_type"),
-                )
-
-        return None
+        seg_id = seg.get("id", -1)
+        if seg.get("is_corner", False):
+            return CornerSegmentInfo(
+                segment_id=seg_id,
+                corner_number=seg["corner_number"],
+                corner_name=seg.get("corner_name"),
+            )
+        return StraightSegmentInfo(
+            segment_id=seg_id,
+            name=seg.get("name", "Unknown Straight"),
+        )

@@ -28,7 +28,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.track_segment_info import TrackSegments
-from lib.track_segment_info.types import SegmentInfo
+from lib.track_segment_info.types import CornerSegmentInfo, SegmentInfo, StraightSegmentInfo
 
 from tests_base import F1TelemetryUnitTestsBase
 
@@ -42,19 +42,19 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             "segments": [
                 {
                     "id": 1,
-                    "name": "La Source",
                     "start_m": 0,
                     "end_m": 200,
                     "is_corner": True,
-                    "corner_type": "hairpin_left"
+                    "corner_number": 1,
+                    "corner_name": "La Source"
                 },
                 {
                     "id": 2,
-                    "name": "Eau Rouge",
                     "start_m": 200,
                     "end_m": 400,
                     "is_corner": True,
-                    "corner_type": "high_speed"
+                    "corner_number": 2,
+                    "corner_name": "Eau Rouge"
                 },
                 {
                     "id": 3,
@@ -62,6 +62,13 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
                     "start_m": 400,
                     "end_m": 1200,
                     "is_corner": False
+                },
+                {
+                    "id": 4,
+                    "start_m": 1200,
+                    "end_m": 1400,
+                    "is_corner": True,
+                    "corner_number": 5
                 }
             ]
         }
@@ -70,23 +77,52 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         self.tracker.load_track_data(self.track_data)
 
     def test_corner_segment_lookup(self):
-        """Position inside a corner should return correct SegmentInfo."""
+        """Position inside a named corner should return a CornerSegmentInfo."""
         info = self.tracker.get_segment_info(100)
 
+        self.assertIsInstance(info, CornerSegmentInfo)
         self.assertIsInstance(info, SegmentInfo)
         self.assertEqual(info.segment_id, 1)
-        self.assertEqual(info.name, "La Source")
-        self.assertTrue(info.is_corner)
-        self.assertEqual(info.corner_type, "hairpin_left")
+        self.assertEqual(info.corner_number, 1)
+        self.assertEqual(info.corner_name, "La Source")
+
+    def test_named_corner_segment_lookup(self):
+        """Second named corner should return correct CornerSegmentInfo."""
+        info = self.tracker.get_segment_info(300)
+
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.segment_id, 2)
+        self.assertEqual(info.corner_number, 2)
+        self.assertEqual(info.corner_name, "Eau Rouge")
+
+    def test_unnamed_corner_has_no_name(self):
+        """Corner without a name should have corner_name as None."""
+        info = self.tracker.get_segment_info(1300)
+
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.corner_number, 5)
+        self.assertIsNone(info.corner_name)
 
     def test_straight_segment_lookup(self):
-        """Position inside a straight should return correct info."""
+        """Position inside a straight should return a StraightSegmentInfo."""
         info = self.tracker.get_segment_info(600)
 
+        self.assertIsInstance(info, StraightSegmentInfo)
+        self.assertIsInstance(info, SegmentInfo)
         self.assertEqual(info.segment_id, 3)
         self.assertEqual(info.name, "Kemmel Straight")
-        self.assertFalse(info.is_corner)
-        self.assertIsNone(info.corner_type)
+
+    def test_corner_is_not_straight(self):
+        """A corner should not be an instance of StraightSegmentInfo."""
+        info = self.tracker.get_segment_info(100)
+
+        self.assertNotIsInstance(info, StraightSegmentInfo)
+
+    def test_straight_is_not_corner(self):
+        """A straight should not be an instance of CornerSegmentInfo."""
+        info = self.tracker.get_segment_info(600)
+
+        self.assertNotIsInstance(info, CornerSegmentInfo)
 
     def test_segment_boundary_start(self):
         """Segment should include its start boundary."""
@@ -133,7 +169,6 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
             "segments": [
                 {
                     "id": 1,
-                    "name": "Bad Segment",
                     "is_corner": True
                 }
             ]

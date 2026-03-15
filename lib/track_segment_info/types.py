@@ -30,6 +30,12 @@ from typing import Optional
 @dataclass(frozen=True)
 class SegmentInfo:
     segment_id: int
+
+@dataclass(frozen=True)
+class CornerSegmentInfo(SegmentInfo):
+    corner_number: int
+    corner_name: Optional[str]
+
+@dataclass(frozen=True)
+class StraightSegmentInfo(SegmentInfo):
     name: str
-    is_corner: bool
-    corner_type: Optional[str]
