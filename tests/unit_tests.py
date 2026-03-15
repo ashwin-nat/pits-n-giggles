@@ -92,6 +92,7 @@ from tests.tests_wdt import TestWatchDogTimerAsync, TestWatchDogTimerSync
 from tests.tests_pending_events import TestPendingEventsManager
 from tests.tests_event_counter import TestEventCounter
 from tests.tests_frame_gate import TestSessionFrameGate
+from tests.tests_track_segment_info import TestTrackSegments
 
 # Initialize colorama
 init(autoreset=True)
