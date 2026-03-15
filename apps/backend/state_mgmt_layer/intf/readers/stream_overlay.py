@@ -38,19 +38,21 @@ class StreamOverlayData(BaseAPI):
     Player telemetry overlay update class.
     """
 
-    def __init__(self, session_state: SessionState) -> None:
+    def __init__(self, session_state: SessionState, export_hud_data: bool = False) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
         Args:
             session_state (SessionState): Handle to the session state data structure
         """
 
+        self.m_export_hud_data          = export_hud_data
         self.m_track_temp               = session_state.m_session_info.m_track_temp
         self.m_air_temp                 = session_state.m_session_info.m_air_temp
         self.m_weather_forecast_samples = session_state.m_session_info.m_weather_forecast_samples
         if self.m_weather_forecast_samples is None:
             self.m_weather_forecast_samples = []
         self.m_circuit                  = session_state.m_session_info.m_track
+        self.m_circuit_len              = session_state.m_session_info.m_track_len
         self.m_total_laps               = session_state.m_session_info.m_total_laps
         self.m_game_year                = session_state.m_session_info.m_game_year
         self.m_packet_format            = session_state.m_session_info.m_packet_format
@@ -68,28 +70,25 @@ class StreamOverlayData(BaseAPI):
         self.m_ref_index = session_state.m_session_info.m_spectator_car_index \
                         if session_state.m_session_info.m_is_spectating \
                         else session_state.m_player_index
-        player_data = (
+        self.m_ref_obj = (
             session_state.m_driver_data[self.m_ref_index]
             if self.m_ref_index is not None and 0 <= self.m_ref_index < len(session_state.m_driver_data)
             else None
         )
-        player_position = player_data.m_driver_info.position if player_data else None
+        player_position = self.m_ref_obj.m_driver_info.position if self.m_ref_obj else None
         prev_data = session_state.getDriverInfoByPosition(player_position - 1) if player_position else None
         next_data = session_state.getDriverInfoByPosition(player_position + 1) if player_position else None
 
-        self.__initCarTelemetry(player_data)
-        self.__initLapTimes(player_data)
-        self.__initTyreSets(player_data)
-        self.__initPenalties(player_data)
-        self.__initGForce(player_data)
-        self.__initPaceComparison(player_data, prev_data, next_data)
+        self.__initCarTelemetry(self.m_ref_obj)
+        self.__initLapTimes(self.m_ref_obj)
+        self.__initTyreSets(self.m_ref_obj)
+        self.__initPenalties(self.m_ref_obj)
+        self.__initGForce(self.m_ref_obj)
+        self.__initPaceComparison(self.m_ref_obj, prev_data, next_data)
         self.__initMotion(session_state.m_driver_data)
 
-    def __initCarTelemetry(self, player_data: Optional[DataPerDriver]) -> None:
+    def __initCarTelemetry(self) -> None:
         """Prepares the car telemetry data.
-
-        Args:
-            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
         fields = {
@@ -100,53 +99,44 @@ class StreamOverlayData(BaseAPI):
         }
 
         telemetry = None
-        if player_data:
-            telemetry = player_data.m_packet_copies.m_packet_car_telemetry
+        if self.m_ref_obj:
+            telemetry = self.m_ref_obj.m_packet_copies.m_packet_car_telemetry
 
         self.m_car_telemetry = {
             key: (getattr(telemetry, attr) * scale if telemetry else 0)
             for key, (attr, scale) in fields.items()
         }
 
-    def __initLapTimes(self, player_data: Optional[DataPerDriver]) -> None:
+    def __initLapTimes(self) -> None:
         """Prepares the player's lap history data.
-
-        Args:
-            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        self.m_curr_lap: Optional[int] = player_data.m_lap_info.m_current_lap if player_data else None
+        self.m_curr_lap: Optional[int] = self.m_ref_obj.m_lap_info.m_current_lap if self.m_ref_obj else None
         self.m_lap_time_history: LapTimeHistory = LapTimeHistory(
-            player_data, self.m_fastest_lap_ms, self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms)
-        self.m_speed_trap_record: Optional[float] = player_data.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
-            if player_data and player_data.m_packet_copies.m_packet_lap_data else None
+            self.m_ref_obj, self.m_fastest_lap_ms, self.m_fastest_s1_ms, self.m_fastest_s2_ms, self.m_fastest_s3_ms)
+        self.m_speed_trap_record: Optional[float] = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_speedTrapFastestSpeed \
+            if self.m_ref_obj and self.m_ref_obj.m_packet_copies.m_packet_lap_data else None
 
-    def __initTyreSets(self, player_data: Optional[DataPerDriver]) -> None:
+    def __initTyreSets(self) -> None:
         """Prepares the player's tyre sets data.
-
-        Args:
-            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data:
-            self.m_tyre_sets_pkt = player_data.m_packet_copies.m_packet_tyre_sets
+        if self.m_ref_obj:
+            self.m_tyre_sets_pkt = self.m_ref_obj.m_packet_copies.m_packet_tyre_sets
         else:
             self.m_tyre_sets_pkt = None
 
-    def __initPenalties(self, player_data: Optional[DataPerDriver]) -> None:
+    def __initPenalties(self) -> None:
         """Prepares the player's penalties data.
-
-        Args:
-            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_copies.m_packet_lap_data:
-            self.m_penalties = player_data.m_packet_copies.m_packet_lap_data.m_penalties
-            self.m_total_warnings = player_data.m_packet_copies.m_packet_lap_data.m_totalWarnings
-            self.m_corner_cutting_warnings = player_data.m_packet_copies.m_packet_lap_data.m_cornerCuttingWarnings
-            self.m_num_dt = player_data.m_packet_copies.m_packet_lap_data.m_numUnservedDriveThroughPens
-            self.m_num_sg = player_data.m_packet_copies.m_packet_lap_data.m_numUnservedStopGoPens
-            self.m_num_collisions = len(player_data.m_collision_records)
+        if self.m_ref_obj and self.m_ref_obj.m_packet_copies.m_packet_lap_data:
+            self.m_penalties = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_penalties
+            self.m_total_warnings = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_totalWarnings
+            self.m_corner_cutting_warnings = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_cornerCuttingWarnings
+            self.m_num_dt = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_numUnservedDriveThroughPens
+            self.m_num_sg = self.m_ref_obj.m_packet_copies.m_packet_lap_data.m_numUnservedStopGoPens
+            self.m_num_collisions = len(self.m_ref_obj.m_collision_records)
         else:
             self.m_penalties = 0
             self.m_total_warnings = 0
@@ -155,30 +145,25 @@ class StreamOverlayData(BaseAPI):
             self.m_num_sg = 0
             self.m_num_collisions = 0
 
-    def __initGForce(self, player_data: Optional[DataPerDriver]) -> None:
+    def __initGForce(self) -> None:
         """Prepares the player's g-force data.
-
-        Args:
-            player_data (Optional[TelData.DataPerDriver]): The player's DataPerDriver object
         """
 
-        if player_data and player_data.m_packet_copies.m_packet_motion:
-            self.m_g_force_lat = player_data.m_packet_copies.m_packet_motion.m_gForceLateral
-            self.m_g_force_vert = player_data.m_packet_copies.m_packet_motion.m_gForceVertical
-            self.m_g_force_long = player_data.m_packet_copies.m_packet_motion.m_gForceLongitudinal
+        if self.m_ref_obj and self.m_ref_obj.m_packet_copies.m_packet_motion:
+            self.m_g_force_lat = self.m_ref_obj.m_packet_copies.m_packet_motion.m_gForceLateral
+            self.m_g_force_vert = self.m_ref_obj.m_packet_copies.m_packet_motion.m_gForceVertical
+            self.m_g_force_long = self.m_ref_obj.m_packet_copies.m_packet_motion.m_gForceLongitudinal
         else:
             self.m_g_force_lat = 0
             self.m_g_force_vert = 0
             self.m_g_force_long = 0
 
     def __initPaceComparison(self,
-                             player_data: DataPerDriver,
                              prev_data: Optional[DataPerDriver],
                              next_data: Optional[DataPerDriver]) -> None:
         """Prepares the player's pace comparison data.
 
         Args:
-            player_data (TelData.DataPerDriver): The player's DataPerDriver object
             prev_data (Optional[TelData.DataPerDriver]): The previous driver's DataPerDriver object (may be None)
             next_data (Optional[TelData.DataPerDriver]): The next driver's DataPerDriver object (may be None)
         """
@@ -223,10 +208,10 @@ class StreamOverlayData(BaseAPI):
                 },
             }
         }
-        if not player_data:
+        if not self.m_ref_obj:
             return
 
-        self.__populatePaceCompDataForDriver(self.m_pace_comp_json["player"], player_data)
+        self.__populatePaceCompDataForDriver(self.m_pace_comp_json["player"], self.m_ref_obj)
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["prev"], prev_data)
         self.__populatePaceCompDataForDriver(self.m_pace_comp_json["next"], next_data)
 
@@ -290,6 +275,53 @@ class StreamOverlayData(BaseAPI):
                                         CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0
         }
 
+    def _getHudData(self) -> Dict[str, Any]:
+        dflt_data = {
+            "throttle" : None,
+            "brake" : None,
+            "rev-lights" : None,
+            "rpm" : None,
+            "gear" : None,
+            "speed-kmph" : None,
+            "drs-enabled" : None,
+            "drs-available" : None,
+            "drs-distance" : None,
+            "ers-harv-mguk" : None,
+            "ers-deployed" : None,
+            "ers-remaining" : None,
+            "ers-mode" : None,
+            "rival" : None,
+            "circuit-position" : None,
+        }
+
+        if not self.m_ref_obj or \
+            not self.m_ref_obj.m_packet_copies.m_packet_car_status or \
+            not self.m_ref_obj.m_packet_copies.m_packet_car_telemetry or \
+            not self.m_ref_obj.m_packet_copies.m_packet_lap_data:
+            return dflt_data
+
+        car_status = self.m_ref_obj.m_packet_copies.m_packet_car_status
+        car_telemetry = self.m_ref_obj.m_packet_copies.m_packet_car_telemetry
+        lap_data = self.m_ref_obj.m_packet_copies.m_packet_lap_data
+
+        return {
+            "throttle" : car_telemetry.m_throttle,
+            "brake" : car_telemetry.m_brake,
+            "rev-lights" : car_telemetry.m_revLightsPercent,
+            "rpm" : car_telemetry.m_engineRPM,
+            "gear" : car_telemetry.m_gear,
+            "speed-kmph" : car_telemetry.m_speed,
+            "drs-enabled" : car_telemetry.m_drs,
+            "drs-available" : car_status.m_drsAllowed,
+            "drs-distance" : car_status.m_drsActivationDistance,
+            "ers-harv-mguk" : car_status.m_ersHarvestedThisLapMGUK,
+            "ers-deployed" : car_status.m_ersDeployedThisLap,
+            "ers-remaining" : car_status.m_ersStoreEnergy,
+            "ers-mode" : str(car_status.m_ersDeployMode),
+            "rival" : "Temp", # TODO
+            "circuit-position" : lap_data.m_lapDistance,
+        }
+
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
         """Dump this object into JSON
 
@@ -300,7 +332,7 @@ class StreamOverlayData(BaseAPI):
             Dict[str, Any]: The JSON dump
         """
 
-        return {
+        ret = {
             "f1-packet-format" : self.m_packet_format,
             "event-type" : str(self.m_session_type),
             "formula-type" : str(self.m_formula_type),
@@ -338,3 +370,8 @@ class StreamOverlayData(BaseAPI):
             "pace-comparison" : self.m_pace_comp_json,
             "motion" : self.m_motion_json,
         }
+
+        if self.m_export_hud_data:
+            ret["hud"] = self._getHudData()
+
+        return ret
