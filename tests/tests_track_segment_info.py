@@ -106,6 +106,18 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 
         self.assertIsNone(info)
 
+    def test_negative_position_outside_segments(self):
+        """Negative positions should return None."""
+        info = self.tracker.get_segment_info(-1)
+
+        self.assertIsNone(info)
+
+    def test_pre_start_position_outside_segments(self):
+        """Positions just before the first segment start should return None."""
+        info = self.tracker.get_segment_info(-0.1)
+
+        self.assertIsNone(info)
+
     def test_no_track_loaded(self):
         """Calling lookup without loading data should return None."""
         tracker = TrackSegments()
