@@ -136,12 +136,12 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=True, # TODO: Make this configurable
+            enabled=settings.HUD.show_hud_overlay,
             overlay_cls=HudOverlay,
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            scale_factor=settings.HUD.hud_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
