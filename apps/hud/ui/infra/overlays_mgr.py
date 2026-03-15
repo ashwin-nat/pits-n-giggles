@@ -30,16 +30,17 @@ from PySide6.QtCore import QMetaObject, Qt
 from PySide6.QtWidgets import QApplication
 
 from apps.hud.common import get_ref_row_index
-from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
-                                  LapTimerOverlay, MfdOverlay,
-                                  TimingTowerOverlay, TrackRadarOverlay)
+from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
+                                  InputTelemetryOverlay, LapTimerOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
+                                  TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import InputTelemetryData, LiveSessionMotionInfo, HudOverlayData
+from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -132,6 +133,16 @@ class OverlaysMgr:
             scale_factor=settings.HUD.track_radar_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             idle_opacity=settings.HUD.track_radar_idle_opacity,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=True, # TODO: Make this configurable
+            overlay_cls=HudOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
         if settings.HUD.show_mfd:
