@@ -79,12 +79,12 @@ class StreamOverlayData(BaseAPI):
         prev_data = session_state.getDriverInfoByPosition(player_position - 1) if player_position else None
         next_data = session_state.getDriverInfoByPosition(player_position + 1) if player_position else None
 
-        self.__initCarTelemetry(self.m_ref_obj)
-        self.__initLapTimes(self.m_ref_obj)
-        self.__initTyreSets(self.m_ref_obj)
-        self.__initPenalties(self.m_ref_obj)
-        self.__initGForce(self.m_ref_obj)
-        self.__initPaceComparison(self.m_ref_obj, prev_data, next_data)
+        self.__initCarTelemetry()
+        self.__initLapTimes()
+        self.__initTyreSets()
+        self.__initPenalties()
+        self.__initGForce()
+        self.__initPaceComparison(prev_data, next_data)
         self.__initMotion(session_state.m_driver_data)
 
     def __initCarTelemetry(self) -> None:
