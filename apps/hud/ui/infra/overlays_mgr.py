@@ -39,7 +39,7 @@ from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import InputTelemetryData, LiveSessionMotionInfo
+from .hf_types import InputTelemetryData, LiveSessionMotionInfo, HudOverlayData
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -192,6 +192,7 @@ class OverlaysMgr:
         """Handle the stream overlay update event"""
         self._input_telemetry_update(data)
         self._motion_update(data)
+        self._hud_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
             self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
 
@@ -390,6 +391,13 @@ class OverlaysMgr:
         self.window_manager.unicast_high_freq_data(
             TrackRadarOverlay.OVERLAY_ID,
             LiveSessionMotionInfo.from_json(data)
+        )
+
+    def _hud_overlay_update(self, data: Dict[str, Any]):
+        """Send HUD data to HUD overlay."""
+        self.window_manager.unicast_high_freq_data(
+            "hud_overlay", # TODO
+            HudOverlayData.from_json(data)
         )
 
     def _set_overlays_visibility(self, visible: bool):
