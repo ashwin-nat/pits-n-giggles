@@ -290,7 +290,7 @@ class StreamOverlayData(BaseAPI):
             "ers-deployed" : None,
             "ers-remaining" : None,
             "ers-mode" : None,
-            "rival" : None,
+            "tl-warns" : None,
             "circuit-position" : None,
         }
 
@@ -318,7 +318,7 @@ class StreamOverlayData(BaseAPI):
             "ers-deployed" : car_status.m_ersDeployedThisLap,
             "ers-remaining" : car_status.m_ersStoreEnergy,
             "ers-mode" : str(car_status.m_ersDeployMode),
-            "rival" : "Temp", # TODO
+            "tl-warns" : lap_data.m_cornerCuttingWarnings,
             "circuit-position" : lap_data.m_lapDistance,
         }
 

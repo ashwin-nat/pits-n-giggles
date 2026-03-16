@@ -43,7 +43,7 @@ class HudOverlayData(HighFreqBase):
     ers_deployed_j: float
     ers_rem_j: float
     ers_mode: str
-    rival: str
+    tl_warnings: int
     circuit_pos_m: int
 
     @classmethod
@@ -63,6 +63,6 @@ class HudOverlayData(HighFreqBase):
             ers_deployed_j=hud_data["ers-deployed"],
             ers_rem_j=hud_data["ers-remaining"],
             ers_mode=hud_data["ers-mode"],
-            rival=hud_data["rival"],
+            tl_warnings=hud_data["tl-warns"],
             circuit_pos_m=hud_data["circuit-position"],
         )
