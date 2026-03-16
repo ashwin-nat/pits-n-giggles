@@ -29,6 +29,7 @@ from apps.hud.ui.infra.hf_types import HudOverlayData
 
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayPosition, HUD_OVERLAY_ID
+from lib.track_segment_info.types import CornerSegmentInfo
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -74,9 +75,42 @@ class HudOverlay(BaseOverlayQML):
         This will be called by the base class periodically based on the refresh rate specified in the ctor.
         Get the latest HF data and render it in the window
         """
-        dummy_obj = self.get_latest_hf_data(HudOverlayData)
-        if not dummy_obj:
+        data = self.get_latest_hf_data(HudOverlayData)
+        if not data:
             return
 
-        self.logger.debug("Rendering HUD overlay")
+        corner_info = CornerSegmentInfo(
+            segment_id=1,
+            corner_number=1,
+            corner_name="La Source",
+        )
 
+        # Ignore the rival field in the obj
+
+        # Pedals (0.0–1.0 → 0–100)
+        self.set_qml_property("throttleValue", data.throttle * 100.0)
+        self.set_qml_property("brakeValue",    data.brake    * 100.0)
+
+        # Rev lights / powertrain
+        self.set_qml_property("revLightsPct", data.rev_lights_pct)
+        self.set_qml_property("rpm",          data.rpm)
+        self.set_qml_property("gear",         data.gear)
+        self.set_qml_property("speedKmph",    data.speed_kmph)
+
+        # DRS
+        self.set_qml_property("drsEnabled",   data.drs_enabled)
+        self.set_qml_property("drsAvailable", data.drs_available)
+        self.set_qml_property("drsDistance",  data.drs_distance)
+
+        # ERS — all values as percentages
+        #   Store / deploy limit = 4 MJ  |  MGU-K harvest limit = 2 MJ
+        _STORE_J = 4_000_000.0
+        _HARV_J  = 2_000_000.0
+        self.set_qml_property("ersRemPct",      round(min(data.ers_rem_j       / _STORE_J * 100.0, 100.0), 1))
+        self.set_qml_property("ersHarvPct",     round(min(data.ers_harv_mguk_j / _HARV_J  * 100.0, 100.0), 1))
+        self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _STORE_J * 100.0, 100.0), 1))
+        self.set_qml_property("ersMode",        data.ers_mode)
+
+        # Turn info (hardcoded placeholder — real lookup to be wired later)
+        self.set_qml_property("turnNumber", corner_info.corner_number)
+        self.set_qml_property("turnName",   corner_info.corner_name or "")
