@@ -8,9 +8,9 @@ Window {
 
     property real scaleFactor: 1.0
     property int numRows: 5  // Set by Python
-    readonly property int rowHeight: 32
-    readonly property int headerHeight: 40
-    readonly property int margins: 25
+    readonly property int rowHeight: 28
+    readonly property int headerHeight: 34
+    readonly property int margins: 20
 
     // Column toggle properties - set by Python
     property bool showTeamLogos: true
@@ -32,7 +32,7 @@ Window {
             width += showPens ? cols.ers : cols.ers + 10;
         }
         if (showPens) width += cols.pens;
-        return width + 20; // Add padding
+        return width + 10; // Add padding
     }
 
     readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
@@ -66,36 +66,28 @@ Window {
         // Main container
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 5
-            color: Qt.rgba(0.04, 0.04, 0.04, 0.86)
+            anchors.margins: 4
+            color: Qt.rgba(0.04, 0.04, 0.06, 0.90)
             radius: 8
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 5
-                spacing: 5
+                anchors.margins: 4
+                spacing: 3
 
                 // Header section
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 35
-                    color: Qt.rgba(0.06, 0.06, 0.06, 0.78)
+                    Layout.preferredHeight: 28
+                    color: Qt.rgba(0.12, 0.12, 0.14, 0.95)
                     radius: 5
 
-                    Rectangle {
+                    Text {
                         anchors.centerIn: parent
-                        width: parent.width - 6
-                        height: 25
-                        color: Qt.rgba(0.16, 0.16, 0.16, 0.78)
-                        radius: 3
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: sessionInfo
-                            font.family: "Formula1"
-                            font.pixelSize: 15
-                            color: "#ffffff"
-                        }
+                        text: sessionInfo
+                        font.family: "Formula1"
+                        font.pixelSize: 13
+                        color: "#cccccc"
                     }
                 }
 
@@ -103,7 +95,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: Qt.rgba(0.06, 0.06, 0.06, 0.86)
+                    color: "transparent"
                     radius: 6
 
                     // Error message display
@@ -119,13 +111,13 @@ Window {
                     // Column widths
                     QtObject {
                         id: cols
-                        readonly property int pos: 40
-                        readonly property int team: 30
-                        readonly property int name: 160
-                        readonly property int delta: 90
-                        readonly property int tyre: 75
-                        readonly property int ers: 75
-                        readonly property int pens: 80
+                        readonly property int pos: 30
+                        readonly property int team: 22
+                        readonly property int name: 120
+                        readonly property int delta: 72
+                        readonly property int tyre: 58
+                        readonly property int ers: 58
+                        readonly property int pens: 62
                     }
 
                     // Table content
@@ -139,19 +131,35 @@ Window {
 
                         model: tableData
 
-                        delegate: Rectangle {
+                        delegate: Item {
                             width: tableView.width
-                            height: 32
-                            color: index % 2 === 0 ? Qt.rgba(0.1, 0.1, 0.1, 0.7) : Qt.rgba(0.08, 0.08, 0.08, 0.7)
+                            height: 28
 
-                            // Reference row border
+                            // Row background
                             Rectangle {
                                 anchors.fill: parent
-                                color: "transparent"
-                                border.color: "white"
-                                border.width: modelData.isReference ? 2 : 0
-                                radius: 2
-                                visible: modelData.isReference
+                                color: modelData.isReference
+                                    ? Qt.rgba(1, 1, 1, 0.07)
+                                    : Qt.rgba(0.08, 0.08, 0.10, 0.6)
+                                radius: 3
+                            }
+
+                            // Bottom separator
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                height: 1
+                                color: Qt.rgba(1, 1, 1, 0.05)
+                            }
+
+                            // Reference row left accent
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 2
+                                height: parent.height - 6
+                                color: modelData.isReference ? "#ffffff" : "transparent"
+                                radius: 1
                             }
 
                             Row {
@@ -253,61 +261,49 @@ Window {
                                 }
 
                                 // ERS/DRS
-                                Rectangle {
+                                Item {
                                     width: showErsDrsInfo ? cols.ers : 0
                                     height: parent.height
-                                    color: Qt.rgba(0.1, 0.1, 0.1, 0.7)
                                     visible: showErsDrsInfo
 
-                                    Row {
-                                        anchors.fill: parent
-                                        spacing: 0
-
-                                        // ERS bar (left)
-                                        Rectangle {
-                                            width: parent.width * 0.15
-                                            height: parent.height
-                                            color: {
-                                                switch(modelData.ersMode) {
-                                                    case "Medium": return "#ffff00"
-                                                    case "Hotlap": return "#00ff00"
-                                                    case "Overtake": return "#ff0000"
-                                                    default: return "#888888"
-                                                }
+                                    // ERS mode strip (left)
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 2
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 4
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: {
+                                            switch(modelData.ersMode) {
+                                                case "Medium": return "#e6d800"
+                                                case "Hotlap": return "#00e676"
+                                                case "Overtake": return "#ff1744"
+                                                default: return "#444444"
                                             }
-                                            border.color: "black"
-                                            border.width: 1
-                                        }
-
-                                        // ERS text (center)
-                                        Text {
-                                            width: parent.width * 0.70
-                                            height: parent.height
-                                            text: modelData.ers
-                                            font.family: "Formula1"
-                                            font.pixelSize: 12
-                                            color: "white"
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-
-                                        // DRS bar (right)
-                                        Rectangle {
-                                            width: parent.width * 0.15
-                                            height: parent.height
-                                            color: modelData.drs ? "#00ff00" : "#888888"
-                                            border.color: "black"
-                                            border.width: 1
                                         }
                                     }
 
-                                    // Reference border overlay for ERS column
+                                    // ERS text (center)
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.ers
+                                        font.family: "Consolas"
+                                        font.pixelSize: 11
+                                        color: "#dddddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    // DRS strip (right)
                                     Rectangle {
-                                        anchors.fill: parent
-                                        color: "transparent"
-                                        border.color: "white"
-                                        border.width: modelData.isReference ? 2 : 0
-                                        visible: modelData.isReference
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 2
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 4
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: modelData.drs ? "#00e676" : "#333333"
                                     }
                                 }
 
