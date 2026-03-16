@@ -45,6 +45,7 @@ class HudOverlayData(HighFreqBase):
     ers_mode: str
     tl_warnings: int
     circuit_pos_m: int
+    circuit: str
 
     @classmethod
     def from_json(cls, json_data: dict) -> "HudOverlayData":
@@ -65,4 +66,5 @@ class HudOverlayData(HighFreqBase):
             ers_mode=hud_data["ers-mode"],
             tl_warnings=hud_data["tl-warns"],
             circuit_pos_m=hud_data["circuit-position"],
+            circuit=json_data["circuit-enum-name"],
         )
