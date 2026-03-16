@@ -317,16 +317,16 @@ class LapTimerOverlay(BaseOverlayQML):
 
     def clear(self):
         """Reset all display fields to default values."""
-        self._root.setProperty("currentTime", self.DEFAULT_TIME)
-        self._root.setProperty("currentColor", "#00FFFF")
-        self._root.setProperty("lastTime", self.DEFAULT_TIME)
-        self._root.setProperty("bestTime", self.DEFAULT_TIME)
-        self._root.setProperty("deltaTime", self.DEFAULT_DELTA)
-        self._root.setProperty("deltaColor", "#FFFFFF")
-        self._root.setProperty("estimatedTime", self.DEFAULT_TIME)
-        self._root.setProperty("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
-        self._root.setProperty("lastSectorStatus", self.DEFAULT_SECTOR_STATUS)
-        self._root.setProperty("bestSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        self.set_qml_property("currentTime", self.DEFAULT_TIME)
+        self.set_qml_property("currentColor", "#00FFFF")
+        self.set_qml_property("lastTime", self.DEFAULT_TIME)
+        self.set_qml_property("bestTime", self.DEFAULT_TIME)
+        self.set_qml_property("deltaTime", self.DEFAULT_DELTA)
+        self.set_qml_property("deltaColor", "#FFFFFF")
+        self.set_qml_property("estimatedTime", self.DEFAULT_TIME)
+        self.set_qml_property("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        self.set_qml_property("lastSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        self.set_qml_property("bestSectorStatus", self.DEFAULT_SECTOR_STATUS)
 
         self.curr_session_uid = None
         self.show_last_lap_sector_bar = False
@@ -341,7 +341,7 @@ class LapTimerOverlay(BaseOverlayQML):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(last_lap_ms)
             if last_lap_ms else self.DEFAULT_TIME
         )
-        self._root.setProperty("lastTime", time_str)
+        self.set_qml_property("lastTime", time_str)
 
     def _update_best_lap(self, best_lap_ms: Optional[int]):
         """Update best lap time display.
@@ -353,7 +353,7 @@ class LapTimerOverlay(BaseOverlayQML):
             F1Utils.millisecondsToMinutesSecondsMilliseconds(best_lap_ms)
             if best_lap_ms else self.DEFAULT_TIME
         )
-        self._root.setProperty("bestTime", time_str)
+        self.set_qml_property("bestTime", time_str)
 
     def _update_curr_lap(self, curr_lap_ms: Optional[int]):
         """Update current lap time display.
@@ -370,8 +370,8 @@ class LapTimerOverlay(BaseOverlayQML):
     def _update_curr_lap_str(self, time_str: str):
         """Update current lap display with string."""
 
-        self._root.setProperty("currentTime", time_str)
-        self._root.setProperty("currentColor", "#00FFFF")
+        self.set_qml_property("currentTime", time_str)
+        self.set_qml_property("currentColor", "#00FFFF")
 
     def _update_delta_ms(self, delta_ms: int, is_sc: bool):
         """Update delta display with appropriate color.
@@ -397,8 +397,8 @@ class LapTimerOverlay(BaseOverlayQML):
         is_good = (delta_sec < 0) != is_sc
         color = "#00FF00" if is_good else "#FF5555"
 
-        self._root.setProperty("deltaTime", text)
-        self._root.setProperty("deltaColor", color)
+        self.set_qml_property("deltaTime", text)
+        self.set_qml_property("deltaColor", color)
 
     def _update_estimated(self, est: str):
         """Update estimated lap time display.
@@ -406,12 +406,12 @@ class LapTimerOverlay(BaseOverlayQML):
         Args:
             est: Formatted estimated time string
         """
-        self._root.setProperty("estimatedTime", est)
+        self.set_qml_property("estimatedTime", est)
 
     def _clear_delta(self):
         """Clear delta field."""
-        self._root.setProperty("deltaTime", self.DEFAULT_DELTA)
-        self._root.setProperty("deltaColor", "#FFFFFF")
+        self.set_qml_property("deltaTime", self.DEFAULT_DELTA)
+        self.set_qml_property("deltaColor", "#FFFFFF")
 
     def _update_sector_status(self, property_name: str, status_list: List[int]):
         """Update sector status bar.
@@ -421,13 +421,13 @@ class LapTimerOverlay(BaseOverlayQML):
             status_list: List of 3 sector status values
         """
         if len(status_list) == 3:
-            self._root.setProperty(property_name, status_list)
+            self.set_qml_property(property_name, status_list)
 
     def _timer_clear_cb(self):
         """Clear the last lap sector bar flag"""
         self.show_last_lap_sector_bar = False
         # Clear the sector bar back to current lap
-        self._root.setProperty("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        self.set_qml_property("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
 
     def _is_safety_car(self, status: str) -> bool:
         """Check if the session is in racing or safety car state."""

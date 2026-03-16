@@ -181,13 +181,10 @@ class TrackRadarOverlay(BaseOverlayQML):
         return driver_list
 
     def _set_base_opacity_property(self, opacity: int):
-        if self._root:
-            self._root.setProperty("baseOpacity", opacity / 100.0)
+        self.set_qml_property("baseOpacity", opacity / 100.0)
 
     def _set_idle_opacity_property(self, opacity: int):
-        if self._root:
-            self._root.setProperty("idleOpacity", opacity / 100.0)
+        self.set_qml_property("idleOpacity", opacity / 100.0)
 
     def _set_locked_property(self, locked: bool):
-        if self._root:
-            self._root.setProperty("lockedMode", locked)
+        self.set_qml_property("lockedMode", locked)

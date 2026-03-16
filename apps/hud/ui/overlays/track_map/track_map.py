@@ -148,15 +148,15 @@ class TrackMapOverlay(BaseOverlayQML):
 
     def _update_qml_track_map(self):
         """Update the QML window with the new track map."""
-        if self._root and self.circuit_svg_path:
-            self._root.setProperty("svgPath", self.circuit_svg_path)
+        if self.circuit_svg_path:
+            self.set_qml_property("svgPath", self.circuit_svg_path)
             self.logger.debug(f"{self.OVERLAY_ID} | Updated QML with SVG: {self.circuit_svg_path}")
         else:
-            self.logger.warning(f"{self.OVERLAY_ID} | Cannot update QML - root={self._root}, path={self.circuit_svg_path}")
+            self.logger.warning(f"{self.OVERLAY_ID} | Cannot update QML - path={self.circuit_svg_path}")
 
     def _clear_track_map(self):
         """Clear the track map from the QML window."""
-        self._root.setProperty("svgPath", "")
+        self.set_qml_property("svgPath", "")
         self.curr_circuit_name = None
         self.circuit_svg_path = None
         self.logger.debug(f"{self.OVERLAY_ID} | Cleared track map")
