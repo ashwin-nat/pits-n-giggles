@@ -143,8 +143,8 @@ class MfdOverlay(BaseOverlayQML):
         self._current_index = 0
 
         # Set total pages in QML
-        self._root.setProperty("totalPages", len(self._mfd_pages))
-        self._root.setProperty("currentPageIndex", 0)
+        self.set_qml_property("totalPages", len(self._mfd_pages))
+        self.set_qml_property("currentPageIndex", 0)
 
         self._apply_current_page()
 
@@ -176,10 +176,10 @@ class MfdOverlay(BaseOverlayQML):
 
         is_collapsed = (page.KEY == CollapsedPage.KEY)
 
-        self._root.setProperty("collapsed", is_collapsed)
-        self._root.setProperty("activePageKey", page.KEY)
-        self._root.setProperty("currentPageQml", qml_url)
-        self._root.setProperty("currentPageIndex", self._current_index)
+        self.set_qml_property("collapsed", is_collapsed)
+        self.set_qml_property("activePageKey", page.KEY)
+        self.set_qml_property("currentPageQml", qml_url)
+        self.set_qml_property("currentPageIndex", self._current_index)
 
         self.logger.debug(
             "%s | Applied page '%s' (index=%d, collapsed=%s)",

@@ -65,7 +65,7 @@ class InputTelemetryOverlay(BaseOverlayQML):
     @final
     def _setup_window(self):
         super()._setup_window()
-        self._root.setProperty("maxHistoryLength", self.num_window_samples)
+        self.set_qml_property("maxHistoryLength", self.num_window_samples)
 
     @final
     def render_frame(self):

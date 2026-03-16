@@ -41,6 +41,7 @@ from .base import BaseOverlay
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
 HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
+_UNSET = object()  # sentinel for absent QML property cache entries
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -112,6 +113,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root: Optional[QQuickWindow] = None
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
+        self._qml_props: dict = {}
 
         self._refresh_interval_ms = refresh_interval_ms
         if refresh_interval_ms:
@@ -312,6 +314,21 @@ class BaseOverlayQML(BaseOverlay, QObject):
         assert self._refresh_interval_ms
         assert self._fps
         self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+
+    def set_qml_property(self, name: str, value) -> None:
+        """Set a property on the QML root object.
+
+        Silently does nothing if the root is not yet initialized or if the
+        property already holds the same value. Uses a local dict to track
+        last-set values to avoid the cost of reading back through the Qt
+        meta-object system.
+        """
+        if self._root is None:
+            return
+        if self._qml_props.get(name, _UNSET) == value:
+            return
+        self._qml_props[name] = value
+        self._root.setProperty(name, value)
 
     def render_frame(self):
         """Derived classes must implement this method."""

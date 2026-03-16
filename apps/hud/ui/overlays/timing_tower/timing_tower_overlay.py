@@ -113,13 +113,12 @@ class TimingTowerOverlay(BaseOverlayQML):
     def _setup_window(self):
         """Override to set numRows property after QML loads."""
         super()._setup_window()
-        if self._root:
-            self._root.setProperty("numRows", self.total_rows)
-            self._root.setProperty("showTeamLogos", self.show_team_logos)
-            self._root.setProperty("showTyreInfo", self.show_tyre_info)
-            self._root.setProperty("showDeltas", self.show_deltas)
-            self._root.setProperty("showErsDrsInfo", self.show_ers_drs_info)
-            self._root.setProperty("showPens", self.show_pens)
+        self.set_qml_property("numRows", self.total_rows)
+        self.set_qml_property("showTeamLogos", self.show_team_logos)
+        self.set_qml_property("showTyreInfo", self.show_tyre_info)
+        self.set_qml_property("showDeltas", self.show_deltas)
+        self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
+        self.set_qml_property("showPens", self.show_pens)
 
     def render_frame(self):
         """Not used - this overlay uses event-driven updates."""
@@ -184,7 +183,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         Args:
             text (str): Session info text
         """
-        self._root.setProperty("sessionInfo", text)
+        self.set_qml_property("sessionInfo", text)
 
     def _show_error(self, message: str):
         """Show an error message in the table area.
@@ -192,9 +191,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         Args:
             message (str): Error message to display
         """
-        self._root.setProperty("showError", True)
-        self._root.setProperty("errorMessage", message)
-        self._root.setProperty("tableData", [])
+        self.set_qml_property("showError", True)
+        self.set_qml_property("errorMessage", message)
+        self.set_qml_property("tableData", [])
 
     def _update_table_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int):
         """Update the timing table data in QML.
@@ -205,8 +204,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         """
 
         # Hide error message
-        self._root.setProperty("showError", False)
-        self._root.setProperty("tableData", [
+        self.set_qml_property("showError", False)
+        self.set_qml_property("tableData", [
             self._create_driver_row(row_data, ref_index)
             for row_data in relevant_rows
         ])
@@ -335,10 +334,9 @@ class TimingTowerOverlay(BaseOverlayQML):
 
     def clear(self):
         """Clear all timing data."""
-        if self._root:
-            self._root.setProperty("sessionInfo", "-- / --")
-            self._root.setProperty("tableData", [])
-            self._root.setProperty("showError", False)
+        self.set_qml_property("sessionInfo", "-- / --")
+        self.set_qml_property("tableData", [])
+        self.set_qml_property("showError", False)
 
     def _should_show_lap_number(self, session_type: str) -> bool:
         """Check if it is a race/sprint session.
