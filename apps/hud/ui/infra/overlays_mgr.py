@@ -251,7 +251,7 @@ class OverlaysMgr:
                     overlay_id,
                     curr_params,
                 )
-                layout[overlay_id] = curr_params.toJSON()
+                layout[overlay_id] = curr_params
 
             except Exception as e:  # pylint: disable=broad-except
                 self.logger.exception(
@@ -339,13 +339,10 @@ class OverlaysMgr:
         """"Reset config to default"""
         pass # TODO
 
-    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
+    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Dict[str, Any]:
         """Thread-safe query for specific window info."""
         self.logger.debug(f"Requesting window info for {overlay_id}")
-        ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
-        if not ret:
-            return None
-        return OverlayPosition.fromJSON(ret)
+        return self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
 
     def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
         """Thread-safe query for specific window info."""
