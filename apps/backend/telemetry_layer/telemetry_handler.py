@@ -168,7 +168,8 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session: bool = False
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
-        self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer(
+            debounce_time=settings.Network.udp_action_debounce_sec)
         self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
