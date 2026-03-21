@@ -47,6 +47,26 @@ class HudOverlayData(HighFreqBase):
     circuit_pos_m: int
     circuit: str
 
+    def __bool__(self) -> bool:
+        return None not in (
+            self.throttle,
+            self.brake,
+            self.rev_lights_pct,
+            self.rpm,
+            self.gear,
+            self.speed_kmph,
+            self.drs_enabled,
+            self.drs_available,
+            self.drs_distance,
+            self.ers_harv_mguk_j,
+            self.ers_deployed_j,
+            self.ers_rem_j,
+            self.ers_mode,
+            self.tl_warnings,
+            self.circuit_pos_m,
+            self.circuit,
+        )
+
     @classmethod
     def from_json(cls, json_data: dict) -> "HudOverlayData":
         hud_data = json_data["hud"]
@@ -68,3 +88,4 @@ class HudOverlayData(HighFreqBase):
             circuit_pos_m=hud_data["circuit-position"],
             circuit=json_data["circuit-enum-name"],
         )
+
