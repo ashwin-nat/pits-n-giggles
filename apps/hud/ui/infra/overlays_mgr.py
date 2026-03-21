@@ -81,6 +81,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.lap_timer_ui_scale,
+            min_overlay_style=settings.HUD.lap_timer_minimal,
         )
 
         self._register_overlay_if_enabled(

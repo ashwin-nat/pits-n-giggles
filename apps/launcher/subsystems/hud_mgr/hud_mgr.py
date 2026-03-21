@@ -444,6 +444,7 @@ class HudAppMgr(PngAppMgrBase):
             "HUD": [
                 "enabled",
                 "show_lap_timer",
+                "lap_timer_minimal",
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "timing_tower_col_options",

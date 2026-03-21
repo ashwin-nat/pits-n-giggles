@@ -315,6 +315,13 @@ class BaseOverlayQML(BaseOverlay, QObject):
         assert self._fps
         self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
 
+    def invalidate_qml_cache(self, *names: str) -> None:
+        """Remove one or more property names from the cache so the next
+        set_qml_property call always pushes the value to QML regardless of
+        whether it matches the previously cached value."""
+        for name in names:
+            self._qml_props.pop(name, None)
+
     def set_qml_property(self, name: str, value) -> None:
         """Set a property on the QML root object.
 

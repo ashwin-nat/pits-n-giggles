@@ -5,14 +5,16 @@ Window {
     id: root
 
     property real scaleFactor: 1.0
+    property bool minOverlayStyle: false
 
-    readonly property int baseWidth: 280
-    readonly property int baseHeight: 180
+    readonly property int baseWidth: minOverlayStyle ? 145 : 280
+    readonly property int baseHeight: minOverlayStyle ? 76 : 180
 
     readonly property int fontSizeLabel: 12
     readonly property int fontSizeValue: 14
     readonly property int fontSizeEstimated: 12
     readonly property int fontSizeEstimatedValue: 14
+    readonly property int fontSizeMinValue: 18
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -46,9 +48,11 @@ Window {
             origin.y: baseHeight / 2
         }
 
+        // Full overlay
         Rectangle {
             anchors.fill: parent
             color: "transparent"
+            visible: !root.minOverlayStyle
 
             ColumnLayout {
                 anchors.fill: parent
@@ -150,6 +154,49 @@ Window {
                 }
 
                 // Current sector status bar at bottom
+                SectorStatusBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 12
+                    Layout.bottomMargin: 2
+                    sectorStatus: root.currentSectorStatus
+                }
+            }
+        }
+
+        // Minimal overlay: current lap time + delta + sector bar
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            visible: root.minOverlayStyle
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 6
+                anchors.rightMargin: 6
+                anchors.topMargin: 6
+                anchors.bottomMargin: 6
+                spacing: 4
+
+                Text {
+                    text: root.currentTime
+                    font.family: "Formula1"
+                    font.pixelSize: root.fontSizeMinValue
+                    font.bold: true
+                    color: root.currentColor
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillHeight: true
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    text: root.deltaTime
+                    font.family: "Formula1"
+                    font.pixelSize: root.fontSizeValue
+                    font.bold: true
+                    color: root.deltaColor
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
                 SectorStatusBar {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 12

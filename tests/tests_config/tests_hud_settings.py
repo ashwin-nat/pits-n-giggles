@@ -51,6 +51,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.toggle_overlays_udp_action_code, None)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.lap_timer_ui_scale, 1.0)
+        self.assertEqual(settings.lap_timer_minimal, False)
         self.assertEqual(settings.show_timing_tower, True)
         self.assertEqual(settings.lap_timer_toggle_udp_action_code, None)
         self.assertEqual(settings.timing_tower_ui_scale, 1.0)
@@ -177,6 +178,29 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(lap_timer_ui_scale=2.1)
         HudSettings(lap_timer_ui_scale=2.0)
+
+    def test_lap_timer_minimal_validation(self):
+        """Test valid and invalid lap_timer_minimal values"""
+        # Default is False
+        hud_settings = HudSettings()
+        self.assertEqual(hud_settings.lap_timer_minimal, False)
+
+        # Explicit True
+        hud_settings = HudSettings(lap_timer_minimal=True)
+        self.assertEqual(hud_settings.lap_timer_minimal, True)
+
+        # Explicit False
+        hud_settings = HudSettings(lap_timer_minimal=False)
+        self.assertEqual(hud_settings.lap_timer_minimal, False)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_minimal=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_minimal="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(lap_timer_minimal=420)
 
     def test_show_timing_tower_validation(self):
         """Test valid and invalid show_timing_tower values"""
