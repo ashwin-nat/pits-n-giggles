@@ -26,10 +26,11 @@ import logging
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Set
 
-from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
-                            QWaitCondition, Signal, Slot)
+from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject,
+                            QTimer, QWaitCondition, Qt, QtMsgType, Signal,
+                            Slot, qInstallMessageHandler)
+from PySide6.QtWidgets import QApplication
 
-from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
 
@@ -37,8 +38,8 @@ from apps.hud.ui.overlays import BaseOverlay
 
 class WindowManager(QObject):
 
-    generic_cmd_signal = Signal(set, bool, str, str)  # recipients, priority, event, data (serialised into string)
-    mgmt_request_signal = Signal(str, str, str)  # recipient, request_type, request_data (serialised into string)
+    generic_cmd_signal = Signal(set, bool, str, object)  # recipients, priority, event, data
+    mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
     mgmt_high_freq_signal = Signal(set, object) # recipients, HighFreqBase
 
@@ -48,9 +49,12 @@ class WindowManager(QObject):
         Args:
             logger: Logger
         """
+        self.app = QApplication()
         super().__init__()
         self.logger = logger
         self.overlays: Dict[str, BaseOverlay] = {}
+
+        qInstallMessageHandler(self._qt_message_handler)
 
         # Request/response infrastructure
         self._response_mutex = QMutex()
@@ -65,6 +69,22 @@ class WindowManager(QObject):
         if post_init_cb:
             # Will be called once the event loop is running
             QTimer.singleShot(0, post_init_cb)
+
+    def run(self):
+        """Start the Qt event loop."""
+        self.app.exec()
+
+    def stop(self):
+        """Request the Qt event loop to stop (thread-safe)."""
+        QMetaObject.invokeMethod(self.app, "quit", Qt.ConnectionType.QueuedConnection)
+
+    def _qt_message_handler(self, mode: QtMsgType, _, message: str):
+        if mode in (QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
+            self.logger.error("[Qt] %s", message)
+        elif mode == QtMsgType.QtWarningMsg:
+            self.logger.warning("[Qt] %s", message)
+        else:
+            self.logger.debug("[Qt] %s", message)
 
     def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
@@ -118,12 +138,11 @@ class WindowManager(QObject):
             self._response_received = False
 
             # Emit request
-            # Serialize request data to a string because the CPP bindings don't work well with nested dicts
-            self.mgmt_request_signal.emit(recipient, request_type, serialise_data(request_data))
+            self.mgmt_request_signal.emit(recipient, request_type, request_data)
 
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
-                return deserialise_data(self._response_data)
+                return self._response_data
             self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
             return None
 
@@ -136,7 +155,6 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
-        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
         self.generic_cmd_signal.emit(set(), high_prio, cmd, self._marshal_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
@@ -149,7 +167,6 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_id
-        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
         self.generic_cmd_signal.emit({overlay_id}, high_prio, event, self._marshal_data(data))
 
     def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any], high_prio: bool = False):
@@ -162,7 +179,6 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_ids
-        # Serialize request data to a string because the CPP bindings don't work well with nested dicts
         self.generic_cmd_signal.emit(overlay_ids, high_prio, event, self._marshal_data(data))
 
     def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
@@ -175,11 +191,11 @@ class WindowManager(QObject):
         assert overlay_id
         self.mgmt_high_freq_signal.emit({overlay_id}, data)
 
-    def _marshal_data(self, payload: Dict[str, Any]) -> str:
-        """Add timestamp to payload and return a serialized string."""
-        return serialise_data({
+    def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Add timestamp to payload."""
+        return {
             "__meta__" : {
                 "__timestamp__" : perf_counter_ns(),
             },
             "__payload__": payload
-        })
+        }

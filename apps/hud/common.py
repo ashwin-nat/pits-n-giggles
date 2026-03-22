@@ -24,7 +24,6 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import orjson
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -210,31 +209,3 @@ def insert_relative_deltas_race(relevant_rows, ref_index) -> None:
                 for j in range(ref_pos, i)
             )
             row["delta-info"]["relative-delta"] = total_delta
-
-# ------------------------------------------------
-# Data exchange helpers
-# ------------------------------------------------
-
-def serialise_data(data: JSONType) -> str:
-    """Serialise nested dict data because the Qt CPP bindings don't work well with nested dicts.
-    We use string as a serialiser
-
-    Args:
-        data (JSONType): The data to serialise
-
-    Returns:
-        str: The serialised data
-    """
-    return orjson.dumps(data).decode("utf-8")
-
-def deserialise_data(data: str) -> JSONType:
-    """Deserialise string data because the Qt CPP bindings don't work well with nested dicts.
-    We use string as a serialiser
-
-    Args:
-        data (str): The data to deserialise
-
-    Returns:
-        JSONType: The deserialised data
-    """
-    return orjson.loads(data) or {}

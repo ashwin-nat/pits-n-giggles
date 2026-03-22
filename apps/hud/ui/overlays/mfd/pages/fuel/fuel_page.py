@@ -55,17 +55,9 @@ class FuelInfoPage(MfdPageBase):
             if not ref_row:
                 return
 
-            root = self.root
-            if not self.root:
-                self.logger.error(f"{self.KEY} | Failed to find root")
-                return
-
             page_item = self._page_item
-            if not page_item:
-                return
-
             if ref_row["driver-info"]["telemetry-setting"] != "Public":
-                self._set_all_dim(root)
+                self._set_all_dim(page_item)
                 return
 
             session_type = data["event-type"]

@@ -27,8 +27,9 @@ from pathlib import Path
 from time import perf_counter_ns
 from typing import Optional, TypeVar, final, override
 
-from PySide6.QtCore import (QEvent, QObject, QPoint, QPropertyAnimation, Qt,
-                            QTimer, QUrl, Slot)
+from PySide6.QtCore import (QEvent, QMetaObject, QObject, QPoint,
+                            QPropertyAnimation, Qt, QTimer, QUrl, Slot)
+from PySide6.QtCore import Q_ARG
 from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
@@ -307,13 +308,25 @@ class BaseOverlayQML(BaseOverlay, QObject):
         Fixed-rate render tick for QML overlays.
         Derived classes may override _render_frame().
         """
-        if not self._root or not self.get_visibility():
+        if not self._root:
+            self._stats.track_event("__FRAMES__", "__DROPPED_NO_ROOT__")
+            return
+
+        if not self.get_visibility():
+            self._stats.track_event("__FRAMES__", "__DROPPED_HIDDEN__")
             return
 
         self.render_frame()
         assert self._refresh_interval_ms
         assert self._fps
         self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+
+    def invalidate_qml_cache(self, *names: str) -> None:
+        """Remove one or more property names from the cache so the next
+        set_qml_property call always pushes the value to QML regardless of
+        whether it matches the previously cached value."""
+        for name in names:
+            self._qml_props.pop(name, None)
 
     def set_qml_property(self, name: str, value) -> None:
         """Set a property on the QML root object.
@@ -329,6 +342,47 @@ class BaseOverlayQML(BaseOverlay, QObject):
             return
         self._qml_props[name] = value
         self._root.setProperty(name, value)
+
+    @property
+    def root(self) -> Optional[QQuickWindow]:
+        """The root QML window. Available after _setup_window() completes."""
+        return self._root
+
+    def on_event(self, cmd_name: str, requires_root: bool = True):
+        """Register a command handler, optionally guarded by root availability.
+
+        Args:
+            cmd_name: The event/command name to handle.
+            requires_root: When True (default), the handler is silently dropped
+                and counted under ``__DROPPED_NO_ROOT__`` if the QML root window
+                is not yet initialised. Set to False for handlers that must run
+                even before the window is ready.
+        """
+        def decorator(func):
+            if requires_root:
+                def wrapper(data, _cmd=cmd_name):
+                    if not self._root:
+                        self._stats.track_event("__DROPPED_NO_ROOT__", _cmd)
+                        return None
+                    return func(data)
+                self._command_handlers[cmd_name] = wrapper
+            else:
+                self._command_handlers[cmd_name] = func
+            return func
+        return decorator
+
+    def invoke_qml_method(self, method: str, *args) -> None:
+        """Invoke a QML method on the root window with QVariant arguments.
+
+        All positional args are forwarded as ``QVariant`` via a queued
+        connection, matching the standard pattern used across QML overlays.
+        """
+        QMetaObject.invokeMethod(
+            self._root,
+            method,
+            Qt.ConnectionType.QueuedConnection,
+            *(Q_ARG("QVariant", a) for a in args),
+        )
 
     def render_frame(self):
         """Derived classes must implement this method."""

@@ -54,6 +54,7 @@ class LapTimerOverlay(BaseOverlayQML):
                  opacity: int,
                  scale_factor: float,
                  windowed_overlay: bool,
+                 min_overlay_style: bool,
                  ):
         """Initialize lap timer overlay.
 
@@ -64,11 +65,13 @@ class LapTimerOverlay(BaseOverlayQML):
             opacity (int): Window opacity
             scale_factor (float): UI Scale factor (multiplier)
             windowed_overlay (bool): Windowed overlay
+            min_overlay_style (bool): Display Minimal style overlay
         """
         # Session state
         self.curr_session_uid = None
         self.last_lap_num: Optional[int] = None
         self.show_last_lap_sector_bar = False
+        self.min_overlay_style = min_overlay_style
 
         # Timer for last lap sector display
         self.last_sector_display_timer = QTimer()
@@ -85,21 +88,14 @@ class LapTimerOverlay(BaseOverlayQML):
             refresh_interval_ms=None  # Event-driven, no fixed refresh
         )
 
+        self.set_qml_property("minOverlayStyle", self.min_overlay_style)
         self._init_event_handlers()
-
-    def render_frame(self):
-        """Not used - this overlay is event-driven."""
-        pass
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
-            if not self._root:
-                self.logger.debug(f"{self.OVERLAY_ID} | Overlay not initialized yet")
-                return
-
             session_type = data["event-type"]
             if session_type == "None":
                 return
@@ -115,37 +111,73 @@ class LapTimerOverlay(BaseOverlayQML):
                 self._handle_new_session(incoming_session_uid)
 
             lap_info = ref_row["lap-info"]
-            ref_index = ref_row["driver-info"]["index"]
             last_lap = lap_info["last-lap"]
-            best_lap = lap_info["best-lap"]
             curr_lap = lap_info["curr-lap"]
             sc_status = data["safety-car-status"]
-            table_entries = data["table-entries"]
-
-            # Update static fields
-            self._update_last_lap(last_lap["lap-time-ms"])
-            self._update_best_lap(best_lap["lap-time-ms"])
-            self._update_sector_status("lastSectorStatus", last_lap["sector-status"])
-            self._update_sector_status("bestSectorStatus", best_lap["sector-status"])
 
             # Handle lap number changes
-            if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
+            lap_changed = bool(self.last_lap_num and self.last_lap_num != lap_info["current-lap"])
+            if lap_changed:
                 self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
                                   f"{self.last_lap_num} to {lap_info['current-lap']}")
-                # Start 5 sec last-lap sector bar window
                 self.show_last_lap_sector_bar = True
                 self.last_sector_display_timer.start(5000)
 
-            # Update current sector bar
-            if self.show_last_lap_sector_bar:
-                self._update_sector_status("currentSectorStatus", last_lap["sector-status"])
-            else:
-                self._update_sector_status("currentSectorStatus", curr_lap["sector-status"])
-
             self.last_lap_num = lap_info["current-lap"]
 
+            if self.min_overlay_style:
+                self._handle_minimal_update(curr_lap, last_lap, session_type, sc_status, lap_changed)
+            else:
+                best_lap = lap_info["best-lap"]
+                ref_index = ref_row["driver-info"]["index"]
+                table_entries = data["table-entries"]
+                self._handle_full_update(curr_lap, last_lap, best_lap, session_type, sc_status, table_entries, ref_index)
+
+    def _handle_minimal_update(
+        self,
+        curr_lap: Dict[str, Any],
+        last_lap: Dict[str, Any],
+        session_type: str,
+        sc_status: str,
+        lap_changed: bool,
+    ) -> None:
+        """Update only the fields shown in minimal overlay: current time, delta, current sectors."""
+        sectors = last_lap["sector-status"] if self.show_last_lap_sector_bar else curr_lap["sector-status"]
+        self._update_sector_status("currentSectorStatus", sectors)
+
+        if lap_changed:
+            time_str = (
+                F1Utils.millisecondsToMinutesSecondsMilliseconds(last_lap["lap-time-ms"])
+                if last_lap["lap-time-ms"] else self.DEFAULT_TIME
+            )
+            self.set_qml_property("currentTime", time_str)
+            self.set_qml_property("currentColor", "#FFFFFF")
+        elif not self.show_last_lap_sector_bar:
             self._handle_current_lap_display(curr_lap, session_type, sc_status)
-            self._handle_delta_and_estimated(curr_lap, best_lap, session_type, sc_status, table_entries, ref_index)
+
+        self._calculate_and_update_delta(curr_lap, self._is_safety_car(sc_status))
+
+    def _handle_full_update(
+        self,
+        curr_lap: Dict[str, Any],
+        last_lap: Dict[str, Any],
+        best_lap: Dict[str, Any],
+        session_type: str,
+        sc_status: str,
+        table_entries: List[Dict[str, Any]],
+        ref_driver_index: int,
+    ) -> None:
+        """Update all fields for the full overlay."""
+        self._update_last_lap(last_lap["lap-time-ms"])
+        self._update_best_lap(best_lap["lap-time-ms"])
+        self._update_sector_status("lastSectorStatus", last_lap["sector-status"])
+        self._update_sector_status("bestSectorStatus", best_lap["sector-status"])
+
+        sectors = last_lap["sector-status"] if self.show_last_lap_sector_bar else curr_lap["sector-status"]
+        self._update_sector_status("currentSectorStatus", sectors)
+
+        self._handle_current_lap_display(curr_lap, session_type, sc_status)
+        self._handle_delta_and_estimated(curr_lap, best_lap, session_type, sc_status, table_entries, ref_driver_index)
 
     def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str, sc_status: str) -> None:
         """Handle current lap display.
@@ -428,6 +460,11 @@ class LapTimerOverlay(BaseOverlayQML):
         self.show_last_lap_sector_bar = False
         # Clear the sector bar back to current lap
         self.set_qml_property("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        # In minimal mode: bust the currentTime cache so the next event
+        # always pushes the live lap time through, even if it happens to
+        # match the last-lap string that's currently cached.
+        if self.min_overlay_style:
+            self.invalidate_qml_cache("currentTime", "currentColor")
 
     def _is_safety_car(self, status: str) -> bool:
         """Check if the session is in racing or safety car state."""
