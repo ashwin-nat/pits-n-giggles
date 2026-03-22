@@ -112,12 +112,12 @@ Window {
                     QtObject {
                         id: cols
                         readonly property int pos: 30
-                        readonly property int team: 22
+                        readonly property int team: 25
                         readonly property int name: 120
                         readonly property int delta: 72
                         readonly property int tyre: 58
                         readonly property int ers: 58
-                        readonly property int pens: 62
+                        readonly property int pens: 56
                     }
 
                     // Table content
@@ -188,14 +188,17 @@ Window {
                                     visible: showTeamLogos
 
                                     Image {
-                                        anchors.centerIn: parent
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 4
+                                        anchors.verticalCenter: parent.verticalCenter
                                         width: 20
                                         height: 20
-                                        sourceSize.width: width * Screen.devicePixelRatio
-                                        sourceSize.height: height * Screen.devicePixelRatio
+                                        sourceSize.width: width * Screen.devicePixelRatio * 2
+                                        sourceSize.height: height * Screen.devicePixelRatio * 2
                                         source: modelData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
+                                        mipmap: true
                                         cache: true
                                         antialiasing: true
                                     }
@@ -269,9 +272,9 @@ Window {
                                     // ERS mode strip (left)
                                     Rectangle {
                                         anchors.left: parent.left
-                                        anchors.leftMargin: 2
+                                        anchors.leftMargin: 1
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: 4
+                                        width: 6
                                         height: parent.height - 8
                                         radius: 2
                                         color: {
@@ -289,7 +292,7 @@ Window {
                                         anchors.centerIn: parent
                                         text: modelData.ers
                                         font.family: "Consolas"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 13
                                         color: "#dddddd"
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
@@ -298,9 +301,9 @@ Window {
                                     // DRS strip (right)
                                     Rectangle {
                                         anchors.right: parent.right
-                                        anchors.rightMargin: 2
+                                        anchors.rightMargin: 1
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: 4
+                                        width: 6
                                         height: parent.height - 8
                                         radius: 2
                                         color: modelData.drs ? "#00e676" : "#333333"
@@ -315,12 +318,14 @@ Window {
                                     visible: showPens
 
                                     Text {
-                                        anchors.centerIn: parent
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 4
+                                        anchors.verticalCenter: parent.verticalCenter
                                         text: modelData.penalties
                                         font.family: "Formula1"
                                         font.pixelSize: 11
                                         color: "white"
-                                        horizontalAlignment: Text.AlignHCenter
+                                        horizontalAlignment: Text.AlignLeft
                                         verticalAlignment: Text.AlignVCenter
                                         wrapMode: Text.NoWrap
                                         elide: Text.ElideRight

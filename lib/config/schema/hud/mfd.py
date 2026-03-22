@@ -54,6 +54,7 @@ DEFAULT_PAGES = {
     "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
     "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
     "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
+    "pace_comp": MfdPageSettings(enabled=True, position=7, description="Pace Comparison"),
 }
 
 
@@ -94,15 +95,21 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
     def add_missing_pages(self):
         """
         Ensure all DEFAULT_PAGES exist.
-        New pages are added as disabled by default.
+        New pages are added as disabled by default, with a non-conflicting position.
         """
         merged = dict(self.pages)
+        used_positions = {page.position for page in merged.values()}
 
         for key, default_page in DEFAULT_PAGES.items():
             if key not in merged:
-                # Add new page, but disabled so UI does not break
                 new_page = default_page.model_copy(deep=True)
                 new_page.enabled = False
+                # Resolve position conflict: find the next free slot
+                pos = new_page.position
+                while pos in used_positions:
+                    pos += 1
+                new_page.position = pos
+                used_positions.add(pos)
                 merged[key] = new_page
 
         self.pages = merged

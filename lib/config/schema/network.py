@@ -94,6 +94,19 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    udp_action_button_debounce_ms: int = Field(
+        default=100,
+        ge=0,
+        le=500,
+        description="UDP Action Button Debounce Time (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
+            }
+        }
+    )
+
     @model_validator(mode="after")
     def check_action_codes(self) -> "NetworkSettings":
         fields_map = type(self).model_fields
@@ -151,3 +164,7 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             raise ValueError("Port conflict detected:\n" + "\n".join(messages))
 
         return self
+
+    @property
+    def udp_action_debounce_sec(self) -> float:
+        return self.udp_action_button_debounce_ms / 1000.0

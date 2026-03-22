@@ -31,7 +31,6 @@ from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
 
-from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
@@ -103,7 +102,7 @@ class BaseOverlay():
 
     Subclass BaseOverlay only if you need to add new UI-specific behavior.
     """
-    response_signal = Signal(str, str)   # request_type, response_data (serialised JSON)
+    response_signal = Signal(str, object)   # request_type, response_data
     OVERLAY_ID: str = ""
 
     def __init__(self,
@@ -288,13 +287,13 @@ class BaseOverlay():
         def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
-            return serialise_data(self.get_window_info().toJSON())
+            return self.get_window_info().toJSON()
 
         @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
             """Return current window stats."""
             self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
-            return serialise_data(self.get_stats())
+            return self.get_stats()
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
@@ -349,8 +348,8 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # IPC — Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(set, bool, str, str)
-    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: str):
+    @Slot(set, bool, str, object)
+    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: dict):
         if recipients and self.OVERLAY_ID not in recipients:
             return
         visibile = self.get_visibility()
@@ -361,9 +360,8 @@ class BaseOverlay():
         if not handler:
             return
         self._track_event(cmd)
-        parsed = deserialise_data(data)
-        payload = parsed["__payload__"]
-        timestamp = parsed["__meta__"]["__timestamp__"]
+        payload = data["__payload__"]
+        timestamp = data["__meta__"]["__timestamp__"]
         self._track_cmd_pipeline_latency(cmd, timestamp, perf_counter_ns())
         try:
             handler(payload)
@@ -374,23 +372,22 @@ class BaseOverlay():
             self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
             self._stats.track_event("__EXCEPTION__", cmd)
 
-    @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, request_type: str, request_data: str):
+    @Slot(str, str, object)
+    def _handle_request(self, recipient: str, request_type: str, request_data: object):
         """Internal request dispatcher for overlays.
 
         Args:
             recipient (str): Overlay ID that sent the request
             request_type (str): Request type
-            request_data (str): Request data JSON serialized as a string
+            request_data: Request data
         """
         if recipient and recipient != self.OVERLAY_ID:
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
             self.logger.debug(f"{self.OVERLAY_ID} | Handling request '{request_type}'")
-            parsed_data = deserialise_data(request_data)
             try:
-                response = handler(parsed_data)
+                response = handler(request_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
             except AssertionError:

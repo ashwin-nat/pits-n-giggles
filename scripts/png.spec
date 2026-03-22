@@ -128,6 +128,7 @@ datas.extend([
     qml_file("apps/hud/ui/overlays/mfd/pages/collapsed", "collapsed_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/fuel", "fuel_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/lap_times", "lap_times_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/pace_comp", "pace_comp_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/pit_rejoin", "pit_rejoin_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_sets", "tyre_sets_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_wear", "tyre_wear_page.qml"),

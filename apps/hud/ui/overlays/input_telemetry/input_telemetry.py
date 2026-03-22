@@ -26,7 +26,6 @@ import logging
 from pathlib import Path
 from typing import final
 
-from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
@@ -74,12 +73,4 @@ class InputTelemetryOverlay(BaseOverlayQML):
         if not data:
             return
 
-        QMetaObject.invokeMethod(
-            self._root,
-            "updateTelemetry",
-            Qt.ConnectionType.QueuedConnection,
-            Q_ARG("QVariant", data.throttle),
-            Q_ARG("QVariant", data.brake),
-            Q_ARG("QVariant", data.steering),
-            Q_ARG("QVariant", data.rev_pct),
-        )
+        self.invoke_qml_method("updateTelemetry", data.throttle, data.brake, data.steering, data.rev_pct)

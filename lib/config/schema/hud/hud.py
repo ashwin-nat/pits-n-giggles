@@ -74,6 +74,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     # ============== LAP TIMER OVERLAY ==============
     show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer")
     lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
+    lap_timer_minimal: bool = Field(
+        default=False,
+        description="Use minimal lap timer overlay (shows only the current lap time)",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Lap Timer",
+            }
+        }
+    )
     lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(description="Toggle lap timer overlay UDP action code",
                                                                         group="Lap Timer")
 

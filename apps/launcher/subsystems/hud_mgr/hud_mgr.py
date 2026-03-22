@@ -78,7 +78,7 @@ class HudAppMgr(PngAppMgrBase):
         self.integration_test_interval = 2.0
         final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
         self.locked = True # HUD starts locked by default
-        self.debouncer = ButtonDebouncer(debounce_time=0.5)
+        self.debouncer = ButtonDebouncer(debounce_time=0.2)
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
 
@@ -445,6 +445,7 @@ class HudAppMgr(PngAppMgrBase):
             "HUD": [
                 "enabled",
                 "show_lap_timer",
+                "lap_timer_minimal",
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "timing_tower_col_options",
