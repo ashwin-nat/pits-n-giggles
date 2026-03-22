@@ -61,9 +61,6 @@ class PaceCompPage(MfdPageBase):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             page_item = self._page_item
-            if not page_item:
-                return
-
             table_entries = data.get("table-entries")
             if not table_entries:
                 self._show_empty_table(page_item)
