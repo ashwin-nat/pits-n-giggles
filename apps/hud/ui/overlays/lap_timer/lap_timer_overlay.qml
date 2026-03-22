@@ -234,7 +234,7 @@ Window {
                                 Rectangle {
                                     width: 5; height: 5; radius: 2.5
                                     color: "#9b30ff"
-                                    anchors.verticalCenter: parent.verticalCenter
+                                    Layout.alignment: Qt.AlignVCenter
                                 }
                             }
 

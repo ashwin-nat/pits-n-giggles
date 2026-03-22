@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, final
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtQuick import QQuickItem
 
@@ -46,14 +46,8 @@ class PaceCompPage(MfdPageBase):
     NUM_ADJ_CARS = 2
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        self._last_processed_data: List[Dict[str, Any]] = []
         super().__init__(overlay, logger)
         self._init_event_handlers()
-
-    @final
-    def on_page_activated(self, item: QQuickItem):
-        super().on_page_activated(item)
-        self._last_processed_data = []
 
     # -- Event wiring ----------------------------------------------------------
 
@@ -135,7 +129,7 @@ class PaceCompPage(MfdPageBase):
         s1  = F1Utils.millisecondsToSecondsMilliseconds(s1_ms)  if s1_ms  is not None else "--:--"
         s2  = F1Utils.millisecondsToSecondsMilliseconds(s2_ms)  if s2_ms  is not None else "--:--"
         s3  = F1Utils.millisecondsToSecondsMilliseconds(s3_ms)  if s3_ms  is not None else "--:--"
-        lap = F1Utils.millisecondsToSecondsMilliseconds(lap_ms % 60000) if lap_ms is not None else "--:--"
+        lap = F1Utils.millisecondsToMinutesSecondsMilliseconds(lap_ms) if lap_ms is not None else "--:--"
         return s1, s2, s3, lap
 
     @staticmethod
@@ -164,6 +158,5 @@ class PaceCompPage(MfdPageBase):
         self._set_rows(page_item, [])
 
     def _set_rows(self, page_item: QQuickItem, rows: List[Dict[str, Any]]) -> None:
-        """Push row data to QML and bump the version counter to force a refresh."""
+        """Push row data to QML."""
         page_item.setProperty("rows", rows)
-        page_item.setProperty("rowsVersion", (page_item.property("rowsVersion") or 0) + 1)

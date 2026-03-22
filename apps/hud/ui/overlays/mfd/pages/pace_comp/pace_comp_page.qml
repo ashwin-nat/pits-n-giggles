@@ -68,8 +68,7 @@ Item {
      * }
      * Not padded — Repeater model matches rows.length exactly.
      * ───────────────────────────────────────────────────── */
-    property var rows:        []
-    property int rowsVersion: 0
+    property var rows: []
 
     /* ─────────────────────────────────────────────────────
      * HELPERS
