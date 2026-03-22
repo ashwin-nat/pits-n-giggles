@@ -51,9 +51,6 @@ class TyreSetsPage(MfdPageBase):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             page_item = self._page_item
-            if not page_item:
-                return
-
             tyre_sets_info = data.get("tyre-sets")
             if not tyre_sets_info:
                 self._show_no_data(page_item)

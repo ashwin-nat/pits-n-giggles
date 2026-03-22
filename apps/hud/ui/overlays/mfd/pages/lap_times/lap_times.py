@@ -89,8 +89,6 @@ class LapTimesPage(MfdPageBase):
             glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
 
             page_item = self._page_item
-            if not page_item:
-                return
 
             # Build the complete rows array
             all_rows = []

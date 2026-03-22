@@ -161,9 +161,6 @@ class WeatherForecastPage(MfdPageBase):
         assert forecast_data_flat
 
         page_item = self._page_item
-        if not page_item:
-            return
-
         session_title, session_forecast = self._get_session_info(forecast_data_flat)
 
         page_item.setProperty("forecastData", session_forecast[: self.MAX_SAMPLES])

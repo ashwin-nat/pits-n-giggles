@@ -120,10 +120,6 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
         self.set_qml_property("showPens", self.show_pens)
 
-    def render_frame(self):
-        """Not used - this overlay uses event-driven updates."""
-        pass
-
     def _init_event_handlers(self):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
@@ -133,9 +129,6 @@ class TimingTowerOverlay(BaseOverlayQML):
             Args:
                 data (Dict[str, Any]): The race table data from the server
             """
-            if not self._root:
-                return
-
             session_type = data["event-type"]
 
             if is_tt_session(session_type):

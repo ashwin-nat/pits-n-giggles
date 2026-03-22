@@ -60,9 +60,6 @@ class PitRejoinPredictionPage(MfdPageBase):
                 data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
             """
             page_item = self._page_item
-            if not page_item:
-                return
-
             session_type = data["event-type"]
             if not is_race_type_session(session_type):
                 self._show_empty_table(page_item)
