@@ -26,8 +26,6 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QMetaObject, Qt
-from PySide6.QtWidgets import QApplication
 
 from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
@@ -60,9 +58,7 @@ class OverlaysMgr:
             os.environ["QT_QUICK_BACKEND"] = "software"
             logger.debug("Using software backend")
 
-        self.app = QApplication()
         self.logger = logger
-        load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
@@ -73,6 +69,7 @@ class OverlaysMgr:
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
+        load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
 
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_lap_timer,
@@ -157,17 +154,13 @@ class OverlaysMgr:
         """Start the overlays manager"""
         self.running = True
         self.wdt.start()
-        self.app.exec()
+        self.window_manager.run()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
         self.wdt.stop()
-        QMetaObject.invokeMethod(
-            self.app,
-            "quit",
-            Qt.ConnectionType.QueuedConnection
-        )
+        self.window_manager.stop()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get current stats for all overlays

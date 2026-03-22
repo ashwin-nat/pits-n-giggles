@@ -26,8 +26,10 @@ import logging
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Set
 
-from PySide6.QtCore import (QMutex, QMutexLocker, QObject, QTimer,
-                            QWaitCondition, Signal, Slot)
+from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject,
+                            QTimer, QWaitCondition, Qt, QtMsgType, Signal,
+                            Slot, qInstallMessageHandler)
+from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
@@ -47,9 +49,12 @@ class WindowManager(QObject):
         Args:
             logger: Logger
         """
+        self.app = QApplication()
         super().__init__()
         self.logger = logger
         self.overlays: Dict[str, BaseOverlay] = {}
+
+        qInstallMessageHandler(self._qt_message_handler)
 
         # Request/response infrastructure
         self._response_mutex = QMutex()
@@ -64,6 +69,22 @@ class WindowManager(QObject):
         if post_init_cb:
             # Will be called once the event loop is running
             QTimer.singleShot(0, post_init_cb)
+
+    def run(self):
+        """Start the Qt event loop."""
+        self.app.exec()
+
+    def stop(self):
+        """Request the Qt event loop to stop (thread-safe)."""
+        QMetaObject.invokeMethod(self.app, "quit", Qt.ConnectionType.QueuedConnection)
+
+    def _qt_message_handler(self, mode: QtMsgType, _, message: str):
+        if mode in (QtMsgType.QtCriticalMsg, QtMsgType.QtFatalMsg):
+            self.logger.error("[Qt] %s", message)
+        elif mode == QtMsgType.QtWarningMsg:
+            self.logger.warning("[Qt] %s", message)
+        else:
+            self.logger.debug("[Qt] %s", message)
 
     def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
