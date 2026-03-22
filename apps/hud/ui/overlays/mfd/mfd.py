@@ -136,7 +136,7 @@ class MfdOverlay(BaseOverlayQML):
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow. Init the pages in the specified order"""
         super()._setup_window()
-        self._root.pageLoaded.connect(self._on_page_loaded)
+        self.root.pageLoaded.connect(self._on_page_loaded)
 
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
@@ -281,7 +281,7 @@ class MfdOverlay(BaseOverlayQML):
     @property
     def current_page_item(self) -> Optional[QQuickItem]:
         """Get the current page item."""
-        loader: Optional[QObject] = self._root.findChild(QObject, "pageLoader")
+        loader: Optional[QObject] = self.root.findChild(QObject, "pageLoader")
         if not loader:
             return None
 

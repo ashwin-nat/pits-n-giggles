@@ -91,19 +91,11 @@ class LapTimerOverlay(BaseOverlayQML):
         self.set_qml_property("minOverlayStyle", self.min_overlay_style)
         self._init_event_handlers()
 
-    def render_frame(self):
-        """Not used - this overlay is event-driven."""
-        pass
-
     def _init_event_handlers(self):
         """Initialize event handlers."""
         @self.on_event("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
-            if not self._root:
-                self.logger.debug(f"{self.OVERLAY_ID} | Overlay not initialized yet")
-                return
-
             session_type = data["event-type"]
             if session_type == "None":
                 return

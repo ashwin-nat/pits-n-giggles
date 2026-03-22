@@ -67,7 +67,7 @@ class MfdPageBase:
                 def wrapper(data, _event_type=event_type):
                     if not self._page_item:
                         self._stats.track_event("__DROPPED_NO_PAGE__", _event_type)
-                        return
+                        return None
                     return fn(data)
                 self._handlers[event_type] = wrapper
             else:

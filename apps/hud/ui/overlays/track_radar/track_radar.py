@@ -27,7 +27,6 @@ import math
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
@@ -108,12 +107,7 @@ class TrackRadarOverlay(BaseOverlayQML):
         driver_list = self._calculate_relative_positions(data, ref_driver)
 
         # Send data to QML and trigger update
-        QMetaObject.invokeMethod(
-            self._root,
-            "updateTelemetry",
-            Qt.ConnectionType.QueuedConnection,
-            Q_ARG("QVariant", driver_list)
-        )
+        self.invoke_qml_method("updateTelemetry", driver_list)
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""
