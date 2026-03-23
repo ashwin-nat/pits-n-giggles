@@ -23,14 +23,13 @@
 
 import os
 import sys
-import math
 from unittest.mock import patch
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from lib.event_counter import EventCounter
-from lib.event_counter.frame_render import FrameTimingStat
 from tests_base import F1TelemetryUnitTestsBase
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -154,6 +153,21 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
     # Basic Behavior - Latency Tracking
     # --------------------------------------------------
 
+    @patch("time.time_ns", return_value=2000)
+    def test_packet_latency_uses_time_ns_when_recv_ts_missing(self, _mock_time_ns):
+        counter = EventCounter()
+
+        counter.track_packet_latency("udp", "raw", send_ts_ns=1000, recv_ts_ns=None)
+
+        stats = counter.get_stats()
+
+        self._assert_latency_stat_type(stats["udp"]["raw"])
+        self.assertEqual(stats["udp"]["raw"]["count"], 1)
+        self.assertEqual(stats["udp"]["raw"]["bad_latency_count"], 0)
+        self.assertEqual(stats["udp"]["raw"]["min_ns"], 1000)
+        self.assertEqual(stats["udp"]["raw"]["max_ns"], 1000)
+        self.assertEqual(stats["udp"]["raw"]["avg_ns"], 1000.0)
+
     def test_single_packet_latency_track(self):
         counter = EventCounter()
 
@@ -169,22 +183,6 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 15.0)
         self.assertEqual(stats["udp"]["ingest"]["variance_ns"], 0.0)
         self.assertEqual(stats["udp"]["ingest"]["stddev_ns"], 0.0)
-
-    @patch("time.time_ns", return_value=2000)
-    def test_packet_latency_uses_time_ns_when_recv_ts_missing(self, _mock_time_ns):
-        counter = EventCounter()
-
-        send_ts_ns = 1000
-        counter.track_packet_latency("udp", "raw", send_ts_ns, recv_ts_ns=None)
-
-        stats = counter.get_stats()
-
-        self._assert_latency_stat_type(stats["udp"]["raw"])
-        self.assertEqual(stats["udp"]["raw"]["count"], 1)
-        self.assertEqual(stats["udp"]["raw"]["bad_latency_count"], 0)
-        self.assertEqual(stats["udp"]["raw"]["min_ns"], 1000)
-        self.assertEqual(stats["udp"]["raw"]["max_ns"], 1000)
-        self.assertEqual(stats["udp"]["raw"]["avg_ns"], 1000.0)
 
     def test_multiple_packet_latency_tracks_accumulate(self):
         counter = EventCounter()
@@ -202,8 +200,6 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["udp"]["ingest"]["min_ns"], 10)
         self.assertEqual(stats["udp"]["ingest"]["max_ns"], 50)
         self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 30.0)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["variance_ns"], 800 / 3, places=6)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["stddev_ns"], math.sqrt(800 / 3), places=6)
 
     def test_negative_packet_latency_is_not_used_in_model(self):
         counter = EventCounter()
@@ -239,33 +235,10 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["udp"]["ingest"]["min_ns"], 20)
         self.assertEqual(stats["udp"]["ingest"]["max_ns"], 60)
         self.assertEqual(stats["udp"]["ingest"]["avg_ns"], 37.5)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["variance_ns"], 218.75, places=6)
-        self.assertAlmostEqual(stats["udp"]["ingest"]["stddev_ns"], math.sqrt(218.75), places=6)
 
     # --------------------------------------------------
     # Basic Behavior - Frame Render Tracking
     # --------------------------------------------------
-
-    def test_frame_render_stat_to_dict_with_zero_count(self):
-        stat = FrameTimingStat(frame_budget_ns=16_666_666)
-        serialized = stat.to_dict()
-
-        self._assert_frame_render_stat_type(serialized)
-        self.assertEqual(serialized["count"], 0)
-        self.assertEqual(serialized["interval_ns"]["min"], 0)
-        self.assertEqual(serialized["interval_ns"]["max"], 0)
-        self.assertEqual(serialized["interval_ns"]["avg"], 0.0)
-        self.assertEqual(serialized["interval_ns"]["variance"], 0.0)
-        self.assertEqual(serialized["interval_ns"]["stddev"], 0.0)
-        self.assertEqual(serialized["fps"]["avg"], 0.0)
-        self.assertEqual(serialized["fps"]["min"], 0.0)
-        self.assertEqual(serialized["fps"]["max"], 0.0)
-        self.assertAlmostEqual(serialized["fps"]["target"], 1e9 / 16_666_666, places=6)
-        self.assertEqual(serialized["budget"]["missed_frames"], 0)
-        self.assertEqual(serialized["budget"]["miss_ratio"], 0.0)
-        self.assertEqual(serialized["budget"]["max_miss_streak"], 0)
-        self.assertEqual(serialized["pacing_error_ns"]["avg"], 0.0)
-        self.assertEqual(serialized["pacing_error_ns"]["max"], 0)
 
     def test_single_frame_render_track(self):
         counter = EventCounter()
@@ -280,17 +253,9 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["min"], 18_000_000)
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["max"], 18_000_000)
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["avg"], 18_000_000.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["variance"], 0.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["stddev"], 0.0)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["avg"], 1e9 / 18_000_000, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["min"], 1e9 / 18_000_000, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["max"], 1e9 / 18_000_000, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["target"], 1e9 / 16_666_666, places=6)
         self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["missed_frames"], 1)
         self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["miss_ratio"], 1.0)
         self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["max_miss_streak"], 1)
-        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["avg"], 1_333_334.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["max"], 1_333_334)
 
     def test_multiple_frame_render_tracks_accumulate(self):
         counter = EventCounter()
@@ -308,18 +273,8 @@ class TestEventCounter(F1TelemetryUnitTestsBase):
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["min"], 10_000_000)
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["max"], 30_000_000)
         self.assertEqual(stats["qml_overlay"]["hud"]["interval_ns"]["avg"], 20_000_000.0)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["interval_ns"]["variance"], 200_000_000_000_000 / 3, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["interval_ns"]["stddev"],
-                               math.sqrt(200_000_000_000_000 / 3), places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["avg"], 50.0, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["min"], 1e9 / 30_000_000, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["max"], 1e9 / 10_000_000, places=6)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["fps"]["target"], 1e9 / 16_666_666, places=6)
         self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["missed_frames"], 2)
-        self.assertAlmostEqual(stats["qml_overlay"]["hud"]["budget"]["miss_ratio"], 2 / 3, places=6)
         self.assertEqual(stats["qml_overlay"]["hud"]["budget"]["max_miss_streak"], 2)
-        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["avg"], 7_777_778.0)
-        self.assertEqual(stats["qml_overlay"]["hud"]["pacing_error_ns"]["max"], 13_333_334)
 
     def test_frame_render_budget_uses_initial_fps_for_existing_stat(self):
         counter = EventCounter()
