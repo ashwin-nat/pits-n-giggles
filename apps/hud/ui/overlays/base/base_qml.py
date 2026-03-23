@@ -124,6 +124,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._frame_timer = QTimer(self)
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
+        self._frame_active: bool = False
 
         super().__init__(
             config,
@@ -309,17 +310,30 @@ class BaseOverlayQML(BaseOverlay, QObject):
         Derived classes may override _render_frame().
         """
         if not self._root:
+            self._frame_active = False
             self._stats.track_event("__FRAMES__", "__DROPPED_NO_ROOT__")
             return
 
         if not self.get_visibility():
+            self._frame_active = False
             self._stats.track_event("__FRAMES__", "__DROPPED_HIDDEN__")
             return
 
+        # First frame after becoming visible — reset timing baseline so the
+        # hidden gap is not counted as a missed/late frame.
+        if not self._frame_active:
+            self._reset_frame_timing()
+            self._frame_active = True
+
         self.render_frame()
+        self._clear_hf_pending()
         assert self._refresh_interval_ms
         assert self._fps
         self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+
+    def _reset_frame_timing(self) -> None:
+        """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
+        self._stats.reset_frame_timing("__FRAMES__", "__FRAME__")
 
     def invalidate_qml_cache(self, *names: str) -> None:
         """Remove one or more property names from the cache so the next

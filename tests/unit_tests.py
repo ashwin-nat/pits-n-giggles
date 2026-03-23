@@ -90,7 +90,7 @@ from tests.tests_rate_limiter import TestRateLimiter
 from tests.tests_rolling_history import TestRollingHistory
 from tests.tests_wdt import TestWatchDogTimerAsync, TestWatchDogTimerSync
 from tests.tests_pending_events import TestPendingEventsManager
-from tests.tests_event_counter import TestEventCounter
+from tests.tests_event_counter import TestEventCounter, TestFrameTimingStat, TestLatencyStatExtended
 from tests.tests_frame_gate import TestSessionFrameGate
 from tests.tests_track_segment_info import TestTrackSegments
 

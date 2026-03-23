@@ -41,7 +41,6 @@ from meta.meta import APP_NAME_SNAKE
 
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
-OverlayHighFreqHandler = Callable[[HighFreqBase], None] # Takes high-freq payload, returns None
 
 HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
@@ -125,9 +124,10 @@ class BaseOverlay():
 
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
-        self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
         self._hf_subscriptions: Set[str] = set()
+        self._hf_last_seq: Dict[str, int] = {}
+        self._hf_pending: Set[str] = set()
         self._stats = EventCounter()
 
         # Create the actual window backend (widget or QML)
@@ -181,7 +181,7 @@ class BaseOverlay():
             self.set_visibility(False)
 
     # ----------------------------------------------------------------------
-    # Abstract interface — implemented by QWidget and QML subclasses
+    # Abstract interface - implemented by QWidget and QML subclasses
     # ----------------------------------------------------------------------
     def _setup_window(self):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
@@ -238,12 +238,6 @@ class BaseOverlay():
             return func
         return decorator
 
-    def on_high_freq(self, hf_type: str):
-        def decorator(func: OverlayHighFreqHandler):
-            self._high_freq_handlers[hf_type] = func
-            return func
-        return decorator
-
     def subscribe_hf(self, obj_type: HighFreqObjType) -> None:
         """Subscribe to high frequency data.
         Subcribed types latest data will automatically be cached
@@ -269,6 +263,10 @@ class BaseOverlay():
     def _track_hf_event(self, event_type: str) -> None:
         self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
         self._stats.track_event("__HF_EVENTS__", event_type)
+
+    def _clear_hf_pending(self) -> None:
+        """Mark all pending HF types as consumed by the current render frame."""
+        self._hf_pending.clear()
 
     def _track_hf_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
         self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
@@ -346,7 +344,7 @@ class BaseOverlay():
             self.set_telemetry_active(active)
 
     # ----------------------------------------------------------------------
-    # IPC — Signals/Slots
+    # IPC - Signals/Slots
     # ----------------------------------------------------------------------
     @Slot(set, bool, str, object)
     def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: dict):
@@ -403,27 +401,45 @@ class BaseOverlay():
         if self.OVERLAY_ID not in recipients:
             return
 
-        visibile = self.get_visibility()
-        if not visibile:
-            # All high-frequency data is treated as low prio
-            # This channel is not meant for high-priority/control messages
-            return
-
         self._track_hf_pipeline_latency(
             payload.__hf_type__,
             payload.__timestamp__,
             perf_counter_ns(),
         )
 
+        msg_type = payload.__hf_type__
+        curr_seq = payload.__seq__
+        prev_seq = self._hf_last_seq.get(msg_type)
+        if prev_seq is None:
+            # First message of this type - nothing to compare against
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq == prev_seq + 1:
+            # Consecutive - no updates were overwritten
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq > prev_seq + 1:
+            # Gap - (curr - prev - 1) updates were overwritten before we consumed them
+            lost = curr_seq - prev_seq - 1
+            self._stats.track_event("__HF_LOSS__", "__TOTAL__", count=lost)
+            self._stats.track_event("__HF_LOSS__", msg_type, count=lost)
+            self._hf_last_seq[msg_type] = curr_seq
+        else:
+            # Out-of-order or duplicate - ignore
+            self.logger.error(
+                "%s | HF out-of-order: type=%s prev_seq=%d curr_seq=%d",
+                self.OVERLAY_ID, msg_type, prev_seq, curr_seq,
+            )
+            return
+
         if payload.__hf_type__ in self._hf_subscriptions:
             self._latest_hf[payload.__hf_type__] = payload
-            self._track_hf_event(payload.__hf_type__)
-
-        if handler := self._high_freq_handlers.get(payload.__hf_type__):
-            try:
-                handler(payload)
-            except AssertionError:
-                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{payload.__hf_type__}'")
-                raise # We want to crash on assertions for debugging
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{payload.__hf_type__}': {e}")
+            if self.get_visibility():
+                if payload.__hf_type__ in self._hf_pending:
+                    # Previous update was overwritten before render_frame consumed it
+                    self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
+                    self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
+                else:
+                    self._hf_pending.add(payload.__hf_type__)
+                self._track_hf_event(payload.__hf_type__)
+            else:
+                self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
+                self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)

@@ -23,10 +23,16 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import math
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 from .base import Stat
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+_WINDOW_SIZE: int = 512
+_EWMA_ALPHA: float = 0.1
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -41,6 +47,10 @@ class LatencyStat(Stat):
         - `min` / `max`: extrema of valid latencies.
         - `avg` / `variance`: running population statistics of valid latencies.
         - `stddev`: running population standard deviation of valid latencies.
+        - `p50_ns` / `p95_ns` / `p99_ns`: percentiles over a rolling window.
+        - `jitter_avg_ns` / `jitter_max_ns`: inter-sample variability.
+        - `ewma_ns`: exponential weighted moving average.
+        - `tail_ratio`: p99 / p50.
     """
 
     TYPE: ClassVar[str] = "__LATENCY__"
@@ -52,10 +62,23 @@ class LatencyStat(Stat):
     mean: float = 0.0
     m2: float = 0.0
 
+    # Rolling window for percentile computation (O(1) append, computed at read time).
+    samples: deque = field(default_factory=lambda: deque(maxlen=_WINDOW_SIZE))
+
+    # Jitter: |current - previous| latency.
+    prev_latency: int = -1
+    jitter_sum: float = 0.0
+    jitter_count: int = 0
+    jitter_max: int = 0
+
+    # EWMA: initialised on first valid sample (sentinel -1.0 = uninitialised).
+    ewma: float = -1.0
+
     def observe_packet(self, sender_ts_ns: int, recv_ts_ns: int) -> None:
         """Observe one packet timing sample and update running latency stats.
 
         Negative latency samples are counted as bad data and ignored.
+        All operations are O(1) and allocation-free after initialisation.
         """
         latency = recv_ts_ns - sender_ts_ns
 
@@ -76,6 +99,24 @@ class LatencyStat(Stat):
         delta2 = latency - self.mean
         self.m2 += delta * delta2
 
+        # Rolling window (O(1) deque append, maxlen enforces fixed size)
+        self.samples.append(latency)
+
+        # Jitter: requires at least one prior sample
+        if self.prev_latency >= 0:
+            jitter = abs(latency - self.prev_latency)
+            self.jitter_sum += jitter
+            self.jitter_count += 1
+            if jitter > self.jitter_max:
+                self.jitter_max = jitter
+        self.prev_latency = latency
+
+        # EWMA: initialise on first sample, smooth thereafter
+        if self.ewma < 0:
+            self.ewma = float(latency)
+        else:
+            self.ewma = _EWMA_ALPHA * latency + (1.0 - _EWMA_ALPHA) * self.ewma
+
     def variance(self) -> float:
         """Return population variance of valid latency samples."""
         if self.count < 2:
@@ -87,9 +128,26 @@ class LatencyStat(Stat):
         return math.sqrt(self.variance())
 
     def to_dict(self) -> dict:
-        """Serialize this latency stat to a JSON-friendly dictionary."""
+        """Serialize this latency stat to a JSON-friendly dictionary.
+
+        Percentile computation (sort) happens here, not in the hot path.
+        """
         min_val = self.min if self.count > 0 else 0
         max_val = self.max if self.count > 0 else 0
+
+        # Percentiles: sort the rolling window snapshot once
+        n = len(self.samples)
+        if n > 0:
+            sorted_samples = sorted(self.samples)
+            p50 = sorted_samples[int((n - 1) * 0.50)]
+            p95 = sorted_samples[int((n - 1) * 0.95)]
+            p99 = sorted_samples[int((n - 1) * 0.99)]
+        else:
+            p50 = p95 = p99 = 0
+
+        tail_ratio = (p99 / p50) if p50 > 0 else 0.0
+        jitter_avg = (self.jitter_sum / self.jitter_count) if self.jitter_count > 0 else 0.0
+        ewma_val = self.ewma if self.ewma >= 0.0 else 0.0
 
         return {
             "type": self.TYPE,
@@ -100,4 +158,11 @@ class LatencyStat(Stat):
             "avg_ns": self.mean,
             "variance_ns": self.variance(),
             "stddev_ns": self.stddev(),
+            "p50_ns": p50,
+            "p95_ns": p95,
+            "p99_ns": p99,
+            "jitter_avg_ns": jitter_avg,
+            "jitter_max_ns": self.jitter_max,
+            "ewma_ns": ewma_val,
+            "tail_ratio": tail_ratio,
         }

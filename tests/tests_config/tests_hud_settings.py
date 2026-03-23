@@ -399,6 +399,7 @@ class TestHudSettings(TestF1ConfigBase):
             "tyre_info",
             "pit_rejoin",
             "tyre_sets",
+            "pace_comp",
         }
 
         for page in expected_pages:

@@ -184,29 +184,40 @@ class IpcSubscriberSync:
                 continue
 
             if self.socket in events:
-                try:
-                    frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
-                except zmq.ZMQError:
-                    self.stats.track_event("__ERROR__", "recv_failed")
-                    self.logger.warning("Receive failed - reconnecting SUB socket")
-                    self._create_and_connect()
-                    poller = zmq.Poller()
-                    poller.register(self.socket, zmq.POLLIN)
-                    continue
+                # Drain all queued messages, keeping only the latest per topic.
+                # PUB/SUB semantics: consumers only need the freshest state.
+                latest_per_topic: Dict[str, dict] = {}
+                recv_failed = False
 
-                if len(frames) != 2:
-                    self.stats.track_event("__DROP__", "invalid_frame_count")
-                    continue
+                while True:
+                    try:
+                        frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
+                    except zmq.Again:
+                        break  # socket drained
+                    except zmq.ZMQError:
+                        self.stats.track_event("__ERROR__", "recv_failed")
+                        self.logger.warning("Receive failed - reconnecting SUB socket")
+                        self._create_and_connect()
+                        poller = zmq.Poller()
+                        poller.register(self.socket, zmq.POLLIN)
+                        recv_failed = True
+                        break
 
-                topic_bytes, payload = frames
-                topic = topic_bytes.decode()
-                total_size = len(topic_bytes) + len(payload)
+                    if len(frames) != 2:
+                        self.stats.track_event("__DROP__", "invalid_frame_count")
+                        continue
 
-                self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
-                self.stats.track_packet(topic, "__PACKETS__", total_size)
+                    topic_bytes, payload = frames
+                    topic = topic_bytes.decode()
+                    total_size = len(topic_bytes) + len(payload)
 
-                handler = self._routes.get(topic)
-                if handler:
+                    self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
+                    self.stats.track_packet(topic, "__PACKETS__", total_size)
+
+                    if topic not in self._routes:
+                        self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
+                        continue
+
                     try:
                         data, message_id, send_ts_ns = self._parse_envelope(payload)
                         self._track_sequence(topic, message_id)
@@ -215,6 +226,19 @@ class IpcSubscriberSync:
                         self.stats.track_event("__DROP__", "invalid_envelope")
                         continue
 
+                    if topic in latest_per_topic:
+                        self.stats.track_event("__TOTAL__", "__STALE_DROP__")
+                        self.stats.track_event(topic, "__STALE_DROP__")
+
+                    latest_per_topic[topic] = data
+
+                if recv_failed:
+                    continue
+
+                for topic, data in latest_per_topic.items():
+                    handler = self._routes.get(topic)
+                    if not handler:
+                        continue
                     try:
                         handler(data)
                         self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
@@ -223,8 +247,6 @@ class IpcSubscriberSync:
                         self.stats.track_event("__TOTAL__", "__HANDLER_ERR__")
                         self.stats.track_event(topic, "__HANDLER_ERR__")
                         self.logger.exception(f"Handler error for {topic}: {e}")
-                else:
-                    self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
 
         # clean shutdown
         try:

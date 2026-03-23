@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,32 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: skip-file
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass, field
-from time import perf_counter_ns
-from typing import ClassVar
+from .tests_event_counter import TestEventCounter
+from .tests_latency_stat import TestFrameTimingStat, TestLatencyStatExtended
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-@dataclass(slots=True, frozen=True)
-class HighFreqBase:
-    __timestamp__: int = field(default_factory=perf_counter_ns, init=False)
-    __seq__: int = field(default=0, init=False)
-    __hf_type__: ClassVar[str]
-    __seq_counter__: ClassVar[int] = 0
-
-    def __init_subclass__(cls, **kwargs):
-        super(HighFreqBase, cls).__init_subclass__(**kwargs)
-        cls.__hf_type__ = cls.__name__
-        cls.__seq_counter__ = 0
-
-    def __post_init__(self):
-        cls = type(self)
-        cls.__seq_counter__ += 1
-        object.__setattr__(self, "__seq__", cls.__seq_counter__)
-
-    @classmethod
-    def from_json(cls, json_data: dict) -> "HighFreqBase":
-        raise NotImplementedError
+__all__ = [
+    "TestEventCounter",
+    "TestFrameTimingStat",
+    "TestLatencyStatExtended",
+]
