@@ -84,15 +84,15 @@ Window {
         return "TRACK DATA"
     }
 
-    // Color for the ERS battery ring based on current mode
+    // Fill colour for the ERS inner circle based on current mode
     function ersInnerColor(mode) {
         var m = mode.toLowerCase()
-        if (m.indexOf("overtake") !== -1) return "#c46bff"   // Purple
-        if (m.indexOf("high")     !== -1) return "#5b9fff"   // Blue
-        if (m.indexOf("medium")   !== -1) return "#3fd6d0"   // Cyan
-        if (m.indexOf("low")      !== -1) return "#39d37a"   // Green
-        return "#6b7a8a"                                      // Grey (none/off)
+        if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
+        if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
+        if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
+        return "#4a5a6a"                                      // Grey (none/off)
     }
+
 
     function tlColor() {
         if (tlWarnings >= 2) return "#ff4444"
@@ -405,7 +405,7 @@ Window {
                         function onErsModeChanged() { ersCanvas.requestPaint() }
                     }
 
-                    // Canvas draws: outer split ring + battery progress ring + center disk
+                    // Canvas draws: outer split ring (deploy/harvest) + inner fill circle
                     Canvas {
                         id: ersCanvas
                         anchors.centerIn: parent
@@ -416,24 +416,21 @@ Window {
                             var ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
 
-                            var cx = width  / 2   // 44
-                            var cy = height / 2   // 44
-                            var outerR      = 40  // outer split-ring radius
-                            var battR       = 33  // battery progress-ring radius
-                            var battStroke  = 7   // battery ring stroke width
-                            var innerR      = 26  // center dark disk radius
-                            var halfPi      = Math.PI / 2
-                            var top         = -halfPi  // 12 o'clock
+                            var cx      = width  / 2   // 44
+                            var cy      = height / 2   // 44
+                            var outerR  = 40           // outer split-ring radius
+                            var innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
+                            var halfPi  = Math.PI / 2
+                            var top     = -halfPi      // 12 o'clock
 
-                            // ── background ring (grey) ──
+                            // ── outer background ring ──
                             ctx.beginPath()
                             ctx.arc(cx, cy, outerR, 0, 2 * Math.PI)
                             ctx.strokeStyle = "#1e2e3c"
                             ctx.lineWidth   = 2.5
                             ctx.stroke()
 
-                            // ── deploy arc — left half, orange/red ──
-                            // Drains: starts at top, sweeps CCW (left side), proportional to deployedPct
+                            // ── deploy arc — left half, orange ──
                             var deployFrac = ersZone.animErsDeploy / 100
                             if (deployFrac > 0.002) {
                                 ctx.beginPath()
@@ -445,7 +442,6 @@ Window {
                             }
 
                             // ── harvest arc — right half, green ──
-                            // Fills: starts at top, sweeps CW (right side), proportional to harvPct
                             var harvestFrac = ersZone.animErsHarv / 100
                             if (harvestFrac > 0.002) {
                                 ctx.beginPath()
@@ -456,56 +452,68 @@ Window {
                                 ctx.stroke()
                             }
 
-                            // ── battery ring background ──
-                            ctx.beginPath()
-                            ctx.arc(cx, cy, battR, 0, 2 * Math.PI)
-                            ctx.strokeStyle = "#101e2c"
-                            ctx.lineWidth   = battStroke + 1
-                            ctx.stroke()
-
-                            // ── battery progress (clockwise from top) ──
-                            var battFrac = ersZone.animErsRem / 100
-                            if (battFrac > 0.002) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, battR, top, top + battFrac * 2 * Math.PI, false)
-                                ctx.strokeStyle = root.ersInnerColor(root.ersMode)
-                                ctx.lineWidth   = battStroke
-                                ctx.lineCap     = "round"
-                                ctx.stroke()
-                            }
-
-                            // ── center dark disk ──
+                            // ── inner background disk ──
                             ctx.beginPath()
                             ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
                             ctx.fillStyle = "#09131f"
                             ctx.fill()
+
+                            // ── bottom-to-top fill clipped to inner circle ──
+                            var fillFrac = ersZone.animErsRem / 100
+                            if (fillFrac > 0.005) {
+                                ctx.save()
+                                var fillHeight = fillFrac * 2 * innerR
+                                var fillTop    = cy + innerR - fillHeight
+                                ctx.beginPath()
+                                ctx.rect(cx - innerR - 1, fillTop, 2 * innerR + 2, fillHeight + 1)
+                                ctx.clip()
+
+                                ctx.beginPath()
+                                ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
+                                ctx.fillStyle = root.ersInnerColor(root.ersMode)
+                                ctx.fill()
+                                ctx.restore()
+                            }
+
+                            // ── inner circle border ──
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
+                            ctx.strokeStyle = "#2b3946"
+                            ctx.lineWidth   = 1.5
+                            ctx.stroke()
+
                         }
                     }
 
-                    // Battery percentage — centered inside canvas
-                    Text {
-                        anchors.horizontalCenter: ersCanvas.horizontalCenter
-                        anchors.verticalCenter:   ersCanvas.verticalCenter
-                        anchors.verticalCenterOffset: -5
-                        text:            Math.round(root.clampPct(root.ersRemPct)) + "%"
-                        font.family:     "B612Mono"
-                        font.pixelSize:  14
-                        font.bold:       true
-                        color:           root.ersInnerColor(root.ersMode)
-                        horizontalAlignment: Text.AlignHCenter
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                    }
+                    // Battery percentage — outlined only in Medium mode (yellow fill)
+                    Item {
+                        anchors.centerIn: ersCanvas
+                        width:  ersPctLabel.width
+                        height: ersPctLabel.height
 
-                    // ERS mode label — small, below percentage
-                    Text {
-                        anchors.horizontalCenter: ersCanvas.horizontalCenter
-                        anchors.verticalCenter:   ersCanvas.verticalCenter
-                        anchors.verticalCenterOffset: 9
-                        text:            root.ersMode.toUpperCase()
-                        font.family:     "Formula1"
-                        font.pixelSize:  7
-                        color:           Qt.rgba(0.67, 0.79, 0.87, 0.65)
-                        horizontalAlignment: Text.AlignHCenter
+                        Repeater {
+                            model: [[-1,-1],[-1,1],[1,-1],[1,1]]
+                            Text {
+                                visible:        root.ersMode.toLowerCase().indexOf("medium") !== -1
+                                x: ersPctLabel.x + modelData[0]
+                                y: ersPctLabel.y + modelData[1]
+                                text:           Math.round(root.clampPct(root.ersRemPct)) + "%"
+                                font.family:    "B612Mono"
+                                font.pixelSize: 16
+                                font.bold:      true
+                                color:          "#000000"
+                            }
+                        }
+
+                        Text {
+                            id: ersPctLabel
+                            text:            Math.round(root.clampPct(root.ersRemPct)) + "%"
+                            font.family:     "B612Mono"
+                            font.pixelSize:  16
+                            font.bold:       true
+                            color:           "#edf7ff"
+                            horizontalAlignment: Text.AlignHCenter
+                        }
                     }
 
                 } // ersZone
