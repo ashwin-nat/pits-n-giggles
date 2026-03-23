@@ -127,6 +127,24 @@ class EventCounter:
 
         stat.observe_frame(now_ns)
 
+    def reset_frame_timing(self, category: str, subcategory: str) -> None:
+        """Reset the frame timing baseline for the given category/subcategory.
+
+        Discards the last-seen timestamp so the next observed frame starts a
+        fresh interval, preventing hidden-period gaps from inflating frame
+        interval statistics.
+
+        It is the caller's responsibility to ensure that the category/subcategory
+        exists before calling this function.
+
+        Args:
+            category: Top-level group name (for example, `qml_overlay`).
+            subcategory: Nested stat name (for example, `hud`).
+        """
+        stat: Optional[FrameTimingStat] = self._stats.get(category, {}).get(subcategory)
+        if stat is not None:
+            stat.last_ts_ns = 0
+
     # --------------------------------------------------
     # Access
     # --------------------------------------------------
