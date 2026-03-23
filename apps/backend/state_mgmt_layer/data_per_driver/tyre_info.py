@@ -27,7 +27,7 @@ from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
+from lib.f1_types import (ActualTyreCompound, F1Utils, PacketTyreSetsData,
                           VisualTyreCompound)
 from lib.rolling_history import RollingHistory
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -423,8 +423,10 @@ class TyreInfo:
     tyre_act_compound: Optional[ActualTyreCompound] = None
     tyre_wear: TyreWearRecentHistory = field(default_factory=lambda: TyreWearRecentHistory(
         maxlen=_ROLLING_HISTORY_MAXLEN))
-    tyre_surface_temp: Optional[float] = None
-    tyre_inner_temp: Optional[float] = None
+
+    tyre_surface_temp_arr: Optional[List[int]] = None
+    tyre_inner_temp_arr: Optional[List[int]] = None
+    brake_temp_arr: Optional[List[int]] = None
     tyre_life_remaining_laps: Optional[int] = None
 
     m_tyre_set_history_manager: "TyreSetHistoryManager" = field(init=False)
@@ -450,3 +452,22 @@ class TyreInfo:
         # Flashback is too error prone with tyre wear rolling history, so we just clear it.
         # User made the bed, they can lie in it.
         self.tyre_wear.clear()
+
+    def _arrToDict(self, arr: Optional[List[int]]) -> Optional[Dict[int, int]]:
+        if arr is None:
+            return None
+        return {
+            "fl" : arr[F1Utils.INDEX_FRONT_LEFT],
+            "fr" : arr[F1Utils.INDEX_FRONT_RIGHT],
+            "rl" : arr[F1Utils.INDEX_REAR_LEFT],
+            "rr" : arr[F1Utils.INDEX_REAR_RIGHT],
+        }
+
+    def getSurfaceTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.tyre_surface_temp_arr)
+
+    def getInnerTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.tyre_inner_temp_arr)
+
+    def getBrakesTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.brake_temp_arr)

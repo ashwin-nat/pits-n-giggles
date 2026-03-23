@@ -641,10 +641,9 @@ class SessionState:
         for index, car_telemetry_data in enumerate(packet.m_carTelemetryData):
             obj_to_be_updated = self._getObjectByIndex(index, reason='Car Telemetry update')
             obj_to_be_updated.m_car_info.m_drs_activated = bool(car_telemetry_data.m_drs)
-            obj_to_be_updated.m_tyre_info.tyre_inner_temp = \
-                    sum(car_telemetry_data.m_tyresInnerTemperature)/len(car_telemetry_data.m_tyresInnerTemperature)
-            obj_to_be_updated.m_tyre_info.tyre_surface_temp = \
-                    sum(car_telemetry_data.m_tyresSurfaceTemperature)/len(car_telemetry_data.m_tyresSurfaceTemperature)
+            obj_to_be_updated.m_tyre_info.tyre_surface_temp_arr = car_telemetry_data.m_tyresSurfaceTemperature
+            obj_to_be_updated.m_tyre_info.tyre_inner_temp_arr = car_telemetry_data.m_tyresInnerTemperature
+            obj_to_be_updated.m_tyre_info.brake_temp_arr = car_telemetry_data.m_brakesTemperature
             obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap = (
                 car_telemetry_data.m_speed
                 if obj_to_be_updated.m_lap_info.m_top_speed_kmph_this_lap is None
