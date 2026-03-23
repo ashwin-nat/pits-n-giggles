@@ -46,6 +46,9 @@ class HudOverlayData(HighFreqBase):
     tl_warnings: int
     circuit_pos_m: int
     circuit: str
+    g_force_lat: float
+    g_force_long: float
+    g_force_vert: float
 
     def __bool__(self) -> bool:
         return None not in (
@@ -65,11 +68,13 @@ class HudOverlayData(HighFreqBase):
             self.tl_warnings,
             self.circuit_pos_m,
             self.circuit,
+            # G forces may be None if telemetry is disabled. Here we ignore them.
         )
 
     @classmethod
     def from_json(cls, json_data: dict) -> "HudOverlayData":
         hud_data = json_data["hud"]
+        g_force_data = json_data["g-force"]
         return cls(
             throttle=hud_data["throttle"],
             brake=hud_data["brake"],
@@ -87,5 +92,8 @@ class HudOverlayData(HighFreqBase):
             tl_warnings=hud_data["tl-warns"],
             circuit_pos_m=hud_data["circuit-position"],
             circuit=json_data["circuit-enum-name"],
+            g_force_lat=g_force_data["lat"],
+            g_force_long=g_force_data["long"],
+            g_force_vert=g_force_data["vert"],
         )
 

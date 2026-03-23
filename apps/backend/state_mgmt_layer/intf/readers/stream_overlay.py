@@ -154,9 +154,9 @@ class StreamOverlayData(BaseAPI):
             self.m_g_force_vert = self.m_ref_obj.m_packet_copies.m_packet_motion.m_gForceVertical
             self.m_g_force_long = self.m_ref_obj.m_packet_copies.m_packet_motion.m_gForceLongitudinal
         else:
-            self.m_g_force_lat = 0
-            self.m_g_force_vert = 0
-            self.m_g_force_long = 0
+            self.m_g_force_lat = 0.0
+            self.m_g_force_vert = 0.0
+            self.m_g_force_long = 0.0
 
     def __initPaceComparison(self,
                              prev_data: Optional[DataPerDriver],
