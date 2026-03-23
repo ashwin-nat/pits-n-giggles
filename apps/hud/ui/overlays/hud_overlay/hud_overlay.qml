@@ -24,558 +24,634 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 
-// ─── SHAPE: compound — hexagon body flanked by two thin vertical bars ─────────
-//
-//   BRK │ /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\ │ THR
-//   bar │ │  [rev lights]                       │ │ bar
-//       │ │  [gear + speed]   │  [DRS / ERS]    │ │
-//   bar │ \_____________________________________/ │ bar
-//
-// The two 12-px side bars are absolutely positioned; the hexagon sits between
-// them.  No clipping required — all content is naturally inside the shape.
-
 Window {
     id: root
     visible: true
 
-    property real scaleFactor: 1.0   // REQUIRED by BaseOverlayQML
+    property real scaleFactor: 1.0
 
-    readonly property int baseWidth:  560
+    readonly property int baseWidth: 470
     readonly property int baseHeight: 112
 
-    width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
+    width: Math.max(1, Math.round(baseWidth * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
-    color:  "transparent"
-    flags:  Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    color: "transparent"
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
-    // ─── Telemetry properties ─────────────────────────────────────────────────
-    property real   throttleValue:  0
-    property real   brakeValue:     0
-    property int    revLightsPct:   0
-    property int    rpm:            0
-    property int    gear:           0
-    property int    speedKmph:      0
-    property bool   drsEnabled:     false
-    property bool   drsAvailable:   false
-    property int    drsDistance:    0
-    property real   ersRemPct:      0       // 0–100
-    property real   ersHarvPct:     0       // 0–100  (MGU-K / 2 MJ)
-    property real   ersDeployedPct: 0       // 0–100  (deployed / 4 MJ)
-    property string ersMode:        "None"
-    property int    turnNumber:     0
-    property string turnName:       ""
-
-    // ─── Colours ─────────────────────────────────────────────────────────────
-    readonly property color colBg:        "#0a0a0f"
-    readonly property color colBorder:    "#1d1d2a"
-    readonly property color colF1Red:     "#e8002d"
-    readonly property color colThrottle:  "#39b54a"
-    readonly property color colBrake:     "#e8002d"
-    readonly property color colDrsActive: "#00d2be"
-    readonly property color colDrsAvail:  "#ffd700"
-    readonly property color colErs:       "#1e90ff"
-    readonly property color colDim:       "#38384a"
+    property real throttleValue: 0
+    property real brakeValue: 0
+    property int revLightsPct: 0
+    property int rpm: 0
+    property int gear: 0
+    property int speedKmph: 0
+    property bool drsEnabled: false
+    property bool drsAvailable: false
+    property int drsDistance: 0
+    property real ersRemPct: 0
+    property real ersHarvPct: 0
+    property real ersDeployedPct: 0
+    property string ersMode: "None"
+    property int turnNumber: 0
+    property string turnName: ""
+    property int tlWarnings: 0
 
     function gearLabel(g) {
-        if (g < 0)   return "R"
-        if (g === 0) return "N"
+        if (g < 0)
+            return "R"
+        if (g === 0)
+            return "N"
         return g.toString()
     }
 
-    // ─── Scaled root ──────────────────────────────────────────────────────────
+    function clampPct(v) {
+        return Math.max(0, Math.min(100, v))
+    }
+
+    function modeColor(mode) {
+        var m = mode.toLowerCase()
+        if (m === "overtake")
+            return "#d66bff"
+        if (m === "high")
+            return "#ff9d4d"
+        if (m === "medium")
+            return "#5ec2ff"
+        if (m === "low")
+            return "#7fd66d"
+        return "#7f8a96"
+    }
+
+    function ersModeFillColor(mode) {
+        var m = mode.toLowerCase()
+        if (m.indexOf("overtake") !== -1)
+            return "#ff5f5f"
+        if (m.indexOf("hotlap") !== -1 || m.indexOf("hot lap") !== -1)
+            return "#57db7f"
+        if (m.indexOf("medium") !== -1)
+            return "#ffd54f"
+        if (m.indexOf("none") !== -1)
+            return "#8e98a4"
+        return "#8e98a4"
+    }
+
+    function ersModeTextColor(mode) {
+        var m = mode.toLowerCase()
+        if (m.indexOf("overtake") !== -1)
+            return "#fff4f4"
+        if (m.indexOf("hotlap") !== -1 || m.indexOf("hot lap") !== -1)
+            return "#03210f"
+        if (m.indexOf("medium") !== -1)
+            return "#241a00"
+        if (m.indexOf("none") !== -1)
+            return "#f2f6fc"
+        return "#f2f6fc"
+    }
+
+    function revColor(index, total) {
+        var n = index / Math.max(1, total - 1)
+        if (n < 0.55)
+            return "#39d37a"
+        if (n < 0.85)
+            return "#ffb347"
+        return "#ff5f64"
+    }
+
+    function turnLabel() {
+        if (turnNumber > 0 && turnName.length > 0)
+            return "T" + turnNumber + " " + turnName
+        if (turnNumber > 0)
+            return "T" + turnNumber
+        if (turnName.length > 0)
+            return turnName
+        return "TRACK DATA"
+    }
+
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width:  baseWidth
+        width: baseWidth
         height: baseHeight
+
+        readonly property int edgeBarWidth: 8
+        readonly property int edgeGap: 4
 
         transform: Scale {
             xScale: scaleFactor
             yScale: scaleFactor
-            origin.x: baseWidth  / 2
+            origin.x: baseWidth / 2
             origin.y: baseHeight / 2
         }
 
-        // ── Brake bar — left, absolute ────────────────────────────────────────
-        SideBar {
-            x: 0;  y: 4
-            width:  12
-            height: parent.height - 8
-            value:     root.brakeValue
-            fillColor: root.colBrake
+        Rectangle {
+            id: brakeBarTrack
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: scaledRoot.edgeBarWidth
+            radius: width / 2
+            color: Qt.rgba(1, 0.35, 0.4, 0.2)
+            border.width: 1
+            border.color: Qt.rgba(1, 0.45, 0.5, 0.55)
+
+            Rectangle {
+                id: brakeBarFill
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.height)
+                radius: parent.radius
+                color: "#ff5f67"
+                Behavior on height { SmoothedAnimation { duration: 70 } }
+
+                Rectangle {
+                    visible: brakeBarFill.height > 3
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: 1
+                    color: Qt.rgba(1, 1, 1, 0.55)
+                }
+            }
         }
 
-        // ── Throttle bar — right, absolute ────────────────────────────────────
-        SideBar {
-            x: parent.width - 12;  y: 4
-            width:  12
-            height: parent.height - 8
-            value:     root.throttleValue
-            fillColor: root.colThrottle
+        Rectangle {
+            id: throttleBarTrack
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: scaledRoot.edgeBarWidth
+            radius: width / 2
+            color: Qt.rgba(0.3, 0.9, 0.55, 0.2)
+            border.width: 1
+            border.color: Qt.rgba(0.4, 1, 0.65, 0.55)
+
+            Rectangle {
+                id: throttleBarFill
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.height)
+                radius: parent.radius
+                color: "#45df87"
+                Behavior on height { SmoothedAnimation { duration: 70 } }
+
+                Rectangle {
+                    visible: throttleBarFill.height > 3
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: 1
+                    color: Qt.rgba(1, 1, 1, 0.55)
+                }
+            }
         }
 
-        // ── Hexagon body ──────────────────────────────────────────────────────
-        // gap of 4 px on each side separates it from the side bars
-        Item {
-            id: mainBody
-            x:      16
-            y:      0
-            width:  parent.width - 32   // 528 px
-            height: parent.height
+        Rectangle {
+            id: hudShell
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: scaledRoot.edgeBarWidth + scaledRoot.edgeGap
+            anchors.rightMargin: scaledRoot.edgeBarWidth + scaledRoot.edgeGap
+            clip: true
+            radius: 24
+            border.width: 1
+            border.color: "#2b3946"
+            color: "#101721"
 
-            // Hexagon background — 45° corner cuts
-            Canvas {
-                id: bgCanvas
-                anchors.fill: parent
-                z: 0
-                readonly property int cut: 20
+            readonly property int pad: 4
+            readonly property int gap: 3
+            readonly property int topH: 20
+            readonly property int revH: 11
+            readonly property int rowH: Math.max(48, height - (pad * 2 + topH + revH + gap * 2))
 
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    var c = cut, w = width, h = height
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#172130" }
+                GradientStop { position: 0.5; color: "#121b28" }
+                GradientStop { position: 1.0; color: "#0e1620" }
+            }
 
-                    // Fill
-                    ctx.fillStyle = "#0a0a0f"
-                    ctx.beginPath()
-                    ctx.moveTo(c, 0);    ctx.lineTo(w - c, 0)
-                    ctx.lineTo(w, c);    ctx.lineTo(w, h - c)
-                    ctx.lineTo(w - c, h); ctx.lineTo(c, h)
-                    ctx.lineTo(0, h - c); ctx.lineTo(0, c)
-                    ctx.closePath()
-                    ctx.fill()
+            Rectangle {
+                width: parent.width * 0.76
+                height: parent.height * 1.7
+                x: parent.width * 0.15
+                y: -parent.height * 0.56
+                rotation: -15
+                radius: width / 2
+                color: Qt.rgba(1, 1, 1, 0.035)
+            }
 
-                    // Border
-                    ctx.strokeStyle = "#26263a"
-                    ctx.lineWidth = 1
-                    ctx.stroke()
+            Repeater {
+                model: 9
+                Rectangle {
+                    width: 1
+                    height: hudShell.height
+                    x: 12 + index * 56
+                    color: Qt.rgba(0.5, 0.6, 0.7, 0.07)
                 }
             }
 
-            // Content — inset to stay clear of the angled corners
-            ColumnLayout {
-                anchors.fill:        parent
-                anchors.leftMargin:  bgCanvas.cut + 2
-                anchors.rightMargin: bgCanvas.cut + 2
-                spacing: 0
-                z: 1
+            Item {
+                anchors.fill: parent
+                anchors.margins: hudShell.pad
 
-                // ── Rev-lights strip ──────────────────────────────────────────
-                Canvas {
-                    id: revCanvas
-                    Layout.fillWidth:       true
-                    Layout.preferredHeight: 9
+                Rectangle {
+                    id: turnBar
+                    x: 0
+                    y: 0
+                    width: parent.width
+                    height: hudShell.topH
+                    radius: height / 2
+                    color: Qt.rgba(0.05, 0.08, 0.12, 0.92)
+                    border.width: 1
+                    border.color: "#2f3d4b"
 
-                    property int pct: root.revLightsPct
-                    onPctChanged: requestPaint()
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.turnLabel()
+                        font.family: "Formula1"
+                        font.pixelSize: 11
+                        font.bold: true
+                        color: "#a8bfd4"
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        width: parent.width - 14
+                    }
+                }
 
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.clearRect(0, 0, width, height)
-                        var total = 15
-                        var lit   = Math.round(pct / 100 * total)
-                        var sw    = width / total
-                        var gap   = 2
-                        var bw    = sw - gap
-                        var colors = [
-                            "#39b54a","#39b54a","#39b54a","#39b54a","#39b54a",
-                            "#ff8c00","#ff8c00","#ff8c00","#ff8c00","#ff8c00",
-                            "#e8002d","#e8002d","#e8002d",
-                            "#cc00ff","#cc00ff"
-                        ]
-                        for (var i = 0; i < total; i++) {
-                            var x = i * sw + gap / 2
-                            ctx.fillStyle = (i < lit) ? colors[i] : "#171720"
-                            ctx.fillRect(x, 0, bw, height)
+                Rectangle {
+                    id: revStrip
+                    x: 0
+                    y: turnBar.y + turnBar.height + hudShell.gap
+                    width: parent.width
+                    height: hudShell.revH
+                    radius: height / 2
+                    color: "#0a1018"
+                    border.width: 1
+                    border.color: "#2c3b49"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        spacing: 1
+
+                        Repeater {
+                            model: 20
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 1
+                                readonly property int litCount: Math.round(root.clampPct(root.revLightsPct) / 100 * 20)
+                                color: index < litCount ? root.revColor(index, 20) : "#1b2733"
+                                Behavior on color { ColorAnimation { duration: 50 } }
+                            }
                         }
                     }
                 }
 
-                // hairline
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1
-                    color: root.colBorder
-                }
+                Item {
+                    id: mainRow
+                    x: 0
+                    y: revStrip.y + revStrip.height + hudShell.gap
+                    width: parent.width
+                    height: hudShell.rowH
 
-                // ── Main row: gear+speed | divider | DRS+ERS ─────────────────
-                RowLayout {
-                    Layout.fillWidth:  true
-                    Layout.fillHeight: true
-                    spacing: 0
+                    readonly property int podGap: 4
+                    readonly property int rightW: 170
+                    readonly property int centerW: width - rightW - podGap
 
-                    // CENTER: Gear + Speed
-                    CenterPanel {
-                        Layout.fillWidth:  true
-                        Layout.fillHeight: true
-                        gear:  root.gear
-                        speed: root.speedKmph
-                        rpm:   root.rpm
+                    Rectangle {
+                        id: drivePod
+                        x: 0
+                        y: 0
+                        width: mainRow.centerW
+                        height: mainRow.height
+                        radius: 22
+                        color: "#152232"
+                        border.width: 1
+                        border.color: "#344554"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 8
+
+                            Item {
+                                Layout.preferredWidth: 66
+                                Layout.fillHeight: true
+
+                                Rectangle {
+                                    id: gearDial
+                                    property int observedGear: root.gear
+                                    onObservedGearChanged: gearPulse.restart()
+
+                                    width: 56
+                                    height: 56
+                                    radius: 28
+                                    anchors.centerIn: parent
+                                    color: "#0d1620"
+                                    border.width: 2
+                                    border.color: {
+                                        if (root.gear < 0)
+                                            return "#ff6d74"
+                                        if (root.gear === 0)
+                                            return "#ffc16d"
+                                        return "#57b5ff"
+                                    }
+
+                                    SequentialAnimation {
+                                        id: gearPulse
+                                        NumberAnimation { target: gearDial; property: "scale"; to: 1.08; duration: 70; easing.type: Easing.OutCubic }
+                                        NumberAnimation { target: gearDial; property: "scale"; to: 1.0; duration: 120; easing.type: Easing.InOutQuad }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: root.gearLabel(root.gear)
+                                        font.family: "Formula1"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                        color: "#edf7ff"
+                                    }
+                                }
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+
+                                RowLayout {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    spacing: 4
+
+                                    Text {
+                                        text: root.speedKmph
+                                        font.family: "Formula1"
+                                        font.pixelSize: 38
+                                        font.bold: true
+                                        color: "#edf7ff"
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: "KM/H"
+                                        font.family: "Formula1"
+                                        font.pixelSize: 11
+                                        color: "#8ea1b4"
+                                        horizontalAlignment: Text.AlignRight
+                                        Layout.alignment: Qt.AlignBottom
+                                        bottomPadding: 7
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.topMargin: 42
+                                    height: 1
+                                    color: "#314150"
+                                }
+
+                                RowLayout {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.topMargin: 46
+                                    spacing: 6
+
+                                    Text {
+                                        text: root.rpm + " RPM"
+                                        font.family: "Formula1"
+                                        font.pixelSize: 12
+                                        color: "#9bb0c4"
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: "TL: " + root.tlWarnings
+                                        font.family: "Formula1"
+                                        font.pixelSize: 12
+                                        color: "#9bb0c4"
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+                                }
+                            }
+                        }
                     }
 
-                    // Angled divider
-                    AngledDivider { Layout.fillHeight: true }
+                    Rectangle {
+                        id: energyPod
+                        x: mainRow.centerW + mainRow.podGap
+                        y: 0
+                        width: mainRow.rightW
+                        height: mainRow.height
+                        radius: 18
+                        color: "#12202d"
+                        border.width: 1
+                        border.color: "#30414f"
 
-                    // RIGHT: DRS + ERS
-                    DrsErsPanel {
-                        Layout.preferredWidth: 238
-                        Layout.fillHeight:     true
-                        drsEnabled:     root.drsEnabled
-                        drsAvailable:   root.drsAvailable
-                        drsDistance:    root.drsDistance
-                        ersRemPct:      root.ersRemPct
-                        ersHarvPct:     root.ersHarvPct
-                        ersDeployedPct: root.ersDeployedPct
-                        ersMode:        root.ersMode
-                        turnNumber:     root.turnNumber
-                        turnName:       root.turnName
+                        readonly property bool overtakeMode: root.ersMode.toLowerCase().indexOf("overtake") !== -1
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 2
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 16
+                                radius: 9
+                                color: root.drsEnabled ? Qt.rgba(0.19, 0.84, 0.76, 0.17) : root.drsAvailable ? Qt.rgba(1, 0.8, 0.26, 0.17) : Qt.rgba(0.2, 0.27, 0.34, 0.24)
+                                border.width: 1
+                                border.color: root.drsEnabled ? "#35d8cb" : root.drsAvailable ? "#ffca52" : "#3f4d5b"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 6
+                                    anchors.rightMargin: 6
+
+                                    Text {
+                                        text: "DRS"
+                                        font.family: "Formula1"
+                                        font.pixelSize: 9
+                                        color: root.drsEnabled ? "#35d8cb" : root.drsAvailable ? "#ffca52" : "#8493a2"
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: root.drsEnabled ? "ACTIVE" : root.drsAvailable ? (root.drsDistance > 0 ? root.drsDistance + "m" : "READY") : "OFF"
+                                        font.family: "B612Mono"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                        color: root.drsEnabled ? "#35d8cb" : root.drsAvailable ? "#ffca52" : "#7c8d9d"
+                                    }
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 18
+                                spacing: 4
+
+                                Rectangle {
+                                    id: ersBarTrack
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    radius: 9
+                                    color: "#09111a"
+                                    border.width: 1
+                                    border.color: energyPod.overtakeMode ? "#ff6a6a" : "#2d3d4c"
+                                    clip: true
+
+                                    Rectangle {
+                                        id: ersBarFill
+                                        width: Math.max(0, root.clampPct(root.ersRemPct) / 100 * parent.width)
+                                        height: parent.height
+                                        radius: parent.radius
+                                        color: root.ersModeFillColor(root.ersMode)
+                                        Behavior on width { SmoothedAnimation { duration: 130 } }
+                                        Behavior on color { ColorAnimation { duration: 220 } }
+                                    }
+
+                                    Rectangle {
+                                        id: overtakeGlow
+                                        visible: energyPod.overtakeMode
+                                        anchors.fill: parent
+                                        color: "transparent"
+                                        border.width: 1
+                                        border.color: "#ff6a6a"
+                                        radius: parent.radius
+                                        opacity: 0.22
+
+                                        SequentialAnimation on opacity {
+                                            running: overtakeGlow.visible
+                                            loops: Animation.Infinite
+                                            NumberAnimation { to: 0.48; duration: 320; easing.type: Easing.InOutQuad }
+                                            NumberAnimation { to: 0.14; duration: 380; easing.type: Easing.InOutQuad }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        id: overtakeSweep
+                                        visible: energyPod.overtakeMode
+                                        width: parent.width * 0.28
+                                        height: parent.height
+                                        x: -width
+                                        radius: width / 2
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: Qt.rgba(1.0, 0.35, 0.35, 0.0) }
+                                            GradientStop { position: 0.45; color: Qt.rgba(1.0, 0.35, 0.35, 0.5) }
+                                            GradientStop { position: 1.0; color: Qt.rgba(1.0, 0.35, 0.35, 0.0) }
+                                        }
+
+                                        NumberAnimation on x {
+                                            running: overtakeSweep.visible
+                                            loops: Animation.Infinite
+                                            from: -overtakeSweep.width
+                                            to: ersBarTrack.width
+                                            duration: 720
+                                        }
+                                    }
+
+                                    Text {
+                                        id: ersModeText
+                                        anchors.centerIn: parent
+                                        text: root.ersMode.toUpperCase()
+                                        font.family: "B612Mono"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                        color: root.ersModeTextColor(root.ersMode)
+                                        style: Text.Outline
+                                        styleColor: Qt.rgba(1, 1, 1, 0.35)
+
+                                        SequentialAnimation on scale {
+                                            running: energyPod.overtakeMode
+                                            loops: Animation.Infinite
+                                            NumberAnimation { to: 1.08; duration: 240; easing.type: Easing.OutQuad }
+                                            NumberAnimation { to: 1.0; duration: 260; easing.type: Easing.InOutQuad }
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: Math.round(root.clampPct(root.ersRemPct)) + "%"
+                                    font.family: "B612Mono"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    color: root.ersModeFillColor(root.ersMode)
+                                    Layout.preferredWidth: 34
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 12
+                                spacing: 4
+
+                                MiniBar {
+                                    Layout.fillWidth: true
+                                    label: "H"
+                                    value: root.ersHarvPct
+                                    accent: "#ff7369"
+                                }
+
+                                MiniBar {
+                                    Layout.fillWidth: true
+                                    label: "D"
+                                    value: root.ersDeployedPct
+                                    accent: "#5ade8e"
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // INLINE COMPONENTS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    // ── SideBar ───────────────────────────────────────────────────────────────
-    // Vertical fill bar (fill rises from bottom).  Colour tint bg + bright
-    // glow cap at the current fill level.
-    component SideBar: Item {
-        property real  value:     0
-        property color fillColor: "#ffffff"
-
-        // Background tint
-        Rectangle {
-            anchors.fill: parent
-            radius: 3
-            color:        Qt.rgba(fillColor.r, fillColor.g, fillColor.b, 0.06)
-            border.color: Qt.rgba(fillColor.r, fillColor.g, fillColor.b, 0.18)
-            border.width: 1
-        }
-
-        // Animated fill
-        Rectangle {
-            id: sideFill
-            anchors.bottom: parent.bottom
-            anchors.left:   parent.left
-            anchors.right:  parent.right
-            height: Math.max(0, (value / 100) * parent.height)
-            color:  fillColor
-            radius: 3
-            Behavior on height { SmoothedAnimation { duration: 40 } }
-
-            // Glow cap — bright white line at the fill level
-            Rectangle {
-                visible: sideFill.height > 4
-                anchors.top:   parent.top
-                anchors.left:  parent.left
-                anchors.right: parent.right
-                height: 2
-                radius: 1
-                color: Qt.rgba(1, 1, 1, 0.55)
-            }
-        }
-    }
-
-    // ── AngledDivider ─────────────────────────────────────────────────────────
-    component AngledDivider: Item {
-        width: 12
-
-        Rectangle {
-            width:  1
-            height: parent.height + 8
-            anchors.centerIn: parent
-            color: root.colBorder
-            transform: Rotation {
-                origin.x: 0.5
-                origin.y: height / 2
-                angle: -6
-            }
-        }
-    }
-
-    // ── CenterPanel ───────────────────────────────────────────────────────────
-    // Gear (hero element) + speed + RPM, all packed tight.
-    // Gear pulses briefly on each shift.
-    component CenterPanel: Item {
-        property int gear:  0
-        property int speed: 0
-        property int rpm:   0
-
-        onGearChanged: {
-            if (gearDisplay.scale === 1.0)
-                gearPulse.restart()
-        }
-
-        // Brief scale-up flash on gear shift
-        SequentialAnimation {
-            id: gearPulse
-            NumberAnimation { target: gearDisplay; property: "scale"; to: 1.14; duration: 55;  easing.type: Easing.OutQuad }
-            NumberAnimation { target: gearDisplay; property: "scale"; to: 1.0;  duration: 110; easing.type: Easing.InOutQuad }
-        }
+    component MiniBar: Item {
+        property string label: ""
+        property real value: 0
+        property color accent: "#ffffff"
 
         RowLayout {
-            anchors.centerIn: parent
-            spacing: 10
+            anchors.fill: parent
+            spacing: 3
 
-            // Giant gear
             Text {
-                id: gearDisplay
-                text: root.gearLabel(gear)
-                font.family:    "Formula1"
-                font.pixelSize: 60
-                font.bold:      true
-                transformOrigin: Item.Center
-                color: {
-                    if (gear < 0)   return "#ff5555"
-                    if (gear === 0) return "#ffaa00"
-                    return "#ffffff"
-                }
-                Behavior on color { ColorAnimation { duration: 80 } }
+                text: label
+                font.family: "B612Mono"
+                font.pixelSize: 8
+                color: accent
+                Layout.preferredWidth: 10
             }
 
-            // Speed + RPM stacked
-            ColumnLayout {
-                spacing: 2
-
-                RowLayout {
-                    spacing: 3
-
-                    Text {
-                        text: speed
-                        font.family:    "B612Mono"
-                        font.pixelSize: 26
-                        font.bold:      true
-                        color: "#e8e8e8"
-                    }
-
-                    Text {
-                        text: "km/h"
-                        font.family:    "Formula1"
-                        font.pixelSize: 9
-                        color: "#50506a"
-                        Layout.alignment: Qt.AlignBottom
-                        bottomPadding: 3
-                    }
-                }
-
-                Text {
-                    text: (rpm / 1000).toFixed(1) + "k RPM"
-                    font.family:    "B612Mono"
-                    font.pixelSize: 10
-                    color: "#404858"
-                }
-            }
-        }
-    }
-
-    // ── DrsErsPanel ───────────────────────────────────────────────────────────
-    // DRS badge
-    // ERS remaining — large bar, colour-shifts blue→orange→red as it depletes
-    //                 tiny mode dot on the left
-    // HARV bar (red) / DEP bar (green) — side by side, no labels
-    // Turn info
-    component DrsErsPanel: Item {
-        property bool   drsEnabled:     false
-        property bool   drsAvailable:   false
-        property int    drsDistance:    0
-        property real   ersRemPct:      0
-        property real   ersHarvPct:     0
-        property real   ersDeployedPct: 0
-        property string ersMode:        "None"
-        property int    turnNumber:     0
-        property string turnName:       ""
-
-        ColumnLayout {
-            anchors.fill:    parent
-            anchors.margins: 7
-            spacing: 5
-
-            // ── DRS badge ─────────────────────────────────────────────────
             Rectangle {
-                Layout.fillWidth:       true
-                Layout.preferredHeight: 20
-                radius: 3
-                color: {
-                    if (drsEnabled)   return Qt.rgba(0, 0.82, 0.75, 0.18)
-                    if (drsAvailable) return Qt.rgba(1, 0.84, 0,    0.12)
-                    return "#0c0c14"
-                }
-                border.color: {
-                    if (drsEnabled)   return root.colDrsActive
-                    if (drsAvailable) return root.colDrsAvail
-                    return "#232332"
-                }
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: height / 2
+                color: "#09111a"
                 border.width: 1
+                border.color: "#2d3d4c"
+                clip: true
 
-                RowLayout {
-                    anchors.fill:        parent
-                    anchors.leftMargin:  6
-                    anchors.rightMargin: 6
-
-                    Text {
-                        text: "DRS"
-                        font.family:    "Formula1"
-                        font.pixelSize: 9
-                        font.bold:      true
-                        color: drsEnabled ? root.colDrsActive : drsAvailable ? root.colDrsAvail : root.colDim
-                    }
-
-                    Text {
-                        text: {
-                            if (drsEnabled)   return "ACTIVE"
-                            if (drsAvailable) return (drsDistance > 0 ? drsDistance + "m" : "READY")
-                            return "OFF"
-                        }
-                        font.family:    "B612Mono"
-                        font.pixelSize: 9
-                        color: drsEnabled ? root.colDrsActive : drsAvailable ? root.colDrsAvail : "#232332"
-                        Layout.fillWidth:    true
-                        horizontalAlignment: Text.AlignRight
-                    }
+                Rectangle {
+                    width: Math.max(0, root.clampPct(value) / 100 * parent.width)
+                    height: parent.height
+                    radius: parent.radius
+                    color: accent
+                    opacity: 0.88
+                    Behavior on width { SmoothedAnimation { duration: 120 } }
                 }
             }
-
-            // ── ERS remaining bar ─────────────────────────────────────────
-            // mode dot + bar + % value
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                // ERS mode — coloured dot only, no text
-                Rectangle {
-                    width: 6; height: 6; radius: 3
-                    color: {
-                        var m = ersMode.toLowerCase()
-                        if (m === "overtake") return "#cc00ff"
-                        if (m === "high")     return "#ff8c00"
-                        if (m === "medium")   return root.colErs
-                        if (m === "low")      return root.colThrottle
-                        return root.colDim
-                    }
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                // REM bar
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 11
-                    radius: 3
-                    color:        "#060612"
-                    border.color: "#131325"
-                    clip: true
-
-                    Rectangle {
-                        id: ersRemFill
-                        width:  Math.max(0, (ersRemPct / 100) * parent.width)
-                        height: parent.height
-                        radius: 3
-                        color: {
-                            if (ersRemPct > 40) return root.colErs
-                            if (ersRemPct > 15) return "#ff8c00"
-                            return root.colBrake
-                        }
-                        Behavior on width { SmoothedAnimation { duration: 130 } }
-                        Behavior on color { ColorAnimation  { duration: 300 } }
-
-                        // Bright shimmer at right edge of fill
-                        Rectangle {
-                            visible: ersRemFill.width > 6
-                            anchors.right:  parent.right
-                            anchors.top:    parent.top
-                            anchors.bottom: parent.bottom
-                            width: 3
-                            radius: 1
-                            color: Qt.rgba(1, 1, 1, 0.30)
-                        }
-                    }
-                }
-
-                // Remaining %
-                Text {
-                    text: Math.round(ersRemPct) + "%"
-                    font.family:    "B612Mono"
-                    font.pixelSize: 9
-                    color: ersRemPct > 40 ? root.colErs : ersRemPct > 15 ? "#ff8c00" : root.colBrake
-                    Layout.preferredWidth: 28
-                    horizontalAlignment:   Text.AlignRight
-                }
-            }
-
-            // ── HARV (red) / DEP (green) mini-bars ───────────────────────
-            // Side by side, colour-coded, no text — visual only
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                // HARV — red
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 7
-                    radius: 2
-                    color:        "#100205"
-                    border.color: "#2a0508"
-                    clip: true
-
-                    Rectangle {
-                        width:  Math.max(0, (ersHarvPct / 100) * parent.width)
-                        height: parent.height
-                        radius: 2
-                        color:  root.colBrake
-                        Behavior on width { SmoothedAnimation { duration: 100 } }
-                    }
-                }
-
-                // vertical separator
-                Rectangle { width: 1; height: 7; color: root.colBorder }
-
-                // DEP — green
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 7
-                    radius: 2
-                    color:        "#011005"
-                    border.color: "#052a0a"
-                    clip: true
-
-                    Rectangle {
-                        width:  Math.max(0, (ersDeployedPct / 100) * parent.width)
-                        height: parent.height
-                        radius: 2
-                        color:  root.colThrottle
-                        Behavior on width { SmoothedAnimation { duration: 100 } }
-                    }
-                }
-            }
-
-            // ── Turn info ─────────────────────────────────────────────────
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 5
-
-                Rectangle {
-                    width: 3; height: 3; radius: 1.5
-                    color: root.colF1Red
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Text {
-                    text: {
-                        if (turnNumber <= 0) return "–"
-                        return "T" + turnNumber + (turnName.length > 0 ? " · " + turnName : "")
-                    }
-                    font.family:    "Formula1"
-                    font.pixelSize: 9
-                    color: "#707090"
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-            }
-
-            Item { Layout.fillHeight: true }   // push content upward
         }
     }
 }
