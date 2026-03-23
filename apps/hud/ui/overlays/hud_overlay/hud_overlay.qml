@@ -108,9 +108,6 @@ Window {
         width:  baseWidth
         height: baseHeight
 
-        readonly property int edgeBarWidth: 8
-        readonly property int edgeGap:      4
-
         transform: Scale {
             xScale: scaleFactor
             yScale: scaleFactor
@@ -118,79 +115,15 @@ Window {
             origin.y: baseHeight / 2
         }
 
-        // ── Brake bar (left edge) ────────────────────────────────────────────
-        Rectangle {
-            anchors.left:   parent.left
-            anchors.top:    parent.top
-            anchors.bottom: parent.bottom
-            width:  scaledRoot.edgeBarWidth
-            radius: width / 2
-            color:        Qt.rgba(1, 0.35, 0.4, 0.20)
-            border.width: 1
-            border.color: Qt.rgba(1, 0.45, 0.5, 0.55)
-
-            Rectangle {
-                id: brakeBarFill
-                anchors.left:   parent.left
-                anchors.right:  parent.right
-                anchors.bottom: parent.bottom
-                height: Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.height)
-                radius: parent.radius
-                color: "#ff5f67"
-                Behavior on height { SmoothedAnimation { duration: 70 } }
-
-                Rectangle {
-                    visible: brakeBarFill.height > 3
-                    anchors { left: parent.left; right: parent.right; top: parent.top }
-                    height: 1
-                    color: Qt.rgba(1, 1, 1, 0.55)
-                }
-            }
-        }
-
-        // ── Throttle bar (right edge) ────────────────────────────────────────
-        Rectangle {
-            anchors.right:  parent.right
-            anchors.top:    parent.top
-            anchors.bottom: parent.bottom
-            width:  scaledRoot.edgeBarWidth
-            radius: width / 2
-            color:        Qt.rgba(0.3, 0.9, 0.55, 0.20)
-            border.width: 1
-            border.color: Qt.rgba(0.4, 1.0, 0.65, 0.55)
-
-            Rectangle {
-                id: throttleBarFill
-                anchors.left:   parent.left
-                anchors.right:  parent.right
-                anchors.bottom: parent.bottom
-                height: Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.height)
-                radius: parent.radius
-                color: "#45df87"
-                Behavior on height { SmoothedAnimation { duration: 70 } }
-
-                Rectangle {
-                    visible: throttleBarFill.height > 3
-                    anchors { left: parent.left; right: parent.right; top: parent.top }
-                    height: 1
-                    color: Qt.rgba(1, 1, 1, 0.55)
-                }
-            }
-        }
-
-        // ── Main HUD shell ───────────────────────────────────────────────────
+        // ── Main HUD shell (full-width pill, radius = height/2) ──────────────
         Rectangle {
             id: hudShell
-            anchors {
-                left:   parent.left
-                right:  parent.right
-                top:    parent.top
-                bottom: parent.bottom
-                leftMargin:  scaledRoot.edgeBarWidth + scaledRoot.edgeGap
-                rightMargin: scaledRoot.edgeBarWidth + scaledRoot.edgeGap
-            }
+            anchors.left:  parent.left
+            anchors.right: parent.right
+            anchors.top:   parent.top
+            height: 98
             clip:         true
-            radius:       24
+            radius:       49   // = height / 2  →  perfect stadium / parabolica shape
             border.width: 1
             border.color: "#2b3946"
 
@@ -212,16 +145,21 @@ Window {
             }
 
             // ── Three-zone layout ────────────────────────────────────────────
+            // Left/right margins = 0 so gear/ERS circles are concentric with
+            // the pill's semicircular ends (same radius, same centre point).
             RowLayout {
-                anchors.fill:    parent
-                anchors.margins: 6
-                spacing: 8
+                anchors.fill:          parent
+                anchors.topMargin:     5
+                anchors.bottomMargin:  5
+                anchors.leftMargin:    0
+                anchors.rightMargin:   0
+                spacing: 6
 
                 // ════════════════════════════════════════════════════════════
-                //  LEFT — GEAR
+                //  LEFT — GEAR  (zone width = pill height → concentric end)
                 // ════════════════════════════════════════════════════════════
                 Item {
-                    Layout.preferredWidth: 82
+                    Layout.preferredWidth: 98
                     Layout.fillHeight:     true
 
                     Rectangle {
@@ -229,9 +167,9 @@ Window {
                         property int observedGear: root.gear
                         onObservedGearChanged: gearPulse.restart()
 
-                        width:  78
-                        height: 78
-                        radius: 39
+                        width:  86
+                        height: 86
+                        radius: 43
                         anchors.centerIn: parent
                         color:        "#0b1520"
                         border.width: 2
@@ -266,7 +204,7 @@ Window {
                             anchors.centerIn: parent
                             text:            root.gearLabel(root.gear)
                             font.family:     "Formula1"
-                            font.pixelSize:  38
+                            font.pixelSize:  42
                             font.bold:       true
                             color:           "#edf7ff"
                         }
@@ -424,11 +362,11 @@ Window {
                 } // ColumnLayout (center)
 
                 // ════════════════════════════════════════════════════════════
-                //  RIGHT — ERS
+                //  RIGHT — ERS  (zone width = pill height → concentric end)
                 // ════════════════════════════════════════════════════════════
                 Item {
                     id: ersZone
-                    Layout.preferredWidth: 94
+                    Layout.preferredWidth: 98
                     Layout.fillHeight:     true
 
                     // Smoothly animated source values drive the canvas
@@ -555,5 +493,66 @@ Window {
 
             } // RowLayout
         } // hudShell
+
+        // ── Brake / Throttle bars (below pill, spanning straight section only) ─
+        // Inset by hudShell.radius (49px) on each side so the bars start and
+        // end exactly where the pill's curvature begins.
+        // Brake  (left):  fills right → left
+        // Throttle (right): fills left → right
+        Row {
+            anchors.left:        parent.left
+            anchors.right:       parent.right
+            anchors.top:         hudShell.bottom
+            anchors.topMargin:   4
+            anchors.leftMargin:  hudShell.radius
+            anchors.rightMargin: hudShell.radius
+            height:  10
+            spacing: 4
+
+            // Brake — right-to-left fill
+            Rectangle {
+                id: brakeTrack
+                width:  (parent.width - parent.spacing) / 2
+                height: parent.height
+                radius: height / 2
+                color:        Qt.rgba(1, 0.09, 0.27, 0.15)
+                border.width: 1
+                border.color: Qt.rgba(1, 0.09, 0.27, 0.55)
+                clip: true
+
+                Rectangle {
+                    anchors.right:  parent.right
+                    anchors.top:    parent.top
+                    anchors.bottom: parent.bottom
+                    width:  Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.width)
+                    radius: parent.radius
+                    color:  "#FF1744"
+                    Behavior on width { SmoothedAnimation { duration: 70 } }
+                }
+            }
+
+            // Throttle — left-to-right fill
+            Rectangle {
+                id: throttleTrack
+                width:  (parent.width - parent.spacing) / 2
+                height: parent.height
+                radius: height / 2
+                color:        Qt.rgba(0.46, 1, 0.01, 0.15)
+                border.width: 1
+                border.color: Qt.rgba(0.46, 1, 0.01, 0.55)
+                clip: true
+
+                Rectangle {
+                    anchors.left:   parent.left
+                    anchors.top:    parent.top
+                    anchors.bottom: parent.bottom
+                    width:  Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.width)
+                    radius: parent.radius
+                    color:  "#76FF03"
+                    Behavior on width { SmoothedAnimation { duration: 70 } }
+                }
+            }
+        } // input bars
+
     } // scaledRoot
 }
