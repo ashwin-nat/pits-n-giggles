@@ -348,6 +348,19 @@ class EngViewRaceTable {
         };
     }
 
+    createTempCellRenderer(section, wheel) {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const temps = driverInfo["tyre-info"][section];
+            const val = temps?.[wheel];
+            return this.createSingleLineCell(val != null ? `${val}°` : "N/A");
+        };
+    }
+
     createTyreWearCellRenderer(wearField) {
         return (params) => {
             const tyreInfo = params.data["tyre-info"];
@@ -790,6 +803,87 @@ class EngViewRaceTable {
                         cellRenderer: this.createTyreWearCellRenderer("rear-right-wear"),
                         sortable: false,
                         cellClass: 'ag-cell-multiline',
+                    },
+                ],
+            },
+            {
+                headerName: 'Surf T',
+                colId: 'tyre-surf-temps',
+                context: {displayName: 'Tyre Surface Temps'},
+                children: [
+                    {
+                        headerName: "FL", colId: "tyre-surf-fl", context: {displayName: "Surface Temp FL"},
+                        field: "tyre-info.surface-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("surface-temps", "fl"),
+                    },
+                    {
+                        headerName: "FR", colId: "tyre-surf-fr", context: {displayName: "Surface Temp FR"},
+                        field: "tyre-info.surface-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("surface-temps", "fr"),
+                    },
+                    {
+                        headerName: "RL", colId: "tyre-surf-rl", context: {displayName: "Surface Temp RL"},
+                        field: "tyre-info.surface-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("surface-temps", "rl"),
+                    },
+                    {
+                        headerName: "RR", colId: "tyre-surf-rr", context: {displayName: "Surface Temp RR"},
+                        field: "tyre-info.surface-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("surface-temps", "rr"),
+                    },
+                ],
+            },
+            {
+                headerName: 'Inner T',
+                colId: 'tyre-inner-temps',
+                context: {displayName: 'Tyre Inner Temps'},
+                children: [
+                    {
+                        headerName: "FL", colId: "tyre-inner-fl", context: {displayName: "Inner Temp FL"},
+                        field: "tyre-info.inner-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("inner-temps", "fl"),
+                    },
+                    {
+                        headerName: "FR", colId: "tyre-inner-fr", context: {displayName: "Inner Temp FR"},
+                        field: "tyre-info.inner-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("inner-temps", "fr"),
+                    },
+                    {
+                        headerName: "RL", colId: "tyre-inner-rl", context: {displayName: "Inner Temp RL"},
+                        field: "tyre-info.inner-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("inner-temps", "rl"),
+                    },
+                    {
+                        headerName: "RR", colId: "tyre-inner-rr", context: {displayName: "Inner Temp RR"},
+                        field: "tyre-info.inner-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("inner-temps", "rr"),
+                    },
+                ],
+            },
+            {
+                headerName: 'Brake T',
+                colId: 'brake-temps',
+                context: {displayName: 'Brake Temps'},
+                children: [
+                    {
+                        headerName: "FL", colId: "brake-fl", context: {displayName: "Brake Temp FL"},
+                        field: "tyre-info.brakes-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("brakes-temps", "fl"),
+                    },
+                    {
+                        headerName: "FR", colId: "brake-fr", context: {displayName: "Brake Temp FR"},
+                        field: "tyre-info.brakes-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("brakes-temps", "fr"),
+                    },
+                    {
+                        headerName: "RL", colId: "brake-rl", context: {displayName: "Brake Temp RL"},
+                        field: "tyre-info.brakes-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("brakes-temps", "rl"),
+                    },
+                    {
+                        headerName: "RR", colId: "brake-rr", context: {displayName: "Brake Temp RR"},
+                        field: "tyre-info.brakes-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createTempCellRenderer("brakes-temps", "rr"),
                     },
                 ],
             },

@@ -517,6 +517,9 @@ class DriversListRsp(BaseAPI):
             "visual-tyre-compound": str(self._getValueOrDefaultValue(driver_data.m_tyre_info.tyre_vis_compound, default_value="")),
             "actual-tyre-compound": str(self._getValueOrDefaultValue(driver_data.m_tyre_info.tyre_act_compound, default_value="")),
             "num-pitstops": self._getValueOrDefaultValue(driver_data.m_pit_info.m_num_stops),
+            "surface-temps": driver_data.m_tyre_info.getSurfaceTempsJSON(),
+            "inner-temps": driver_data.m_tyre_info.getInnerTempsJSON(),
+            "brakes-temps": driver_data.m_tyre_info.getBrakesTempsJSON(),
         }
 
     def _getDamageInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
