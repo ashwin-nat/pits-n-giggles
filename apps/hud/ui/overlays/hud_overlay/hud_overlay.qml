@@ -330,32 +330,51 @@ Window {
 
                         Item { Layout.fillWidth: true }
 
-                        // DRS badge
+                        // DRS badge – wider pill with distance-fill bar
                         Rectangle {
                             Layout.preferredHeight: 12
-                            Layout.preferredWidth:  drsLabel.implicitWidth + 12
+                            Layout.preferredWidth:  56
                             radius:       5
-                            color:        root.drsEnabled   ? Qt.rgba(0.21, 0.85, 0.79, 0.18)
-                                        : root.drsAvailable ? Qt.rgba(1.00, 0.79, 0.32, 0.12)
-                                        :                     Qt.rgba(0.16, 0.22, 0.28, 0.50)
+                            clip:         true
+                            color:        root.drsEnabled
+                                              ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
+                                              : (root.drsAvailable || root.drsDistance > 0)
+                                                  ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
+                                                  : Qt.rgba(0.16, 0.22, 0.28, 0.50)
                             border.width: 1
-                            border.color: root.drsEnabled   ? "#35d8cb"
-                                        : root.drsAvailable ? "#ffca52"
-                                        :                     "#2d3e4d"
+                            border.color: root.drsEnabled
+                                              ? "#00e676"
+                                              : (root.drsAvailable || root.drsDistance > 0)
+                                                  ? "#ffca52"
+                                                  : "#2d3e4d"
+
+                            // Fill bar: grows left→right as drsDistance shrinks toward 0
+                            Rectangle {
+                                anchors.left:   parent.left
+                                anchors.top:    parent.top
+                                anchors.bottom: parent.bottom
+                                visible: !root.drsEnabled &&
+                                         (root.drsDistance > 0 ||
+                                          (root.drsAvailable && root.drsDistance === 0))
+                                width: (root.drsAvailable && root.drsDistance === 0)
+                                       ? parent.width
+                                       : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
+                                color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
+                                Behavior on width { SmoothedAnimation { duration: 150 } }
+                            }
 
                             Text {
-                                id: drsLabel
+                                id:             drsLabel
                                 anchors.centerIn: parent
-                                text: root.drsEnabled
-                                    ? "DRS"
-                                    : root.drsAvailable
-                                        ? (root.drsDistance > 0 ? root.drsDistance + "m" : "DRS")
-                                        : "DRS"
+                                text:           "DRS"
                                 font.family:    "Formula1"
                                 font.pixelSize: 8
-                                color: root.drsEnabled   ? "#35d8cb"
-                                     : root.drsAvailable ? "#ffca52"
-                                     :                     "#3d4f5e"
+                                color: root.drsEnabled
+                                       ? "#00e676"
+                                       : (root.drsAvailable || root.drsDistance > 0)
+                                           ? "#ffca52"
+                                           : "#3d4f5e"
+                                z: 1
                             }
                         }
                     }

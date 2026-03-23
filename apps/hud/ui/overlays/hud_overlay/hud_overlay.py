@@ -100,7 +100,7 @@ class HudOverlay(BaseOverlayQML):
         # DRS
         self.set_qml_property("drsEnabled",   data.drs_enabled)
         self.set_qml_property("drsAvailable", data.drs_available)
-        self.set_qml_property("drsDistance",  data.drs_distance)
+        self.set_qml_property("drsDistance",  min(data.drs_distance, 250))
 
         # ERS — all values as percentages
         #   Store / deploy limit = 4 MJ  |  MGU-K harvest limit = 2 MJ
