@@ -222,6 +222,7 @@ class MfdOverlay(BaseOverlayQML):
 
     @final
     def get_stats(self) -> dict:
+        """Get the base class level stats and page stats."""
         overlay_stats = super().get_stats()
         page_stats = {
             page.KEY: page.get_stats()
