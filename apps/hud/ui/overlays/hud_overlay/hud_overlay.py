@@ -29,6 +29,7 @@ from typing import Optional, final
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import HUD_OVERLAY_ID, OverlayPosition
+from lib.f1_types.packet_7_car_status_data import CarStatusData
 from lib.track_segment_info import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -101,12 +102,11 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("drsDistance",  min(data.drs_distance, 250))
 
         # ERS — all values as percentages
-        #   Store / deploy limit = 4 MJ  |  MGU-K harvest limit = 2 MJ
-        _STORE_J = 4_000_000.0
-        _HARV_J  = 2_000_000.0
-        self.set_qml_property("ersRemPct",      round(min(data.ers_rem_j       / _STORE_J * 100.0, 100.0), 1))
-        self.set_qml_property("ersHarvPct",     round(min(data.ers_harv_mguk_j / _HARV_J  * 100.0, 100.0), 1))
-        self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _STORE_J * 100.0, 100.0), 1))
+        _store = CarStatusData.MAX_ERS_STORE_ENERGY
+        _harv  = CarStatusData.MAX_MGUK_HARV_PER_LAP
+        self.set_qml_property("ersRemPct",      round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1))
+        self.set_qml_property("ersHarvPct",     round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1))
+        self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _store * 100.0, 100.0), 1))
         self.set_qml_property("ersMode",        data.ers_mode)
         self.set_qml_property("tlWarnings",     data.tl_warnings)
         self.set_qml_property("trackTempC",     data.track_temp)
