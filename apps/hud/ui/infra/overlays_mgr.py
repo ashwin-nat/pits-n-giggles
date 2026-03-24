@@ -391,10 +391,7 @@ class OverlaysMgr:
 
     def _hud_overlay_update(self, data: Dict[str, Any]):
         """Send HUD data to HUD overlay."""
-        self.window_manager.unicast_high_freq_data(
-            "hud_overlay", # TODO
-            HudOverlayData.from_json(data)
-        )
+        self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
