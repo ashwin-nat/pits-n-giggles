@@ -187,7 +187,7 @@ class OverlaysMgr:
         self._input_telemetry_update(data)
         self._motion_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+            self.window_manager.broadcast_data('stream_overlay_update', data)
 
     # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
@@ -371,17 +371,11 @@ class OverlaysMgr:
 
     def _input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        self.window_manager.unicast_high_freq_data(
-            InputTelemetryOverlay.OVERLAY_ID,
-            InputTelemetryData.from_json(data)
-        )
+        self.window_manager.send_high_freq_data(InputTelemetryData.from_json(data))
 
     def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
-        self.window_manager.unicast_high_freq_data(
-            TrackRadarOverlay.OVERLAY_ID,
-            LiveSessionMotionInfo.from_json(data)
-        )
+        self.window_manager.send_high_freq_data(LiveSessionMotionInfo.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)

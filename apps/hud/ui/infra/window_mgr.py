@@ -24,7 +24,7 @@
 
 import logging
 from time import perf_counter_ns
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject,
                             QTimer, QWaitCondition, Qt, QtMsgType, Signal,
@@ -41,7 +41,7 @@ class WindowManager(QObject):
     generic_cmd_signal = Signal(set, bool, str, object)  # recipients, priority, event, data
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
-    mgmt_high_freq_signal = Signal(set, object) # recipients, HighFreqBase
+    mgmt_high_freq_signal = Signal(object) # HighFreqBase
 
     def __init__(self, logger: logging.Logger, post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
@@ -169,27 +169,13 @@ class WindowManager(QObject):
         assert overlay_id
         self.generic_cmd_signal.emit({overlay_id}, high_prio, event, self._marshal_data(data))
 
-    def multicast_data(self, overlay_ids: Set[str], event: str, data: Dict[str, Any], high_prio: bool = False):
-        """Multicast event data to multiple overlays using signal.
+    def send_high_freq_data(self, data: HighFreqBase):
+        """Send high-frequency data to all subscribed overlays.
 
         Args:
-            overlay_ids (Set[str]): Overlay IDs
-            event (str): Command
-            data (Dict[str, Any]): Command data
-            high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
+            data (HighFreqBase): High-frequency data payload
         """
-        assert overlay_ids
-        self.generic_cmd_signal.emit(overlay_ids, high_prio, event, self._marshal_data(data))
-
-    def unicast_high_freq_data(self, overlay_id: str, data: HighFreqBase):
-        """Unicast high-frequency data to a specific overlay using signal.
-
-        Args:
-            overlay_id (str): Overlay ID
-            data (Dict[str, Any]): Command data
-        """
-        assert overlay_id
-        self.mgmt_high_freq_signal.emit({overlay_id}, data)
+        self.mgmt_high_freq_signal.emit(data)
 
     def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add timestamp to payload."""

@@ -396,9 +396,9 @@ class BaseOverlay():
         else:
             self.logger.debug(f"{self.OVERLAY_ID} | No handler for request '{request_type}'")
 
-    @Slot(set, object)
-    def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
-        if self.OVERLAY_ID not in recipients:
+    @Slot(object)
+    def _handle_high_freq_data(self, payload: HighFreqBase):
+        if payload.__hf_type__ not in self._hf_subscriptions:
             return
 
         self._track_hf_pipeline_latency(
@@ -430,16 +430,15 @@ class BaseOverlay():
             )
             return
 
-        if payload.__hf_type__ in self._hf_subscriptions:
-            self._latest_hf[payload.__hf_type__] = payload
-            if self.get_visibility():
-                if payload.__hf_type__ in self._hf_pending:
-                    # Previous update was overwritten before render_frame consumed it
-                    self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
-                    self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
-                else:
-                    self._hf_pending.add(payload.__hf_type__)
-                self._track_hf_event(payload.__hf_type__)
+        self._latest_hf[payload.__hf_type__] = payload
+        if self.get_visibility():
+            if payload.__hf_type__ in self._hf_pending:
+                # Previous update was overwritten before render_frame consumed it
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
             else:
-                self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
-                self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)
+                self._hf_pending.add(payload.__hf_type__)
+            self._track_hf_event(payload.__hf_type__)
+        else:
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)
