@@ -54,6 +54,8 @@ Window {
     property int    turnNumber:     0
     property string turnName:       ""
     property int    tlWarnings:     0
+    property int    trackTempC:     0
+    property int    airTempC:       0
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -94,11 +96,6 @@ Window {
     }
 
 
-    function tlColor() {
-        if (tlWarnings >= 2) return "#ff4444"
-        if (tlWarnings >= 1) return "#ffc000"
-        return "#6a7f92"
-    }
 
     // ── Root scaled container ────────────────────────────────────────────────
 
@@ -303,78 +300,132 @@ Window {
                         }
                     }
 
-                    // Secondary info row — track limits (left) + DRS (right)
+                    // Secondary info row — 4 equal fixed slots: TL | track temp | air temp | DRS
                     RowLayout {
                         Layout.fillWidth:       true
                         Layout.preferredHeight: 14
-                        spacing: 6
+                        spacing: 0
 
-                        // Track limits
-                        Text {
-                            id: tlText
-                            text:            "TL  " + root.tlWarnings
-                            font.family:     "Formula1"
-                            font.pixelSize:  10
-                            color:           root.tlColor()
-                            verticalAlignment: Text.AlignVCenter
+                        // ── Slot 1: Track limits ──────────────────────────────
+                        Item {
+                            Layout.fillWidth:       true
+                            Layout.preferredHeight: 14
 
-                            onColorChanged: if (root.tlWarnings < 2) tlText.opacity = 1.0
-
-                            SequentialAnimation on opacity {
-                                running: root.tlWarnings >= 2
-                                loops:   Animation.Infinite
-                                NumberAnimation { to: 0.45; duration: 280 }
-                                NumberAnimation { to: 1.00; duration: 280 }
+                            Text {
+                                id: tlText
+                                anchors.centerIn: parent
+                                text:            "TL  " + root.tlWarnings
+                                font.family:     "Formula1"
+                                font.pixelSize:  10
+                                color:           "#a8bfd4"
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
 
-                        Item { Layout.fillWidth: true }
+                        // ── Slot 2: Track temperature ─────────────────────────
+                        Item {
+                            Layout.fillWidth:       true
+                            Layout.preferredHeight: 14
 
-                        // DRS badge – wider pill with distance-fill bar
-                        Rectangle {
-                            Layout.preferredHeight: 12
-                            Layout.preferredWidth:  56
-                            radius:       5
-                            clip:         true
-                            color:        root.drsEnabled
-                                              ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
-                                              : (root.drsAvailable || root.drsDistance > 0)
-                                                  ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
-                                                  : Qt.rgba(0.16, 0.22, 0.28, 0.50)
-                            border.width: 1
-                            border.color: root.drsEnabled
-                                              ? "#00e676"
-                                              : (root.drsAvailable || root.drsDistance > 0)
-                                                  ? "#ffca52"
-                                                  : "#2d3e4d"
-
-                            // Fill bar: grows left→right as drsDistance shrinks toward 0
-                            Rectangle {
-                                anchors.left:   parent.left
-                                anchors.top:    parent.top
-                                anchors.bottom: parent.bottom
-                                visible: !root.drsEnabled &&
-                                         (root.drsDistance > 0 ||
-                                          (root.drsAvailable && root.drsDistance === 0))
-                                width: (root.drsAvailable && root.drsDistance === 0)
-                                       ? parent.width
-                                       : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
-                                color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
-                                Behavior on width { SmoothedAnimation { duration: 150 } }
-                            }
-
-                            Text {
-                                id:             drsLabel
+                            Row {
                                 anchors.centerIn: parent
-                                text:           "DRS"
-                                font.family:    "Formula1"
-                                font.pixelSize: 8
-                                color: root.drsEnabled
-                                       ? "#00e676"
-                                       : (root.drsAvailable || root.drsDistance > 0)
-                                           ? "#ffca52"
-                                           : "#3d4f5e"
-                                z: 1
+                                spacing: 2
+
+                                Image {
+                                    source:  "../../../../../assets/overlays/track-temperature.svg"
+                                    width:   10
+                                    height:  10
+                                    smooth:  true
+                                    mipmap:  true
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text:             root.trackTempC + "°"
+                                    font.family:      "Formula1"
+                                    font.pixelSize:   10
+                                    color:            "#a8bfd4"
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+
+                        // ── Slot 3: Air temperature ───────────────────────────
+                        Item {
+                            Layout.fillWidth:       true
+                            Layout.preferredHeight: 14
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 2
+
+                                Image {
+                                    source:  "../../../../../assets/overlays/air-temperature.svg"
+                                    width:   10
+                                    height:  10
+                                    smooth:  true
+                                    mipmap:  true
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text:             root.airTempC + "°"
+                                    font.family:      "Formula1"
+                                    font.pixelSize:   10
+                                    color:            "#a8bfd4"
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+
+                        // ── Slot 4: DRS badge ─────────────────────────────────
+                        Item {
+                            Layout.fillWidth:       true
+                            Layout.preferredHeight: 14
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                height:       12
+                                width:        56
+                                radius:       5
+                                clip:         true
+                                color:        root.drsEnabled
+                                                  ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
+                                                  : (root.drsAvailable || root.drsDistance > 0)
+                                                      ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
+                                                      : Qt.rgba(0.16, 0.22, 0.28, 0.50)
+                                border.width: 1
+                                border.color: root.drsEnabled
+                                                  ? "#00e676"
+                                                  : (root.drsAvailable || root.drsDistance > 0)
+                                                      ? "#ffca52"
+                                                      : "#2d3e4d"
+
+                                Rectangle {
+                                    anchors.left:   parent.left
+                                    anchors.top:    parent.top
+                                    anchors.bottom: parent.bottom
+                                    visible: !root.drsEnabled &&
+                                             (root.drsDistance > 0 ||
+                                              (root.drsAvailable && root.drsDistance === 0))
+                                    width: (root.drsAvailable && root.drsDistance === 0)
+                                           ? parent.width
+                                           : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
+                                    color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
+                                    Behavior on width { SmoothedAnimation { duration: 150 } }
+                                }
+
+                                Text {
+                                    id:              drsLabel
+                                    anchors.centerIn: parent
+                                    text:            "DRS"
+                                    font.family:     "Formula1"
+                                    font.pixelSize:  8
+                                    color: root.drsEnabled
+                                           ? "#00e676"
+                                           : (root.drsAvailable || root.drsDistance > 0)
+                                               ? "#ffca52"
+                                               : "#3d4f5e"
+                                    z: 1
+                                }
                             }
                         }
                     }

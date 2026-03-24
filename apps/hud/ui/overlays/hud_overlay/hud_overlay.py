@@ -111,6 +111,8 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _STORE_J * 100.0, 100.0), 1))
         self.set_qml_property("ersMode",        data.ers_mode)
         self.set_qml_property("tlWarnings",     data.tl_warnings)
+        self.set_qml_property("trackTempC",     data.track_temp)
+        self.set_qml_property("airTempC",       data.air_temp)
 
         # Turn info (hardcoded placeholder — real lookup to be wired later)
         self.set_qml_property("turnNumber", corner_info.corner_number)
