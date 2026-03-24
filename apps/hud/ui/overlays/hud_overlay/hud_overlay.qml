@@ -51,8 +51,7 @@ Window {
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
-    property int    turnNumber:     0
-    property string turnName:       ""
+    property string segmentLabel:   ""
     property int    tlWarnings:     0
     property int    trackTempC:     0
     property int    airTempC:       0
@@ -74,16 +73,6 @@ Window {
         if (n < 0.55) return "#39d37a"
         if (n < 0.85) return "#ffb347"
         return "#ff5f64"
-    }
-
-    function turnLabel() {
-        if (turnNumber > 0 && turnName.length > 0)
-            return "T" + turnNumber + "  " + turnName
-        if (turnNumber > 0)
-            return "TURN " + turnNumber
-        if (turnName.length > 0)
-            return turnName
-        return "TRACK DATA"
     }
 
     // Fill colour for the ERS inner circle based on current mode
@@ -221,7 +210,7 @@ Window {
                         id: cornerNameText
                         Layout.fillWidth:      true
                         Layout.preferredHeight: 16
-                        text:                  root.turnLabel().toUpperCase()
+                        text:                  root.segmentLabel.toUpperCase()
                         font.family:           "Formula1"
                         font.pixelSize:        11
                         font.letterSpacing:    1.0
@@ -235,8 +224,8 @@ Window {
 
                     Connections {
                         target: root
-                        function onTurnNumberChanged() {
-                            if (root.turnNumber > 0) cornerFlash.restart()
+                        function onSegmentLabelChanged() {
+                            if (root.segmentLabel.length > 0) cornerFlash.restart()
                         }
                     }
 

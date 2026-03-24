@@ -24,12 +24,12 @@
 
 import logging
 from pathlib import Path
-from typing import final, Optional
-from apps.hud.ui.infra.hf_types import HudOverlayData
+from typing import Optional, final
 
+from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition, HUD_OVERLAY_ID
-from lib.track_segment_info.types import CornerSegmentInfo
+from lib.config import HUD_OVERLAY_ID, OverlayPosition
+from lib.track_segment_info import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -68,6 +68,8 @@ class HudOverlay(BaseOverlayQML):
 
         self.subscribe_hf(HudOverlayData)
 
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
+
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
     @final
     def render_frame(self):
@@ -79,13 +81,7 @@ class HudOverlay(BaseOverlayQML):
         if not data:
             return
 
-        corner_info = CornerSegmentInfo(
-            segment_id=1,
-            corner_number=1,
-            name="La Source",
-            start_m=450,
-            end_m=500,
-        )
+        segment_info = self.tracks_db.get_segment_info(data.circuit, data.circuit_pos_m)
 
         # Ignore the rival field in the obj
 
@@ -116,6 +112,5 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("trackTempC",     data.track_temp)
         self.set_qml_property("airTempC",       data.air_temp)
 
-        # Turn info (hardcoded placeholder — real lookup to be wired later)
-        self.set_qml_property("turnNumber", corner_info.corner_number)
-        self.set_qml_property("turnName",   corner_info.name or "")
+        # Segment info
+        self.set_qml_property("segmentLabel", segment_info.render() if segment_info else "")
