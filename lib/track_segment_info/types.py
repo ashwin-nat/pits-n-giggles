@@ -22,20 +22,66 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass
-from typing import Optional
+from typing import Annotated, ClassVar, List, Literal, Tuple, Union
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-@dataclass(frozen=True)
-class SegmentInfo:
-    segment_id: int
+class BaseSegmentInfo(BaseModel):
+    model_config = ConfigDict(frozen=True)
 
-@dataclass(frozen=True)
-class CornerSegmentInfo(SegmentInfo):
-    corner_number: int
-    corner_name: Optional[str]
-
-@dataclass(frozen=True)
-class StraightSegmentInfo(SegmentInfo):
+    type: str
     name: str
+    start_m: float
+    end_m: float
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "BaseSegmentInfo":
+        if self.start_m >= self.end_m:
+            raise ValueError(f"start_m ({self.start_m}) must be less than end_m ({self.end_m})")
+        return self
+
+
+class StraightSegmentInfo(BaseSegmentInfo):
+    TYPE: ClassVar[str] = "straight"
+    type: Literal["straight"] = "straight"
+
+
+class CornerSegmentInfo(BaseSegmentInfo):
+    TYPE: ClassVar[str] = "corner"
+    type: Literal["corner"] = "corner"
+    corner_number: int
+
+
+class ComplexCornerSegmentInfo(BaseSegmentInfo):
+    TYPE: ClassVar[str] = "complex_corner"
+    type: Literal["complex_corner"] = "complex_corner"
+    corner_numbers: Tuple[int, ...]
+
+
+SegmentInfo = Annotated[
+    Union[StraightSegmentInfo, CornerSegmentInfo, ComplexCornerSegmentInfo],
+    Field(discriminator="type")
+]
+
+
+class TrackData(BaseModel):
+    circuit_name: str
+    circuit_number: int
+    segments: List[SegmentInfo]
+
+    @field_validator("segments", mode="after")
+    @classmethod
+    def _check_order_and_overlap(cls, segments: list) -> list:
+        for i in range(1, len(segments)):
+            prev, curr = segments[i - 1], segments[i]
+            if curr.start_m < prev.start_m:
+                raise ValueError(
+                    f"segment {i} is out of order: start_m={curr.start_m} < previous start_m={prev.start_m}"
+                )
+            if curr.start_m < prev.end_m:
+                raise ValueError(
+                    f"segment {i} overlaps previous: start_m={curr.start_m} < previous end_m={prev.end_m}"
+                )
+        return segments

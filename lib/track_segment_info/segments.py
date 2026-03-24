@@ -25,7 +25,7 @@
 import bisect
 from typing import Any, Dict, List, Optional
 
-from .types import CornerSegmentInfo, SegmentInfo, StraightSegmentInfo
+from .types import BaseSegmentInfo, TrackData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -38,9 +38,17 @@ class TrackSegments:
     """
 
     def __init__(self) -> None:
-        self._track_data: Optional[Dict[str, Any]] = None
-        self._segments: List[Dict[str, Any]] = []
+        self._track_data: Optional[TrackData] = None
+        self._segments: List[BaseSegmentInfo] = []
         self._starts: List[float] = []  # sorted start_m values, parallel to _segments
+
+    @property
+    def circuit_name(self) -> Optional[str]:
+        return self._track_data.circuit_name if self._track_data else None
+
+    @property
+    def circuit_number(self) -> Optional[int]:
+        return self._track_data.circuit_number if self._track_data else None
 
     def load_track_data(self, track_data: Dict[str, Any]) -> None:
         """
@@ -54,56 +62,37 @@ class TrackSegments:
             Expected structure:
 
             {
-                "track_length": float,
+                "track_length": float,          (optional)
                 "segments": [
                     {
-                        "id": int,
+                        "type": str,
                         "name": str,
                         "start_m": float,
                         "end_m": float,
-                        "is_corner": bool,
-                        "corner_type": str | null
+                        ...type-specific fields...
                     }
                 ]
             }
 
-            Field descriptions:
+            Segments must be ordered by start_m and must not overlap.
 
-            track_length
-                Total circuit length in meters.
+            Segment types:
 
-            segments
-                Ordered list of track segments covering the full lap.
+            straight
+                No additional fields.
 
-            id
-                Unique segment identifier.
+            corner
+                corner_number : int  (required)
 
-            name
-                Printable name of the segment
-                (e.g. "La Source", "Kemmel Straight").
-
-            start_m
-                Start distance of the segment along the lap in meters.
-
-            end_m
-                End distance of the segment along the lap in meters.
-
-            is_corner
-                True if the segment represents a corner, False if it is a straight.
-
-            corner_number
-                (corners only) Required integer corner number.
-
-            corner_name
-                (corners only) Optional human-readable corner name
-                (e.g. "La Source", "Eau Rouge"). May be omitted or null.
+            complex_corner
+                corner_numbers : list[int]  (required)
         """
 
-        self._track_data = track_data
-        self._segments = track_data.get("segments", [])
-        self._starts = [seg["start_m"] for seg in self._segments if "start_m" in seg]
+        self._track_data = TrackData.model_validate(track_data)
+        self._segments = list(self._track_data.segments)
+        self._starts = [seg.start_m for seg in self._segments]
 
-    def get_segment_info(self, lap_distance: float) -> Optional[SegmentInfo]:
+    def get_segment_info(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
         """
         Return the track segment corresponding to the given lap position.
 
@@ -114,7 +103,7 @@ class TrackSegments:
 
         Returns
         -------
-        Optional[SegmentInfo]
+        Optional[BaseSegmentInfo]
             Strongly typed segment information if the position falls within
             a defined segment, otherwise None.
         """
@@ -128,17 +117,7 @@ class TrackSegments:
             return None
 
         seg = self._segments[idx]
-        if lap_distance >= seg.get("end_m", float("-inf")):
+        if lap_distance >= seg.end_m:
             return None
 
-        seg_id = seg.get("id", -1)
-        if seg.get("is_corner", False):
-            return CornerSegmentInfo(
-                segment_id=seg_id,
-                corner_number=seg["corner_number"],
-                corner_name=seg.get("corner_name"),
-            )
-        return StraightSegmentInfo(
-            segment_id=seg_id,
-            name=seg.get("name", "Unknown Straight"),
-        )
+        return seg

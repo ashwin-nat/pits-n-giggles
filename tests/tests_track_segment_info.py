@@ -27,8 +27,13 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from pydantic import ValidationError
+
 from lib.track_segment_info import TrackSegments
-from lib.track_segment_info.types import CornerSegmentInfo, SegmentInfo, StraightSegmentInfo
+from lib.track_segment_info.types import (BaseSegmentInfo,
+                                           ComplexCornerSegmentInfo,
+                                           CornerSegmentInfo,
+                                           StraightSegmentInfo)
 
 from tests_base import F1TelemetryUnitTestsBase
 
@@ -36,147 +41,321 @@ from tests_base import F1TelemetryUnitTestsBase
 
 class TestTrackSegments(F1TelemetryUnitTestsBase):
 
+    @staticmethod
+    def _track(segments: list) -> dict:
+        """Wrap segments in a minimal valid top-level track dict."""
+        return {"circuit_name": "Test Circuit", "circuit_number": 99, "segments": segments}
+
     def setUp(self):
         self.track_data = {
-            "track_length": 7000,
+            "circuit_name": "Circuit de Spa-Francorchamps",
+            "circuit_number": 12,
             "segments": [
                 {
-                    "id": 1,
+                    "type": "corner",
+                    "name": "La Source",
                     "start_m": 0,
                     "end_m": 200,
-                    "is_corner": True,
                     "corner_number": 1,
-                    "corner_name": "La Source"
                 },
                 {
-                    "id": 2,
+                    "type": "corner",
+                    "name": "Eau Rouge",
                     "start_m": 200,
                     "end_m": 400,
-                    "is_corner": True,
                     "corner_number": 2,
-                    "corner_name": "Eau Rouge"
                 },
                 {
-                    "id": 3,
+                    "type": "straight",
                     "name": "Kemmel Straight",
                     "start_m": 400,
                     "end_m": 1200,
-                    "is_corner": False
                 },
                 {
-                    "id": 4,
+                    "type": "corner",
+                    "name": "",
                     "start_m": 1200,
                     "end_m": 1400,
-                    "is_corner": True,
-                    "corner_number": 5
-                }
+                    "corner_number": 5,
+                },
+                {
+                    "type": "complex_corner",
+                    "name": "Pouhon",
+                    "start_m": 1400,
+                    "end_m": 1800,
+                    "corner_numbers": [6, 7],
+                },
             ]
         }
 
         self.tracker = TrackSegments()
         self.tracker.load_track_data(self.track_data)
 
+    # --- Regression: straight and corner lookups ------------------------------------------
+
     def test_corner_segment_lookup(self):
-        """Position inside a named corner should return a CornerSegmentInfo."""
+        """Position inside a named corner returns CornerSegmentInfo with correct fields."""
         info = self.tracker.get_segment_info(100)
 
         self.assertIsInstance(info, CornerSegmentInfo)
-        self.assertIsInstance(info, SegmentInfo)
-        self.assertEqual(info.segment_id, 1)
+        self.assertIsInstance(info, BaseSegmentInfo)
+        self.assertEqual(info.type, "corner")
+        self.assertEqual(info.name, "La Source")
+        self.assertEqual(info.start_m, 0)
+        self.assertEqual(info.end_m, 200)
         self.assertEqual(info.corner_number, 1)
-        self.assertEqual(info.corner_name, "La Source")
 
-    def test_named_corner_segment_lookup(self):
-        """Second named corner should return correct CornerSegmentInfo."""
+    def test_second_corner_segment_lookup(self):
+        """Second named corner returns correct CornerSegmentInfo."""
         info = self.tracker.get_segment_info(300)
 
         self.assertIsInstance(info, CornerSegmentInfo)
-        self.assertEqual(info.segment_id, 2)
+        self.assertEqual(info.type, "corner")
+        self.assertEqual(info.name, "Eau Rouge")
         self.assertEqual(info.corner_number, 2)
-        self.assertEqual(info.corner_name, "Eau Rouge")
 
-    def test_unnamed_corner_has_no_name(self):
-        """Corner without a name should have corner_name as None."""
+    def test_unnamed_corner_has_empty_name(self):
+        """Corner with empty name string is stored correctly."""
         info = self.tracker.get_segment_info(1300)
 
         self.assertIsInstance(info, CornerSegmentInfo)
         self.assertEqual(info.corner_number, 5)
-        self.assertIsNone(info.corner_name)
+        self.assertEqual(info.name, "")
 
     def test_straight_segment_lookup(self):
-        """Position inside a straight should return a StraightSegmentInfo."""
+        """Position inside a straight returns StraightSegmentInfo with correct fields."""
         info = self.tracker.get_segment_info(600)
 
         self.assertIsInstance(info, StraightSegmentInfo)
-        self.assertIsInstance(info, SegmentInfo)
-        self.assertEqual(info.segment_id, 3)
+        self.assertIsInstance(info, BaseSegmentInfo)
+        self.assertEqual(info.type, "straight")
         self.assertEqual(info.name, "Kemmel Straight")
+        self.assertEqual(info.start_m, 400)
+        self.assertEqual(info.end_m, 1200)
 
     def test_corner_is_not_straight(self):
         """A corner should not be an instance of StraightSegmentInfo."""
         info = self.tracker.get_segment_info(100)
-
         self.assertNotIsInstance(info, StraightSegmentInfo)
 
     def test_straight_is_not_corner(self):
         """A straight should not be an instance of CornerSegmentInfo."""
         info = self.tracker.get_segment_info(600)
-
         self.assertNotIsInstance(info, CornerSegmentInfo)
 
-    def test_segment_boundary_start(self):
-        """Segment should include its start boundary."""
-        info = self.tracker.get_segment_info(200)
+    # --- Complex corner parsing -----------------------------------------------------------
 
-        self.assertEqual(info.segment_id, 2)
+    def test_complex_corner_lookup(self):
+        """Position inside a complex corner returns ComplexCornerSegmentInfo."""
+        info = self.tracker.get_segment_info(1600)
+
+        self.assertIsInstance(info, ComplexCornerSegmentInfo)
+        self.assertIsInstance(info, BaseSegmentInfo)
+        self.assertEqual(info.type, "complex_corner")
+        self.assertEqual(info.name, "Pouhon")
+        self.assertEqual(info.start_m, 1400)
+        self.assertEqual(info.end_m, 1800)
+
+    def test_complex_corner_corner_numbers_parsed(self):
+        """corner_numbers parsed into a tuple of ints."""
+        info = self.tracker.get_segment_info(1600)
+
+        self.assertEqual(len(info.corner_numbers), 2)
+        self.assertEqual(info.corner_numbers[0], 6)
+        self.assertEqual(info.corner_numbers[1], 7)
+
+    def test_complex_corner_corner_numbers_is_tuple(self):
+        """corner_numbers must be an immutable tuple."""
+        info = self.tracker.get_segment_info(1600)
+        self.assertIsInstance(info.corner_numbers, tuple)
+
+    def test_complex_corner_is_not_corner_or_straight(self):
+        """A complex_corner must not be an instance of CornerSegmentInfo or StraightSegmentInfo."""
+        info = self.tracker.get_segment_info(1600)
+        self.assertNotIsInstance(info, CornerSegmentInfo)
+        self.assertNotIsInstance(info, StraightSegmentInfo)
+
+    # --- Boundary conditions --------------------------------------------------------------
+
+    def test_segment_boundary_start_inclusive(self):
+        """Exactly at start_m should be inside the segment."""
+        info = self.tracker.get_segment_info(200)
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.corner_number, 2)
 
     def test_segment_boundary_end_exclusive(self):
-        """Segment should exclude its end boundary."""
+        """Exactly at end_m should NOT be inside the segment."""
+        info = self.tracker.get_segment_info(1200)
+        # 1200 is start of the unnamed corner (id 4), not end of straight
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.corner_number, 5)
+
+    def test_position_just_before_end_is_inside(self):
+        """One meter before end_m should still be inside the segment."""
         info = self.tracker.get_segment_info(399)
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.corner_number, 2)
 
-        self.assertEqual(info.segment_id, 2)
-
-    def test_position_outside_segments(self):
-        """Position outside defined segments should return None."""
+    def test_position_outside_segments_returns_none(self):
+        """Position beyond all segments returns None."""
         info = self.tracker.get_segment_info(5000)
-
         self.assertIsNone(info)
 
-    def test_negative_position_outside_segments(self):
-        """Negative positions should return None."""
+    def test_negative_position_returns_none(self):
+        """Negative position returns None."""
         info = self.tracker.get_segment_info(-1)
-
         self.assertIsNone(info)
 
-    def test_pre_start_position_outside_segments(self):
-        """Positions just before the first segment start should return None."""
+    def test_pre_start_position_returns_none(self):
+        """Position just before the first segment start returns None."""
         info = self.tracker.get_segment_info(-0.1)
-
         self.assertIsNone(info)
 
     def test_no_track_loaded(self):
-        """Calling lookup without loading data should return None."""
+        """Calling lookup without loading data returns None."""
         tracker = TrackSegments()
-
         info = tracker.get_segment_info(100)
-
         self.assertIsNone(info)
 
-    def test_malformed_segment_skipped(self):
-        """Segments missing required fields should be ignored."""
-        bad_data = {
-            "track_length": 5000,
-            "segments": [
-                {
-                    "id": 1,
-                    "is_corner": True
-                }
-            ]
-        }
+    # --- Validation: missing required base fields -----------------------------------------
 
+    def test_validation_missing_type(self):
+        """Missing 'type' field raises ValueError."""
+        bad = {"name": "X", "start_m": 0, "end_m": 100}
         tracker = TrackSegments()
-        tracker.load_track_data(bad_data)
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
 
-        info = tracker.get_segment_info(50)
+    def test_validation_missing_name(self):
+        """Missing 'name' field raises ValueError."""
+        bad = {"type": "straight", "start_m": 0, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
 
-        self.assertIsNone(info)
+    def test_validation_missing_start_m(self):
+        """Missing 'start_m' field raises ValueError."""
+        bad = {"type": "straight", "name": "X", "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_missing_end_m(self):
+        """Missing 'end_m' field raises ValueError."""
+        bad = {"type": "straight", "name": "X", "start_m": 0}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_corner_missing_corner_number(self):
+        """Corner segment without 'corner_number' raises ValueError."""
+        bad = {"type": "corner", "name": "X", "start_m": 0, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_complex_corner_missing_corners(self):
+        """Complex corner without 'corner_numbers' raises ValueError."""
+        bad = {"type": "complex_corner", "name": "X", "start_m": 0, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_unknown_type(self):
+        """Unknown segment type raises ValidationError."""
+        bad = {"type": "chicane", "name": "X", "start_m": 0, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_start_m_equal_to_end_m(self):
+        """start_m == end_m raises ValidationError."""
+        bad = {"type": "straight", "name": "X", "start_m": 100, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    def test_validation_start_m_greater_than_end_m(self):
+        """start_m > end_m raises ValidationError."""
+        bad = {"type": "straight", "name": "X", "start_m": 200, "end_m": 100}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track([bad]))
+
+    # --- Ordering and overlap validation --------------------------------------------------
+
+    def test_validation_segments_out_of_order(self):
+        """Segments with decreasing start_m raise ValidationError."""
+        segments = [
+            {"type": "straight", "name": "B", "start_m": 500, "end_m": 1000},
+            {"type": "straight", "name": "A", "start_m": 0,   "end_m": 500},
+        ]
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track(segments))
+
+    def test_validation_segments_overlapping(self):
+        """Segment whose start_m falls inside the previous segment raises ValidationError."""
+        segments = [
+            {"type": "straight", "name": "A", "start_m": 0,   "end_m": 600},
+            {"type": "straight", "name": "B", "start_m": 400, "end_m": 1000},
+        ]
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track(segments))
+
+    def test_validation_adjacent_segments_exact_boundary(self):
+        """Segments where start_m of next == end_m of previous are valid (no gap, no overlap)."""
+        segments = [
+            {"type": "straight", "name": "A", "start_m": 0,   "end_m": 500},
+            {"type": "straight", "name": "B", "start_m": 500, "end_m": 1000},
+        ]
+        tracker = TrackSegments()
+        tracker.load_track_data(self._track(segments))  # must not raise
+
+    # --- Top-level schema fields ----------------------------------------------------------
+
+    def test_top_level_circuit_name(self):
+        """circuit_name is accessible on the tracker after loading."""
+        self.assertEqual(self.tracker.circuit_name, "Circuit de Spa-Francorchamps")
+
+    def test_top_level_circuit_number(self):
+        """circuit_number is accessible on the tracker after loading."""
+        self.assertEqual(self.tracker.circuit_number, 12)
+
+    def test_top_level_missing_circuit_name(self):
+        """Missing circuit_name raises ValidationError."""
+        data = {"circuit_number": 1, "segments": []}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(data)
+
+    def test_top_level_missing_circuit_number(self):
+        """Missing circuit_number raises ValidationError."""
+        data = {"circuit_name": "X", "segments": []}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(data)
+
+    def test_properties_return_none_before_load(self):
+        """Top-level properties return None before load_track_data is called."""
+        tracker = TrackSegments()
+        self.assertIsNone(tracker.circuit_name)
+        self.assertIsNone(tracker.circuit_number)
+
+    # --- Lookup correctness for all three segment types -----------------------------------
+
+    def test_lookup_returns_straight_type(self):
+        """Lookup inside a straight returns type == 'straight'."""
+        info = self.tracker.get_segment_info(800)
+        self.assertEqual(info.type, "straight")
+
+    def test_lookup_returns_corner_type(self):
+        """Lookup inside a corner returns type == 'corner'."""
+        info = self.tracker.get_segment_info(50)
+        self.assertEqual(info.type, "corner")
+
+    def test_lookup_returns_complex_corner_type(self):
+        """Lookup inside a complex_corner returns type == 'complex_corner'."""
+        info = self.tracker.get_segment_info(1500)
+        self.assertEqual(info.type, "complex_corner")

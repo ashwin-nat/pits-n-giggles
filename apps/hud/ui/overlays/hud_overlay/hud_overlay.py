@@ -82,7 +82,9 @@ class HudOverlay(BaseOverlayQML):
         corner_info = CornerSegmentInfo(
             segment_id=1,
             corner_number=1,
-            corner_name="La Source",
+            name="La Source",
+            start_m=450,
+            end_m=500,
         )
 
         # Ignore the rival field in the obj
@@ -116,4 +118,4 @@ class HudOverlay(BaseOverlayQML):
 
         # Turn info (hardcoded placeholder — real lookup to be wired later)
         self.set_qml_property("turnNumber", corner_info.corner_number)
-        self.set_qml_property("turnName",   corner_info.corner_name or "")
+        self.set_qml_property("turnName",   corner_info.name or "")
