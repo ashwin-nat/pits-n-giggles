@@ -304,6 +304,11 @@ class StreamOverlayData(BaseAPI):
         car_telemetry = self.m_ref_obj.m_packet_copies.m_packet_car_telemetry
         lap_data = self.m_ref_obj.m_packet_copies.m_packet_lap_data
 
+        if lap_data.m_lapDistance < 0.0:
+            dist = self.m_circuit_len + lap_data.m_lapDistance
+        else:
+            dist = lap_data.m_lapDistance
+
         return {
             "throttle" : car_telemetry.m_throttle,
             "brake" : car_telemetry.m_brake,
@@ -318,7 +323,7 @@ class StreamOverlayData(BaseAPI):
             "ers-deployed" : car_status.m_ersDeployedThisLap,
             "ers-remaining" : car_status.m_ersStoreEnergy,
             "ers-mode" : str(car_status.m_ersDeployMode),
-            "circuit-position" : lap_data.m_lapDistance,
+            "circuit-position" : dist,
         }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:

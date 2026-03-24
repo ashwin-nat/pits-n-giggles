@@ -81,6 +81,7 @@ class HudOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
+        assert data.circuit_pos_m >= 0.0 # TODO: remove
 
         segment_info = self.tracks_db.get_segment_info(data.circuit, data.circuit_pos_m)
 
