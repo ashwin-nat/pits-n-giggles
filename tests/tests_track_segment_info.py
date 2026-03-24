@@ -21,15 +21,17 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import json
 import os
 import sys
+import tempfile
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.track_segment_info import TrackSegments
+from lib.track_segment_info import TrackSegments, TrackSegmentsDatabase
 from lib.track_segment_info.types import (BaseSegmentInfo,
                                            ComplexCornerSegmentInfo,
                                            CornerSegmentInfo,
@@ -359,3 +361,173 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         """Lookup inside a complex_corner returns type == 'complex_corner'."""
         info = self.tracker.get_segment_info(1500)
         self.assertEqual(info.type, "complex_corner")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestSegmentRender(F1TelemetryUnitTestsBase):
+
+    def test_straight_named_render(self):
+        """Named straight renders as its name."""
+        seg = StraightSegmentInfo(name="Kemmel Straight", start_m=400, end_m=1200)
+        self.assertEqual(seg.render(), "Kemmel Straight")
+
+    def test_straight_empty_name_raises(self):
+        """Empty name on a straight raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            StraightSegmentInfo(name="", start_m=0, end_m=100)
+
+    def test_straight_missing_name_raises(self):
+        """Missing name on a straight raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            StraightSegmentInfo(start_m=0, end_m=100)
+
+    def test_corner_named_render(self):
+        """Named corner renders as 'Name (TN)'."""
+        seg = CornerSegmentInfo(name="La Source", start_m=0, end_m=200, corner_number=1)
+        self.assertEqual(seg.render(), "La Source (T1)")
+
+    def test_corner_unnamed_render(self):
+        """Unnamed corner renders as 'TN' only."""
+        seg = CornerSegmentInfo(name="", start_m=0, end_m=200, corner_number=3)
+        self.assertEqual(seg.render(), "T3")
+
+    def test_complex_corner_named_render(self):
+        """Named complex corner renders as 'Name (TN/TM)'."""
+        seg = ComplexCornerSegmentInfo(name="Pouhon", start_m=1400, end_m=1800, corner_numbers=(6, 7))
+        self.assertEqual(seg.render(), "Pouhon (T6/T7)")
+
+    def test_complex_corner_unnamed_render(self):
+        """Unnamed complex corner renders as 'TN/TM' only."""
+        seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(1, 2, 3))
+        self.assertEqual(seg.render(), "T1/T2/T3")
+
+    # --- name optionality rules -------------------------------------------------------
+
+    def test_corner_name_defaults_to_empty(self):
+        """CornerSegmentInfo is valid without a name field."""
+        seg = CornerSegmentInfo(start_m=0, end_m=100, corner_number=1)
+        self.assertEqual(seg.name, "")
+
+    def test_corner_empty_name_is_valid(self):
+        """CornerSegmentInfo with explicit empty name is valid."""
+        seg = CornerSegmentInfo(name="", start_m=0, end_m=100, corner_number=1)
+        self.assertEqual(seg.name, "")
+
+    def test_complex_corner_name_defaults_to_empty(self):
+        """ComplexCornerSegmentInfo is valid without a name field."""
+        seg = ComplexCornerSegmentInfo(start_m=0, end_m=100, corner_numbers=(1, 2))
+        self.assertEqual(seg.name, "")
+
+    def test_complex_corner_empty_name_is_valid(self):
+        """ComplexCornerSegmentInfo with explicit empty name is valid."""
+        seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=100, corner_numbers=(1, 2))
+        self.assertEqual(seg.name, "")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+_CIRCUIT_A = {
+    "circuit_name": "Alpha Circuit",
+    "circuit_number": 1,
+    "segments": [
+        {"type": "straight", "name": "Main Straight", "start_m": 0,   "end_m": 500},
+        {"type": "corner",   "name": "Turn One",      "start_m": 500, "end_m": 700, "corner_number": 1},
+    ],
+}
+
+_CIRCUIT_B = {
+    "circuit_name": "Beta Circuit",
+    "circuit_number": 2,
+    "segments": [
+        {"type": "corner", "name": "Hairpin", "start_m": 0, "end_m": 300, "corner_number": 1},
+    ],
+}
+
+
+class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        for circuit in (_CIRCUIT_A, _CIRCUIT_B):
+            path = os.path.join(self._tmp.name, f"{circuit['circuit_name']}.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(circuit, fh)
+        self.db = TrackSegmentsDatabase(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    # --- Presence and counts ------------------------------------------------------------------
+
+    def test_len_equals_number_of_files(self):
+        """Database length equals the number of JSON files loaded."""
+        self.assertEqual(len(self.db), 2)
+
+    def test_contains_known_circuit(self):
+        """Known circuit name is found via 'in'."""
+        self.assertIn("Alpha Circuit", self.db)
+
+    def test_not_contains_unknown_circuit(self):
+        """Unknown circuit name is not found via 'in'."""
+        self.assertNotIn("Unknown Circuit", self.db)
+
+    def test_iter_yields_all_circuit_names(self):
+        """Iterating the database yields all circuit names."""
+        self.assertEqual(set(self.db), {"Alpha Circuit", "Beta Circuit"})
+
+    # --- get() --------------------------------------------------------------------------------
+
+    def test_get_returns_track_segments_instance(self):
+        """get() returns a TrackSegments instance for a known circuit."""
+        ts = self.db.get("Alpha Circuit")
+        self.assertIsInstance(ts, TrackSegments)
+
+    def test_get_unknown_returns_none(self):
+        """get() returns None for an unknown circuit."""
+        self.assertIsNone(self.db.get("No Such Circuit"))
+
+    # --- __getitem__ --------------------------------------------------------------------------
+
+    def test_getitem_known_circuit(self):
+        """__getitem__ returns the TrackSegments for a known circuit."""
+        ts = self.db["Beta Circuit"]
+        self.assertIsInstance(ts, TrackSegments)
+        self.assertEqual(ts.circuit_name, "Beta Circuit")
+
+    def test_getitem_unknown_raises_key_error(self):
+        """__getitem__ raises KeyError for an unknown circuit."""
+        with self.assertRaises(KeyError):
+            _ = self.db["No Such Circuit"]
+
+    # --- get_segment_info() -------------------------------------------------------------------
+
+    def test_get_segment_info_returns_correct_segment(self):
+        """get_segment_info returns the right segment for a known circuit and position."""
+        seg = self.db.get_segment_info("Alpha Circuit", 250)
+        self.assertIsInstance(seg, StraightSegmentInfo)
+        self.assertEqual(seg.name, "Main Straight")
+
+    def test_get_segment_info_corner(self):
+        """get_segment_info returns a corner segment at the right position."""
+        seg = self.db.get_segment_info("Alpha Circuit", 600)
+        self.assertIsInstance(seg, CornerSegmentInfo)
+        self.assertEqual(seg.corner_number, 1)
+
+    def test_get_segment_info_outside_range_returns_none(self):
+        """get_segment_info returns None for a position outside all segments."""
+        seg = self.db.get_segment_info("Alpha Circuit", 9999)
+        self.assertIsNone(seg)
+
+    def test_get_segment_info_unknown_circuit_returns_none(self):
+        """get_segment_info returns None for an unknown circuit."""
+        seg = self.db.get_segment_info("Unknown Circuit", 100)
+        self.assertIsNone(seg)
+
+    # --- Empty directory ----------------------------------------------------------------------
+
+    def test_empty_directory_has_zero_circuits(self):
+        """Database built from an empty directory has length 0."""
+        with tempfile.TemporaryDirectory() as empty:
+            db = TrackSegmentsDatabase(empty)
+            self.assertEqual(len(db), 0)

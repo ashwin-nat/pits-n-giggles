@@ -22,10 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from .database import TrackSegmentsDatabase
 from .segments import TrackSegments
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TrackSegments",
+    "TrackSegmentsDatabase",
 ]

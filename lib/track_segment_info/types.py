@@ -42,22 +42,45 @@ class BaseSegmentInfo(BaseModel):
             raise ValueError(f"start_m ({self.start_m}) must be less than end_m ({self.end_m})")
         return self
 
+    def render(self) -> str:
+        raise NotImplementedError
+
 
 class StraightSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "straight"
     type: Literal["straight"] = "straight"
 
+    @field_validator("name")
+    @classmethod
+    def _name_required(cls, v: str) -> str:
+        if not v:
+            raise ValueError("name is required for straight segments")
+        return v
+
+    def render(self) -> str:
+        return self.name
+
 
 class CornerSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "corner"
     type: Literal["corner"] = "corner"
+    name: str = ""
     corner_number: int
+
+    def render(self) -> str:
+        turn = f"T{self.corner_number}"
+        return f"{self.name} ({turn})" if self.name else turn
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "complex_corner"
     type: Literal["complex_corner"] = "complex_corner"
+    name: str = ""
     corner_numbers: Tuple[int, ...]
+
+    def render(self) -> str:
+        turns = "/".join(f"T{n}" for n in self.corner_numbers)
+        return f"{self.name} ({turns})" if self.name else turns
 
 
 SegmentInfo = Annotated[
