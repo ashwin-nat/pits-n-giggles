@@ -430,23 +430,23 @@ Window {
                             ctx.lineWidth   = 2.5
                             ctx.stroke()
 
-                            // ── deploy arc — left half, orange ──
-                            var deployFrac = ersZone.animErsDeploy / 100
-                            if (deployFrac > 0.002) {
+                            // ── harvest arc — left half, red ──
+                            var harvestFrac = ersZone.animErsHarv / 100
+                            if (harvestFrac > 0.002) {
                                 ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top - deployFrac * Math.PI, true)
-                                ctx.strokeStyle = "#ff7a38"
+                                ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
+                                ctx.strokeStyle = "#FF1744"
                                 ctx.lineWidth   = 3
                                 ctx.lineCap     = "round"
                                 ctx.stroke()
                             }
 
-                            // ── harvest arc — right half, green ──
-                            var harvestFrac = ersZone.animErsHarv / 100
-                            if (harvestFrac > 0.002) {
+                            // ── deploy arc — right half, hotlap green ──
+                            var deployFrac = (100 - ersZone.animErsDeploy) / 100
+                            if (deployFrac > 0.002) {
                                 ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top + harvestFrac * Math.PI, false)
-                                ctx.strokeStyle = "#39d37a"
+                                ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
+                                ctx.strokeStyle = "#00e676"
                                 ctx.lineWidth   = 3
                                 ctx.lineCap     = "round"
                                 ctx.stroke()
