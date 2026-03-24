@@ -398,7 +398,7 @@ class BaseOverlay():
 
     @Slot(set, object)
     def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
-        if self.OVERLAY_ID not in recipients:
+        if recipients and self.OVERLAY_ID not in recipients:
             return
 
         self._track_hf_pipeline_latency(
