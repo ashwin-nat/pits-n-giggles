@@ -44,7 +44,7 @@ class HudOverlayData(HighFreqBase):
     ers_rem_j: float
     ers_mode: str
     tl_warnings: int
-    circuit_pos_m: int
+    circuit_pos_m: float
     circuit: str
     track_temp: int
     air_temp: int
