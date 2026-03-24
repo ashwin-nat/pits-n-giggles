@@ -1,0 +1,129 @@
+{
+  "circuit_name": "Melbourne",
+  "circuit_number": 0,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 250,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 250,
+      "end_m": 420,
+      "name": "Brabham",
+      "corner_number": 1
+    },
+    {
+      "type": "straight",
+      "start_m": 421,
+      "end_m": 580,
+      "name": "Jones"
+    },
+    {
+      "type": "corner",
+      "start_m": 945,
+      "end_m": 1150,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 1151,
+      "end_m": 1335,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 1390,
+      "end_m": 1550,
+      "name": "Whiteford",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 1750,
+      "end_m": 1947,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 1948,
+      "end_m": 2030,
+      "name": "",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2030,
+      "end_m": 2100,
+      "name": "",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2350,
+      "end_m": 2600,
+      "name": "Clark",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2700,
+      "end_m": 3130,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "corner",
+      "start_m": 3175,
+      "end_m": 3365,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3366,
+      "end_m": 3600,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 4000,
+      "end_m": 4230,
+      "name": "Ascari",
+      "corner_number": 13
+    },
+    {
+      "type": "corner",
+      "start_m": 4300,
+      "end_m": 4530,
+      "name": "Stewart",
+      "corner_number": 14
+    },
+    {
+      "type": "corner",
+      "start_m": 4550,
+      "end_m": 4720,
+      "name": "Prost",
+      "corner_number": 15
+    },
+    {
+      "type": "corner",
+      "start_m": 4721,
+      "end_m": 4900,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "straight",
+      "start_m": 4901,
+      "end_m": 5276,
+      "name": "Pit Straight"
+    }
+  ]
+}
