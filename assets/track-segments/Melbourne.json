@@ -16,10 +16,11 @@
       "corner_number": 1
     },
     {
-      "type": "straight",
+      "type": "corner",
       "start_m": 421,
       "end_m": 580,
-      "name": "Jones"
+      "name": "Jones",
+      "corner_number": 2
     },
     {
       "type": "corner",
