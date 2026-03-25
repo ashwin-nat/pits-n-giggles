@@ -1,6 +1,7 @@
 {
   "circuit_name": "Monaco",
   "circuit_number": 5,
+  "track_length": 3067,
   "segments": [
     {
       "type": "corner",

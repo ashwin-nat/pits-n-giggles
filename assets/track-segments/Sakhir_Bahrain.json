@@ -1,6 +1,7 @@
 {
   "circuit_name": "Sakhir_Bahrain",
   "circuit_number": 3,
+  "track_length": 5408,
   "segments": [
     {
       "type": "straight",

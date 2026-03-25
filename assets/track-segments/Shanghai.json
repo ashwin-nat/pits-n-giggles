@@ -1,6 +1,7 @@
 {
   "circuit_name": "Shanghai",
   "circuit_number": 2,
+  "track_length": 5441,
   "segments": [
     {
       "type": "straight",

@@ -1,6 +1,7 @@
 {
   "circuit_name": "Catalunya",
   "circuit_number": 4,
+  "track_length": 4664,
   "segments": [
     {
       "type": "straight",

@@ -1,6 +1,7 @@
 {
   "circuit_name": "Montreal",
   "circuit_number": 6,
+  "track_length": 4371,
   "segments": [
     {
       "type": "straight",

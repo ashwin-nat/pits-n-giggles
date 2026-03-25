@@ -1,6 +1,7 @@
 {
   "circuit_name": "Melbourne",
   "circuit_number": 0,
+  "track_length": 5276,
   "segments": [
     {
       "type": "straight",
