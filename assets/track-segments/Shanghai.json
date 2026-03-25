@@ -1,0 +1,128 @@
+{
+  "circuit_name": "Shanghai",
+  "circuit_number": 2,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 330,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 331,
+      "end_m": 680,
+      "name": "",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 681,
+      "end_m": 845,
+      "name": "",
+      "corner_number": 2
+    },
+    {
+      "type": "corner",
+      "start_m": 845,
+      "end_m": 970,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 975,
+      "end_m": 1110,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 1200,
+      "end_m": 1390,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 1430,
+      "end_m": 1670,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 1880,
+      "end_m": 2200,
+      "name": "",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2200,
+      "end_m": 2450,
+      "name": "",
+      "corner_number": 8
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2450,
+      "end_m": 2750,
+      "name": "temp (remove)",
+      "corner_numbers": [
+        9,
+        10
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 3000,
+      "end_m": 3165,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3165,
+      "end_m": 3285,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 3285,
+      "end_m": 3550,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "straight",
+      "start_m": 3550,
+      "end_m": 4550,
+      "name": "Back Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4550,
+      "end_m": 4890,
+      "name": "todo remove",
+      "corner_numbers": [
+        14,
+        15
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 5000,
+      "end_m": 5230,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "straight",
+      "start_m": 5230,
+      "end_m": 5441,
+      "name": "Pit Straight"
+    }
+  ]
+}
