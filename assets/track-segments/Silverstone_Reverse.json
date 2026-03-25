@@ -1,0 +1,143 @@
+{
+  "circuit_name": "Silverstone_Reverse",
+  "circuit_number": 39,
+  "track_length": 5890,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 225,
+      "end_m": 275,
+      "name": "Hamilton Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 275,
+      "end_m": 555,
+      "name": "Club",
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 555,
+      "end_m": 695,
+      "name": "Vale",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 855,
+      "end_m": 1235,
+      "name": "Stowe",
+      "corner_number": 4
+    },
+    {
+      "type": "straight",
+      "start_m": 1235,
+      "end_m": 1825,
+      "name": "Hangar Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 1825,
+      "end_m": 2015,
+      "name": "Chapel",
+      "corner_number": 5
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2015,
+      "end_m": 2595,
+      "name": "Maggots & Becketts",
+      "corner_numbers": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2855,
+      "end_m": 3165,
+      "name": "Copse",
+      "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 3165,
+      "end_m": 3400,
+      "name": "National Pits Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 3400,
+      "end_m": 3715,
+      "name": "Woodcote",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3730,
+      "end_m": 4045,
+      "name": "Luffied",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 4045,
+      "end_m": 4315,
+      "name": "Brooklands",
+      "corner_number": 13
+    },
+    {
+      "type": "straight",
+      "start_m": 4315,
+      "end_m": 4765,
+      "name": "Wellington Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 4765,
+      "end_m": 4975,
+      "name": "Aintree",
+      "corner_number": 14
+    },
+    {
+      "type": "corner",
+      "start_m": 4990,
+      "end_m": 5155,
+      "name": "The Loop",
+      "corner_number": 15
+    },
+    {
+      "type": "corner",
+      "start_m": 5165,
+      "end_m": 5335,
+      "name": "Village",
+      "corner_number": 16
+    },
+    {
+      "type": "corner",
+      "start_m": 5425,
+      "end_m": 5615,
+      "name": "Farm Curve",
+      "corner_number": 17
+    },
+    {
+      "type": "corner",
+      "start_m": 5615,
+      "end_m": 5835,
+      "name": "Abbey",
+      "corner_number": 18
+    },
+    {
+      "type": "straight",
+      "start_m": 5839,
+      "end_m": 5890,
+      "name": "Hamilton Straight"
+    }
+  ]
+}

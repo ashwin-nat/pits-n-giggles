@@ -1,6 +1,7 @@
 {
   "circuit_name": "Silverstone",
   "circuit_number": 7,
+  "track_length": 5890,
   "segments": [
     {
       "type": "straight",
