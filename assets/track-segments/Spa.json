@@ -1,0 +1,132 @@
+{
+  "circuit_name": "Spa",
+  "circuit_number": 10,
+  "track_length": 7007,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 230,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 230,
+      "end_m": 460,
+      "name": "La Source",
+      "corner_number": 1
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 980,
+      "end_m": 1360,
+      "name": "Le Raidillon de l'Eau Rouge",
+      "corner_numbers": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 1360,
+      "end_m": 2290,
+      "name": "Kemmel Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2290,
+      "end_m": 2575,
+      "name": "Les Combes",
+      "corner_numbers": [
+        5,
+        6
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2600,
+      "end_m": 2800,
+      "name": "Malmedy",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2900,
+      "end_m": 3160,
+      "name": "Bruxelles/Rivage",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 3200,
+      "end_m": 3400,
+      "name": "Jacky Ickx/No Name",
+      "corner_number": 9
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3700,
+      "end_m": 4200,
+      "name": "Pouhon",
+      "corner_numbers": [
+        10,
+        11
+      ]
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4350,
+      "end_m": 4790,
+      "name": "Fagnes Chicaine",
+      "corner_numbers": [
+        12,
+        13
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4850,
+      "end_m": 5050,
+      "name": "Campus",
+      "corner_number": 14
+    },
+    {
+      "type": "corner",
+      "start_m": 5090,
+      "end_m": 5310,
+      "name": "Stavelot",
+      "corner_number": 15
+    },
+    {
+      "type": "corner",
+      "start_m": 5735,
+      "end_m": 6030,
+      "name": "Paul Frère Curve",
+      "corner_number": 16
+    },
+    {
+      "type": "corner",
+      "start_m": 6070,
+      "end_m": 6335,
+      "name": "Blanchimont",
+      "corner_number": 17
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 6600,
+      "end_m": 6877,
+      "name": "Bus Stop",
+      "corner_numbers": [
+        18,
+        19
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 6877,
+      "end_m": 7007,
+      "name": "Pit Straight"
+    }
+  ]
+}
