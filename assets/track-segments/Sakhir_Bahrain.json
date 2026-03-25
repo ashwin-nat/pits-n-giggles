@@ -1,0 +1,113 @@
+{
+  "circuit_name": "Sakhir_Bahrain",
+  "circuit_number": 3,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 540,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 540,
+      "end_m": 780,
+      "name": "Schumacher",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 780,
+      "end_m": 880,
+      "name": "",
+      "corner_number": 2
+    },
+    {
+      "type": "corner",
+      "start_m": 880,
+      "end_m": 1100,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 1375,
+      "end_m": 1615,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1735,
+      "end_m": 2100,
+      "corner_numbers": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2125,
+      "end_m": 2375,
+      "name": "",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2525,
+      "end_m": 2685,
+      "name": "",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2685,
+      "end_m": 2800,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 2810,
+      "end_m": 3290,
+      "name": "Back Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 3290,
+      "end_m": 3585,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3670,
+      "end_m": 3950,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 4070,
+      "end_m": 4275,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4765,
+      "end_m": 5080,
+      "corner_numbers": [
+        14,
+        15
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 5080,
+      "end_m": 5408,
+      "name": "Pit Straight"
+    }
+  ]
+}
