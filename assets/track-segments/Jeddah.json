@@ -1,0 +1,160 @@
+{
+  "circuit_name": "Jeddah",
+  "circuit_number": 29,
+  "track_length": 6175,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 365,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 365,
+      "end_m": 760,
+      "corner_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 900,
+      "end_m": 1072,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1072,
+      "end_m": 1840,
+      "name": "The Esses",
+      "corner_numbers": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1840,
+      "end_m": 1880,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 1880,
+      "end_m": 2030,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 2300,
+      "end_m": 2630,
+      "name": "Hairpin",
+      "corner_number": 13
+    },
+    {
+      "type": "corner",
+      "start_m": 2630,
+      "end_m": 2960,
+      "name": "",
+      "corner_number": 14
+    },
+    {
+      "type": "corner",
+      "start_m": 2960,
+      "end_m": 3050,
+      "name": "",
+      "corner_number": 15
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3050,
+      "end_m": 3280,
+      "corner_numbers": [
+        16,
+        17
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 3280,
+      "end_m": 3415,
+      "name": "",
+      "corner_number": 18
+    },
+    {
+      "type": "corner",
+      "start_m": 3415,
+      "end_m": 3675,
+      "name": "",
+      "corner_number": 19
+    },
+    {
+      "type": "corner",
+      "start_m": 3675,
+      "end_m": 3900,
+      "name": "",
+      "corner_number": 20
+    },
+    {
+      "type": "corner",
+      "start_m": 3900,
+      "end_m": 4190,
+      "name": "",
+      "corner_number": 21
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4190,
+      "end_m": 4480,
+      "name": "Mosque Section",
+      "corner_numbers": [
+        22,
+        23
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4480,
+      "end_m": 4655,
+      "name": "",
+      "corner_number": 24
+    },
+    {
+      "type": "corner",
+      "start_m": 4655,
+      "end_m": 4900,
+      "name": "",
+      "corner_number": 25
+    },
+    {
+      "type": "corner",
+      "start_m": 4900,
+      "end_m": 5370,
+      "name": "",
+      "corner_number": 26
+    },
+    {
+      "type": "corner",
+      "start_m": 5450,
+      "end_m": 5675,
+      "name": "",
+      "corner_number": 27
+    },
+    {
+      "type": "straight",
+      "start_m": 5675,
+      "end_m": 6175,
+      "name": "Pit Straight"
+    }
+  ]
+}
