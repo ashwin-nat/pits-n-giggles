@@ -30,7 +30,6 @@ from .timing_tower import TimingTowerOverlay
 from .track_map import TrackMapOverlay
 from .track_radar import TrackRadarOverlay
 from .hud_overlay.hud_overlay import HudOverlay
-from .temp_pos_display.temp_pos_display import TempPosOverlay
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -43,5 +42,4 @@ __all__ = [
     "TrackMapOverlay",
     "TrackRadarOverlay",
     "HudOverlay",
-    "TempPosOverlay",
 ]
