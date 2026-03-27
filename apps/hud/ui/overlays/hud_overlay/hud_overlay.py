@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, final, Dict, Any
+from typing import Optional, final
 
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML

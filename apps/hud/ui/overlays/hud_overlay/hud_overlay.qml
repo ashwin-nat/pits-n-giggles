@@ -77,7 +77,7 @@ Window {
         var n = index / Math.max(1, total - 1)
         if (n < (1 / 3)) return "#39d37a"
         if (n < (2 / 3)) return "#ff1744"
-        return "#b388ff"
+        return "#9b30ff"
     }
 
     // Fill colour for the ERS inner circle based on current mode
