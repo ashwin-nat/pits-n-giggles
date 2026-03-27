@@ -75,9 +75,9 @@ Window {
 
     function revColor(index, total) {
         var n = index / Math.max(1, total - 1)
-        if (n < 0.55) return "#39d37a"
-        if (n < 0.85) return "#ffb347"
-        return "#ff5f64"
+        if (n < (1 / 3)) return "#39d37a"
+        if (n < (2 / 3)) return "#ff1744"
+        return "#b388ff"
     }
 
     // Fill colour for the ERS inner circle based on current mode
@@ -714,9 +714,9 @@ Window {
                 width:  (parent.width - parent.spacing) / 2
                 height: parent.height
                 radius: height / 2
-                color:        Qt.rgba(0.46, 1, 0.01, 0.15)
+                color:        Qt.rgba(0, 0.9019607843, 0.462745098, 0.15)
                 border.width: 1
-                border.color: Qt.rgba(0.46, 1, 0.01, 0.55)
+                border.color: Qt.rgba(0, 0.9019607843, 0.462745098, 0.55)
                 clip: true
 
                 Rectangle {
@@ -725,7 +725,7 @@ Window {
                     anchors.bottom: parent.bottom
                     width:  Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.width)
                     radius: parent.radius
-                    color:  "#76FF03"
+                    color:  "#00e676"
                     Behavior on width { SmoothedAnimation { duration: 70 } }
                 }
             }
