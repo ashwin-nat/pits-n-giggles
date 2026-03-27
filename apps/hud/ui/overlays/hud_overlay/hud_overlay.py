@@ -68,10 +68,7 @@ class HudOverlay(BaseOverlayQML):
         )
 
         self.subscribe_hf(HudOverlayData)
-
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
-        self.circuit_len: Optional[int] = None # TODO: evaluate if needed
-        self._register_event_handlers()
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
     @final
@@ -83,8 +80,6 @@ class HudOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
-        assert data.circuit_pos_m >= 0.0 # TODO: remove
-
         segment_info = self.tracks_db.get_segment_info(data.circuit, data.circuit_pos_m)
 
         # Ignore the rival field in the obj
@@ -117,11 +112,3 @@ class HudOverlay(BaseOverlayQML):
 
         # Segment info
         self.set_qml_property("segmentInfo", segment_info.render() if segment_info else None)
-
-    def _register_event_handlers(self):
-        """
-        Register incoming data event handlers here
-        """
-        @self.on_event("race_table_update")
-        def handle_race_table_update(data: Dict[str, Any]):
-            self.circuit_len = data.get("circuit-len")

@@ -304,10 +304,23 @@ class StreamOverlayData(BaseAPI):
         car_telemetry = self.m_ref_obj.m_packet_copies.m_packet_car_telemetry
         lap_data = self.m_ref_obj.m_packet_copies.m_packet_lap_data
 
-        if lap_data.m_lapDistance < 0.0:
-            dist = self.m_circuit_len + lap_data.m_lapDistance
-        else:
-            dist = lap_data.m_lapDistance
+        # Wrap lap distance onto the track length so it always represents
+        # a valid position on the circuit [0, track_length).
+        #
+        # Why:
+        # - m_lapDistance can be negative before crossing the start/finish line
+        #   (e.g., formation laps, safety car starts).
+        # - It can also go below -track_length if multiple laps occur before
+        #   the race officially starts.
+        # - Using modulo treats the track as a loop and correctly maps any
+        #   value (positive or negative) to a position on the circuit.
+        #
+        # Example:
+        #   track_length = 5300
+        #   -120   -> 5180
+        #   -5400  -> 5200
+        #
+        dist = lap_data.m_lapDistance % self.m_circuit_len
 
         return {
             "throttle" : car_telemetry.m_throttle,
