@@ -31,7 +31,7 @@ Window {
     property real scaleFactor: 1.0
 
     readonly property int baseWidth: 470
-    readonly property int baseHeight: 112
+    readonly property int baseHeight: 120
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -51,8 +51,13 @@ Window {
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
-    property string segmentLabel:   ""
+    property var     segmentInfo:    null
     property int    tlWarnings:     0
+
+    // Derived segment properties
+    readonly property string segmentType:  segmentInfo ? segmentInfo.type  : ""
+    readonly property string segmentName:  segmentInfo ? segmentInfo.name  : ""
+    readonly property string segmentTurns: segmentInfo ? segmentInfo.turns : ""
     property int    trackTempC:     0
     property int    airTempC:       0
 
@@ -101,12 +106,54 @@ Window {
             origin.y: baseHeight / 2
         }
 
+        // ── Rev lights — thin bar above the pill ─────────────────────────────
+        Item {
+            id: revLightsBar
+            anchors.left:        parent.left
+            anchors.right:       parent.right
+            anchors.top:         parent.top
+            anchors.leftMargin:  49
+            anchors.rightMargin: 49
+            height: 5
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 1
+
+                Repeater {
+                    model: 20
+                    Rectangle {
+                        Layout.fillWidth:  true
+                        Layout.fillHeight: true
+                        radius: 1
+
+                        readonly property int  litCount:  Math.round(root.clampPct(root.revLightsPct) / 100 * 20)
+                        readonly property bool isLit:     index < litCount
+                        readonly property bool isRedline: index >= 17
+
+                        color: isLit ? root.revColor(index, 20) : "#192531"
+                        Behavior on color { ColorAnimation { duration: 50 } }
+
+                        onIsLitChanged: if (!isLit) opacity = 1.0
+
+                        SequentialAnimation on opacity {
+                            running: isLit && isRedline
+                            loops:   Animation.Infinite
+                            NumberAnimation { to: 0.45; duration: 180 }
+                            NumberAnimation { to: 1.00; duration: 200 }
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Main HUD shell (full-width pill, radius = height/2) ──────────────
         Rectangle {
             id: hudShell
             anchors.left:  parent.left
             anchors.right: parent.right
-            anchors.top:   parent.top
+            anchors.top:   revLightsBar.bottom
+            anchors.topMargin: 3
             height: 98
             clip:         true
             radius:       49   // = height / 2  →  perfect stadium / parabolica shape
@@ -135,8 +182,8 @@ Window {
             // the pill's semicircular ends (same radius, same centre point).
             RowLayout {
                 anchors.fill:          parent
-                anchors.topMargin:     5
-                anchors.bottomMargin:  5
+                anchors.topMargin:     16
+                anchors.bottomMargin:  -4
                 anchors.leftMargin:    0
                 anchors.rightMargin:   0
                 spacing: 6
@@ -203,176 +250,239 @@ Window {
                 ColumnLayout {
                     Layout.fillWidth:  true
                     Layout.fillHeight: true
-                    spacing: 2
+                    spacing: 3
 
-                    // Corner name (elide on overflow, flash on entry)
-                    Text {
-                        id: cornerNameText
-                        Layout.fillWidth:      true
-                        Layout.preferredHeight: 16
-                        text:                  root.segmentLabel.toUpperCase()
-                        font.family:           "Formula1"
-                        font.pixelSize:        11
-                        font.letterSpacing:    1.0
-                        color:                 "#a8bfd4"
-                        opacity:               0.65
-                        elide:                 Text.ElideRight
-                        horizontalAlignment:   Text.AlignHCenter
-                        verticalAlignment:     Text.AlignVCenter
-                        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
-                    }
-
-                    Connections {
-                        target: root
-                        function onSegmentLabelChanged() {
-                            if (root.segmentLabel.length > 0) cornerFlash.restart()
-                        }
-                    }
-
-                    SequentialAnimation {
-                        id: cornerFlash
-                        NumberAnimation { target: cornerNameText; property: "opacity"; to: 1.0;  duration: 180; easing.type: Easing.OutQuad   }
-                        PauseAnimation  { duration: 2500 }
-                        NumberAnimation { target: cornerNameText; property: "opacity"; to: 0.65; duration: 600; easing.type: Easing.InOutQuad  }
-                    }
-
-                    // Speed (large, fills remaining height)
-                    Item {
+                    // ── 1. Primary zone — Speed (left) | Corner info (right) ─
+                    RowLayout {
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
+                        spacing: 0
 
-                        Text {
-                            anchors.centerIn:   parent
-                            text:               root.speedKmph
-                            font.family:        "Formula1"
-                            font.pixelSize:     44
-                            font.bold:          true
-                            color:              "#edf7ff"
-                            horizontalAlignment: Text.AlignHCenter
+                        // Speed block (~38% width)
+                        Item {
+                            Layout.preferredWidth: 95
+                            Layout.fillHeight:     true
+
+                            Text {
+                                anchors.centerIn:   parent
+                                text:               root.speedKmph
+                                font.family:        "Formula1"
+                                font.pixelSize:     40
+                                font.bold:          true
+                                color:              "#edf7ff"
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        // Subtle vertical divider
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.fillHeight:     true
+                            Layout.topMargin:      6
+                            Layout.bottomMargin:   6
+                            color: Qt.rgba(1, 1, 1, 0.06)
+                        }
+
+                        // Corner / straight info (~62% width)
+                        Item {
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
+
+                            // Corner flash animation
+                            Connections {
+                                target: root
+                                function onSegmentInfoChanged() {
+                                    if (root.segmentInfo) cornerFlash.restart()
+                                }
+                            }
+
+                            SequentialAnimation {
+                                id: cornerFlash
+                                NumberAnimation { target: segNameText; property: "opacity"; to: 1.0;  duration: 180; easing.type: Easing.OutQuad   }
+                                PauseAnimation  { duration: 2500 }
+                                NumberAnimation { target: segNameText; property: "opacity"; to: 0.75; duration: 600; easing.type: Easing.InOutQuad  }
+                            }
+
+                            // Straight: single centred line, slightly larger
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 3
+                                visible: root.segmentType === "straight"
+
+                                Text {
+                                    text:               root.segmentName.toUpperCase()
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     14
+                                    font.bold:          true
+                                    font.letterSpacing: 0.8
+                                    color:              "#c8dce8"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    opacity: segNameText.opacity
+                                }
+                            }
+
+                            // Corner: name line + turn numbers line
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 3
+                                visible: root.segmentType === "corner"
+
+                                Text {
+                                    id: segNameText
+                                    text:               root.segmentName.toUpperCase()
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     13
+                                    font.bold:          true
+                                    font.letterSpacing: 0.6
+                                    color:              "#c8dce8"
+                                    opacity:            0.75
+                                    elide:              Text.ElideRight
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                                }
+                                Text {
+                                    text:               root.segmentTurns
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     11
+                                    font.letterSpacing: 0.4
+                                    color:              "#7a94a8"
+                                    opacity:            0.6
+                                    visible:            root.segmentTurns !== ""
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
                         }
                     }
 
-                    // RPM bar — segmented, green → orange → red
-                    Item {
+                    // ── 2. Bottom telemetry — stacked labels + DRS badge ────
+                    RowLayout {
                         Layout.fillWidth:       true
-                        Layout.preferredHeight: 10
+                        Layout.preferredHeight: 26
+                        spacing: 0
 
-                        RowLayout {
-                            anchors.fill: parent
-                            spacing: 1
+                        // ── Track limits ─────────────────────────────────────
+                        Item {
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
 
-                            Repeater {
-                                model: 20
-                                Rectangle {
-                                    id: revSeg
-                                    Layout.fillWidth:  true
-                                    Layout.fillHeight: true
-                                    radius: 1
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 1
 
-                                    readonly property int  litCount:  Math.round(root.clampPct(root.revLightsPct) / 100 * 20)
-                                    readonly property bool isLit:     index < litCount
-                                    readonly property bool isRedline: index >= 17
+                                Text {
+                                    text:               "TL"
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     7
+                                    font.letterSpacing: 0.5
+                                    color:              "#5c7a94"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                                Text {
+                                    text:            root.tlWarnings
+                                    font.family:     "Formula1"
+                                    font.pixelSize:  12
+                                    font.bold:       true
+                                    color:           "#edf7ff"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+                        }
 
-                                    color: isLit ? root.revColor(index, 20) : "#192531"
-                                    Behavior on color { ColorAnimation { duration: 50 } }
+                        // ── Air temperature ──────────────────────────────────
+                        Item {
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
 
-                                    onIsLitChanged: if (!isLit) revSeg.opacity = 1.0
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 1
 
-                                    SequentialAnimation on opacity {
-                                        running: revSeg.isLit && revSeg.isRedline
-                                        loops:   Animation.Infinite
-                                        NumberAnimation { to: 0.45; duration: 180 }
-                                        NumberAnimation { to: 1.00; duration: 200 }
+                                Text {
+                                    text:               "AIR"
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     7
+                                    font.letterSpacing: 0.5
+                                    color:              "#5c7a94"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                                Row {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 3
+                                    Image {
+                                        source:  "../../../../../assets/overlays/air-temperature.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text:            root.airTempC + "°"
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  12
+                                        font.bold:       true
+                                        color:           "#edf7ff"
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // Secondary info row — 4 equal fixed slots: TL | track temp | air temp | DRS
-                    RowLayout {
-                        Layout.fillWidth:       true
-                        Layout.preferredHeight: 14
-                        spacing: 0
-
-                        // ── Slot 1: Track limits ──────────────────────────────
+                        // ── Track temperature ────────────────────────────────
                         Item {
-                            Layout.fillWidth:       true
-                            Layout.preferredHeight: 14
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
 
-                            Text {
-                                id: tlText
+                            Column {
                                 anchors.centerIn: parent
-                                text:            "TL  " + root.tlWarnings
-                                font.family:     "Formula1"
-                                font.pixelSize:  10
-                                color:           "#a8bfd4"
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
+                                spacing: 1
 
-                        // ── Slot 2: Track temperature ─────────────────────────
-                        Item {
-                            Layout.fillWidth:       true
-                            Layout.preferredHeight: 14
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 2
-
-                                Image {
-                                    source:  "../../../../../assets/overlays/track-temperature.svg"
-                                    width:   10
-                                    height:  10
-                                    smooth:  true
-                                    mipmap:  true
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
                                 Text {
-                                    text:             root.trackTempC + "°"
-                                    font.family:      "Formula1"
-                                    font.pixelSize:   10
-                                    color:            "#a8bfd4"
-                                    verticalAlignment: Text.AlignVCenter
+                                    text:               "TRACK"
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     7
+                                    font.letterSpacing: 0.5
+                                    color:              "#5c7a94"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+                                Row {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 3
+                                    Image {
+                                        source:  "../../../../../assets/overlays/track-temperature.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text:            root.trackTempC + "°"
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  12
+                                        font.bold:       true
+                                        color:           "#edf7ff"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
                                 }
                             }
                         }
 
-                        // ── Slot 3: Air temperature ───────────────────────────
+                        // ── DRS badge (unchanged behavior) ───────────────────
                         Item {
-                            Layout.fillWidth:       true
-                            Layout.preferredHeight: 14
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 2
-
-                                Image {
-                                    source:  "../../../../../assets/overlays/air-temperature.svg"
-                                    width:   10
-                                    height:  10
-                                    smooth:  true
-                                    mipmap:  true
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                Text {
-                                    text:             root.airTempC + "°"
-                                    font.family:      "Formula1"
-                                    font.pixelSize:   10
-                                    color:            "#a8bfd4"
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        }
-
-                        // ── Slot 4: DRS badge ─────────────────────────────────
-                        Item {
-                            Layout.fillWidth:       true
-                            Layout.preferredHeight: 14
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                height:       12
+                                height:       22
                                 width:        56
                                 radius:       5
                                 clip:         true

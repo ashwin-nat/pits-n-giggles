@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Annotated, ClassVar, List, Literal, Tuple, Union
+from typing import Annotated, ClassVar, Dict, List, Literal, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -42,7 +42,7 @@ class BaseSegmentInfo(BaseModel):
             raise ValueError(f"start_m ({self.start_m}) must be less than end_m ({self.end_m})")
         return self
 
-    def render(self) -> str:
+    def render(self) -> Dict[str, str]:
         raise NotImplementedError
 
 
@@ -57,8 +57,8 @@ class StraightSegmentInfo(BaseSegmentInfo):
             raise ValueError("name is required for straight segments")
         return v
 
-    def render(self) -> str:
-        return self.name
+    def render(self) -> Dict[str, str]:
+        return {"type": "straight", "name": self.name, "turns": ""}
 
 
 class CornerSegmentInfo(BaseSegmentInfo):
@@ -67,9 +67,8 @@ class CornerSegmentInfo(BaseSegmentInfo):
     name: str = ""
     corner_number: int
 
-    def render(self) -> str:
-        turn = f"T{self.corner_number}"
-        return f"{self.name} ({turn})" if self.name else turn
+    def render(self) -> Dict[str, str]:
+        return {"type": "corner", "name": self.name, "turns": f"T{self.corner_number}"}
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
@@ -78,9 +77,9 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
     name: str = ""
     corner_numbers: Tuple[int, ...]
 
-    def render(self) -> str:
-        turns = "/".join(f"T{n}" for n in self.corner_numbers)
-        return f"{self.name} ({turns})" if self.name else turns
+    def render(self) -> Dict[str, str]:
+        turns = " / ".join(f"T{n}" for n in self.corner_numbers)
+        return {"type": "corner", "name": self.name, "turns": turns}
 
 
 SegmentInfo = Annotated[

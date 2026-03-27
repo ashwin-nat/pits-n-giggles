@@ -116,7 +116,7 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("airTempC",       data.air_temp)
 
         # Segment info
-        self.set_qml_property("segmentLabel", segment_info.render() if segment_info else "")
+        self.set_qml_property("segmentInfo", segment_info.render() if segment_info else None)
 
     def _register_event_handlers(self):
         """

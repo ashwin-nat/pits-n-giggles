@@ -368,9 +368,9 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 class TestSegmentRender(F1TelemetryUnitTestsBase):
 
     def test_straight_named_render(self):
-        """Named straight renders as its name."""
+        """Named straight renders with type=straight and name set."""
         seg = StraightSegmentInfo(name="Kemmel Straight", start_m=400, end_m=1200)
-        self.assertEqual(seg.render(), "Kemmel Straight")
+        self.assertEqual(seg.render(), {"type": "straight", "name": "Kemmel Straight", "turns": ""})
 
     def test_straight_empty_name_raises(self):
         """Empty name on a straight raises ValidationError."""
@@ -383,24 +383,24 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
             StraightSegmentInfo(start_m=0, end_m=100)
 
     def test_corner_named_render(self):
-        """Named corner renders as 'Name (TN)'."""
+        """Named corner renders with type=corner, name, and turn number."""
         seg = CornerSegmentInfo(name="La Source", start_m=0, end_m=200, corner_number=1)
-        self.assertEqual(seg.render(), "La Source (T1)")
+        self.assertEqual(seg.render(), {"type": "corner", "name": "La Source", "turns": "T1"})
 
     def test_corner_unnamed_render(self):
-        """Unnamed corner renders as 'TN' only."""
+        """Unnamed corner renders with empty name and turn number only."""
         seg = CornerSegmentInfo(name="", start_m=0, end_m=200, corner_number=3)
-        self.assertEqual(seg.render(), "T3")
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "T3"})
 
     def test_complex_corner_named_render(self):
-        """Named complex corner renders as 'Name (TN/TM)'."""
+        """Named complex corner renders with type=corner, name, and spaced turn numbers."""
         seg = ComplexCornerSegmentInfo(name="Pouhon", start_m=1400, end_m=1800, corner_numbers=(6, 7))
-        self.assertEqual(seg.render(), "Pouhon (T6/T7)")
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Pouhon", "turns": "T6 / T7"})
 
     def test_complex_corner_unnamed_render(self):
-        """Unnamed complex corner renders as 'TN/TM' only."""
+        """Unnamed complex corner renders with empty name and spaced turn numbers."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(1, 2, 3))
-        self.assertEqual(seg.render(), "T1/T2/T3")
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "T1 / T2 / T3"})
 
     # --- name optionality rules -------------------------------------------------------
 
