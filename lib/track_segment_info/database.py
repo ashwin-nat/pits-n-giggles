@@ -44,8 +44,14 @@ class TrackSegmentsDatabase:
     """
 
     def __init__(self, path: "str | Path") -> None:
+        base_path = Path(path)
+        if not base_path.exists():
+            raise FileNotFoundError(f"Track segments directory does not exist: {base_path}")
+        if not base_path.is_dir():
+            raise NotADirectoryError(f"Track segments path is not a directory: {base_path}")
+
         self._db: Dict[str, TrackSegments] = {}
-        for json_file in Path(path).glob("*.json"):
+        for json_file in base_path.glob("*.json"):
             with json_file.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
             ts = TrackSegments()

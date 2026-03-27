@@ -531,3 +531,19 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         with tempfile.TemporaryDirectory() as empty:
             db = TrackSegmentsDatabase(empty)
             self.assertEqual(len(db), 0)
+
+    # --- Error handling -----------------------------------------------------------------------
+
+    def test_invalid_directory_raises_file_not_found(self):
+        """Non-existent directory should fail fast."""
+        missing = os.path.join(self._tmp.name, "does_not_exist")
+        with self.assertRaises(FileNotFoundError):
+            TrackSegmentsDatabase(missing)
+
+    def test_invalid_json_raises_decode_error(self):
+        """Malformed JSON should bubble up as a decode error."""
+        bad_json = os.path.join(self._tmp.name, "bad.json")
+        with open(bad_json, "w", encoding="utf-8") as fh:
+            fh.write("{ not-valid-json }")
+        with self.assertRaises(json.JSONDecodeError):
+            TrackSegmentsDatabase(self._tmp.name)
