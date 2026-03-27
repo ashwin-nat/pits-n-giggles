@@ -388,9 +388,9 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
         self.assertEqual(seg.render(), {"type": "corner", "name": "La Source", "turns": "T1"})
 
     def test_corner_unnamed_render(self):
-        """Unnamed corner renders with empty name and turn number only."""
+        """Unnamed corner renders with empty name and full 'Turn N' label."""
         seg = CornerSegmentInfo(name="", start_m=0, end_m=200, corner_number=3)
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "T3"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turn 3"})
 
     def test_complex_corner_named_render(self):
         """Named complex corner renders with type=corner, name, and spaced turn numbers."""
@@ -398,9 +398,24 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
         self.assertEqual(seg.render(), {"type": "corner", "name": "Pouhon", "turns": "T6 / T7"})
 
     def test_complex_corner_unnamed_render(self):
-        """Unnamed complex corner renders with empty name and spaced turn numbers."""
+        """Unnamed complex corner with >2 turns renders with 'Turns' range format."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(1, 2, 3))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "T1 / T2 / T3"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turns 1-3"})
+
+    def test_complex_corner_unnamed_two_turns_render(self):
+        """Unnamed complex corner with 2 turns renders with 'Turn' slash format."""
+        seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(3, 4))
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turn 3 / Turn 4"})
+
+    def test_complex_corner_two_turns_render(self):
+        """Complex corner with exactly 2 turns renders with slash format."""
+        seg = ComplexCornerSegmentInfo(name="Esses", start_m=0, end_m=500, corner_numbers=(3, 4))
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Esses", "turns": "T3 / T4"})
+
+    def test_complex_corner_many_turns_render(self):
+        """Complex corner with >2 turns renders with range format."""
+        seg = ComplexCornerSegmentInfo(name="Maggotts-Becketts", start_m=0, end_m=800, corner_numbers=(5, 6, 7, 8))
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Maggotts-Becketts", "turns": "T5-T8"})
 
     # --- name optionality rules -------------------------------------------------------
 
@@ -423,6 +438,21 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
         """ComplexCornerSegmentInfo with explicit empty name is valid."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=100, corner_numbers=(1, 2))
         self.assertEqual(seg.name, "")
+
+    def test_complex_corner_non_continuous_raises(self):
+        """Non-continuous corner_numbers raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            ComplexCornerSegmentInfo(name="X", start_m=0, end_m=100, corner_numbers=(1, 3, 5))
+
+    def test_complex_corner_non_increasing_raises(self):
+        """Non-increasing corner_numbers raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            ComplexCornerSegmentInfo(name="X", start_m=0, end_m=100, corner_numbers=(3, 2, 1))
+
+    def test_complex_corner_single_number_raises(self):
+        """Single corner_number raises ValidationError (need at least 2)."""
+        with self.assertRaises(ValidationError):
+            ComplexCornerSegmentInfo(name="X", start_m=0, end_m=100, corner_numbers=(1,))
 
 
 # ----------------------------------------------------------------------------------------------------------------------

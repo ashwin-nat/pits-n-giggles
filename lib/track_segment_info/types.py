@@ -68,7 +68,8 @@ class CornerSegmentInfo(BaseSegmentInfo):
     corner_number: int
 
     def render(self) -> Dict[str, str]:
-        return {"type": "corner", "name": self.name, "turns": f"T{self.corner_number}"}
+        turns = f"Turn {self.corner_number}" if not self.name else f"T{self.corner_number}"
+        return {"type": "corner", "name": self.name, "turns": turns}
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
@@ -77,8 +78,25 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
     name: str = ""
     corner_numbers: Tuple[int, ...]
 
+    @field_validator("corner_numbers")
+    @classmethod
+    def _check_continuous(cls, v: Tuple[int, ...]) -> Tuple[int, ...]:
+        if len(v) < 2:
+            raise ValueError("complex_corner must have at least 2 corner numbers")
+        for i in range(1, len(v)):
+            if v[i] != v[i - 1] + 1:
+                raise ValueError(
+                    f"corner_numbers must be strictly increasing and continuous, "
+                    f"got {v[i - 1]} followed by {v[i]}"
+                )
+        return v
+
     def render(self) -> Dict[str, str]:
-        turns = " / ".join(f"T{n}" for n in self.corner_numbers)
+        first, last = self.corner_numbers[0], self.corner_numbers[-1]
+        if not self.name:
+            turns = f"Turns {first}-{last}" if len(self.corner_numbers) > 2 else " / ".join(f"Turn {n}" for n in self.corner_numbers)
+        else:
+            turns = f"T{first}-T{last}" if len(self.corner_numbers) > 2 else " / ".join(f"T{n}" for n in self.corner_numbers)
         return {"type": "corner", "name": self.name, "turns": turns}
 
 

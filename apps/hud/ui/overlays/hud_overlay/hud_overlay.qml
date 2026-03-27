@@ -182,8 +182,8 @@ Window {
             // the pill's semicircular ends (same radius, same centre point).
             RowLayout {
                 anchors.fill:          parent
-                anchors.topMargin:     16
-                anchors.bottomMargin:  -4
+                anchors.topMargin:     0
+                anchors.bottomMargin:  0
                 anchors.leftMargin:    0
                 anchors.rightMargin:   0
                 spacing: 6
@@ -250,6 +250,8 @@ Window {
                 ColumnLayout {
                     Layout.fillWidth:  true
                     Layout.fillHeight: true
+                    Layout.topMargin:  30
+                    Layout.bottomMargin: -2
                     spacing: 3
 
                     // ── 1. Primary zone — Speed (left) | Corner info (right) ─
@@ -267,20 +269,11 @@ Window {
                                 anchors.centerIn:   parent
                                 text:               root.speedKmph
                                 font.family:        "Formula1"
-                                font.pixelSize:     40
+                                font.pixelSize:     36
                                 font.bold:          true
                                 color:              "#edf7ff"
                                 horizontalAlignment: Text.AlignHCenter
                             }
-                        }
-
-                        // Subtle vertical divider
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.fillHeight:     true
-                            Layout.topMargin:      6
-                            Layout.bottomMargin:   6
-                            color: Qt.rgba(1, 1, 1, 0.06)
                         }
 
                         // Corner / straight info (~62% width)
@@ -322,11 +315,11 @@ Window {
                                 }
                             }
 
-                            // Corner: name line + turn numbers line
+                            // Named corner: name line + turn numbers subtitle
                             Column {
                                 anchors.centerIn: parent
                                 spacing: 3
-                                visible: root.segmentType === "corner"
+                                visible: root.segmentType === "corner" && root.segmentName !== ""
 
                                 Text {
                                     id: segNameText
@@ -352,6 +345,25 @@ Window {
                                     visible:            root.segmentTurns !== ""
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     horizontalAlignment: Text.AlignHCenter
+                                }
+                            }
+
+                            // Unnamed corner: turn numbers as main title
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 3
+                                visible: root.segmentType === "corner" && root.segmentName === ""
+
+                                Text {
+                                    text:               root.segmentTurns.toUpperCase()
+                                    font.family:        "Formula1"
+                                    font.pixelSize:     14
+                                    font.bold:          true
+                                    font.letterSpacing: 0.8
+                                    color:              "#c8dce8"
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                    opacity: segNameText.opacity
                                 }
                             }
                         }
