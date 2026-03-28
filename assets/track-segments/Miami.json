@@ -1,0 +1,126 @@
+{
+  "circuit_name": "Miami",
+  "circuit_number": 30,
+  "track_length": 5410,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 280,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 280,
+      "end_m": 550,
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 550,
+      "end_m": 900,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1025,
+      "end_m": 1725,
+      "name": "The Esses",
+      "corner_numbers": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2090,
+      "end_m": 2300,
+      "name": "",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2300,
+      "end_m": 2650,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 2650,
+      "end_m": 3025,
+      "name": "Back Straight 1"
+    },
+    {
+      "type": "corner",
+      "start_m": 3025,
+      "end_m": 3185,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3185,
+      "end_m": 3340,
+      "name": "Stadium Section",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 3340,
+      "end_m": 3435,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3435,
+      "end_m": 3540,
+      "corner_numbers": [
+        14,
+        15
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 3540,
+      "end_m": 3640,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "straight",
+      "start_m": 3640,
+      "end_m": 4750,
+      "name": "Back Straight 2"
+    },
+    {
+      "type": "corner",
+      "start_m": 4750,
+      "end_m": 4980,
+      "name": "",
+      "corner_number": 17
+    },
+    {
+      "type": "corner",
+      "start_m": 5010,
+      "end_m": 5140,
+      "name": "",
+      "corner_number": 18
+    },
+    {
+      "type": "corner",
+      "start_m": 5140,
+      "end_m": 5410,
+      "name": "",
+      "corner_number": 19
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "circuit_name": "Singapore",
+  "circuit_number": 12,
+  "track_length": 4928,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 320,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 320,
+      "end_m": 480,
+      "name": "Sheares",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 480,
+      "end_m": 540,
+      "name": "",
+      "corner_number": 2
+    },
+    {
+      "type": "corner",
+      "start_m": 540,
+      "end_m": 650,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 675,
+      "end_m": 770,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 850,
+      "end_m": 1080,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "straight",
+      "start_m": 1080,
+      "end_m": 1700,
+      "name": "Raffles Boulevard"
+    },
+    {
+      "type": "corner",
+      "start_m": 1700,
+      "end_m": 1860,
+      "name": "Memorial Corner",
+      "corner_number": 7
+    },
+    {
+      "type": "straight",
+      "start_m": 1860,
+      "end_m": 1950,
+      "name": "Nicoll Highway"
+    },
+    {
+      "type": "corner",
+      "start_m": 1950,
+      "end_m": 2090,
+      "name": "Stamford",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2120,
+      "end_m": 2300,
+      "name": "Padang",
+      "corner_number": 9
+    },
+    {
+      "type": "straight",
+      "start_m": 2300,
+      "end_m": 2550,
+      "name": "St. Andrews Road"
+    },
+    {
+      "type": "corner",
+      "start_m": 2550,
+      "end_m": 2775,
+      "name": "Singapore Sling",
+      "corner_number": 10
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2775,
+      "end_m": 2890,
+      "corner_numbers": [
+        11,
+        12
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 2890,
+      "end_m": 3020,
+      "name": "Anderson Bridge"
+    },
+    {
+      "type": "corner",
+      "start_m": 3020,
+      "end_m": 3130,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "straight",
+      "start_m": 3130,
+      "end_m": 3500,
+      "name": "Esplande Drive"
+    },
+    {
+      "type": "corner",
+      "start_m": 3500,
+      "end_m": 3700,
+      "name": "Connaught",
+      "corner_number": 14
+    },
+    {
+      "type": "straight",
+      "start_m": 3700,
+      "end_m": 4240,
+      "name": "Raffles Avenue"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4240,
+      "end_m": 4500,
+      "corner_numbers": [
+        16,
+        17
+      ]
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4620,
+      "end_m": 4800,
+      "corner_numbers": [
+        18,
+        19
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 4800,
+      "end_m": 4928,
+      "name": "Pit Straight"
+    }
+  ]
+}

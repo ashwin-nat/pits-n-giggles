@@ -1,0 +1,114 @@
+{
+  "circuit_name": "Catalunya",
+  "circuit_number": 4,
+  "track_length": 4664,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 655,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 655,
+      "end_m": 1000,
+      "name": "Elf",
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1020,
+      "end_m": 1490,
+      "name": "Renault",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 1570,
+      "end_m": 1955,
+      "name": "Repsol",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 2000,
+      "end_m": 2230,
+      "name": "Seat",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 2300,
+      "end_m": 2430,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2450,
+      "end_m": 2725,
+      "corner_numbers": [
+        7,
+        8
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2750,
+      "end_m": 3050,
+      "name": "Campsa",
+      "corner_number": 9
+    },
+    {
+      "type": "straight",
+      "start_m": 3050,
+      "end_m": 3350,
+      "name": "Back Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 3350,
+      "end_m": 3570,
+      "name": "La Caixa",
+      "corner_number": 10
+    },
+    {
+      "type": "corner",
+      "start_m": 3570,
+      "end_m": 3680,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3682,
+      "end_m": 3950,
+      "name": "Banc de Sabadell",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 3980,
+      "end_m": 4175,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "corner",
+      "start_m": 4235,
+      "end_m": 4530,
+      "name": "New Holland",
+      "corner_number": 14
+    },
+    {
+      "type": "straight",
+      "start_m": 4530,
+      "end_m": 4664,
+      "name": "Pit Straight"
+    }
+  ]
+}

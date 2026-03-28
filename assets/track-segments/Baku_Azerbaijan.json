@@ -1,0 +1,138 @@
+{
+  "circuit_name": "Baku_Azerbaijan",
+  "circuit_number": 20,
+  "track_length": 5994,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 180,
+      "name": "Neftchilar Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 180,
+      "end_m": 400,
+      "name": "",
+      "corner_number": 1
+    },
+    {
+      "type": "straight",
+      "start_m": 400,
+      "end_m": 570,
+      "name": "Alexander Pushkin"
+    },
+    {
+      "type": "corner",
+      "start_m": 570,
+      "end_m": 715,
+      "name": "",
+      "corner_number": 2
+    },
+    {
+      "type": "straight",
+      "start_m": 715,
+      "end_m": 1410,
+      "name": "Khagani Street"
+    },
+    {
+      "type": "corner",
+      "start_m": 1410,
+      "end_m": 1580,
+      "name": "",
+      "corner_number": 3
+    },
+    {
+      "type": "straight",
+      "start_m": 1580,
+      "end_m": 1680,
+      "name": "Bulbul Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 1680,
+      "end_m": 1810,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "straight",
+      "start_m": 1810,
+      "end_m": 2000,
+      "name": "Zarifa Aliyeva Steet"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2000,
+      "end_m": 2215,
+      "corner_numbers": [
+        5,
+        6
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 2215,
+      "end_m": 2315,
+      "name": "Neftchilar Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 2450,
+      "end_m": 2600,
+      "name": "",
+      "corner_number": 7
+    },
+    {
+      "type": "straight",
+      "start_m": 2600,
+      "end_m": 2700,
+      "name": "Aziz Aliyev Street"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2700,
+      "end_m": 2960,
+      "name": "Castle Section",
+      "corner_numbers": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 2960,
+      "end_m": 3650,
+      "name": "Istiglaliyyat Street"
+    },
+    {
+      "type": "corner",
+      "start_m": 3650,
+      "end_m": 3800,
+      "name": "",
+      "corner_number": 15
+    },
+    {
+      "type": "straight",
+      "start_m": 3800,
+      "end_m": 4020,
+      "name": "Niyazi Street"
+    },
+    {
+      "type": "corner",
+      "start_m": 4020,
+      "end_m": 4210,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "straight",
+      "start_m": 4210,
+      "end_m": 5994,
+      "name": "Neftchilar Avenue"
+    }
+  ]
+}
