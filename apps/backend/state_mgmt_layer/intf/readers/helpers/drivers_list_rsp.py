@@ -276,7 +276,8 @@ class DriversListRsp(BaseAPI):
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
             "tt-setups" : self._getTTSetupJSON(),
-            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None
+            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None,
+            "rival-info": self._getTtRivalInfo(),
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:
@@ -320,6 +321,17 @@ class DriversListRsp(BaseAPI):
             "player-session-best-setup": session_best_setup,
             "rival-session-best-setup": rival_setup,
         }
+
+    def _getTtRivalInfo(self) -> Dict[str, Any]:
+        packet = self.m_time_trial_packet
+        rival_idx = packet.m_rivalSessionBestDataSet.m_carIdx if packet else None
+        rival = self._safeGetDriver(rival_idx) if rival_idx is not None else None
+
+        if not rival:
+            return {"name": None, "team": None}
+
+        info = rival.m_driver_info
+        return {"name": info.name, "team": info.team}
 
     def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
         """Safely get a non-None DataPerDriver from m_driver_data by index."""
