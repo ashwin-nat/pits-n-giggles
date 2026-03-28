@@ -61,6 +61,9 @@ Window {
     property int    trackTempC:     0
     property int    airTempC:       0
 
+    // Marquee scroll speed in px/sec — increase for faster scrolling, decrease for slower
+    readonly property real marqueeSpeed: 60
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     function gearLabel(g) {
@@ -258,7 +261,7 @@ Window {
                     RowLayout {
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
-                        spacing: 0
+                        spacing: 4
 
                         // Speed block (~38% width)
                         Item {
@@ -278,6 +281,7 @@ Window {
 
                         // Corner / straight info (~62% width)
                         Item {
+                            id: segInfoZone
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
 
@@ -297,44 +301,96 @@ Window {
                             }
 
                             // Straight: single centred line, slightly larger
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 3
+                            Item {
+                                id: straightClip
+                                anchors.verticalCenter: parent.verticalCenter
+                                width:   parent.width
+                                height:  straightNameText.contentHeight
+                                clip:    true
                                 visible: root.segmentType === "straight"
 
+                                property bool overflows: straightNameText.contentWidth > width && width > 0
+
                                 Text {
+                                    id: straightNameText
                                     text:               root.segmentName.toUpperCase()
                                     font.family:        "Formula1"
                                     font.pixelSize:     14
                                     font.bold:          true
                                     font.letterSpacing: 0.8
                                     color:              "#c8dce8"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
                                     opacity: segNameText.opacity
+                                }
+
+                                Binding {
+                                    target: straightNameText; property: "x"
+                                    value: (straightClip.width - straightNameText.contentWidth) / 2
+                                    when: !straightClip.overflows
+                                    restoreMode: Binding.RestoreNone
+                                }
+
+                                SequentialAnimation {
+                                    id: straightMarquee
+                                    running: straightClip.overflows
+                                    loops: Animation.Infinite
+                                    readonly property real dist: Math.max(1, straightNameText.contentWidth - straightClip.width)
+                                    readonly property int  scrollMs: dist / root.marqueeSpeed * 1000
+                                    NumberAnimation { target: straightNameText; property: "x"; to: 0; duration: 0 }
+                                    PauseAnimation { duration: 1000 }
+                                    NumberAnimation { target: straightNameText; property: "x"; to: -straightMarquee.dist; duration: straightMarquee.scrollMs; easing.type: Easing.Linear }
+                                    PauseAnimation { duration: 1000 }
+                                    NumberAnimation { target: straightNameText; property: "x"; to: 0; duration: straightMarquee.scrollMs; easing.type: Easing.Linear }
                                 }
                             }
 
                             // Named corner: name line + turn numbers subtitle
                             Column {
-                                anchors.centerIn: parent
+                                width: parent.width
+                                anchors.verticalCenter: parent.verticalCenter
                                 spacing: 3
                                 visible: root.segmentType === "corner" && root.segmentName !== ""
 
-                                Text {
-                                    id: segNameText
-                                    text:               root.segmentName.toUpperCase()
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     13
-                                    font.bold:          true
-                                    font.letterSpacing: 0.6
-                                    color:              "#c8dce8"
-                                    opacity:            0.75
-                                    elide:              Text.ElideRight
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                                Item {
+                                    id: cornerNameClip
+                                    width:  parent.width
+                                    height: segNameText.contentHeight
+                                    clip:   true
+
+                                    property bool overflows: segNameText.contentWidth > width && width > 0
+
+                                    Text {
+                                        id: segNameText
+                                        text:               root.segmentName.toUpperCase()
+                                        font.family:        "Formula1"
+                                        font.pixelSize:     13
+                                        font.bold:          true
+                                        font.letterSpacing: 0.6
+                                        color:              "#c8dce8"
+                                        opacity:            0.75
+                                        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+                                    }
+
+                                    Binding {
+                                        target: segNameText; property: "x"
+                                        value: (cornerNameClip.width - segNameText.contentWidth) / 2
+                                        when: !cornerNameClip.overflows
+                                        restoreMode: Binding.RestoreNone
+                                    }
+
+                                    SequentialAnimation {
+                                        id: cornerNameMarquee
+                                        running: cornerNameClip.overflows
+                                        loops: Animation.Infinite
+                                        readonly property real dist: Math.max(1, segNameText.contentWidth - cornerNameClip.width)
+                                        readonly property int  scrollMs: dist / root.marqueeSpeed * 1000
+                                        NumberAnimation { target: segNameText; property: "x"; to: 0; duration: 0 }
+                                        PauseAnimation { duration: 1000 }
+                                        NumberAnimation { target: segNameText; property: "x"; to: -cornerNameMarquee.dist; duration: cornerNameMarquee.scrollMs; easing.type: Easing.Linear }
+                                        PauseAnimation { duration: 1000 }
+                                        NumberAnimation { target: segNameText; property: "x"; to: 0; duration: cornerNameMarquee.scrollMs; easing.type: Easing.Linear }
+                                    }
                                 }
+
                                 Text {
                                     text:               root.segmentTurns
                                     font.family:        "Formula1"
