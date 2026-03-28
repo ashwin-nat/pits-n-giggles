@@ -320,7 +320,10 @@ class StreamOverlayData(BaseAPI):
         #   -120   -> 5180
         #   -5400  -> 5200
         #
-        dist = lap_data.m_lapDistance % self.m_circuit_len
+        if self.m_circuit_len:
+            dist = lap_data.m_lapDistance % self.m_circuit_len
+        else:
+            dist = None
 
         return {
             "throttle" : car_telemetry.m_throttle,
