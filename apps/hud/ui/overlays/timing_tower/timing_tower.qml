@@ -37,8 +37,8 @@ Window {
 
     readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
 
-    width: baseWidth * scaleFactor
-    height: baseHeight * scaleFactor
+    width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
+    height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
@@ -48,19 +48,30 @@ Window {
     property int referenceRow: -1
     property string errorMessage: ""
     property bool showError: false
+    property string mode: "race"  // "race" or "tt"
+    property var ttTableData: []
+
+    // TT mode column widths and dimensions
+    readonly property int ttColLabel: 52
+    readonly property int ttColLapTime: 85
+    readonly property int ttColSector: 62
+    // +34: accounts for nested margins (outer rect 8, layout 8, col 4) + 4 left margin + 10 right padding
+    readonly property int ttBaseWidth: ttColLabel + ttColLapTime + ttColSector * 3 + 34
+    readonly property int ttColHeaderHeight: 22
+    readonly property int ttBaseHeight: headerHeight + ttColHeaderHeight + (rowHeight * 4) + margins
 
     // Global scaling root
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: baseWidth
-        height: baseHeight
+        width: mode === "tt" ? ttBaseWidth : baseWidth
+        height: mode === "tt" ? ttBaseHeight : baseHeight
 
         transform: Scale {
             xScale: scaleFactor
             yScale: scaleFactor
-            origin.x: baseWidth / 2
-            origin.y: baseHeight / 2
+            origin.x: scaledRoot.width / 2
+            origin.y: scaledRoot.height / 2
         }
 
         // Main container
@@ -98,14 +109,14 @@ Window {
                     color: "transparent"
                     radius: 6
 
-                    // Error message display
+                    // Error message display (race mode only)
                     Text {
                         anchors.centerIn: parent
                         text: errorMessage
                         font.pixelSize: 12
                         font.bold: true
                         color: "#ffb86b"
-                        visible: showError
+                        visible: showError && mode === "race"
                     }
 
                     // Column widths
@@ -120,14 +131,14 @@ Window {
                         readonly property int pens: 56
                     }
 
-                    // Table content
+                    // Table content (race mode)
                     ListView {
                         id: tableView
                         anchors.fill: parent
                         anchors.margins: 2
                         clip: true
                         interactive: false
-                        visible: !showError
+                        visible: !showError && mode === "race"
 
                         model: tableData
 
@@ -329,6 +340,145 @@ Window {
                                         verticalAlignment: Text.AlignVCenter
                                         wrapMode: Text.NoWrap
                                         elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // TT table (time trial mode)
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 0
+                        visible: mode === "tt"
+
+                        // Column headers
+                        Row {
+                            width: parent.width
+                            height: ttColHeaderHeight
+
+                            Text {
+                                width: ttColLabel
+                                height: parent.height
+                                text: ""
+                            }
+                            Text {
+                                width: ttColLapTime
+                                height: parent.height
+                                text: "LAP"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S1"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S2"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S3"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        Repeater {
+                            model: ttTableData
+
+                            delegate: Item {
+                                width: parent.width
+                                height: 28
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: Qt.rgba(0.08, 0.08, 0.10, 0.6)
+                                    radius: 3
+                                }
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: 1
+                                    color: Qt.rgba(1, 1, 1, 0.05)
+                                }
+
+                                Row {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    height: parent.height
+
+                                    Text {
+                                        width: ttColLabel
+                                        height: parent.height
+                                        text: modelData.label
+                                        font.family: "Formula1"
+                                        font.pixelSize: 12
+                                        color: "#aaaaaa"
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColLapTime
+                                        height: parent.height
+                                        text: modelData["lap-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 13
+                                        color: "#ffffff"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s1-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s2-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s3-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
                                     }
                                 }
                             }

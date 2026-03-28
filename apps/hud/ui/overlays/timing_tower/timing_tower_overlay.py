@@ -119,6 +119,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("showDeltas", self.show_deltas)
         self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
         self.set_qml_property("showPens", self.show_pens)
+        self.set_qml_property("mode", "race")
+        self.set_qml_property("ttTableData", [])
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
@@ -132,43 +134,47 @@ class TimingTowerOverlay(BaseOverlayQML):
             session_type = data["event-type"]
 
             if is_tt_session(session_type):
-                self._show_error("TIME TRIAL NOT YET SUPPORTED")
-                self._update_session_info("-- / --")
+                self._process_time_trial(data)
                 return
 
-            table_entries = data["table-entries"]
-            if not table_entries:
-                self.clear()
-                return
+            self._process_non_time_trial(data, session_type)
 
-            ref_row = get_ref_row(data)
-            if not ref_row:
-                self._show_error("ERROR: Please check the logs")
-                return
+    def _process_non_time_trial(self, data: Dict[str, Any], session_type: str) -> None:
+        self.set_qml_property("mode", "race")
 
-            ref_index = ref_row["driver-info"]["index"]
-            relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
+        table_entries = data["table-entries"]
+        if not table_entries:
+            self.clear()
+            return
 
-            if is_race_type_session(session_type):
-                insert_relative_deltas_race(relevant_rows, ref_index)
-            elif not is_tt_session(session_type):
-                self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
+        ref_row = get_ref_row(data)
+        if not ref_row:
+            self._show_error("ERROR: Please check the logs")
+            return
 
-            # Update QML with data
-            self._update_table_data(relevant_rows, ref_index)
+        ref_index = ref_row["driver-info"]["index"]
+        relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
-            # Update session info
-            if session_type == 'None':
-                self._update_session_info("----")
-            elif self._should_show_lap_number(session_type):
-                current_lap = data.get("current-lap", 0)
-                total_laps = data.get("total-laps", 0)
-                self._update_session_info(f"{session_type.upper()}    |    LAP {current_lap} / {total_laps}")
-            else:
-                time_remaining_sec = data.get("session-time-left", 0)
-                minutes = int(time_remaining_sec // 60)
-                seconds = int(time_remaining_sec % 60)
-                self._update_session_info(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
+        if is_race_type_session(session_type):
+            insert_relative_deltas_race(relevant_rows, ref_index)
+        elif not is_tt_session(session_type):
+            self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
+
+        # Update QML with data
+        self._update_table_data(relevant_rows, ref_index)
+
+        # Update session info
+        if session_type == 'None':
+            self._update_session_info("----")
+        elif self._should_show_lap_number(session_type):
+            current_lap = data.get("current-lap", 0)
+            total_laps = data.get("total-laps", 0)
+            self._update_session_info(f"{session_type.upper()}    |    LAP {current_lap} / {total_laps}")
+        else:
+            time_remaining_sec = data.get("session-time-left", 0)
+            minutes = int(time_remaining_sec // 60)
+            seconds = int(time_remaining_sec % 60)
+            self._update_session_info(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
 
     def _update_session_info(self, text: str):
         """Update the session info label in QML.
@@ -331,6 +337,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("sessionInfo", "-- / --")
         self.set_qml_property("tableData", [])
         self.set_qml_property("showError", False)
+        self.set_qml_property("mode", "race")
+        self.set_qml_property("ttTableData", [])
 
     def _should_show_lap_number(self, session_type: str) -> bool:
         """Check if it is a race/sprint session.
@@ -366,3 +374,87 @@ class TimingTowerOverlay(BaseOverlayQML):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    def _process_time_trial(self, data: Dict[str, Any]) -> None:
+
+        tt_data_outer: dict = data.get("tt-data", {})
+        tt_data_inner = tt_data_outer.get("tt-data")
+        if not tt_data_outer or not tt_data_inner:
+            self.clear()
+            return
+
+        curr_lap_num = tt_data_outer.get("current-lap", 0)
+        table_data = [
+            self._get_tt_curr_lap(tt_data_outer),
+            self._get_tt_pb_lap(tt_data_inner),
+            self._get_tt_sb_lap(tt_data_inner),
+            self._get_tt_rival_lap(tt_data_inner),
+        ]
+
+        self.set_qml_property("mode", "tt")
+        self.set_qml_property("ttTableData", table_data)
+        self._update_session_info(f"TIME TRIAL    |    LAP {curr_lap_num}")
+
+    def _tt_row_from_dataset(self, label: str, dataset: dict) -> dict:
+        """Build a TT table row dict from a TimeTrialDataSet JSON dict.
+
+        Args:
+            label (str): Row label (e.g. "PB", "SB", "Rival")
+            dataset (dict): TimeTrialDataSet.toJSON() output
+
+        Returns:
+            dict: Row data for QML
+        """
+        if not dataset or not dataset.get("is-valid"):
+            return {
+                "label": label,
+                "lap-time-str": "---",
+                "s1-time-str": "---",
+                "s2-time-str": "---",
+                "s3-time-str": "---",
+            }
+        return {
+            "label": label,
+            "lap-time-str": dataset.get("lap-time-str", "---"),
+            "s1-time-str": dataset.get("sector-1-time-str", "---"),
+            "s2-time-str": dataset.get("sector-2-time-str", "---"),
+            "s3-time-str": dataset.get("sector-3-time-str", "---"),
+        }
+
+    def _get_tt_curr_lap(self, tt_data_outer: dict) -> dict:
+        """Get the most recently completed lap from session history.
+
+        Args:
+            tt_data_outer (dict): Outer TT data dict containing session-history
+
+        Returns:
+            dict: Row data for QML
+        """
+        session_history = tt_data_outer.get("session-history")
+        if session_history:
+            lap_history = session_history.get("lap-history-data", [])
+            if lap_history:
+                last_lap = lap_history[-1]
+                return {
+                    "label": "Current",
+                    "lap-time-str": last_lap.get("lap-time-str", "---"),
+                    "s1-time-str": last_lap.get("sector-1-time-str", "---"),
+                    "s2-time-str": last_lap.get("sector-2-time-str", "---"),
+                    "s3-time-str": last_lap.get("sector-3-time-str", "---"),
+                }
+        return {
+            "label": "Current",
+            "lap-time-str": "---",
+            "s1-time-str": "---",
+            "s2-time-str": "---",
+            "s3-time-str": "---",
+        }
+
+    def _get_tt_pb_lap(self, tt_data: dict) -> dict:
+        return self._tt_row_from_dataset("PB", tt_data.get("personal-best-data-set", {}))
+
+    def _get_tt_sb_lap(self, tt_data: dict) -> dict:
+        return self._tt_row_from_dataset("SB", tt_data.get("player-session-best-data-set", {}))
+
+    def _get_tt_rival_lap(self, tt_data: dict) -> dict:
+        return self._tt_row_from_dataset("Rival", tt_data.get("rival-session-best-data-set", {}))
