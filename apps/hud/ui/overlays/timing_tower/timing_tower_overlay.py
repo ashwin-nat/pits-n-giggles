@@ -318,7 +318,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             return f"{num_dt}DT"
 
         if pens_sec > 0:
-            return f"+{pens_sec}sec"
+            return f"+{pens_sec}s"
 
         if self.show_tl_warns:
             tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
