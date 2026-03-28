@@ -8,7 +8,8 @@
         "udp_tyre_delta_action_code": null,
         "udp_custom_action_code": null,
         "wdt_interval_sec": 30,
-        "enable_pkt_ordering": true
+        "enable_pkt_ordering": true,
+        "udp_action_button_debounce_ms": 100
     },
     "Capture": {
         "post_race_data_autosave": true,
@@ -48,6 +49,7 @@
         "use_windowed_overlays": false,
         "show_lap_timer": true,
         "lap_timer_ui_scale": 1.0,
+        "lap_timer_minimal": false,
         "lap_timer_toggle_udp_action_code": null,
         "show_timing_tower": true,
         "timing_tower_ui_scale": 1.0,
@@ -88,6 +90,10 @@
                 "tyre_sets": {
                     "enabled": true,
                     "position": 6
+                },
+                "pace_comp": {
+                    "enabled": false,
+                    "position": 7
                 }
             }
         },
@@ -108,6 +114,9 @@
         "track_radar_overlay_ui_scale": 1.0,
         "track_radar_overlay_toggle_udp_action_code": null,
         "track_radar_idle_opacity": 30,
+        "show_hud_overlay": true,
+        "hud_overlay_ui_scale": 1.21,
+        "hud_overlay_toggle_udp_action_code": null,
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
@@ -118,10 +127,6 @@
                 "x": 2722,
                 "y": 45
             },
-            "mfd": {
-                "x": 3332,
-                "y": 237
-            },
             "input_telemetry": {
                 "x": 3446,
                 "y": 569
@@ -129,6 +134,14 @@
             "track_radar": {
                 "x": 3073,
                 "y": 512
+            },
+            "hud_overlay": {
+                "x": 2696,
+                "y": 592
+            },
+            "mfd": {
+                "x": 3332,
+                "y": 237
             }
         }
     },
