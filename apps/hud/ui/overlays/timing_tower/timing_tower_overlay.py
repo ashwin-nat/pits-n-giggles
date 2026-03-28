@@ -277,8 +277,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         Returns:
             Formatted tyre wear string
         """
-        if telemetry_public:
-            max_wear = F1Utils.getMaxTyreWear(tyre_info.get("current-wear", []))
+        wear = tyre_info.get("current-wear")
+        if telemetry_public and wear:
+            max_wear = F1Utils.getMaxTyreWear(wear)
             return f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
 
         tyre_age = tyre_info.get("tyre-age", 0)
