@@ -107,8 +107,7 @@ class LatencyStat(Stat):
             jitter = abs(latency - self.prev_latency)
             self.jitter_sum += jitter
             self.jitter_count += 1
-            if jitter > self.jitter_max:
-                self.jitter_max = jitter
+            self.jitter_max = max(self.jitter_max, jitter)
         self.prev_latency = latency
 
         # EWMA: initialise on first sample, smooth thereafter

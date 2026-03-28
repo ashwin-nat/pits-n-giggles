@@ -33,10 +33,11 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, OverlayPosition, PngSettings)
+from lib.config import (HUD_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
+                        LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID,
+                        TIMING_TOWER_OVERLAY_ID, TRACK_MAP_OVERLAY_ID,
+                        TRACK_RADAR_OVERLAY_ID, HudSettings, OverlayPosition,
+                        PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -455,6 +456,9 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_weather_page_ui_type",
                 "use_windowed_overlays",
                 "input_overlay_buffer_duration_sec",
+                "show_input_overlay",
+                "show_hud_overlay",
+
             ],
             "Network": [
                 "broker_xpub_port",
@@ -545,6 +549,15 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_track_radar_overlay,
             ),
 
+            SliderItem(
+                key=HUD_OVERLAY_ID,
+                label="HUD Overlay Scale",
+                min=HudSettings.model_fields["hud_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["hud_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.hud_overlay_ui_scale * 100),
+                visible=hud_settings.show_hud_overlay,
+            ),
+
             # Opacity at the bottom
             SliderItem(
                 key="overlays_opacity",
@@ -589,6 +602,7 @@ class HudAppMgr(PngAppMgrBase):
         # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
         new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
         new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
+        new_settings.HUD.hud_overlay_ui_scale = values[HUD_OVERLAY_ID] / 100.0
 
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
@@ -628,6 +642,7 @@ class HudAppMgr(PngAppMgrBase):
                 "track_map_ui_scale",
                 "input_overlay_ui_scale",
                 "track_radar_overlay_ui_scale",
+                "hud_overlay_ui_scale",
             ],
         )
 
@@ -660,6 +675,7 @@ class HudAppMgr(PngAppMgrBase):
                 "track_map_ui_scale": TRACK_MAP_OVERLAY_ID,
                 "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
                 "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
+                "hud_overlay_ui_scale": HUD_OVERLAY_ID,
             }
 
             for key, data in hud_diff.items():

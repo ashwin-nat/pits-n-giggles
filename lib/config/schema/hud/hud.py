@@ -235,6 +235,12 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    # ============== HUD OVERLAY ==============
+    show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay")
+    hud_overlay_ui_scale: float = ui_scale_field(description="HUD overlay UI scale")
+    hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle HUD overlay UDP action code", group="HUD Overlay")
+
     # ============== GLOBAL OVERLAY CONTROLS ==============
 
     overlays_opacity: int = Field(

@@ -28,16 +28,17 @@ from typing import Any, Dict, List, Optional
 
 
 from apps.hud.common import get_ref_row_index
-from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
-                                  LapTimerOverlay, MfdOverlay,
-                                  TimingTowerOverlay, TrackRadarOverlay)
+from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
+                                  InputTelemetryOverlay, LapTimerOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
+                                  TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import InputTelemetryData, LiveSessionMotionInfo
+from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -132,6 +133,16 @@ class OverlaysMgr:
             idle_opacity=settings.HUD.track_radar_idle_opacity,
         )
 
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_hud_overlay,
+            overlay_cls=HudOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.hud_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
+
         if settings.HUD.show_mfd:
             self.window_manager.register_overlay(
                 MfdOverlay.OVERLAY_ID,
@@ -186,6 +197,7 @@ class OverlaysMgr:
         """Handle the stream overlay update event"""
         self._input_telemetry_update(data)
         self._motion_update(data)
+        self._hud_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
             self.window_manager.broadcast_data('stream_overlay_update', data)
 
@@ -376,6 +388,10 @@ class OverlaysMgr:
     def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
         self.window_manager.send_high_freq_data(LiveSessionMotionInfo.from_json(data))
+
+    def _hud_overlay_update(self, data: Dict[str, Any]):
+        """Send HUD data to HUD overlay."""
+        self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)

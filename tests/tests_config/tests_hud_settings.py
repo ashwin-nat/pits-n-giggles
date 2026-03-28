@@ -81,6 +81,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.track_radar_overlay_ui_scale, 1.0)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.track_radar_idle_opacity, 30)
+        self.assertEqual(settings.show_hud_overlay, True)
+        self.assertEqual(settings.hud_overlay_ui_scale, 1.0)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -114,6 +116,7 @@ class TestHudSettings(TestF1ConfigBase):
             "track_map_toggle_udp_action_code",
             "input_overlay_toggle_udp_action_code",
             "mfd_interaction_udp_action_code",
+            "hud_overlay_toggle_udp_action_code",
         ]
         for field in udp_action_code_fields:
             with self.subTest(field=field):
@@ -367,12 +370,13 @@ class TestHudSettings(TestF1ConfigBase):
                         show_mfd=False,
                         show_track_map=False,
                         show_input_overlay=False,
-                        show_track_radar_overlay=False)
+                        show_track_radar_overlay=False,
+                        show_hud_overlay=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
                                show_mfd=False, show_track_map=False, show_input_overlay=False,
-                               show_track_radar_overlay=False)
+                               show_track_radar_overlay=False, show_hud_overlay=False)
         self.assertEqual(settings.enabled, True)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, False)
@@ -380,6 +384,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_track_map, False)
         self.assertEqual(settings.show_input_overlay, False)
         self.assertEqual(settings.show_track_radar_overlay, False)
+        self.assertEqual(settings.show_hud_overlay, False)
 
     def test_mfd_default_pages(self):
         """Verify default MFD pages exist and are valid"""

@@ -68,7 +68,9 @@ class CarStatusData(F1SubPacketBase):
     """
 
     MIN_FUEL_KG = 0.2 # Source: Trust me bro
-    MAX_ERS_STORE_ENERGY = 4000000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+    MAX_ERS_STORE_ENERGY = 4_000_000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+    MAX_ERS_DEPLOY_PER_LAP = 4_000_000.0
+    MAX_MGUK_HARV_PER_LAP = 2_000_000.0
     COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8       m_tractionControl;          // Traction control - 0 = off, 1 = medium, 2 = full
         "B" # uint8       m_antiLockBrakes;           // 0 (off) - 1 (on)

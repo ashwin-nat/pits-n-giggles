@@ -172,7 +172,7 @@ Item {
             // Track temperature
             TemperatureRow {
                 width: parent.width
-                iconSource: "../../../../../../../assets/overlays/road.svg"
+                iconSource: "../../../../../../../assets/overlays/track-temperature.svg"
                 temperature: cardData["track-temperature"]
                 temperatureChange: cardData["track-temperature-change"]
             }
@@ -180,7 +180,7 @@ Item {
             // Air temperature
             TemperatureRow {
                 width: parent.width
-                iconSource: "../../../../../../../assets/overlays/thermometer-half.svg"
+                iconSource: "../../../../../../../assets/overlays/air-temperature.svg"
                 temperature: cardData["air-temperature"]
                 temperatureChange: cardData["air-temperature-change"]
             }

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,30 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .hud import HudSettings, WeatherMFDUIType
-from .layout import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                     TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HUD_OVERLAY_ID,
-                     OverlayPosition)
-from .mfd import MfdPageSettings, MfdSettings
-from .timing_tower import TimingTowerColOptions
+from .database import TrackSegmentsDatabase
+from .segments import TrackSegments
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    'HudSettings',
-    'WeatherMFDUIType',
-    'MfdSettings',
-    'MfdPageSettings',
-    'OverlayPosition',
-    'TimingTowerColOptions',
-
-    'INPUT_TELEMETRY_OVERLAY_ID',
-    'LAP_TIMER_OVERLAY_ID',
-    'MFD_OVERLAY_ID',
-    'TIMING_TOWER_OVERLAY_ID',
-    'TRACK_MAP_OVERLAY_ID',
-    'TRACK_RADAR_OVERLAY_ID',
-    'HUD_OVERLAY_ID',
-
+    "TrackSegments",
+    "TrackSegmentsDatabase",
 ]

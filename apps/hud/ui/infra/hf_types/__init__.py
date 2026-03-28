@@ -25,6 +25,7 @@
 from .base import HighFreqBase
 from .car_motion import LiveSessionMotionInfo, DriverMotionInfo
 from .input_telemetry import InputTelemetryData
+from .hud_overlay_data import HudOverlayData
 from .template import DummyHFType
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -34,6 +35,7 @@ __all__ = [
     "InputTelemetryData",
     "LiveSessionMotionInfo",
     "DriverMotionInfo",
+    "HudOverlayData",
 
 
     "DummyHFType",
