@@ -119,8 +119,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("showDeltas", self.show_deltas)
         self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
         self.set_qml_property("showPens", self.show_pens)
-        self.set_qml_property("mode", "race")
-        self.set_qml_property("ttTableData", [])
+        self._set_race_mode()
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
@@ -140,7 +139,17 @@ class TimingTowerOverlay(BaseOverlayQML):
             self._process_non_time_trial(data, session_type)
 
     def _process_non_time_trial(self, data: Dict[str, Any], session_type: str) -> None:
-        self.set_qml_property("mode", "race")
+        """Process incoming telemetry data for non-time-trial sessions and update the QML overlay.
+
+        Switches to race mode, extracts the relevant rows around the reference driver,
+        inserts relative deltas, and pushes the formatted table and session info to QML.
+        Clears the overlay if table entries are absent or the reference driver cannot be found.
+
+        Args:
+            data (Dict[str, Any]): Full telemetry payload from the server.
+            session_type (str): Session type string (e.g. "Race", "Qualifying", "Practice").
+        """
+        self._set_race_mode()
 
         table_entries = data["table-entries"]
         if not table_entries:
@@ -175,6 +184,16 @@ class TimingTowerOverlay(BaseOverlayQML):
             minutes = int(time_remaining_sec // 60)
             seconds = int(time_remaining_sec % 60)
             self._update_session_info(f"{session_type.upper()}    |    TIME: {minutes:02d}:{seconds:02d}")
+
+    def _set_race_mode(self) -> None:
+        """Switch QML to race mode and clear TT table."""
+        self.set_qml_property("mode", "race")
+        self.set_qml_property("ttTableData", [])
+
+    def _set_tt_mode(self, table_data: list) -> None:
+        """Switch QML to time-trial mode and populate TT table."""
+        self.set_qml_property("mode", "tt")
+        self.set_qml_property("ttTableData", table_data)
 
     def _update_session_info(self, text: str):
         """Update the session info label in QML.
@@ -337,8 +356,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("sessionInfo", "-- / --")
         self.set_qml_property("tableData", [])
         self.set_qml_property("showError", False)
-        self.set_qml_property("mode", "race")
-        self.set_qml_property("ttTableData", [])
+        self._set_race_mode()
 
     def _should_show_lap_number(self, session_type: str) -> bool:
         """Check if it is a race/sprint session.
@@ -403,8 +421,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             self._get_tt_rival_lap(tt_data_inner, pb_ms),
         ]
 
-        self.set_qml_property("mode", "tt")
-        self.set_qml_property("ttTableData", table_data)
+        self._set_tt_mode(table_data)
         self._update_session_info(f"TIME TRIAL    |    LAP {curr_lap_num}")
 
     @staticmethod
@@ -437,7 +454,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         Returns:
             Signed seconds string like "+1.234" / "-0.456", or "---"
         """
-        if not row_ms or not pb_ms:
+        if row_ms is None or pb_ms is None:
             return "---"
         return F1Utils.formatFloat((row_ms - pb_ms) / 1000, precision=3, signed=True)
 
@@ -460,7 +477,7 @@ class TimingTowerOverlay(BaseOverlayQML):
                 "s2-time-str": "---",
                 "s3-time-str": "---",
             }
-        if pb_ms and pb_ms["lap"]:
+        if pb_ms is not None and pb_ms["lap"] is not None:
             return {
                 "label": label,
                 "lap-time-str": self._format_tt_delta(dataset.get("lap-time-ms"), pb_ms["lap"]),
@@ -476,7 +493,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "s3-time-str": dataset.get("sector-3-time-str", "---"),
         }
 
-    def _get_tt_curr_lap(self, tt_data_outer: dict, pb_ms: Dict[str, Any] = None) -> dict:
+    def _get_tt_curr_lap(self, tt_data_outer: dict, pb_ms: Optional[Dict[str, Any]] = None) -> dict:
         """Get the most recently completed lap from session history.
 
         Args:
@@ -487,32 +504,31 @@ class TimingTowerOverlay(BaseOverlayQML):
             dict: Row data for QML
         """
         session_history = tt_data_outer.get("session-history")
-        if session_history:
-            lap_history = session_history.get("lap-history-data", [])
-            if lap_history:
-                last_lap = lap_history[-1]
-                if pb_ms and pb_ms["lap"]:
-                    return {
-                        "label": "Current",
-                        "lap-time-str": self._format_tt_delta(last_lap.get("lap-time-in-ms"), pb_ms["lap"]),
-                        "s1-time-str": self._format_tt_delta(last_lap.get("sector-1-time-in-ms"), pb_ms["s1"]),
-                        "s2-time-str": self._format_tt_delta(last_lap.get("sector-2-time-in-ms"), pb_ms["s2"]),
-                        "s3-time-str": self._format_tt_delta(last_lap.get("sector-3-time-in-ms"), pb_ms["s3"]),
-                    }
-                return {
-                    "label": "Current",
-                    "lap-time-str": last_lap.get("lap-time-str", "---"),
-                    "s1-time-str": last_lap.get("sector-1-time-str", "---"),
-                    "s2-time-str": last_lap.get("sector-2-time-str", "---"),
-                    "s3-time-str": last_lap.get("sector-3-time-str", "---"),
-                }
-        return {
-            "label": "Current",
-            "lap-time-str": "---",
-            "s1-time-str": "---",
-            "s2-time-str": "---",
-            "s3-time-str": "---",
+        lap_history = session_history.get("lap-history-data", []) if session_history else None
+        if not lap_history:
+            return {
+                "label": "Current",
+                "lap-time-str": "---",
+                "s1-time-str": "---",
+                "s2-time-str": "---",
+                "s3-time-str": "---",
+            }
+
+        last_lap = lap_history[-1]
+        # Normalize lap-history keys into the same shape as a TimeTrialDataSet dict
+        # so we can reuse _tt_row_from_dataset for formatting.
+        last_lap_dataset = {
+            "is-valid": last_lap.get("is-valid", True),
+            "lap-time-ms": last_lap.get("lap-time-in-ms"),
+            "sector-1-time-ms": last_lap.get("sector-1-time-in-ms"),
+            "sector-2-time-in-ms": last_lap.get("sector-2-time-in-ms"),
+            "sector3-time-in-ms": last_lap.get("sector-3-time-in-ms"),
+            "lap-time-str": last_lap.get("lap-time-str"),
+            "sector-1-time-str": last_lap.get("sector-1-time-str"),
+            "sector-2-time-str": last_lap.get("sector-2-time-str"),
+            "sector-3-time-str": last_lap.get("sector-3-time-str"),
         }
+        return self._tt_row_from_dataset("Current", last_lap_dataset, pb_ms)
 
     def _get_tt_pb_lap(self, tt_data: dict) -> dict:
         """Get the player's all-time personal best lap row.
