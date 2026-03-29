@@ -392,23 +392,62 @@ class TimingTowerOverlay(BaseOverlayQML):
             return
 
         curr_lap_num = tt_data_outer.get("current-lap", 0)
+
+        pb_dataset = tt_data_inner.get("personal-best-data-set", {})
+        pb_ms = self._extract_tt_ms(pb_dataset)  # None values when PB not set
+
         table_data = [
-            self._get_tt_curr_lap(tt_data_outer),
+            self._get_tt_curr_lap(tt_data_outer, pb_ms),
             self._get_tt_pb_lap(tt_data_inner),
-            self._get_tt_sb_lap(tt_data_inner),
-            self._get_tt_rival_lap(tt_data_inner),
+            self._get_tt_sb_lap(tt_data_inner, pb_ms),
+            self._get_tt_rival_lap(tt_data_inner, pb_ms),
         ]
 
         self.set_qml_property("mode", "tt")
         self.set_qml_property("ttTableData", table_data)
         self._update_session_info(f"TIME TRIAL    |    LAP {curr_lap_num}")
 
-    def _tt_row_from_dataset(self, label: str, dataset: dict) -> dict:
+    @staticmethod
+    def _extract_tt_ms(dataset: dict) -> Dict[str, Any]:
+        """Extract raw millisecond values from a TimeTrialDataSet JSON dict.
+
+        Args:
+            dataset (dict): TimeTrialDataSet.toJSON() output
+
+        Returns:
+            dict with keys lap/s1/s2/s3, values are int ms or None if invalid
+        """
+        if not dataset or not dataset.get("is-valid"):
+            return {"lap": None, "s1": None, "s2": None, "s3": None}
+        return {
+            "lap": dataset.get("lap-time-ms") or None,
+            "s1": dataset.get("sector-1-time-ms") or None,
+            "s2": dataset.get("sector-2-time-in-ms") or None,
+            "s3": dataset.get("sector3-time-in-ms") or None,
+        }
+
+    @staticmethod
+    def _format_tt_delta(row_ms, pb_ms) -> str:
+        """Compute and format a signed delta against the PB value.
+
+        Args:
+            row_ms: Row's millisecond value (int or None)
+            pb_ms: PB millisecond value (int or None)
+
+        Returns:
+            Signed seconds string like "+1.234" / "-0.456", or "---"
+        """
+        if not row_ms or not pb_ms:
+            return "---"
+        return F1Utils.formatFloat((row_ms - pb_ms) / 1000, precision=3, signed=True)
+
+    def _tt_row_from_dataset(self, label: str, dataset: dict, pb_ms: Dict[str, Any] = None) -> dict:
         """Build a TT table row dict from a TimeTrialDataSet JSON dict.
 
         Args:
-            label (str): Row label (e.g. "PB", "SB", "Rival")
+            label (str): Row label (e.g. "SB", "Rival")
             dataset (dict): TimeTrialDataSet.toJSON() output
+            pb_ms (dict): PB ms values from _extract_tt_ms; if provided, time strings are deltas vs PB
 
         Returns:
             dict: Row data for QML
@@ -421,6 +460,14 @@ class TimingTowerOverlay(BaseOverlayQML):
                 "s2-time-str": "---",
                 "s3-time-str": "---",
             }
+        if pb_ms and pb_ms["lap"]:
+            return {
+                "label": label,
+                "lap-time-str": self._format_tt_delta(dataset.get("lap-time-ms"), pb_ms["lap"]),
+                "s1-time-str": self._format_tt_delta(dataset.get("sector-1-time-ms"), pb_ms["s1"]),
+                "s2-time-str": self._format_tt_delta(dataset.get("sector-2-time-in-ms"), pb_ms["s2"]),
+                "s3-time-str": self._format_tt_delta(dataset.get("sector3-time-in-ms"), pb_ms["s3"]),
+            }
         return {
             "label": label,
             "lap-time-str": dataset.get("lap-time-str", "---"),
@@ -429,11 +476,12 @@ class TimingTowerOverlay(BaseOverlayQML):
             "s3-time-str": dataset.get("sector-3-time-str", "---"),
         }
 
-    def _get_tt_curr_lap(self, tt_data_outer: dict) -> dict:
+    def _get_tt_curr_lap(self, tt_data_outer: dict, pb_ms: Dict[str, Any] = None) -> dict:
         """Get the most recently completed lap from session history.
 
         Args:
             tt_data_outer (dict): Outer TT data dict containing session-history
+            pb_ms (dict): PB ms values from _extract_tt_ms; if provided, time strings are deltas vs PB
 
         Returns:
             dict: Row data for QML
@@ -443,6 +491,14 @@ class TimingTowerOverlay(BaseOverlayQML):
             lap_history = session_history.get("lap-history-data", [])
             if lap_history:
                 last_lap = lap_history[-1]
+                if pb_ms and pb_ms["lap"]:
+                    return {
+                        "label": "Current",
+                        "lap-time-str": self._format_tt_delta(last_lap.get("lap-time-in-ms"), pb_ms["lap"]),
+                        "s1-time-str": self._format_tt_delta(last_lap.get("sector-1-time-in-ms"), pb_ms["s1"]),
+                        "s2-time-str": self._format_tt_delta(last_lap.get("sector-2-time-in-ms"), pb_ms["s2"]),
+                        "s3-time-str": self._format_tt_delta(last_lap.get("sector-3-time-in-ms"), pb_ms["s3"]),
+                    }
                 return {
                     "label": "Current",
                     "lap-time-str": last_lap.get("lap-time-str", "---"),
@@ -469,24 +525,26 @@ class TimingTowerOverlay(BaseOverlayQML):
         """
         return self._tt_row_from_dataset("PB", tt_data.get("personal-best-data-set", {}))
 
-    def _get_tt_sb_lap(self, tt_data: dict) -> dict:
+    def _get_tt_sb_lap(self, tt_data: dict, pb_ms: Dict[str, Any] = None) -> dict:
         """Get the player's best lap for the current session row.
 
         Args:
             tt_data (dict): Inner TT data dict (PacketTimeTrialData.tt-data).
+            pb_ms (dict): PB ms values from _extract_tt_ms; if provided, time strings are deltas vs PB
 
         Returns:
             dict: Row data for QML.
         """
-        return self._tt_row_from_dataset("SB", tt_data.get("player-session-best-data-set", {}))
+        return self._tt_row_from_dataset("SB", tt_data.get("player-session-best-data-set", {}), pb_ms)
 
-    def _get_tt_rival_lap(self, tt_data: dict) -> dict:
+    def _get_tt_rival_lap(self, tt_data: dict, pb_ms: Dict[str, Any] = None) -> dict:
         """Get the rival's session best lap row.
 
         Args:
             tt_data (dict): Inner TT data dict (PacketTimeTrialData.tt-data).
+            pb_ms (dict): PB ms values from _extract_tt_ms; if provided, time strings are deltas vs PB
 
         Returns:
             dict: Row data for QML.
         """
-        return self._tt_row_from_dataset("Rival", tt_data.get("rival-session-best-data-set", {}))
+        return self._tt_row_from_dataset("Rival", tt_data.get("rival-session-best-data-set", {}), pb_ms)
