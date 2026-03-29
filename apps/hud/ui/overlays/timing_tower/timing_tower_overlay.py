@@ -376,7 +376,15 @@ class TimingTowerOverlay(BaseOverlayQML):
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
 
     def _process_time_trial(self, data: Dict[str, Any]) -> None:
+        """Process incoming time trial telemetry data and update the QML overlay.
 
+        Extracts the current lap, personal best, session best, and rival lap
+        from the payload and pushes them to the TT table in QML. Clears the
+        overlay if the required data is absent.
+
+        Args:
+            data (Dict[str, Any]): Full telemetry payload containing a "tt-data" key.
+        """
         tt_data_outer: dict = data.get("tt-data", {})
         tt_data_inner = tt_data_outer.get("tt-data")
         if not tt_data_outer or not tt_data_inner:
@@ -451,10 +459,34 @@ class TimingTowerOverlay(BaseOverlayQML):
         }
 
     def _get_tt_pb_lap(self, tt_data: dict) -> dict:
+        """Get the player's all-time personal best lap row.
+
+        Args:
+            tt_data (dict): Inner TT data dict (PacketTimeTrialData.tt-data).
+
+        Returns:
+            dict: Row data for QML.
+        """
         return self._tt_row_from_dataset("PB", tt_data.get("personal-best-data-set", {}))
 
     def _get_tt_sb_lap(self, tt_data: dict) -> dict:
+        """Get the player's best lap for the current session row.
+
+        Args:
+            tt_data (dict): Inner TT data dict (PacketTimeTrialData.tt-data).
+
+        Returns:
+            dict: Row data for QML.
+        """
         return self._tt_row_from_dataset("SB", tt_data.get("player-session-best-data-set", {}))
 
     def _get_tt_rival_lap(self, tt_data: dict) -> dict:
+        """Get the rival's session best lap row.
+
+        Args:
+            tt_data (dict): Inner TT data dict (PacketTimeTrialData.tt-data).
+
+        Returns:
+            dict: Row data for QML.
+        """
         return self._tt_row_from_dataset("Rival", tt_data.get("rival-session-best-data-set", {}))

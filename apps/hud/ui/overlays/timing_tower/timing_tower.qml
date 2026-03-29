@@ -414,7 +414,9 @@ Window {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: Qt.rgba(0.08, 0.08, 0.10, 0.6)
+                                    color: index % 2 === 0
+                                        ? Qt.rgba(0.10, 0.10, 0.12, 0.7)
+                                        : Qt.rgba(0.06, 0.06, 0.08, 0.5)
                                     radius: 3
                                 }
 
