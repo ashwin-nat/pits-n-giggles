@@ -415,7 +415,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         pb_ms = self._extract_tt_ms(pb_dataset)  # None values when PB not set
 
         table_data = [
-            self._get_tt_curr_lap(tt_data_outer, pb_ms),
+            self._get_tt_curr_lap(tt_data_outer),
             self._get_tt_pb_lap(tt_data_inner),
             self._get_tt_sb_lap(tt_data_inner, pb_ms),
             self._get_tt_rival_lap(tt_data_inner, pb_ms),
@@ -493,15 +493,14 @@ class TimingTowerOverlay(BaseOverlayQML):
             "s3-time-str": dataset.get("sector-3-time-str", "---"),
         }
 
-    def _get_tt_curr_lap(self, tt_data_outer: dict, pb_ms: Optional[Dict[str, Any]] = None) -> dict:
+    def _get_tt_curr_lap(self, tt_data_outer: dict) -> dict:
         """Get the most recently completed lap from session history.
 
         Args:
             tt_data_outer (dict): Outer TT data dict containing session-history
-            pb_ms (dict): PB ms values from _extract_tt_ms; if provided, time strings are deltas vs PB
 
         Returns:
-            dict: Row data for QML
+            dict: Row data for QML with absolute (non-delta) time strings
         """
         session_history = tt_data_outer.get("session-history")
         lap_history = session_history.get("lap-history-data", []) if session_history else None
@@ -528,7 +527,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "sector-2-time-str": last_lap.get("sector-2-time-str"),
             "sector-3-time-str": last_lap.get("sector-3-time-str"),
         }
-        return self._tt_row_from_dataset("Current", last_lap_dataset, pb_ms)
+        return self._tt_row_from_dataset("Current", last_lap_dataset)
 
     def _get_tt_pb_lap(self, tt_data: dict) -> dict:
         """Get the player's all-time personal best lap row.
