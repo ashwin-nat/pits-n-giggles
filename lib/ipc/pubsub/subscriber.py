@@ -149,7 +149,7 @@ class IpcSubscriberSync:
         if message_id > expected_next:
             missed = message_id - expected_next
             self._track_missed_messages(topic, missed)
-            self.logger.warning(
+            self.logger.debug(
                 "Detected %d missed messages on topic %s (expected %d, got %d)",
                 missed,
                 topic,
