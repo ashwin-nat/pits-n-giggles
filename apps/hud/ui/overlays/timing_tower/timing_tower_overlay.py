@@ -25,7 +25,7 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
@@ -427,7 +427,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         }
 
     @staticmethod
-    def _format_tt_delta(row_ms, pb_ms) -> str:
+    def _format_tt_delta(row_ms: Optional[int], pb_ms: Optional[int]) -> str:
         """Compute and format a signed delta against the PB value.
 
         Args:
