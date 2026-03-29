@@ -26,7 +26,7 @@ class TimeTrialDataPopulator {
 
             // Only update comparison data if packet format is 2024 or later
             if (packetFormat >= 2024) {
-                this.restoreComparisonCards();
+                this.restoreComparisonCards(data['rival-info']);
                 this.updateComparisonData(data['tt-data'], data['tt-setups']);
             } else {
                 this.hideComparisonCardsForOlderFormat();
@@ -43,11 +43,14 @@ class TimeTrialDataPopulator {
     /**
      * Restore comparison cards to their original structure for F1 2024+ format
      */
-    restoreComparisonCards() {
+    restoreComparisonCards(rivalInfo) {
+        const rivalName = rivalInfo?.name;
+        const rivalTitle = rivalName ? rivalName : 'Rival Best';
+
         const cardConfigs = [
             { class: 'tt-personal-best', prefix: 'pb', title: 'Personal Best' },
             { class: 'tt-session-best', prefix: 'sb', title: 'Session Best' },
-            { class: 'tt-rival-best', prefix: 'rival', title: 'Rival Best' }
+            { class: 'tt-rival-best', prefix: 'rival', title: rivalTitle }
         ];
 
         cardConfigs.forEach(config => {
