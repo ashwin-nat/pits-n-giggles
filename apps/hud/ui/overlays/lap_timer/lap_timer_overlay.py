@@ -29,7 +29,8 @@ from typing import Any, Dict, List, Optional
 from PySide6.QtCore import QTimer
 
 from apps.hud.common import (get_ref_row, is_practice_session,
-                             is_qualifying_session, is_race_type_session)
+                             is_qualifying_session, is_race_type_session,
+                             is_tt_session)
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import LAP_TIMER_OVERLAY_ID, OverlayPosition
 from lib.f1_types import F1Utils
@@ -100,38 +101,51 @@ class LapTimerOverlay(BaseOverlayQML):
             if session_type == "None":
                 return
 
-            ref_row = get_ref_row(data)
-            if not ref_row:
+            if is_tt_session(data):
+                self._process_time_trial(data)
                 return
 
-            # Handle session changes
-            incoming_session_uid = data["session-uid"]
-            assert incoming_session_uid is not None
-            if self.curr_session_uid != incoming_session_uid:
-                self._handle_new_session(incoming_session_uid)
+            self._process_non_time_trial(data, session_type)
 
-            lap_info = ref_row["lap-info"]
-            last_lap = lap_info["last-lap"]
-            curr_lap = lap_info["curr-lap"]
-            sc_status = data["safety-car-status"]
+    def _process_non_time_trial(self, data: Dict[str, Any], session_type: str) -> None:
+        """Process FP/quali/race data.
 
-            # Handle lap number changes
-            lap_changed = bool(self.last_lap_num and self.last_lap_num != lap_info["current-lap"])
-            if lap_changed:
-                self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
-                                  f"{self.last_lap_num} to {lap_info['current-lap']}")
-                self.show_last_lap_sector_bar = True
-                self.last_sector_display_timer.start(5000)
+        Args:
+            data (Dict[str, Any]): The race table data from the server
+            session_type (str): The session type
+        """
+        ref_row = get_ref_row(data)
+        if not ref_row:
+            return
 
-            self.last_lap_num = lap_info["current-lap"]
+        # Handle session changes
+        incoming_session_uid = data["session-uid"]
+        assert incoming_session_uid is not None
+        if self.curr_session_uid != incoming_session_uid:
+            self._handle_new_session(incoming_session_uid)
 
-            if self.min_overlay_style:
-                self._handle_minimal_update(curr_lap, last_lap, session_type, sc_status, lap_changed)
-            else:
-                best_lap = lap_info["best-lap"]
-                ref_index = ref_row["driver-info"]["index"]
-                table_entries = data["table-entries"]
-                self._handle_full_update(curr_lap, last_lap, best_lap, session_type, sc_status, table_entries, ref_index)
+        lap_info = ref_row["lap-info"]
+        last_lap = lap_info["last-lap"]
+        curr_lap = lap_info["curr-lap"]
+        sc_status = data["safety-car-status"]
+
+        # Handle lap number changes
+        lap_changed = bool(self.last_lap_num and self.last_lap_num != lap_info["current-lap"])
+        if lap_changed:
+            self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
+                                f"{self.last_lap_num} to {lap_info['current-lap']}")
+            self.show_last_lap_sector_bar = True
+            self.last_sector_display_timer.start(5000)
+
+        self.last_lap_num = lap_info["current-lap"]
+
+        if self.min_overlay_style:
+            self._handle_minimal_update(curr_lap, last_lap, session_type, sc_status, lap_changed)
+        else:
+            best_lap = lap_info["best-lap"]
+            ref_index = ref_row["driver-info"]["index"]
+            table_entries = data["table-entries"]
+            self._handle_full_update(curr_lap, last_lap, best_lap, session_type, sc_status, table_entries, ref_index)
 
     def _handle_minimal_update(
         self,
@@ -469,3 +483,11 @@ class LapTimerOverlay(BaseOverlayQML):
     def _is_safety_car(self, status: str) -> bool:
         """Check if the session is in racing or safety car state."""
         return status in {"FULL_SAFETY_CAR", "VIRTUAL_SAFETY_CAR"}
+
+    def _process_time_trial(data: Dict[str, Any]) -> None:
+        """Process time trial data.
+
+        Args:
+            data (Dict[str, Any]): The race table data from the server
+        """
+        pass
