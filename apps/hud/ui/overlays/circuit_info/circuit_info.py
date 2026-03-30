@@ -28,11 +28,11 @@ from typing import final, Optional
 from apps.hud.ui.infra.hf_types import HudOverlayData
 
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition
+from lib.config import OverlayPosition, CIRCUIT_INFO_OVERLAY_ID
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TempPosOverlay(BaseOverlayQML):
+class CircuitInfoOverlay(BaseOverlayQML):
     """
     Extremely minimal QML overlay template.
 
@@ -41,9 +41,8 @@ class TempPosOverlay(BaseOverlayQML):
     """
 
     # Remember to update the spec file with the new QML path
-    QML_FILE = Path(__file__).parent / "temp_pos_display.qml"
-    OVERLAY_ID = "temp_pos_display" # Hard code the overlay ID in lib/config/schema/hud/layout.py and use it here
-
+    QML_FILE = Path(__file__).parent / "circuit_info.qml"
+    OVERLAY_ID = CIRCUIT_INFO_OVERLAY_ID
     def __init__(
         self,
         config: OverlayPosition,
@@ -78,5 +77,3 @@ class TempPosOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
-
-        self.set_qml_property("circuitPosM", f"{data.circuit_pos_m:.2f} m")

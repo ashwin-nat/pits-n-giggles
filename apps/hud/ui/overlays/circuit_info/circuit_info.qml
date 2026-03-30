@@ -6,18 +6,17 @@ Window {
     width: 200
     height: 100
     visible: true
-    color: "black"
+    color: "#00000000"   // transparent window
 
     property real scaleFactor: 1.0   // REQUIRED by BaseOverlayQML
-    property string circuitPosM: ""
 
     Rectangle {
         anchors.fill: parent
-        color: "black"
+        color: "#66000000"
 
         Text {
             anchors.centerIn: parent
-            text: root.circuitPosM
+            text: "Minimal Overlay"
             color: "white"
             font.pixelSize: 18 * root.scaleFactor
         }
