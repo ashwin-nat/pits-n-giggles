@@ -90,6 +90,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
         self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
         self.assertEqual(settings.show_circuit_info, True)
+        self.assertEqual(settings.circuit_info_ui_scale, 1.0)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
@@ -936,6 +937,29 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_circuit_info=420)
+
+    def test_circuit_info_ui_scale(self):
+        hud_settings = HudSettings(circuit_info_ui_scale=1.1)
+        self.assertEqual(hud_settings.circuit_info_ui_scale, 1.1)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=0.4)
+        HudSettings(circuit_info_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=2.1)
+        HudSettings(circuit_info_ui_scale=2.0)
 
     def test_circuit_info_toggle_udp_action_code(self):
         hud_settings = HudSettings(circuit_info_toggle_udp_action_code=1)

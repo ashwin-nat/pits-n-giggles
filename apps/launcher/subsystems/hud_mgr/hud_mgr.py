@@ -33,11 +33,11 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (HUD_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
-                        LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID,
-                        TIMING_TOWER_OVERLAY_ID, TRACK_MAP_OVERLAY_ID,
-                        TRACK_RADAR_OVERLAY_ID, HudSettings, OverlayPosition,
-                        PngSettings)
+from lib.config import (CIRCUIT_INFO_OVERLAY_ID, HUD_OVERLAY_ID,
+                        INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
+                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
+                        HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -561,6 +561,15 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_hud_overlay,
             ),
 
+            SliderItem(
+                key=CIRCUIT_INFO_OVERLAY_ID,
+                label="Circuit Info Scale",
+                min=HudSettings.model_fields["circuit_info_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["circuit_info_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.circuit_info_ui_scale * 100),
+                visible=hud_settings.show_circuit_info,
+            ),
+
             # Opacity at the bottom
             SliderItem(
                 key="overlays_opacity",
@@ -606,6 +615,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
         new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
         new_settings.HUD.hud_overlay_ui_scale = values[HUD_OVERLAY_ID] / 100.0
+        new_settings.HUD.circuit_info_ui_scale = values[CIRCUIT_INFO_OVERLAY_ID] / 100.0
 
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
@@ -646,6 +656,7 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_ui_scale",
                 "track_radar_overlay_ui_scale",
                 "hud_overlay_ui_scale",
+                "circuit_info_ui_scale",
             ],
         )
 
@@ -679,6 +690,7 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
                 "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
                 "hud_overlay_ui_scale": HUD_OVERLAY_ID,
+                "circuit_info_ui_scale": CIRCUIT_INFO_OVERLAY_ID,
             }
 
             for key, data in hud_diff.items():

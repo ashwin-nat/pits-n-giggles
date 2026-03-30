@@ -301,6 +301,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== CIRCUIT INFO OVERLAY ==============
     show_circuit_info: bool = overlay_enable_field(description="Enable circuit info overlay", group="Circuit Info")
+    circuit_info_ui_scale: float = ui_scale_field(description="Circuit info overlay UI scale")
     circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
 

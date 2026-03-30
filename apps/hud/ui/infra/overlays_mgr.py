@@ -144,12 +144,12 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=True,
+            enabled=settings.HUD.show_circuit_info,
             overlay_cls=CircuitInfoOverlay,
-            opacity=100.0, # TODO: Make this configurable
+            opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=1.0, # TODO: Make this configurable
+            scale_factor=settings.HUD.circuit_info_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
