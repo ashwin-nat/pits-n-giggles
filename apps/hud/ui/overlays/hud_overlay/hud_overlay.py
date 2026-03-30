@@ -28,7 +28,7 @@ from typing import Optional, final
 
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import HUD_OVERLAY_ID, OverlayPosition
+from lib.config import HUD_OVERLAY_ID, HudOverlaySpeedUnit, OverlayPosition
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 from lib.track_segment_info import TrackSegmentsDatabase
 
@@ -55,7 +55,7 @@ class HudOverlay(BaseOverlayQML):
         scale_factor: float,
         windowed_overlay: bool,
         refresh_interval_ms: Optional[int] = None,
-        use_kmph: bool = True,
+        speed_unit: HudOverlaySpeedUnit = HudOverlaySpeedUnit.KMPH,
     ) -> None:
 
         super().__init__(

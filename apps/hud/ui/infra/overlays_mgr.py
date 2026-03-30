@@ -26,13 +26,13 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-
 from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
-from apps.hud.ui.overlays.temp_pos_display.temp_pos_display import TempPosOverlay
+from apps.hud.ui.overlays.temp_pos_display.temp_pos_display import \
+    TempPosOverlay
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
@@ -142,7 +142,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.hud_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
-            use_kmph=settings.HUD.hud_overlay_speed_unit_kmph,
+            speed_unit=settings.HUD.hud_overlay_speed_unit,
         )
 
         self._register_overlay_if_enabled(
