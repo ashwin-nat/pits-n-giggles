@@ -29,6 +29,7 @@ from apps.hud.ui.infra.hf_types import HudOverlayData
 
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayPosition, CIRCUIT_INFO_OVERLAY_ID
+from lib.track_segment_info.database import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -64,6 +65,8 @@ class CircuitInfoOverlay(BaseOverlayQML):
             refresh_interval_ms=refresh_interval_ms,
         )
 
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
+
         # For high frequency/high refresh rate overlays, subscribe to HF types here and render in render_frame.
         self.subscribe_hf(HudOverlayData)
 
@@ -77,3 +80,14 @@ class CircuitInfoOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
+
+        segment_info = self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m)
+        sectors_info = self.tracks_db.get_sector(data.circuit_num, data.circuit_length)
+
+        if sectors_info:
+            # TODO: implement
+            pass
+
+        if segment_info:
+            pass
+
