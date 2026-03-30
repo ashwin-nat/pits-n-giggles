@@ -79,4 +79,4 @@ class TempPosOverlay(BaseOverlayQML):
         if not data:
             return
 
-        self.set_qml_property("circuitPosM", float(data.circuit_pos_m))
+        self.set_qml_property("circuitPosM", f"{data.circuit_pos_m:.2f} m")

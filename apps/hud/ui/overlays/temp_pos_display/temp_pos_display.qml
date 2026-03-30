@@ -9,7 +9,7 @@ Window {
     color: "black"
 
     property real scaleFactor: 1.0   // REQUIRED by BaseOverlayQML
-    property real circuitPosM: 0.0
+    property string circuitPosM: ""
 
     Rectangle {
         anchors.fill: parent
@@ -17,7 +17,7 @@ Window {
 
         Text {
             anchors.centerIn: parent
-            text: root.circuitPosM.toFixed(2)
+            text: root.circuitPosM
             color: "white"
             font.pixelSize: 18 * root.scaleFactor
         }
