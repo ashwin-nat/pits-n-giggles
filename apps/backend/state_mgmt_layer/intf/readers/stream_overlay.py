@@ -344,6 +344,7 @@ class StreamOverlayData(BaseAPI):
             "ers-mode" : str(car_status.m_ersDeployMode),
             "circuit-position" : dist,
             "sector" : sector,
+            "circuit-length" : self.m_circuit_len,
         }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
