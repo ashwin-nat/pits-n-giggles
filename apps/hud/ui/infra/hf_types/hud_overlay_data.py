@@ -103,7 +103,7 @@ class HudOverlayData(HighFreqBase):
             circuit_pos_m=hud_data["circuit-position"],
             circuit=json_data["circuit-enum-name"],
             circuit_num=json_data["circuit-enum-value"],
-            circuit_length=json_data["circuit-length"],
+            circuit_length=hud_data["circuit-length"],
             g_force_lat=g_force_data["lat"],
             g_force_long=g_force_data["long"],
             g_force_vert=g_force_data["vert"],

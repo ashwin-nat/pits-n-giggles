@@ -293,6 +293,7 @@ class StreamOverlayData(BaseAPI):
             "tl-warns" : None,
             "circuit-position" : None,
             "sector" : None,
+            "circuit-length" : self.m_circuit_len,
         }
 
         if not self.m_ref_obj or \
