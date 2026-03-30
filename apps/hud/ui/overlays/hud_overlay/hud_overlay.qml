@@ -254,8 +254,8 @@ Window {
                 Item {
                     Layout.fillWidth:    true
                     Layout.fillHeight:   true
-                    Layout.topMargin:    18
-                    Layout.bottomMargin: 6
+                    Layout.topMargin:    12
+                    Layout.bottomMargin: 12
 
                     // ── Left 30% — Speed (top) | RPM (bottom) ────────────────
                     Item {
@@ -320,66 +320,61 @@ Window {
                         color: "#2b3946"
                     }
 
-                    // ── Right 70% — TL / AIR / TRACK / DRS ──────────────────
-                    RowLayout {
+                    // ── Right 70% — TL / AIR / TRACK (upper) + DRS (lower) ──
+                    ColumnLayout {
                         anchors.left:   centerLeft.right
-                        anchors.leftMargin: 1
+                        anchors.leftMargin: 6
                         anchors.right:  parent.right
                         anchors.top:    parent.top
                         anchors.bottom: parent.bottom
                         spacing: 0
 
-                        // ── Track limits ──────────────────────────────────────
+                        // ── Upper row: TL / AIR / TRACK ───────────────────────
                         Item {
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 0
 
-                                Text {
-                                    text:               "TL"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                                Text {
-                                    text:            root.tlWarnings
-                                    font.family:     "Formula1"
-                                    font.pixelSize:  12
-                                    font.bold:       true
-                                    color:           "#edf7ff"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
+                            // ── Track limits ──────────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+
+                                    Image {
+                                        source:  "../../../../../assets/overlays/tl-warns.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text:            root.tlWarnings
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  12
+                                        font.bold:       true
+                                        color:           "#edf7ff"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
                                 }
                             }
-                        }
 
-                        // ── Air temperature ───────────────────────────────────
-                        Item {
-                            Layout.fillWidth:  true
-                            Layout.fillHeight: true
+                            // ── Air temperature ───────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
-
-                                Text {
-                                    text:               "AIR"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
                                 Row {
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.centerIn: parent
                                     spacing: 3
+
                                     Image {
                                         source:  "../../../../../assets/overlays/air-temperature.svg"
                                         width:   12
@@ -398,29 +393,16 @@ Window {
                                     }
                                 }
                             }
-                        }
 
-                        // ── Track temperature ──────────────────────────────────
-                        Item {
-                            Layout.fillWidth:  true
-                            Layout.fillHeight: true
+                            // ── Track temperature ─────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
-
-                                Text {
-                                    text:               "TRACK"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
                                 Row {
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.centerIn: parent
                                     spacing: 3
+
                                     Image {
                                         source:  "../../../../../assets/overlays/track-temperature.svg"
                                         width:   12
@@ -440,8 +422,9 @@ Window {
                                 }
                             }
                         }
+                        } // Item (upper row wrapper)
 
-                        // ── DRS badge ──────────────────────────────────────────
+                        // ── Lower row: DRS bar ────────────────────────────────
                         Item {
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
@@ -449,7 +432,7 @@ Window {
                             Rectangle {
                                 anchors.centerIn: parent
                                 height:       22
-                                width:        56
+                                width:        parent.width - 8
                                 radius:       5
                                 clip:         true
                                 color:        root.drsEnabled
