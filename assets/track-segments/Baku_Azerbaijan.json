@@ -134,5 +134,9 @@
       "end_m": 5994,
       "name": "Neftchilar Avenue"
     }
-  ]
+  ],
+  "sectors": {
+    "s1": 2034,
+    "s2": 4082
+  }
 }

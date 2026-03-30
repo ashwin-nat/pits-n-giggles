@@ -139,5 +139,9 @@
       "end_m": 5890,
       "name": "Hamilton Straight"
     }
-  ]
+  ],
+  "sectors": {
+    "s1": 1853,
+    "s2": 4338
+  }
 }
