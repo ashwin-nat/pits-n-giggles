@@ -69,6 +69,17 @@ class TrackSegmentsDatabase:
             return None
         return ts.get_segment_info(lap_distance)
 
+    def get_sector(self, circuit_number: int, lap_distance: float):
+        """
+        Return the sector for *circuit_number* at *lap_distance*, or ``None``
+        if the circuit is unknown, has no sector data, or the position falls
+        outside any sector boundary.
+        """
+        ts = self._db.get(circuit_number)
+        if ts is None:
+            return None
+        return ts.get_sector(lap_distance)
+
     def get(self, circuit_number: int) -> Optional[TrackSegments]:
         """Return the :class:`TrackSegments` for *circuit_number*, or ``None``."""
         return self._db.get(circuit_number)
