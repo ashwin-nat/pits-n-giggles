@@ -24,13 +24,14 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, final
+from typing import Optional, final, Dict, Any
 
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import HUD_OVERLAY_ID, HudOverlaySpeedUnit, OverlayPosition
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 from lib.track_segment_info import TrackSegmentsDatabase
+from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -68,8 +69,12 @@ class HudOverlay(BaseOverlayQML):
             refresh_interval_ms=refresh_interval_ms,
         )
 
+        self._speed_unit = speed_unit
         self.subscribe_hf(HudOverlayData)
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
+
+        self._surplus_fuel: Optional[float] = None
+        self._register_event_handlers()
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
     @final
@@ -93,7 +98,12 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("revLightsPct", data.rev_lights_pct)
         self.set_qml_property("rpm",          data.rpm)
         self.set_qml_property("gear",         data.gear)
-        self.set_qml_property("speedKmph",    data.speed_kmph)
+        if self._speed_unit == HudOverlaySpeedUnit.MPH:
+            self.set_qml_property("speedKmph",    round(data.speed_kmph * 0.621371))
+            self.set_qml_property("speedUnitLabel", "mph")
+        else:
+            self.set_qml_property("speedKmph",    data.speed_kmph)
+            self.set_qml_property("speedUnitLabel", "km/h")
 
         # DRS
         self.set_qml_property("drsEnabled",   data.drs_enabled)
@@ -113,3 +123,23 @@ class HudOverlay(BaseOverlayQML):
 
         # Segment info
         self.set_qml_property("segmentInfo", segment_info.render() if segment_info else None)
+
+    def _register_event_handlers(self):
+        @self.on_event("race_table_update")
+        def update(data: Dict[str, Any]) -> None:
+            """Update fuel information display."""
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                return
+
+            if ref_row["driver-info"]["telemetry-setting"] != "Public":
+                self._surplus_fuel = None
+                return
+
+            session_type = data["event-type"]
+            fuel = ref_row["fuel-info"]
+
+            if is_race_type_session(session_type):
+                self._surplus_fuel = fuel.get("surplus-laps-png")
+            elif is_tt_session(session_type):
+                self._surplus_fuel = fuel.get("surplus-laps-game")
