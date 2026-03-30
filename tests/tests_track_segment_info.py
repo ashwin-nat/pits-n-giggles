@@ -631,12 +631,20 @@ _CIRCUIT_B = {
     ],
 }
 
+_CIRCUIT_C = {
+    "circuit_name": "Gamma Circuit",
+    "circuit_number": 3,
+    "track_length": 1000,
+    "segments": [],
+    "sectors": {"s1": 300, "s2": 700},
+}
+
 
 class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        for circuit in (_CIRCUIT_A, _CIRCUIT_B):
+        for circuit in (_CIRCUIT_A, _CIRCUIT_B, _CIRCUIT_C):
             path = os.path.join(self._tmp.name, f"{circuit['circuit_name']}.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(circuit, fh)
@@ -649,7 +657,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def test_len_equals_number_of_files(self):
         """Database length equals the number of JSON files loaded."""
-        self.assertEqual(len(self.db), 2)
+        self.assertEqual(len(self.db), 3)
 
     def test_contains_known_circuit(self):
         """Known circuit number is found via 'in'."""
@@ -661,7 +669,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def test_iter_yields_all_circuit_numbers(self):
         """Iterating the database yields all circuit numbers."""
-        self.assertEqual(set(self.db), {1, 2})
+        self.assertEqual(set(self.db), {1, 2, 3})
 
     # --- get() --------------------------------------------------------------------------------
 
@@ -734,3 +742,32 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
             fh.write("{ not-valid-json }")
         with self.assertRaises(json.JSONDecodeError):
             TrackSegmentsDatabase(self._tmp.name)
+
+    # --- get_sector() -------------------------------------------------------------------------
+
+    def test_get_sector_sector_1(self):
+        """get_sector returns SECTOR1 for a position in the first sector."""
+        sector = self.db.get_sector(3, 100)
+        self.assertEqual(sector, LapData.Sector.SECTOR1)
+
+    def test_get_sector_sector_2(self):
+        """get_sector returns SECTOR2 for a position in the second sector."""
+        sector = self.db.get_sector(3, 500)
+        self.assertEqual(sector, LapData.Sector.SECTOR2)
+
+    def test_get_sector_sector_3(self):
+        """get_sector returns SECTOR3 for a position in the third sector."""
+        sector = self.db.get_sector(3, 800)
+        self.assertEqual(sector, LapData.Sector.SECTOR3)
+
+    def test_get_sector_beyond_track_length_returns_none(self):
+        """get_sector returns None for a position beyond track_length."""
+        self.assertIsNone(self.db.get_sector(3, 9999))
+
+    def test_get_sector_unknown_circuit_returns_none(self):
+        """get_sector returns None for an unknown circuit number."""
+        self.assertIsNone(self.db.get_sector(999, 100))
+
+    def test_get_sector_no_sectors_in_circuit_returns_none(self):
+        """get_sector returns None for a circuit with no sector data."""
+        self.assertIsNone(self.db.get_sector(1, 100))
