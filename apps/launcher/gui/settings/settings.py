@@ -1478,10 +1478,8 @@ class SettingsWindow(QDialog):
             # Restore all collapsible groups to their natural (expanded) state
             for groups_in_category in self.collapsible_groups.values():
                 for group_container in groups_in_category.values():
-                    if group_container.is_collapsed:
-                        group_container.is_collapsed = False
-                        group_container.content_wrapper.setVisible(True)
-                        group_container.toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
+                    if group_container.is_collapsed():
+                        group_container.set_collapsed(False)
 
             # Reset category labels to original names and unhide all categories
             for i, category_name in enumerate(self.category_names):
@@ -1519,16 +1517,7 @@ class SettingsWindow(QDialog):
         # Auto-expand any collapsible group that has at least one visible (matching) child
         for groups_in_category in self.collapsible_groups.values():
             for group_container in groups_in_category.values():
-                content_layout = group_container.content_layout
-                has_visible_child = any(
-                    content_layout.itemAt(i).widget() is not None
-                    and content_layout.itemAt(i).widget().isVisible()
-                    for i in range(content_layout.count())
-                )
-                if has_visible_child and group_container.is_collapsed:
-                    group_container.is_collapsed = False
-                    group_container.content_wrapper.setVisible(True)
-                    group_container.toggle_label.setPixmap(self.icons_dict['caret-down'].pixmap(16, 16))
+                group_container.expand_if_has_visible_children()
 
         # Update category labels with counts and hide empty categories
         first_visible_category = None
