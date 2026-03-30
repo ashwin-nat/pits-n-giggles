@@ -32,9 +32,9 @@ from pydantic import ValidationError
 
 from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_RADAR_OVERLAY_ID, HudSettings, MfdPageSettings,
-                        MfdSettings, OverlayPosition, TimingTowerColOptions,
-                        WeatherMFDUIType)
+                        TRACK_RADAR_OVERLAY_ID, HudSettings, HudOverlaySpeedUnit,
+                        MfdPageSettings, MfdSettings, OverlayPosition,
+                        TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -83,9 +83,30 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.show_hud_overlay, True)
         self.assertEqual(settings.hud_overlay_ui_scale, 1.0)
+        self.assertEqual(settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+        self.assertTrue(settings.hud_overlay_speed_unit_kmph)
+        self.assertFalse(settings.hud_overlay_speed_unit_mph)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
+
+    def test_hud_overlay_speed_unit_validation(self):
+        """Test hud_overlay_speed_unit field accepts valid enum values and exposes bool properties"""
+        kmph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.KMPH)
+        self.assertEqual(kmph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+        self.assertTrue(kmph_settings.hud_overlay_speed_unit_kmph)
+        self.assertFalse(kmph_settings.hud_overlay_speed_unit_mph)
+
+        mph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.MPH)
+        self.assertEqual(mph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.MPH)
+        self.assertFalse(mph_settings.hud_overlay_speed_unit_kmph)
+        self.assertTrue(mph_settings.hud_overlay_speed_unit_mph)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_speed_unit=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_speed_unit="invalid")  # type: ignore
 
     def test_enabled_validation(self):
         """Test valid and invalid log_file_size values"""

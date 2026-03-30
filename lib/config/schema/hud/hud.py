@@ -41,6 +41,10 @@ class WeatherMFDUIType(str, Enum):
     CARDS = "Cards"
     GRAPH = "Graph"
 
+class HudOverlaySpeedUnit(str, Enum):
+    KMPH = "km/h"
+    MPH = "mph"
+
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
@@ -240,6 +244,28 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     hud_overlay_ui_scale: float = ui_scale_field(description="HUD overlay UI scale")
     hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle HUD overlay UDP action code", group="HUD Overlay")
+    hud_overlay_speed_unit: HudOverlaySpeedUnit = Field(
+        default=HudOverlaySpeedUnit.KMPH,
+        description="Speed unit displayed in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in HudOverlaySpeedUnit],
+                "visible": True,
+                "group": "HUD Overlay",
+            }
+        }
+    )
+
+    @property
+    def hud_overlay_speed_unit_kmph(self) -> bool:
+        """True if the speed unit is km/h"""
+        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.KMPH
+
+    @property
+    def hud_overlay_speed_unit_mph(self) -> bool:
+        """True if the speed unit is mph"""
+        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.MPH
 
     # ============== GLOBAL OVERLAY CONTROLS ==============
 

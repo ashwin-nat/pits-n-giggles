@@ -458,6 +458,7 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_buffer_duration_sec",
                 "show_input_overlay",
                 "show_hud_overlay",
+                "hud_overlay_speed_unit",
 
             ],
             "Network": [
