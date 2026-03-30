@@ -36,6 +36,8 @@ class SectorBoundaries(BaseModel):
 
     @model_validator(mode="after")
     def _check_increasing(self) -> "SectorBoundaries":
+        if self.s1 <= 0:
+            raise ValueError(f"s1 must be greater than 0, got {self.s1}")
         if not (self.s1 < self.s2):
             raise ValueError(f"sector boundaries must be strictly increasing: s1={self.s1}, s2={self.s2}")
         return self
@@ -125,6 +127,14 @@ class TrackData(BaseModel):
     track_length: float
     segments: List[SegmentInfo]
     sectors: Optional[SectorBoundaries] = None
+
+    @model_validator(mode="after")
+    def _check_sectors_within_track(self) -> "TrackData":
+        if self.sectors is not None and self.sectors.s2 >= self.track_length:
+            raise ValueError(
+                f"sectors.s2 ({self.sectors.s2}) must be less than track_length ({self.track_length})"
+            )
+        return self
 
     @field_validator("segments", mode="after")
     @classmethod

@@ -585,6 +585,30 @@ class TestGetSector(F1TelemetryUnitTestsBase):
         with self.assertRaises(ValidationError):
             tracker.load_track_data(self._track_with_sectors({"s1": 500}))
 
+    def test_sectors_s1_zero_raises(self):
+        """s1 == 0 raises ValidationError (SECTOR1 would be unreachable)."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 0, "s2": 500}))
+
+    def test_sectors_s1_negative_raises(self):
+        """Negative s1 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": -100, "s2": 500}))
+
+    def test_sectors_s2_equal_track_length_raises(self):
+        """s2 == track_length raises ValidationError (SECTOR3 would be unreachable)."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 3000}, track_length=3000))
+
+    def test_sectors_s2_greater_than_track_length_raises(self):
+        """s2 > track_length raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 4000}, track_length=3000))
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 

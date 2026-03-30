@@ -64,7 +64,9 @@ class TrackSegments:
             Expected structure:
 
             {
-                "track_length": float,          (required)
+                "circuit_name":   str,           (required)
+                "circuit_number": int,           (required)
+                "track_length":   float,         (required)
                 "segments": [
                     {
                         "type": str,
@@ -73,7 +75,11 @@ class TrackSegments:
                         "end_m": float,
                         ...type-specific fields...
                     }
-                ]
+                ],
+                "sectors": {                     (optional)
+                    "s1": int,                   (required if sectors present; must be > 0)
+                    "s2": int,                   (required if sectors present; must be > s1 and < track_length)
+                }
             }
 
             Segments must be ordered by start_m and must not overlap.
