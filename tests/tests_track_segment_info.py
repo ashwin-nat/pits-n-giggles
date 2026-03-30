@@ -652,63 +652,63 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.db), 2)
 
     def test_contains_known_circuit(self):
-        """Known circuit name is found via 'in'."""
-        self.assertIn("Alpha Circuit", self.db)
+        """Known circuit number is found via 'in'."""
+        self.assertIn(1, self.db)
 
     def test_not_contains_unknown_circuit(self):
-        """Unknown circuit name is not found via 'in'."""
-        self.assertNotIn("Unknown Circuit", self.db)
+        """Unknown circuit number is not found via 'in'."""
+        self.assertNotIn(999, self.db)
 
-    def test_iter_yields_all_circuit_names(self):
-        """Iterating the database yields all circuit names."""
-        self.assertEqual(set(self.db), {"Alpha Circuit", "Beta Circuit"})
+    def test_iter_yields_all_circuit_numbers(self):
+        """Iterating the database yields all circuit numbers."""
+        self.assertEqual(set(self.db), {1, 2})
 
     # --- get() --------------------------------------------------------------------------------
 
     def test_get_returns_track_segments_instance(self):
-        """get() returns a TrackSegments instance for a known circuit."""
-        ts = self.db.get("Alpha Circuit")
+        """get() returns a TrackSegments instance for a known circuit number."""
+        ts = self.db.get(1)
         self.assertIsInstance(ts, TrackSegments)
 
     def test_get_unknown_returns_none(self):
-        """get() returns None for an unknown circuit."""
-        self.assertIsNone(self.db.get("No Such Circuit"))
+        """get() returns None for an unknown circuit number."""
+        self.assertIsNone(self.db.get(999))
 
     # --- __getitem__ --------------------------------------------------------------------------
 
     def test_getitem_known_circuit(self):
-        """__getitem__ returns the TrackSegments for a known circuit."""
-        ts = self.db["Beta Circuit"]
+        """__getitem__ returns the TrackSegments for a known circuit number."""
+        ts = self.db[2]
         self.assertIsInstance(ts, TrackSegments)
         self.assertEqual(ts.circuit_name, "Beta Circuit")
 
     def test_getitem_unknown_raises_key_error(self):
-        """__getitem__ raises KeyError for an unknown circuit."""
+        """__getitem__ raises KeyError for an unknown circuit number."""
         with self.assertRaises(KeyError):
-            _ = self.db["No Such Circuit"]
+            _ = self.db[999]
 
     # --- get_segment_info() -------------------------------------------------------------------
 
     def test_get_segment_info_returns_correct_segment(self):
-        """get_segment_info returns the right segment for a known circuit and position."""
-        seg = self.db.get_segment_info("Alpha Circuit", 250)
+        """get_segment_info returns the right segment for a known circuit number and position."""
+        seg = self.db.get_segment_info(1, 250)
         self.assertIsInstance(seg, StraightSegmentInfo)
         self.assertEqual(seg.name, "Main Straight")
 
     def test_get_segment_info_corner(self):
         """get_segment_info returns a corner segment at the right position."""
-        seg = self.db.get_segment_info("Alpha Circuit", 600)
+        seg = self.db.get_segment_info(1, 600)
         self.assertIsInstance(seg, CornerSegmentInfo)
         self.assertEqual(seg.corner_number, 1)
 
     def test_get_segment_info_outside_range_returns_none(self):
         """get_segment_info returns None for a position outside all segments."""
-        seg = self.db.get_segment_info("Alpha Circuit", 9999)
+        seg = self.db.get_segment_info(1, 9999)
         self.assertIsNone(seg)
 
     def test_get_segment_info_unknown_circuit_returns_none(self):
-        """get_segment_info returns None for an unknown circuit."""
-        seg = self.db.get_segment_info("Unknown Circuit", 100)
+        """get_segment_info returns None for an unknown circuit number."""
+        seg = self.db.get_segment_info(999, 100)
         self.assertIsNone(seg)
 
     # --- Empty directory ----------------------------------------------------------------------

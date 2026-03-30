@@ -80,7 +80,7 @@ class HudOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
-        segment_info = self.tracks_db.get_segment_info(data.circuit, data.circuit_pos_m)
+        segment_info = self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m)
 
         # Ignore the rival field in the obj
 

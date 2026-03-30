@@ -34,7 +34,7 @@ from .types import BaseSegmentInfo
 class TrackSegmentsDatabase:
     """
     Loads all JSON track-segment files from a directory and provides lookup
-    by circuit name.
+    by circuit number.
 
     Parameters
     ----------
@@ -50,36 +50,36 @@ class TrackSegmentsDatabase:
         if not base_path.is_dir():
             raise NotADirectoryError(f"Track segments path is not a directory: {base_path}")
 
-        self._db: Dict[str, TrackSegments] = {}
+        self._db: Dict[int, TrackSegments] = {}
         for json_file in base_path.glob("*.json"):
             with json_file.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
             ts = TrackSegments()
             ts.load_track_data(data)
-            if ts.circuit_name is not None:
-                self._db[ts.circuit_name] = ts
+            if ts.circuit_number is not None:
+                self._db[ts.circuit_number] = ts
 
-    def get_segment_info(self, circuit_name: str, lap_distance: float) -> Optional[BaseSegmentInfo]:
+    def get_segment_info(self, circuit_number: int, lap_distance: float) -> Optional[BaseSegmentInfo]:
         """
-        Return segment info for *circuit_name* at *lap_distance*, or ``None``
+        Return segment info for *circuit_number* at *lap_distance*, or ``None``
         if the circuit is unknown or the position falls outside any segment.
         """
-        ts = self._db.get(circuit_name)
+        ts = self._db.get(circuit_number)
         if ts is None:
             return None
         return ts.get_segment_info(lap_distance)
 
-    def get(self, circuit_name: str) -> Optional[TrackSegments]:
-        """Return the :class:`TrackSegments` for *circuit_name*, or ``None``."""
-        return self._db.get(circuit_name)
+    def get(self, circuit_number: int) -> Optional[TrackSegments]:
+        """Return the :class:`TrackSegments` for *circuit_number*, or ``None``."""
+        return self._db.get(circuit_number)
 
-    def __getitem__(self, circuit_name: str) -> TrackSegments:
-        return self._db[circuit_name]
+    def __getitem__(self, circuit_number: int) -> TrackSegments:
+        return self._db[circuit_number]
 
-    def __contains__(self, circuit_name: str) -> bool:
-        return circuit_name in self._db
+    def __contains__(self, circuit_number: int) -> bool:
+        return circuit_number in self._db
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[int]:
         return iter(self._db)
 
     def __len__(self) -> int:
