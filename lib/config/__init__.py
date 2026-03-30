@@ -33,7 +33,7 @@ from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                      NetworkSettings, OverlayPosition, PitTimeLossF1,
                      PitTimeLossF2, PngSettings, PrivacySettings,
                      StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions,
-                     WeatherMFDUIType, HudOverlaySpeedUnit)
+                     WeatherMFDUIType, HudOverlaySpeedUnit, HudOverlayFuelEstimationMode)
 from .types import FilePathStr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -56,6 +56,7 @@ __all__ = [
     'TimingTowerColOptions',
     'WeatherMFDUIType',
     'HudOverlaySpeedUnit',
+    'HudOverlayFuelEstimationMode',
 
     'FilePathStr',
 

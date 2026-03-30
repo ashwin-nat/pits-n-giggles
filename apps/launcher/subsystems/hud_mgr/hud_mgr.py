@@ -459,6 +459,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_input_overlay",
                 "show_hud_overlay",
                 "hud_overlay_speed_unit",
+                "hud_overlay_fuel_estimation_mode",
 
             ],
             "Network": [

@@ -33,8 +33,8 @@ from pydantic import ValidationError
 from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                         MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                         TRACK_RADAR_OVERLAY_ID, HudSettings, HudOverlaySpeedUnit,
-                        MfdPageSettings, MfdSettings, OverlayPosition,
-                        TimingTowerColOptions, WeatherMFDUIType)
+                        HudOverlayFuelEstimationMode, MfdPageSettings, MfdSettings,
+                        OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -86,6 +86,9 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
         self.assertTrue(settings.hud_overlay_speed_unit_kmph)
         self.assertFalse(settings.hud_overlay_speed_unit_mph)
+        self.assertEqual(settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -107,6 +110,24 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(hud_overlay_speed_unit="invalid")  # type: ignore
+
+    def test_hud_overlay_fuel_estimation_mode_validation(self):
+        """Test hud_overlay_fuel_estimation_mode field accepts valid enum values and exposes bool properties"""
+        lr_settings = HudSettings(hud_overlay_fuel_estimation_mode=HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertEqual(lr_settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertTrue(lr_settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertFalse(lr_settings.hud_overlay_fuel_estimation_game_built_in)
+
+        game_settings = HudSettings(hud_overlay_fuel_estimation_mode=HudOverlayFuelEstimationMode.GAME_BUILT_IN)
+        self.assertEqual(game_settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.GAME_BUILT_IN)
+        self.assertFalse(game_settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertTrue(game_settings.hud_overlay_fuel_estimation_game_built_in)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_fuel_estimation_mode=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_fuel_estimation_mode="invalid")  # type: ignore
 
     def test_enabled_validation(self):
         """Test valid and invalid log_file_size values"""

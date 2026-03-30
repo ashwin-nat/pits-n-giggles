@@ -45,6 +45,10 @@ class HudOverlaySpeedUnit(str, Enum):
     KMPH = "km/h"
     MPH = "mph"
 
+class HudOverlayFuelEstimationMode(str, Enum):
+    LINEAR_REGRESSION = "Linear regression"
+    GAME_BUILT_IN = "Game built-in"
+
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
@@ -266,6 +270,34 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     def hud_overlay_speed_unit_mph(self) -> bool:
         """True if the speed unit is mph"""
         return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.MPH
+
+    hud_overlay_fuel_estimation_mode: HudOverlayFuelEstimationMode = Field(
+        default=HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
+        description="Surplus fuel estimation technique used in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in HudOverlayFuelEstimationMode],
+                "visible": True,
+                "group": "HUD Overlay",
+                "ext_info": [
+                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
+                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
+                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
+                ]
+            }
+        }
+    )
+
+    @property
+    def hud_overlay_fuel_estimation_linear_regression(self) -> bool:
+        """True if fuel estimation uses linear regression"""
+        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.LINEAR_REGRESSION
+
+    @property
+    def hud_overlay_fuel_estimation_game_built_in(self) -> bool:
+        """True if fuel estimation uses the game built-in value"""
+        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
 
     # ============== GLOBAL OVERLAY CONTROLS ==============
 
