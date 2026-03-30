@@ -151,6 +151,8 @@ class TrackSegments:
 
         s = self._track_data.sectors
         track_length = self._track_data.track_length
+        if lap_distance == track_length:
+            lap_distance = 0
         if 0 <= lap_distance < s.s1:
             return LapData.Sector.SECTOR1
         if s.s1 <= lap_distance < s.s2:

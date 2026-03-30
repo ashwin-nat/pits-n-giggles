@@ -534,9 +534,9 @@ class TestGetSector(F1TelemetryUnitTestsBase):
 
     # --- Out of range ---------------------------------------------------------------------
 
-    def test_at_track_length_returns_none(self):
-        """Position exactly at track_length returns None."""
-        self.assertIsNone(self.tracker.get_sector(3000))
+    def test_at_track_length_returns_sector_1(self):
+        """Position exactly at track_length wraps to lap start and returns SECTOR1."""
+        self.assertEqual(self.tracker.get_sector(3000), LapData.Sector.SECTOR1)
 
     def test_beyond_track_length_returns_none(self):
         """Position beyond track_length returns None."""
