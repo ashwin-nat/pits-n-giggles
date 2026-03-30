@@ -46,11 +46,13 @@ class HudOverlayData(HighFreqBase):
     tl_warnings: int
     circuit_pos_m: float
     circuit: str
+    circuit_num: int
     track_temp: int
     air_temp: int
     g_force_lat: float
     g_force_long: float
     g_force_vert: float
+    sector: str
 
     def __bool__(self) -> bool:
         return None not in (
@@ -70,6 +72,7 @@ class HudOverlayData(HighFreqBase):
             self.tl_warnings,
             self.circuit_pos_m,
             self.circuit,
+            self.circuit_num,
             self.track_temp,
             self.air_temp
             # G forces may be None if telemetry is disabled. Here we ignore them.
@@ -97,10 +100,12 @@ class HudOverlayData(HighFreqBase):
             tl_warnings=pens_stats_data["corner-cutting-warnings"],
             circuit_pos_m=hud_data["circuit-position"],
             circuit=json_data["circuit-enum-name"],
+            circuit_num=json_data["circuit-enum-value"],
             g_force_lat=g_force_data["lat"],
             g_force_long=g_force_data["long"],
             g_force_vert=g_force_data["vert"],
             track_temp=pens_stats_data["track-temperature"],
             air_temp=pens_stats_data["air-temperature"],
+            sector=hud_data["sector"],
         )
 

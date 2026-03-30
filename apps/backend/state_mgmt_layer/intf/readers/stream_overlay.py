@@ -292,6 +292,7 @@ class StreamOverlayData(BaseAPI):
             "ers-mode" : None,
             "tl-warns" : None,
             "circuit-position" : None,
+            "sector" : None,
         }
 
         if not self.m_ref_obj or \
@@ -322,8 +323,10 @@ class StreamOverlayData(BaseAPI):
         #
         if self.m_circuit_len:
             dist = lap_data.m_lapDistance % self.m_circuit_len
+            sector = str(lap_data.m_sector)
         else:
             dist = None
+            sector = None
 
         return {
             "throttle" : car_telemetry.m_throttle,
@@ -340,6 +343,7 @@ class StreamOverlayData(BaseAPI):
             "ers-remaining" : car_status.m_ersStoreEnergy,
             "ers-mode" : str(car_status.m_ersDeployMode),
             "circuit-position" : dist,
+            "sector" : sector,
         }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
@@ -358,6 +362,7 @@ class StreamOverlayData(BaseAPI):
             "formula-type" : str(self.m_formula_type),
             "show-sample-data-at-start": stream_overlay_start_sample_data,
             "circuit-enum-name" : self.m_circuit.name if self.m_circuit else None,
+            "circuit-enum-value" : self.m_circuit.value if self.m_circuit else None,
             "ref-index": self.m_ref_index,
             "weather-forecast-samples": [
                 {
