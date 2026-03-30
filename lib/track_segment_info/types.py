@@ -22,11 +22,24 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Annotated, ClassVar, Dict, List, Literal, Tuple, Union
+from typing import Annotated, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
+
+class SectorBoundaries(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    s1: int
+    s2: int
+
+    @model_validator(mode="after")
+    def _check_increasing(self) -> "SectorBoundaries":
+        if not (self.s1 < self.s2):
+            raise ValueError(f"sector boundaries must be strictly increasing: s1={self.s1}, s2={self.s2}")
+        return self
+
 
 class BaseSegmentInfo(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -109,7 +122,9 @@ SegmentInfo = Annotated[
 class TrackData(BaseModel):
     circuit_name: str
     circuit_number: int
+    track_length: float
     segments: List[SegmentInfo]
+    sectors: Optional[SectorBoundaries] = None
 
     @field_validator("segments", mode="after")
     @classmethod

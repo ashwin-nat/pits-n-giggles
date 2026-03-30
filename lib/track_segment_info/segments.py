@@ -25,6 +25,8 @@
 import bisect
 from typing import Any, Dict, List, Optional
 
+from lib.f1_types.packet_2_lap_data import LapData
+
 from .types import BaseSegmentInfo, TrackData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -62,7 +64,7 @@ class TrackSegments:
             Expected structure:
 
             {
-                "track_length": float,          (optional)
+                "track_length": float,          (required)
                 "segments": [
                     {
                         "type": str,
@@ -121,3 +123,32 @@ class TrackSegments:
             return None
 
         return seg
+
+    def get_sector(self, lap_distance: float) -> Optional[LapData.Sector]:
+        """
+        Return the sector corresponding to the given lap position.
+
+        Parameters
+        ----------
+        lap_distance : float
+            Current lap position in meters.
+
+        Returns
+        -------
+        Optional[LapData.Sector]
+            The sector if the position falls within a defined sector boundary,
+            otherwise None (no sector data loaded, or position is beyond s3).
+        """
+
+        if self._track_data is None or self._track_data.sectors is None:
+            return None
+
+        s = self._track_data.sectors
+        track_length = self._track_data.track_length
+        if 0 <= lap_distance < s.s1:
+            return LapData.Sector.SECTOR1
+        if s.s1 <= lap_distance < s.s2:
+            return LapData.Sector.SECTOR2
+        if s.s2 <= lap_distance < track_length:
+            return LapData.Sector.SECTOR3
+        return None
