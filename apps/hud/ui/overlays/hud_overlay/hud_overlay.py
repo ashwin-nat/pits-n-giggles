@@ -54,7 +54,8 @@ class HudOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,  # Set none for event-driven rendering (low frequency)
+        refresh_interval_ms: Optional[int] = None,
+        use_kmph: bool = True,
     ) -> None:
 
         super().__init__(

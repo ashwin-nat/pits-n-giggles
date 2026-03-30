@@ -142,6 +142,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.hud_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            use_kmph=settings.HUD.hud_overlay_speed_unit_kmph,
         )
 
         self._register_overlay_if_enabled(
