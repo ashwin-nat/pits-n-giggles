@@ -28,7 +28,7 @@ from typing import Optional, final, Dict, Any
 
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import HUD_OVERLAY_ID, HudOverlaySpeedUnit, OverlayPosition
+from lib.config import HUD_OVERLAY_ID, HudOverlaySpeedUnit, OverlayPosition, HudOverlayFuelEstimationMode
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 from lib.track_segment_info import TrackSegmentsDatabase
 from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
@@ -57,6 +57,7 @@ class HudOverlay(BaseOverlayQML):
         windowed_overlay: bool,
         refresh_interval_ms: Optional[int] = None,
         speed_unit: HudOverlaySpeedUnit = HudOverlaySpeedUnit.KMPH,
+        fuel_estimation_mode: HudOverlayFuelEstimationMode = HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
     ) -> None:
 
         super().__init__(
@@ -74,6 +75,10 @@ class HudOverlay(BaseOverlayQML):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
 
         self._surplus_fuel: Optional[float] = None
+        self._surplus_fuel_key: str = {
+            HudOverlayFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
+            HudOverlayFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
+        }.get(fuel_estimation_mode)
         self._register_event_handlers()
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
@@ -143,6 +148,6 @@ class HudOverlay(BaseOverlayQML):
             fuel = ref_row["fuel-info"]
 
             if is_race_type_session(session_type):
-                self._surplus_fuel = fuel.get("surplus-laps-png")
+                self._surplus_fuel = fuel.get(self._surplus_fuel_key)
             elif is_tt_session(session_type):
                 self._surplus_fuel = fuel.get("surplus-laps-game")
