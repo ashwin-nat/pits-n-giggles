@@ -32,6 +32,7 @@ from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
+from apps.hud.ui.overlays.temp_pos_display.temp_pos_display import TempPosOverlay
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
@@ -143,6 +144,16 @@ class OverlaysMgr:
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
+        self._register_overlay_if_enabled(
+            enabled=True,
+            overlay_cls=TempPosOverlay,
+            opacity=100.0,
+            overlay_cfg=OverlayPosition(x=100, y=400),
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=1.0,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
+
         if settings.HUD.show_mfd:
             self.window_manager.register_overlay(
                 MfdOverlay.OVERLAY_ID,
@@ -250,6 +261,9 @@ class OverlaysMgr:
         layout = {}
 
         for overlay_id in list(self.window_manager.overlays.keys()):
+            if overlay_id == TempPosOverlay.OVERLAY_ID:
+                self.logger.debug(f"Skipping layout capture for {overlay_id} since it's a temporary overlay")
+                continue
             try:
                 curr_params = self._get_window_info(overlay_id)
                 self.logger.debug(

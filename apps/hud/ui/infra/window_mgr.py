@@ -88,6 +88,7 @@ class WindowManager(QObject):
 
     def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
+        assert overlay_id not in self.overlays, f"Overlay ID {overlay_id} is already registered"
         self.logger.debug(f"Registering overlay {overlay_id}")
         self.overlays[overlay_id] = overlay
 
