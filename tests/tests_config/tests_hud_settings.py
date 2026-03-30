@@ -30,8 +30,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+from lib.config import (CIRCUIT_INFO_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
+                        LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                         TRACK_RADAR_OVERLAY_ID, HudSettings, HudOverlaySpeedUnit,
                         HudOverlayFuelEstimationMode, MfdPageSettings, MfdSettings,
                         OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
@@ -89,6 +89,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
         self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
         self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
+        self.assertEqual(settings.show_circuit_info, True)
+        self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -413,12 +415,14 @@ class TestHudSettings(TestF1ConfigBase):
                         show_track_map=False,
                         show_input_overlay=False,
                         show_track_radar_overlay=False,
-                        show_hud_overlay=False)
+                        show_hud_overlay=False,
+                        show_circuit_info=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
                                show_mfd=False, show_track_map=False, show_input_overlay=False,
-                               show_track_radar_overlay=False, show_hud_overlay=False)
+                               show_track_radar_overlay=False, show_hud_overlay=False,
+                               show_circuit_info=False)
         self.assertEqual(settings.enabled, True)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, False)
@@ -916,3 +920,33 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(AttributeError):
             HudSettings(mfd_weather_page_ui_type=WeatherMFDUIType.UNKNOWN)
+
+    def test_show_circuit_info(self):
+        hud_settings = HudSettings(show_circuit_info=True)
+        self.assertEqual(hud_settings.show_circuit_info, True)
+
+        hud_settings = HudSettings(show_circuit_info=False)
+        self.assertEqual(hud_settings.show_circuit_info, False)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info=420)
+
+    def test_circuit_info_toggle_udp_action_code(self):
+        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=1)
+        self.assertEqual(hud_settings.circuit_info_toggle_udp_action_code, 1)
+
+        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=None)
+        self.assertIsNone(hud_settings.circuit_info_toggle_udp_action_code)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_toggle_udp_action_code="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_toggle_udp_action_code=420)
+

@@ -299,6 +299,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         """True if fuel estimation uses the game built-in value"""
         return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
 
+    # ============== CIRCUIT INFO OVERLAY ==============
+    show_circuit_info: bool = overlay_enable_field(description="Enable circuit info overlay", group="Circuit Info")
+    circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle circuit info overlay UDP action code", group="Circuit Info")
+
     # ============== GLOBAL OVERLAY CONTROLS ==============
 
     overlays_opacity: int = Field(
