@@ -54,6 +54,7 @@ Window {
     property string ersMode:        "None"
     property var     segmentInfo:    null
     property int    tlWarnings:     0
+    property var    surplusFuel:    null
 
     // Derived segment properties
     readonly property string segmentType:  segmentInfo ? segmentInfo.type  : ""
@@ -78,7 +79,7 @@ Window {
     }
 
     function revColor(index, total) {
-        var n = index / Math.max(1, total - 1)
+        let n = index / Math.max(1, total - 1)
         if (n < (1 / 3)) return "#39d37a"
         if (n < (2 / 3)) return "#ff1744"
         return "#9b30ff"
@@ -86,7 +87,7 @@ Window {
 
     // Fill colour for the ERS inner circle based on current mode
     function ersInnerColor(mode) {
-        var m = mode.toLowerCase()
+        let m = mode.toLowerCase()
         if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
         if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
         if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
@@ -424,55 +425,101 @@ Window {
                         }
                         } // Item (upper row wrapper)
 
-                        // ── Lower row: DRS bar ────────────────────────────────
+                        // ── Lower row: DRS bar (left 2/3) + Fuel (right 1/3) ─
                         Item {
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
 
-                            Rectangle {
-                                anchors.centerIn: parent
-                                height:       22
-                                width:        parent.width - 8
-                                radius:       5
-                                clip:         true
-                                color:        root.drsEnabled
-                                                  ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
-                                                  : (root.drsAvailable || root.drsDistance > 0)
-                                                      ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
-                                                      : Qt.rgba(0.16, 0.22, 0.28, 0.50)
-                                border.width: 1
-                                border.color: root.drsEnabled
-                                                  ? "#00e676"
-                                                  : (root.drsAvailable || root.drsDistance > 0)
-                                                      ? "#ffca52"
-                                                      : "#2d3e4d"
+                            // DRS bar — spans first 2 of 3 columns
+                            Item {
+                                id: drsCell
+                                anchors.left:   parent.left
+                                anchors.top:    parent.top
+                                anchors.bottom: parent.bottom
+                                width:          (parent.width - 4) * 2 / 3
 
                                 Rectangle {
-                                    anchors.left:   parent.left
-                                    anchors.top:    parent.top
-                                    anchors.bottom: parent.bottom
-                                    visible: !root.drsEnabled &&
-                                             (root.drsDistance > 0 ||
-                                              (root.drsAvailable && root.drsDistance === 0))
-                                    width: (root.drsAvailable && root.drsDistance === 0)
-                                           ? parent.width
-                                           : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
-                                    color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
-                                    Behavior on width { SmoothedAnimation { duration: 150 } }
-                                }
-
-                                Text {
-                                    id:              drsLabel
                                     anchors.centerIn: parent
-                                    text:            "DRS"
-                                    font.family:     "Formula1"
-                                    font.pixelSize:  8
-                                    color: root.drsEnabled
-                                           ? "#00e676"
-                                           : (root.drsAvailable || root.drsDistance > 0)
-                                               ? "#ffca52"
-                                               : "#3d4f5e"
-                                    z: 1
+                                    height:       22
+                                    width:        parent.width - 8
+                                    radius:       5
+                                    clip:         true
+                                    color:        root.drsEnabled
+                                                      ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
+                                                      : (root.drsAvailable || root.drsDistance > 0)
+                                                          ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
+                                                          : Qt.rgba(0.16, 0.22, 0.28, 0.50)
+                                    border.width: 1
+                                    border.color: root.drsEnabled
+                                                      ? "#00e676"
+                                                      : (root.drsAvailable || root.drsDistance > 0)
+                                                          ? "#ffca52"
+                                                          : "#2d3e4d"
+
+                                    Rectangle {
+                                        anchors.left:   parent.left
+                                        anchors.top:    parent.top
+                                        anchors.bottom: parent.bottom
+                                        visible: !root.drsEnabled &&
+                                                 (root.drsDistance > 0 ||
+                                                  (root.drsAvailable && root.drsDistance === 0))
+                                        width: (root.drsAvailable && root.drsDistance === 0)
+                                               ? parent.width
+                                               : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
+                                        color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
+                                        Behavior on width { SmoothedAnimation { duration: 150 } }
+                                    }
+
+                                    Text {
+                                        id:              drsLabel
+                                        anchors.centerIn: parent
+                                        text:            "DRS"
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  8
+                                        color: root.drsEnabled
+                                               ? "#00e676"
+                                               : (root.drsAvailable || root.drsDistance > 0)
+                                                   ? "#ffca52"
+                                                   : "#3d4f5e"
+                                        z: 1
+                                    }
+                                }
+                            }
+
+                            // Fuel — spans 3rd column
+                            Item {
+                                anchors.left:       drsCell.right
+                                anchors.leftMargin: 4
+                                anchors.right:      parent.right
+                                anchors.top:        parent.top
+                                anchors.bottom:     parent.bottom
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+
+                                    Image {
+                                        source:  "../../../../../assets/overlays/fuel-pump.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text: root.surplusFuel !== null
+                                              ? (root.surplusFuel >= 0 ? "+" : "") + root.surplusFuel.toFixed(2)
+                                              : "---"
+                                        font.family:    "Formula1"
+                                        font.pixelSize: 12
+                                        font.bold:      true
+                                        color:          root.surplusFuel === null
+                                                        ? "#3d4f5e"
+                                                        : root.surplusFuel >= 0
+                                                            ? "#00e676"
+                                                            : "#ff1744"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
                                 }
                             }
                         }
@@ -512,15 +559,15 @@ Window {
                         height: 88
 
                         onPaint: {
-                            var ctx = getContext("2d")
+                            let ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
 
-                            var cx      = width  / 2   // 44
-                            var cy      = height / 2   // 44
-                            var outerR  = 40           // outer split-ring radius
-                            var innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
-                            var halfPi  = Math.PI / 2
-                            var top     = -halfPi      // 12 o'clock
+                            let cx      = width  / 2   // 44
+                            let cy      = height / 2   // 44
+                            let outerR  = 40           // outer split-ring radius
+                            let innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
+                            let halfPi  = Math.PI / 2
+                            let top     = -halfPi      // 12 o'clock
 
                             // ── outer background ring ──
                             ctx.beginPath()
@@ -530,7 +577,7 @@ Window {
                             ctx.stroke()
 
                             // ── harvest arc — left half, red ──
-                            var harvestFrac = ersZone.animErsHarv / 100
+                            let harvestFrac = ersZone.animErsHarv / 100
                             if (harvestFrac > 0.002) {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
@@ -541,7 +588,7 @@ Window {
                             }
 
                             // ── deploy arc — right half, hotlap green ──
-                            var deployFrac = (100 - ersZone.animErsDeploy) / 100
+                            let deployFrac = (100 - ersZone.animErsDeploy) / 100
                             if (deployFrac > 0.002) {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
@@ -558,11 +605,11 @@ Window {
                             ctx.fill()
 
                             // ── bottom-to-top fill clipped to inner circle ──
-                            var fillFrac = ersZone.animErsRem / 100
+                            let fillFrac = ersZone.animErsRem / 100
                             if (fillFrac > 0.005) {
                                 ctx.save()
-                                var fillHeight = fillFrac * 2 * innerR
-                                var fillTop    = cy + innerR - fillHeight
+                                let fillHeight = fillFrac * 2 * innerR
+                                let fillTop    = cy + innerR - fillHeight
                                 ctx.beginPath()
                                 ctx.rect(cx - innerR - 1, fillTop, 2 * innerR + 2, fillHeight + 1)
                                 ctx.clip()

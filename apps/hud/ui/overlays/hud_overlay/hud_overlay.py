@@ -124,6 +124,9 @@ class HudOverlay(BaseOverlayQML):
         # Segment info
         self.set_qml_property("segmentInfo", segment_info.render() if segment_info else None)
 
+        # Fuel
+        self.set_qml_property("surplusFuel", self._surplus_fuel)
+
     def _register_event_handlers(self):
         @self.on_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
