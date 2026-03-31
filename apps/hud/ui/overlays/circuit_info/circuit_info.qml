@@ -19,10 +19,40 @@ Window {
     property real circuitLength: 1.0
     property var sectorsInfo: null    // { s1: float, s2: float } or null
     property var segmentInfo: null    // { type: str, name: str, turns: str } or null
+    property color completedSector1Color: "#888888"   // settable from Python
+    property color completedSector2Color: "#888888"   // settable from Python
+
+    // Helper: set one sector's completed colour by number (1 or 2)
+    function setCompletedSectorColor(sector, color) {
+        if (sector === 1) completedSector1Color = color
+        else if (sector === 2) completedSector2Color = color
+    }
+
+    // Helper: set both completed sector colours at once
+    function setCompletedSectorColors(s1Color, s2Color) {
+        completedSector1Color = s1Color
+        completedSector2Color = s2Color
+    }
 
     readonly property real progress: circuitLength > 0
         ? Math.min(1.0, Math.max(0.0, circuitPosM / circuitLength))
         : 0.0
+
+    // Which sector (1/2/3) the car is currently in
+    readonly property int currentSector: {
+        if (!sectorsInfo || circuitLength <= 0) return 1
+        if (circuitPosM < sectorsInfo.s1) return 1
+        if (circuitPosM < sectorsInfo.s2) return 2
+        return 3
+    }
+
+    // Fraction along the bar where the active sector starts
+    readonly property real activeSectorStartFrac: {
+        if (!sectorsInfo || circuitLength <= 0) return 0
+        if (currentSector === 2) return sectorsInfo.s1 / circuitLength
+        if (currentSector === 3) return sectorsInfo.s2 / circuitLength
+        return 0
+    }
 
     // ==========================================================
     // SCALING ROOT
@@ -47,9 +77,9 @@ Window {
 
         // ==========================================================
         // SEGMENT INFO  (fades on change)
-        //   y=4  → primary label  (16px)  bottom=20
-        //   y=26 → progress bar   (12px)  bottom=38
-        //   y=43 → secondary label (13px)  bottom=56
+        //   y=4  → primary label   (20px)  bottom=24
+        //   y=30 → progress bar    (12px)  bottom=42
+        //   y=46 → secondary label (18px)  bottom=64
         //   baseHeight=64
         // ==========================================================
         Item {
@@ -108,7 +138,7 @@ Window {
 
                 color: "white"
                 font.family: "Formula1"
-                font.pixelSize: 16
+                font.pixelSize: 20
                 font.bold: !!info && info.type !== "straight"
                 visible: text.length > 0
             }
@@ -119,7 +149,7 @@ Window {
             Text {
                 id: secondaryLabel
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 43
+                y: 46
 
                 readonly property var info: infoGroup.displayedInfo
 
@@ -130,18 +160,18 @@ Window {
 
                 color: Qt.rgba(1, 1, 1, 0.65)
                 font.family: "Formula1"
-                font.pixelSize: 13
+                font.pixelSize: 18
                 visible: text.length > 0
             }
         }
 
         // ==========================================================
-        // PROGRESS BAR  (y=26, height=12, centred in baseHeight=64)
+        // PROGRESS BAR  (y=30, height=12)
         // ==========================================================
         Item {
             id: progressBarArea
             x: 12
-            y: 26
+            y: 30
             width: parent.width - 24
             height: 12
 
@@ -152,16 +182,43 @@ Window {
                 radius: 4
             }
 
-            // Progress fill
+            // Sector 1 fill — shown as completed when car is in sector 2 or 3
             Rectangle {
-                id: progressFill
-                anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                color: "#00cc00"
+                anchors.left: parent.left
+                color: root.completedSector1Color
                 radius: 4
+                visible: root.sectorsInfo !== null && root.currentSector > 1
+                width: root.sectorsInfo && root.circuitLength > 0
+                    ? progressBarArea.width * (root.sectorsInfo.s1 / root.circuitLength)
+                    : 0
+            }
 
-                width: progressBarArea.width * root.progress
+            // Sector 2 fill — shown as completed when car is in sector 3
+            Rectangle {
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                color: root.completedSector2Color
+                radius: 4
+                visible: root.sectorsInfo !== null && root.currentSector > 2
+                x: root.sectorsInfo && root.circuitLength > 0
+                    ? progressBarArea.width * (root.sectorsInfo.s1 / root.circuitLength)
+                    : 0
+                width: root.sectorsInfo && root.circuitLength > 0
+                    ? progressBarArea.width * ((root.sectorsInfo.s2 - root.sectorsInfo.s1) / root.circuitLength)
+                    : 0
+            }
+
+            // Active sector fill — white, from current sector start to current position
+            Rectangle {
+                id: activeSectorFill
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                color: "white"
+                radius: 4
+                x: progressBarArea.width * root.activeSectorStartFrac
+                width: progressBarArea.width * (root.progress - root.activeSectorStartFrac)
                 Behavior on width {
                     NumberAnimation { duration: 80; easing.type: Easing.Linear }
                 }

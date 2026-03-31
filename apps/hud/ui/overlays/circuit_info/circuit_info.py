@@ -89,6 +89,18 @@ class CircuitInfoOverlay(BaseOverlayQML):
     def _set_bar_width_property(self, length: int):
         self.set_qml_property("barWidth", length)
 
+    def set_completed_sector_color(self, sector: int, color: str) -> None:
+        """Set the completed-sector fill colour for a single sector (1 or 2)."""
+        if sector == 1:
+            self.set_qml_property("completedSector1Color", color)
+        elif sector == 2:
+            self.set_qml_property("completedSector2Color", color)
+
+    def set_completed_sector_colors(self, s1_color: str, s2_color: str) -> None:
+        """Set the completed-sector fill colours for both sectors at once."""
+        self.set_qml_property("completedSector1Color", s1_color)
+        self.set_qml_property("completedSector2Color", s2_color)
+
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
     @final
     def render_frame(self):
