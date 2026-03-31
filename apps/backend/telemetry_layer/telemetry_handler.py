@@ -65,6 +65,7 @@ class UdpActionCodes:
     toggle_track_radar_overlay: Optional[int] = None
     toggle_input_overlay: Optional[int] = None
     mfd_interaction: Optional[int] = None
+    toggle_hud_overlay: Optional[int] = None
     toggle_circuit_info_overlay: Optional[int] = None
 
     _MAP = {
@@ -79,6 +80,7 @@ class UdpActionCodes:
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
         "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
         "mfd_interaction_udp_action_code": "mfd_interaction",
+        "hud_overlay_toggle_udp_action_code": "toggle_hud_overlay",
         "circuit_info_toggle_udp_action_code": "toggle_circuit_info_overlay",
     }
 
@@ -193,6 +195,7 @@ class F1TelemetryHandler:
             toggle_track_radar_overlay=settings.HUD.track_radar_overlay_toggle_udp_action_code,
             toggle_input_overlay=settings.HUD.input_overlay_toggle_udp_action_code,
             mfd_interaction=settings.HUD.mfd_interaction_udp_action_code,
+            toggle_hud_overlay=settings.HUD.hud_overlay_toggle_udp_action_code,
             toggle_circuit_info_overlay=settings.HUD.circuit_info_toggle_udp_action_code,
         )
 
@@ -522,32 +525,37 @@ class F1TelemetryHandler:
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_lap_timer_overlay,
                                     'Toggle lap timer overlay',
-                                    lambda: self._processToggleHud('lap_timer'))
+                                    lambda: self._processToggleHud(OverlayId.LAP_TIMER))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_timing_tower_overlay,
                                     'Toggle timing tower overlay',
-                                    lambda: self._processToggleHud('timing_tower'))
+                                    lambda: self._processToggleHud(OverlayId.TIMING_TOWER))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_mfd_overlay,
                                     'Toggle MFD overlay',
-                                    lambda: self._processToggleHud('mfd'))
+                                    lambda: self._processToggleHud(OverlayId.MFD))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_track_radar_overlay,
                                     'Toggle track radar overlay',
-                                    lambda: self._processToggleHud('track_radar'))
+                                    lambda: self._processToggleHud(OverlayId.TRACK_RADAR))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_input_overlay,
                                     'Toggle input overlay',
-                                    lambda: self._processToggleHud('input_telemetry'))
+                                    lambda: self._processToggleHud(OverlayId.INPUT_TELEMETRY))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.mfd_interaction,
                                     'MFD interaction',
                                     self._processMFDInteraction)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_hud_overlay,
+                                    'Toggle HUD overlay',
+                                    lambda: self._processToggleHud(OverlayId.HUD))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_circuit_info_overlay,
