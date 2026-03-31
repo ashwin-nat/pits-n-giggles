@@ -82,12 +82,22 @@ class CircuitInfoOverlay(BaseOverlayQML):
             return
 
         segment_info = self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m)
-        sectors_info = self.tracks_db.get_sector(data.circuit_num, data.circuit_length)
+        sectors = self.tracks_db.get_sectors(data.circuit_num)
 
-        if sectors_info:
-            # TODO: implement
-            pass
+        self.set_qml_property("circuitPosM", data.circuit_pos_m)
+        self.set_qml_property("circuitLength", data.circuit_length)
+        self.set_qml_property(
+            "sectorsInfo",
+            {"s1": sectors.s1, "s2": sectors.s2} if sectors else None,
+        )
 
         if segment_info:
-            pass
+            rendered = segment_info.render()
+            self.set_qml_property("segmentInfo", {
+                "type": segment_info.type,
+                "name": rendered["name"],
+                "turns": rendered["turns"],
+            })
+        else:
+            self.set_qml_property("segmentInfo", None)
 
