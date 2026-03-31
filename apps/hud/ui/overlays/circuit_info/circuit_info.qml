@@ -175,6 +175,14 @@ Window {
             width: parent.width - 24
             height: 12
 
+            // Animate the right-edge position rather than the fill width, so that
+            // a sector-boundary jump in activeSectorStartFrac doesn't cause the
+            // width behaviour to animate from the previous sector's large value.
+            property real animatedRightEdge: width * root.progress
+            Behavior on animatedRightEdge {
+                NumberAnimation { duration: 80; easing.type: Easing.Linear }
+            }
+
             // Track background
             Rectangle {
                 anchors.fill: parent
@@ -218,10 +226,7 @@ Window {
                 color: "white"
                 radius: 4
                 x: progressBarArea.width * root.activeSectorStartFrac
-                width: progressBarArea.width * (root.progress - root.activeSectorStartFrac)
-                Behavior on width {
-                    NumberAnimation { duration: 80; easing.type: Easing.Linear }
-                }
+                width: Math.max(0, progressBarArea.animatedRightEdge - x)
             }
 
             // Sector boundary dividers (only when sectorsInfo is available)
