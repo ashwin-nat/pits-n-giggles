@@ -24,14 +24,14 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, final, Dict, Any
+from typing import Any, Dict, Optional, final
 
+from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import HUD_OVERLAY_ID, HudOverlaySpeedUnit, OverlayPosition, HudOverlayFuelEstimationMode
+from lib.config import (HUD_OVERLAY_ID, HudOverlayFuelEstimationMode,
+                        HudOverlaySpeedUnit, OverlayPosition)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
-from lib.track_segment_info import TrackSegmentsDatabase
-from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -72,7 +72,6 @@ class HudOverlay(BaseOverlayQML):
 
         self._speed_unit = speed_unit
         self.subscribe_hf(HudOverlayData)
-        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
 
         self._surplus_fuel: Optional[float] = None
         self._surplus_fuel_key: str = {
@@ -91,7 +90,6 @@ class HudOverlay(BaseOverlayQML):
         data = self.get_latest_hf_data(HudOverlayData)
         if not data:
             return
-        segment_info = self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m)
 
         # Ignore the rival field in the obj
 
@@ -125,9 +123,6 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("tlWarnings",     data.tl_warnings)
         self.set_qml_property("trackTempC",     data.track_temp)
         self.set_qml_property("airTempC",       data.air_temp)
-
-        # Segment info
-        self.set_qml_property("segmentInfo", segment_info.render() if segment_info else None)
 
         # Fuel
         self.set_qml_property("surplusFuel", self._surplus_fuel)

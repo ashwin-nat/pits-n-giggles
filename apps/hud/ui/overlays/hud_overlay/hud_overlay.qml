@@ -52,14 +52,9 @@ Window {
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
-    property var     segmentInfo:    null
     property int    tlWarnings:     0
     property var    surplusFuel:    null
 
-    // Derived segment properties
-    readonly property string segmentType:  segmentInfo ? segmentInfo.type  : ""
-    readonly property string segmentName:  segmentInfo ? segmentInfo.name  : ""
-    readonly property string segmentTurns: segmentInfo ? segmentInfo.turns : ""
     property int    trackTempC:     0
     property int    airTempC:       0
 
