@@ -608,7 +608,7 @@ class HudAppMgr(PngAppMgrBase):
 
             SliderItem(
                 key="circuit_info_length",
-                label="Circuit Info Length (m)",
+                label="Circuit Info Length (px)",
                 min=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["min"],
                 max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
                 value=hud_settings.circuit_info_length,
