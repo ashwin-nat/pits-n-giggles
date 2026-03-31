@@ -80,5 +80,9 @@
       "end_m": 5798,
       "name": "Rettifilo Tribune"
     }
-  ]
+  ],
+  "sectors": {
+    "s1": 1898,
+    "s2": 3727
+  }
 }

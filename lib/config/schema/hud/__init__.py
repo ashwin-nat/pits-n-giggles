@@ -22,9 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .hud import HudSettings, WeatherMFDUIType
-from .layout import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+from .hud import HudOverlayFuelEstimationMode, HudOverlaySpeedUnit, HudSettings, WeatherMFDUIType
+from .layout import (CIRCUIT_INFO_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
+                     LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                      TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HUD_OVERLAY_ID,
                      OverlayPosition)
 from .mfd import MfdPageSettings, MfdSettings
@@ -34,6 +34,8 @@ from .timing_tower import TimingTowerColOptions
 
 __all__ = [
     'HudSettings',
+    'HudOverlaySpeedUnit',
+    'HudOverlayFuelEstimationMode',
     'WeatherMFDUIType',
     'MfdSettings',
     'MfdPageSettings',
@@ -47,5 +49,6 @@ __all__ = [
     'TRACK_MAP_OVERLAY_ID',
     'TRACK_RADAR_OVERLAY_ID',
     'HUD_OVERLAY_ID',
+    'CIRCUIT_INFO_OVERLAY_ID',
 
 ]

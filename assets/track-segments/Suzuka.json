@@ -117,5 +117,9 @@
       "end_m": 5809,
       "name": "Pit Straight"
     }
-  ]
+  ],
+  "sectors": {
+    "s1": 2226,
+    "s2": 4690
+  }
 }

@@ -44,6 +44,7 @@ Window {
     property int    rpm:            0
     property int    gear:           0
     property int    speedKmph:      0
+    property string speedUnitLabel: "km/h"
     property bool   drsEnabled:     false
     property bool   drsAvailable:   false
     property int    drsDistance:    0
@@ -51,13 +52,9 @@ Window {
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
-    property var     segmentInfo:    null
     property int    tlWarnings:     0
+    property var    surplusFuel:    null
 
-    // Derived segment properties
-    readonly property string segmentType:  segmentInfo ? segmentInfo.type  : ""
-    readonly property string segmentName:  segmentInfo ? segmentInfo.name  : ""
-    readonly property string segmentTurns: segmentInfo ? segmentInfo.turns : ""
     property int    trackTempC:     0
     property int    airTempC:       0
 
@@ -77,7 +74,7 @@ Window {
     }
 
     function revColor(index, total) {
-        var n = index / Math.max(1, total - 1)
+        let n = index / Math.max(1, total - 1)
         if (n < (1 / 3)) return "#39d37a"
         if (n < (2 / 3)) return "#ff1744"
         return "#9b30ff"
@@ -85,7 +82,7 @@ Window {
 
     // Fill colour for the ERS inner circle based on current mode
     function ersInnerColor(mode) {
-        var m = mode.toLowerCase()
+        let m = mode.toLowerCase()
         if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
         if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
         if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
@@ -250,238 +247,130 @@ Window {
                 // ════════════════════════════════════════════════════════════
                 //  CENTER — CORE DATA
                 // ════════════════════════════════════════════════════════════
-                ColumnLayout {
-                    Layout.fillWidth:  true
-                    Layout.fillHeight: true
-                    Layout.topMargin:  30
-                    Layout.bottomMargin: -2
-                    spacing: 3
+                Item {
+                    Layout.fillWidth:    true
+                    Layout.fillHeight:   true
+                    Layout.topMargin:    12
+                    Layout.bottomMargin: 12
 
-                    // ── 1. Primary zone — Speed (left) | Corner info (right) ─
-                    RowLayout {
-                        Layout.fillWidth:  true
-                        Layout.fillHeight: true
-                        spacing: 4
+                    // ── Left 30% — Speed (top) | RPM (bottom) ────────────────
+                    Item {
+                        id: centerLeft
+                        anchors.left:   parent.left
+                        anchors.top:    parent.top
+                        anchors.bottom: parent.bottom
+                        width:          parent.width * 0.3
 
-                        // Speed block (~38% width)
-                        Item {
-                            Layout.preferredWidth: 95
-                            Layout.fillHeight:     true
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 0
 
                             Text {
-                                anchors.centerIn:   parent
-                                text:               root.speedKmph
-                                font.family:        "Formula1"
-                                font.pixelSize:     36
-                                font.bold:          true
-                                color:              "#edf7ff"
+                                text:                root.speedUnitLabel
+                                font.family:         "Formula1"
+                                font.pixelSize:      8
+                                color:               "#7a94a8"
+                                width:               centerLeft.width
                                 horizontalAlignment: Text.AlignHCenter
                             }
-                        }
-
-                        // Corner / straight info (~62% width)
-                        Item {
-                            id: segInfoZone
-                            Layout.fillWidth:  true
-                            Layout.fillHeight: true
-
-                            // Corner flash animation
-                            Connections {
-                                target: root
-                                function onSegmentInfoChanged() {
-                                    if (root.segmentInfo) cornerFlash.restart()
-                                }
+                            Text {
+                                text:                root.speedKmph
+                                font.family:         "Formula1"
+                                font.pixelSize:      20
+                                font.bold:           true
+                                color:               "#edf7ff"
+                                width:               centerLeft.width
+                                horizontalAlignment: Text.AlignHCenter
                             }
-
-                            SequentialAnimation {
-                                id: cornerFlash
-                                NumberAnimation { target: segNameText; property: "opacity"; to: 1.0;  duration: 180; easing.type: Easing.OutQuad   }
-                                PauseAnimation  { duration: 2500 }
-                                NumberAnimation { target: segNameText; property: "opacity"; to: 0.75; duration: 600; easing.type: Easing.InOutQuad  }
+                            Rectangle {
+                                width:  centerLeft.width
+                                height: 1
+                                color:  "#2b3946"
                             }
-
-                            // Straight: single centred line, slightly larger
-                            Item {
-                                id: straightClip
-                                anchors.verticalCenter: parent.verticalCenter
-                                width:   parent.width
-                                height:  straightNameText.contentHeight
-                                clip:    true
-                                visible: root.segmentType === "straight"
-
-                                property bool overflows: straightNameText.contentWidth > width && width > 0
-
-                                Text {
-                                    id: straightNameText
-                                    text:               root.segmentName.toUpperCase()
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     14
-                                    font.bold:          true
-                                    font.letterSpacing: 0.8
-                                    color:              "#c8dce8"
-                                    opacity: segNameText.opacity
-                                }
-
-                                Binding {
-                                    target: straightNameText; property: "x"
-                                    value: (straightClip.width - straightNameText.contentWidth) / 2
-                                    when: !straightClip.overflows
-                                    restoreMode: Binding.RestoreNone
-                                }
-
-                                SequentialAnimation {
-                                    id: straightMarquee
-                                    running: straightClip.overflows
-                                    loops: Animation.Infinite
-                                    readonly property real dist: Math.max(1, straightNameText.contentWidth - straightClip.width)
-                                    readonly property int  scrollMs: dist / root.marqueeSpeed * 1000
-                                    NumberAnimation { target: straightNameText; property: "x"; to: 0; duration: 0 }
-                                    PauseAnimation { duration: 1000 }
-                                    NumberAnimation { target: straightNameText; property: "x"; to: -straightMarquee.dist; duration: straightMarquee.scrollMs; easing.type: Easing.Linear }
-                                    PauseAnimation { duration: 1000 }
-                                    NumberAnimation { target: straightNameText; property: "x"; to: 0; duration: straightMarquee.scrollMs; easing.type: Easing.Linear }
-                                }
+                            Text {
+                                text:                root.rpm
+                                font.family:         "Formula1"
+                                font.pixelSize:      20
+                                font.bold:           true
+                                color:               "#edf7ff"
+                                width:               centerLeft.width
+                                horizontalAlignment: Text.AlignHCenter
                             }
-
-                            // Named corner: name line + turn numbers subtitle
-                            Column {
-                                width: parent.width
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 3
-                                visible: root.segmentType === "corner" && root.segmentName !== ""
-
-                                Item {
-                                    id: cornerNameClip
-                                    width:  parent.width
-                                    height: segNameText.contentHeight
-                                    clip:   true
-
-                                    property bool overflows: segNameText.contentWidth > width && width > 0
-
-                                    Text {
-                                        id: segNameText
-                                        text:               root.segmentName.toUpperCase()
-                                        font.family:        "Formula1"
-                                        font.pixelSize:     13
-                                        font.bold:          true
-                                        font.letterSpacing: 0.6
-                                        color:              "#c8dce8"
-                                        opacity:            0.75
-                                        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
-                                    }
-
-                                    Binding {
-                                        target: segNameText; property: "x"
-                                        value: (cornerNameClip.width - segNameText.contentWidth) / 2
-                                        when: !cornerNameClip.overflows
-                                        restoreMode: Binding.RestoreNone
-                                    }
-
-                                    SequentialAnimation {
-                                        id: cornerNameMarquee
-                                        running: cornerNameClip.overflows
-                                        loops: Animation.Infinite
-                                        readonly property real dist: Math.max(1, segNameText.contentWidth - cornerNameClip.width)
-                                        readonly property int  scrollMs: dist / root.marqueeSpeed * 1000
-                                        NumberAnimation { target: segNameText; property: "x"; to: 0; duration: 0 }
-                                        PauseAnimation { duration: 1000 }
-                                        NumberAnimation { target: segNameText; property: "x"; to: -cornerNameMarquee.dist; duration: cornerNameMarquee.scrollMs; easing.type: Easing.Linear }
-                                        PauseAnimation { duration: 1000 }
-                                        NumberAnimation { target: segNameText; property: "x"; to: 0; duration: cornerNameMarquee.scrollMs; easing.type: Easing.Linear }
-                                    }
-                                }
-
-                                Text {
-                                    text:               root.segmentTurns
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     11
-                                    font.letterSpacing: 0.4
-                                    color:              "#7a94a8"
-                                    opacity:            0.6
-                                    visible:            root.segmentTurns !== ""
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                            }
-
-                            // Unnamed corner: turn numbers as main title
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 3
-                                visible: root.segmentType === "corner" && root.segmentName === ""
-
-                                Text {
-                                    text:               root.segmentTurns.toUpperCase()
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     14
-                                    font.bold:          true
-                                    font.letterSpacing: 0.8
-                                    color:              "#c8dce8"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                    opacity: segNameText.opacity
-                                }
+                            Text {
+                                text:                "RPM"
+                                font.family:         "Formula1"
+                                font.pixelSize:      8
+                                color:               "#7a94a8"
+                                width:               centerLeft.width
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
                     }
 
-                    // ── 2. Bottom telemetry — stacked labels + DRS badge ────
-                    RowLayout {
-                        Layout.fillWidth:       true
-                        Layout.preferredHeight: 26
+                    // Vertical separator
+                    Rectangle {
+                        anchors.left:   centerLeft.right
+                        anchors.top:    parent.top
+                        anchors.bottom: parent.bottom
+                        width: 1
+                        color: "#2b3946"
+                    }
+
+                    // ── Right 70% — TL / AIR / TRACK (upper) + DRS (lower) ──
+                    ColumnLayout {
+                        anchors.left:   centerLeft.right
+                        anchors.leftMargin: 6
+                        anchors.right:  parent.right
+                        anchors.top:    parent.top
+                        anchors.bottom: parent.bottom
                         spacing: 0
 
-                        // ── Track limits ─────────────────────────────────────
+                        // ── Upper row: TL / AIR / TRACK ───────────────────────
                         Item {
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 0
 
-                                Text {
-                                    text:               "TL"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-                                Text {
-                                    text:            root.tlWarnings
-                                    font.family:     "Formula1"
-                                    font.pixelSize:  12
-                                    font.bold:       true
-                                    color:           "#edf7ff"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
+                            // ── Track limits ──────────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+
+                                    Image {
+                                        source:  "../../../../../assets/overlays/tl-warns.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text:            root.tlWarnings
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  12
+                                        font.bold:       true
+                                        color:           "#edf7ff"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
                                 }
                             }
-                        }
 
-                        // ── Air temperature ──────────────────────────────────
-                        Item {
-                            Layout.fillWidth:  true
-                            Layout.fillHeight: true
+                            // ── Air temperature ───────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
-
-                                Text {
-                                    text:               "AIR"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
                                 Row {
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.centerIn: parent
                                     spacing: 3
+
                                     Image {
                                         source:  "../../../../../assets/overlays/air-temperature.svg"
                                         width:   12
@@ -500,29 +389,16 @@ Window {
                                     }
                                 }
                             }
-                        }
 
-                        // ── Track temperature ────────────────────────────────
-                        Item {
-                            Layout.fillWidth:  true
-                            Layout.fillHeight: true
+                            // ── Track temperature ─────────────────────────────
+                            Item {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 1
-
-                                Text {
-                                    text:               "TRACK"
-                                    font.family:        "Formula1"
-                                    font.pixelSize:     7
-                                    font.letterSpacing: 0.5
-                                    color:              "#5c7a94"
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
                                 Row {
-                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.centerIn: parent
                                     spacing: 3
+
                                     Image {
                                         source:  "../../../../../assets/overlays/track-temperature.svg"
                                         width:   12
@@ -542,61 +418,108 @@ Window {
                                 }
                             }
                         }
+                        } // Item (upper row wrapper)
 
-                        // ── DRS badge (unchanged behavior) ───────────────────
+                        // ── Lower row: DRS bar (left 2/3) + Fuel (right 1/3) ─
                         Item {
                             Layout.fillWidth:  true
                             Layout.fillHeight: true
 
-                            Rectangle {
-                                anchors.centerIn: parent
-                                height:       22
-                                width:        56
-                                radius:       5
-                                clip:         true
-                                color:        root.drsEnabled
-                                                  ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
-                                                  : (root.drsAvailable || root.drsDistance > 0)
-                                                      ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
-                                                      : Qt.rgba(0.16, 0.22, 0.28, 0.50)
-                                border.width: 1
-                                border.color: root.drsEnabled
-                                                  ? "#00e676"
-                                                  : (root.drsAvailable || root.drsDistance > 0)
-                                                      ? "#ffca52"
-                                                      : "#2d3e4d"
+                            // DRS bar — spans first 2 of 3 columns
+                            Item {
+                                id: drsCell
+                                anchors.left:   parent.left
+                                anchors.top:    parent.top
+                                anchors.bottom: parent.bottom
+                                width:          (parent.width - 4) * 2 / 3
 
                                 Rectangle {
-                                    anchors.left:   parent.left
-                                    anchors.top:    parent.top
-                                    anchors.bottom: parent.bottom
-                                    visible: !root.drsEnabled &&
-                                             (root.drsDistance > 0 ||
-                                              (root.drsAvailable && root.drsDistance === 0))
-                                    width: (root.drsAvailable && root.drsDistance === 0)
-                                           ? parent.width
-                                           : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
-                                    color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
-                                    Behavior on width { SmoothedAnimation { duration: 150 } }
-                                }
-
-                                Text {
-                                    id:              drsLabel
                                     anchors.centerIn: parent
-                                    text:            "DRS"
-                                    font.family:     "Formula1"
-                                    font.pixelSize:  8
-                                    color: root.drsEnabled
-                                           ? "#00e676"
-                                           : (root.drsAvailable || root.drsDistance > 0)
-                                               ? "#ffca52"
-                                               : "#3d4f5e"
-                                    z: 1
+                                    height:       22
+                                    width:        parent.width - 8
+                                    radius:       5
+                                    clip:         true
+                                    color:        root.drsEnabled
+                                                      ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
+                                                      : (root.drsAvailable || root.drsDistance > 0)
+                                                          ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
+                                                          : Qt.rgba(0.16, 0.22, 0.28, 0.50)
+                                    border.width: 1
+                                    border.color: root.drsEnabled
+                                                      ? "#00e676"
+                                                      : (root.drsAvailable || root.drsDistance > 0)
+                                                          ? "#ffca52"
+                                                          : "#2d3e4d"
+
+                                    Rectangle {
+                                        anchors.left:   parent.left
+                                        anchors.top:    parent.top
+                                        anchors.bottom: parent.bottom
+                                        visible: !root.drsEnabled &&
+                                                 (root.drsDistance > 0 ||
+                                                  (root.drsAvailable && root.drsDistance === 0))
+                                        width: (root.drsAvailable && root.drsDistance === 0)
+                                               ? parent.width
+                                               : parent.width * Math.max(0.0, 1.0 - root.drsDistance / 250.0)
+                                        color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
+                                        Behavior on width { SmoothedAnimation { duration: 150 } }
+                                    }
+
+                                    Text {
+                                        id:              drsLabel
+                                        anchors.centerIn: parent
+                                        text:            "DRS"
+                                        font.family:     "Formula1"
+                                        font.pixelSize:  8
+                                        color: root.drsEnabled
+                                               ? "#00e676"
+                                               : (root.drsAvailable || root.drsDistance > 0)
+                                                   ? "#ffca52"
+                                                   : "#3d4f5e"
+                                        z: 1
+                                    }
+                                }
+                            }
+
+                            // Fuel — spans 3rd column
+                            Item {
+                                anchors.left:       drsCell.right
+                                anchors.leftMargin: 4
+                                anchors.right:      parent.right
+                                anchors.top:        parent.top
+                                anchors.bottom:     parent.bottom
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+
+                                    Image {
+                                        source:  "../../../../../assets/overlays/fuel-pump.svg"
+                                        width:   12
+                                        height:  12
+                                        smooth:  true
+                                        mipmap:  true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Text {
+                                        text: root.surplusFuel !== null
+                                              ? (root.surplusFuel >= 0 ? "+" : "") + root.surplusFuel.toFixed(2)
+                                              : "---"
+                                        font.family:    "Formula1"
+                                        font.pixelSize: 12
+                                        font.bold:      true
+                                        color:          root.surplusFuel === null
+                                                        ? "#3d4f5e"
+                                                        : root.surplusFuel >= 0
+                                                            ? "#00e676"
+                                                            : "#ff1744"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
                                 }
                             }
                         }
                     }
-                } // ColumnLayout (center)
+                } // Item (center)
 
                 // ════════════════════════════════════════════════════════════
                 //  RIGHT — ERS  (zone width = pill height → concentric end)
@@ -631,15 +554,15 @@ Window {
                         height: 88
 
                         onPaint: {
-                            var ctx = getContext("2d")
+                            let ctx = getContext("2d")
                             ctx.clearRect(0, 0, width, height)
 
-                            var cx      = width  / 2   // 44
-                            var cy      = height / 2   // 44
-                            var outerR  = 40           // outer split-ring radius
-                            var innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
-                            var halfPi  = Math.PI / 2
-                            var top     = -halfPi      // 12 o'clock
+                            let cx      = width  / 2   // 44
+                            let cy      = height / 2   // 44
+                            let outerR  = 40           // outer split-ring radius
+                            let innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
+                            let halfPi  = Math.PI / 2
+                            let top     = -halfPi      // 12 o'clock
 
                             // ── outer background ring ──
                             ctx.beginPath()
@@ -649,7 +572,7 @@ Window {
                             ctx.stroke()
 
                             // ── harvest arc — left half, red ──
-                            var harvestFrac = ersZone.animErsHarv / 100
+                            let harvestFrac = ersZone.animErsHarv / 100
                             if (harvestFrac > 0.002) {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
@@ -660,7 +583,7 @@ Window {
                             }
 
                             // ── deploy arc — right half, hotlap green ──
-                            var deployFrac = (100 - ersZone.animErsDeploy) / 100
+                            let deployFrac = (100 - ersZone.animErsDeploy) / 100
                             if (deployFrac > 0.002) {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
@@ -677,11 +600,11 @@ Window {
                             ctx.fill()
 
                             // ── bottom-to-top fill clipped to inner circle ──
-                            var fillFrac = ersZone.animErsRem / 100
+                            let fillFrac = ersZone.animErsRem / 100
                             if (fillFrac > 0.005) {
                                 ctx.save()
-                                var fillHeight = fillFrac * 2 * innerR
-                                var fillTop    = cy + innerR - fillHeight
+                                let fillHeight = fillFrac * 2 * innerR
+                                let fillTop    = cy + innerR - fillHeight
                                 ctx.beginPath()
                                 ctx.rect(cx - innerR - 1, fillTop, 2 * innerR + 2, fillHeight + 1)
                                 ctx.clip()

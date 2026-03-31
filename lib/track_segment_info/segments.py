@@ -25,7 +25,9 @@
 import bisect
 from typing import Any, Dict, List, Optional
 
-from .types import BaseSegmentInfo, TrackData
+from lib.f1_types.packet_2_lap_data import LapData
+
+from .types import BaseSegmentInfo, SectorBoundaries, TrackData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -62,7 +64,9 @@ class TrackSegments:
             Expected structure:
 
             {
-                "track_length": float,          (optional)
+                "circuit_name":   str,           (required)
+                "circuit_number": int,           (required)
+                "track_length":   float,         (required)
                 "segments": [
                     {
                         "type": str,
@@ -71,7 +75,11 @@ class TrackSegments:
                         "end_m": float,
                         ...type-specific fields...
                     }
-                ]
+                ],
+                "sectors": {                     (optional)
+                    "s1": int,                   (required if sectors present; must be > 0)
+                    "s2": int,                   (required if sectors present; must be > s1 and < track_length)
+                }
             }
 
             Segments must be ordered by start_m and must not overlap.
@@ -91,6 +99,13 @@ class TrackSegments:
         self._track_data = TrackData.model_validate(track_data)
         self._segments = list(self._track_data.segments)
         self._starts = [seg.start_m for seg in self._segments]
+
+    @property
+    def sectors(self) -> Optional[SectorBoundaries]:
+        """Return the sector boundaries for this track, or None if not defined."""
+        if self._track_data is None:
+            return None
+        return self._track_data.sectors
 
     def get_segment_info(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
         """
@@ -121,3 +136,34 @@ class TrackSegments:
             return None
 
         return seg
+
+    def get_sector(self, lap_distance: float) -> Optional[LapData.Sector]:
+        """
+        Return the sector corresponding to the given lap position.
+
+        Parameters
+        ----------
+        lap_distance : float
+            Current lap position in meters.
+
+        Returns
+        -------
+        Optional[LapData.Sector]
+            The sector if the position falls within a defined sector boundary,
+            otherwise None (no sector data loaded, or position is beyond s3).
+        """
+
+        if self._track_data is None or self._track_data.sectors is None:
+            return None
+
+        s = self._track_data.sectors
+        track_length = self._track_data.track_length
+        if lap_distance == track_length:
+            lap_distance = 0
+        if 0 <= lap_distance < s.s1:
+            return LapData.Sector.SECTOR1
+        if s.s1 <= lap_distance < s.s2:
+            return LapData.Sector.SECTOR2
+        if s.s2 <= lap_distance < track_length:
+            return LapData.Sector.SECTOR3
+        return None

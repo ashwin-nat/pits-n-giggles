@@ -26,9 +26,8 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-
 from apps.hud.common import get_ref_row_index
-from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
+from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
@@ -140,6 +139,19 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.hud_overlay_ui_scale,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            speed_unit=settings.HUD.hud_overlay_speed_unit,
+            fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_circuit_info,
+            overlay_cls=CircuitInfoOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.circuit_info_ui_scale,
+            circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
@@ -336,6 +348,15 @@ class OverlaysMgr:
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
+            high_prio=True,
+        )
+
+    def set_circuit_info_length(self, length: int):
+        self.logger.debug(f"Setting circuit info length to {length}px")
+        self.window_manager.unicast_data(
+            overlay_id=CircuitInfoOverlay.OVERLAY_ID,
+            event='set_circuit_info_length',
+            data={'length': length},
             high_prio=True,
         )
 

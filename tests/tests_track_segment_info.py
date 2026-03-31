@@ -31,6 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
+from lib.f1_types.packet_2_lap_data import LapData
 from lib.track_segment_info import TrackSegments, TrackSegmentsDatabase
 from lib.track_segment_info.types import (BaseSegmentInfo,
                                            ComplexCornerSegmentInfo,
@@ -46,12 +47,13 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
     @staticmethod
     def _track(segments: list) -> dict:
         """Wrap segments in a minimal valid top-level track dict."""
-        return {"circuit_name": "Test Circuit", "circuit_number": 99, "segments": segments}
+        return {"circuit_name": "Test Circuit", "circuit_number": 99, "track_length": 7000, "segments": segments}
 
     def setUp(self):
         self.track_data = {
             "circuit_name": "Circuit de Spa-Francorchamps",
             "circuit_number": 12,
+            "track_length": 7004,
             "segments": [
                 {
                     "type": "corner",
@@ -327,14 +329,21 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 
     def test_top_level_missing_circuit_name(self):
         """Missing circuit_name raises ValidationError."""
-        data = {"circuit_number": 1, "segments": []}
+        data = {"circuit_number": 1, "track_length": 1000, "segments": []}
         tracker = TrackSegments()
         with self.assertRaises(ValidationError):
             tracker.load_track_data(data)
 
     def test_top_level_missing_circuit_number(self):
         """Missing circuit_number raises ValidationError."""
-        data = {"circuit_name": "X", "segments": []}
+        data = {"circuit_name": "X", "track_length": 1000, "segments": []}
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(data)
+
+    def test_top_level_missing_track_length(self):
+        """Missing track_length raises ValidationError."""
+        data = {"circuit_name": "X", "circuit_number": 1, "segments": []}
         tracker = TrackSegments()
         with self.assertRaises(ValidationError):
             tracker.load_track_data(data)
@@ -457,9 +466,156 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+class TestGetSector(F1TelemetryUnitTestsBase):
+
+    _S1 = 500
+    _S2 = 1500
+    _TRACK_LENGTH = 3000
+
+    @staticmethod
+    def _track_with_sectors(sectors=None, track_length=3000):
+        data = {
+            "circuit_name": "Sector Test Circuit",
+            "circuit_number": 1,
+            "track_length": track_length,
+            "segments": [],
+        }
+        if sectors is not None:
+            data["sectors"] = sectors
+        return data
+
+    def setUp(self):
+        self.tracker = TrackSegments()
+        self.tracker.load_track_data(
+            self._track_with_sectors({"s1": self._S1, "s2": self._S2}, self._TRACK_LENGTH)
+        )
+
+    # --- Sector 1 -------------------------------------------------------------------------
+
+    def test_sector_1_at_zero(self):
+        """Position 0 is in SECTOR1."""
+        self.assertEqual(self.tracker.get_sector(0), LapData.Sector.SECTOR1)
+
+    def test_sector_1_mid(self):
+        """Position in the middle of S1 returns SECTOR1."""
+        self.assertEqual(self.tracker.get_sector(250), LapData.Sector.SECTOR1)
+
+    def test_sector_1_just_before_s1(self):
+        """Position just before s1 is still in SECTOR1."""
+        self.assertEqual(self.tracker.get_sector(499), LapData.Sector.SECTOR1)
+
+    # --- Sector 2 -------------------------------------------------------------------------
+
+    def test_sector_2_at_s1(self):
+        """Position exactly at s1 is in SECTOR2."""
+        self.assertEqual(self.tracker.get_sector(500), LapData.Sector.SECTOR2)
+
+    def test_sector_2_mid(self):
+        """Position in the middle of S2 returns SECTOR2."""
+        self.assertEqual(self.tracker.get_sector(1000), LapData.Sector.SECTOR2)
+
+    def test_sector_2_just_before_s2(self):
+        """Position just before s2 is still in SECTOR2."""
+        self.assertEqual(self.tracker.get_sector(1499), LapData.Sector.SECTOR2)
+
+    # --- Sector 3 -------------------------------------------------------------------------
+
+    def test_sector_3_at_s2(self):
+        """Position exactly at s2 is in SECTOR3."""
+        self.assertEqual(self.tracker.get_sector(1500), LapData.Sector.SECTOR3)
+
+    def test_sector_3_mid(self):
+        """Position in the middle of S3 returns SECTOR3."""
+        self.assertEqual(self.tracker.get_sector(2500), LapData.Sector.SECTOR3)
+
+    def test_sector_3_just_before_track_length(self):
+        """Position just before track_length is still in SECTOR3."""
+        self.assertEqual(self.tracker.get_sector(2999), LapData.Sector.SECTOR3)
+
+    # --- Out of range ---------------------------------------------------------------------
+
+    def test_at_track_length_returns_sector_1(self):
+        """Position exactly at track_length wraps to lap start and returns SECTOR1."""
+        self.assertEqual(self.tracker.get_sector(3000), LapData.Sector.SECTOR1)
+
+    def test_beyond_track_length_returns_none(self):
+        """Position beyond track_length returns None."""
+        self.assertIsNone(self.tracker.get_sector(5000))
+
+    def test_negative_position_returns_none(self):
+        """Negative position returns None."""
+        self.assertIsNone(self.tracker.get_sector(-1))
+
+    # --- No data --------------------------------------------------------------------------
+
+    def test_no_sectors_key_returns_none(self):
+        """get_sector returns None when sectors key is absent from track data."""
+        tracker = TrackSegments()
+        tracker.load_track_data(self._track_with_sectors(sectors=None))
+        self.assertIsNone(tracker.get_sector(100))
+
+    def test_no_track_loaded_returns_none(self):
+        """get_sector returns None when no track data has been loaded."""
+        tracker = TrackSegments()
+        self.assertIsNone(tracker.get_sector(100))
+
+    # --- Validation -----------------------------------------------------------------------
+
+    def test_sectors_s1_equal_s2_raises(self):
+        """s1 == s2 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 500}))
+
+    def test_sectors_s1_greater_than_s2_raises(self):
+        """s1 > s2 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 1500, "s2": 500}))
+
+    def test_sectors_missing_s1_raises(self):
+        """sectors without s1 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s2": 1500}))
+
+    def test_sectors_missing_s2_raises(self):
+        """sectors without s2 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500}))
+
+    def test_sectors_s1_zero_raises(self):
+        """s1 == 0 raises ValidationError (SECTOR1 would be unreachable)."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 0, "s2": 500}))
+
+    def test_sectors_s1_negative_raises(self):
+        """Negative s1 raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": -100, "s2": 500}))
+
+    def test_sectors_s2_equal_track_length_raises(self):
+        """s2 == track_length raises ValidationError (SECTOR3 would be unreachable)."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 3000}, track_length=3000))
+
+    def test_sectors_s2_greater_than_track_length_raises(self):
+        """s2 > track_length raises ValidationError."""
+        tracker = TrackSegments()
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(self._track_with_sectors({"s1": 500, "s2": 4000}, track_length=3000))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 _CIRCUIT_A = {
     "circuit_name": "Alpha Circuit",
     "circuit_number": 1,
+    "track_length": 1000,
     "segments": [
         {"type": "straight", "name": "Main Straight", "start_m": 0,   "end_m": 500},
         {"type": "corner",   "name": "Turn One",      "start_m": 500, "end_m": 700, "corner_number": 1},
@@ -469,9 +625,18 @@ _CIRCUIT_A = {
 _CIRCUIT_B = {
     "circuit_name": "Beta Circuit",
     "circuit_number": 2,
+    "track_length": 400,
     "segments": [
         {"type": "corner", "name": "Hairpin", "start_m": 0, "end_m": 300, "corner_number": 1},
     ],
+}
+
+_CIRCUIT_C = {
+    "circuit_name": "Gamma Circuit",
+    "circuit_number": 3,
+    "track_length": 1000,
+    "segments": [],
+    "sectors": {"s1": 300, "s2": 700},
 }
 
 
@@ -479,7 +644,7 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        for circuit in (_CIRCUIT_A, _CIRCUIT_B):
+        for circuit in (_CIRCUIT_A, _CIRCUIT_B, _CIRCUIT_C):
             path = os.path.join(self._tmp.name, f"{circuit['circuit_name']}.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(circuit, fh)
@@ -492,66 +657,66 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
 
     def test_len_equals_number_of_files(self):
         """Database length equals the number of JSON files loaded."""
-        self.assertEqual(len(self.db), 2)
+        self.assertEqual(len(self.db), 3)
 
     def test_contains_known_circuit(self):
-        """Known circuit name is found via 'in'."""
-        self.assertIn("Alpha Circuit", self.db)
+        """Known circuit number is found via 'in'."""
+        self.assertIn(1, self.db)
 
     def test_not_contains_unknown_circuit(self):
-        """Unknown circuit name is not found via 'in'."""
-        self.assertNotIn("Unknown Circuit", self.db)
+        """Unknown circuit number is not found via 'in'."""
+        self.assertNotIn(999, self.db)
 
-    def test_iter_yields_all_circuit_names(self):
-        """Iterating the database yields all circuit names."""
-        self.assertEqual(set(self.db), {"Alpha Circuit", "Beta Circuit"})
+    def test_iter_yields_all_circuit_numbers(self):
+        """Iterating the database yields all circuit numbers."""
+        self.assertEqual(set(self.db), {1, 2, 3})
 
     # --- get() --------------------------------------------------------------------------------
 
     def test_get_returns_track_segments_instance(self):
-        """get() returns a TrackSegments instance for a known circuit."""
-        ts = self.db.get("Alpha Circuit")
+        """get() returns a TrackSegments instance for a known circuit number."""
+        ts = self.db.get(1)
         self.assertIsInstance(ts, TrackSegments)
 
     def test_get_unknown_returns_none(self):
-        """get() returns None for an unknown circuit."""
-        self.assertIsNone(self.db.get("No Such Circuit"))
+        """get() returns None for an unknown circuit number."""
+        self.assertIsNone(self.db.get(999))
 
     # --- __getitem__ --------------------------------------------------------------------------
 
     def test_getitem_known_circuit(self):
-        """__getitem__ returns the TrackSegments for a known circuit."""
-        ts = self.db["Beta Circuit"]
+        """__getitem__ returns the TrackSegments for a known circuit number."""
+        ts = self.db[2]
         self.assertIsInstance(ts, TrackSegments)
         self.assertEqual(ts.circuit_name, "Beta Circuit")
 
     def test_getitem_unknown_raises_key_error(self):
-        """__getitem__ raises KeyError for an unknown circuit."""
+        """__getitem__ raises KeyError for an unknown circuit number."""
         with self.assertRaises(KeyError):
-            _ = self.db["No Such Circuit"]
+            _ = self.db[999]
 
     # --- get_segment_info() -------------------------------------------------------------------
 
     def test_get_segment_info_returns_correct_segment(self):
-        """get_segment_info returns the right segment for a known circuit and position."""
-        seg = self.db.get_segment_info("Alpha Circuit", 250)
+        """get_segment_info returns the right segment for a known circuit number and position."""
+        seg = self.db.get_segment_info(1, 250)
         self.assertIsInstance(seg, StraightSegmentInfo)
         self.assertEqual(seg.name, "Main Straight")
 
     def test_get_segment_info_corner(self):
         """get_segment_info returns a corner segment at the right position."""
-        seg = self.db.get_segment_info("Alpha Circuit", 600)
+        seg = self.db.get_segment_info(1, 600)
         self.assertIsInstance(seg, CornerSegmentInfo)
         self.assertEqual(seg.corner_number, 1)
 
     def test_get_segment_info_outside_range_returns_none(self):
         """get_segment_info returns None for a position outside all segments."""
-        seg = self.db.get_segment_info("Alpha Circuit", 9999)
+        seg = self.db.get_segment_info(1, 9999)
         self.assertIsNone(seg)
 
     def test_get_segment_info_unknown_circuit_returns_none(self):
-        """get_segment_info returns None for an unknown circuit."""
-        seg = self.db.get_segment_info("Unknown Circuit", 100)
+        """get_segment_info returns None for an unknown circuit number."""
+        seg = self.db.get_segment_info(999, 100)
         self.assertIsNone(seg)
 
     # --- Empty directory ----------------------------------------------------------------------
@@ -577,3 +742,32 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
             fh.write("{ not-valid-json }")
         with self.assertRaises(json.JSONDecodeError):
             TrackSegmentsDatabase(self._tmp.name)
+
+    # --- get_sector() -------------------------------------------------------------------------
+
+    def test_get_sector_sector_1(self):
+        """get_sector returns SECTOR1 for a position in the first sector."""
+        sector = self.db.get_sector(3, 100)
+        self.assertEqual(sector, LapData.Sector.SECTOR1)
+
+    def test_get_sector_sector_2(self):
+        """get_sector returns SECTOR2 for a position in the second sector."""
+        sector = self.db.get_sector(3, 500)
+        self.assertEqual(sector, LapData.Sector.SECTOR2)
+
+    def test_get_sector_sector_3(self):
+        """get_sector returns SECTOR3 for a position in the third sector."""
+        sector = self.db.get_sector(3, 800)
+        self.assertEqual(sector, LapData.Sector.SECTOR3)
+
+    def test_get_sector_beyond_track_length_returns_none(self):
+        """get_sector returns None for a position beyond track_length."""
+        self.assertIsNone(self.db.get_sector(3, 9999))
+
+    def test_get_sector_unknown_circuit_returns_none(self):
+        """get_sector returns None for an unknown circuit number."""
+        self.assertIsNone(self.db.get_sector(999, 100))
+
+    def test_get_sector_no_sectors_in_circuit_returns_none(self):
+        """get_sector returns None for a circuit with no sector data."""
+        self.assertIsNone(self.db.get_sector(1, 100))

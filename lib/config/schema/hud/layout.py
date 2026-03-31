@@ -38,6 +38,7 @@ TRACK_MAP_OVERLAY_ID = "track_map"
 INPUT_TELEMETRY_OVERLAY_ID = "input_telemetry"
 TRACK_RADAR_OVERLAY_ID = "track_radar"
 HUD_OVERLAY_ID = "hud_overlay"
+CIRCUIT_INFO_OVERLAY_ID = "circuit_info"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
@@ -96,7 +97,11 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
     HUD_OVERLAY_ID: OverlayPosition(
         x=300,
         y=600,
-    )
+    ),
+    CIRCUIT_INFO_OVERLAY_ID: OverlayPosition(
+        x=600,
+        y=600,
+    ),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------

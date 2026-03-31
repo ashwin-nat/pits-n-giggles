@@ -30,11 +30,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_RADAR_OVERLAY_ID, HudSettings, MfdPageSettings,
-                        MfdSettings, OverlayPosition, TimingTowerColOptions,
-                        WeatherMFDUIType)
+from lib.config import (CIRCUIT_INFO_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
+                        LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                        TRACK_RADAR_OVERLAY_ID, HudSettings, HudOverlaySpeedUnit,
+                        HudOverlayFuelEstimationMode, MfdPageSettings, MfdSettings,
+                        OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -83,9 +83,55 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.show_hud_overlay, True)
         self.assertEqual(settings.hud_overlay_ui_scale, 1.0)
+        self.assertEqual(settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+        self.assertTrue(settings.hud_overlay_speed_unit_kmph)
+        self.assertFalse(settings.hud_overlay_speed_unit_mph)
+        self.assertEqual(settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
+        self.assertEqual(settings.show_circuit_info, True)
+        self.assertEqual(settings.circuit_info_ui_scale, 1.0)
+        self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
+        self.assertEqual(settings.circuit_info_length, 1400)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
+
+    def test_hud_overlay_speed_unit_validation(self):
+        """Test hud_overlay_speed_unit field accepts valid enum values and exposes bool properties"""
+        kmph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.KMPH)
+        self.assertEqual(kmph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+        self.assertTrue(kmph_settings.hud_overlay_speed_unit_kmph)
+        self.assertFalse(kmph_settings.hud_overlay_speed_unit_mph)
+
+        mph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.MPH)
+        self.assertEqual(mph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.MPH)
+        self.assertFalse(mph_settings.hud_overlay_speed_unit_kmph)
+        self.assertTrue(mph_settings.hud_overlay_speed_unit_mph)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_speed_unit=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_speed_unit="invalid")  # type: ignore
+
+    def test_hud_overlay_fuel_estimation_mode_validation(self):
+        """Test hud_overlay_fuel_estimation_mode field accepts valid enum values and exposes bool properties"""
+        lr_settings = HudSettings(hud_overlay_fuel_estimation_mode=HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertEqual(lr_settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
+        self.assertTrue(lr_settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertFalse(lr_settings.hud_overlay_fuel_estimation_game_built_in)
+
+        game_settings = HudSettings(hud_overlay_fuel_estimation_mode=HudOverlayFuelEstimationMode.GAME_BUILT_IN)
+        self.assertEqual(game_settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.GAME_BUILT_IN)
+        self.assertFalse(game_settings.hud_overlay_fuel_estimation_linear_regression)
+        self.assertTrue(game_settings.hud_overlay_fuel_estimation_game_built_in)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_fuel_estimation_mode=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(hud_overlay_fuel_estimation_mode="invalid")  # type: ignore
 
     def test_enabled_validation(self):
         """Test valid and invalid log_file_size values"""
@@ -371,12 +417,14 @@ class TestHudSettings(TestF1ConfigBase):
                         show_track_map=False,
                         show_input_overlay=False,
                         show_track_radar_overlay=False,
-                        show_hud_overlay=False)
+                        show_hud_overlay=False,
+                        show_circuit_info=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
                                show_mfd=False, show_track_map=False, show_input_overlay=False,
-                               show_track_radar_overlay=False, show_hud_overlay=False)
+                               show_track_radar_overlay=False, show_hud_overlay=False,
+                               show_circuit_info=False)
         self.assertEqual(settings.enabled, True)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.show_timing_tower, False)
@@ -874,3 +922,84 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(AttributeError):
             HudSettings(mfd_weather_page_ui_type=WeatherMFDUIType.UNKNOWN)
+
+    def test_show_circuit_info(self):
+        hud_settings = HudSettings(show_circuit_info=True)
+        self.assertEqual(hud_settings.show_circuit_info, True)
+
+        hud_settings = HudSettings(show_circuit_info=False)
+        self.assertEqual(hud_settings.show_circuit_info, False)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_circuit_info=420)
+
+    def test_circuit_info_ui_scale(self):
+        hud_settings = HudSettings(circuit_info_ui_scale=1.1)
+        self.assertEqual(hud_settings.circuit_info_ui_scale, 1.1)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=420)
+
+        # Boundary value: minimum (0.5)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=0.4)
+        HudSettings(circuit_info_ui_scale=0.5)
+
+        # Boundary value: maximum (2.0)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_ui_scale=2.1)
+        HudSettings(circuit_info_ui_scale=2.0)
+
+    def test_circuit_info_toggle_udp_action_code(self):
+        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=1)
+        self.assertEqual(hud_settings.circuit_info_toggle_udp_action_code, 1)
+
+        hud_settings = HudSettings(circuit_info_toggle_udp_action_code=None)
+        self.assertIsNone(hud_settings.circuit_info_toggle_udp_action_code)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_toggle_udp_action_code="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_toggle_udp_action_code=420)
+
+    def test_circuit_info_length_validation(self):
+        """Test valid and invalid circuit_info_length values"""
+        # Valid value
+        hud_settings = HudSettings(circuit_info_length=800)
+        self.assertEqual(hud_settings.circuit_info_length, 800)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length="invalid")
+
+        # Well out of range
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=-10)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=9999)
+
+        # Boundary value: minimum (200)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=199)
+        HudSettings(circuit_info_length=200)
+
+        # Boundary value: maximum (1500)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=1501)
+        HudSettings(circuit_info_length=1500)
+

@@ -94,5 +94,9 @@
       "name": "Nigel Mansell Turn",
       "corner_number": 17
     }
-  ]
+  ],
+  "sectors": {
+    "s1": 2037,
+    "s2": 3592
+  }
 }

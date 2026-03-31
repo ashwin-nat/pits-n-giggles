@@ -32,7 +32,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.event_counter import EventCounter
-from lib.config import CaptureSettings, PngSettings
+from lib.config import CIRCUIT_INFO_OVERLAY_ID, CaptureSettings, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -65,6 +65,7 @@ class UdpActionCodes:
     toggle_track_radar_overlay: Optional[int] = None
     toggle_input_overlay: Optional[int] = None
     mfd_interaction: Optional[int] = None
+    toggle_circuit_info_overlay: Optional[int] = None
 
     _MAP = {
         "udp_tyre_delta_action_code": "tyre_delta",
@@ -78,6 +79,7 @@ class UdpActionCodes:
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
         "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
         "mfd_interaction_udp_action_code": "mfd_interaction",
+        "circuit_info_toggle_udp_action_code": "toggle_circuit_info_overlay",
     }
 
     def update(self, key: str, value: int):
@@ -191,6 +193,7 @@ class F1TelemetryHandler:
             toggle_track_radar_overlay=settings.HUD.track_radar_overlay_toggle_udp_action_code,
             toggle_input_overlay=settings.HUD.input_overlay_toggle_udp_action_code,
             mfd_interaction=settings.HUD.mfd_interaction_udp_action_code,
+            toggle_circuit_info_overlay=settings.HUD.circuit_info_toggle_udp_action_code,
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
@@ -545,6 +548,11 @@ class F1TelemetryHandler:
                                     self.m_udp_action_codes.mfd_interaction,
                                     'MFD interaction',
                                     self._processMFDInteraction)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_circuit_info_overlay,
+                                    'Toggle circuit info overlay',
+                                    lambda: self._processToggleHud(CIRCUIT_INFO_OVERLAY_ID))
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """

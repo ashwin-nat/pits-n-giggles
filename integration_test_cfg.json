@@ -117,6 +117,12 @@
         "show_hud_overlay": true,
         "hud_overlay_ui_scale": 1.21,
         "hud_overlay_toggle_udp_action_code": null,
+        "hud_overlay_speed_unit": "km/h",
+        "hud_overlay_fuel_estimation_mode": "Linear regression",
+        "show_circuit_info": true,
+        "circuit_info_ui_scale": 1.0,
+        "circuit_info_toggle_udp_action_code": null,
+        "circuit_info_length": 918,
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
@@ -132,12 +138,16 @@
                 "y": 569
             },
             "track_radar": {
-                "x": 3073,
-                "y": 512
+                "x": 3392,
+                "y": 648
             },
             "hud_overlay": {
                 "x": 2696,
                 "y": 592
+            },
+            "circuit_info": {
+                "x": 3517,
+                "y": 71
             },
             "mfd": {
                 "x": 3332,
