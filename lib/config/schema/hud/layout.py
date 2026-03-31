@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from enum import Enum
 from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
@@ -31,14 +32,15 @@ from ..diff import ConfigDiffMixin
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
-LAP_TIMER_OVERLAY_ID = "lap_timer"
-TIMING_TOWER_OVERLAY_ID = "timing_tower"
-MFD_OVERLAY_ID = "mfd"
-TRACK_MAP_OVERLAY_ID = "track_map"
-INPUT_TELEMETRY_OVERLAY_ID = "input_telemetry"
-TRACK_RADAR_OVERLAY_ID = "track_radar"
-HUD_OVERLAY_ID = "hud_overlay"
-CIRCUIT_INFO_OVERLAY_ID = "circuit_info"
+class OverlayId(str, Enum):
+    LAP_TIMER       = "lap_timer"
+    TIMING_TOWER    = "timing_tower"
+    MFD             = "mfd"
+    TRACK_MAP       = "track_map"
+    INPUT_TELEMETRY = "input_telemetry"
+    TRACK_RADAR     = "track_radar"
+    HUD             = "hud_overlay"
+    CIRCUIT_INFO    = "circuit_info"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
@@ -70,35 +72,35 @@ class OverlayPosition(ConfigDiffMixin, BaseModel):
 # -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
 DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
-    LAP_TIMER_OVERLAY_ID: OverlayPosition(
+    OverlayId.LAP_TIMER: OverlayPosition(
         x=600,
         y=60,
     ),
-    TIMING_TOWER_OVERLAY_ID: OverlayPosition(
+    OverlayId.TIMING_TOWER: OverlayPosition(
         x=10,
         y=55,
     ),
-    MFD_OVERLAY_ID: OverlayPosition(
+    OverlayId.MFD: OverlayPosition(
         x=10,
         y=355,
     ),
-    # TRACK_MAP_OVERLAY_ID: OverlayPosition(
+    # OverlayId.TRACK_MAP: OverlayPosition(
     #     x=10,
     #     y=600,
     # ),
-    INPUT_TELEMETRY_OVERLAY_ID: OverlayPosition(
+    OverlayId.INPUT_TELEMETRY: OverlayPosition(
         x=10,
         y=600,
     ),
-    TRACK_RADAR_OVERLAY_ID: OverlayPosition(
+    OverlayId.TRACK_RADAR: OverlayPosition(
         x=40,
         y=600,
     ),
-    HUD_OVERLAY_ID: OverlayPosition(
+    OverlayId.HUD: OverlayPosition(
         x=300,
         y=600,
     ),
-    CIRCUIT_INFO_OVERLAY_ID: OverlayPosition(
+    OverlayId.CIRCUIT_INFO: OverlayPosition(
         x=600,
         y=600,
     ),

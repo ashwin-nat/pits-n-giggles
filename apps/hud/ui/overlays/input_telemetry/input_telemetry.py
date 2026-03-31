@@ -29,7 +29,7 @@ from typing import final
 
 from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import INPUT_TELEMETRY_OVERLAY_ID, OverlayPosition
+from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ class InputTelemetryOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "input_telemetry.qml"
-    OVERLAY_ID = INPUT_TELEMETRY_OVERLAY_ID
+    OVERLAY_ID = OverlayId.INPUT_TELEMETRY
 
     def __init__(self,
                  config: OverlayPosition,

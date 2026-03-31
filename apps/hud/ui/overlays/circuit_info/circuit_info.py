@@ -29,7 +29,7 @@ from typing import Optional, final
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import CIRCUIT_INFO_OVERLAY_ID, OverlayPosition
+from lib.config import OverlayId, OverlayPosition
 from lib.f1_types import F1Utils
 from lib.track_segment_info.database import TrackSegmentsDatabase
 
@@ -45,7 +45,7 @@ class CircuitInfoOverlay(BaseOverlayQML):
 
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "circuit_info.qml"
-    OVERLAY_ID = CIRCUIT_INFO_OVERLAY_ID
+    OVERLAY_ID = OverlayId.CIRCUIT_INFO
 
     GREEN_SECTOR_COLOUR = "#28a745"
     YELLOW_SECTOR_COLOUR = "#ffc107"

@@ -32,7 +32,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.event_counter import EventCounter
-from lib.config import CIRCUIT_INFO_OVERLAY_ID, CaptureSettings, PngSettings
+from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -552,7 +552,7 @@ class F1TelemetryHandler:
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_circuit_info_overlay,
                                     'Toggle circuit info overlay',
-                                    lambda: self._processToggleHud(CIRCUIT_INFO_OVERLAY_ID))
+                                    lambda: self._processToggleHud(OverlayId.CIRCUIT_INFO))
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """

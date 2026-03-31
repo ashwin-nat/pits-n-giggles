@@ -30,11 +30,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import (CIRCUIT_INFO_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
-                        LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_RADAR_OVERLAY_ID, HudSettings, HudOverlaySpeedUnit,
+from lib.config import (HudSettings, HudOverlaySpeedUnit,
                         HudOverlayFuelEstimationMode, MfdPageSettings, MfdSettings,
-                        OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
+                        OverlayId, OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -788,26 +786,26 @@ class TestHudSettings(TestF1ConfigBase):
         # Assume input_telemetry is new
         loaded_settings = HudSettings(enabled=True,
                                       layout={
-                                          LAP_TIMER_OVERLAY_ID: OverlayPosition(x=1, y=1),
-                                          TIMING_TOWER_OVERLAY_ID: OverlayPosition(x=2, y=2),
-                                          MFD_OVERLAY_ID: OverlayPosition(x=3, y=3),
-                                          TRACK_RADAR_OVERLAY_ID: OverlayPosition(x=4, y=4),
+                                          OverlayId.LAP_TIMER: OverlayPosition(x=1, y=1),
+                                          OverlayId.TIMING_TOWER: OverlayPosition(x=2, y=2),
+                                          OverlayId.MFD: OverlayPosition(x=3, y=3),
+                                          OverlayId.TRACK_RADAR: OverlayPosition(x=4, y=4),
                                       })
 
         # Validate that the input telemetry key got inserted with defaults
-        self.assertIn(INPUT_TELEMETRY_OVERLAY_ID, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[INPUT_TELEMETRY_OVERLAY_ID],
-                         HudSettings.get_default_layout_dict()[INPUT_TELEMETRY_OVERLAY_ID])
+        self.assertIn(OverlayId.INPUT_TELEMETRY, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[OverlayId.INPUT_TELEMETRY],
+                         HudSettings.get_default_layout_dict()[OverlayId.INPUT_TELEMETRY])
 
         # Validate that the other keys are still there and their values are preserved
-        self.assertIn(LAP_TIMER_OVERLAY_ID, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[LAP_TIMER_OVERLAY_ID], OverlayPosition(x=1, y=1))
-        self.assertIn(TIMING_TOWER_OVERLAY_ID, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[TIMING_TOWER_OVERLAY_ID], OverlayPosition(x=2, y=2))
-        self.assertIn(MFD_OVERLAY_ID, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[MFD_OVERLAY_ID], OverlayPosition(x=3, y=3))
-        self.assertIn(TRACK_RADAR_OVERLAY_ID, loaded_settings.layout)
-        self.assertEqual(loaded_settings.layout[TRACK_RADAR_OVERLAY_ID], OverlayPosition(x=4, y=4))
+        self.assertIn(OverlayId.LAP_TIMER, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[OverlayId.LAP_TIMER], OverlayPosition(x=1, y=1))
+        self.assertIn(OverlayId.TIMING_TOWER, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[OverlayId.TIMING_TOWER], OverlayPosition(x=2, y=2))
+        self.assertIn(OverlayId.MFD, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[OverlayId.MFD], OverlayPosition(x=3, y=3))
+        self.assertIn(OverlayId.TRACK_RADAR, loaded_settings.layout)
+        self.assertEqual(loaded_settings.layout[OverlayId.TRACK_RADAR], OverlayPosition(x=4, y=4))
 
     def test_col_options_diff(self):
 

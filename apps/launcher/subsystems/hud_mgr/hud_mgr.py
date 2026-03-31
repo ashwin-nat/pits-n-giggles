@@ -33,11 +33,7 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (CIRCUIT_INFO_OVERLAY_ID, HUD_OVERLAY_ID,
-                        INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, OverlayPosition, PngSettings)
+from lib.config import (HudSettings, OverlayId, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -520,7 +516,7 @@ class HudAppMgr(PngAppMgrBase):
         # pylint: disable=unsubscriptable-object
         self.overlays_adj_popup.set_items([
             SliderItem(
-                key=LAP_TIMER_OVERLAY_ID,
+                key=OverlayId.LAP_TIMER,
                 label="Lap Timer Scale",
                 min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -528,7 +524,7 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_lap_timer,
             ),
             SliderItem(
-                key=TIMING_TOWER_OVERLAY_ID,
+                key=OverlayId.TIMING_TOWER,
                 label="Timing Tower Scale",
                 min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -536,7 +532,7 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_timing_tower,
             ),
             SliderItem(
-                key=MFD_OVERLAY_ID,
+                key=OverlayId.MFD,
                 label="MFD Scale",
                 min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -544,7 +540,7 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_mfd,
             ),
             # SliderItem(
-            #     key=TRACK_MAP_OVERLAY_ID,
+            #     key=OverlayId.TRACK_MAP,
             #     label="Track Map Scale",
             #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
             #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -552,7 +548,7 @@ class HudAppMgr(PngAppMgrBase):
             #     visible=hud_settings.show_track_map_overlay,
             # ),
             SliderItem(
-                key=INPUT_TELEMETRY_OVERLAY_ID,
+                key=OverlayId.INPUT_TELEMETRY,
                 label="Input Telemetry Scale",
                 min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -560,7 +556,7 @@ class HudAppMgr(PngAppMgrBase):
                 visible=hud_settings.show_input_overlay,
             ),
             SliderItem(
-                key=TRACK_RADAR_OVERLAY_ID,
+                key=OverlayId.TRACK_RADAR,
                 label="Track Radar Scale",
                 min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -569,7 +565,7 @@ class HudAppMgr(PngAppMgrBase):
             ),
 
             SliderItem(
-                key=HUD_OVERLAY_ID,
+                key=OverlayId.HUD,
                 label="HUD Overlay Scale",
                 min=HudSettings.model_fields["hud_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["hud_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -578,7 +574,7 @@ class HudAppMgr(PngAppMgrBase):
             ),
 
             SliderItem(
-                key=CIRCUIT_INFO_OVERLAY_ID,
+                key=OverlayId.CIRCUIT_INFO,
                 label="Circuit Info Scale",
                 min=HudSettings.model_fields["circuit_info_ui_scale"].json_schema_extra["ui"]["min_ui"],
                 max=HudSettings.model_fields["circuit_info_ui_scale"].json_schema_extra["ui"]["max_ui"],
@@ -633,14 +629,14 @@ class HudAppMgr(PngAppMgrBase):
 
         # ---- Build candidate settings (ALLOW invalid intermediate state here) ----
         new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.lap_timer_ui_scale = values[LAP_TIMER_OVERLAY_ID] / 100.0
-        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
-        new_settings.HUD.mfd_ui_scale = values[MFD_OVERLAY_ID] / 100.0
-        # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
-        new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
-        new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
-        new_settings.HUD.hud_overlay_ui_scale = values[HUD_OVERLAY_ID] / 100.0
-        new_settings.HUD.circuit_info_ui_scale = values[CIRCUIT_INFO_OVERLAY_ID] / 100.0
+        new_settings.HUD.lap_timer_ui_scale = values[OverlayId.LAP_TIMER] / 100.0
+        new_settings.HUD.timing_tower_ui_scale = values[OverlayId.TIMING_TOWER] / 100.0
+        new_settings.HUD.mfd_ui_scale = values[OverlayId.MFD] / 100.0
+        # new_settings.HUD.track_map_ui_scale = values[OverlayId.TRACK_MAP] / 100.0
+        new_settings.HUD.input_overlay_ui_scale = values[OverlayId.INPUT_TELEMETRY] / 100.0
+        new_settings.HUD.track_radar_overlay_ui_scale = values[OverlayId.TRACK_RADAR] / 100.0
+        new_settings.HUD.hud_overlay_ui_scale = values[OverlayId.HUD] / 100.0
+        new_settings.HUD.circuit_info_ui_scale = values[OverlayId.CIRCUIT_INFO] / 100.0
 
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
@@ -719,14 +715,14 @@ class HudAppMgr(PngAppMgrBase):
 
         if hud_diff:
             key_to_oid = {
-                "lap_timer_ui_scale": LAP_TIMER_OVERLAY_ID,
-                "timing_tower_ui_scale": TIMING_TOWER_OVERLAY_ID,
-                "mfd_ui_scale": MFD_OVERLAY_ID,
-                "track_map_ui_scale": TRACK_MAP_OVERLAY_ID,
-                "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
-                "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
-                "hud_overlay_ui_scale": HUD_OVERLAY_ID,
-                "circuit_info_ui_scale": CIRCUIT_INFO_OVERLAY_ID,
+                "lap_timer_ui_scale": OverlayId.LAP_TIMER,
+                "timing_tower_ui_scale": OverlayId.TIMING_TOWER,
+                "mfd_ui_scale": OverlayId.MFD,
+                "track_map_ui_scale": OverlayId.TRACK_MAP,
+                "input_overlay_ui_scale": OverlayId.INPUT_TELEMETRY,
+                "track_radar_overlay_ui_scale": OverlayId.TRACK_RADAR,
+                "hud_overlay_ui_scale": OverlayId.HUD,
+                "circuit_info_ui_scale": OverlayId.CIRCUIT_INFO,
             }
 
             for key, data in hud_diff.items():

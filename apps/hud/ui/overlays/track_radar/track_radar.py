@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, final
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import TRACK_RADAR_OVERLAY_ID, OverlayPosition
+from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ class TrackRadarOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "track_radar.qml"
-    OVERLAY_ID = TRACK_RADAR_OVERLAY_ID
+    OVERLAY_ID = OverlayId.TRACK_RADAR
 
     def __init__(self,
                  config: OverlayPosition,

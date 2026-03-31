@@ -29,8 +29,8 @@ from typing import Any, Dict, Optional, final
 from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import (HUD_OVERLAY_ID, HudOverlayFuelEstimationMode,
-                        HudOverlaySpeedUnit, OverlayPosition)
+from lib.config import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+                        OverlayId, OverlayPosition)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -45,7 +45,7 @@ class HudOverlay(BaseOverlayQML):
 
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "hud_overlay.qml"
-    OVERLAY_ID = HUD_OVERLAY_ID
+    OVERLAY_ID = OverlayId.HUD
 
     def __init__(
         self,
