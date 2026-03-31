@@ -71,7 +71,8 @@ class BaseOverlay():
         - applying new configuration
         - returning geometry/position (`get_window_info`)
     - Drives UI lifecycle by calling:
-        - `_setup_window()`     (implemented by UI subclass)
+        - `_setup_window()`     (implemented by UI subclass — do not override in leaf classes)
+        - `post_setup()`        (no-op hook called after _setup_window; override in leaf classes)
         - `build_ui()`          (implemented by UI subclass)
         - `apply_config()`      (UI-specific geometry/opacity)
     - Ensures UI rebuilds occur when scale factor changes.
@@ -132,6 +133,7 @@ class BaseOverlay():
 
         # Create the actual window backend (widget or QML)
         self._setup_window()
+        self.post_setup()
         self.build_ui()
         self.apply_config()
 
@@ -183,6 +185,9 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # Abstract interface - implemented by QWidget and QML subclasses
     # ----------------------------------------------------------------------
+    def post_setup(self):
+        """Hook called after _setup_window() completes. Override in leaf classes with @final."""
+
     def _setup_window(self):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
         self.set_window_title(self.OVERLAY_ID)

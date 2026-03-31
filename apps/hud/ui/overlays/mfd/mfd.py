@@ -133,9 +133,8 @@ class MfdOverlay(BaseOverlayQML):
         ]
 
     @final
-    def _setup_window(self):
-        """Load QML and extract the root QQuickWindow. Init the pages in the specified order"""
-        super()._setup_window()
+    def post_setup(self):
+        """Init pages and QML properties after the window is ready."""
         self.root.pageLoaded.connect(self._on_page_loaded)
 
         for page_info in self.enabled_pages:
@@ -163,7 +162,7 @@ class MfdOverlay(BaseOverlayQML):
         # Simplest fix, deactivate everything else except current
         for page in self._mfd_pages:
             if page.KEY == page_key:
-                page.on_page_activated(item)
+                page._on_page_activated(item)
             elif page.is_active:
                 page.on_page_deactivated()
 

@@ -83,9 +83,8 @@ class CircuitInfoOverlay(BaseOverlayQML):
         self._register_handlers()
 
     @final
-    def _setup_window(self):
+    def post_setup(self):
         """Set initial QML properties when the window is ready."""
-        super()._setup_window()
         self._set_bar_width_property(self.circuit_info_length)
 
     def _register_handlers(self):

@@ -53,8 +53,7 @@ class LapTimesPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_activated(self, item: QQuickItem):
-        super().on_page_activated(item)
+    def on_page_activated(self, _: QQuickItem):
         # Invalidate the cache
         self._last_processed_data = []
 

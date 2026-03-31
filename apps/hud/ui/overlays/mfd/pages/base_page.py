@@ -105,11 +105,15 @@ class MfdPageBase:
     def page_item(self):
         return self.overlay.current_page_item
 
-    def on_page_activated(self, item: QQuickItem):
-        """Called when the page becomes active. Interested overlays should override this method."""
+    def _on_page_activated(self, item: QQuickItem):
+        """Internal activation — stores item, tracks stats, then calls the public hook."""
         self._page_item = item
         self._stats.track_event("__LIFECYCLE__", "activated")
         self.logger.debug(f"{self.KEY} | Page activated")
+        self.on_page_activated(item)
+
+    def on_page_activated(self, _: QQuickItem):
+        """Called when the page becomes active. Override in subclasses with @final."""
 
     def on_page_deactivated(self):
         """Called when the page becomes active. Interested overlays should override this method."""

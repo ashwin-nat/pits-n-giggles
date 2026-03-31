@@ -25,7 +25,7 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
@@ -110,9 +110,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.team_logo_uris = load_team_logos_uri_dict()
         self.tyre_icon_uris = load_tyre_icons_uri_dict()
 
-    def _setup_window(self):
-        """Override to set numRows property after QML loads."""
-        super()._setup_window()
+    @final
+    def post_setup(self):
+        """Set QML properties after the window is ready."""
         self.set_qml_property("numRows", self.total_rows)
         self.set_qml_property("showTeamLogos", self.show_team_logos)
         self.set_qml_property("showTyreInfo", self.show_tyre_info)
