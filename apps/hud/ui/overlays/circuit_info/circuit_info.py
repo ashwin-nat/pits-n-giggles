@@ -24,11 +24,13 @@
 
 import logging
 from pathlib import Path
-from typing import final, Optional
-from apps.hud.ui.infra.hf_types import HudOverlayData
+from typing import Optional, final
 
+from apps.hud.common import get_ref_row
+from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayPosition, CIRCUIT_INFO_OVERLAY_ID
+from lib.config import CIRCUIT_INFO_OVERLAY_ID, OverlayPosition
+from lib.f1_types import F1Utils
 from lib.track_segment_info.database import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -44,6 +46,13 @@ class CircuitInfoOverlay(BaseOverlayQML):
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "circuit_info.qml"
     OVERLAY_ID = CIRCUIT_INFO_OVERLAY_ID
+
+    GREEN_SECTOR_COLOUR = "#28a745"
+    YELLOW_SECTOR_COLOUR = "#ffc107"
+    RED_SECTOR_COLOUR = "#dc3545"
+    PURPLE_SECTOR_COLOUR = "#9b30ff"
+    NA_SECTOR_COLOUR = "#888888"
+
     def __init__(
         self,
         config: OverlayPosition,
@@ -85,6 +94,33 @@ class CircuitInfoOverlay(BaseOverlayQML):
             self.logger.debug('%s | Received "set_circuit_info_length" event. Length: %s', self.OVERLAY_ID, data)
             self.circuit_info_length = data["length"]
             self._set_bar_width_property(self.circuit_info_length)
+
+        @self.on_event("race_table_update")
+        def _handle_race_table_update(data: dict):
+            session_type = data["event-type"]
+            if session_type == "None":
+                return
+
+            ref_row = get_ref_row(data)
+            if not ref_row:
+                return
+
+            lap_info = ref_row["lap-info"]
+            curr_lap = lap_info["curr-lap"]
+
+            sectors = curr_lap["sector-status"]
+            # Ignore the final sector which will never be "completed" in the current lap
+            for i, sector in enumerate(sectors[:-1]):
+                sector_num = i + 1
+                sector_colour = {
+                    F1Utils.SECTOR_STATUS_NA : self.NA_SECTOR_COLOUR,
+                    F1Utils.SECTOR_STATUS_YELLOW : self.YELLOW_SECTOR_COLOUR,
+                    F1Utils.SECTOR_STATUS_GREEN : self.GREEN_SECTOR_COLOUR,
+                    F1Utils.SECTOR_STATUS_INVALID : self.RED_SECTOR_COLOUR,
+                    F1Utils.SECTOR_STATUS_PURPLE : self.PURPLE_SECTOR_COLOUR,
+                }.get(sector, self.NA_SECTOR_COLOUR)
+
+                self.set_completed_sector_color(sector_num, sector_colour)
 
     def _set_bar_width_property(self, length: int):
         self.set_qml_property("barWidth", length)
@@ -131,4 +167,3 @@ class CircuitInfoOverlay(BaseOverlayQML):
             })
         else:
             self.set_qml_property("segmentInfo", None)
-
