@@ -141,6 +141,7 @@ class OverlaysMgr:
             scale_factor=settings.HUD.hud_overlay_ui_scale,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             speed_unit=settings.HUD.hud_overlay_speed_unit,
+            fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
         )
 
         self._register_overlay_if_enabled(
@@ -351,7 +352,7 @@ class OverlaysMgr:
         )
 
     def set_circuit_info_length(self, length: int):
-        self.logger.debug(f"Setting circuit info length to {length}m")
+        self.logger.debug(f"Setting circuit info length to {length}px")
         self.window_manager.unicast_data(
             overlay_id=CircuitInfoOverlay.OVERLAY_ID,
             event='set_circuit_info_length',
