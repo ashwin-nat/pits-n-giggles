@@ -286,6 +286,9 @@ class SettingsWindow(QDialog):
         content_layout.addWidget(self.category_list)
         content_layout.addWidget(self.stacked_widget, stretch=1)
 
+        self.udp_pane = self._build_udp_action_pane()
+        content_layout.addWidget(self.udp_pane)
+
         main_layout.addLayout(content_layout)
 
         # Button bar
@@ -1148,6 +1151,112 @@ class SettingsWindow(QDialog):
         if animation_group.animationCount() > 0:
             animation_group.start()
 
+    # -------------------------------------- UDP ACTION PANE ------------------------------------------------------------
+
+    def _collect_udp_from_model(self, model: BaseModel, results: List[Tuple[str, Optional[int]]]) -> None:
+        """Recursively collect (description, value) for all udp_action_code fields."""
+        for field_name, field_info in type(model).model_fields.items():
+            value = getattr(model, field_name)
+            extra = field_info.json_schema_extra or {}
+            if extra.get("udp_action_code"):
+                results.append((field_info.description or field_name, value))
+            elif isinstance(value, BaseModel):
+                self._collect_udp_from_model(value, results)
+            elif isinstance(value, dict):
+                for v in value.values():
+                    if isinstance(v, BaseModel):
+                        self._collect_udp_from_model(v, results)
+
+    def _collect_udp_action_codes(self) -> List[Tuple[str, Optional[int]]]:
+        """Return (description, code) pairs for all configured UDP action code fields, sorted by code."""
+        results: List[Tuple[str, Optional[int]]] = []
+        self._collect_udp_from_model(self.working_settings, results)
+        mapped = [(desc, code) for desc, code in results if code is not None]
+        mapped.sort(key=lambda x: x[1])
+        return mapped
+
+    def _build_udp_action_pane(self) -> QWidget:
+        """Build the right pane showing UDP action code mappings."""
+        pane = QWidget()
+        pane.setFixedWidth(280)
+        pane.setStyleSheet("""
+            QWidget { background-color: #1e1e1e; }
+            QScrollArea { border: none; background-color: transparent; }
+        """)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+
+        title = QLabel("UDP Action Codes")
+        title.setFont(QFont("Formula1", 11, QFont.Weight.Bold))
+        title.setStyleSheet("color: #569cd6; background-color: transparent; padding-bottom: 4px;")
+        layout.addWidget(title)
+
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("background-color: #3e3e3e; max-height: 1px;")
+        layout.addWidget(separator)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.udp_list_widget = QWidget()
+        self.udp_list_widget.setStyleSheet("background-color: transparent;")
+        self.udp_list_layout = QVBoxLayout()
+        self.udp_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.udp_list_layout.setSpacing(4)
+        self.udp_list_widget.setLayout(self.udp_list_layout)
+
+        scroll.setWidget(self.udp_list_widget)
+        layout.addWidget(scroll)
+
+        pane.setLayout(layout)
+        self._refresh_udp_action_pane()
+        return pane
+
+    def _refresh_udp_action_pane(self) -> None:
+        """Rebuild the UDP action code list in the right pane."""
+        while self.udp_list_layout.count():
+            item = self.udp_list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        mappings = self._collect_udp_action_codes()
+
+        if not mappings:
+            no_item = QLabel("No mappings configured")
+            no_item.setStyleSheet("color: #6a6a6a; font-style: italic; background-color: transparent;")
+            self.udp_list_layout.addWidget(no_item)
+        else:
+            for description, code in mappings:
+                row = QWidget()
+                row.setStyleSheet("background-color: #2d2d2d; border-radius: 4px;")
+                row_layout = QHBoxLayout()
+                row_layout.setContentsMargins(6, 4, 6, 4)
+                row_layout.setSpacing(8)
+
+                code_label = QLabel(str(code))
+                code_label.setFont(QFont("Formula1", 10))
+                code_label.setFixedWidth(24)
+                code_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                code_label.setStyleSheet(
+                    "color: #1e1e1e; background-color: #569cd6; border-radius: 3px; padding: 2px;"
+                )
+
+                desc_label = QLabel(description)
+                desc_label.setFont(QFont("Roboto", 9))
+                desc_label.setWordWrap(True)
+                desc_label.setStyleSheet("color: #d4d4d4; background-color: transparent;")
+
+                row_layout.addWidget(code_label)
+                row_layout.addWidget(desc_label, stretch=1)
+                row.setLayout(row_layout)
+                self.udp_list_layout.addWidget(row)
+
+        self.udp_list_layout.addStretch()
+
     # -------------------------------------- EVENT HANDLERS & UTILITIES ------------------------------------------------
 
     def _on_field_changed(self, field_path: str, value: Any):
@@ -1155,6 +1264,9 @@ class SettingsWindow(QDialog):
         try:
             self._set_nested_value(self.working_settings, field_path, value)
             self.parent_window.debug_log(f"Field {field_path} changed to {value}")
+            field_info = self._get_field_info_from_path(field_path)
+            if (field_info.json_schema_extra or {}).get("udp_action_code"):
+                self._refresh_udp_action_pane()
         except Exception as e: # pylint: disable=broad-exception-caught
             self.parent_window.error_log(f"Error updating field {field_path}: {e}")
 
