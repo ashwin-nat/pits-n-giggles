@@ -25,8 +25,8 @@
 from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, maybe_migrate_legacy_hud_layout,
                  save_config_to_ini, save_config_to_json)
-from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+from .schema import (CIRCUIT_INFO_OVERLAY_ID, INPUT_TELEMETRY_OVERLAY_ID,
+                     LAP_TIMER_OVERLAY_ID, MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
                      TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HUD_OVERLAY_ID,
                      CaptureSettings, DisplaySettings, ForwardingSettings,
                      HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
@@ -78,4 +78,5 @@ __all__ = [
     'TRACK_MAP_OVERLAY_ID',
     'TRACK_RADAR_OVERLAY_ID',
     'HUD_OVERLAY_ID',
+    'CIRCUIT_INFO_OVERLAY_ID',
 ]

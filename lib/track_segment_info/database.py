@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Dict, Iterator, Optional
 
 from .segments import TrackSegments
-from .types import BaseSegmentInfo
+from .types import BaseSegmentInfo, SectorBoundaries
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -68,6 +68,16 @@ class TrackSegmentsDatabase:
         if ts is None:
             return None
         return ts.get_segment_info(lap_distance)
+
+    def get_sectors(self, circuit_number: int) -> Optional[SectorBoundaries]:
+        """
+        Return the sector boundaries (s1, s2) for *circuit_number*, or ``None``
+        if the circuit is unknown or has no sector data.
+        """
+        ts = self._db.get(circuit_number)
+        if ts is None:
+            return None
+        return ts.sectors
 
     def get_sector(self, circuit_number: int, lap_distance: float):
         """

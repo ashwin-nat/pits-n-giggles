@@ -160,6 +160,16 @@ def _register_routes(
             return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
         return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
 
+    @ipc_server.on("set-circuit-info-length")
+    def _set_circuit_info_length(args: dict) -> dict:
+        logger.debug("Received set-circuit-info-length command. args: %s", args)
+
+        length = args.get("length")
+        if length is not None:
+            overlays_mgr.set_circuit_info_length(length)
+            return {"status": "success", "message": "set-circuit-info-length handler executed."}
+        return {"status": "error", "message": "Missing length value in set-circuit-info-length command."}
+
     @ipc_server.on("get-stats")
     def _get_stats(_args: dict) -> dict:
         return {

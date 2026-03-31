@@ -27,12 +27,10 @@ import os
 from typing import Any, Dict, List, Optional
 
 from apps.hud.common import get_ref_row_index
-from apps.hud.ui.overlays import (BaseOverlay, HudOverlay,
+from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
-from apps.hud.ui.overlays.temp_pos_display.temp_pos_display import \
-    TempPosOverlay
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
@@ -146,12 +144,13 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=True,
-            overlay_cls=TempPosOverlay,
-            opacity=100.0,
-            overlay_cfg=OverlayPosition(x=100, y=400),
+            enabled=settings.HUD.show_circuit_info,
+            overlay_cls=CircuitInfoOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=1.0,
+            scale_factor=settings.HUD.circuit_info_ui_scale,
+            circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
@@ -262,9 +261,6 @@ class OverlaysMgr:
         layout = {}
 
         for overlay_id in list(self.window_manager.overlays.keys()):
-            if overlay_id == TempPosOverlay.OVERLAY_ID:
-                self.logger.debug(f"Skipping layout capture for {overlay_id} since it's a temporary overlay")
-                continue
             try:
                 curr_params = self._get_window_info(overlay_id)
                 self.logger.debug(
@@ -351,6 +347,15 @@ class OverlaysMgr:
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
+            high_prio=True,
+        )
+
+    def set_circuit_info_length(self, length: int):
+        self.logger.debug(f"Setting circuit info length to {length}m")
+        self.window_manager.unicast_data(
+            overlay_id=CircuitInfoOverlay.OVERLAY_ID,
+            event='set_circuit_info_length',
+            data={'length': length},
             high_prio=True,
         )
 

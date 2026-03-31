@@ -47,6 +47,7 @@ class HudOverlayData(HighFreqBase):
     circuit_pos_m: float
     circuit: str
     circuit_num: int
+    circuit_length: int
     track_temp: int
     air_temp: int
     g_force_lat: float
@@ -73,6 +74,7 @@ class HudOverlayData(HighFreqBase):
             self.circuit_pos_m,
             self.circuit,
             self.circuit_num,
+            self.circuit_length,
             self.track_temp,
             self.air_temp
             # G forces may be None if telemetry is disabled. Here we ignore them.
@@ -101,6 +103,7 @@ class HudOverlayData(HighFreqBase):
             circuit_pos_m=hud_data["circuit-position"],
             circuit=json_data["circuit-enum-name"],
             circuit_num=json_data["circuit-enum-value"],
+            circuit_length=hud_data["circuit-length"],
             g_force_lat=g_force_data["lat"],
             g_force_long=g_force_data["long"],
             g_force_vert=g_force_data["vert"],

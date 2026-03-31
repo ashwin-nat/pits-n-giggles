@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional
 
 from lib.f1_types.packet_2_lap_data import LapData
 
-from .types import BaseSegmentInfo, TrackData
+from .types import BaseSegmentInfo, SectorBoundaries, TrackData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -99,6 +99,13 @@ class TrackSegments:
         self._track_data = TrackData.model_validate(track_data)
         self._segments = list(self._track_data.segments)
         self._starts = [seg.start_m for seg in self._segments]
+
+    @property
+    def sectors(self) -> Optional[SectorBoundaries]:
+        """Return the sector boundaries for this track, or None if not defined."""
+        if self._track_data is None:
+            return None
+        return self._track_data.sectors
 
     def get_segment_info(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
         """
