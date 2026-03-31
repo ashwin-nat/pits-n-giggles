@@ -26,7 +26,7 @@ import ctypes
 import logging
 from pathlib import Path
 from time import perf_counter_ns
-from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
@@ -125,9 +125,9 @@ class BaseOverlay():
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
-        self._hf_subscriptions: Set[str] = set()
+        self._hf_subscriptions: set[str] = set()
         self._hf_last_seq: Dict[str, int] = {}
-        self._hf_pending: Set[str] = set()
+        self._hf_pending: set[str] = set()
         self._stats = EventCounter()
 
         # Create the actual window backend (widget or QML)
@@ -346,9 +346,9 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # IPC - Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(set, bool, str, object)
-    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: dict):
-        if recipients and self.OVERLAY_ID not in recipients:
+    @Slot(str, bool, str, object)
+    def _handle_cmd(self, recipient: str, high_prio: bool, cmd: str, data: dict):
+        if recipient and recipient != self.OVERLAY_ID:
             return
         visibile = self.get_visibility()
         if not visibile and not high_prio:
