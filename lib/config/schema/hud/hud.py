@@ -306,15 +306,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
     circuit_info_length: int = Field(
         default=1400,
-        ge=400,
-        le=2500,
+        ge=200,
+        le=1500,
         description="Circuit info overlay circuit length fallback (m)",
         json_schema_extra={
             "ui": {
                 "type": "slider",
                 "visible": False,
-                "min": 400,
-                "max": 2500,
+                "min": 200,
+                "max": 1500,
             }
         }
     )

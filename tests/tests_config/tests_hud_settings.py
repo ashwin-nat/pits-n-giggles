@@ -92,6 +92,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_circuit_info, True)
         self.assertEqual(settings.circuit_info_ui_scale, 1.0)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
+        self.assertEqual(settings.circuit_info_length, 1400)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -973,4 +974,32 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_toggle_udp_action_code=420)
+
+    def test_circuit_info_length_validation(self):
+        """Test valid and invalid circuit_info_length values"""
+        # Valid value
+        hud_settings = HudSettings(circuit_info_length=800)
+        self.assertEqual(hud_settings.circuit_info_length, 800)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length="invalid")
+
+        # Well out of range
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=-10)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=9999)
+
+        # Boundary value: minimum (200)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=199)
+        HudSettings(circuit_info_length=200)
+
+        # Boundary value: maximum (1500)
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_length=1501)
+        HudSettings(circuit_info_length=1500)
 
