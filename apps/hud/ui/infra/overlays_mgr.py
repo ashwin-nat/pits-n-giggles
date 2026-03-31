@@ -150,6 +150,7 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.circuit_info_ui_scale,
+            circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
@@ -346,6 +347,15 @@ class OverlaysMgr:
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
+            high_prio=True,
+        )
+
+    def set_circuit_info_length(self, length: int):
+        self.logger.debug(f"Setting circuit info length to {length}m")
+        self.window_manager.unicast_data(
+            overlay_id=CircuitInfoOverlay.OVERLAY_ID,
+            event='set_circuit_info_length',
+            data={'length': length},
             high_prio=True,
         )
 

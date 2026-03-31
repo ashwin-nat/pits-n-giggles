@@ -52,9 +52,11 @@ class CircuitInfoOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
+        circuit_info_length: int,
         refresh_interval_ms: Optional[int] = None,  # Set none for event-driven rendering (low frequency)
     ) -> None:
 
+        self.circuit_info_length = circuit_info_length
         super().__init__(
             config=config,
             logger=logger,
@@ -69,6 +71,23 @@ class CircuitInfoOverlay(BaseOverlayQML):
 
         # For high frequency/high refresh rate overlays, subscribe to HF types here and render in render_frame.
         self.subscribe_hf(HudOverlayData)
+        self._register_handlers()
+
+    @final
+    def _setup_window(self):
+        """Set initial QML properties when the window is ready."""
+        super()._setup_window()
+        self._set_bar_width_property(self.circuit_info_length)
+
+    def _register_handlers(self):
+        @self.on_event("set_circuit_info_length")
+        def _handle_set_circuit_info_length(data: dict):
+            self.logger.debug('%s | Received "set_circuit_info_length" event. Length: %s', self.OVERLAY_ID, data)
+            self.circuit_info_length = data["length"]
+            self._set_bar_width_property(self.circuit_info_length)
+
+    def _set_bar_width_property(self, length: int):
+        self.set_qml_property("barWidth", length)
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
     @final
@@ -85,7 +104,7 @@ class CircuitInfoOverlay(BaseOverlayQML):
         sectors = self.tracks_db.get_sectors(data.circuit_num)
 
         self.set_qml_property("circuitPosM", data.circuit_pos_m)
-        self.set_qml_property("circuitLength", data.circuit_length)
+        self.set_qml_property("circuitLength", data.circuit_length or self.circuit_info_length)
         self.set_qml_property(
             "sectorsInfo",
             {"s1": sectors.s1, "s2": sectors.s2} if sectors else None,

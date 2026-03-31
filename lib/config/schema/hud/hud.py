@@ -304,6 +304,20 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     circuit_info_ui_scale: float = ui_scale_field(description="Circuit info overlay UI scale")
     circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
+    circuit_info_length: int = Field(
+        default=1400,
+        ge=400,
+        le=2500,
+        description="Circuit info overlay circuit length fallback (m)",
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": False,
+                "min": 400,
+                "max": 2500,
+            }
+        }
+    )
 
     # ============== GLOBAL OVERLAY CONTROLS ==============
 

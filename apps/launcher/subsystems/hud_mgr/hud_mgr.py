@@ -381,6 +381,22 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.info_log("Set overlays opacity command was successful")
 
+    def _send_circuit_info_length_change(self, length: int) -> None:
+        """Send circuit info length change to HUD app
+
+        Args:
+            length (int): New circuit info length (m)
+        """
+        self.debug_log("Sending set-circuit-info-length command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-circuit-info-length", args={
+            "length": length,
+        })
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to set circuit info length: {rsp}")
+        else:
+            self.info_log("Set circuit info length command was successful")
+
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
 
@@ -588,6 +604,15 @@ class HudAppMgr(PngAppMgrBase):
                 value=hud_settings.track_radar_idle_opacity,
                 tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
                 visible=hud_settings.show_track_radar_overlay,
+            ),
+
+            SliderItem(
+                key="circuit_info_length",
+                label="Circuit Info Length (m)",
+                min=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
+                value=hud_settings.circuit_info_length,
+                visible=hud_settings.show_circuit_info,
             )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
@@ -619,6 +644,7 @@ class HudAppMgr(PngAppMgrBase):
 
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
+        new_settings.HUD.circuit_info_length = values["circuit_info_length"]
 
         # ---- FORCE VALIDATION (this is the important bit) ----
         try:
@@ -670,6 +696,11 @@ class HudAppMgr(PngAppMgrBase):
             != validated_settings.HUD.track_radar_idle_opacity
         )
 
+        circuit_info_length_changed = (
+            self.curr_settings.HUD.circuit_info_length
+            != validated_settings.HUD.circuit_info_length
+        )
+
         # ---- Apply runtime effects ----
         if global_opacity_changed:
             self._send_overlays_opacity_change(
@@ -679,6 +710,11 @@ class HudAppMgr(PngAppMgrBase):
         if track_radar_idle_opacity_changed:
             self._send_track_radar_idle_opacity_change(
                 validated_settings.HUD.track_radar_idle_opacity
+            )
+
+        if circuit_info_length_changed:
+            self._send_circuit_info_length_change(
+                validated_settings.HUD.circuit_info_length
             )
 
         if hud_diff:
@@ -698,7 +734,7 @@ class HudAppMgr(PngAppMgrBase):
                 self._send_ui_scale_change_cmd(oid, data)
 
         # ---- Persist only VALIDATED settings ----
-        if hud_diff or global_opacity_changed or track_radar_idle_opacity_changed:
+        if hud_diff or global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed:
             self.window.update_settings(validated_settings)
             self.window.save_settings_to_disk(validated_settings)
 
