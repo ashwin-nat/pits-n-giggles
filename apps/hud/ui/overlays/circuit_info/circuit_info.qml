@@ -9,7 +9,7 @@ Window {
 
     property real scaleFactor: 1.0
     property int barWidth: 1400          // settable: controls overlay width
-    readonly property int baseHeight: 64
+    readonly property int baseHeight: 72
 
     width: barWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -77,10 +77,10 @@ Window {
 
         // ==========================================================
         // SEGMENT INFO  (fades on change)
-        //   y=4  → primary label   (20px)  bottom=24
-        //   y=30 → progress bar    (12px)  bottom=42
-        //   y=46 → secondary label (18px)  bottom=64
-        //   baseHeight=64
+        //   y=2  → primary bg      (20+8=28px)  bottom=30
+        //   y=30 → progress bar    (12px)        bottom=42
+        //   y=44 → secondary bg    (18+8=26px)   bottom=70
+        //   baseHeight=72
         // ==========================================================
         Item {
             id: infoGroup
@@ -123,45 +123,65 @@ Window {
             // straight       → segment name
             // corner         → turn string e.g. "Turn 5"
             // complex_corner → range string e.g. "Turns 3–5"
-            Text {
-                id: primaryLabel
+            Rectangle {
+                id: primaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 4
+                y: 2
+                width: primaryLabel.implicitWidth + 20
+                height: primaryLabel.implicitHeight + 8
+                color: Qt.rgba(0, 0, 0, 0.6)
+                radius: 4
+                visible: primaryLabel.text.length > 0
 
-                readonly property var info: infoGroup.displayedInfo
+                Text {
+                    id: primaryLabel
+                    anchors.centerIn: parent
 
-                text: {
-                    if (!info) return ""
-                    if (info.type === "straight") return info.name
-                    return info.turns
+                    readonly property var info: infoGroup.displayedInfo
+
+                    text: {
+                        if (!info) return ""
+                        if (info.type === "straight") return info.name
+                        return info.turns
+                    }
+
+                    color: "white"
+                    font.family: "Formula1"
+                    font.pixelSize: 20
+                    font.bold: !!info && info.type !== "straight"
+                    visible: text.length > 0
                 }
-
-                color: "white"
-                font.family: "Formula1"
-                font.pixelSize: 20
-                font.bold: !!info && info.type !== "straight"
-                visible: text.length > 0
             }
 
             // Secondary label — sits below the bar
             // straight               → nothing
             // corner / complex_corner → corner name if available
-            Text {
-                id: secondaryLabel
+            Rectangle {
+                id: secondaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 46
+                y: 44
+                width: secondaryLabel.implicitWidth + 20
+                height: secondaryLabel.implicitHeight + 8
+                color: Qt.rgba(0, 0, 0, 0.6)
+                radius: 4
+                visible: secondaryLabel.text.length > 0
 
-                readonly property var info: infoGroup.displayedInfo
+                Text {
+                    id: secondaryLabel
+                    anchors.centerIn: parent
 
-                text: {
-                    if (!info || info.type === "straight") return ""
-                    return info.name
+                    readonly property var info: infoGroup.displayedInfo
+
+                    text: {
+                        if (!info || info.type === "straight") return ""
+                        return info.name
+                    }
+
+                    color: Qt.rgba(1, 1, 1, 0.85)
+                    font.family: "Formula1"
+                    font.pixelSize: 18
+                    visible: text.length > 0
                 }
-
-                color: Qt.rgba(1, 1, 1, 0.65)
-                font.family: "Formula1"
-                font.pixelSize: 18
-                visible: text.length > 0
             }
         }
 
