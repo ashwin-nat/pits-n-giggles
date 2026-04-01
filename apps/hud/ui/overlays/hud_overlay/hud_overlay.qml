@@ -58,6 +58,10 @@ Window {
     property int    trackTempC:     0
     property int    airTempC:       0
 
+    // Font face and size for the info row (track limits, air temp, track temp, fuel)
+    readonly property string infoRowFont: "Consolas"
+    readonly property int    infoRowSize: 16
+
     // Marquee scroll speed in px/sec — increase for faster scrolling, decrease for slower
     readonly property real marqueeSpeed: 60
 
@@ -345,16 +349,16 @@ Window {
 
                                     Image {
                                         source:  "../../../../../assets/overlays/tl-warns.svg"
-                                        width:   12
-                                        height:  12
+                                        width:   root.infoRowSize
+                                        height:  root.infoRowSize
                                         smooth:  true
                                         mipmap:  true
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                     Text {
                                         text:            root.tlWarnings
-                                        font.family:     "Formula1"
-                                        font.pixelSize:  12
+                                        font.family:     root.infoRowFont
+                                        font.pixelSize:  root.infoRowSize
                                         font.bold:       true
                                         color:           "#edf7ff"
                                         anchors.verticalCenter: parent.verticalCenter
@@ -373,16 +377,16 @@ Window {
 
                                     Image {
                                         source:  "../../../../../assets/overlays/air-temperature.svg"
-                                        width:   12
-                                        height:  12
+                                        width:   root.infoRowSize
+                                        height:  root.infoRowSize
                                         smooth:  true
                                         mipmap:  true
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                     Text {
                                         text:            root.airTempC + "°"
-                                        font.family:     "Formula1"
-                                        font.pixelSize:  12
+                                        font.family:     root.infoRowFont
+                                        font.pixelSize:  root.infoRowSize
                                         font.bold:       true
                                         color:           "#edf7ff"
                                         anchors.verticalCenter: parent.verticalCenter
@@ -401,16 +405,16 @@ Window {
 
                                     Image {
                                         source:  "../../../../../assets/overlays/track-temperature.svg"
-                                        width:   12
-                                        height:  12
+                                        width:   root.infoRowSize
+                                        height:  root.infoRowSize
                                         smooth:  true
                                         mipmap:  true
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                     Text {
                                         text:            root.trackTempC + "°"
-                                        font.family:     "Formula1"
-                                        font.pixelSize:  12
+                                        font.family:     root.infoRowFont
+                                        font.pixelSize:  root.infoRowSize
                                         font.bold:       true
                                         color:           "#edf7ff"
                                         anchors.verticalCenter: parent.verticalCenter
@@ -489,32 +493,32 @@ Window {
                                 anchors.top:        parent.top
                                 anchors.bottom:     parent.bottom
 
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: 3
-
-                                    Image {
-                                        source:  "../../../../../assets/overlays/fuel-pump.svg"
-                                        width:   12
-                                        height:  12
-                                        smooth:  true
-                                        mipmap:  true
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    Text {
-                                        text: root.surplusFuel !== null
-                                              ? (root.surplusFuel >= 0 ? "+" : "") + root.surplusFuel.toFixed(2)
-                                              : "---"
-                                        font.family:    "Formula1"
-                                        font.pixelSize: 12
-                                        font.bold:      true
-                                        color:          root.surplusFuel === null
-                                                        ? "#3d4f5e"
-                                                        : root.surplusFuel >= 0
-                                                            ? "#00e676"
-                                                            : "#ff1744"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                                Image {
+                                    id: fuelIcon
+                                    source:  "../../../../../assets/overlays/fuel-pump.svg"
+                                    width:   root.infoRowSize
+                                    height:  root.infoRowSize
+                                    smooth:  true
+                                    mipmap:  true
+                                    anchors.left:           parent.left
+                                    anchors.leftMargin:     4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: root.surplusFuel != null
+                                          ? (root.surplusFuel >= 0 ? "+" : "") + root.surplusFuel.toFixed(2)
+                                          : "---"
+                                    font.family:    root.infoRowFont
+                                    font.pixelSize: root.infoRowSize
+                                    font.bold:      true
+                                    color:          root.surplusFuel == null
+                                                    ? "#3d4f5e"
+                                                    : root.surplusFuel >= 0
+                                                        ? "#00e676"
+                                                        : "#ff1744"
+                                    anchors.left:           fuelIcon.right
+                                    anchors.leftMargin:     3
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
                             }
                         }
@@ -639,7 +643,7 @@ Window {
                                 x: ersPctLabel.x + modelData[0]
                                 y: ersPctLabel.y + modelData[1]
                                 text:           Math.round(root.clampPct(root.ersRemPct)) + "%"
-                                font.family:    "B612Mono"
+                                font.family:    "Formula1"
                                 font.pixelSize: 16
                                 font.bold:      true
                                 color:          "#000000"
@@ -649,7 +653,7 @@ Window {
                         Text {
                             id: ersPctLabel
                             text:            Math.round(root.clampPct(root.ersRemPct)) + "%"
-                            font.family:     "B612Mono"
+                            font.family:     "Formula1"
                             font.pixelSize:  16
                             font.bold:       true
                             color:           "#edf7ff"
