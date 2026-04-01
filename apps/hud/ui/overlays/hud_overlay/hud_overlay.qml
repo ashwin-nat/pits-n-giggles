@@ -31,7 +31,7 @@ Window {
     property real scaleFactor: 1.0
 
     readonly property int baseWidth: 470
-    readonly property int baseHeight: 120
+    readonly property int baseHeight: 124
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -65,6 +65,9 @@ Window {
     // Marquee scroll speed in px/sec — increase for faster scrolling, decrease for slower
     readonly property real marqueeSpeed: 60
 
+    // Rev-lights blink threshold — all 15 lights blink aggressively above this %
+    readonly property int revLightsBlinkThreshold: 95
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     function gearLabel(g) {
@@ -75,13 +78,6 @@ Window {
 
     function clampPct(v) {
         return Math.max(0, Math.min(100, v))
-    }
-
-    function revColor(index, total) {
-        let n = index / Math.max(1, total - 1)
-        if (n < (1 / 3)) return "#39d37a"
-        if (n < (2 / 3)) return "#ff1744"
-        return "#9b30ff"
     }
 
     // Fill colour for the ERS inner circle based on current mode
@@ -110,65 +106,108 @@ Window {
             origin.y: baseHeight / 2
         }
 
-        // ── Rev lights — thin bar above the pill ─────────────────────────────
-        Item {
-            id: revLightsBar
-            anchors.left:        parent.left
-            anchors.right:       parent.right
-            anchors.top:         parent.top
-            anchors.leftMargin:  49
-            anchors.rightMargin: 49
-            height: 5
-
-            RowLayout {
-                anchors.fill: parent
-                spacing: 1
-
-                Repeater {
-                    model: 20
-                    Rectangle {
-                        Layout.fillWidth:  true
-                        Layout.fillHeight: true
-                        radius: 1
-
-                        readonly property int  litCount:  Math.round(root.clampPct(root.revLightsPct) / 100 * 20)
-                        readonly property bool isLit:     index < litCount
-                        readonly property bool isRedline: index >= 17
-
-                        color: isLit ? root.revColor(index, 20) : "#192531"
-                        Behavior on color { ColorAnimation { duration: 50 } }
-
-                        onIsLitChanged: if (!isLit) opacity = 1.0
-
-                        SequentialAnimation on opacity {
-                            running: isLit && isRedline
-                            loops:   Animation.Infinite
-                            NumberAnimation { to: 0.45; duration: 180 }
-                            NumberAnimation { to: 1.00; duration: 200 }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Main HUD shell (full-width pill, radius = height/2) ──────────────
+        // ── Pill visual background (drawn first / below tab) ─────────────────
+        // Full-width stadium pill.  Its top straight edge sits at y=12, which
+        // is also the bottom edge of the tab — their shared border line merges.
         Rectangle {
-            id: hudShell
-            anchors.left:  parent.left
-            anchors.right: parent.right
-            anchors.top:   revLightsBar.bottom
-            anchors.topMargin: 3
+            id: pillBg
+            anchors.left:      parent.left
+            anchors.right:     parent.right
+            anchors.top:       parent.top
+            anchors.topMargin: 12
             height: 98
-            clip:         true
-            radius:       49   // = height / 2  →  perfect stadium / parabolica shape
+            radius:       49
             border.width: 1
             border.color: "#2b3946"
-
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#172130" }
                 GradientStop { position: 0.5; color: "#121b28" }
                 GradientStop { position: 1.0; color: "#0e1620" }
             }
+        }
+
+        // ── Tab visual background (drawn over pill) ───────────────────────────
+        // Inset 49 px each side so its bottom corners (radius 4) land exactly
+        // on the top of the pill's left/right corner arcs — no bridging needed.
+        // Its bottom border coincides with the pill's top straight border;
+        // both are "#2b3946", so they read as one continuous outline.
+        Rectangle {
+            id: tabBg
+            anchors.left:        parent.left
+            anchors.right:       parent.right
+            anchors.top:         parent.top
+            anchors.leftMargin:  49
+            anchors.rightMargin: 49
+            height: 12
+            radius:       4
+            border.width: 1
+            border.color: "#2b3946"
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#172130" }
+                GradientStop { position: 1.0; color: "#172130" }
+            }
+        }
+
+        // ── Rev lights content (sits in tab area, y 0–12) ────────────────────
+        Item {
+            id: revLightsContent
+            anchors.left:        parent.left
+            anchors.right:       parent.right
+            anchors.top:         parent.top
+            anchors.leftMargin:  49
+            anchors.rightMargin: 49
+            height: 12
+
+            // Aggressive whole-bar blink when RPM crosses the threshold
+            SequentialAnimation {
+                id: revBlinkAnim
+                running: root.revLightsPct >= root.revLightsBlinkThreshold
+                loops:   Animation.Infinite
+                NumberAnimation { target: revLightsContent; property: "opacity"; to: 0.0; duration: 70 }
+                NumberAnimation { target: revLightsContent; property: "opacity"; to: 1.0; duration: 70 }
+                onStopped: revLightsContent.opacity = 1.0
+            }
+
+            RowLayout {
+                anchors.fill:         parent
+                anchors.leftMargin:   4
+                anchors.rightMargin:  4
+                anchors.topMargin:    2
+                anchors.bottomMargin: 2
+                spacing: 2
+
+                Repeater {
+                    model: 15
+                    Rectangle {
+                        Layout.fillWidth:  true
+                        Layout.fillHeight: true
+                        radius: 2
+
+                        readonly property int  litCount: Math.round(root.revLightsPct / 100 * 15)
+                        readonly property bool isLit:    index < litCount
+                        readonly property string litColor: index < 5 ? "#39d37a"
+                                                         : index < 10 ? "#ff1744"
+                                                         : "#9b30ff"
+
+                        color: isLit ? litColor : "#192531"
+                        Behavior on color { ColorAnimation { duration: 50 } }
+                    }
+                }
+            }
+        }
+
+        // ── HUD content shell (transparent clip container, follows pill shape) ──
+        Rectangle {
+            id: hudShell
+            anchors.left:      parent.left
+            anchors.right:     parent.right
+            anchors.top:       parent.top
+            anchors.topMargin: 12
+            height: 98
+            radius:       49
+            clip:         true
+            color:        "transparent"
+            border.width: 0
 
             // Subtle diagonal sheen
             Rectangle {
