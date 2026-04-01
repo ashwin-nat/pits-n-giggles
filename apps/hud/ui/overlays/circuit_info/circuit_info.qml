@@ -9,7 +9,7 @@ Window {
 
     property real scaleFactor: 1.0
     property int barWidth: 1400          // settable: controls overlay width
-    readonly property int baseHeight: 72
+    readonly property int baseHeight: 80
 
     width: barWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -77,10 +77,10 @@ Window {
 
         // ==========================================================
         // SEGMENT INFO  (fades on change)
-        //   y=2  → primary bg      (20+8=28px)  bottom=30
-        //   y=30 → progress bar    (12px)        bottom=42
-        //   y=44 → secondary bg    (18+8=26px)   bottom=70
-        //   baseHeight=72
+        //   primary bg  → anchored bottom to progressBarArea.top - 2
+        //   y=36 → progress bar    (12px)        bottom=48
+        //   secondary bg → anchored top to progressBarArea.bottom + 2
+        //   baseHeight=80
         // ==========================================================
         Item {
             id: infoGroup
@@ -126,7 +126,7 @@ Window {
             Rectangle {
                 id: primaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 2
+                y: progressBarArea.y - 6 - height
                 width: primaryLabel.implicitWidth + 20
                 height: primaryLabel.implicitHeight + 8
                 color: Qt.rgba(0, 0, 0, 0.6)
@@ -159,7 +159,7 @@ Window {
             Rectangle {
                 id: secondaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: 44
+                y: progressBarArea.y + progressBarArea.height + 6
                 width: secondaryLabel.implicitWidth + 20
                 height: secondaryLabel.implicitHeight + 8
                 color: Qt.rgba(0, 0, 0, 0.6)
@@ -186,12 +186,12 @@ Window {
         }
 
         // ==========================================================
-        // PROGRESS BAR  (y=30, height=12)
+        // PROGRESS BAR  (y=36, height=12)
         // ==========================================================
         Item {
             id: progressBarArea
             x: 12
-            y: 30
+            y: 36
             width: parent.width - 24
             height: 12
 
