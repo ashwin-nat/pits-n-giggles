@@ -24,6 +24,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_capture_settings import TestCaptureSettings
+from .tests_diff_mixin import TestConfigDiffMixin
 from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
                                 TestSampleSettingsFixture)
 from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
@@ -62,4 +63,5 @@ __all__ = [
     "TestHudSettings",
 
     "TestFilePathStr",
+    "TestConfigDiffMixin",
 ]

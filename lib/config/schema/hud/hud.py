@@ -343,7 +343,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "visible": False
-            }
+            },
+            "diff_exclude": True,
         }
     )
 

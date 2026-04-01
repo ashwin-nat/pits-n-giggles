@@ -47,8 +47,9 @@ from tests_base import CustomTestResult, F1TelemetryUnitTestsBase
 from tests_collision_analyzer import (TestCollisionAnalyzer,
                                       TestCollisionPairKey,
                                       TestCollisionRecord)
-from tests_config import (TestCaptureSettings, TestConfigMigration,
-                          TestDisplaySettings, TestEdgeCases, TestFilePathStr,
+from tests_config import (TestCaptureSettings, TestConfigDiffMixin,
+                          TestConfigMigration, TestDisplaySettings,
+                          TestEdgeCases, TestFilePathStr,
                           TestForwardingSettings, TestHttpsSettings,
                           TestHudSettings, TestLoadConfigFromIni,
                           TestLoadConfigFromJson, TestMissingSectionsAndKeys,

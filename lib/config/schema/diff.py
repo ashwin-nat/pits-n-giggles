@@ -68,7 +68,11 @@ class ConfigDiffMixin:
 
         # --- Case 3: Compare everything recursively
         result = {}
+        model_fields = getattr(type(self), "model_fields", {})
         for name, value in getattr(self, "__dict__", {}).items():
+            field_info = model_fields.get(name)
+            if field_info and (field_info.json_schema_extra or {}).get("diff_exclude"):
+                continue
             other_value = getattr(other, name, None)
 
             # --- NEW: Recursively diff dicts
@@ -97,9 +101,9 @@ class ConfigDiffMixin:
         all_keys = set(d1.keys()) | set(d2.keys())
         for key in all_keys:
             if key not in d1:
-                result[key] = {"old_value": None, "new_value": d2[key]}
+                result[key] = {"old_value": None, "new_value": self._to_serializable(d2[key])}
             elif key not in d2:
-                result[key] = {"old_value": d1[key], "new_value": None}
+                result[key] = {"old_value": self._to_serializable(d1[key]), "new_value": None}
             else:
                 v1, v2 = d1[key], d2[key]
 
@@ -115,9 +119,16 @@ class ConfigDiffMixin:
 
                 # Primitive or object change
                 elif v1 != v2:
-                    result[key] = {"old_value": v1, "new_value": v2}
+                    result[key] = {"old_value": self._to_serializable(v1), "new_value": self._to_serializable(v2)}
 
         return result
+
+    @staticmethod
+    def _to_serializable(value: Any) -> Any:
+        """Convert a value to a JSON-serializable form."""
+        if hasattr(value, "model_dump"):
+            return value.model_dump()
+        return value
 
     def _basic_diff(self, self_obj: Any, other_obj: Any, fields: Iterable[str]) -> Dict[str, Any]:
         changes = {}
