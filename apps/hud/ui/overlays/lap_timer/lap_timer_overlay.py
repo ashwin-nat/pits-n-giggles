@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QTimer
 
-from apps.hud.common import (get_ref_row, is_practice_session,
+from apps.hud.common import (get_ref_row, is_practice_session, is_tt_session,
                              is_qualifying_session, is_race_type_session)
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayId, OverlayPosition
@@ -98,6 +98,10 @@ class LapTimerOverlay(BaseOverlayQML):
             """Handle race table update events."""
             session_type = data["event-type"]
             if session_type == "None":
+                return
+
+            if is_tt_session(session_type):
+                self._handle_tt_update(data)
                 return
 
             ref_row = get_ref_row(data)
@@ -469,3 +473,42 @@ class LapTimerOverlay(BaseOverlayQML):
     def _is_safety_car(self, status: str) -> bool:
         """Check if the session is in racing or safety car state."""
         return status in {"FULL_SAFETY_CAR", "VIRTUAL_SAFETY_CAR"}
+
+    def _handle_tt_update(self, data: Dict[str, Any]) -> None:
+        """Handle updates for time trial sessions."""
+        # For time trial sessions, only update the current lap time and sector status
+        tt_data_outer: dict = data.get("tt-data", {})
+        tt_data_inner = tt_data_outer.get("tt-data")
+        if not tt_data_outer or not tt_data_inner:
+            self.clear()
+            return
+
+        last_lap = tt_data_outer.get("last-lap-info", {})
+
+        # Current lap
+        curr_lap_info = tt_data_outer.get("current-lap-info") or {}
+        curr_lap_ms = curr_lap_info.get("lap-time-ms")
+        curr_sector_status = curr_lap_info.get("sector-status", self.DEFAULT_SECTOR_STATUS)
+
+        # Best lap from personal-best-data-set in the TT packet
+        best_lap_info = tt_data_outer.get("best-lap-info") or {}
+        best_lap_ms = best_lap_info.get("lap-time-ms")
+        best_sector_status = best_lap_info.get("sector-status", self.DEFAULT_SECTOR_STATUS)
+
+        # Last lap
+        last_lap_ms = last_lap.get("lap-time-ms") if last_lap else None
+        last_sector_status = last_lap.get("sector-status", self.DEFAULT_SECTOR_STATUS) if last_lap else self.DEFAULT_SECTOR_STATUS
+
+        # Update current lap display
+        self._update_curr_lap(curr_lap_ms)
+        self._update_sector_status("currentSectorStatus", curr_sector_status)
+
+        # Update best and last lap displays
+        self._update_best_lap(best_lap_ms)
+        self._update_last_lap(last_lap_ms)
+        self._update_sector_status("bestSectorStatus", best_sector_status)
+        self._update_sector_status("lastSectorStatus", last_sector_status)
+
+        # Delta and estimated lap time are not supported in time trial
+        self._clear_delta()
+        self._update_estimated(self.DEFAULT_TIME)

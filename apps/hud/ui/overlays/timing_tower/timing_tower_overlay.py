@@ -502,9 +502,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         Returns:
             dict: Row data for QML with absolute (non-delta) time strings
         """
-        session_history = tt_data_outer.get("session-history")
-        lap_history = session_history.get("lap-history-data", []) if session_history else None
-        if not lap_history:
+        current_lap_info = tt_data_outer.get("current-lap-info")
+        if not current_lap_info:
             return {
                 "label": "Current",
                 "lap-time-str": "---",
@@ -513,21 +512,18 @@ class TimingTowerOverlay(BaseOverlayQML):
                 "s3-time-str": "---",
             }
 
-        last_lap = lap_history[-1]
-        # Normalize lap-history keys into the same shape as a TimeTrialDataSet dict
-        # so we can reuse _tt_row_from_dataset for formatting.
-        last_lap_dataset = {
-            "is-valid": last_lap.get("is-valid", True),
-            "lap-time-ms": last_lap.get("lap-time-in-ms"),
-            "sector-1-time-ms": last_lap.get("sector-1-time-in-ms"),
-            "sector-2-time-in-ms": last_lap.get("sector-2-time-in-ms"),
-            "sector3-time-in-ms": last_lap.get("sector-3-time-in-ms"),
-            "lap-time-str": last_lap.get("lap-time-str"),
-            "sector-1-time-str": last_lap.get("sector-1-time-str"),
-            "sector-2-time-str": last_lap.get("sector-2-time-str"),
-            "sector-3-time-str": last_lap.get("sector-3-time-str"),
+        lap_time_ms = current_lap_info.get("lap-time-ms")
+        sector1_time_ms = current_lap_info.get("s1-time-ms")
+        sector2_time_ms = current_lap_info.get("s2-time-ms")
+        sector3_time_ms = current_lap_info.get("s3-time-ms")
+
+        return {
+            "label": "Current",
+            "lap-time-str": F1Utils.getLapTimeStr(lap_time_ms) if lap_time_ms is not None else "---",
+            "s1-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector1_time_ms) if sector1_time_ms is not None else "---",
+            "s2-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector2_time_ms) if sector2_time_ms is not None else "---",
+            "s3-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector3_time_ms) if sector3_time_ms is not None else "---",
         }
-        return self._tt_row_from_dataset("Current", last_lap_dataset)
 
     def _get_tt_pb_lap(self, tt_data: dict) -> dict:
         """Get the player's all-time personal best lap row.
