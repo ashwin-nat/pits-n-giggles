@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 from lib.f1_types import F1Utils
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class FuelInfoPage(MfdPageBase):
-    KEY = "fuel_info"
+    KEY = MfdPageId.FUEL_INFO
     QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2

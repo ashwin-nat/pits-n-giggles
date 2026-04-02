@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row, get_relevant_race_table_rows
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 from lib.f1_types import F1Utils
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ if TYPE_CHECKING:
 
 class PaceCompPage(MfdPageBase):
     """Pace Comparison MFD Page."""
-    KEY = "pace_comp"
+    KEY = MfdPageId.PACE_COMP
     QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
 
     NUM_ADJ_CARS = 2

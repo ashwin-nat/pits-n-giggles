@@ -31,7 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pydantic import ValidationError
 
 from lib.config import (HudSettings, HudOverlaySpeedUnit,
-                        HudOverlayFuelEstimationMode, MfdPageSettings, MfdSettings,
+                        HudOverlayFuelEstimationMode, MfdPageId, MfdPageSettings, MfdSettings,
                         OverlayId, OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
@@ -441,13 +441,13 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertTrue(len(mfd.pages) > 0)
 
         expected_pages = {
-            "lap_times",
-            "weather_forecast",
-            "fuel_info",
-            "tyre_info",
-            "pit_rejoin",
-            "tyre_sets",
-            "pace_comp",
+            MfdPageId.LAP_TIMES,
+            MfdPageId.WEATHER_FORECAST,
+            MfdPageId.FUEL_INFO,
+            MfdPageId.TYRE_INFO,
+            MfdPageId.PIT_REJOIN,
+            MfdPageId.TYRE_SETS,
+            MfdPageId.PACE_COMP,
         }
 
         for page in expected_pages:
@@ -472,7 +472,7 @@ class TestHudSettings(TestF1ConfigBase):
     def test_model_validator_adds_missing_pages(self):
         data = {
             "pages": {
-                "lap_times": {"enabled": True, "position": 1}
+                MfdPageId.LAP_TIMES: {"enabled": True, "position": 1}
             }
         }
 
@@ -481,7 +481,7 @@ class TestHudSettings(TestF1ConfigBase):
         for key in DEFAULT_PAGES:
             self.assertIn(key, mfd.pages)
 
-        assert mfd.pages["tyre_sets"].enabled is False
+        assert mfd.pages[MfdPageId.TYRE_SETS].enabled is False
 
     #
     # ------------------------------------------------------------
@@ -530,9 +530,9 @@ class TestHudSettings(TestF1ConfigBase):
         settings = HudSettings()
         mfd = settings.mfd_settings
 
-        mfd.pages["lap_times"].position = 3
-        mfd.pages["fuel_info"].position = 1
-        mfd.pages["tyre_info"].position = 2
+        mfd.pages[MfdPageId.LAP_TIMES].position = 3
+        mfd.pages[MfdPageId.FUEL_INFO].position = 1
+        mfd.pages[MfdPageId.TYRE_INFO].position = 2
 
         sorted_pages = mfd.sorted_enabled_pages()
 
@@ -544,13 +544,13 @@ class TestHudSettings(TestF1ConfigBase):
         settings = HudSettings()
         mfd = settings.mfd_settings
 
-        mfd.pages["lap_times"].enabled = False
-        mfd.pages["fuel_info"].enabled = True
+        mfd.pages[MfdPageId.LAP_TIMES].enabled = False
+        mfd.pages[MfdPageId.FUEL_INFO].enabled = True
 
         sorted_pages = mfd.sorted_enabled_pages()
 
-        self.assertNotIn("lap_times", [name for name, _ in sorted_pages])
-        self.assertIn("fuel_info", [name for name, _ in sorted_pages])
+        self.assertNotIn(MfdPageId.LAP_TIMES, [name for name, _ in sorted_pages])
+        self.assertIn(MfdPageId.FUEL_INFO, [name for name, _ in sorted_pages])
 
     #
     # ------------------------------------------------------------
@@ -579,22 +579,22 @@ class TestHudSettings(TestF1ConfigBase):
         old = HudSettings()
         new = HudSettings()
 
-        new.mfd_settings.pages["lap_times"].position = 50
+        new.mfd_settings.pages[MfdPageId.LAP_TIMES].position = 50
 
         diff = new.diff(old)
 
         self.assertIn("mfd_settings", diff)
         self.assertIn("pages", diff["mfd_settings"])
-        self.assertIn("lap_times", diff["mfd_settings"]["pages"])
-        self.assertIn("position", diff["mfd_settings"]["pages"]["lap_times"])
+        self.assertIn(MfdPageId.LAP_TIMES, diff["mfd_settings"]["pages"])
+        self.assertIn("position", diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES])
 
         self.assertEqual(
-            diff["mfd_settings"]["pages"]["lap_times"]["position"]["old_value"],
+            diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES]["position"]["old_value"],
             50
         )
         self.assertEqual(
-            diff["mfd_settings"]["pages"]["lap_times"]["position"]["new_value"],
-            old.mfd_settings.pages["lap_times"].position
+            diff["mfd_settings"]["pages"][MfdPageId.LAP_TIMES]["position"]["new_value"],
+            old.mfd_settings.pages[MfdPageId.LAP_TIMES].position
         )
 
     #
@@ -607,14 +607,14 @@ class TestHudSettings(TestF1ConfigBase):
         old = HudSettings()
         new = HudSettings()
 
-        new.mfd_settings.pages["tyre_info"].enabled = False
+        new.mfd_settings.pages[MfdPageId.TYRE_INFO].enabled = False
 
         diff = new.diff(old)
 
         self.assertIn("mfd_settings", diff)
         self.assertIn("pages", diff["mfd_settings"])
-        self.assertIn("tyre_info", diff["mfd_settings"]["pages"])
-        self.assertIn("enabled", diff["mfd_settings"]["pages"]["tyre_info"])
+        self.assertIn(MfdPageId.TYRE_INFO, diff["mfd_settings"]["pages"])
+        self.assertIn("enabled", diff["mfd_settings"]["pages"][MfdPageId.TYRE_INFO])
 
     def test_use_windowed_overlays(self):
         windowed_overlays = True

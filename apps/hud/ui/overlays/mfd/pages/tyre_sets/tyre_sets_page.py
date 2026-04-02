@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 
 class TyreSetsPage(MfdPageBase):
 
-    KEY = "tyre_sets"
+    KEY = MfdPageId.TYRE_SETS
     QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
 
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]

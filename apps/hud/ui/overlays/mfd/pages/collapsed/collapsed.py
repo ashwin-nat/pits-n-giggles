@@ -25,11 +25,12 @@
 from pathlib import Path
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class CollapsedPage(MfdPageBase):
-    KEY = "collapsed"
+    KEY = MfdPageId.COLLAPSED
     QML_FILE: Path = Path(__file__).parent / "collapsed_page.qml"
 
     def __init__(self, root, logger):

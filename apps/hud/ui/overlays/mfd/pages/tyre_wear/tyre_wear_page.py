@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 
 class TyreInfoPage(MfdPageBase):
 
-    KEY = "tyre_info"
+    KEY = MfdPageId.TYRE_INFO
     QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2

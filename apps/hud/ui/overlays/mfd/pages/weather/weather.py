@@ -31,6 +31,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -44,7 +45,7 @@ class SessionGroup:
 
 class WeatherForecastPage(MfdPageBase):
 
-    KEY = "weather_forecast"
+    KEY = MfdPageId.WEATHER_FORECAST
     QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5

@@ -23,11 +23,24 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from enum import Enum
 from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
+
+# ------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+class MfdPageId(str, Enum):
+    COLLAPSED        = "collapsed"
+    LAP_TIMES        = "lap_times"
+    WEATHER_FORECAST = "weather_forecast"
+    FUEL_INFO        = "fuel_info"
+    TYRE_INFO        = "tyre_info"
+    PIT_REJOIN       = "pit_rejoin"
+    TYRE_SETS        = "tyre_sets"
+    PACE_COMP        = "pace_comp"
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -48,13 +61,13 @@ class MfdPageSettings(ConfigDiffMixin, BaseModel):
 
 
 DEFAULT_PAGES = {
-    "lap_times": MfdPageSettings(enabled=True, position=1, description="Lap Times"),
-    "weather_forecast": MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
-    "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
-    "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
-    "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
-    "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
-    "pace_comp": MfdPageSettings(enabled=True, position=7, description="Pace Comparison"),
+    MfdPageId.LAP_TIMES:        MfdPageSettings(enabled=True, position=1, description="Lap Times"),
+    MfdPageId.WEATHER_FORECAST: MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
+    MfdPageId.FUEL_INFO:        MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
+    MfdPageId.TYRE_INFO:        MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
+    MfdPageId.PIT_REJOIN:       MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
+    MfdPageId.TYRE_SETS:        MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
+    MfdPageId.PACE_COMP:        MfdPageSettings(enabled=True, position=7, description="Pace Comparison"),
 }
 
 
