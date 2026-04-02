@@ -128,9 +128,9 @@ Window {
 
         // ── Tab visual background (drawn over pill) ───────────────────────────
         // Inset 49 px each side so its bottom corners (radius 4) land exactly
-        // on the top of the pill's left/right corner arcs — no bridging needed.
-        // Its bottom border coincides with the pill's top straight border;
-        // both are "#2b3946", so they read as one continuous outline.
+        // on the top of the pill's left/right corner arcs for a tight join.
+        // A tiny bridge strip is drawn just below to hide sub-pixel seams.
+        // Border/colour stay matched with the main shell.
         Rectangle {
             id: tabBg
             anchors.left:        parent.left
@@ -148,6 +148,16 @@ Window {
             }
         }
 
+        // Bridge strip avoids sub-pixel seams between tab and the main pill.
+        Rectangle {
+            anchors.left:      tabBg.left
+            anchors.right:     tabBg.right
+            anchors.top:       tabBg.bottom
+            anchors.topMargin: -1
+            height: 2
+            color: "#172130"
+        }
+
         // ── Rev lights content (sits in tab area, y 0–12) ────────────────────
         Item {
             id: revLightsContent
@@ -156,7 +166,7 @@ Window {
             anchors.top:         parent.top
             anchors.leftMargin:  49
             anchors.rightMargin: 49
-            height: 12
+            height: tabBg.height
 
             // Aggressive whole-bar blink when RPM crosses the threshold
             SequentialAnimation {
@@ -169,11 +179,8 @@ Window {
             }
 
             RowLayout {
-                anchors.fill:         parent
-                anchors.leftMargin:   4
-                anchors.rightMargin:  4
-                anchors.topMargin:    2
-                anchors.bottomMargin: 2
+                anchors.fill: parent
+                anchors.margins: 2
                 spacing: 2
 
                 Repeater {
@@ -710,60 +717,89 @@ Window {
         // end exactly where the pill's curvature begins.
         // Brake  (left):  fills right → left
         // Throttle (right): fills left → right
-        Row {
+
+        Rectangle {
             anchors.left:        parent.left
             anchors.right:       parent.right
             anchors.top:         hudShell.bottom
-            anchors.topMargin:   4
+            anchors.topMargin:   -1
             anchors.leftMargin:  hudShell.radius
             anchors.rightMargin: hudShell.radius
-            height:  10
-            spacing: 4
+            height: 2
+            color: "#172130"
+        }
 
-            // Brake — right-to-left fill
-            Rectangle {
-                id: brakeTrack
-                width:  (parent.width - parent.spacing) / 2
-                height: parent.height
-                radius: height / 2
-                color:        Qt.rgba(1, 0.09, 0.27, 0.15)
-                border.width: 1
-                border.color: Qt.rgba(1, 0.09, 0.27, 0.55)
-                clip: true
-
-                Rectangle {
-                    anchors.right:  parent.right
-                    anchors.top:    parent.top
-                    anchors.bottom: parent.bottom
-                    width:  Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.width)
-                    radius: parent.radius
-                    color:  "#FF1744"
-                    Behavior on width { SmoothedAnimation { duration: 70 } }
-                }
+        Rectangle {
+            id: pedalsBg
+            anchors.left:        parent.left
+            anchors.right:       parent.right
+            anchors.top:         hudShell.bottom
+            anchors.topMargin:   0
+            anchors.leftMargin:  hudShell.radius
+            anchors.rightMargin: hudShell.radius
+            height:  14
+            radius: 4
+            border.width: 1
+            border.color: "#2b3946"
+            clip: true
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#172130" }
+                GradientStop { position: 1.0; color: "#172130" }
             }
 
-            // Throttle — left-to-right fill
-            Rectangle {
-                id: throttleTrack
-                width:  (parent.width - parent.spacing) / 2
-                height: parent.height
-                radius: height / 2
-                color:        Qt.rgba(0, 0.9019607843, 0.462745098, 0.15)
-                border.width: 1
-                border.color: Qt.rgba(0, 0.9019607843, 0.462745098, 0.55)
-                clip: true
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+                anchors.topMargin: 2
+                anchors.bottomMargin: 2
+                spacing: 4
 
+                // Brake - right-to-left fill
                 Rectangle {
-                    anchors.left:   parent.left
-                    anchors.top:    parent.top
-                    anchors.bottom: parent.bottom
-                    width:  Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.width)
-                    radius: parent.radius
-                    color:  "#00e676"
-                    Behavior on width { SmoothedAnimation { duration: 70 } }
+                    id: brakeTrack
+                    width:  (parent.width - parent.spacing) / 2
+                    height: parent.height
+                    radius: height / 2
+                    color:        Qt.rgba(1, 0.09, 0.27, 0.15)
+                    border.width: 1
+                    border.color: Qt.rgba(1, 0.09, 0.27, 0.55)
+                    clip: true
+
+                    Rectangle {
+                        anchors.right:  parent.right
+                        anchors.top:    parent.top
+                        anchors.bottom: parent.bottom
+                        width:  Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.width)
+                        radius: parent.radius
+                        color:  "#FF1744"
+                        Behavior on width { SmoothedAnimation { duration: 70 } }
+                    }
+                }
+
+                // Throttle - left-to-right fill
+                Rectangle {
+                    id: throttleTrack
+                    width:  (parent.width - parent.spacing) / 2
+                    height: parent.height
+                    radius: height / 2
+                    color:        Qt.rgba(0, 0.9019607843, 0.462745098, 0.15)
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0.9019607843, 0.462745098, 0.55)
+                    clip: true
+
+                    Rectangle {
+                        anchors.left:   parent.left
+                        anchors.top:    parent.top
+                        anchors.bottom: parent.bottom
+                        width:  Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.width)
+                        radius: parent.radius
+                        color:  "#00e676"
+                        Behavior on width { SmoothedAnimation { duration: 70 } }
+                    }
                 }
             }
-        } // input bars
+        } // pedalsBg
 
     } // scaledRoot
 }
