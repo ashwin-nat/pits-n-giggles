@@ -90,7 +90,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_circuit_info, True)
         self.assertEqual(settings.circuit_info_ui_scale, 1.0)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
-        self.assertEqual(settings.circuit_info_length, 1400)
+        self.assertEqual(settings.circuit_info_length, 800)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         # MFD pages has its own test case because the structure is a bit more complex

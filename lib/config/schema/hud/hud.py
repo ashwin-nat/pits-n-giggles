@@ -305,7 +305,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
     circuit_info_length: int = Field(
-        default=1400,
+        default=800,
         ge=200,
         le=1500,
         description="Circuit info overlay circuit length fallback (m)",
