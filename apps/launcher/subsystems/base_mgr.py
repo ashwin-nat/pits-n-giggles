@@ -469,6 +469,7 @@ class PngAppMgrBase(QObject):
     def _monitor_exit(self):
         """Monitor for unexpected process exit"""
         process = self.process
+        stop_heartbeat = self._stop_heartbeat  # capture local ref to avoid race with restart
 
         try:
             if not process:
@@ -492,8 +493,10 @@ class PngAppMgrBase(QObject):
                 self._handle_unexpected_exit(ret_code)
 
         finally:
+            if stop_heartbeat is not self._stop_heartbeat:
+                self.debug_log(f"{self.DISPLAY_NAME} [RACE DETECTED] monitor exit fired after restart replaced stop_heartbeat")
             self.debug_log(f"{self.DISPLAY_NAME} Setting heartbeat stop flag...")
-            self._stop_heartbeat.set()
+            stop_heartbeat.set()
 
     def _handle_unexpected_exit(self, ret_code: int):
         """Handle unexpected process termination"""
