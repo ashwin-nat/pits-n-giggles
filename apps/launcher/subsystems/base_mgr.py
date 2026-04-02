@@ -43,6 +43,7 @@ from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_UNKNOWN,
                               PNG_ERROR_CODE_UNSUPPORTED_OS,
                               PNG_LOST_CONN_TO_PARENT)
+from lib.event_counter import EventCounter
 from lib.ipc import IpcClientSync
 
 if TYPE_CHECKING:
@@ -174,6 +175,10 @@ class PngAppMgrBase(QObject):
         self.num_missable_heartbeats: int = 3
         self._stop_heartbeat = threading.Event()
 
+        # Lifecycle stats
+        self._lifecycle_stats = EventCounter()
+        self._proc_start_ts_ns: Optional[int] = None
+
         # Startup sync flags (fire post-start only after both seen)
         self._init_complete_received = False
         self._post_start_fired = False
@@ -253,6 +258,7 @@ class PngAppMgrBase(QObject):
             self._post_start_fired = False
             self.ipc_port = None # Child process will report its IPC port
             self._stats = None
+            self._proc_start_ts_ns = None
 
             # Build and execute launch command
             launch_cmd = self.get_launch_command()
@@ -270,6 +276,7 @@ class PngAppMgrBase(QObject):
                     stdin=subprocess.PIPE
                 )
 
+                self._proc_start_ts_ns = time.time_ns()
                 self.is_running = True
                 self.child_pid = self.process.pid
 
@@ -298,11 +305,13 @@ class PngAppMgrBase(QObject):
                 ).start()
 
                 self.debug_log(f"{self.DISPLAY_NAME} started (PID: {self.child_pid})")
+                self._lifecycle_stats.track_event("lifecycle", "start")
 
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Failed to start {self.DISPLAY_NAME}: {e}")
                 self._update_status("Crashed")
                 self.is_running = False
+                self._lifecycle_stats.track_event("lifecycle", "start_failed")
                 self._integration_fail(f"Failed to start {self.DISPLAY_NAME}: {e}")
 
     def stop(self, reason: str):
@@ -315,6 +324,7 @@ class PngAppMgrBase(QObject):
             self.debug_log(f"Inside Stopping {self.DISPLAY_NAME}... Reason: {reason}")
             self._is_stopping.set()
             self._update_status("Stopping")
+            self._lifecycle_stats.track_event("lifecycle", "stop")
 
             # Force Qt to update UI now
             self.window.process_events()
@@ -371,9 +381,13 @@ class PngAppMgrBase(QObject):
             self.debug_log(f"{self.DISPLAY_NAME} Reset restart counter on manual stop")
             self.start(reason)
 
-    def get_stats(self) -> Optional[dict]:
-        """Get the latest stats from the child process, if available"""
-        return self._stats
+    def get_stats(self) -> dict:
+        """Get stats combining child process stats and local lifecycle stats"""
+        result = {}
+        if self._stats:
+            result.update(self._stats)
+        result["__mgr_lifecycle__"] = self._lifecycle_stats.get_stats()
+        return result
 
     def _should_auto_restart(self, exit_code: int) -> bool:
         reason = self.exit_reasons.get(exit_code)
@@ -395,6 +409,7 @@ class PngAppMgrBase(QObject):
     def _auto_restart(self):
         """Attempt automatic restart after unexpected exit"""
         self._restart_count += 1
+        self._lifecycle_stats.track_event("lifecycle", "auto_restart")
 
         self.warning_log(
             f"{self.DISPLAY_NAME} auto-restart attempt {self._restart_count}/{self.max_restart_attempts}"
@@ -433,10 +448,15 @@ class PngAppMgrBase(QObject):
             # 1. PID token
             # ---------------------------------------------------------
             if pid := extract_pid_from_line(line):
+                pid_recv_ts = time.time_ns()
                 with self._process_lock:
                     current_pid = self.process.pid if self.process else None
                     changed = (current_pid is not None and current_pid != pid)
                     self.child_pid = pid
+                    start_ts = self._proc_start_ts_ns
+                if start_ts is not None:
+                    self._lifecycle_stats.track_packet_latency(
+                        "startup_latency", "to_pid", start_ts, pid_recv_ts)
                 self.debug_log(f"{self.DISPLAY_NAME} PID update: {pid} changed={changed}")
                 continue
 
@@ -444,8 +464,13 @@ class PngAppMgrBase(QObject):
             # 2. IPC PORT token
             # ---------------------------------------------------------
             if port := extract_ipc_port_from_line(line):
+                port_recv_ts = time.time_ns()
                 with self._process_lock:
                     self.ipc_port = port
+                    start_ts = self._proc_start_ts_ns
+                if start_ts is not None:
+                    self._lifecycle_stats.track_packet_latency(
+                        "startup_latency", "to_ipc_port", start_ts, port_recv_ts)
                 self.debug_log(f"{self.DISPLAY_NAME} IPC port reported: {port}")
                 self._maybe_fire_post_start()
                 continue
@@ -454,10 +479,15 @@ class PngAppMgrBase(QObject):
             # 3. INIT COMPLETE token
             # ---------------------------------------------------------
             if is_init_complete(line):
+                init_recv_ts = time.time_ns()
                 self.debug_log(f"{self.DISPLAY_NAME} initialization complete")
                 with self._process_lock:
                     self._init_complete_received = True
                     self._update_status("Running")
+                    start_ts = self._proc_start_ts_ns
+                if start_ts is not None:
+                    self._lifecycle_stats.track_packet_latency(
+                        "startup_latency", "to_init_complete", start_ts, init_recv_ts)
                 self._maybe_fire_post_start()
                 continue
 
@@ -502,6 +532,7 @@ class PngAppMgrBase(QObject):
         """Handle unexpected process termination"""
         err_msg = f"{self.DISPLAY_NAME} exited unexpectedly (code: {ret_code})"
         self.error_log(err_msg)
+        self._lifecycle_stats.track_event("lifecycle", "unexpected_exit")
         self._integration_fail(err_msg)
 
         with self._process_lock:
@@ -571,18 +602,22 @@ class PngAppMgrBase(QObject):
             if not port:
                 # No port means child hasn't initialised yet - treat as a missed heartbeat
                 failed_count += 1
+                self._lifecycle_stats.track_event("heartbeat", "miss")
                 self.debug_log(f"{self.DISPLAY_NAME}: No IPC port yet, missed heartbeat count={failed_count}")
             else:
                 try:
                     rsp = IpcClientSync(port, timeout_ms).heartbeat()
                     if rsp.get("status") == "success":
                         failed_count = 0
+                        self._lifecycle_stats.track_event("heartbeat", "success")
                         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat success response: {rsp} on port {port}")
                     else:
                         failed_count += 1
+                        self._lifecycle_stats.track_event("heartbeat", "miss")
                         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat failed with response: {rsp} on port {port}")
                 except Exception as e: # pylint: disable=broad-exception-caught
                     self.debug_log(f"Heartbeat error: {e}")
+                    self._lifecycle_stats.track_event("heartbeat", "miss")
                     failed_count += 1
 
             # Check for excessive failures
@@ -590,6 +625,7 @@ class PngAppMgrBase(QObject):
                 self.error_log(
                     f"{self.DISPLAY_NAME} missed {failed_count} heartbeats, stopping..."
                 )
+                self._lifecycle_stats.track_event("heartbeat", "fail_stop")
                 self.stop("Heartbeat failure")
                 break
 
@@ -614,9 +650,12 @@ class PngAppMgrBase(QObject):
                 self._stats = None
 
             rsp = ipc_client.shutdown_child(reason)
-            return rsp.get("status") == "success"
+            ok = rsp.get("status") == "success"
+            self._lifecycle_stats.track_event("ipc", "shutdown_ok" if ok else "shutdown_fail")
+            return ok
         except Exception as e: # pylint: disable=broad-exception-caught
             self.debug_log(f"{self.DISPLAY_NAME} | IPC shutdown failed: {e}")
+            self._lifecycle_stats.track_event("ipc", "shutdown_fail")
             return False
 
     def _terminate_process(self):
