@@ -88,6 +88,9 @@ class EngViewRaceTable {
         this.GREEN_SECTOR = 1;
         this.PURPLE_SECTOR = 2;
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
+        this.COLUMN_PROFILES_LS_KEY = 'eng-view-table-column-profiles';
+        this.COLUMN_ACTIVE_PROFILE_LS_KEY = 'eng-view-table-active-profile';
+        this.DEFAULT_PROFILE_ID = '__default__';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
         this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
         this.previousTableData = []; // Stores the data from the previous update cycle
@@ -98,25 +101,42 @@ class EngViewRaceTable {
         this.settingsButton = document.getElementById('settings-btn');
         this.columnVisibilityPane = document.getElementById('column-visibility-pane');
         this.resetVisibilityButton = document.getElementById('reset-visibility-btn');
-        this.resetLayoutButton = document.getElementById('reset-layout-btn'); // New button
+        this.resetLayoutButton = document.getElementById('reset-layout-btn');
         this.closePaneButton = document.getElementById('close-pane-btn');
         this.columnVisibilityContainer = document.getElementById('column-visibility-container');
+        this.columnProfileSelect = document.getElementById('column-profile-select');
+        this.renameProfileBtn = document.getElementById('rename-profile-btn');
+        this.newProfileBtn = document.getElementById('new-profile-btn');
+        this.deleteProfileBtn = document.getElementById('delete-profile-btn');
 
         this.initGrid();
         this.setupSettingsEventListeners();
     }
 
     saveColumnState() {
-        if (this.gridApi) {
-            const columnState = this.gridApi.getColumnState();
-            try {
-                localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
-                console.debug('Column state saved:', columnState);
-                return columnState;
-            } catch (error) {
-                console.warn('Failed to save column state:', error);
-                return null;
+        if (!this.gridApi) return null;
+
+        const activeProfile = this.getActiveProfileId();
+        if (activeProfile === this.DEFAULT_PROFILE_ID) {
+            // Default is always all-columns-visible with library defaults — never persist changes
+            return null;
+        }
+
+        const columnState = this.gridApi.getColumnState();
+        try {
+            localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
+            console.debug('Column state saved:', columnState);
+
+            const profiles = this.loadProfiles();
+            if (profiles[activeProfile]) {
+                profiles[activeProfile].state = columnState;
+                this.saveProfiles(profiles);
             }
+
+            return columnState;
+        } catch (error) {
+            console.warn('Failed to save column state:', error);
+            return null;
         }
     }
 
@@ -130,6 +150,113 @@ class EngViewRaceTable {
             console.warn('Failed to load column state:', error);
         }
         return null; // Saved data not found
+    }
+
+    // --- Profile management ---
+
+    loadProfiles() {
+        try {
+            const raw = localStorage.getItem(this.COLUMN_PROFILES_LS_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    }
+
+    saveProfiles(profiles) {
+        try {
+            localStorage.setItem(this.COLUMN_PROFILES_LS_KEY, JSON.stringify(profiles));
+        } catch (error) {
+            console.warn('Failed to save column profiles:', error);
+        }
+    }
+
+    getActiveProfileId() {
+        return localStorage.getItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY) || this.DEFAULT_PROFILE_ID;
+    }
+
+    setActiveProfileId(profileId) {
+        localStorage.setItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY, profileId);
+    }
+
+    applyProfile(profileId) {
+        this.setActiveProfileId(profileId);
+
+        let state = null;
+        if (profileId === this.DEFAULT_PROFILE_ID) {
+            // Clear saved state so grid defaults apply on next load; apply defaults now
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
+        } else {
+            const profiles = this.loadProfiles();
+            state = profiles[profileId]?.state || null;
+            if (state) {
+                try {
+                    localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(state));
+                } catch { /* ignore */ }
+            }
+        }
+
+        if (this.gridApi) {
+            if (state) {
+                this.gridApi.applyColumnState({ state, applyOrder: true });
+            } else {
+                this.gridApi.resetColumnState();
+            }
+        }
+
+        this.populateColumnVisibilityToggles();
+    }
+
+
+    createProfile(name) {
+        if (!this.gridApi) return null;
+        const profiles = this.loadProfiles();
+        // Generate a unique ID
+        const id = 'profile_' + Date.now();
+        profiles[id] = { name, state: this.gridApi.getColumnState() };
+        this.saveProfiles(profiles);
+        return id;
+    }
+
+    deleteProfile(profileId) {
+        if (profileId === this.DEFAULT_PROFILE_ID) return;
+        const profiles = this.loadProfiles();
+        delete profiles[profileId];
+        this.saveProfiles(profiles);
+    }
+
+    populateProfileSelect() {
+        const select = this.columnProfileSelect;
+        const activeId = this.getActiveProfileId();
+        select.innerHTML = '';
+
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = this.DEFAULT_PROFILE_ID;
+        defaultOpt.textContent = 'Default';
+        select.appendChild(defaultOpt);
+
+        const profiles = this.loadProfiles();
+        for (const [id, profile] of Object.entries(profiles)) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = profile.name;
+            select.appendChild(opt);
+        }
+
+        select.value = activeId;
+        // Fall back to default if active profile was deleted
+        if (!select.value) {
+            select.value = this.DEFAULT_PROFILE_ID;
+            this.setActiveProfileId(this.DEFAULT_PROFILE_ID);
+        }
+
+        this.updateProfileButtons();
+    }
+
+    updateProfileButtons() {
+        const isDefault = this.columnProfileSelect.value === this.DEFAULT_PROFILE_ID;
+        this.deleteProfileBtn.disabled = isDefault;
+        this.renameProfileBtn.disabled = isDefault;
     }
 
     initGrid() {
@@ -177,11 +304,13 @@ class EngViewRaceTable {
                 this.gridApi = params.api;
                 console.debug("AG Grid ready.");
 
-                // Apply saved column state
-                const savedColumnState = this.loadColumnState();
-                if (savedColumnState) {
-                    this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
-                    console.debug('Applied saved column state:', savedColumnState);
+                // Apply saved column state (skip for Default — library defaults apply)
+                if (this.getActiveProfileId() !== this.DEFAULT_PROFILE_ID) {
+                    const savedColumnState = this.loadColumnState();
+                    if (savedColumnState) {
+                        this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                        console.debug('Applied saved column state:', savedColumnState);
+                    }
                 }
 
                 // Add event listeners for column state changes
@@ -1223,19 +1352,69 @@ class EngViewRaceTable {
         this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout());
+
+        this.columnProfileSelect.addEventListener('change', () => {
+            this.applyProfile(this.columnProfileSelect.value);
+            this.updateProfileButtons();
+        });
+
+        this.renameProfileBtn.addEventListener('click', () => {
+            const profileId = this.columnProfileSelect.value;
+            if (profileId === this.DEFAULT_PROFILE_ID) return;
+            const profiles = this.loadProfiles();
+            const currentName = profiles[profileId]?.name || '';
+            const newName = prompt('Enter a new name for this profile:', currentName);
+            if (!newName || !newName.trim() || newName.trim() === currentName) return;
+            profiles[profileId].name = newName.trim();
+            this.saveProfiles(profiles);
+            this.populateProfileSelect();
+        });
+
+        this.newProfileBtn.addEventListener('click', () => {
+            const name = prompt('Enter a name for the new profile:');
+            if (!name || !name.trim()) return;
+            const id = this.createProfile(name.trim());
+            if (id) {
+                this.populateProfileSelect();
+                this.columnProfileSelect.value = id;
+                this.setActiveProfileId(id);
+                this.updateProfileButtons();
+            }
+        });
+
+        this.deleteProfileBtn.addEventListener('click', () => {
+            const profileId = this.columnProfileSelect.value;
+            if (profileId === this.DEFAULT_PROFILE_ID) return;
+            const profiles = this.loadProfiles();
+            const name = profiles[profileId]?.name || profileId;
+            if (!confirm(`Delete profile "${name}"?`)) return;
+            this.deleteProfile(profileId);
+            this.applyProfile(this.DEFAULT_PROFILE_ID);
+            this.populateProfileSelect();
+        });
     }
 
     toggleColumnVisibilityPane() {
         this.columnVisibilityPane.classList.toggle('open');
         if (this.columnVisibilityPane.classList.contains('open')) {
+            this.populateProfileSelect();
             this.populateColumnVisibilityToggles();
         }
     }
 
     resetColumnVisibility() {
-        this.resetColumnState(); // Call the existing method to reset AG Grid state
-        this.populateColumnVisibilityToggles(); // Re-populate toggles to reflect default state
+        this.resetColumnState();
+        // If on a named profile, update its stored state after reset
+        const activeProfile = this.getActiveProfileId();
+        if (activeProfile !== this.DEFAULT_PROFILE_ID && this.gridApi) {
+            const profiles = this.loadProfiles();
+            if (profiles[activeProfile]) {
+                profiles[activeProfile].state = this.gridApi.getColumnState();
+                this.saveProfiles(profiles);
+            }
+        }
+        this.populateColumnVisibilityToggles();
     }
 
     populateColumnVisibilityToggles() {
@@ -1361,44 +1540,34 @@ class EngViewRaceTable {
 
     resetColumnLayout() {
         if (this.gridApi) {
-            // Get the initial column definitions to restore default widths and order
-            const initialColumnDefs = this.getColumnDefinitions();
-            const initialColumnState = [];
-
-            // Recursively process column definitions to build the initial state
-            const processColDefs = (colDefs) => {
-                colDefs.forEach(colDef => {
-                    if (colDef.children) {
-                        processColDefs(colDef.children);
-                    } else {
-                        initialColumnState.push({
-                            colId: colDef.colId,
-                            width: colDef.width || colDef.flex ? undefined : null, // Default width if not flex
-                            flex: colDef.flex,
-                            hide: false, // Ensure visibility is not reset here
-                            pinned: colDef.pinned || null,
-                        });
-                    }
-                });
-            };
-            processColDefs(initialColumnDefs);
-
-            // Get the current column visibility state
-            const currentColumnState = this.gridApi.getColumnState();
-            const visibilityState = currentColumnState.reduce((acc, col) => {
+            // Capture current visibility before resetting
+            const visibilityState = this.gridApi.getColumnState().reduce((acc, col) => {
                 acc[col.colId] = col.hide;
                 return acc;
             }, {});
 
-            // Merge initial layout with current visibility
-            const newState = initialColumnState.map(col => ({
-                ...col,
+            // Let the library restore its true defaults (order, widths, flex)
+            this.gridApi.resetColumnState();
+
+            // Re-apply visibility so columns the user hid stay hidden
+            const restoredState = this.gridApi.getColumnState().map(col => ({
+                colId: col.colId,
                 hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
             }));
+            this.gridApi.applyColumnState({ state: restoredState });
 
-            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
             console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
+
+            // If on a named profile, update its stored state after layout reset
+            const activeProfile = this.getActiveProfileId();
+            if (activeProfile !== this.DEFAULT_PROFILE_ID) {
+                const profiles = this.loadProfiles();
+                if (profiles[activeProfile]) {
+                    profiles[activeProfile].state = this.gridApi.getColumnState();
+                    this.saveProfiles(profiles);
+                }
+            }
         }
     }
 

@@ -136,11 +136,27 @@
         <div id="column-visibility-pane" class="column-visibility-pane">
             <div class="pane-header">
                 <h2>Column Settings</h2>
-                <div>
-                    <button id="reset-visibility-btn" class="btn btn-sm btn-secondary me-2" data-bs-toggle="tooltip" data-bs-title="Reset all column visibilities to default">Reset Visibilities</button>
-                    <button id="reset-layout-btn" class="btn btn-sm btn-secondary me-2" data-bs-toggle="tooltip" data-bs-title="Reset all column positions and widths to default">Reset Layout</button>
-                    <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
+                <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
+            </div>
+            <div class="pane-profiles-bar">
+                <div class="pane-profiles-row">
+                    <select id="column-profile-select" class="form-select form-select-sm profile-select" title="Select a column profile">
+                        <option value="__default__">Default</option>
+                    </select>
+                    <button id="rename-profile-btn" class="btn btn-sm btn-outline-light" data-bs-toggle="tooltip" data-bs-title="Rename this profile">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button id="new-profile-btn" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Create a new profile from current columns">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button id="delete-profile-btn" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" data-bs-title="Delete this profile">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
+            </div>
+            <div class="pane-actions-bar">
+                <button id="reset-visibility-btn" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" data-bs-title="Reset all column visibilities to default">Reset Visibilities</button>
+                <button id="reset-layout-btn" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" data-bs-title="Reset all column positions and widths to default">Reset Layout</button>
             </div>
             <div class="pane-body">
                 <div id="column-visibility-container">

@@ -268,8 +268,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .column-visibility-pane {
     position: fixed;
     top: 0;
-    right: -300px; /* Start off-screen to the right */
-    width: 300px;
+    right: -340px; /* Start off-screen to the right */
+    width: 340px;
     height: 100%;
     background-color: var(--f1-dark);
     border-left: 1px solid var(--f1-light-gray);
@@ -289,7 +289,7 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     background-color: var(--f1-darker);
     border-bottom: 1px solid var(--f1-light-gray);
 }
@@ -298,6 +298,44 @@ input[type="number"]::-webkit-outer-spin-button {
     margin: 0;
     font-size: 1.2rem;
     color: var(--f1-text);
+}
+
+.pane-profiles-bar {
+    padding: 0.6rem 1rem;
+    background-color: var(--f1-darker);
+    border-bottom: 1px solid var(--f1-light-gray);
+}
+
+.pane-profiles-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pane-profiles-row .profile-select {
+    flex: 1;
+    background-color: #2a2a3a;
+    color: var(--f1-text);
+    border-color: var(--f1-light-gray);
+    font-size: 0.8rem;
+}
+
+.pane-profiles-row .profile-select:focus {
+    border-color: var(--f1-red);
+    box-shadow: 0 0 0 0.15rem rgba(225, 6, 0, 0.3);
+}
+
+.pane-actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background-color: var(--f1-darker);
+    border-bottom: 1px solid var(--f1-light-gray);
+}
+
+.pane-actions-bar .btn {
+    flex: 1;
+    font-size: 0.75rem;
 }
 
 .column-visibility-pane .pane-body {
