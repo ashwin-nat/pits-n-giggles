@@ -60,13 +60,22 @@ class SaveViewerIpc:
         """Registers routes for the IPC server."""
 
         @self.m_ipc_server.on_heartbeat_missed
-        async def _heartbeat_missed_handler(count: int) -> dict:
+        
+        async def _heartbeat_missed_handler(self, count: int) -> dict:
             """Handle terminate command"""
 
-            print(f"[SAVE_VIEWER] Missed heartbeat {count} times. "
-                  "This process has probably been orphaned. Terminating...")
-            os._exit(PNG_LOST_CONN_TO_PARENT)
+            if os.environ.get("PNG_HEADLESS") == "1":
+                # In headless/docker mode, we don't want to terminate the process
+                # if the GUI launcher is not detected.
+                return {"status": "success"}
 
+            # Use configured logger for consistent formatting
+            self.m_logger.warning(
+                "[SAVE_VIEWER] Missed heartbeat %s times. This process has probably been orphaned. Terminating...",
+                count,
+            )
+            os._exit(PNG_LOST_CONN_TO_PARENT)
+        
         @self.m_ipc_server.on_shutdown
         async def _shutdown_handler(args: dict) -> Dict[str, Any]:
             """Shutdown handler function.
@@ -96,9 +105,9 @@ class SaveViewerIpc:
                 await SaveViewerState.open_file_helper(file_path)
             except Exception as e: # pylint: disable=broad-except
                 return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
-
-            # Open the webpage once
-            if self.m_should_open_ui:
+   
+            # Open the webpage once (skip in headless/Docker mode)
+            if self.m_should_open_ui and os.environ.get("PNG_HEADLESS") != "1":
                 self.m_should_open_ui = False
                 webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
 
