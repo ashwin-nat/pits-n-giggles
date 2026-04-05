@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Live Telemetry recorder and web server
+  pits-n-giggles:
+    build: .
+    container_name: f1-telemetry-recorder
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PORT=4768
+      - UDP_PORT=20777
+      - PNG_HEADLESS=1
+    volumes:
+      - ./data:/app/data
+      - ./png_config.json:/app/png_config.json:ro
+    command: python -m apps.backend
+    stdin_open: true
+    tty: true
+
+  # Post-race session viewer
+  pits-n-giggles-viewer:
+    build: .
+    container_name: f1-save-viewer
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PORT=4769
+      - PNG_HEADLESS=1
+    volumes:
+      - ./data:/app/data:ro
+      - ./png_config.json:/app/png_config.json:ro
+    command: python -m apps.save_viewer
+    stdin_open: true
+    tty: true
