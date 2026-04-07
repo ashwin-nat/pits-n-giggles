@@ -111,7 +111,6 @@ class TrackMapOverlay(BaseOverlayQML):
                 self._update_qml_track_map()
                 self.logger.debug("%s | Loaded new circuit: %s", self.OVERLAY_ID, circuit)
 
-            # TODO: Transform car positions to map coordinates and update QML markers
             for car in motion_list:
                 name = car["name"]
                 team = car["team"]
