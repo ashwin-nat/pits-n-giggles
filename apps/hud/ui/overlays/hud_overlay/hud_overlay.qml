@@ -31,7 +31,7 @@ Window {
     property real scaleFactor: 1.0
 
     readonly property int baseWidth: 470
-    readonly property int baseHeight: 124
+    readonly property int baseHeight: 110
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -242,46 +242,73 @@ Window {
                 //  LEFT — GEAR  (zone width = pill height → concentric end)
                 // ════════════════════════════════════════════════════════════
                 Item {
+                    id: gearZone
                     Layout.preferredWidth: 98
                     Layout.fillHeight:     true
 
-                    Rectangle {
-                        id: gearDial
-                        property int observedGear: root.gear
-                        onObservedGearChanged: gearPulse.restart()
+                    property real animBrake:    root.clampPct(root.brakeValue)
+                    property real animThrottle: root.clampPct(root.throttleValue)
+                    Behavior on animBrake    { SmoothedAnimation { duration: 70 } }
+                    Behavior on animThrottle { SmoothedAnimation { duration: 70 } }
 
-                        width:  86
-                        height: 86
-                        radius: 43
+                    onAnimBrakeChanged:    gearCanvas.requestPaint()
+                    onAnimThrottleChanged: gearCanvas.requestPaint()
+
+                    Canvas {
+                        id: gearCanvas
                         anchors.centerIn: parent
-                        color:        "#0b1520"
-                        border.width: 2
-                        border.color: {
-                            if (root.gear < 0)   return "#ff6d74"
-                            if (root.gear === 0) return "#ffc16d"
-                            return "#4a9fd4"
-                        }
+                        width:  96
+                        height: 96
 
-                        // Inner glow ring
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width:  parent.width  - 6
-                            height: parent.height - 6
-                            radius: width / 2
-                            color:        "transparent"
-                            border.width: 1
-                            border.color: {
-                                if (root.gear < 0)   return Qt.rgba(1.00, 0.43, 0.45, 0.20)
-                                if (root.gear === 0) return Qt.rgba(1.00, 0.76, 0.43, 0.20)
-                                return Qt.rgba(0.29, 0.62, 0.83, 0.20)
+                        onPaint: {
+                            let ctx    = getContext("2d", {antialias: true})
+                            ctx.clearRect(0, 0, width, height)
+
+                            let cx     = width  / 2
+                            let cy     = height / 2
+                            let outerR = 44
+                            let halfPi = Math.PI / 2
+                            let top    = -halfPi      // 12 o'clock
+
+                            // ── outer background ring ──
+                            ctx.beginPath()
+                            ctx.arc(cx, cy, outerR, 0, 2 * Math.PI)
+                            ctx.strokeStyle = "#1e2e3c"
+                            ctx.lineWidth   = 5
+                            ctx.stroke()
+
+                            // ── brake arc — left half, red ──
+                            let brakeFrac = gearZone.animBrake / 100
+                            if (brakeFrac > 0.002) {
+                                ctx.beginPath()
+                                ctx.arc(cx, cy, outerR, top, top - brakeFrac * Math.PI, true)
+                                ctx.strokeStyle = "#FF1744"
+                                ctx.lineWidth   = 5
+                                ctx.lineCap     = "round"
+                                ctx.stroke()
+                            }
+
+                            // ── throttle arc — right half, green ──
+                            let throttleFrac = gearZone.animThrottle / 100
+                            if (throttleFrac > 0.002) {
+                                ctx.beginPath()
+                                ctx.arc(cx, cy, outerR, top, top + throttleFrac * Math.PI, false)
+                                ctx.strokeStyle = "#00e676"
+                                ctx.lineWidth   = 5
+                                ctx.lineCap     = "round"
+                                ctx.stroke()
                             }
                         }
+                    }
 
-                        SequentialAnimation {
-                            id: gearPulse
-                            NumberAnimation { target: gearDial; property: "scale"; to: 1.08; duration: 70;  easing.type: Easing.OutCubic  }
-                            NumberAnimation { target: gearDial; property: "scale"; to: 1.00; duration: 120; easing.type: Easing.InOutQuad }
-                        }
+                    Rectangle {
+                        id: gearDial
+                        width:  76
+                        height: 76
+                        radius: 38
+                        anchors.centerIn: parent
+                        color:        "#0b1520"
+                        border.width: 0
 
                         Text {
                             anchors.centerIn: parent
@@ -600,17 +627,17 @@ Window {
                     Canvas {
                         id: ersCanvas
                         anchors.centerIn: parent
-                        width:  88
-                        height: 88
+                        width:  96
+                        height: 96
 
                         onPaint: {
-                            let ctx = getContext("2d")
+                            let ctx = getContext("2d", {antialias: true})
                             ctx.clearRect(0, 0, width, height)
 
-                            let cx      = width  / 2   // 44
-                            let cy      = height / 2   // 44
-                            let outerR  = 40           // outer split-ring radius
-                            let innerR  = 34           // inner fill circle radius (was 26, expanded into freed battery-ring space)
+                            let cx      = width  / 2
+                            let cy      = height / 2
+                            let outerR  = 44
+                            let innerR  = 38
                             let halfPi  = Math.PI / 2
                             let top     = -halfPi      // 12 o'clock
 
@@ -618,7 +645,7 @@ Window {
                             ctx.beginPath()
                             ctx.arc(cx, cy, outerR, 0, 2 * Math.PI)
                             ctx.strokeStyle = "#1e2e3c"
-                            ctx.lineWidth   = 2.5
+                            ctx.lineWidth   = 5
                             ctx.stroke()
 
                             // ── harvest arc — left half, red ──
@@ -627,7 +654,7 @@ Window {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
                                 ctx.strokeStyle = "#FF1744"
-                                ctx.lineWidth   = 3
+                                ctx.lineWidth   = 5
                                 ctx.lineCap     = "round"
                                 ctx.stroke()
                             }
@@ -638,7 +665,7 @@ Window {
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
                                 ctx.strokeStyle = "#00e676"
-                                ctx.lineWidth   = 3
+                                ctx.lineWidth   = 5
                                 ctx.lineCap     = "round"
                                 ctx.stroke()
                             }
@@ -711,95 +738,6 @@ Window {
 
             } // RowLayout
         } // hudShell
-
-        // ── Brake / Throttle bars (below pill, spanning straight section only) ─
-        // Inset by hudShell.radius (49px) on each side so the bars start and
-        // end exactly where the pill's curvature begins.
-        // Brake  (left):  fills right → left
-        // Throttle (right): fills left → right
-
-        Rectangle {
-            anchors.left:        parent.left
-            anchors.right:       parent.right
-            anchors.top:         hudShell.bottom
-            anchors.topMargin:   -1
-            anchors.leftMargin:  hudShell.radius
-            anchors.rightMargin: hudShell.radius
-            height: 2
-            color: "#172130"
-        }
-
-        Rectangle {
-            id: pedalsBg
-            anchors.left:        parent.left
-            anchors.right:       parent.right
-            anchors.top:         hudShell.bottom
-            anchors.topMargin:   0
-            anchors.leftMargin:  hudShell.radius
-            anchors.rightMargin: hudShell.radius
-            height:  14
-            radius: 4
-            border.width: 1
-            border.color: "#2b3946"
-            clip: true
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#172130" }
-                GradientStop { position: 1.0; color: "#172130" }
-            }
-
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: 4
-                anchors.rightMargin: 4
-                anchors.topMargin: 2
-                anchors.bottomMargin: 2
-                spacing: 4
-
-                // Brake - right-to-left fill
-                Rectangle {
-                    id: brakeTrack
-                    width:  (parent.width - parent.spacing) / 2
-                    height: parent.height
-                    radius: height / 2
-                    color:        Qt.rgba(1, 0.09, 0.27, 0.15)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 0.09, 0.27, 0.55)
-                    clip: true
-
-                    Rectangle {
-                        anchors.right:  parent.right
-                        anchors.top:    parent.top
-                        anchors.bottom: parent.bottom
-                        width:  Math.max(0, root.clampPct(root.brakeValue) / 100 * parent.width)
-                        radius: parent.radius
-                        color:  "#FF1744"
-                        Behavior on width { SmoothedAnimation { duration: 70 } }
-                    }
-                }
-
-                // Throttle - left-to-right fill
-                Rectangle {
-                    id: throttleTrack
-                    width:  (parent.width - parent.spacing) / 2
-                    height: parent.height
-                    radius: height / 2
-                    color:        Qt.rgba(0, 0.9019607843, 0.462745098, 0.15)
-                    border.width: 1
-                    border.color: Qt.rgba(0, 0.9019607843, 0.462745098, 0.55)
-                    clip: true
-
-                    Rectangle {
-                        anchors.left:   parent.left
-                        anchors.top:    parent.top
-                        anchors.bottom: parent.bottom
-                        width:  Math.max(0, root.clampPct(root.throttleValue) / 100 * parent.width)
-                        radius: parent.radius
-                        color:  "#00e676"
-                        Behavior on width { SmoothedAnimation { duration: 70 } }
-                    }
-                }
-            }
-        } // pedalsBg
 
     } // scaledRoot
 }
