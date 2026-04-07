@@ -394,7 +394,7 @@ class SessionState:
 
         # No need to clear config params
 
-        self.m_logger.info(f"Clearing all internals. Reason: {reason}")
+        self.m_logger.info("Clearing all internals. Reason: %s", reason)
 
     @property
     def is_data_available(self) -> bool:
@@ -501,7 +501,7 @@ class SessionState:
             flashback_detected = (not self.m_session_info.is_online_mode) and (current_lap > new_lap)
 
             if flashback_detected:
-                self.m_logger.debug(f'Driver {driver_obj}. Lap change due to Flashback detected')
+                self.m_logger.debug('Driver %s. Lap change due to Flashback detected', driver_obj)
 
             # Use the minimum lap number to handle flashback scenarios
             old_lap_num = min(current_lap, new_lap)
@@ -573,8 +573,8 @@ class SessionState:
         """
 
         if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx, create=False)):
-            self.m_logger.debug(f"Fastest lap update event. Driver object not found for index {packet.vehicleIdx}"
-                                ". Skipping")
+            self.m_logger.debug("Fastest lap update event. Driver object not found for index %s. Skipping",
+                                packet.vehicleIdx)
             return
         obj_to_be_updated.m_lap_info.m_best_lap_ms = int(packet.lapTime * 1000) # Convert to int ms, since everything is in int ms
         obj_to_be_updated.m_lap_info.m_best_lap_tyre = obj_to_be_updated.m_tyre_info.tyre_vis_compound
@@ -588,8 +588,8 @@ class SessionState:
         """
 
         if not (obj_to_be_updated := self._getObjectByIndex(packet.vehicleIdx, create=False)):
-            self.m_logger.debug(f"Retirement update event. Driver object not found for index {packet.vehicleIdx}"
-                                ". Skipping")
+            self.m_logger.debug("Retirement update event. Driver object not found for index %s. Skipping",
+                                packet.vehicleIdx)
             return
 
         obj_to_be_updated.m_driver_info.m_dnf_status_code = 'DNF'
@@ -842,6 +842,9 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
+            obj_to_be_updated.m_car_info.m_floor_damage = car_damage.m_floorDamage
+            obj_to_be_updated.m_car_info.m_diffuser_damage = car_damage.m_diffuserDamage
+            obj_to_be_updated.m_car_info.m_sidepod_damage = car_damage.m_sidepodDamage
 
             # Update delayed tyre change data if events are pending
             obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
@@ -886,8 +889,8 @@ class SessionState:
         else:
             # Clear the best lap obj (can linger if flashback is used or practice programme is restarted)
             if obj_to_be_updated.m_lap_info.m_last_lap_obj:
-                self.m_logger.debug(f"Clearing lingering last lap obj for car "
-                                 f"{packet.m_carIdx} - {obj_to_be_updated.m_driver_info.name}")
+                self.m_logger.debug("Clearing lingering last lap obj for car %s - %s",
+                                 packet.m_carIdx, obj_to_be_updated.m_driver_info.name)
                 obj_to_be_updated.m_lap_info.m_last_lap_obj = None
             obj_to_be_updated.m_lap_info.m_last_lap_ms = None
 
@@ -900,14 +903,14 @@ class SessionState:
         else:
             # Clear the last lap obj (can linger if flashback is used or practice programme is restarted)
             if obj_to_be_updated.m_lap_info.m_best_lap_obj:
-                self.m_logger.debug(f"Clearing lingering best lap obj for car {packet.m_carIdx} - "
-                                 f"{obj_to_be_updated.m_driver_info.name}")
+                self.m_logger.debug("Clearing lingering best lap obj for car %s - %s",
+                                 packet.m_carIdx, obj_to_be_updated.m_driver_info.name)
                 obj_to_be_updated.m_lap_info.m_best_lap_obj = None
             obj_to_be_updated.m_lap_info.m_best_lap_ms = None
             obj_to_be_updated.m_lap_info.m_best_lap_tyre = None
             if packet.m_carIdx == self.m_fastest_index:
                 self.m_fastest_index = None
-                self.m_logger.debug(f"Cleared fastest_index f{packet.m_carIdx}")
+                self.m_logger.debug("Cleared fastest_index f%s", packet.m_carIdx)
 
         if self.m_session_info.m_session_type and \
             not self.m_session_info.m_session_type.isTimeTrialTypeSession() and \
@@ -1158,7 +1161,7 @@ class SessionState:
 
         fitted_tyre = tyre_sets.m_fitted_tyre_set
         if not fitted_tyre:
-            self.m_logger.error(f"Invalid fitted tyre index: {json.dumps(tyre_sets.toJSON())}")
+            self.m_logger.error("Invalid fitted tyre index: %s", json.dumps(tyre_sets.toJSON()))
 
         # First find the fitted tyre
         if fitted_tyre.m_visualTyreCompound.isWets():
@@ -1207,7 +1210,7 @@ class SessionState:
         assert other_tyre_1_type != other_tyre_2_type
 
         if (not other_tyre_1) or (not other_tyre_2):
-            self.m_logger.error(f"Invalid other tyre index: {json.dumps(tyre_sets.toJSON())}")
+            self.m_logger.error("Invalid other tyre index: %s", json.dumps(tyre_sets.toJSON()))
             return []
 
         return [
@@ -1412,7 +1415,7 @@ class SessionState:
         assert index is not None, "Index cannot be None"
 
         if not (obj := self.m_driver_data[index]) and create:
-            self.m_logger.debug(f"Creating new DataPerDriver for index {index}. Reason: {reason}")
+            self.m_logger.debug("Creating new DataPerDriver for index %s. Reason: %s", index, reason)
             obj = DataPerDriver(
                 index=index,
                 logger=self.m_logger,
@@ -1518,6 +1521,7 @@ class SessionState:
                 continue
             obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status = self._safeMax(
                 obj_to_be_updated.m_driver_info.m_curr_lap_max_sc_status, packet.m_safetyCarStatus)
+            obj_to_be_updated.m_driver_info.m_current_weather = packet.m_weather.value if packet.m_weather is not None else None
             obj_to_be_updated.updateTotalLaps(packet.m_totalLaps)
 
         return session_changed

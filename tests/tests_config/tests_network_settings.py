@@ -44,7 +44,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         settings = NetworkSettings()
         self.assertEqual(settings.telemetry_port, 20777)
         self.assertEqual(settings.server_port, 4768)
-        self.assertEqual(settings.save_viewer_port, 4769)
+        self.assertEqual(settings.save_viewer_port, 4767)
         self.assertEqual(settings.udp_tyre_delta_action_code, None)
         self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
@@ -191,7 +191,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         NetworkSettings(
             telemetry_port=20777,      # UDP
             server_port=4768,          # TCP
-            save_viewer_port=4769,     # TCP
+            save_viewer_port=4767,     # TCP
             broker_xpub_port=53838,    # TCP
             broker_xsub_port=53835,    # TCP
         )
@@ -232,3 +232,30 @@ class TestNetworkSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             NetworkSettings(enable_pkt_ordering=69420)
+
+    def test_bind_address_default(self):
+        """Test that bind_address defaults to 0.0.0.0"""
+        settings = NetworkSettings()
+        self.assertEqual(settings.bind_address, "0.0.0.0")
+
+    def test_bind_address_valid_values(self):
+        """Test valid bind_address values"""
+        settings = NetworkSettings(bind_address="127.0.0.1")
+        self.assertEqual(settings.bind_address, "127.0.0.1")
+
+        settings = NetworkSettings(bind_address="192.168.1.100")
+        self.assertEqual(settings.bind_address, "192.168.1.100")
+
+        settings = NetworkSettings(bind_address="0.0.0.0")
+        self.assertEqual(settings.bind_address, "0.0.0.0")
+
+    def test_bind_address_invalid_values(self):
+        """Test that invalid bind_address values raise ValidationError"""
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="not-an-ip")
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="999.999.999.999")
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="")

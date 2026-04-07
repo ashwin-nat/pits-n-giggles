@@ -1,6 +1,8 @@
 import datetime
 import glob
 import os
+import shlex
+import subprocess
 import sys
 import time
 import webbrowser
@@ -25,14 +27,14 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
 
     if manage_coverage:
         os.environ["COVERAGE_PROCESS_START"] = rcfile
-        cmd = f"coverage run --rcfile={rcfile} {script} {script_args_str}"
+        cmd_args = ["coverage", "run", f"--rcfile={rcfile}", script] + shlex.split(script_args_str)
     else:
-        cmd = f"{sys.executable} {script} {script_args_str}"
+        cmd_args = [sys.executable, script] + shlex.split(script_args_str)
 
-    print(f"Running command: {cmd}")
-    status = os.system(cmd)
-    if status != 0:
-        print(f"{RUN_TYPE.title()} tests failed with status {status}")
+    print(f"Running command: {' '.join(cmd_args)}")
+    result = subprocess.run(cmd_args)
+    if result.returncode != 0:
+        print(f"{RUN_TYPE.title()} tests failed with status {result.returncode}")
 
     # CRITICAL: Give subprocesses time to flush coverage data
     print("\nWaiting for coverage data to be written...")
@@ -63,9 +65,9 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
     # If we have subprocess files, combine them
     if coverage_files:
         print("\nCombining coverage data from multiple processes...")
-        combine_status = os.system("coverage combine")
-        if combine_status != 0:
-            print(f"  WARNING: Coverage combine failed with status {combine_status}")
+        combine_result = subprocess.run(["coverage", "combine"])
+        if combine_result.returncode != 0:
+            print(f"  WARNING: Coverage combine failed with status {combine_result.returncode}")
             return
 
         # Verify .coverage file was created after combine
@@ -86,9 +88,9 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
     # Generate HTML report
     title = f"{RUN_TYPE.capitalize()} Test Coverage ({timestamp})"
     print(f"\nGenerating HTML report...")
-    html_status = os.system(f'coverage html --title="{title}"')
-    if html_status != 0:
-        print(f"  WARNING: Coverage HTML generation failed with status {html_status}")
+    html_result = subprocess.run(["coverage", "html", f"--title={title}"])
+    if html_result.returncode != 0:
+        print(f"  WARNING: Coverage HTML generation failed with status {html_result.returncode}")
         return
 
     # Ensure the coverage_reports directory exists
@@ -104,7 +106,7 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
 
     if show_report:
         print("\nGenerating text report...")
-        os.system("coverage report")
+        subprocess.run(["coverage", "report"])
         report_path = os.path.abspath(f"{htmlcov_dir}/index.html")
         print(f"\nOpening report in browser: {report_path}")
         webbrowser.open(f"file://{report_path}", new=2)

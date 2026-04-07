@@ -33,7 +33,7 @@ class BarChart {
         }
 
         // Clear container content
-        this.container.innerHTML = '';
+        this.container.textContent = '';
 
         // Set default options
         const config = {

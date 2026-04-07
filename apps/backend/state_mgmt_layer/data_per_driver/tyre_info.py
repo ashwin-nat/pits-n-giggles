@@ -35,6 +35,7 @@ from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 # -------------------------------------- CONTSTANTS --------------------------------------------------------------------
 
 _ROLLING_HISTORY_MAXLEN = 1500  # 60 Hz telemetry × ~25 seconds of history
+_DEFAULT_WINDOW_SIZE = 6  # sliding window for tyre wear regression (validated via Vogt analysis)
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 class TyreSetInfo:
@@ -436,7 +437,8 @@ class TyreInfo:
         """Init the utility objects and store logger"""
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
-        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps)
+        self.m_tyre_wear_extrapolator = TyreWearExtrapolator(
+            [], total_laps=total_laps, window_size=_DEFAULT_WINDOW_SIZE)
 
     def handleFlashback(self, outdated_laps: List[int]) -> None:
         """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator

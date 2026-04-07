@@ -860,7 +860,7 @@ class PngLauncherWindow(QMainWindow):
             path = self.config_file_path_new
         try:
             save_config_to_json(settings, path)
-        except Exception as e: # pylint: disable=broad-exception-caught
+        except (OSError, TypeError, ValueError) as e:
             self.error_log(f"Failed to save settings to {path}: {e}")
 
         self.info_log("Settings saved successfully to disk")

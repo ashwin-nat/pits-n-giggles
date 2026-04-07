@@ -72,7 +72,7 @@ class HudAppMgr(PngAppMgrBase):
         :param common_cfg: Common configuration for the HUD app manager
         """
         self.port = common_cfg.settings.Network.save_viewer_port
-        self.supported = (sys.platform == "win32") # Only supported on Windows
+        self.supported = True  # Supported on all platforms (Windows, Linux, macOS)
         self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0
         final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
@@ -461,7 +461,7 @@ class HudAppMgr(PngAppMgrBase):
                 "refresh_interval",
                 "realtime_overlay_fps",
                 "use_gpu_acceleration",
-            ]
+            ],
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
                 settings_requiring_restart, indent=2)}")

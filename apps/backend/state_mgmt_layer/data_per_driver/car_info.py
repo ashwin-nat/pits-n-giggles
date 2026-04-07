@@ -46,6 +46,9 @@ class CarInfo:
     m_fl_wing_damage: Optional[int] = None
     m_fr_wing_damage: Optional[int] = None
     m_rear_wing_damage: Optional[int] = None
+    m_floor_damage: Optional[int] = None
+    m_diffuser_damage: Optional[int] = None
+    m_sidepod_damage: Optional[int] = None
 
     m_curr_lap_ers_harv_mguk_j: Optional[float] = None
     m_curr_lap_ers_harv_mguh_j: Optional[float] = None

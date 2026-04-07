@@ -26,6 +26,22 @@ class TelemetryRenderer {
 
     this.blinkingDot.classList.add('blinking-dot')
     this.statusContainer.append(this.blinkingDot, this.statusText)
+
+    // Column config
+    this.columnConfig = new ColumnConfig();
+    this.allColumnsHiddenHint = document.getElementById('all-columns-hidden-hint');
+    this.lastIncomingData = null;
+    this.columnConfig.onChange(() => {
+      this.applyHeaderVisibility();
+      this.updateAllColumnsHiddenHint();
+      if (this.lastIncomingData) {
+        this.updateRaceTableData(this.lastIncomingData);
+      }
+    });
+    this.initColumnConfigPanel();
+    this.applyHeaderVisibility();
+    this.updateAllColumnsHiddenHint();
+    this._handleAutoPreset();
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType, driverContext) {
@@ -34,7 +50,7 @@ class TelemetryRenderer {
 
     // Populate row with data
     new RaceTableRowPopulator(row, data, packetFormat, isLiveDataMode, this.iconCache, raceEnded, spectatorIndex,
-                                     sessionType, driverContext).populate();
+                                     sessionType, driverContext, this.columnConfig).populate();
 
     // Apply CSS classes based on row state
     const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
@@ -106,7 +122,7 @@ class TelemetryRenderer {
   preserveHeaderRow() {
     if (this.telemetryTable.children.length === 1) {
       const headerRow = this.telemetryTable.children[0];
-      this.telemetryTable.innerHTML = '';
+      this.telemetryTable.textContent = '';
       this.telemetryTable.appendChild(headerRow);
     }
   }
@@ -116,7 +132,7 @@ class TelemetryRenderer {
     const newRow = this.renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType,
                           driverRowObj.context);
     if (driverRowObj.row) {
-      driverRowObj.row.innerHTML = newRow.innerHTML;
+      driverRowObj.row.replaceChildren(...Array.from(newRow.childNodes));
     } else {
       driverRowObj.row = newRow;
       driverRowObj.row.setAttribute('data-driver-index', driverIndex);
@@ -126,6 +142,7 @@ class TelemetryRenderer {
   }
 
   updateRaceTableData(incomingData) {
+    this.lastIncomingData = incomingData;
     this.setUIMode('Race');
     const isLiveDataMode = incomingData["live-data"];
     const raceEnded = incomingData["race-ended"];
@@ -184,7 +201,7 @@ class TelemetryRenderer {
     this.fastestLapNameSpan.textContent = (incomingData['event-type'] === 'Time Trial') ?
         ('') : (getTLA(incomingData['fastest-lap-overall-driver']));
 
-    this.fastestLapTyreSpan.innerHTML = '';
+    this.fastestLapTyreSpan.textContent = '';
     const fastestLapTyre = incomingData['fastest-lap-overall-tyre'];
     if (fastestLapTyre) {
       const icon = this.iconCache.getIcon(fastestLapTyre);
@@ -228,7 +245,7 @@ class TelemetryRenderer {
     const trackNameContainer = this.trackName;
 
     // Clear any existing content in the span
-    trackNameContainer.innerHTML = "";
+    trackNameContainer.textContent = "";
     if ("---" === trackName) {
       this.trackName.textContent = "PITS N' GIGGLES";
     } else {
@@ -257,7 +274,7 @@ class TelemetryRenderer {
         sessionInfoText += formatSecondsToMMSS(sessionTime);
       }
 
-      sessionInfoDiv.innerHTML = sessionInfoText;
+      sessionInfoDiv.textContent = sessionInfoText;
       trackNameContainer.appendChild(sessionInfoDiv);
     }
   }
@@ -268,71 +285,292 @@ class TelemetryRenderer {
   }
 
   setDeltaColumnState(isLiveDataMode) {
-    // hide the column in live mode
-    this.hideColumn('DELTA 🛈', isLiveDataMode);
+    this.columnConfig.setSessionOverride('delta', !isLiveDataMode);
+    this.applyHeaderVisibility();
   }
 
   setFuelColumnState(isLiveDataMode, sessionType) {
-    // show the column in live mode, but only for race sessions
-    let shouldHide;
-    if (!isLiveDataMode) {
-      shouldHide = true;
-    } else {
-      shouldHide = !isRaceSession(sessionType);
-    }
-    this.hideColumn('FUEL 🛈', shouldHide);
+    const allowed = isLiveDataMode && isRaceSession(sessionType);
+    this.columnConfig.setSessionOverride('fuel', allowed);
+    this.applyHeaderVisibility();
   }
 
   setCurrLapColumnState(isLiveDataMode, sessionType) {
-    // show the column in live mode, but only in FP and quali sessions
-    let shouldHide = false;
-    if (!isLiveDataMode) {
-      shouldHide = true;
-    }
-    else {
-      shouldHide = isRaceSession(sessionType);
-    }
-
-    this.hideColumn('CURRENT LAP', shouldHide);
+    const allowed = isLiveDataMode && !isRaceSession(sessionType);
+    this.columnConfig.setSessionOverride('current-lap', allowed);
+    this.applyHeaderVisibility();
   }
 
   setWearPredictionColumnState(isLiveDataMode, sessionType) {
-      const shouldHide = !isLiveDataMode || !isRaceSession(sessionType);
-      this.hideColumn('WEAR PREDICTION', shouldHide);
+    const allowed = isLiveDataMode && isRaceSession(sessionType);
+    this.columnConfig.setSessionOverride('wear-prediction', allowed);
+    this.applyHeaderVisibility();
   }
 
   setWingDamageColumnState(sessionType) {
-    // hide the column in FP/Quali modes
-    const shouldHide = !isRaceSession(sessionType);
-    this.hideColumn('WING DAMAGE', shouldHide);
+    const allowed = isRaceSession(sessionType);
+    this.columnConfig.setSessionOverride('damage', allowed);
+    this.applyHeaderVisibility();
   }
 
-  hideColumn(columnName, shouldHide) {
-    const table = document.getElementById("race-table");
-    const headers = table.getElementsByTagName("th");
-    let columnIndex = -1;
+  applyHeaderVisibility() {
+    const table = document.getElementById('race-table');
+    const headers = table.querySelectorAll('th[data-column-group]');
+    headers.forEach(th => {
+      const group = th.getAttribute('data-column-group');
+      th.style.display = this.columnConfig.isVisible(group) ? '' : 'none';
+    });
+  }
 
-    // Find the column index
-    for (let i = 0; i < headers.length; i++) {
-        if (headers[i].textContent === columnName) {
-            columnIndex = i;
-            headers[i].style.display = shouldHide ? "none" : "";
-            break;
+  updateAllColumnsHiddenHint() {
+    if (!this.allColumnsHiddenHint) return;
+    this.allColumnsHiddenHint.style.display =
+      this.columnConfig.areAllUserColumnsHidden() ? '' : 'none';
+  }
+
+  initColumnConfigPanel() {
+    const panel = document.getElementById('settings-panel');
+    const columnBtn = document.getElementById('column-config-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const closeBtn = document.getElementById('settings-panel-close-btn');
+    const resetBtn = document.getElementById('reset-columns-btn');
+    const saveSettingsBtn = document.getElementById('saveSettings');
+    const togglesContainer = document.getElementById('column-toggles-container');
+    const presetsContainer = document.getElementById('preset-buttons-container');
+    const tabButtons = panel.querySelectorAll('.panel-tab');
+    const tabColumns = document.getElementById('tab-columns');
+    const tabDisplay = document.getElementById('tab-display');
+
+    if (!panel) return;
+
+    this._activeSettingsTab = 'columns';
+
+    const refreshPanel = () => {
+      this.populatePresetButtons(presetsContainer);
+      this.populateColumnToggles(togglesContainer);
+      this.populateCustomPresetButton();
+    };
+
+    const switchTab = (tabName) => {
+      this._activeSettingsTab = tabName;
+      tabButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      tabColumns.style.display = tabName === 'columns' ? '' : 'none';
+      tabDisplay.style.display = tabName === 'display' ? '' : 'none';
+      // Toggle footer buttons
+      resetBtn.style.display = tabName === 'columns' ? '' : 'none';
+      saveSettingsBtn.style.display = tabName === 'display' ? '' : 'none';
+    };
+
+    const openPanel = (tabName) => {
+      if (!panel.classList.contains('open')) {
+        panel.classList.add('open');
+        refreshPanel();
+      }
+      switchTab(tabName || this._activeSettingsTab);
+      // If opening display tab, populate settings fields
+      if ((tabName || this._activeSettingsTab) === 'display' && window.modalManager) {
+        window.modalManager.populateSettingsFields();
+      }
+    };
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchTab(btn.dataset.tab);
+        if (btn.dataset.tab === 'display' && window.modalManager) {
+          window.modalManager.populateSettingsFields();
         }
+      });
+    });
+
+    if (columnBtn) {
+      columnBtn.addEventListener('click', () => {
+        if (panel.classList.contains('open') && this._activeSettingsTab === 'columns') {
+          panel.classList.remove('open');
+        } else {
+          openPanel('columns');
+        }
+      });
     }
 
-    // If column was found, hide/show all cells in that column
-    if (columnIndex > -1) {
-        const rows = table.getElementsByTagName("tr");
+    // settings-btn click is handled by ModalManager — we set up a fallback here
+    // that gets overridden by ModalManager.setupEventListeners if settingsModal is true
+    this._openSettingsPanel = openPanel;
 
-        // Start from 1 to skip header row if it's already handled above
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName("td");
-            if (cells.length > columnIndex) {
-                cells[columnIndex].style.display = shouldHide ? "none" : "";
-            }
-        }
+    closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+
+    resetBtn.addEventListener('click', () => {
+      this.columnConfig.resetToDefault();
+      refreshPanel();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && panel.classList.contains('open')) {
+        panel.classList.remove('open');
+      }
+    });
+
+    // Listen for config changes to refresh preset highlighting
+    this.columnConfig.onChange(() => {
+      if (panel.classList.contains('open')) {
+        this.populatePresetButtons(presetsContainer);
+        this.populateCustomPresetButton();
+      }
+    });
+  }
+
+  populatePresetButtons(container) {
+    container.textContent = '';
+    ColumnConfig.PRESETS.forEach(preset => {
+      const btn = document.createElement('button');
+      btn.classList.add('preset-btn');
+      if (this.columnConfig.activePreset === preset.id) {
+        btn.classList.add('active');
+      }
+      btn.innerHTML = `<span class="preset-emoji">${preset.emoji}</span>${preset.label}`;
+      btn.addEventListener('click', () => {
+        this.columnConfig.applyPreset(preset.id);
+        const togglesContainer = document.getElementById('column-toggles-container');
+        this.populateColumnToggles(togglesContainer);
+      });
+      container.appendChild(btn);
+    });
+
+    // Custom preset button (if saved)
+    if (this.columnConfig.hasCustomPreset()) {
+      const customBtn = document.createElement('button');
+      customBtn.classList.add('preset-btn');
+      if (this.columnConfig.activePreset === 'custom') {
+        customBtn.classList.add('active');
+      }
+      customBtn.innerHTML = `<span class="preset-emoji">🎯</span>My Layout`;
+      customBtn.addEventListener('click', () => {
+        this.columnConfig.applyPreset('custom');
+        const togglesContainer = document.getElementById('column-toggles-container');
+        this.populateColumnToggles(togglesContainer);
+      });
+
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.classList.add('preset-delete');
+      deleteBtn.innerHTML = '✕';
+      deleteBtn.title = 'Delete custom layout';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.columnConfig.deleteCustomPreset();
+        this.populatePresetButtons(container);
+        this.populateCustomPresetButton();
+      });
+      customBtn.appendChild(deleteBtn);
+      container.appendChild(customBtn);
     }
+  }
+
+  populateCustomPresetButton() {
+    const container = document.getElementById('save-custom-preset-container');
+    if (!container) return;
+    container.textContent = '';
+
+    const btn = document.createElement('button');
+    btn.classList.add('save-custom-preset-btn');
+    btn.textContent = '💾 Save as My Layout';
+    btn.addEventListener('click', () => {
+      this.columnConfig.saveCustomPreset();
+      const presetsContainer = document.getElementById('preset-buttons-container');
+      this.populatePresetButtons(presetsContainer);
+      this.populateCustomPresetButton();
+    });
+    container.appendChild(btn);
+  }
+
+  populateColumnToggles(container) {
+    container.textContent = '';
+    ColumnConfig.COLUMN_GROUPS.forEach(group => {
+      // Parent toggle
+      const div = document.createElement('div');
+      div.classList.add('form-check', 'form-switch', 'column-toggle-item');
+
+      const input = document.createElement('input');
+      input.classList.add('form-check-input');
+      input.type = 'checkbox';
+      input.role = 'switch';
+      input.id = `col-toggle-${group.id}`;
+      input.setAttribute('aria-label', `Toggle ${group.label} column visibility`);
+
+      if (group.children) {
+        const state = this.columnConfig.getParentCheckState(group.id);
+        input.checked = state !== 'none';
+        input.indeterminate = state === 'indeterminate';
+      } else {
+        input.checked = this.columnConfig.isUserEnabled(group.id);
+      }
+
+      input.addEventListener('change', () => {
+        this.columnConfig.setUserVisible(group.id, input.checked);
+        // Re-render to update indeterminate states
+        this.populateColumnToggles(container);
+        // Update preset highlighting
+        const presetsContainer = document.getElementById('preset-buttons-container');
+        this.populatePresetButtons(presetsContainer);
+      });
+
+      const label = document.createElement('label');
+      label.classList.add('form-check-label');
+      label.htmlFor = `col-toggle-${group.id}`;
+      label.textContent = group.label;
+
+      div.appendChild(input);
+      div.appendChild(label);
+      container.appendChild(div);
+
+      // Child toggles (sub-toggles)
+      if (group.children) {
+        group.children.forEach(child => {
+          const childDiv = document.createElement('div');
+          childDiv.classList.add('form-check', 'form-switch', 'column-toggle-sub-item');
+
+          const childInput = document.createElement('input');
+          childInput.classList.add('form-check-input');
+          childInput.type = 'checkbox';
+          childInput.role = 'switch';
+          childInput.id = `col-toggle-${child.id}`;
+          childInput.checked = this.columnConfig.isUserEnabled(child.id);
+          childInput.setAttribute('aria-label', `Toggle ${child.label} visibility`);
+
+          childInput.addEventListener('change', () => {
+            this.columnConfig.setUserVisible(child.id, childInput.checked);
+            this.populateColumnToggles(container);
+            const presetsContainer = document.getElementById('preset-buttons-container');
+            this.populatePresetButtons(presetsContainer);
+          });
+
+          const childLabel = document.createElement('label');
+          childLabel.classList.add('form-check-label');
+          childLabel.htmlFor = `col-toggle-${child.id}`;
+          childLabel.textContent = child.label;
+
+          childDiv.appendChild(childInput);
+          childDiv.appendChild(childLabel);
+          container.appendChild(childDiv);
+        });
+      }
+    });
+  }
+
+  _handleAutoPreset() {
+    const applied = this.columnConfig.checkAutoPreset();
+    if (!applied) return;
+
+    const toast = document.getElementById('auto-preset-toast');
+    if (!toast) return;
+
+    toast.style.display = 'flex';
+
+    const dismiss = () => { toast.style.display = 'none'; };
+    const dismissBtn = document.getElementById('auto-preset-toast-dismiss');
+    if (dismissBtn) dismissBtn.addEventListener('click', dismiss);
+    setTimeout(dismiss, 5000);
   }
 
   setUIMode(uiMode) {

@@ -56,3 +56,4 @@ class DriverInfo:
     driver_number: Optional[int] = None
     m_dnf_status_code: Optional[str] = None
     m_curr_lap_max_sc_status: Optional[SafetyCarType] = None
+    m_current_weather: Optional[int] = None

@@ -37,6 +37,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Now perform the import
 from lib.packet_cap import F1PacketCapture
 
+
 def should_drop(probability_percentage: int) -> bool:
     """
     Returns True with the given probability percentage.
@@ -210,7 +211,7 @@ def _send_udp_mode(
 
         try:
             total_bytes += send_bytes_udp(packet, ip_addr, port)
-        except Exception as e:
+        except OSError as e:
             progress_bar.close()
             raise ConnectionError(f"Failed to send to {ip_addr}:{port} — {e}")
 
@@ -236,7 +237,7 @@ def _send_tcp_mode(
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client_socket.connect((ip_addr, port))
-    except Exception as e:
+    except OSError as e:
         raise ConnectionError(f"Failed to connect to {ip_addr}:{port} — {e}")
 
     # Disable Nagle's algorithm if specified
@@ -266,7 +267,7 @@ def _send_tcp_mode(
         # Send the message length followed by the actual message
         try:
             client_socket.sendall(message_length_bytes + packet)
-        except Exception as e:
+        except OSError as e:
             progress_bar.close()
             raise ConnectionError(f"Failed to send to {ip_addr}:{port} — {e}")
 
@@ -314,7 +315,7 @@ def main():
     except ConnectionError as e:
         print(f"Error: Connection failed - {e}")
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # Top-level error boundary: catch-all for CLI entry point
         print(f"Error: {e}")
         sys.exit(1)
 

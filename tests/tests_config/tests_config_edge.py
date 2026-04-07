@@ -213,7 +213,7 @@ post_race_data_autosave = true
         self.assertFalse(config.Capture.post_fp_data_autosave)
 
         self.assertFalse(config.Privacy.process_car_setup)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
+        self.assertEqual(config.Network.save_viewer_port, 4767)
 
     def test_missing_keys_in_existing_sections(self):
         """Test when sections exist but some keys are missing"""
@@ -242,7 +242,7 @@ target_1 = localhost:8080
 
         # Verify missing keys have default values
         self.assertEqual(config.Network.server_port, 4768)  # Default
-        self.assertEqual(config.Network.save_viewer_port, 4769)  # Default
+        self.assertEqual(config.Network.save_viewer_port, 4767)  # Default
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)  # Default
         self.assertEqual(config.Network.udp_custom_action_code, None)  # Default
         self.assertFalse(config.Display.disable_browser_autoload)  # Default
@@ -268,7 +268,7 @@ udp_custom_action_code = 5
 
         # Verify missing keys have defaults
         self.assertEqual(config.Network.server_port, 4768)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
+        self.assertEqual(config.Network.save_viewer_port, 4767)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
 
     def test_empty_sections(self):
@@ -293,7 +293,7 @@ udp_custom_action_code = 5
         # All values should be defaults
         self.assertEqual(config.Network.telemetry_port, 20777)
         self.assertEqual(config.Network.server_port, 4768)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
+        self.assertEqual(config.Network.save_viewer_port, 4767)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
         self.assertEqual(config.Network.udp_custom_action_code, None)
 
@@ -340,7 +340,7 @@ target_2 = example.com:9090
         self.assertEqual(config.Forwarding.target_2, "example.com:9090")
 
         # Verify missing keys in present sections have defaults
-        self.assertEqual(config.Network.save_viewer_port, 4769)
+        self.assertEqual(config.Network.save_viewer_port, 4767)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
         self.assertEqual(config.Network.udp_custom_action_code, None)
         self.assertEqual(config.Display.refresh_interval, 200)

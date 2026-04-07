@@ -37,10 +37,10 @@ function renderWeatherPrediction(prediction) {
 
   const weatherIcon = WEATHER_ICONS[prediction['weather']];
   predictionElement.innerHTML = `
-    <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
+    <i class="bi ${escapeHtml(weatherIcon.icon)} weather-icon ${escapeHtml(weatherIcon.class)}"></i>
     <div class="weather-info">
-      <span class="weather-time">+${prediction['time-offset']}min</span>
-      <span class="weather-probability">${prediction['rain-probability']}%</span>
+      <span class="weather-time">+${escapeHtml(String(prediction['time-offset']))}min</span>
+      <span class="weather-probability">${escapeHtml(String(prediction['rain-probability']))}%</span>
     </div>
   `;
 
@@ -49,7 +49,7 @@ function renderWeatherPrediction(prediction) {
 
 function updateWeatherUI(weatherContainer, weatherData) {
 
-  weatherContainer.innerHTML = '';
+  weatherContainer.textContent = '';
   if (weatherData.length === 0) {
     return;
   }
@@ -74,10 +74,10 @@ class WeatherWidget {
 
     const weatherIcon = WEATHER_ICONS[prediction['weather']];
     predictionElement.innerHTML = `
-      <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
+      <i class="bi ${escapeHtml(weatherIcon.icon)} weather-icon ${escapeHtml(weatherIcon.class)}"></i>
       <div class="weather-info">
-        <span class="weather-time">+${prediction['time-offset']}min</span>
-        <span class="weather-probability">${prediction['rain-probability']}%</span>
+        <span class="weather-time">+${escapeHtml(String(prediction['time-offset']))}min</span>
+        <span class="weather-probability">${escapeHtml(String(prediction['rain-probability']))}%</span>
       </div>
     `;
 
@@ -86,7 +86,7 @@ class WeatherWidget {
 
   // Method to update the weather UI with an array of weather predictions
   update(weatherData) {
-    this.weatherContainer.innerHTML = ''; // Clear previous content
+    this.weatherContainer.textContent = ''; // Clear previous content
     if (weatherData.length === 0) {
       return;
     }

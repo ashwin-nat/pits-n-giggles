@@ -64,7 +64,7 @@ async def processIpcCommand(
     Returns:
         dict: IPC response
     """
-    logger.debug(f"Received IPC command: {json.dumps(msg, indent=2)}")
+    logger.debug("Received IPC command: %s", json.dumps(msg, indent=2))
 
     if not (cmd := msg.get("cmd")):
         logger.warning("Missing command name")

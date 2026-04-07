@@ -27,7 +27,8 @@ import webbrowser
 from dataclasses import replace
 from typing import TYPE_CHECKING, List
 
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QToolButton, QWidget
 
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
@@ -43,6 +44,8 @@ if TYPE_CHECKING:
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
+
+    buttons_update_signal = Signal()
 
     MODULE_PATH = "apps.backend"
     DISPLAY_NAME = "Core"
@@ -65,6 +68,7 @@ class BackendAppMgr(PngAppMgrBase):
         final_args = [*common_cfg.args, *extra_args]
         self.port = common_cfg.settings.Network.server_port
         self.proto = common_cfg.settings.HTTPS.proto
+        self.additional_servers = common_cfg.settings.Network.additional_servers
 
         config = replace(common_cfg,
                          args=final_args,
@@ -91,6 +95,7 @@ class BackendAppMgr(PngAppMgrBase):
             can_restart=False,
             settings_field='Network -> "F1 UDP Telemetry Port"'
         ))
+        self.buttons_update_signal.connect(self._update_dashboard_overlay_buttons)
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -98,26 +103,194 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
-                                                       "Open Dashboard")
-        self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
-                                                         "Open Stream Overlay")
         self.manual_save_button = self.build_button(self.get_icon("save"), self.manual_save, "Manual Save")
 
-        return [
+        if self.additional_servers:
+            # Split-button for Dashboard
+            self.open_dashboard_button = self._build_split_button(
+                self.get_icon("dashboard"), "Open Dashboard",
+                self.open_dashboard, self._build_port_menu(is_overlay=False)
+            )
+            # Split-button for Stream Overlay
+            self.open_obs_overlay_button = self._build_split_button(
+                self.get_icon("twitch"), "Open Stream Overlay",
+                self.open_obs_overlay, self._build_port_menu(is_overlay=True)
+            )
+        else:
+            self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
+                                                           "Open Dashboard")
+            self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
+                                                             "Open Stream Overlay")
+
+        buttons = [
             self.start_stop_button,
             self.open_dashboard_button,
             self.open_obs_overlay_button,
             self.manual_save_button,
         ]
 
+        return buttons
+
+    def _build_split_button(self, icon, tooltip, default_action, menu):
+        """Build a composite split-button: icon button + dropdown arrow button."""
+        container = QWidget()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Main icon button (same size as regular buttons)
+        main_btn = QPushButton()
+        main_btn.setIcon(icon)
+        main_btn.setToolTip(tooltip)
+        main_btn.setFixedSize(32, 32)
+        main_btn.clicked.connect(default_action)
+        layout.addWidget(main_btn)
+
+        # Arrow button that opens the dropdown menu
+        arrow_btn = QPushButton("\u25BC")
+        arrow_btn.setFixedSize(16, 32)
+        arrow_btn.setToolTip(f"{tooltip} (select port)")
+        arrow_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 8px;
+                padding: 0px;
+                border: none;
+                background: transparent;
+                color: #d4d4d4;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+            }
+        """)
+        arrow_btn.setMenu(menu)
+        layout.addWidget(arrow_btn)
+
+        container.setLayout(layout)
+        container.setFixedSize(48, 32)
+
+        # Expose references so the rest of the code can enable/disable and swap icons
+        container.main_btn = main_btn
+        container.arrow_btn = arrow_btn
+        container._menu = menu
+        container.setEnabled = lambda enabled: (main_btn.setEnabled(enabled), arrow_btn.setEnabled(enabled))
+        container.setIcon = main_btn.setIcon
+        container.setToolTip = main_btn.setToolTip
+        container.icon = main_btn.icon
+
+        return container
+
+    def _build_port_menu(self, is_overlay: bool) -> QMenu:
+        """Build a dropdown menu listing all ports (primary + additional)."""
+        menu = QMenu()
+        path = "/player-stream-overlay" if is_overlay else ""
+
+        primary_action = menu.addAction(f":{self.port}  (Primary)")
+        primary_action.triggered.connect(
+            lambda: self._open_url(f'{self.proto}://localhost:{self.port}{path}')
+        )
+
+        for server in self.additional_servers:
+            label = server.label or ""
+            display = f":{server.port}  {label}".strip()
+            action = menu.addAction(display)
+            p = server.port
+            action.triggered.connect(
+                lambda checked=False, port=p: self._open_url(
+                    f'{self.proto}://localhost:{port}{path}'
+                )
+            )
+
+        menu.addSeparator()
+        open_all = menu.addAction("Open All")
+        open_all.triggered.connect(lambda: self._open_all_ports(path))
+
+        return menu
+
+    def _open_all_ports(self, path: str = ""):
+        """Open all configured ports in the browser."""
+        self._open_url(f'{self.proto}://localhost:{self.port}{path}')
+        for server in self.additional_servers:
+            self._open_url(f'{self.proto}://localhost:{server.port}{path}')
+
+    def _update_dashboard_overlay_buttons(self):
+        """Rebuild dashboard/overlay buttons after additional_servers changed."""
+        old_is_split = hasattr(self.open_dashboard_button, 'main_btn')
+        new_needs_split = bool(self.additional_servers)
+
+        if old_is_split and new_needs_split:
+            # Same button type — just rebuild the menus
+            self.open_dashboard_button.arrow_btn.setMenu(self._build_port_menu(is_overlay=False))
+            self.open_obs_overlay_button.arrow_btn.setMenu(self._build_port_menu(is_overlay=True))
+            return
+
+        if not old_is_split and not new_needs_split:
+            return
+
+        # Button type changed — swap widgets in the layout
+        was_dashboard_enabled = self.open_dashboard_button.isEnabled()
+        was_overlay_enabled = self.open_obs_overlay_button.isEnabled()
+
+        if new_needs_split:
+            new_dashboard = self._build_split_button(
+                self.get_icon("dashboard"), "Open Dashboard",
+                self.open_dashboard, self._build_port_menu(is_overlay=False)
+            )
+            new_overlay = self._build_split_button(
+                self.get_icon("twitch"), "Open Stream Overlay",
+                self.open_obs_overlay, self._build_port_menu(is_overlay=True)
+            )
+        else:
+            new_dashboard = self.build_button(
+                self.get_icon("dashboard"), self.open_dashboard, "Open Dashboard"
+            )
+            new_overlay = self.build_button(
+                self.get_icon("twitch"), self.open_obs_overlay, "Open Stream Overlay"
+            )
+
+        self._swap_button_in_layout(self.open_dashboard_button, new_dashboard)
+        self._swap_button_in_layout(self.open_obs_overlay_button, new_overlay)
+
+        self.open_dashboard_button = new_dashboard
+        self.open_obs_overlay_button = new_overlay
+
+        self.set_button_state(self.open_dashboard_button, was_dashboard_enabled)
+        self.set_button_state(self.open_obs_overlay_button, was_overlay_enabled)
+
+    def _swap_button_in_layout(self, old_button, new_button):
+        """Replace a button widget in its parent layout."""
+        if isinstance(new_button, QPushButton):
+            new_button.setFixedSize(32, 32)
+        parent = old_button.parentWidget()
+        if parent and parent.layout():
+            parent.layout().replaceWidget(old_button, new_button)
+        old_button.setParent(None)
+        old_button.deleteLater()
+
+    @staticmethod
+    def _open_url(url: str):
+        """Open a URL in the default browser, with WSL2 fallback."""
+        import subprocess, sys
+        if sys.platform == 'linux':
+            for cmd in (['wslview', url], ['cmd.exe', '/c', 'start', '', url]):
+                try:
+                    subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                    return
+                except FileNotFoundError:
+                    continue
+        webbrowser.open(url, new=2)
+
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
+        self._open_url(f'{self.proto}://localhost:{self.port}')
 
     def open_obs_overlay(self):
         """Open the OBS overlay page in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
+        self._open_url(f'{self.proto}://localhost:{self.port}/player-stream-overlay')
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -130,6 +303,12 @@ class BackendAppMgr(PngAppMgrBase):
         # Update the port number
         self.port = new_settings.Network.server_port
         self.proto = new_settings.HTTPS.proto
+        old_additional_servers = self.additional_servers
+        self.additional_servers = new_settings.Network.additional_servers
+
+        # Rebuild dashboard/overlay buttons if multi-port config changed
+        if old_additional_servers != self.additional_servers:
+            self.buttons_update_signal.emit()
 
         # Update UDP action codes if required
         if udp_action_codes_diff := self.curr_settings.diff(new_settings, {
@@ -163,6 +342,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "server_port",
                 "wdt_interval_sec",
                 "broker_xsub_port",
+                "additional_servers",
             ],
             "Capture" : [],
             "Display" : [
@@ -176,7 +356,7 @@ class BackendAppMgr(PngAppMgrBase):
             "TimeLossInPitsF2": [],
         }):
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields change: "
-                           f"{json.dumps(restart_required_fields_diff, indent=2)}")
+                           f"{json.dumps(restart_required_fields_diff, indent=2, default=str)}")
         else:
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields NO CHANGE")
 

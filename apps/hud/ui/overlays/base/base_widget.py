@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import sys
 from typing import override
 
 from PySide6.QtCore import QPropertyAnimation, Qt
@@ -93,7 +94,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
         )
         self.adjustSize()
 
-        logger.debug(f"{self.OVERLAY_ID} | BaseOverlay initialized")
+        logger.debug("%s | BaseOverlay initialized", self.OVERLAY_ID)
 
         self._drag_pos = None
         self._fade_anim = None
@@ -150,7 +151,7 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
 
         # 1. Remove all child widgets (covers entire widget tree)
         for w in self.findChildren(QWidget):
-            self.logger.debug(f"{self.OVERLAY_ID} | Cleaning widget: {w.__class__.__name__}")
+            self.logger.debug("%s | Cleaning widget: %s", self.OVERLAY_ID, w.__class__.__name__)
             w.setParent(None)
             w.deleteLater()
 
@@ -202,9 +203,10 @@ class BaseOverlayWidget(BaseOverlay, QWidget):
                 # Interactive behavior for unlocked state
                 flags |= (
                     Qt.WindowType.Window |
-                    Qt.WindowType.CustomizeWindowHint |
-                    Qt.WindowType.MSWindowsFixedSizeDialogHint
+                    Qt.WindowType.CustomizeWindowHint
                 )
+                if sys.platform == 'win32':
+                    flags |= Qt.WindowType.MSWindowsFixedSizeDialogHint
 
         self.setWindowFlags(flags)
         self.show()

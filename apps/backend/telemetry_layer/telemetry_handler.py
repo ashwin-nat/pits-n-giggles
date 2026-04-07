@@ -159,7 +159,8 @@ class F1TelemetryHandler:
             port_number=settings.Network.telemetry_port,
             logger=logger,
             replay_server=replay_server,
-            frame_gate_enabled=settings.Network.enable_pkt_ordering
+            frame_gate_enabled=settings.Network.enable_pkt_ordering,
+            bind_address=settings.Network.bind_address,
         )
         self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
@@ -220,7 +221,7 @@ class F1TelemetryHandler:
             KeyError: If the key is not found
         """
         self.m_udp_action_codes.update(key, val)
-        self.m_logger.debug(f"Updated UDP action code {key} to {val}")
+        self.m_logger.debug("Updated UDP action code %s to %s", key, val)
 
     async def run(self):
         """
@@ -552,8 +553,8 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier} "
-                               f"UID = {packet.m_header.m_sessionUID}")
+            self.m_logger.info("Flashback event received. Frame ID = %s UID = %s",
+                               packet.mEventDetails.flashbackFrameIdentifier, packet.m_header.m_sessionUID)
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -564,7 +565,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
             # In case session start was missed, clear data structures
-            self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            self.m_logger.debug("Start lights event received. Lights = %s", packet.mEventDetails.numLights)
             if packet.mEventDetails.numLights == 1:
                 session_uid = packet.m_header.m_sessionUID
                 self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
@@ -660,7 +661,7 @@ class F1TelemetryHandler:
             await save_json_to_file(final_json, final_json_file_name)
             self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", final_json_file_name,
                                self.m_session_state_ref.m_pkt_count, session_uid)
-        except Exception: # pylint: disable=broad-except
+        except (OSError, TypeError, ValueError):
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
 

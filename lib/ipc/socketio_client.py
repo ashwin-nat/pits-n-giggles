@@ -106,7 +106,7 @@ class SocketioClient:
                             event_name, str(data), e
                         )
                         return
-                    except Exception as e: # pylint: disable=broad-exception-caught
+                    except msgpack.UnpackException as e:
                         self.logger.exception("Failed to decode msgpack for event %s: %s %s", event_name, e, data)
                         return  # consistently returns None
                     func(decoded)  # call handler without returning its value

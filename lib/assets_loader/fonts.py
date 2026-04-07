@@ -81,7 +81,7 @@ def _load_font(
             debug_log_printer(f"Loaded font from {full_path}. name={QFontDatabase.applicationFontFamilies(font_id)}")
         return True
 
-    except Exception as e:  # pylint: disable=broad-except
+    except OSError as e:
         if error_log_printer:
             error_log_printer(f"Failed to load font from {relative_path}: {e}")
         return False

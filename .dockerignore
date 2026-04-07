@@ -1,0 +1,51 @@
+# Version control
+.git/
+.gitignore
+
+# Tests
+tests/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Screenshots
+screenshots/
+
+# Dev tools & build scripts
+scripts/
+apps/dev_tools/
+
+# Data & recordings
+data/
+
+# Private
+private/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE & editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Poetry virtual envs (if any)
+.venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml

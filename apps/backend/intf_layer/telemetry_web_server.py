@@ -88,7 +88,13 @@ class TelemetryWebServer(BaseWebServer):
             },
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
-            debug_mode=debug_mode)
+            debug_mode=debug_mode,
+            additional_ports=[
+                {"port": s.port, "label": s.label}
+                for s in settings.Network.additional_servers
+            ],
+            bind_address=settings.Network.bind_address,
+        )
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
@@ -140,6 +146,16 @@ class TelemetryWebServer(BaseWebServer):
                 str: Rendered HTML content for the stream overlay page.
             """
             return await self.render_template('player-stream-overlay.html')
+
+        @self.http_route('/eng-view/trackmap')
+        async def engineerViewTrackmap() -> str:
+            """
+            Render the fullscreen track map page.
+
+            Returns:
+                str: Rendered HTML content for the fullscreen track map.
+            """
+            return await self.render_template('eng-view-trackmap.html', live_data_mode=True, version=self.m_ver_str)
 
     def _defineDataRoutes(self) -> None:
         """

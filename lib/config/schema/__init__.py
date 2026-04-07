@@ -31,7 +31,7 @@ from .hud import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
                   TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HudSettings,
                   MfdPageSettings, MfdSettings, OverlayPosition,
                   TimingTowerColOptions, WeatherMFDUIType)
-from .network import NetworkSettings
+from .network import AdditionalServer, NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
 from .png import PngSettings
@@ -51,6 +51,7 @@ __all__ = [
     'MfdPageSettings',
     'TimingTowerColOptions',
     'OverlayPosition',
+    'AdditionalServer',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',

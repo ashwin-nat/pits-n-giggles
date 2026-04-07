@@ -109,9 +109,9 @@ class TrackMapOverlay(BaseOverlayQML):
                 self.curr_circuit_name = circuit
                 self.circuit_svg_path = self._get_circuit_svg_path(circuit)
                 self._update_qml_track_map()
-                self.logger.debug(f"{self.OVERLAY_ID} | Loaded new circuit: {circuit}")
+                self.logger.debug("%s | Loaded new circuit: %s", self.OVERLAY_ID, circuit)
 
-            # TODO: Process car positions from motion_list
+            # TODO: Transform car positions to map coordinates and update QML markers
             for car in motion_list:
                 name = car["name"]
                 team = car["team"]
@@ -139,7 +139,7 @@ class TrackMapOverlay(BaseOverlayQML):
         svg_path = base_path / svg_name
 
         if not svg_path.exists():
-            self.logger.error(f"{self.OVERLAY_ID} | SVG not found: {svg_path}")
+            self.logger.error("%s | SVG not found: %s", self.OVERLAY_ID, svg_path)
             return None
 
         # Return absolute path as file URL for QML
@@ -150,13 +150,13 @@ class TrackMapOverlay(BaseOverlayQML):
         """Update the QML window with the new track map."""
         if self._root and self.circuit_svg_path:
             self._root.setProperty("svgPath", self.circuit_svg_path)
-            self.logger.debug(f"{self.OVERLAY_ID} | Updated QML with SVG: {self.circuit_svg_path}")
+            self.logger.debug("%s | Updated QML with SVG: %s", self.OVERLAY_ID, self.circuit_svg_path)
         else:
-            self.logger.warning(f"{self.OVERLAY_ID} | Cannot update QML - root={self._root}, path={self.circuit_svg_path}")
+            self.logger.warning("%s | Cannot update QML - root=%s, path=%s", self.OVERLAY_ID, self._root, self.circuit_svg_path)
 
     def _clear_track_map(self):
         """Clear the track map from the QML window."""
         self._root.setProperty("svgPath", "")
         self.curr_circuit_name = None
         self.circuit_svg_path = None
-        self.logger.debug(f"{self.OVERLAY_ID} | Cleared track map")
+        self.logger.debug("%s | Cleared track map", self.OVERLAY_ID)

@@ -70,7 +70,7 @@ class IpcSubscriberSync:
         if self.socket:
             try:
                 self.socket.close(linger=0)
-            except Exception:
+            except zmq.ZMQError:
                 pass
 
         self.socket: zmq.Socket = self._context.socket(zmq.SUB)
@@ -83,7 +83,7 @@ class IpcSubscriberSync:
         endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
 
-        self.logger.debug(f"IpcSubscriberSync configured endpoint {endpoint}")
+        self.logger.debug("IpcSubscriberSync configured endpoint %s", endpoint)
 
     # ---------------------------------------------------------
     # Register handler
@@ -142,18 +142,18 @@ class IpcSubscriberSync:
                     try:
                         data = orjson.loads(payload)
                         handler(data)
-                    except Exception as e:
+                    except Exception as e:  # Event-loop catch-all: handler is user callback
                         self.logger.exception(f"Handler error for {topic}: {e}")
 
         # clean shutdown
         try:
             poller.unregister(self.socket)
-        except Exception:
+        except zmq.ZMQError:
             pass
 
         try:
             self.socket.close(linger=0)
-        except Exception:
+        except zmq.ZMQError:
             pass
 
         self.logger.debug("IpcSubscriberSync stopped")

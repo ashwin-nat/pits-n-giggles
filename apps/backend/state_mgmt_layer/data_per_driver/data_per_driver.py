@@ -361,9 +361,12 @@ class DataPerDriver:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
+        session_history = self.m_packet_copies.m_packet_session_history
+        if session_history is None:
+            return []
         return self.m_tyre_info.m_tyre_set_history_manager.toJSON(include_wear_history,
                                                     self.m_packet_copies.m_packet_tyre_sets,
-                                                    self.m_packet_copies.m_packet_session_history.m_numLaps)
+                                                    session_history.m_numLaps)
 
     def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
         """
@@ -609,7 +612,8 @@ class DataPerDriver:
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=(self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR),
-                desc=tyre_set_id
+                desc=tyre_set_id,
+                weather_id=self.m_driver_info.m_current_weather
             ))
 
         # Fuel stuff

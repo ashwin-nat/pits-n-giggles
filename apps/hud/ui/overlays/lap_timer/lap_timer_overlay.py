@@ -97,7 +97,7 @@ class LapTimerOverlay(BaseOverlayQML):
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
             if not self._root:
-                self.logger.debug(f"{self.OVERLAY_ID} | Overlay not initialized yet")
+                self.logger.debug("%s | Overlay not initialized yet", self.OVERLAY_ID)
                 return
 
             session_type = data["event-type"]
@@ -130,8 +130,8 @@ class LapTimerOverlay(BaseOverlayQML):
 
             # Handle lap number changes
             if self.last_lap_num and self.last_lap_num != lap_info["current-lap"]:
-                self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
-                                  f"{self.last_lap_num} to {lap_info['current-lap']}")
+                self.logger.debug("%s | Lap number changed from %s to %s",
+                                  self.OVERLAY_ID, self.last_lap_num, lap_info['current-lap'])
                 # Start 5 sec last-lap sector bar window
                 self.show_last_lap_sector_bar = True
                 self.last_sector_display_timer.start(5000)
@@ -313,7 +313,7 @@ class LapTimerOverlay(BaseOverlayQML):
         """
         self.clear()
         self.curr_session_uid = session_uid
-        self.logger.info(f'{self.OVERLAY_ID} New session detected: {session_uid}')
+        self.logger.info('%s New session detected: %s', self.OVERLAY_ID, session_uid)
 
     def clear(self):
         """Reset all display fields to default values."""

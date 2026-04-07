@@ -141,7 +141,7 @@ def maybe_migrate_legacy_hud_layout(
             os.remove(legacy_layout_path)
             if logger:
                 logger.debug("Deleted legacy png_overlays.json")
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except OSError as e:
             if logger:
                 logger.warning("Failed to delete legacy png_overlays.json: %s",e,)
 

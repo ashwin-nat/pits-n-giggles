@@ -103,7 +103,7 @@ def _ipc_handler(msg: dict, logger: logging.Logger, overlays_mgr: OverlaysMgr) -
     Returns:
         dict: IPC response
     """
-    logger.debug(f"Received IPC message: {msg}")
+    logger.debug("Received IPC message: %s", msg)
 
     if not (cmd := msg.get("cmd")):
         return {"status": "error", "message": "Missing command name"}
@@ -154,7 +154,7 @@ def _stop_other_tasks(
         ipc_sub (IpcSubscriberSync): IPC subscriber
     """
     reason = args.get("reason", "N/A")
-    logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
+    logger.info("Shutdown command received via IPC. Reason: %s. Stopping all tasks...", reason)
 
     socketio_client.stop()
     ipc_sub.close()
@@ -166,4 +166,7 @@ def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
+    # Forceful exit required — this is an orphaned child process whose parent (launcher) is gone.
+    # sys.exit() would only raise SystemExit, which Qt's event loop and atexit handlers may catch
+    # or delay, leaving the HUD process hanging indefinitely.
     os._exit(PNG_LOST_CONN_TO_PARENT)

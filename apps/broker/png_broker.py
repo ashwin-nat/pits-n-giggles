@@ -121,7 +121,10 @@ def _proc_mgr_shutdown_callback(_args: dict, logger: logging.Logger, broker: Ipc
 
 def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
-    logger.warning(f"Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+    logger.warning("Missed heartbeat %s times. This process has probably been orphaned. Terminating...", count)
+    # Forceful exit required — this is an orphaned child process whose parent (launcher) is gone.
+    # sys.exit() would only raise SystemExit, which ZMQ's background threads and atexit handlers
+    # may catch or delay, leaving the broker process hanging indefinitely.
     os._exit(PNG_LOST_CONN_TO_PARENT)
 
 def _proc_mgmt_cmd_handler(request: dict, broker: IpcPubSubBroker) -> dict:

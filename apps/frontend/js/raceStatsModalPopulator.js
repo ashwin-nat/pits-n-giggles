@@ -153,18 +153,21 @@ class RaceStatsModalPopulator {
                 const row = customMarkersTableBody.insertRow();
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td>${marker["event-type"]}</td>
-                    <td>${marker["track"]}</td>
-                    <td>${marker["sector"]}</td>
-                    <td>${marker["lap"]}</td>
-                    <td>${marker["curr-lap-time"]}</td>
-                    <td>${marker["curr-lap-percentage"]}</td>
+                    <td>${escapeHtml(marker["event-type"])}</td>
+                    <td>${escapeHtml(marker["track"])}</td>
+                    <td>${escapeHtml(marker["sector"])}</td>
+                    <td>${escapeHtml(marker["lap"])}</td>
+                    <td>${escapeHtml(marker["curr-lap-time"])}</td>
+                    <td>${escapeHtml(marker["curr-lap-percentage"])}</td>
                 `;
             });
 
         } else {
             const row = customMarkersTableBody.insertRow();
-            row.innerHTML = '<td colspan="7">Custom Markers data not available</td>';
+            const td = document.createElement('td');
+            td.colSpan = 7;
+            td.textContent = 'Custom Markers data not available';
+            row.appendChild(td);
         }
 
         table.appendChild(customMarkersTableBody);
@@ -389,11 +392,11 @@ class RaceStatsModalPopulator {
         const teamName = getTeamName(data["records"]["fastest"][searchKey]["team-id"]);
         const row = timesRecordsTableBody.insertRow();
         row.innerHTML = `
-            <td>${category}</td>
-            <td>${driverName}</td>
-            <td>${teamName}</td>
-            <td>${fastestLapNum}</td>
-            <td>${fastestLapTime}</td>
+            <td>${escapeHtml(category)}</td>
+            <td>${escapeHtml(driverName)}</td>
+            <td>${escapeHtml(teamName)}</td>
+            <td>${escapeHtml(fastestLapNum)}</td>
+            <td>${escapeHtml(fastestLapTime)}</td>
         `;
     }
 
@@ -433,33 +436,12 @@ class RaceStatsModalPopulator {
     }
 
     getF1TeamColor(teamName) {
-        //source: https://www.reddit.com/r/formula1/comments/1avhmjb/f1_2024_hex_codes/
-        const teamColors = {
-            'Red Bull Racing': 'rgba(54,113,198, 1)',   // Blue
-            'Red Bull': 'rgba(54,113,198, 1)',          // Blue
-
-            'VCARB': 'rgba(102,146,255, 1)',            // Blue
-            'RB': 'rgba(102,146,255, 1)',              // Blue
-
-            'Mercedes': 'rgba(39,244,210, 1)',          // Teal
-            'Ferrari': 'rgba(232,0,45, 1)',             // Red
-            'McLaren': 'rgba(255,128,0, 1)',            // Papaya Orange
-            'Mclaren': 'rgba(255,128,0, 1)',            // Papaya Orange
-            'Aston Martin': 'rgba(34,153,113, 1)',      // Green
-            'Alpine': 'rgba(255,135,188, 1)',           // Blue
-            'Alpha Tauri': 'rgba(30, 40, 80, 1)',       // Dark Blue
-            'Alfa Romeo': 'rgba(155, 0, 0, 1)',         // Dark Red
-            'Haas': 'rgba(182,186,189, 1)',             // White/Silver
-            'Williams': 'rgba(100,196,255, 1)',         // Blue
-            'Sauber': 'rgba(82,226,82,1)',              // Fresh Green
-        };
-
-
-        if (teamName in teamColors) {
-            return teamColors[teamName];
+        // Delegate to shared utility function (utils.js).
+        // Keeps fallback to random class color for chart differentiation.
+        const color = getF1TeamColor(teamName);
+        if (color !== 'rgba(128,128,128, 1)') {
+            return color;
         }
-
-        // Fallback: return random default color
         const randomIndex = Math.floor(Math.random() * this.defaultColors.length);
         return this.defaultColors[randomIndex];
     }

@@ -205,7 +205,7 @@ class PngRunner:
             now = time.perf_counter()
             diff = now - last
             if diff > threshold:
-                self.m_logger.warning(f"[HOGGING] Event loop blocked for {diff:.4f} seconds")
+                self.m_logger.warning("[HOGGING] Event loop blocked for %.4f seconds", diff)
             last = now
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
@@ -247,12 +247,12 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
             run_ipc_server=args.run_ipc_server,
         )
     except PngError as e:
-        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
         sys.exit(e.exit_code)
     try:
         await app.run()
     except PngError as e:
-        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
         sys.exit(e.exit_code)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------

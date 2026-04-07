@@ -237,10 +237,10 @@ class IpcServerSync:
             # Use linger 0 to discard pending messages immediately
             self.sock.setsockopt(zmq.LINGER, 0)
             self.sock.close()
-        except Exception: # pylint: disable=broad-except
+        except zmq.ZMQError:
             pass
 
         try:
             self.ctx.term()
-        except Exception: # pylint: disable=broad-except
+        except zmq.ZMQError:
             pass

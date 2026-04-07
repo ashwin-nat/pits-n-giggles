@@ -82,7 +82,7 @@ def _getTyreStintHistoryJSON(json_data: Dict[str, Any], logger: logging.Logger) 
         driver_data = _getDriverData(driver_entry, classification_data)
         if not driver_data:
             # if required data is not available for any of the drivers, return empty list
-            logger.debug(f"Driver data not available for {driver_entry['name']}")
+            logger.debug("Driver data not available for %s", driver_entry['name'])
             return []
         # Insert position, grid position, proper delta, result status
         if "position" not in driver_entry:

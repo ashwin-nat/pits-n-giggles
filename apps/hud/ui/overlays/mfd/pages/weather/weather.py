@@ -133,7 +133,7 @@ class WeatherForecastPage(MfdPageBase):
         total = len(groups)
 
         if not (0 <= self.session_index < total):
-            self.logger.warning(f"{self.KEY} | Invalid session index {self.session_index}. Resetting it to 0")
+            self.logger.warning("%s | Invalid session index %s. Resetting it to 0", self.KEY, self.session_index)
             self.session_index = 0
 
         session = groups[self.session_index]

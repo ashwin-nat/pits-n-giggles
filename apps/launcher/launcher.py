@@ -133,7 +133,7 @@ def _cleanup_temp_icon():
     if _temp_icon_file and os.path.exists(_temp_icon_file):
         try:
             os.remove(_temp_icon_file)
-        except Exception: # pylint: disable=broad-except
+        except OSError:
             pass
         _temp_icon_file = None
 
@@ -175,7 +175,7 @@ def entry_point() -> None:
     if os.name == "nt":  # Only on Windows
         try:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
-        except Exception: # pylint: disable=broad-except
+        except (OSError, AttributeError):
             pass
 
     app = PngLauncherWindow(

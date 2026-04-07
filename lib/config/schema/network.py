@@ -23,14 +23,41 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from collections import defaultdict
-from typing import Any, ClassVar, Dict, Optional
+from ipaddress import AddressValueError, IPv4Address
+from typing import Any, ClassVar, Dict, List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from meta.meta import APP_NAME
 
 from .diff import ConfigDiffMixin
 from .utils import PortType, port_field, udp_action_field
+
+
+class AdditionalServer(BaseModel):
+    """Configuration for an additional HTTP server port in multi-session mode."""
+    port: int = Field(
+        ...,
+        ge=1024,
+        le=65535,
+        description="HTTP Server Port",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box"
+            },
+            "port_type": str(PortType.TCP)
+        }
+    )
+    label: str = Field(
+        default="",
+        max_length=24,
+        description="Session Label",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box"
+            }
+        }
+    )
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -51,7 +78,7 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     )
     save_viewer_port: int = port_field(
         f"{APP_NAME} Save Data Viewer Port",
-        default=4769,
+        default=4767,
         port_type=PortType.TCP
     )
     broker_xpub_port: int = port_field(
@@ -94,6 +121,52 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    bind_address: str = Field(
+        default="0.0.0.0",
+        description="Server Bind Address",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box",
+                "ext_info": [
+                    "IP address the HTTP and UDP servers bind to.",
+                    "Use '0.0.0.0' to allow LAN access (default).",
+                    "Use '127.0.0.1' to restrict to this machine only.",
+                    "WARNING: '0.0.0.0' exposes the server to all devices on your network."
+                ]
+            }
+        }
+    )
+
+    @field_validator("bind_address")
+    @classmethod
+    def validate_bind_address(cls, v: str) -> str:
+        """Validate that bind_address is a valid IPv4 address."""
+        try:
+            IPv4Address(v)
+        except (AddressValueError, ValueError) as exc:
+            raise ValueError(
+                f"'{v}' is not a valid IPv4 address. Use e.g. '0.0.0.0' or '127.0.0.1'."
+            ) from exc
+        return v
+
+    additional_servers: List[AdditionalServer] = Field(
+        default_factory=list,
+        max_length=16,
+        description="Multi-Session Ports",
+        json_schema_extra={
+            "ui": {
+                "type": "additional_servers_list",
+                "visible": True,
+                "group": "Multi-Session Ports",
+                "collapsed": True,
+                "ext_info": [
+                    "Additional HTTP server ports for multi-driver sessions.",
+                    "Each port serves its own Dashboard, Engineer View and Stream Overlay."
+                ]
+            }
+        }
+    )
+
     @model_validator(mode="after")
     def check_action_codes(self) -> "NetworkSettings":
         fields_map = type(self).model_fields
@@ -127,6 +200,14 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
 
             used_ports[port_type][port_value].append(
                 (field_name, field_info.description or field_name)
+            )
+
+        # Include additional_servers ports in conflict detection
+        for i, server in enumerate(self.additional_servers):
+            used_ports[str(PortType.TCP)][server.port].append(
+                (f"additional_servers[{i}]",
+                 f"Multi-Session Port '{server.label}' (:{server.port})" if server.label
+                 else f"Multi-Session Port :{server.port}")
             )
 
         conflicts = {

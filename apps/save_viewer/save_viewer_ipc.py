@@ -26,6 +26,7 @@ import asyncio
 import logging
 import os
 import webbrowser
+from pathlib import Path
 from typing import Any, Dict, List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
@@ -66,7 +67,7 @@ class SaveViewerIpc:
         Returns:
             dict: IPC response
         """
-        self.m_logger.debug(f"Received IPC message: {msg}")
+        self.m_logger.debug("Received IPC message: %s", msg)
         cmd = msg.get("cmd")
         args: dict = msg.get("args", {})
 
@@ -86,8 +87,25 @@ class SaveViewerIpc:
         if not (file_path := args.get("file-path")):
             return {"status": "error", "message": "Missing or invalid file path"}
 
+        # Path traversal protection: block relative parent-directory escape
+        if ".." in Path(file_path).parts:
+            self.m_logger.warning("Path traversal attempt blocked: %s", file_path)
+            return {"status": "error", "message": "Path contains disallowed traversal sequence"}
+
         try:
-            await SaveViewerState.open_file_helper(file_path)
+            resolved = Path(file_path).resolve()
+        except (OSError, ValueError):
+            return {"status": "error", "message": "Invalid file path"}
+
+        # Must point to an existing regular file with allowed extension
+        if not resolved.is_file():
+            return {"status": "error", "message": "Path does not point to an existing file"}
+
+        if resolved.suffix.lower() != ".json":
+            return {"status": "error", "message": "File type not allowed"}
+
+        try:
+            await SaveViewerState.open_file_helper(str(resolved))
         except Exception as e: # pylint: disable=broad-except
             return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
@@ -115,7 +133,7 @@ class SaveViewerIpc:
             Dict[str, Any]: Shutdown response
         """
         reason = args["reason"]
-        self.m_logger.info(f"Shutting down. Reason: {reason}")
+        self.m_logger.info("Shutting down. Reason: %s", reason)
         await self.m_server.stop()
         return {"status": "success"}
 
@@ -130,6 +148,9 @@ class SaveViewerIpc:
         """Handle terminate command"""
 
         print(f"[SAVE_VIEWER] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+        # Forceful exit required — this is an orphaned child process whose parent (launcher) is gone.
+        # sys.exit() would only raise SystemExit, which asyncio's event loop and atexit handlers
+        # may catch or delay, leaving the save viewer process hanging indefinitely.
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
 

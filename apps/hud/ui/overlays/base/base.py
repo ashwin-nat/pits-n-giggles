@@ -24,6 +24,7 @@
 
 import ctypes
 import logging
+import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
 
@@ -153,12 +154,12 @@ class BaseOverlay():
 
     def toggle_visibility(self):
         """Common handler for toggling visibility."""
-        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
+        self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
         if self.get_visibility():
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
+            self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
         else:
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
+            self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
             self.set_visibility(True)
 
     def set_telemetry_active(self, active: bool):
@@ -184,7 +185,8 @@ class BaseOverlay():
     # Abstract interface — implemented by QWidget and QML subclasses
     # ----------------------------------------------------------------------
     def _setup_window(self):
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+        if sys.platform == 'win32':
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
         self.set_window_title(self.OVERLAY_ID)
         self.set_window_icon(load_icon(Path("assets") / "logo.png",
                                      debug_log_printer=self.logger.debug,
@@ -278,20 +280,20 @@ class BaseOverlay():
         @self.on_request("get_window_info")
         def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
+            self.logger.debug('%s | Received request "get_window_info"', self.OVERLAY_ID)
             return serialise_data(self.get_window_info().toJSON())
 
         @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
             """Return current window stats."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
+            self.logger.debug('%s | Received request "get_window_stats"', self.OVERLAY_ID)
             return serialise_data(self.get_stats())
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
+            self.logger.debug('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
             self.set_locked_state(locked)
             if not locked:
                 # Enable all overlays so that the user can see the new layout
@@ -320,14 +322,14 @@ class BaseOverlay():
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
             config = OverlayPosition.fromJSON(data)
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
+            self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
 
         @self.on_event("__set_scale_factor__")
         def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
             """Set UI scale factor"""
             scale_factor = data["scale_factor"]
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting UI scale to {scale_factor}")
+            self.logger.debug("%s | Setting UI scale to %s", self.OVERLAY_ID, scale_factor)
             self.set_ui_scale(scale_factor)
             self.scale_factor = scale_factor
 
@@ -375,7 +377,7 @@ class BaseOverlay():
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
-            self.logger.debug(f"{self.OVERLAY_ID} | Handling request '{request_type}'")
+            self.logger.debug("%s | Handling request '%s'", self.OVERLAY_ID, request_type)
             parsed_data = deserialise_data(request_data)
             try:
                 response = handler(parsed_data)
@@ -387,7 +389,7 @@ class BaseOverlay():
             except Exception as e: # pylint: disable=broad-except
                 self.logger.exception(f"{self.OVERLAY_ID} | Error handling request '{request_type}': {e}")
         else:
-            self.logger.debug(f"{self.OVERLAY_ID} | No handler for request '{request_type}'")
+            self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
 
     @Slot(set, object)
     def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
