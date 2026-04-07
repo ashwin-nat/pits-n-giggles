@@ -48,18 +48,17 @@ HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
 class BaseOverlay():
     """
-    Framework-agnostic overlay base class providing the core overlay lifecycle,
-    configuration handling, and inter-process command/request infrastructure.
+    Rendering-engine-agnostic overlay base class providing the core overlay lifecycle,
+    configuration handling, and command/request infrastructure.
 
-    This class contains *no* UI toolkit assumptions. It does not depend on QML.
-    Instead, it defines the high-level behavior shared by all overlay types,
-    while delegating rendering and windowing to derived classes.
+    This class contains no UI toolkit assumptions and does not depend on any rendering
+    engine. It defines the high-level behavior shared by all overlay types, while
+    delegating rendering and windowing to derived classes.
 
     Responsibilities provided by BaseOverlay:
     -----------------------------------------
     - Stores overlay identity, configuration, and runtime state.
-    - Defines the IPC mechanism for overlay commands and requests.
-      Derived overlays automatically gain:
+    - Defines the command/request dispatch mechanism. Derived overlays automatically gain:
         - `on_event()` decorator for command handlers
         - `on_request()` decorator for request/response handlers
         - Automatic dispatch via `_handle_cmd()` and `_handle_request()`
@@ -70,15 +69,14 @@ class BaseOverlay():
         - applying new configuration
         - returning geometry/position (`get_window_info`)
     - Drives UI lifecycle by calling:
-        - `_setup_window()`     (implemented by UI subclass — do not override in leaf classes)
+        - `_setup_window()`     (partially implemented here; extended by rendering subclass)
         - `post_setup()`        (no-op hook called after _setup_window; override in leaf classes)
-        - `build_ui()`          (implemented by UI subclass)
-        - `apply_config()`      (UI-specific geometry/opacity)
-    - Ensures UI rebuilds occur when scale factor changes.
+        - `build_ui()`          (implemented by rendering subclass)
+        - `apply_config()`      (UI-specific geometry/opacity; implemented by rendering subclass)
 
     What derived classes must implement:
     ------------------------------------
-    Derived classes (e.g., BaseOverlayQML) must implement:
+    Rendering subclasses (e.g. BaseOverlayQML) must implement:
         - `set_window_title()`   - set window title
         - `set_window_icon()`    - set window icon
         - `build_ui()`           - construct the UI
@@ -87,6 +85,7 @@ class BaseOverlay():
         - `set_opacity()`        - apply opacity to the backend window
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
+        - `set_visibility()`     - show or hide the window
         - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
@@ -128,7 +127,7 @@ class BaseOverlay():
         self._hf_pending: set[str] = set()
         self._stats = EventCounter()
 
-        # Create the actual window backend (widget or QML)
+        # Create the actual window backend
         self._setup_window()
         self.post_setup()
         self.build_ui()
@@ -180,7 +179,7 @@ class BaseOverlay():
             self.set_visibility(False)
 
     # ----------------------------------------------------------------------
-    # Abstract interface - implemented by QWidget and QML subclasses
+    # Abstract interface - implemented by rendering subclasses
     # ----------------------------------------------------------------------
     def post_setup(self):
         """Hook called after _setup_window() completes. Override in leaf classes with @final."""
