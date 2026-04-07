@@ -51,10 +51,9 @@ class BaseOverlay():
     Framework-agnostic overlay base class providing the core overlay lifecycle,
     configuration handling, and inter-process command/request infrastructure.
 
-    This class contains *no* UI toolkit assumptions. It does not depend on
-    QWidget or QML. Instead, it defines the high-level behavior shared by all
-    overlay types (Widget or QML), while delegating rendering and windowing to
-    derived classes.
+    This class contains *no* UI toolkit assumptions. It does not depend on QML.
+    Instead, it defines the high-level behavior shared by all overlay types,
+    while delegating rendering and windowing to derived classes.
 
     Responsibilities provided by BaseOverlay:
     -----------------------------------------
@@ -79,7 +78,7 @@ class BaseOverlay():
 
     What derived classes must implement:
     ------------------------------------
-    Derived classes (e.g., BaseOverlayWidget or BaseOverlayQML) must implement:
+    Derived classes (e.g., BaseOverlayQML) must implement:
         - `set_window_title()`   - set window title
         - `set_window_icon()`    - set window icon
         - `build_ui()`           - construct the UI
@@ -94,7 +93,6 @@ class BaseOverlay():
     When to subclass BaseOverlay:
     ------------------------------
     Do not subclass BaseOverlay directly for new overlays. Instead subclass one of:
-        - BaseOverlayWidget  - for QWidget-based overlays
         - BaseOverlayQML     - for QML-based overlays
 
     BaseOverlay deliberately contains no UI behavior so that multiple rendering
