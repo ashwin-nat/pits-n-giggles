@@ -295,7 +295,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
-        return OverlayPosition(x=pos.x(), y=pos.y())
+        return OverlayPosition(x=pos.x(), y=pos.y(), scale_factor=self.scale_factor)
 
     @override
     def set_window_position(self, config: OverlayPosition):

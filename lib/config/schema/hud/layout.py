@@ -46,27 +46,30 @@ class OverlayId(str, Enum):
 
 class OverlayPosition(ConfigDiffMixin, BaseModel):
     """
-    Screen position for a single overlay.
+    Screen position and scale for a single overlay.
 
     No validation is intentionally performed here.
     """
     x: int = Field(description="X position in pixels")
     y: int = Field(description="Y position in pixels")
+    scale_factor: float = Field(default=1.0, description="UI scale factor (multiplier)")
 
 
-    def toJSON(self) -> Dict[str, int]:
+    def toJSON(self) -> Dict:
         """Used for Qt signal/slot transport."""
         return {
             "x": self.x,
             "y": self.y,
+            "scale_factor": self.scale_factor,
         }
 
     @classmethod
-    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlayPosition":
+    def fromJSON(cls, json_dict: Dict) -> "OverlayPosition":
         """Used for Qt signal/slot transport."""
         return cls(
             x=json_dict["x"],
             y=json_dict["y"],
+            scale_factor=json_dict.get("scale_factor", 1.0),
         )
 
 # -------------------------------------- DEFAULTS ----------------------------------------------------------------------

@@ -48,11 +48,9 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.enabled, False)
         self.assertEqual(settings.toggle_overlays_udp_action_code, None)
         self.assertEqual(settings.show_lap_timer, True)
-        self.assertEqual(settings.lap_timer_ui_scale, 1.0)
         self.assertEqual(settings.lap_timer_minimal, False)
         self.assertEqual(settings.show_timing_tower, True)
         self.assertEqual(settings.lap_timer_toggle_udp_action_code, None)
-        self.assertEqual(settings.timing_tower_ui_scale, 1.0)
         self.assertEqual(settings.timing_tower_max_rows, 5)
         self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
         self.assertTrue(settings.timing_tower_col_options.show_deltas)
@@ -62,7 +60,6 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertTrue(settings.timing_tower_col_options.show_pens)
         self.assertTrue(settings.timing_tower_col_options.show_tl_warns)
         self.assertEqual(settings.show_mfd, True)
-        self.assertEqual(settings.mfd_ui_scale, 1.0)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
         self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
@@ -70,17 +67,13 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.prev_mfd_page_udp_action_code, None)
         self.assertEqual(settings.show_track_map, False)
-        self.assertEqual(settings.track_map_ui_scale, 1.0)
         self.assertEqual(settings.show_input_overlay, True)
-        self.assertEqual(settings.input_overlay_ui_scale, 1.0)
         self.assertEqual(settings.input_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.input_overlay_buffer_duration_sec, 5.0)
         self.assertEqual(settings.show_track_radar_overlay, True)
-        self.assertEqual(settings.track_radar_overlay_ui_scale, 1.0)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.show_hud_overlay, True)
-        self.assertEqual(settings.hud_overlay_ui_scale, 1.0)
         self.assertEqual(settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
         self.assertTrue(settings.hud_overlay_speed_unit_kmph)
         self.assertFalse(settings.hud_overlay_speed_unit_mph)
@@ -88,7 +81,6 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertTrue(settings.hud_overlay_fuel_estimation_linear_regression)
         self.assertFalse(settings.hud_overlay_fuel_estimation_game_built_in)
         self.assertEqual(settings.show_circuit_info, True)
-        self.assertEqual(settings.circuit_info_ui_scale, 1.0)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
         self.assertEqual(settings.circuit_info_length, 800)
         self.assertEqual(settings.overlays_opacity, 100)
@@ -200,32 +192,6 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(show_lap_timer=420)
 
-    def test_lap_timer_ui_scale_validation(self):
-        """Test valid and invalid lap_timer_ui_scale values"""
-        # Valid value
-        lap_timer_ui_scale = 1.5
-        hud_settings = HudSettings(lap_timer_ui_scale=lap_timer_ui_scale)
-        self.assertEqual(hud_settings.lap_timer_ui_scale, lap_timer_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_ui_scale=0.4)
-        HudSettings(lap_timer_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(lap_timer_ui_scale=2.1)
-        HudSettings(lap_timer_ui_scale=2.0)
-
     def test_lap_timer_minimal_validation(self):
         """Test valid and invalid lap_timer_minimal values"""
         # Default is False
@@ -264,32 +230,6 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_timing_tower=420)
-
-    def test_timing_tower_ui_scale_validation(self):
-        """Test valid and invalid timing_tower_ui_scale values"""
-        # Valid value
-        timing_tower_ui_scale = 1.5
-        hud_settings = HudSettings(timing_tower_ui_scale=timing_tower_ui_scale)
-        self.assertEqual(hud_settings.timing_tower_ui_scale, timing_tower_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_ui_scale=0.4)
-        HudSettings(timing_tower_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(timing_tower_ui_scale=2.1)
-        HudSettings(timing_tower_ui_scale=2.0)
 
     def test_timing_tower_max_rows_validation(self):
         """Test valid and invalid timing_tower_max_rows values"""
@@ -376,32 +316,6 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_mfd=420)
-
-    def test_mfd_ui_scale_validation(self):
-        """Test valid and invalid mfd_ui_scale values"""
-        # Valid value
-        mfd_ui_scale = 1.5
-        hud_settings = HudSettings(mfd_ui_scale=mfd_ui_scale)
-        self.assertEqual(hud_settings.mfd_ui_scale, mfd_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_ui_scale=0.4)
-        HudSettings(mfd_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(mfd_ui_scale=2.1)
-        HudSettings(mfd_ui_scale=2.0)
 
     def test_hud_enabled_dependency(self):
         """Test hud_enabled dependency on show_lap_timer, show_timing_tower values, show_mfd"""
@@ -644,30 +558,6 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(show_track_map=420)
 
-    def test_track_map_ui_scale(self):
-        track_map_ui_scale = 1.1
-        hud_settings = HudSettings(track_map_ui_scale=track_map_ui_scale)
-        self.assertEqual(hud_settings.track_map_ui_scale, track_map_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_map_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_map_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_map_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_map_ui_scale=0.4)
-        HudSettings(track_map_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_map_ui_scale=2.1)
-        HudSettings(track_map_ui_scale=2.0)
-
     def test_show_input_overlay(self):
         show_input_overlay = True
         hud_settings = HudSettings(show_input_overlay=show_input_overlay)
@@ -681,30 +571,6 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_input_overlay=420)
-
-    def test_input_overlay_ui_scale(self):
-        input_overlay_ui_scale = 1.1
-        hud_settings = HudSettings(input_overlay_ui_scale=input_overlay_ui_scale)
-        self.assertEqual(hud_settings.input_overlay_ui_scale, input_overlay_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_ui_scale=0.4)
-        HudSettings(input_overlay_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(input_overlay_ui_scale=2.1)
-        HudSettings(input_overlay_ui_scale=2.0)
 
     def test_input_overlay_buffer_duration_sec(self):
         input_overlay_buffer_duration_sec = 1.1
@@ -745,30 +611,6 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_track_radar_overlay=420)
-
-    def test_track_radar_overlay_ui_scale(self):
-        track_radar_overlay_ui_scale = 1.1
-        hud_settings = HudSettings(track_radar_overlay_ui_scale=track_radar_overlay_ui_scale)
-        self.assertEqual(hud_settings.track_radar_overlay_ui_scale, track_radar_overlay_ui_scale)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_ui_scale=0.4)
-        HudSettings(track_radar_overlay_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(track_radar_overlay_ui_scale=2.1)
-        HudSettings(track_radar_overlay_ui_scale=2.0)
 
     def test_track_radar_overlay_toggle_udp_action_code(self):
         track_radar_overlay_toggle_udp_action_code = 1
@@ -936,29 +778,6 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             HudSettings(show_circuit_info=420)
-
-    def test_circuit_info_ui_scale(self):
-        hud_settings = HudSettings(circuit_info_ui_scale=1.1)
-        self.assertEqual(hud_settings.circuit_info_ui_scale, 1.1)
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_ui_scale=None)  # type: ignore
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_ui_scale="invalid")
-
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_ui_scale=420)
-
-        # Boundary value: minimum (0.5)
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_ui_scale=0.4)
-        HudSettings(circuit_info_ui_scale=0.5)
-
-        # Boundary value: maximum (2.0)
-        with self.assertRaises(ValidationError):
-            HudSettings(circuit_info_ui_scale=2.1)
-        HudSettings(circuit_info_ui_scale=2.0)
 
     def test_circuit_info_toggle_udp_action_code(self):
         hud_settings = HudSettings(circuit_info_toggle_udp_action_code=1)
