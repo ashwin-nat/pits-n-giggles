@@ -336,12 +336,6 @@ class OverlaysMgr:
         self._set_overlays_visibility(True)
         return rsp
 
-    def set_scale_factor(self, oid: str, scale_factor: float):
-        """Set overlays scale factor to specified overlay"""
-
-        self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
-        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
-
     def set_track_radar_idle_opacity(self, opacity: int):
         self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
         self.window_manager.unicast_data(

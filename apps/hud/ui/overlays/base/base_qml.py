@@ -243,7 +243,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_opacity(self, opacity: int):
         self._root.setOpacity(opacity / 100.0)
 
-    @override
     def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.

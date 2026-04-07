@@ -87,7 +87,6 @@ class BaseOverlay():
         - `set_opacity()`        - apply opacity to the backend window
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
-        - `set_ui_scale()`       - set scale factor
         - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
@@ -220,9 +219,6 @@ class BaseOverlay():
     def set_visibility(self, visible: bool):
         raise NotImplementedError
 
-    def set_ui_scale(self, ui_scale: float):
-        raise NotImplementedError
-
     def get_visibility(self) -> bool:
         raise NotImplementedError
 
@@ -331,14 +327,6 @@ class BaseOverlay():
             config = OverlayPosition.fromJSON(data)
             self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
             self.set_window_position(config)
-
-        @self.on_event("__set_scale_factor__")
-        def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
-            """Set UI scale factor"""
-            scale_factor = data["scale_factor"]
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting UI scale to {scale_factor}")
-            self.set_ui_scale(scale_factor)
-            self.scale_factor = scale_factor
 
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
