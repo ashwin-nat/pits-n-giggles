@@ -792,6 +792,13 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_toggle_udp_action_code=420)
 
+    def test_layout_default_scale_factor(self):
+        """Each default layout entry must have scale_factor == 1.0."""
+        settings = HudSettings()
+        for oid, pos in settings.layout.items():
+            with self.subTest(overlay=oid):
+                self.assertEqual(pos.scale_factor, 1.0)
+
     def test_circuit_info_length_validation(self):
         """Test valid and invalid circuit_info_length values"""
         # Valid value

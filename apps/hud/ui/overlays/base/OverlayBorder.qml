@@ -7,7 +7,10 @@ Item {
     id: unlockOverlay
     anchors.fill: parent
 
-    // Corner handle size in logical pixels
+    // Corner handle size in logical pixels.
+    // NOTE: This is the single source of truth for the handle size; the Python
+    // side reads this property from the unlockOverlay item instead of
+    // hard-coding a constant, so visuals and hit-testing stay in sync.
     readonly property int handleSize: 18
     readonly property color accentColor: "#E10600"
     readonly property color borderColor: "#E10600"

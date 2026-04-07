@@ -215,7 +215,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def _create_unlock_overlay(self):
         """Create the unlock-mode border+handles overlay once after the root window is ready.
         Starts hidden; visibility is toggled by _update_unlock_overlay()."""
-        qml_path = (Path(__file__).parent / "UnlockOverlay.qml").resolve()
+        qml_path = (Path(__file__).parent / "OverlayBorder.qml").resolve()
         component = QQmlComponent(self._engine, QUrl.fromLocalFile(str(qml_path)))
         obj = component.create()
         if obj is None:
@@ -305,13 +305,27 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def get_visibility(self) -> bool:
         return self._root.isVisible()
 
-    _RESIZE_CORNER_PX = 18  # must match UnlockOverlay.qml handleSize
+    _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
+    _RESIZE_MIN_WIDTH = 50    # minimum pixel width used to clamp raw_w before scale computation
+
+    def _get_resize_corner_px(self) -> int:
+        """Return the corner handle size in logical pixels.
+
+        Reads the value from the UnlockOverlay QML item (single source of truth)
+        so the hit area always matches the visual handle size.  Falls back to 18
+        if the overlay is not yet created or the property is unavailable.
+        """
+        if self._unlock_overlay is not None:
+            val = self._unlock_overlay.property("handleSize")
+            if isinstance(val, int) and val > 0:
+                return val
+        return 18  # fallback – matches OverlayBorder.qml default
 
     def _corner_at(self, local_pos: QPoint) -> Optional[Qt.Corner]:
         """Return the nearest corner if local_pos is within the resize zone, else None."""
         w = self._root.width()
         h = self._root.height()
-        r = self._RESIZE_CORNER_PX
+        r = self._get_resize_corner_px()
         x, y = local_pos.x(), local_pos.y()
         if x <= r and y <= r:
             return Qt.Corner.TopLeftCorner
@@ -362,6 +376,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def _on_resize_drag(self, global_pos: QPoint) -> bool:
         delta = global_pos - self._resize_origin
         orig_w = self._resize_origin_size.width()
+        if orig_w <= 0:
+            # Guard against invalid or zero width to avoid division-by-zero
+            # and extreme scaling in edge cases (e.g. initial layout).
+            return False
         orig_h = self._resize_origin_size.height()
         orig_pos = self._resize_origin_pos
         corner = self._resize_corner
@@ -372,7 +390,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
         else:
             raw_w = orig_w + delta.x()
 
-        new_scale = max(0.1, self._resize_origin_scale * (max(50, raw_w) / orig_w))
+        new_scale = max(
+            self._RESIZE_MIN_SCALE,
+            self._resize_origin_scale * (max(self._RESIZE_MIN_WIDTH, raw_w) / orig_w),
+        )
         scale_ratio = new_scale / self._resize_origin_scale
         new_w = round(orig_w * scale_ratio)
         new_h = round(orig_h * scale_ratio)
