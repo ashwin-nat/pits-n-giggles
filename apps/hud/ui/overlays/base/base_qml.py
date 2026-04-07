@@ -27,12 +27,12 @@ from pathlib import Path
 from time import perf_counter_ns
 from typing import Optional, TypeVar, final, override
 
-from PySide6.QtCore import (QEvent, QMetaObject, QObject, QPoint,
+from PySide6.QtCore import (QEvent, QMetaObject, QObject, QPoint, QSize,
                             QPropertyAnimation, Qt, QTimer, QUrl, Slot)
 from PySide6.QtCore import Q_ARG
-from PySide6.QtGui import QIcon, QMouseEvent
-from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtQuick import QQuickWindow
+from PySide6.QtGui import QCursor, QIcon, QMouseEvent
+from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
+from PySide6.QtQuick import QQuickItem, QQuickWindow
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.config import OverlayPosition
@@ -112,6 +112,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         QObject.__init__(self)
         self._engine = QQmlApplicationEngine()
         self._root: Optional[QQuickWindow] = None
+        self._unlock_overlay: Optional[QQuickItem] = None
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
         self._qml_props: dict = {}
@@ -125,6 +126,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
         self._frame_active: bool = False
+        self._resize_origin: Optional[QPoint] = None
+        self._resize_origin_size: Optional[QSize] = None
+        self._resize_origin_pos: Optional[QPoint] = None
+        self._resize_corner: Optional[Qt.Corner] = None
+        self._resize_origin_scale: float = 1.0
 
         super().__init__(
             config,
@@ -164,6 +170,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root.setProperty("scaleFactor", self.scale_factor)
 
         super()._setup_window()
+        self._create_unlock_overlay()
         self.update_window_flags()
         self._root.setVisible(True)
         if self._refresh_interval_ms is not None:
@@ -203,12 +210,39 @@ class BaseOverlayQML(BaseOverlay, QObject):
                 flags |= Qt.WindowType.WindowTransparentForInput
 
         self._root.setFlags(flags)
+        self._update_unlock_overlay()
+
+    def _create_unlock_overlay(self):
+        """Create the unlock-mode border+handles overlay once after the root window is ready.
+        Starts hidden; visibility is toggled by _update_unlock_overlay()."""
+        qml_path = (Path(__file__).parent / "OverlayBorder.qml").resolve()
+        component = QQmlComponent(self._engine, QUrl.fromLocalFile(str(qml_path)))
+        obj = component.create()
+        if obj is None:
+            self.logger.error(
+                "%s | Failed to create UnlockOverlay: %s",
+                self.OVERLAY_ID, component.errorString(),
+            )
+            return
+        if not isinstance(obj, QQuickItem):
+            self.logger.error("%s | UnlockOverlay root is not a QQuickItem", self.OVERLAY_ID)
+            return
+        obj.setParent(self._root)
+        obj.setParentItem(self._root.contentItem())
+        obj.setZ(9999)
+        obj.setVisible(False)
+        self._unlock_overlay = obj
+
+    def _update_unlock_overlay(self):
+        """Show or hide the unlock overlay based on locked state."""
+        if self._unlock_overlay is None:
+            return
+        self._unlock_overlay.setVisible(not self.locked)
 
     @override
     def set_opacity(self, opacity: int):
         self._root.setOpacity(opacity / 100.0)
 
-    @override
     def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.
@@ -260,7 +294,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
     @override
     def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
-        return OverlayPosition(x=pos.x(), y=pos.y())
+        return OverlayPosition(x=pos.x(), y=pos.y(), scale_factor=self.scale_factor)
 
     @override
     def set_window_position(self, config: OverlayPosition):
@@ -271,34 +305,141 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def get_visibility(self) -> bool:
         return self._root.isVisible()
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+    _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
+    _RESIZE_MIN_WIDTH = 50    # minimum pixel width used to clamp raw_w before scale computation
 
-        if obj is self._root and not self.locked:
+    def _get_resize_corner_px(self) -> int:
+        """Return the corner handle size in logical pixels.
 
-            if event.type() == QEvent.Type.MouseButtonPress:
-                mouse_event: QMouseEvent = event
-                if mouse_event.button() == Qt.MouseButton.LeftButton:
-                    self._drag_pos = (
-                        mouse_event.globalPosition().toPoint()
-                        - self._root.position()
-                    )
-                    return True
+        Reads the value from the UnlockOverlay QML item (single source of truth)
+        so the hit area always matches the visual handle size.  Falls back to 18
+        if the overlay is not yet created or the property is unavailable.
+        """
+        if self._unlock_overlay is not None:
+            val = self._unlock_overlay.property("handleSize")
+            if isinstance(val, int) and val > 0:
+                return val
+        return 18  # fallback – matches OverlayBorder.qml default
 
-            elif event.type() == QEvent.Type.MouseMove:
-                mouse_event: QMouseEvent = event
-                if (
-                    mouse_event.buttons() & Qt.MouseButton.LeftButton
-                    and self._drag_pos
-                ):
-                    self._root.setPosition(
-                        mouse_event.globalPosition().toPoint() - self._drag_pos
-                    )
-                    return True
+    def _corner_at(self, local_pos: QPoint) -> Optional[Qt.Corner]:
+        """Return the nearest corner if local_pos is within the resize zone, else None."""
+        w = self._root.width()
+        h = self._root.height()
+        r = self._get_resize_corner_px()
+        x, y = local_pos.x(), local_pos.y()
+        if x <= r and y <= r:
+            return Qt.Corner.TopLeftCorner
+        if x >= w - r and y <= r:
+            return Qt.Corner.TopRightCorner
+        if x <= r and y >= h - r:
+            return Qt.Corner.BottomLeftCorner
+        if x >= w - r and y >= h - r:
+            return Qt.Corner.BottomRightCorner
+        return None
 
-            elif event.type() == QEvent.Type.MouseButtonRelease:
-                self._drag_pos = None
+    _CORNER_CURSORS = {
+        Qt.Corner.TopLeftCorner:     Qt.CursorShape.SizeFDiagCursor,
+        Qt.Corner.TopRightCorner:    Qt.CursorShape.SizeBDiagCursor,
+        Qt.Corner.BottomLeftCorner:  Qt.CursorShape.SizeBDiagCursor,
+        Qt.Corner.BottomRightCorner: Qt.CursorShape.SizeFDiagCursor,
+    }
+
+    def _on_mouse_press(self, event: QMouseEvent) -> bool:
+        if event.button() != Qt.MouseButton.LeftButton:
+            return False
+        local = event.position().toPoint()
+        corner = self._corner_at(local)
+        if corner is not None:
+            self._resize_origin = event.globalPosition().toPoint()
+            self._resize_origin_size = QSize(self._root.width(), self._root.height())
+            self._resize_corner = corner
+            self._resize_origin_pos = self._root.position()
+            self._resize_origin_scale = self.scale_factor
+            self._drag_pos = None
+        else:
+            self._drag_pos = event.globalPosition().toPoint() - self._root.position()
+            self._resize_origin = None
+        return True
+
+    def _on_mouse_move(self, event: QMouseEvent) -> bool:
+        global_pos = event.globalPosition().toPoint()
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            if self._resize_origin is not None:
+                return self._on_resize_drag(global_pos)
+            if self._drag_pos is not None:
+                self._root.setPosition(global_pos - self._drag_pos)
                 return True
+        else:
+            self._on_hover_cursor(event.position().toPoint())
+        return False
 
+    def _on_resize_drag(self, global_pos: QPoint) -> bool:
+        delta = global_pos - self._resize_origin
+        orig_w = self._resize_origin_size.width()
+        if orig_w <= 0:
+            # Guard against invalid or zero width to avoid division-by-zero
+            # and extreme scaling in edge cases (e.g. initial layout).
+            return False
+        orig_h = self._resize_origin_size.height()
+        orig_pos = self._resize_origin_pos
+        corner = self._resize_corner
+
+        # Aspect ratio is preserved by QML, so drive scale from width only.
+        if corner in (Qt.Corner.TopLeftCorner, Qt.Corner.BottomLeftCorner):
+            raw_w = orig_w - delta.x()
+        else:
+            raw_w = orig_w + delta.x()
+
+        new_scale = max(
+            self._RESIZE_MIN_SCALE,
+            self._resize_origin_scale * (max(self._RESIZE_MIN_WIDTH, raw_w) / orig_w),
+        )
+        scale_ratio = new_scale / self._resize_origin_scale
+        new_w = round(orig_w * scale_ratio)
+        new_h = round(orig_h * scale_ratio)
+
+        # Anchor the stationary corner by adjusting window position.
+        if corner == Qt.Corner.TopLeftCorner:
+            self._root.setPosition(QPoint(
+                orig_pos.x() + (orig_w - new_w),
+                orig_pos.y() + (orig_h - new_h),
+            ))
+        elif corner == Qt.Corner.TopRightCorner:
+            self._root.setPosition(QPoint(
+                orig_pos.x(),
+                orig_pos.y() + (orig_h - new_h),
+            ))
+        elif corner == Qt.Corner.BottomLeftCorner:
+            self._root.setPosition(QPoint(
+                orig_pos.x() + (orig_w - new_w),
+                orig_pos.y(),
+            ))
+        # BottomRight: position unchanged
+
+        self.set_ui_scale(new_scale)
+        return True
+
+    def _on_hover_cursor(self, local: QPoint) -> None:
+        corner = self._corner_at(local)
+        if corner is not None:
+            self._root.setCursor(QCursor(self._CORNER_CURSORS[corner]))
+        else:
+            self._root.unsetCursor()
+
+    def _on_mouse_release(self) -> bool:
+        self._drag_pos = None
+        self._resize_origin = None
+        return True
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if obj is self._root and not self.locked:
+            t = event.type()
+            if t == QEvent.Type.MouseButtonPress:
+                return self._on_mouse_press(event)
+            if t == QEvent.Type.MouseMove:
+                return self._on_mouse_move(event)
+            if t == QEvent.Type.MouseButtonRelease:
+                return self._on_mouse_release()
         return super().eventFilter(obj, event)
 
     # ----------------------------------------------------------------------

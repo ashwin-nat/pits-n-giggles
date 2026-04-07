@@ -131,25 +131,6 @@ def _register_routes(
 
         return overlays_mgr.set_overlays_layout(layout)
 
-    @ipc_server.on("set-ui-scale")
-    def _set_ui_scale(args: dict) -> dict:
-        logger.debug("Received set-ui-scale command. args: %s", args)
-
-        oid = args.get('oid')
-        if not oid:
-            return {"status": "error", "message": "Missing overlay id in set-ui-scale command."}
-
-        scale_factor = args.get('scale_factor')
-        if not scale_factor:
-            return {"status": "error", "message": "Missing scale_factor in set-ui-scale command."}
-
-        try:
-            overlays_mgr.set_scale_factor(oid, scale_factor)
-            return {"status": "success", "message": "set-ui-scale handler executed."}
-        except Exception as e: # pylint: disable=broad-exception-caught
-            logger.exception(f"Error handling set-ui-scale command: {e}")
-            return {"status": "error", "message": f"Exception during set-ui-scale handling: {str(e)}"}
-
     @ipc_server.on("set-track-radar-idle-opacity")
     def _set_track_radar_idle_opacity(args: dict) -> dict:
         logger.debug("Received set-track-radar-idle-opacity command. args: %s", args)

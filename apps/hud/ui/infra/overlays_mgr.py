@@ -77,7 +77,7 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.lap_timer_ui_scale,
+            scale_factor=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID].scale_factor,
             min_overlay_style=settings.HUD.lap_timer_minimal,
         )
 
@@ -87,7 +87,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.timing_tower_ui_scale,
+            scale_factor=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID].scale_factor,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
             show_team_logos=settings.HUD.timing_tower_col_options.show_team_logos,
             show_tyre_info=settings.HUD.timing_tower_col_options.show_tyre_info,
@@ -103,7 +103,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.input_overlay_ui_scale,
+            scale_factor=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
         )
@@ -127,7 +127,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            scale_factor=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             idle_opacity=settings.HUD.track_radar_idle_opacity,
         )
@@ -138,7 +138,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.hud_overlay_ui_scale,
+            scale_factor=settings.HUD.layout[HudOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             speed_unit=settings.HUD.hud_overlay_speed_unit,
             fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
@@ -150,7 +150,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.circuit_info_ui_scale,
+            scale_factor=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID].scale_factor,
             circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
@@ -164,7 +164,7 @@ class OverlaysMgr:
                     self.logger,
                     locked=True,
                     opacity=settings.HUD.overlays_opacity,
-                    scale_factor=settings.HUD.mfd_ui_scale,
+                    scale_factor=settings.HUD.layout[MfdOverlay.OVERLAY_ID].scale_factor,
                     windowed_overlay=settings.HUD.use_windowed_overlays
                 )
             )
@@ -335,12 +335,6 @@ class OverlaysMgr:
         # Enable all overlays so that the user can see the new layout
         self._set_overlays_visibility(True)
         return rsp
-
-    def set_scale_factor(self, oid: str, scale_factor: float):
-        """Set overlays scale factor to specified overlay"""
-
-        self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
-        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
     def set_track_radar_idle_opacity(self, opacity: int):
         self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
