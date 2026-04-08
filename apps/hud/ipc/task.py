@@ -219,7 +219,7 @@ def _stop_other_tasks(
         ipc_sub (IpcSubscriberSync): IPC subscriber
     """
     reason = args.get("reason", "N/A")
-    logger.info(f"Shutdown command received via IPC. Reason: {reason}. Stopping all tasks...")
+    logger.info("Shutdown command received via IPC. Reason: %s. Stopping all tasks...", reason)
 
     socketio_client.stop()
     ipc_sub.close()
@@ -231,4 +231,6 @@ def _handle_heartbeat_missed(count: int, logger: logging.Logger) -> None:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
+    # os._exit required: child process must terminate immediately without
+    # running atexit handlers or flushing stdio buffers from parent.
     os._exit(PNG_LOST_CONN_TO_PARENT)
