@@ -210,9 +210,9 @@ def _send_udp_mode(
 
         try:
             total_bytes += send_bytes_udp(packet, ip_addr, port)
-        except Exception as e:
+        except (OSError, ConnectionError) as e:
             progress_bar.close()
-            raise ConnectionError(f"Failed to send to {ip_addr}:{port} — {e}")
+            raise ConnectionError(f"Failed to send to {ip_addr}:{port} \u2014 {e}")
 
         prev_timestamp = timestamp
 
@@ -236,8 +236,8 @@ def _send_tcp_mode(
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client_socket.connect((ip_addr, port))
-    except Exception as e:
-        raise ConnectionError(f"Failed to connect to {ip_addr}:{port} — {e}")
+    except (OSError, ConnectionError) as e:
+        raise ConnectionError(f"Failed to connect to {ip_addr}:{port} \u2014 {e}")
 
     # Disable Nagle's algorithm if specified
     if no_nagle:
@@ -266,9 +266,9 @@ def _send_tcp_mode(
         # Send the message length followed by the actual message
         try:
             client_socket.sendall(message_length_bytes + packet)
-        except Exception as e:
+        except (OSError, ConnectionError) as e:
             progress_bar.close()
-            raise ConnectionError(f"Failed to send to {ip_addr}:{port} — {e}")
+            raise ConnectionError(f"Failed to send to {ip_addr}:{port} \u2014 {e}")
 
         total_bytes += message_length
 
@@ -314,7 +314,7 @@ def main():
     except ConnectionError as e:
         print(f"Error: Connection failed - {e}")
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"Error: {e}")
         sys.exit(1)
 
