@@ -42,6 +42,58 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class SplitButton(QWidget):
+    """Composite split-button: icon button + dropdown arrow button."""
+
+    def __init__(self, icon, tooltip, default_action, menu):
+        super().__init__()
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.main_btn = QPushButton()
+        self.main_btn.setIcon(icon)
+        self.main_btn.setToolTip(tooltip)
+        self.main_btn.setFixedSize(32, 32)
+        self.main_btn.clicked.connect(default_action)
+        layout.addWidget(self.main_btn)
+
+        self.arrow_btn = QPushButton("\u25BC")
+        self.arrow_btn.setFixedSize(16, 32)
+        self.arrow_btn.setToolTip(f"{tooltip} (select port)")
+        self.arrow_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 8px;
+                padding: 0px;
+                border: none;
+                background: transparent;
+                color: #d4d4d4;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+            }
+        """)
+        self.arrow_btn.setMenu(menu)
+        layout.addWidget(self.arrow_btn)
+
+        self.setLayout(layout)
+        self.setFixedSize(48, 32)
+        self._menu = menu
+
+    def setIcon(self, icon):
+        """Delegate icon setting to the main button."""
+        self.main_btn.setIcon(icon)
+
+    def setToolTip(self, tip):
+        """Delegate tooltip setting to the main button."""
+        self.main_btn.setToolTip(tip)
+
+    def icon(self):
+        """Delegate icon retrieval to the main button."""
+        return self.main_btn.icon()
+
+
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
 
@@ -133,52 +185,7 @@ class BackendAppMgr(PngAppMgrBase):
 
     def _build_split_button(self, icon, tooltip, default_action, menu):
         """Build a composite split-button: icon button + dropdown arrow button."""
-        container = QWidget()
-        layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Main icon button (same size as regular buttons)
-        main_btn = QPushButton()
-        main_btn.setIcon(icon)
-        main_btn.setToolTip(tooltip)
-        main_btn.setFixedSize(32, 32)
-        main_btn.clicked.connect(default_action)
-        layout.addWidget(main_btn)
-
-        # Arrow button that opens the dropdown menu
-        arrow_btn = QPushButton("\u25BC")
-        arrow_btn.setFixedSize(16, 32)
-        arrow_btn.setToolTip(f"{tooltip} (select port)")
-        arrow_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 8px;
-                padding: 0px;
-                border: none;
-                background: transparent;
-                color: #d4d4d4;
-            }
-            QPushButton:hover {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 4px;
-            }
-        """)
-        arrow_btn.setMenu(menu)
-        layout.addWidget(arrow_btn)
-
-        container.setLayout(layout)
-        container.setFixedSize(48, 32)
-
-        # Expose references so the rest of the code can enable/disable and swap icons
-        container.main_btn = main_btn
-        container.arrow_btn = arrow_btn
-        container._menu = menu
-        container.setEnabled = lambda enabled: (main_btn.setEnabled(enabled), arrow_btn.setEnabled(enabled))
-        container.setIcon = main_btn.setIcon
-        container.setToolTip = main_btn.setToolTip
-        container.icon = main_btn.icon
-
-        return container
+        return SplitButton(icon, tooltip, default_action, menu)
 
     def _build_port_menu(self, is_overlay: bool) -> QMenu:
         """Build a dropdown menu listing all ports (primary + additional)."""
@@ -215,7 +222,7 @@ class BackendAppMgr(PngAppMgrBase):
 
     def _update_dashboard_overlay_buttons(self):
         """Rebuild dashboard/overlay buttons after additional_servers changed."""
-        old_is_split = hasattr(self.open_dashboard_button, 'main_btn')
+        old_is_split = isinstance(self.open_dashboard_button, SplitButton)
         new_needs_split = bool(self.additional_servers)
 
         if old_is_split and new_needs_split:
@@ -272,16 +279,26 @@ class BackendAppMgr(PngAppMgrBase):
         """Open a URL in the default browser, with WSL2 fallback."""
         import subprocess, sys
         if sys.platform == 'linux':
-            for cmd in (['wslview', url], ['cmd.exe', '/c', 'start', '', url]):
-                try:
-                    subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
-                    return
-                except FileNotFoundError:
-                    continue
+            # Detect WSL by checking /proc/version for Microsoft/WSL signature
+            is_wsl = False
+            try:
+                with open('/proc/version', 'r') as f:
+                    is_wsl = 'microsoft' in f.read().lower()
+            except OSError:
+                pass
+            if is_wsl:
+                for cmd in (['wslview', url], ['cmd.exe', '/c', 'start', '', url]):
+                    try:
+                        # Security: url is constructed internally from trusted config values (proto + port),
+                        # not from user input. No shell=True, args passed as list.
+                        subprocess.Popen(
+                            cmd,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL
+                        )
+                        return
+                    except FileNotFoundError:
+                        continue
         webbrowser.open(url, new=2)
 
     def open_dashboard(self):

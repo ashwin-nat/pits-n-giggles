@@ -131,7 +131,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
                     "IP address the HTTP and UDP servers bind to.",
                     "Use '0.0.0.0' to allow LAN access (default).",
                     "Use '127.0.0.1' to restrict to this machine only.",
-                    "WARNING: '0.0.0.0' exposes the server to all devices on your network."
+                    "WARNING: '0.0.0.0' exposes the server to all devices on your network.",
+                    "Only IPv4 addresses are supported."
                 ]
             }
         }
