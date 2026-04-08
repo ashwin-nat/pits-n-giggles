@@ -92,7 +92,9 @@ class ColumnConfig {
             const raw = localStorage.getItem(ColumnConfig.STORAGE_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
-                // Ensure all groups exist (forward-compat)
+                if (!parsed || typeof parsed !== 'object' || !parsed.columns || typeof parsed.columns !== 'object') {
+                    return this._getDefaults();
+                }
                 const defaults = this._getDefaults();
                 for (const key of Object.keys(defaults.columns)) {
                     if (parsed.columns[key] === undefined) {

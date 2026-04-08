@@ -162,6 +162,7 @@
             });
 
             let refDriverTeam = null;
+            let lastCircuit = null;
 
             socketio.on('race-table-update', (binaryData) => {
                 let data;
@@ -180,6 +181,10 @@
                 } = data;
 
                 if (circuit) {
+                    if (circuit !== lastCircuit) {
+                        refDriverTeam = null;  // Reset on session/circuit change
+                        lastCircuit = circuit;
+                    }
                     trackMap.loadTrack(circuit);
                     label.textContent = circuit.replace(/_/g, ' ');
                 }

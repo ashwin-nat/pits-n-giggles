@@ -93,13 +93,27 @@ class TrackMap {
         this._initZoomControls();
 
         // Dismiss tooltip when tapping outside a driver dot (touch devices)
-        document.addEventListener('touchstart', (e) => {
+        this._documentTouchStartHandler = (e) => {
             if (this._activeTooltipDot &&
                 !e.target.classList.contains('track-map-driver-dot') &&
                 !e.target.classList.contains('track-map-hit-area')) {
                 this._hideTooltip();
             }
-        });
+        };
+        document.addEventListener('touchstart', this._documentTouchStartHandler);
+    }
+
+    destroy() {
+        document.removeEventListener('touchstart', this._documentTouchStartHandler);
+        if (this.tooltip && this.tooltip.parentNode) {
+            this.tooltip.parentNode.removeChild(this.tooltip);
+        }
+        if (this._pinnedPopup && this._pinnedPopup.parentNode) {
+            this._pinnedPopup.parentNode.removeChild(this._pinnedPopup);
+        }
+        this.driverDots.forEach(dot => dot.remove());
+        this.driverDots.clear();
+        this.container.innerHTML = '';
     }
 
     // ── public API ──────────────────────────────────────────────────
@@ -372,11 +386,54 @@ class TrackMap {
         this.svgElement.appendChild(circle);
 
         // Link hit-area to circle for position sync
+        // Note: _hitArea couples DOM elements; consider extracting to wrapper object in future refactor
         circle._hitArea = hitArea;
         return circle;
     }
 
     // ── tooltip ─────────────────────────────────────────────────────
+
+    _buildDriverInfo(dot) {
+        const name     = escapeHtml(dot.dataset.driverName || '');
+        const team     = dot.dataset.driverTeam || '';
+        const abbr     = escapeHtml(this._getTeamAbbreviation(team));
+        const pos      = escapeHtml(dot.dataset.position || '');
+        const ers      = escapeHtml(dot.dataset.ersPercent || 'N/A');
+        const ersMode  = escapeHtml(dot.dataset.ersMode || 'N/A');
+        const wear     = escapeHtml(dot.dataset.tyreWearAvg || 'N/A');
+        const compound = escapeHtml(dot.dataset.tyreCompound || 'N/A');
+        return { name, team, abbr, pos, ers, ersMode, wear, compound };
+    }
+
+    _buildTooltipContent(info) {
+        const frag = document.createDocumentFragment();
+        const strong = document.createElement('strong');
+        strong.textContent = `${info.name} (${info.abbr})`;
+        frag.appendChild(strong);
+        frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(`ERS: ${info.ers}% (${info.ersMode})`));
+        frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(`Tyre Wear: ${info.wear}%`));
+        return frag;
+    }
+
+    _buildPinnedPopupContent(info) {
+        const frag = document.createDocumentFragment();
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'pinned-popup-close';
+        closeBtn.textContent = '\u00d7';
+        frag.appendChild(closeBtn);
+        const strong = document.createElement('strong');
+        strong.textContent = `${info.name} (${info.abbr})`;
+        frag.appendChild(strong);
+        frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(`P${info.pos} \u00b7 ${info.compound}`));
+        frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(`ERS: ${info.ers}% (${info.ersMode})`));
+        frag.appendChild(document.createElement('br'));
+        frag.appendChild(document.createTextNode(`Wear: ${info.wear}%`));
+        return frag;
+    }
 
     _createTooltip() {
         this.tooltip = document.createElement('div');
@@ -387,18 +444,9 @@ class TrackMap {
 
     _showTooltip(event, dot) {
         if (this._pinnedDriver === parseInt(dot.dataset.driverIndex)) return;
-
-        const name    = escapeHtml(dot.dataset.driverName || '');
-        const team    = dot.dataset.driverTeam || '';
-        const abbr    = escapeHtml(this._getTeamAbbreviation(team));
-        const ers     = escapeHtml(dot.dataset.ersPercent  || 'N/A');
-        const ersMode = escapeHtml(dot.dataset.ersMode     || 'N/A');
-        const wear    = escapeHtml(dot.dataset.tyreWearAvg || 'N/A');
-
-        this.tooltip.innerHTML =
-            `<strong>${name} (${abbr})</strong><br>` +
-            `ERS: ${ers}% (${ersMode})<br>` +
-            `Tyre Wear: ${wear}%`;
+        const info = this._buildDriverInfo(dot);
+        this.tooltip.textContent = '';
+        this.tooltip.appendChild(this._buildTooltipContent(info));
         this.tooltip.style.display = 'block';
         this._positionTooltip(event);
     }
@@ -418,17 +466,9 @@ class TrackMap {
             this._hideTooltip();
         } else {
             const touch = event.touches[0];
-            const name    = escapeHtml(dot.dataset.driverName || '');
-            const team    = dot.dataset.driverTeam || '';
-            const abbr    = escapeHtml(this._getTeamAbbreviation(team));
-            const ers     = escapeHtml(dot.dataset.ersPercent  || 'N/A');
-            const ersMode = escapeHtml(dot.dataset.ersMode     || 'N/A');
-            const wear    = escapeHtml(dot.dataset.tyreWearAvg || 'N/A');
-
-            this.tooltip.innerHTML =
-                `<strong>${name} (${abbr})</strong><br>` +
-                `ERS: ${ers}% (${ersMode})<br>` +
-                `Tyre Wear: ${wear}%`;
+            const info = this._buildDriverInfo(dot);
+            this.tooltip.textContent = '';
+            this.tooltip.appendChild(this._buildTooltipContent(info));
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (touch.pageX + 12) + 'px';
             this.tooltip.style.top  = (touch.pageY - 28) + 'px';
@@ -472,22 +512,10 @@ class TrackMap {
     }
 
     _updatePinnedPopupContent(dot) {
-        const name     = escapeHtml(dot.dataset.driverName || '');
-        const team     = dot.dataset.driverTeam || '';
-        const abbr     = escapeHtml(this._getTeamAbbreviation(team));
-        const pos      = escapeHtml(dot.dataset.position || '');
-        const ers      = escapeHtml(dot.dataset.ersPercent || 'N/A');
-        const ersMode  = escapeHtml(dot.dataset.ersMode || 'N/A');
-        const wear     = escapeHtml(dot.dataset.tyreWearAvg || 'N/A');
-        const compound = escapeHtml(dot.dataset.tyreCompound || 'N/A');
-
-        this._pinnedPopup.innerHTML =
-            `<span class="pinned-popup-close">&times;</span>` +
-            `<strong>${name} (${abbr})</strong><br>` +
-            `P${pos} \u00b7 ${compound}<br>` +
-            `ERS: ${ers}% (${ersMode})<br>` +
-            `Wear: ${wear}%`;
-        this._pinnedPopup.style.borderColor = getF1TeamColor(team);
+        const info = this._buildDriverInfo(dot);
+        this._pinnedPopup.textContent = '';
+        this._pinnedPopup.appendChild(this._buildPinnedPopupContent(info));
+        this._pinnedPopup.style.borderColor = getF1TeamColor(info.team);
     }
 
     _getTeamAbbreviation(teamName) {
@@ -522,8 +550,11 @@ class TrackMap {
     }
 
     _showFallback(message) {
-        this.container.innerHTML =
-            `<div class="track-map-fallback">${escapeHtml(message)}</div>`;
+        this.container.textContent = '';
+        const div = document.createElement('div');
+        div.className = 'track-map-fallback';
+        div.textContent = message;
+        this.container.appendChild(div);
         this.svgElement = null;
         this.polylinePoints = [];
         this.segmentLengths = [];
@@ -531,7 +562,6 @@ class TrackMap {
         this.driverDots.clear();
         this._unpinPopup();
         this._resetZoomState();
-        // Re-append reset button (innerHTML wiped it)
         this.container.appendChild(this._resetBtn);
     }
 
