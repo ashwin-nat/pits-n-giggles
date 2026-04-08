@@ -87,7 +87,9 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
 
     @proc_mgr.on_heartbeat_missed
     def _heartbeat_missed_handler(count: int) -> None:
-        logger.warning(f"Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+        logger.warning("Missed heartbeat %s times. This process has probably been orphaned. Terminating...", count)
+        # os._exit required: child process must terminate immediately without
+        # running atexit handlers or flushing stdio buffers from parent.
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
     @proc_mgr.on("get-stats")

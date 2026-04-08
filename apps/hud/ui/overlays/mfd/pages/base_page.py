@@ -89,7 +89,7 @@ class MfdPageBase:
             self._track_event(event_type)
             try:
                 handler(data)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 self._stats.track_event("__EXCEPTION__", event_type)
                 raise
 
@@ -109,7 +109,7 @@ class MfdPageBase:
         """Internal activation — stores item, tracks stats, then calls the public hook."""
         self._page_item = item
         self._stats.track_event("__LIFECYCLE__", "activated")
-        self.logger.debug(f"{self.KEY} | Page activated")
+        self.logger.debug("%s | Page activated", self.KEY)
         self.on_page_activated(item)
 
     def on_page_activated(self, _: QQuickItem):
@@ -119,7 +119,7 @@ class MfdPageBase:
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = None
         self._stats.track_event("__LIFECYCLE__", "deactivated")
-        self.logger.debug(f"{self.KEY} | Page deactivated")
+        self.logger.debug("%s | Page deactivated", self.KEY)
 
     @property
     def is_active(self) -> bool:

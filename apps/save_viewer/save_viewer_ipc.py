@@ -65,6 +65,8 @@ class SaveViewerIpc:
 
             print(f"[SAVE_VIEWER] Missed heartbeat {count} times. "
                   "This process has probably been orphaned. Terminating...")
+            # os._exit required: child process must terminate immediately without
+            # running atexit handlers or flushing stdio buffers from parent.
             os._exit(PNG_LOST_CONN_TO_PARENT)
 
         @self.m_ipc_server.on_shutdown
@@ -78,7 +80,7 @@ class SaveViewerIpc:
                 Dict[str, Any]: Shutdown response
             """
             reason = args["reason"]
-            self.m_logger.info(f"Shutting down. Reason: {reason}")
+            self.m_logger.info("Shutting down. Reason: %s", reason)
             await self.m_server.stop()
             return {"status": "success"}
 

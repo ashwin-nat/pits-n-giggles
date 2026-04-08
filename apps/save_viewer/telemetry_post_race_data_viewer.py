@@ -79,7 +79,7 @@ async def main(logger: logging.Logger, server_port: int, version: str) -> None:
             task.cancel()
         raise  # Ensure proper cancellation behavior
     except PngError as e:
-        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
+        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
         sys.exit(e.exit_code)
 
 
