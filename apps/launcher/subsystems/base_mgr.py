@@ -766,4 +766,6 @@ class PngAppMgrBase(QObject):
         # We do NOT attempt graceful Qt shutdown because CI should fail fast
         # and auto-restart must never mask instability.
         self.error_log(f"[INTEGRATION TEST MODE] {message}")
+        # os._exit required: child process must terminate immediately without
+        # running atexit handlers or flushing stdio buffers from parent.
         os._exit(1)
