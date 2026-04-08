@@ -250,6 +250,24 @@ class EngViewRaceTable {
                     console.debug('Applied breakpoint preset:', breakpoint);
                 }
 
+                // Re-apply breakpoint presets on resize (only if no saved layout)
+                let resizeTimeout;
+                let lastBreakpoint = this.getCurrentBreakpoint();
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        const savedState = this.gridApi.getColumnState();
+                        const hasSavedLayout = savedState && savedState.some(c => c.width !== undefined);
+                        if (!hasSavedLayout) {
+                            const newBp = this.getCurrentBreakpoint();
+                            if (newBp !== lastBreakpoint) {
+                                lastBreakpoint = newBp;
+                                this.applyBreakpointPreset(newBp);
+                            }
+                        }
+                    }, 250);
+                });
+
                 // Add event listeners for column state changes
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
@@ -567,9 +585,13 @@ class EngViewRaceTable {
             if (!telemetryPublic) {
                 return this.getTelemetryRestrictedContent();
             }
-            const damage = driverInfo["damage-info"][damageField];
+            const rawDamage = driverInfo["damage-info"]?.[damageField];
+            if (rawDamage == null) {
+                return this.createSingleLineCell('—');
+            }
+            const damage = Number(rawDamage);
             const text = `${formatFloat(damage)}%`;
-            const dmgClass = this.#getEngDamageClass(damage);
+            const dmgClass = this.#getEngDamageClass(Number.isFinite(damage) ? damage : 0);
             return this.createSingleLineCell(text, { escape: false, className: dmgClass });
         };
     }
@@ -1810,8 +1832,10 @@ class EngViewRaceStatus {
             lapText += '/' + data['total-laps'].toString();
         }
         this.summaryLap.textContent = lapText || '—';
-        this.summaryTrackTemp.textContent = data['track-temperature'] + ' °C';
-        this.summaryAirTemp.textContent = data['air-temperature'] + ' °C';
+        const trackTemp = data['track-temperature'];
+        this.summaryTrackTemp.textContent = trackTemp != null ? `${trackTemp} °C` : '—';
+        const airTemp = data['air-temperature'];
+        this.summaryAirTemp.textContent = airTemp != null ? `${airTemp} °C` : '—';
         this.summarySC.textContent = data['num-sc'] ?? '0';
         this.summaryVSC.textContent = data['num-vsc'] ?? '0';
     }
@@ -1930,13 +1954,46 @@ class EngViewWeatherTable {
     cycleSessionForward() {
         if (this.numSessions === 0) return;
         this.currSessionIndex = (this.currSessionIndex + 1) % this.numSessions;
-        this.#updateGraph();
+        this._renderCurrentSession();
     }
 
     cycleSessionBackward() {
         if (this.numSessions === 0) return;
         this.currSessionIndex =
             (this.currSessionIndex - 1 + this.numSessions) % this.numSessions;
+        this._renderCurrentSession();
+    }
+
+    _renderCurrentSession() {
+        if (this.weatherBySession.length === 0) return;
+        const currSession = this.weatherBySession[this.currSessionIndex];
+        if (!currSession) return;
+
+        const sessionType = currSession["session_type"];
+        this.sessionNameElement.textContent = `${sessionType} (${this.currSessionIndex + 1}/${this.numSessions})`;
+
+        const sessionWeather = currSession["items"];
+        const limitedData = sessionWeather.slice(0, 5);
+
+        const typeRow = document.createElement('tr');
+        limitedData.forEach(w => {
+            const td = document.createElement('td');
+            td.textContent = w["weather"] || '';
+            typeRow.appendChild(td);
+        });
+
+        const timeRow = document.createElement('tr');
+        limitedData.forEach(w => {
+            const td = document.createElement('td');
+            td.textContent = `+${w["time-offset"] ?? ''}m (${w["rain-probability"] ?? ''}%)`;
+            timeRow.appendChild(td);
+        });
+
+        this.tableBody.textContent = '';
+        this.tableBody.appendChild(typeRow);
+        this.tableBody.appendChild(timeRow);
+        this.numDisplayedSamples = limitedData.length;
+
         this.#updateGraph();
     }
 
@@ -1957,7 +2014,7 @@ class EngViewWeatherTable {
 
         if (incomingSessionUID != this.sessionUID) {
             this.currSessionIndex = 0;
-            this.sessionUID = incomingSessionUID
+            this.sessionUID = incomingSessionUID;
         }
 
         this.weatherBySession = groupWeatherSamplesBySessionType(incomingData);
@@ -1968,40 +2025,21 @@ class EngViewWeatherTable {
             this.currSessionIndex = 0;
         }
 
-        const currSession = this.weatherBySession[this.currSessionIndex];
-        const sessionType = currSession["session_type"];
-        this.sessionNameElement.textContent = `${sessionType} (${this.currSessionIndex + 1}/${this.numSessions})`;
-
-        const sessionWeather = currSession["items"];
-        const limitedData = sessionWeather.slice(0, 5);
-
-        // Create weather type row
-        const typeRow = document.createElement('tr');
-        typeRow.innerHTML = limitedData
-            .map(w => `<td>${escapeHtml(w["weather"])}</td>`)
-            .join('');
-
-        // Create time and probability row
-        const timeRow = document.createElement('tr');
-        timeRow.innerHTML = limitedData
-            .map(w => `<td>+${escapeHtml(String(w["time-offset"]))}m (${escapeHtml(String(w["rain-probability"]))}%)</td>`)
-            .join('');
-
-        // Clear and update table
-        this.tableBody.textContent = '';
-        this.tableBody.appendChild(typeRow);
-        this.tableBody.appendChild(timeRow);
-        this.numDisplayedSamples = limitedData.length;
-
-        this.#updateGraph();
+        this._renderCurrentSession();
     }
 
     clear() {
         if (!this.numDisplayedSamples) return;
-        this.tableBody.innerHTML = `
-            <tr>${'<td>-</td>'.repeat(5)}</tr>
-            <tr>${'<td>-</td>'.repeat(5)}</tr>
-        `;
+        this.tableBody.textContent = '';
+        for (let i = 0; i < 2; i++) {
+            const row = document.createElement('tr');
+            for (let j = 0; j < 5; j++) {
+                const td = document.createElement('td');
+                td.textContent = '-';
+                row.appendChild(td);
+            }
+            this.tableBody.appendChild(row);
+        }
         this.currSessionIndex = 0;
         this.numSessions = 0;
         this.sessionUID = 0;
