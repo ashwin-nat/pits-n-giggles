@@ -34,7 +34,10 @@ COPY apps/ ./apps/
 COPY lib/ ./lib/
 COPY meta/ ./meta/
 COPY assets/ ./assets/
-COPY png_config.json ./png_config.json
+
+# Note: png_config.json is NOT baked into the image.
+# Mount your own config at runtime via:
+#   -v /path/to/png_config.json:/app/png_config.json:ro
 
 # Save Data Viewer
 EXPOSE 4769/tcp
