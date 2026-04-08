@@ -27,8 +27,7 @@ import webbrowser
 from dataclasses import replace
 from typing import TYPE_CHECKING, List
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QToolButton, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QMenu, QPushButton, QWidget
 
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
@@ -51,17 +50,17 @@ class SplitButton(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.main_btn = QPushButton()
-        self.main_btn.setIcon(icon)
-        self.main_btn.setToolTip(tooltip)
-        self.main_btn.setFixedSize(32, 32)
-        self.main_btn.clicked.connect(default_action)
-        layout.addWidget(self.main_btn)
+        self._main_btn = QPushButton()
+        self._main_btn.setIcon(icon)
+        self._main_btn.setToolTip(tooltip)
+        self._main_btn.setFixedSize(32, 32)
+        self._main_btn.clicked.connect(default_action)
+        layout.addWidget(self._main_btn)
 
-        self.arrow_btn = QPushButton("\u25BC")
-        self.arrow_btn.setFixedSize(16, 32)
-        self.arrow_btn.setToolTip(f"{tooltip} (select port)")
-        self.arrow_btn.setStyleSheet("""
+        self._arrow_btn = QPushButton("\u25BC")
+        self._arrow_btn.setFixedSize(16, 32)
+        self._arrow_btn.setToolTip(f"{tooltip} (select port)")
+        self._arrow_btn.setStyleSheet("""
             QPushButton {
                 font-size: 8px;
                 padding: 0px;
@@ -74,30 +73,39 @@ class SplitButton(QWidget):
                 border-radius: 4px;
             }
         """)
-        self.arrow_btn.setMenu(menu)
-        layout.addWidget(self.arrow_btn)
+        self._arrow_btn.setMenu(menu)
+        layout.addWidget(self._arrow_btn)
 
         self.setLayout(layout)
         self.setFixedSize(48, 32)
-        self._menu = menu
+
+    @property
+    def menu(self) -> QMenu:
+        return self._arrow_btn.menu()
+
+    @menu.setter
+    def menu(self, menu: QMenu) -> None:
+        self._arrow_btn.setMenu(menu)
+
+    def setEnabled(self, enabled: bool) -> None:
+        self._main_btn.setEnabled(enabled)
+        self._arrow_btn.setEnabled(enabled)
 
     def setIcon(self, icon):
         """Delegate icon setting to the main button."""
-        self.main_btn.setIcon(icon)
+        self._main_btn.setIcon(icon)
 
     def setToolTip(self, tip):
         """Delegate tooltip setting to the main button."""
-        self.main_btn.setToolTip(tip)
+        self._main_btn.setToolTip(tip)
 
     def icon(self):
         """Delegate icon retrieval to the main button."""
-        return self.main_btn.icon()
+        return self._main_btn.icon()
 
 
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
-
-    buttons_update_signal = Signal()
 
     MODULE_PATH = "apps.backend"
     DISPLAY_NAME = "Core"
@@ -147,7 +155,6 @@ class BackendAppMgr(PngAppMgrBase):
             can_restart=False,
             settings_field='Network -> "F1 UDP Telemetry Port"'
         ))
-        self.buttons_update_signal.connect(self._update_dashboard_overlay_buttons)
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -157,27 +164,23 @@ class BackendAppMgr(PngAppMgrBase):
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.manual_save_button = self.build_button(self.get_icon("save"), self.manual_save, "Manual Save")
 
-        if self.additional_servers:
-            # Split-button for Dashboard
-            self.open_dashboard_button = self._build_split_button(
-                self.get_icon("dashboard"), "Open Dashboard",
-                self.open_dashboard, self._build_port_menu(is_overlay=False)
-            )
-            # Split-button for Stream Overlay
-            self.open_obs_overlay_button = self._build_split_button(
-                self.get_icon("twitch"), "Open Stream Overlay",
-                self.open_obs_overlay, self._build_port_menu(is_overlay=True)
-            )
-        else:
-            self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
-                                                           "Open Dashboard")
-            self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
-                                                             "Open Stream Overlay")
+        self.open_dashboard_button, self.open_obs_overlay_button = \
+            self._create_dashboard_buttons(bool(self.additional_servers))
+
+        self.dashboard_slot = QWidget()
+        slot_layout = QHBoxLayout(self.dashboard_slot)
+        slot_layout.setContentsMargins(0, 0, 0, 0)
+        slot_layout.addWidget(self.open_dashboard_button)
+
+        self.overlay_slot = QWidget()
+        slot_layout = QHBoxLayout(self.overlay_slot)
+        slot_layout.setContentsMargins(0, 0, 0, 0)
+        slot_layout.addWidget(self.open_obs_overlay_button)
 
         buttons = [
             self.start_stop_button,
-            self.open_dashboard_button,
-            self.open_obs_overlay_button,
+            self.dashboard_slot,
+            self.overlay_slot,
             self.manual_save_button,
         ]
 
@@ -186,6 +189,26 @@ class BackendAppMgr(PngAppMgrBase):
     def _build_split_button(self, icon, tooltip, default_action, menu):
         """Build a composite split-button: icon button + dropdown arrow button."""
         return SplitButton(icon, tooltip, default_action, menu)
+
+    def _create_dashboard_buttons(self, use_split: bool):
+        """Create dashboard and overlay buttons, split or regular."""
+        if use_split:
+            dashboard = self._build_split_button(
+                self.get_icon("dashboard"), "Open Dashboard",
+                self.open_dashboard, self._build_port_menu(is_overlay=False)
+            )
+            overlay = self._build_split_button(
+                self.get_icon("twitch"), "Open Stream Overlay",
+                self.open_obs_overlay, self._build_port_menu(is_overlay=True)
+            )
+        else:
+            dashboard = self.build_button(
+                self.get_icon("dashboard"), self.open_dashboard, "Open Dashboard"
+            )
+            overlay = self.build_button(
+                self.get_icon("twitch"), self.open_obs_overlay, "Open Stream Overlay"
+            )
+        return dashboard, overlay
 
     def _build_port_menu(self, is_overlay: bool) -> QMenu:
         """Build a dropdown menu listing all ports (primary + additional)."""
@@ -227,52 +250,33 @@ class BackendAppMgr(PngAppMgrBase):
 
         if old_is_split and new_needs_split:
             # Same button type — just rebuild the menus
-            self.open_dashboard_button.arrow_btn.setMenu(self._build_port_menu(is_overlay=False))
-            self.open_obs_overlay_button.arrow_btn.setMenu(self._build_port_menu(is_overlay=True))
+            self.open_dashboard_button.menu = self._build_port_menu(is_overlay=False)
+            self.open_obs_overlay_button.menu = self._build_port_menu(is_overlay=True)
             return
 
         if not old_is_split and not new_needs_split:
             return
 
-        # Button type changed — swap widgets in the layout
+        # Button type changed — swap widgets in the slot
         was_dashboard_enabled = self.open_dashboard_button.isEnabled()
         was_overlay_enabled = self.open_obs_overlay_button.isEnabled()
 
-        if new_needs_split:
-            new_dashboard = self._build_split_button(
-                self.get_icon("dashboard"), "Open Dashboard",
-                self.open_dashboard, self._build_port_menu(is_overlay=False)
-            )
-            new_overlay = self._build_split_button(
-                self.get_icon("twitch"), "Open Stream Overlay",
-                self.open_obs_overlay, self._build_port_menu(is_overlay=True)
-            )
-        else:
-            new_dashboard = self.build_button(
-                self.get_icon("dashboard"), self.open_dashboard, "Open Dashboard"
-            )
-            new_overlay = self.build_button(
-                self.get_icon("twitch"), self.open_obs_overlay, "Open Stream Overlay"
-            )
+        new_dashboard, new_overlay = self._create_dashboard_buttons(new_needs_split)
 
-        self._swap_button_in_layout(self.open_dashboard_button, new_dashboard)
-        self._swap_button_in_layout(self.open_obs_overlay_button, new_overlay)
-
-        self.open_dashboard_button = new_dashboard
-        self.open_obs_overlay_button = new_overlay
+        self.open_dashboard_button = self._set_slot_button(
+            self.dashboard_slot, self.open_dashboard_button, new_dashboard)
+        self.open_obs_overlay_button = self._set_slot_button(
+            self.overlay_slot, self.open_obs_overlay_button, new_overlay)
 
         self.set_button_state(self.open_dashboard_button, was_dashboard_enabled)
         self.set_button_state(self.open_obs_overlay_button, was_overlay_enabled)
 
-    def _swap_button_in_layout(self, old_button, new_button):
-        """Replace a button widget in its parent layout."""
-        if isinstance(new_button, QPushButton):
-            new_button.setFixedSize(32, 32)
-        parent = old_button.parentWidget()
-        if parent and parent.layout():
-            parent.layout().replaceWidget(old_button, new_button)
+    def _set_slot_button(self, slot: QWidget, old_button: QWidget, new_button: QWidget) -> QWidget:
+        """Replace the button inside a stable slot container."""
+        slot.layout().replaceWidget(old_button, new_button)
         old_button.setParent(None)
         old_button.deleteLater()
+        return new_button
 
     @staticmethod
     def _open_url(url: str):
@@ -325,7 +329,7 @@ class BackendAppMgr(PngAppMgrBase):
 
         # Rebuild dashboard/overlay buttons if multi-port config changed
         if old_additional_servers != self.additional_servers:
-            self.buttons_update_signal.emit()
+            self._update_dashboard_overlay_buttons()
 
         # Update UDP action codes if required
         if udp_action_codes_diff := self.curr_settings.diff(new_settings, {
