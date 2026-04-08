@@ -227,7 +227,7 @@ class F1TelemetryHandler:
             KeyError: If the key is not found
         """
         self.m_udp_action_codes.update(key, val)
-        self.m_logger.debug(f"Updated UDP action code {key} to {val}")
+        self.m_logger.debug("Updated UDP action code %s to %s", key, val)
 
     async def run(self):
         """
@@ -569,8 +569,8 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier} "
-                               f"UID = {packet.m_header.m_sessionUID}")
+            self.m_logger.info("Flashback event received. Frame ID = %s "
+                               "UID = %s", packet.mEventDetails.flashbackFrameIdentifier, packet.m_header.m_sessionUID)
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -581,7 +581,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
             # In case session start was missed, clear data structures
-            self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            self.m_logger.debug("Start lights event received. Lights = %s", packet.mEventDetails.numLights)
             if packet.mEventDetails.numLights == 1:
                 session_uid = packet.m_header.m_sessionUID
                 self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
@@ -812,4 +812,3 @@ class F1TelemetryHandler:
             self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
-
