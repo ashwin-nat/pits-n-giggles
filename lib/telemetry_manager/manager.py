@@ -43,28 +43,11 @@ F1TelemetryCallback = Optional[Callable[[F1PacketBase], Awaitable[None]]]
 # ------------------------- CLASSES ------------------------------------------------------------------------------------
 
 class AsyncF1TelemetryManager:
-    """
-    This class is used to act as the interface between the raw parsers and the state management layer.
-    This class handles the following tasks
-        1 - manage the socket and receive the data
-        2 - parse the packet into its appropriate type
-        3 - call the appropriate state management layer callback
-    """
-
     def __init__(self,
                  port_number: int,
                  logger: Logger = None,
                  replay_server: bool = False,
                  frame_gate_enabled: bool = False):
-        """Init the telemetry manager app and all its sub components
-
-        Args:
-            port_number (int): The port number to listen in on
-            logger (Logger): The logger to use
-            replay_server (bool): If True, the TCP based packet replay server will be created
-                NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
-            frame_gate_enabled (bool): If True, the frame gate will be enabled
-        """
 
         self.m_replay_server = replay_server
         self.m_stats = EventCounter()
@@ -77,14 +60,6 @@ class AsyncF1TelemetryManager:
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
 
     def on_packet(self, packet_type: F1PacketType):
-        """Decorator to register a callback for a specific packet type
-
-        Args:
-            packet_type (F1PacketType): The packet type to register the callback for
-
-        Returns:
-            Callable: The decorator function
-        """
         if not F1PacketType.isValid(packet_type):
             raise ValueError(f'Invalid packet type: {packet_type}')
 
@@ -95,11 +70,6 @@ class AsyncF1TelemetryManager:
         return decorator
 
     def on_raw_packet(self):
-        """Decorator to register a callback for every raw UDP message
-
-        Returns:
-            Callable: The decorator function
-        """
         def decorator(callback: Callable[[object], Awaitable[None]]):
             self.m_raw_packet_callback = callback
             return callback
@@ -107,7 +77,6 @@ class AsyncF1TelemetryManager:
         return decorator
 
     async def run(self) -> None:
-        """Run the telemetry client asynchronously."""
         if self.m_replay_server:
             self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
 
@@ -125,25 +94,13 @@ class AsyncF1TelemetryManager:
             await self.m_receiver.close()
 
     def getStats(self) -> dict:
-        """Get the current packet statistics
-
-        Returns:
-            dict: The current packet statistics
-        """
         return self.m_stats.get_stats()
 
     async def _processPacket(self,
                              pkt_factory: PacketParserFactory,
                              raw_packet: bytes) -> None:
-        """Processes the packet received from the UDP socket
-
-        Args:
-            pkt_factory (PacketParserFactory): The packet parser factory
-            raw_packet (bytes): The raw packet received from the UDP socket
-        """
 
         self.m_stats.track_packet("__RAW__", "__TOTAL__", len(raw_packet))
-        # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)
 
@@ -155,12 +112,6 @@ class AsyncF1TelemetryManager:
                 len(raw_packet))
             return
 
-        # self.m_logger.silent(f"Packet meta: frameId={parsed_obj.m_header.m_frameIdentifier}, "
-        #                      f"packetId={parsed_obj.m_header.m_packetId}, "
-        #                      f"overallFrameId={parsed_obj.m_header.m_overallFrameIdentifier}, "
-        #                      f"sessionUID={parsed_obj.m_header.m_sessionUID}, "
-        #                      f"should_drop={should_drop}, ")
-
         if self.m_frame_gate.should_drop(parsed_obj):
             self.m_stats.track_packet(
                 "__DROPPED_PACKETS_FRAME_GATE__",
@@ -169,7 +120,6 @@ class AsyncF1TelemetryManager:
             )
             return
 
-        # Perform the registered callback
         try:
             await self.m_callbacks[parsed_obj.m_header.m_packetId](parsed_obj)
             self.m_stats.track_packet(
@@ -177,7 +127,7 @@ class AsyncF1TelemetryManager:
                 str(parsed_obj.m_header.m_packetId),
                 len(raw_packet),
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             packet_file = self._dumpPacketToFile(parsed_obj)
             self.m_stats.track_packet(
                 "__EXCEPTION_CB__",
@@ -196,16 +146,6 @@ class AsyncF1TelemetryManager:
             raise
 
     def _dumpPacketToFile(self, packet_obj: object, directory: str = "crash_packet_dumps") -> str:
-        """Dump packet JSON to a timestamped file and return the file path.
-
-        Args:
-            packet_obj (object): The packet object to dump.
-            directory (str, optional): The directory to dump the packet to. Defaults to "crash_packet_dumps".
-
-        Returns:
-            str: The file path of the dumped packet.
-
-        """
         os.makedirs(directory, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
