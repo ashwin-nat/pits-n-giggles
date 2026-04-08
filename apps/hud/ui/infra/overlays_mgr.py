@@ -289,7 +289,7 @@ class OverlaysMgr:
 
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
-        self.logger.debug(f"Setting overlays opacity to {opacity}%")
+        self.logger.debug("Setting overlays opacity to %s%", opacity)
         self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
@@ -337,7 +337,7 @@ class OverlaysMgr:
         return rsp
 
     def set_track_radar_idle_opacity(self, opacity: int):
-        self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
+        self.logger.debug("Setting track radar idle opacity to %s%", opacity)
         self.window_manager.unicast_data(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
@@ -346,7 +346,7 @@ class OverlaysMgr:
         )
 
     def set_circuit_info_length(self, length: int):
-        self.logger.debug(f"Setting circuit info length to {length}px")
+        self.logger.debug("Setting circuit info length to %spx", length)
         self.window_manager.unicast_data(
             overlay_id=CircuitInfoOverlay.OVERLAY_ID,
             event='set_circuit_info_length',
@@ -362,12 +362,12 @@ class OverlaysMgr:
 
     def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Dict[str, Any]:
         """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window info for {overlay_id}")
+        self.logger.debug("Requesting window info for %s", overlay_id)
         return self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
 
     def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
         """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window stats for {overlay_id}")
+        self.logger.debug("Requesting window stats for %s", overlay_id)
         return self.window_manager.request(overlay_id, "get_window_stats", timeout_ms=timeout_ms)
 
     def _register_overlay_if_enabled(
@@ -381,7 +381,7 @@ class OverlaysMgr:
         **overlay_kwargs
     ):
         if not enabled:
-            self.logger.debug(f"{overlay_cls.OVERLAY_ID} overlay is disabled")
+            self.logger.debug("%s overlay is disabled", overlay_cls.OVERLAY_ID)
             return
 
         self.window_manager.register_overlay(
@@ -416,7 +416,7 @@ class OverlaysMgr:
 
     def _wdt_status_callback(self, active: bool):
         """Watchdog status callback. Only handles loss of data from core."""
-        self.logger.debug(f"Watchdog status callback: {active}")
+        self.logger.debug("Watchdog status callback: %s", active)
         if not active:
             self._set_telemetry_active(False)
 
