@@ -35,7 +35,14 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 package-mode = false
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: HTTP smoke tests requiring a running server",
+]
+
 [tool.poetry.group.dev.dependencies]
+pyinstaller = ">=6.12.0,<7.0.0"
 tqdm = "^4.67.1"
 deepdiff = "^8.4.2"
 yappi = "^1.6.10"

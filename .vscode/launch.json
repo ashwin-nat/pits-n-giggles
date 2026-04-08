@@ -104,7 +104,7 @@
             "module": "apps.dev_tools.telemetry_replayer",
             "console": "integratedTerminal",
             "args": [
-                "--file-name", "session_captures/f1_24_sp_austria.f1pcap",
+                "--file-name", "session_captures/f1_24_sp_austria.f1jsonl.gz",
                 "--udp-mode",
                 "--speed-multiplier", "10"
             ]
@@ -178,7 +178,7 @@
             "program": "utils/telemetry_replayer.py",
             "console": "integratedTerminal",
             "args": [
-                "--file-name", "f1_24_sp_austria.f1pcap",
+                "--file-name", "f1_24_sp_austria.f1jsonl.gz",
                 "--udp-mode",
                 "--speed-multiplier", "10"
             ]
