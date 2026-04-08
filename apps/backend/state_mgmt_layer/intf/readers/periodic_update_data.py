@@ -105,7 +105,7 @@ class PeriodicUpdateData(BaseAPI):
             "tyre-temp-mode" : self.m_session_info.m_packet_session.m_tyreTemperatureMode.value \
                 if self.m_session_info.m_packet_session \
                     and hasattr(self.m_session_info.m_packet_session, 'm_tyreTemperatureMode') \
-                else 0,
+                else None,
         }
 
         if str(self.m_session_info.m_session_type) == "Time Trial":

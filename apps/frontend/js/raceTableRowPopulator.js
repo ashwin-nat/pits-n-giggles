@@ -407,23 +407,18 @@ class RaceTableRowPopulator {
             return this;
         }
         const damageInfo = this.rowData["damage-info"];
-        const cell = this.row.insertCell();
-
-        const damageItems = [
-            { label: "FLW", value: damageInfo["fl-wing-damage"] },
-            { label: "FRW", value: damageInfo["fr-wing-damage"] },
-            { label: "RW",  value: damageInfo["rear-wing-damage"] },
-            { label: "Floor", value: damageInfo["floor-damage"] },
-            { label: "Diff", value: damageInfo["diffuser-damage"] },
-            { label: "SP",  value: damageInfo["sidepod-damage"] },
-        ];
-
-        damageItems.forEach(item => {
-            const row = document.createElement("div");
-            const valueText = item.value == null ? "N/A" : formatFloat(item.value) + "%";
-            row.textContent = item.label + ": " + valueText;
-            cell.appendChild(row);
-        });
+        const fmt = (key, label) => {
+            const v = damageInfo[key];
+            return label + ": " + (v == null ? "N/A" : formatFloat(v) + "%");
+        };
+        this.createMultiLineCell([
+            fmt("fl-wing-damage", "FLW"),
+            fmt("fr-wing-damage", "FRW"),
+            fmt("rear-wing-damage", "RW"),
+            fmt("floor-damage", "Floor"),
+            fmt("diffuser-damage", "Diff"),
+            fmt("sidepod-damage", "SP"),
+        ]);
 
         return this;
     }
