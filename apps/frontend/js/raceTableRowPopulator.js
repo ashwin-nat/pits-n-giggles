@@ -407,18 +407,24 @@ class RaceTableRowPopulator {
             return this;
         }
         const damageInfo = this.rowData["damage-info"];
-        // Wing damage key will always be present
-        const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fl-wing-damage"]) + "%";
-        const frWingDamage = damageInfo["fr-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fr-wing-damage"]) + "%";
-        const rearWingDamage = damageInfo["rear-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["rear-wing-damage"]) + "%";
-        this.createMultiLineCell([
-            "FL: " + flWingDamage,
-            "FR: " + frWingDamage,
-            "RW: " + rearWingDamage
-        ]);
+        const cell = this.row.insertCell();
+
+        const damageItems = [
+            { label: "FLW", value: damageInfo["fl-wing-damage"] },
+            { label: "FRW", value: damageInfo["fr-wing-damage"] },
+            { label: "RW",  value: damageInfo["rear-wing-damage"] },
+            { label: "Floor", value: damageInfo["floor-damage"] },
+            { label: "Diff", value: damageInfo["diffuser-damage"] },
+            { label: "SP",  value: damageInfo["sidepod-damage"] },
+        ];
+
+        damageItems.forEach(item => {
+            const row = document.createElement("div");
+            const valueText = item.value == null ? "N/A" : formatFloat(item.value) + "%";
+            row.textContent = item.label + ": " + valueText;
+            cell.appendChild(row);
+        });
+
         return this;
     }
 

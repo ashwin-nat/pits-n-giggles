@@ -1057,8 +1057,8 @@ class PacketSessionData(F1PacketBase):
         self.m_ruleSet = RuleSet.safeCast(self.m_ruleSet)
 
         self.m_weekendStructure = [0] * 12
-        # Section 5 - F1 24 specific stuff
-        if header.m_packetFormat == 2024:
+        # Section 5 - F1 24 and later
+        if header.m_packetFormat >= 2024:
             section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
             unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_5.unpack(section_5_raw_data)
             (
@@ -1330,7 +1330,7 @@ class PacketSessionData(F1PacketBase):
         if not self.__eq_f1_23(other):
             return False
 
-        if self.m_header.m_packetFormat == 2024:
+        if self.m_header.m_packetFormat >= 2024:
             return self.__eq_f1_24(other)
 
         return NotImplemented

@@ -527,6 +527,27 @@ class DriversListRsp(BaseAPI):
 
     def _getTyreInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract tyre information section for JSON response."""
+        car_telemetry = driver_data.m_packet_copies.m_packet_car_telemetry
+        if car_telemetry:
+            surface_temps = car_telemetry.m_tyresSurfaceTemperature
+            # EA F1 tyre index order: [RL=0, RR=1, FL=2, FR=3]
+            tyre_surface_temps = {
+                "front-left-temp": surface_temps[F1Utils.INDEX_FRONT_LEFT],
+                "front-right-temp": surface_temps[F1Utils.INDEX_FRONT_RIGHT],
+                "rear-left-temp": surface_temps[F1Utils.INDEX_REAR_LEFT],
+                "rear-right-temp": surface_temps[F1Utils.INDEX_REAR_RIGHT],
+            }
+            inner_temps = car_telemetry.m_tyresInnerTemperature
+            tyre_inner_temps = {
+                "front-left-temp": inner_temps[F1Utils.INDEX_FRONT_LEFT],
+                "front-right-temp": inner_temps[F1Utils.INDEX_FRONT_RIGHT],
+                "rear-left-temp": inner_temps[F1Utils.INDEX_REAR_LEFT],
+                "rear-right-temp": inner_temps[F1Utils.INDEX_REAR_RIGHT],
+            }
+        else:
+            tyre_surface_temps = None
+            tyre_inner_temps = None
+
         return {
             "wear-prediction": driver_data.getFullTyreWearPredictions(self.m_next_pit_stop_window),
             "current-wear": driver_data.getCurrentTyreWearJSON(),
@@ -538,6 +559,8 @@ class DriversListRsp(BaseAPI):
             "surface-temps": driver_data.m_tyre_info.getSurfaceTempsJSON(),
             "inner-temps": driver_data.m_tyre_info.getInnerTempsJSON(),
             "brakes-temps": driver_data.m_tyre_info.getBrakesTempsJSON(),
+            "tyre-surface-temps": tyre_surface_temps,
+            "tyre-inner-temps": tyre_inner_temps,
         }
 
     def _getDamageInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
@@ -546,6 +569,9 @@ class DriversListRsp(BaseAPI):
             "fl-wing-damage": driver_data.m_car_info.m_fl_wing_damage,
             "fr-wing-damage": driver_data.m_car_info.m_fr_wing_damage,
             "rear-wing-damage": driver_data.m_car_info.m_rear_wing_damage,
+            "floor-damage": driver_data.m_car_info.m_floor_damage,
+            "diffuser-damage": driver_data.m_car_info.m_diffuser_damage,
+            "sidepod-damage": driver_data.m_car_info.m_sidepod_damage,
         }
 
     def _calcFastestSectorMs(self, session_history: Dict[str, Any]) -> None:
