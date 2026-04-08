@@ -75,7 +75,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
             2: {"name": "Driver Two", "team": "Beta", "driver-number": 2},
         }
 
-    async def test_add_message_and_index_as_id(self):
+    def test_add_message_and_index_as_id(self):
         msg = RaceCtrlMsgBase(
             timestamp=1.23,
             message_type=MessageType.SESSION_START,
@@ -86,7 +86,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(msg_id, 0)  # first message gets index 0
         self.assertIs(self.session_mgr.messages[msg_id], msg)
 
-    async def test_message_stored_in_driver_refs(self):
+    def test_message_stored_in_driver_refs(self):
         msg = RaceCtrlMsgBase(
             timestamp=2.34,
             message_type=MessageType.SESSION_END,
@@ -99,7 +99,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertIs(self.driver1_mgr.messages[0], msg)  # reference, not copy
         self.assertIs(self.driver2_mgr.messages[0], msg)
 
-    async def test_message_with_no_driver_involvement(self):
+    def test_message_with_no_driver_involvement(self):
         msg = RaceCtrlMsgBase(
             timestamp=3.45,
             message_type=MessageType.FASTEST_LAP,
@@ -110,7 +110,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.driver1_mgr.messages), 0)
         self.assertEqual(len(self.driver2_mgr.messages), 0)
 
-    async def test_clear_resets_session_and_drivers(self):
+    def test_clear_resets_session_and_drivers(self):
         msg = RaceCtrlMsgBase(
             timestamp=4.56,
             message_type=MessageType.RETIREMENT,
@@ -128,7 +128,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.driver2_mgr.messages), 0)
         self.assertEqual(len(self.session_mgr.drivers), 0)
 
-    async def test_to_json_exports_ids_and_data(self):
+    def test_to_json_exports_ids_and_data(self):
         msg1 = RaceCtrlMsgBase(
             timestamp=5.0,
             message_type=MessageType.SESSION_START,
@@ -149,7 +149,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(exported[1]["id"], 1)
         self.assertEqual(exported[1]["message-type"], "FASTEST_LAP")
 
-    async def test_message_with_single_driver(self):
+    def test_message_with_single_driver(self):
         msg = RaceCtrlMsgBase(
             timestamp=8.88,
             message_type=MessageType.SESSION_END,
@@ -165,7 +165,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         # Not stored in driver 2 manager
         self.assertEqual(len(self.driver2_mgr.messages), 0)
 
-    async def test_to_json_exports_ids_and_data(self):
+    def test_to_json_exports_ids_and_data(self):
         msg1 = FastestLapRaceCtrlMsg(
             timestamp=5.0,
             driver_index=1,
@@ -177,7 +177,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(exported[0]["id"], 0)
         self.assertEqual(exported[0]["message-type"], "FASTEST_LAP")
 
-    async def test_to_json_with_driver_info_dict(self):
+    def test_to_json_with_driver_info_dict(self):
         msg1 = OvertakeRaceCtrlMsg(
             timestamp=9.0,
             overtaker_index=1,
@@ -194,7 +194,7 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(exported[0]["overtaken-info"]["team"], "Beta")
         self.assertEqual(exported[0]["overtaken-info"]["driver-number"], 2)
 
-    async def test_driver_message(self):
+    def test_driver_message(self):
         msg = DriverPittingRaceCtrlMsg(
             timestamp=9.0,
             driver_index=1,
@@ -227,45 +227,45 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
 
     # --- Simple events (no event details needed) ---
 
-    async def test_session_started(self):
+    def test_session_started(self):
         packet = self._make_packet(PacketEventData.EventPacketType.SESSION_STARTED)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, SessionStartRaceCtrlMsg)
         self.assertEqual(result.lap_number, self.LAP)
 
-    async def test_session_ended(self):
+    def test_session_ended(self):
         packet = self._make_packet(PacketEventData.EventPacketType.SESSION_ENDED)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, SessionEndRaceCtrlMsg)
 
-    async def test_drs_enabled(self):
+    def test_drs_enabled(self):
         packet = self._make_packet(PacketEventData.EventPacketType.DRS_ENABLED)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, DrsEnabledRaceCtrlMsg)
 
-    async def test_chequered_flag(self):
+    def test_chequered_flag(self):
         packet = self._make_packet(PacketEventData.EventPacketType.CHEQUERED_FLAG)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, ChequeredFlagRaceCtrlMsg)
 
-    async def test_lights_out(self):
+    def test_lights_out(self):
         packet = self._make_packet(PacketEventData.EventPacketType.LIGHTS_OUT)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, LightsOutRaceCtrlMsg)
 
-    async def test_red_flag(self):
+    def test_red_flag(self):
         packet = self._make_packet(PacketEventData.EventPacketType.RED_FLAG)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, RedFlagRaceCtrlMsg)
 
-    async def test_flashback(self):
+    def test_flashback(self):
         packet = self._make_packet(PacketEventData.EventPacketType.FLASHBACK)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, FlashBackRaceCtrlMsg)
 
     # --- Events with details ---
 
-    async def test_fastest_lap(self):
+    def test_fastest_lap(self):
         details = MagicMock()
         details.vehicleIdx = 3
         details.lapTime = 72.456
@@ -275,7 +275,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertEqual(result.involved_drivers[0], 3)
         self.assertEqual(result.lap_time_ms, 72456)
 
-    async def test_retirement(self):
+    def test_retirement(self):
         details = MagicMock()
         details.vehicleIdx = 7
         details.m_reason = "Mechanical Failure"
@@ -284,14 +284,14 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, RetirementRaceCtrlMsg)
         self.assertEqual(result.involved_drivers[0], 7)
 
-    async def test_drs_disabled(self):
+    def test_drs_disabled(self):
         details = MagicMock()
         details.m_reason = "Wet Track"
         packet = self._make_packet(PacketEventData.EventPacketType.DRS_DISABLED, details)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, DrsDisabledRaceCtrlMsg)
 
-    async def test_race_winner(self):
+    def test_race_winner(self):
         details = MagicMock()
         details.vehicleIdx = 1
         packet = self._make_packet(PacketEventData.EventPacketType.RACE_WINNER, details)
@@ -299,7 +299,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, RaceWinnerRaceCtrlMsg)
         self.assertEqual(result.involved_drivers[0], 1)
 
-    async def test_penalty_issued(self):
+    def test_penalty_issued(self):
         details = MagicMock()
         details.penaltyType = "Time Penalty"
         details.infringementType = "Corner Cutting"
@@ -313,7 +313,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, PenaltyRaceCtrlMsg)
         self.assertEqual(result.vehicle_index, 4)
 
-    async def test_speed_trap(self):
+    def test_speed_trap(self):
         details = MagicMock()
         details.vehicleIdx = 2
         details.speed = 342.5
@@ -327,7 +327,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertEqual(result.driver_index, 2)
         self.assertAlmostEqual(result.speed, 342.5)
 
-    async def test_start_lights(self):
+    def test_start_lights(self):
         details = MagicMock()
         details.numLights = 3
         packet = self._make_packet(PacketEventData.EventPacketType.START_LIGHTS, details)
@@ -335,7 +335,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, StartLightsRaceCtrlMsg)
         self.assertEqual(result.num_lights, 3)
 
-    async def test_drive_through_served(self):
+    def test_drive_through_served(self):
         details = MagicMock()
         details.vehicleIdx = 10
         packet = self._make_packet(PacketEventData.EventPacketType.DRIVE_THROUGH_SERVED, details)
@@ -343,7 +343,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, DtPenServedRaceCtrlMsg)
         self.assertEqual(result.driver_index, 10)
 
-    async def test_stop_go_served(self):
+    def test_stop_go_served(self):
         details = MagicMock()
         details.vehicleIdx = 6
         details.stopTime = 10.0
@@ -352,7 +352,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertIsInstance(result, SgPenServedRaceCtrlMsg)
         self.assertEqual(result.driver_index, 6)
 
-    async def test_overtake(self):
+    def test_overtake(self):
         details = MagicMock()
         details.overtakingVehicleIdx = 1
         details.beingOvertakenVehicleIdx = 5
@@ -362,7 +362,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         self.assertEqual(result.overtaker_index, 1)
         self.assertEqual(result.overtaken_index, 5)
 
-    async def test_safety_car(self):
+    def test_safety_car(self):
         details = MagicMock()
         details.m_safety_car_type = "Virtual"
         details.m_event_type = "Deployed"
@@ -370,7 +370,7 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsInstance(result, SafetyCarRaceCtrlMsg)
 
-    async def test_collision(self):
+    def test_collision(self):
         details = MagicMock()
         details.m_vehicle_1_index = 3
         details.m_vehicle_2_index = 9
@@ -381,12 +381,12 @@ class TestRaceCtrlEventMsgFactory(F1TelemetryUnitTestsBase):
 
     # --- Unknown event → None ---
 
-    async def test_unknown_event_returns_none(self):
+    def test_unknown_event_returns_none(self):
         packet = self._make_packet(PacketEventData.EventPacketType.BUTTON_STATUS)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsNone(result)
 
-    async def test_none_event_returns_none(self):
+    def test_none_event_returns_none(self):
         packet = self._make_packet(PacketEventData.EventPacketType.NONE)
         result = race_ctrl_event_msg_factory(packet, lap_number=self.LAP)
         self.assertIsNone(result)

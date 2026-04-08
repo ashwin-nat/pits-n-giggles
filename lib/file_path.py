@@ -36,7 +36,8 @@ def resolve_user_file(filename: str) -> str:
 
     - On Windows, uses the path as-is (relative to current working directory)
     - On macOS, uses ~/Library/Application Support/pits_n_giggles/
-    - On Linux, uses $XDG_CONFIG_HOME/pits_n_giggles/ (default: ~/.config/pits_n_giggles/)
+    - On Linux and other Unix-like platforms, uses $XDG_CONFIG_HOME/pits_n_giggles/
+      (default: ~/.config/pits_n_giggles/)
 
     Args:
         filename (str): The name of the file to resolve.

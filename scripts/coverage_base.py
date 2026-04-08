@@ -32,7 +32,8 @@ def run_coverage(RUN_TYPE, script, rcfile, script_args_str="", manage_coverage=T
         cmd_args = [sys.executable, script] + shlex.split(script_args_str)
 
     print(f"Running command: {' '.join(cmd_args)}")
-    result = subprocess.run(cmd_args)
+    # cmd_args is built from trusted internal values (script path + args), not user input
+    result = subprocess.run(cmd_args)  # noqa: S603
     if result.returncode != 0:
         print(f"{RUN_TYPE.title()} tests failed with status {result.returncode}")
 
