@@ -455,7 +455,7 @@ class EngViewRaceTable {
             const tyreInfo = driverInfo["tyre-info"];
             // tyre-temp-mode: 0 = Surface Only, 1 = Surface & Carcass
             const useInner = this.tyreTempMode === 1;
-            const tyreTemps = useInner ? tyreInfo["tyre-inner-temps"] : tyreInfo["tyre-surface-temps"];
+            const tyreTemps = useInner ? tyreInfo["inner-temps"] : tyreInfo["surface-temps"];
             if (!tyreTemps) {
                 return this.createSingleLineCell("N/A");
             }
@@ -480,15 +480,15 @@ class EngViewRaceTable {
             const tyreInfo = driverInfo["tyre-info"];
             // tyre-temp-mode: 0 = Surface Only, 1 = Surface & Carcass
             const hasInner = this.tyreTempMode === 1;
-            const tyreTemps = hasInner ? tyreInfo["tyre-inner-temps"] : tyreInfo["tyre-surface-temps"];
+            const tyreTemps = hasInner ? tyreInfo["inner-temps"] : tyreInfo["surface-temps"];
             if (!tyreTemps) {
                 return this.createSingleLineCell("N/A");
             }
             const allTemps = [
-                tyreTemps["front-left-temp"],
-                tyreTemps["front-right-temp"],
-                tyreTemps["rear-left-temp"],
-                tyreTemps["rear-right-temp"],
+                tyreTemps["fl"],
+                tyreTemps["fr"],
+                tyreTemps["rl"],
+                tyreTemps["rr"],
             ];
             if (allTemps.some(t => t == null)) {
                 return this.createSingleLineCell("N/A");
@@ -1037,9 +1037,9 @@ class EngViewRaceTable {
                         headerName: "FL",
                         colId: "front-left-temp",
                         context: {displayName: "Front Left Temp", },
-                        field: "tyre-info.tyre-surface-temps.front-left-temp",
+                        field: "tyre-info.surface-temps.fl",
                         flex: 2,
-                        cellRenderer: this.createTyreTempCellRenderer("front-left-temp"),
+                        cellRenderer: this.createTyreTempCellRenderer("fl"),
                         sortable: false,
                         cellClass: 'ag-cell-single-line',
                     },
@@ -1047,9 +1047,9 @@ class EngViewRaceTable {
                         headerName: "FR",
                         colId: "front-right-temp",
                         context: {displayName: "Front Right Temp", },
-                        field: "tyre-info.tyre-surface-temps.front-right-temp",
+                        field: "tyre-info.surface-temps.fr",
                         flex: 2,
-                        cellRenderer: this.createTyreTempCellRenderer("front-right-temp"),
+                        cellRenderer: this.createTyreTempCellRenderer("fr"),
                         sortable: false,
                         cellClass: 'ag-cell-single-line',
                     },
@@ -1057,9 +1057,9 @@ class EngViewRaceTable {
                         headerName: "RL",
                         colId: "rear-left-temp",
                         context: {displayName: "Rear Left Temp", },
-                        field: "tyre-info.tyre-surface-temps.rear-left-temp",
+                        field: "tyre-info.surface-temps.rl",
                         flex: 2,
-                        cellRenderer: this.createTyreTempCellRenderer("rear-left-temp"),
+                        cellRenderer: this.createTyreTempCellRenderer("rl"),
                         sortable: false,
                         cellClass: 'ag-cell-single-line',
                     },
@@ -1067,9 +1067,9 @@ class EngViewRaceTable {
                         headerName: "RR",
                         colId: "rear-right-temp",
                         context: {displayName: "Rear Right Temp", },
-                        field: "tyre-info.tyre-surface-temps.rear-right-temp",
+                        field: "tyre-info.surface-temps.rr",
                         flex: 2,
-                        cellRenderer: this.createTyreTempCellRenderer("rear-right-temp"),
+                        cellRenderer: this.createTyreTempCellRenderer("rr"),
                         sortable: false,
                         cellClass: 'ag-cell-single-line',
                     },
@@ -1085,13 +1085,13 @@ class EngViewRaceTable {
                         cellClass: 'ag-cell-single-line',
                         equals: (val1, val2) => {
                             if (!val1 || !val2) return val1 === val2;
-                            const temps1 = val1["tyre-inner-temps"] ?? val1["tyre-surface-temps"];
-                            const temps2 = val2["tyre-inner-temps"] ?? val2["tyre-surface-temps"];
+                            const temps1 = val1["inner-temps"] ?? val1["surface-temps"];
+                            const temps2 = val2["inner-temps"] ?? val2["surface-temps"];
                             if (!temps1 || !temps2) return temps1 === temps2;
-                            return temps1["front-left-temp"] === temps2["front-left-temp"]
-                                && temps1["front-right-temp"] === temps2["front-right-temp"]
-                                && temps1["rear-left-temp"] === temps2["rear-left-temp"]
-                                && temps1["rear-right-temp"] === temps2["rear-right-temp"]
+                            return temps1["fl"] === temps2["fl"]
+                                && temps1["fr"] === temps2["fr"]
+                                && temps1["rl"] === temps2["rl"]
+                                && temps1["rr"] === temps2["rr"]
                                 && val1["actual-tyre-compound"] === val2["actual-tyre-compound"];
                         },
                     },
