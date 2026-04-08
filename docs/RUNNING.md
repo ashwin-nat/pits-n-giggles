@@ -79,3 +79,40 @@ To reinstall everything clean:
 ```bash
 poetry install --no-root
 ```
+
+---
+
+## 🐳 Running with Docker
+
+### Build the Image
+
+```bash
+docker build -t pits-n-giggles .
+```
+
+### Run the Container
+
+```bash
+docker run -d \
+  --name png-backend \
+  -p 4768:4768 \
+  -p 4769:4769 \
+  -p 20777:20777/udp \
+  -v /path/to/your/png_config.json:/app/png_config.json:ro \
+  pits-n-giggles
+```
+
+| Flag | Purpose |
+|------|---------|n| `-p 4768:4768` | Web UI (HTTP) |
+| `-p 4769:4769` | Save Data Viewer (HTTP) |
+| `-p 20777:20777/udp` | F1 telemetry data (UDP) — must be reachable from the F1 game host |
+| `-v ...png_config.json:/app/png_config.json:ro` | Mount your own config (read-only) |
+
+> **Note:** The UDP port for telemetry must be reachable on the Docker host.
+> If the F1 game runs on a different machine, ensure firewall rules allow
+> UDP traffic on port 20777. On Linux, `--network host` can be used as an
+> alternative to explicit port mapping for lower latency.
+
+### Verify
+
+Open `http://localhost:4768` in your browser to access the Web UI.
