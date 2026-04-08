@@ -277,6 +277,10 @@ class TyreWearExtrapolator:
         self._recomputeRacingLapsData()
         self._recompute()
 
+    # Minimum racing laps required in the current weather segment before
+    # the regression switches to weather-filtered data.  This is a statistical
+    # minimum (need >= 3 points for a meaningful linear fit) and is intentionally
+    # independent of window_size.
     _MIN_WEATHER_SEGMENT_LAPS = 3
 
     def _filter_to_current_weather(self, racing_data: List[TyreWearPerLap]) -> List[TyreWearPerLap]:
@@ -467,19 +471,27 @@ class TyreWearExtrapolator:
                 self.m_predicted_tyre_wear.append(predicted_tyre)
         self._enforce_monotonicity()
 
-    # Weather grouping: Dry (Clear=0, LightCloud=1, Overcast=2) vs Wet (LightRain=3, HeavyRain=4, Storm=5, Thunderstorm=6)
-    _DRY_WEATHER_IDS = frozenset({0, 1, 2})
+    # Explicit weather grouping based on F1 23/24/25 weather enum values.
+    # Using explicit sets for both groups so that unknown/future weather types
+    # (e.g. intermediate, snow) return None instead of being silently lumped
+    # into "wet".
+    _DRY_WEATHER_IDS = frozenset({0, 1, 2})       # Clear, LightCloud, Overcast
+    _WET_WEATHER_IDS = frozenset({3, 4, 5, 6})    # LightRain, HeavyRain, Storm, Thunderstorm
 
     @staticmethod
     def _weather_group(weather_id: Optional[int]) -> Optional[str]:
         """Map a weather enum value to a coarse group ('dry' or 'wet').
 
-        Returns None when the weather_id is unknown so that legacy data
-        without weather information never triggers a segment break.
+        Returns None when the weather_id is None (legacy data) or unrecognised
+        so that unknown weather types never silently trigger a segment break.
         """
         if weather_id is None:
             return None
-        return "dry" if weather_id in TyreWearExtrapolator._DRY_WEATHER_IDS else "wet"
+        if weather_id in TyreWearExtrapolator._DRY_WEATHER_IDS:
+            return "dry"
+        if weather_id in TyreWearExtrapolator._WET_WEATHER_IDS:
+            return "wet"
+        return None  # Unknown weather type -- treat as no weather info
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
