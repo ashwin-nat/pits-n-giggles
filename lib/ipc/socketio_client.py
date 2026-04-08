@@ -35,23 +35,13 @@ from lib.event_counter import EventCounter
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SocketioClient:
-    """
-    Base class for a synchronous Socket.IO client running in its own thread.
-    Subclasses register events via @self.on('event-name') and optionally
-    @self.on_connect / @self.on_disconnect.
-    """
+    """Base class for a synchronous Socket.IO client running in its own thread."""
 
     def __init__(self,
                  url: str,
                  logger: Optional[logging.Logger] = None,
                  msg_packed: bool = False
                  ) -> None:
-        """
-        Args:
-            url: Socket.IO server URL.
-            logger: Optional logger; if None, logging is disabled.
-            msg_packed: Whether to use msgpack for message decoding
-        """
         self.url = url
 
     # If no logger provided, create a no-op logger
@@ -64,15 +54,12 @@ class SocketioClient:
         self._msg_packed = msg_packed
         self.stats = EventCounter()
 
-        # storage for event bindings (so they persist across reconnects)
         self._event_handlers: list[tuple[str, Callable]] = []
 
         self._connect_callback: Optional[Callable[[], None]] = None
         self._disconnect_callback: Optional[Callable[[], None]] = None
 
         self._setup_sio()
-
-    # ------------------- Internal setup -------------------
 
     def _setup_sio(self):
         """Create a new Socket.IO client and bind all known handlers."""
@@ -85,17 +72,10 @@ class SocketioClient:
         self._sio.on('connect', self._handle_connect)
         self._sio.on('disconnect', self._handle_disconnect)
 
-        # reattach any stored event handlers
         for event_name, func in self._event_handlers:
             self._sio.on(event_name, func)
 
-    # ------------------- Decorators for subclasses -------------------
-
     def on(self, event_name: str):
-        """
-        Decorator to register a handler for a custom Socket.IO event.
-        Automatically unpacks msgpack data if self._msg_packed is True.
-        """
         def decorator(func):
             def wrapped_handler(data):
                 self.stats.track_event("__SOCKET_IN__", "__TOTAL__")
@@ -110,7 +90,6 @@ class SocketioClient:
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
                     except (TypeError, ValueError) as e:
-                        # Likely a Socket.IO internal packet, just ignore
                         self.stats.track_event("__DROP__", "invalid_msgpack")
                         self.stats.track_event("__DROP_EVENT__", event_name)
                         self.logger.warning(
@@ -122,7 +101,7 @@ class SocketioClient:
                         self.stats.track_event("__ERROR__", "decode_msgpack_exception")
                         self.stats.track_event("__DECODE_ERROR_EVENT__", event_name)
                         self.logger.exception("Failed to decode msgpack for event %s: %s %s", event_name, e, data)
-                        return  # consistently returns None
+                        return
                     callback_data = decoded
                 else:
                     callback_data = data
@@ -131,12 +110,11 @@ class SocketioClient:
                     func(callback_data)
                     self.stats.track_event("__HANDLER__", "success")
                     self.stats.track_event("__HANDLED_EVENT__", event_name)
-                except Exception:
+                except Exception:  # pylint: disable=broad-except
                     self.stats.track_event("__ERROR__", "handler_exception")
                     self.stats.track_event("__HANDLER_ERROR_EVENT__", event_name)
                     raise
 
-            # store handler for future rebinds
             self._event_handlers.append((event_name, wrapped_handler))
             self._sio.on(event_name, wrapped_handler)
             return func
@@ -144,19 +122,14 @@ class SocketioClient:
         return decorator
 
     def on_connect(self, func: Callable[[], None]):
-        """Optional decorator to register a connect callback."""
         self._connect_callback = func
         return func
 
     def on_disconnect(self, func: Callable[[], None]):
-        """Optional decorator to register a disconnect callback."""
         self._disconnect_callback = func
         return func
 
-    # ------------------- Internal event handlers -------------------
-
     def _handle_connect(self):
-        """Post connect callback."""
         self._connected = True
         self.stats.track_event("__CONNECTIVITY__", "connected")
         self.logger.debug("Connected to server")
@@ -168,7 +141,6 @@ class SocketioClient:
                 self.logger.exception("Error in on_connect callback: %s", e)
 
     def _handle_disconnect(self):
-        """Post disconnect callback."""
         self._connected = False
         self.stats.track_event("__CONNECTIVITY__", "disconnected")
         self.logger.debug("Disconnected from server")
@@ -179,14 +151,10 @@ class SocketioClient:
                 self.stats.track_event("__ERROR__", "on_disconnect_callback_exception")
                 self.logger.exception("Error in on_disconnect callback: %s", e)
 
-    # ------------------- Public API -------------------
-
     def run(self) -> None:
-        """[BLOCKING] Run the client with automatic retry supervision."""
         self.logger.debug("Starting IPC subscriber run loop")
 
         while not self._stop_event.is_set():
-
             try:
                 if not self._connected:
                     self.logger.debug("Attempting connection to %s ...", self.url)
@@ -228,7 +196,6 @@ class SocketioClient:
         self.logger.debug("IPC subscriber. Finished run loop")
 
     def stop(self) -> None:
-        """Thread-safe stop method."""
         if self._stop_event.is_set():
             return
         self.logger.debug("Stopping IPC subscriber...")
@@ -243,12 +210,10 @@ class SocketioClient:
                 self._connected = False
 
     def get_stats(self) -> dict:
-        """Get current socketio client stats snapshot."""
         return self.stats.get_stats()
 
     @staticmethod
     def _get_payload_size(payload: object) -> Optional[int]:
-        """Best-effort payload length for traffic stats."""
         if isinstance(payload, (bytes, bytearray, memoryview, str)):
             return len(payload)
         return None
