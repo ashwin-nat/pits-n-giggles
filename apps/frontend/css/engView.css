@@ -10,7 +10,8 @@
 
 body {
     font-family: 'Exo 2', sans-serif;
-    overflow: hidden;
+    font-size: clamp(13px, 1vw, 16px);
+    overflow-x: auto;
     background-color: var(--f1-darker);
 }
 
@@ -19,11 +20,11 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0;
-    overflow: hidden;
+    overflow-y: hidden;
 }
 
 .eng-view-global-data-section {
-    flex: 0 0 15%;
+    flex: 0 1 auto;
     padding: 1rem;
     border-bottom: 1px solid #333;
 }
@@ -38,9 +39,7 @@ body {
 
 
 .eng-view-global-stat {
-    display: inline-block;
-    margin-right: 2rem;
-    margin-bottom: 1rem;
+    margin: 0;
 }
 
 .eng-view-global-stat label {
@@ -132,14 +131,20 @@ body {
 }
 
 /* Race status section layout */
-.card-body .eng-view-global-stats-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem 2rem;
-    align-items: center;
+.eng-view-global-stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem 1rem;
+}
+
+.eng-view-global-stats-container > .eng-view-global-stat:last-child {
+    grid-column: 1 / -1;
 }
 
 .global-stats-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     background: var(--f1-dark);
     color: var(--f1-text);
 }
@@ -188,6 +193,20 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .settings-button:hover {
   color: var(--f1-red);
+}
+
+.port-badge {
+  background: #0e639c;
+  color: #ffffff;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
 }
 
 /* Player row highlight */
@@ -248,6 +267,64 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
+/* Tyre temperature — border + font color (same pattern as lap times) */
+.eng-temp-cold {
+    display: inline-block;
+    color: #3b82f6 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-warmup {
+    display: inline-block;
+    color: #a3e635 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-optimal {
+    display: inline-block;
+    color: #22c55e !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-hot {
+    display: inline-block;
+    color: #f97316 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-overheat {
+    display: inline-block;
+    color: #ef4444 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+/* Damage — border + font color */
+.eng-dmg-light {
+    display: inline-block;
+    color: #eab308 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-dmg-moderate {
+    display: inline-block;
+    color: #f97316 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-dmg-severe {
+    display: inline-block;
+    color: #ef4444 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
 .ag-header-cell-text {
     text-align: center;
 }
@@ -268,28 +345,29 @@ input[type="number"]::-webkit-outer-spin-button {
 .column-visibility-pane {
     position: fixed;
     top: 0;
-    right: -340px; /* Start off-screen to the right */
-    width: 340px;
+    right: 0;
+    width: min(300px, 90vw);
     height: 100%;
     background-color: var(--f1-dark);
     border-left: 1px solid var(--f1-light-gray);
     box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
     z-index: 1050;
-    transition: right 0.3s ease-in-out;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
     display: flex;
     flex-direction: column;
     color: var(--f1-text);
 }
 
 .column-visibility-pane.open {
-    right: 0; /* Slide in */
+    transform: translateX(0);
 }
 
 .column-visibility-pane .pane-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 1rem;
     background-color: var(--f1-darker);
     border-bottom: 1px solid var(--f1-light-gray);
 }
@@ -298,44 +376,6 @@ input[type="number"]::-webkit-outer-spin-button {
     margin: 0;
     font-size: 1.2rem;
     color: var(--f1-text);
-}
-
-.pane-profiles-bar {
-    padding: 0.6rem 1rem;
-    background-color: var(--f1-darker);
-    border-bottom: 1px solid var(--f1-light-gray);
-}
-
-.pane-profiles-row {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.pane-profiles-row .profile-select {
-    flex: 1;
-    background-color: #2a2a3a;
-    color: var(--f1-text);
-    border-color: var(--f1-light-gray);
-    font-size: 0.8rem;
-}
-
-.pane-profiles-row .profile-select:focus {
-    border-color: var(--f1-red);
-    box-shadow: 0 0 0 0.15rem rgba(225, 6, 0, 0.3);
-}
-
-.pane-actions-bar {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.6rem 1rem;
-    background-color: var(--f1-darker);
-    border-bottom: 1px solid var(--f1-light-gray);
-}
-
-.pane-actions-bar .btn {
-    flex: 1;
-    font-size: 0.75rem;
 }
 
 .column-visibility-pane .pane-body {
@@ -415,4 +455,470 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .weather-session-name {
     color: #ffffff;
+}
+
+/* ── Track Map ─────────────────────────────────────────────────── */
+
+#trackMapContainer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 5 / 3;
+    min-width: 200px;
+    max-width: 400px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.track-map-svg {
+    width: 100%;
+    height: auto;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.track-map-driver-dot {
+    /* Smooth dot movement between update cycles */
+    transition: cx 0.4s ease, cy 0.4s ease;
+    cursor: pointer;
+}
+
+.track-map-tooltip {
+    position: absolute;
+    background: rgba(21, 21, 30, 0.95);
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 10px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-family: 'Exo 2', sans-serif;
+    pointer-events: none;
+    z-index: 1060;
+    white-space: nowrap;
+}
+
+.track-map-pinned-popup {
+    position: absolute;
+    background: #1a1a2e;
+    border: 2px solid #555;
+    border-radius: 6px;
+    padding: 8px 24px 8px 12px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-family: 'Exo 2', sans-serif;
+    z-index: 1055;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.pinned-popup-close {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #999;
+    line-height: 1;
+}
+
+.pinned-popup-close:hover {
+    color: #fff;
+}
+
+.track-map-fallback {
+    color: var(--f1-text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1.5rem 0.5rem;
+}
+
+/* ── Track Map Zoom Reset Button ─────────────────────────────── */
+
+.track-map-zoom-reset {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 10;
+    background: rgba(21, 21, 30, 0.85);
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 1.1rem;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.track-map-zoom-reset:hover {
+    background: rgba(60, 60, 80, 0.95);
+}
+
+/* ── Responsive: AG Grid font scaling ────────────────────────── */
+
+.ag-theme-alpine-dark {
+    font-size: clamp(10px, 1.2vw, 14px);
+}
+
+/* ── Track Map: invisible touch hit-area behind dots ─────────── */
+
+.track-map-hit-area {
+    pointer-events: all;
+    transition: cx 0.4s ease, cy 0.4s ease;
+}
+
+/* ── Weather Toggle: touch-friendly targets ──────────────────── */
+
+#weatherDisplayToggle .btn {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* ── Race Status Collapse (< 1440px) ─────────────────────────── */
+
+#raceStatusSummary {
+    display: none;
+}
+
+#raceStatusCollapseBtn {
+    display: none;
+}
+
+.race-status-summary {
+    font-size: clamp(0.75rem, 1vw, 0.9rem);
+    color: var(--f1-text-secondary);
+    white-space: nowrap;
+    margin-left: 0.75rem;
+}
+
+.race-status-summary-sep {
+    margin: 0 0.35rem;
+    opacity: 0.4;
+}
+
+#raceStatusBody {
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+    overflow: hidden;
+    max-height: 500px;
+    opacity: 1;
+}
+
+#raceStatusBody.rs-collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#raceStatusCollapseBtn {
+    font-size: 1.2rem;
+    padding: 0.25rem 0.4rem;
+    line-height: 1;
+}
+
+#raceStatusCollapseBtn .bi {
+    transition: transform 0.3s ease;
+}
+
+#raceStatusCollapseBtn.rs-open .bi {
+    transform: rotate(180deg);
+}
+
+/* ── Card Collapse Toggle (Weather + TrackMap ≤ 1439px) ────── */
+
+.card-collapse-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--f1-text);
+    font-size: 1.1rem;
+    padding: 0.25rem 0.4rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.card-collapse-toggle:hover {
+    color: var(--f1-red);
+}
+
+.card-collapse-toggle .bi {
+    transition: transform 0.3s ease;
+}
+
+.card-body-collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+}
+
+/* ── Responsive: Header Layout < 1440px ──────────────────────── */
+
+@media (max-width: 1439px) {
+    .card-collapse-toggle {
+        display: inline-block;
+    }
+
+    .weather-col .card-body,
+    .track-map-col .card-body {
+        transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+        max-height: 600px;
+        opacity: 1;
+    }
+
+    .eng-view-global-data-section > .row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .race-status-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        order: -1;
+    }
+
+    #raceStatusSummary {
+        display: inline;
+    }
+
+    #raceStatusCollapseBtn {
+        display: inline-block;
+    }
+
+    .weather-col {
+        flex: 0 0 60% !important;
+        max-width: 60% !important;
+    }
+
+    .track-map-col {
+        flex: 0 0 40% !important;
+        max-width: 40% !important;
+        min-width: 250px;
+    }
+
+    #trackMapContainer {
+        max-width: none;
+    }
+
+    .race-status-header-left {
+        min-width: 0;
+        overflow: visible;
+    }
+
+    #raceStatusHeader {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #raceStatusSummary {
+        flex-shrink: 0;
+    }
+}
+
+/* ── Context Drawers (Track Map + Weather) ───────────────────── */
+
+.context-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(300px, 85vw);
+    height: 100%;
+    background-color: var(--f1-dark);
+    border-left: 1px solid var(--f1-light-gray);
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    z-index: 1050;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    color: var(--f1-text);
+    overflow-y: auto;
+}
+
+.context-drawer.open {
+    transform: translateX(0);
+}
+
+.context-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: var(--f1-darker);
+    border-bottom: 1px solid var(--f1-light-gray);
+    flex-shrink: 0;
+}
+
+.context-drawer-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--f1-text);
+}
+
+.context-drawer-body {
+    padding: 0.75rem;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Track Map inside Drawer: full width */
+.context-drawer #trackMapContainer {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    aspect-ratio: 5 / 3;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* ── Drawer Backdrop ─────────────────────────────────────────── */
+
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.drawer-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ── Drawer Toggle Buttons ───────────────────────────────────── */
+
+.drawer-toggle-btn {
+    display: none;
+}
+
+.drawer-toggle-btn.active {
+    color: var(--f1-red);
+}
+
+/* ── Responsive: Drawer Layout < 1024px ──────────────────────── */
+
+@media (max-width: 1023px) {
+    .ag-header-cell-resize {
+        display: none !important;
+    }
+
+    .drawer-toggle-btn {
+        display: inline-block;
+    }
+
+    .weather-col,
+    .track-map-col {
+        display: none !important;
+    }
+
+    .race-status-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* ── Mobile header fix: wrap title+summary / buttons ──── */
+    .global-stats-section-header {
+        flex-wrap: wrap;
+    }
+
+    .race-status-header-left {
+        width: 100%;
+    }
+
+    .global-stats-section-header > .d-flex:not(.race-status-header-left) {
+        margin-left: auto;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+}
+
+/* ── Responsive: Portrait phone ≤ 600px ──────────────────────── */
+
+@media (max-width: 600px) {
+
+    /* ── Header: 2-Zeilen-Layout (Info + Actions) ──── */
+
+    .global-stats-section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.375rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Zeile 1: Track-Name + Summary */
+    .race-status-header-left {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0;
+        order: 0;
+    }
+
+    #raceStatusHeader {
+        width: 100%;
+        flex-shrink: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.95rem;
+        line-height: 1.3;
+    }
+
+    #raceStatusSummary {
+        width: 100%;
+        flex-shrink: 1;
+        white-space: nowrap;
+        font-size: 0.72rem;
+        margin-left: 0;
+        margin-top: 0.125rem;
+    }
+
+    .race-status-summary-sep {
+        margin: 0 0.2rem;
+    }
+
+    /* Zeile 2: Action-Buttons */
+    .global-stats-section-header > .d-flex:not(.race-status-header-left) {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        order: 1;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 0.375rem;
+        margin-left: 0;
+        gap: 0;
+    }
+
+    /* Buttons: Touch Targets beibehalten, aber enger packen */
+    .global-stats-section-header .settings-button {
+        font-size: 1.25rem;
+        padding: 0.375rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ⌀-Symbol auch anpassen */
+    .global-stats-section-header span[style*="font-size"] {
+        font-size: 1.6rem !important;
+    }
+
+    /* Chevron: ganz links in der Button-Reihe */
+    #raceStatusCollapseBtn {
+        order: -1;
+    }
 }
