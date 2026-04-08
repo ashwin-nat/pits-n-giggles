@@ -117,9 +117,8 @@ class IpcPubSubBroker:
 
 
         self.logger.debug(
-            f"{self.name} bound: "
-            f"XSUB=tcp://{self.host}:{self.xsub_port}, "
-            f"XPUB=tcp://{self.host}:{self.xpub_port}"
+            "%s bound: XSUB=tcp://%s:%s, XPUB=tcp://%s:%s",
+            self.name, self.host, self.xsub_port, self.host, self.xpub_port
         )
 
         self._thread: Optional[threading.Thread] = None
@@ -136,8 +135,8 @@ class IpcPubSubBroker:
         This should be run in its own process OR thread.
         """
         self.logger.debug(
-            f"{self.name} running: "
-            f"XSUB={self.xsub_port}, XPUB={self.xpub_port}"
+            "%s running: XSUB=%s, XPUB=%s",
+            self.name, self.xsub_port, self.xpub_port
         )
         try:
             zmq.proxy_steerable(
@@ -196,7 +195,7 @@ class IpcPubSubBroker:
 
         try:
             self.control.send(b"TERMINATE")
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
 
         if self._thread:
@@ -214,12 +213,12 @@ class IpcPubSubBroker:
         ):
             try:
                 sock.close(linger=0)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 pass
 
         try:
             self.ctx.term()
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
 
         self.logger.debug("%s closed", self.name)
