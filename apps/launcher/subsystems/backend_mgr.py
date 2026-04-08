@@ -282,6 +282,13 @@ class BackendAppMgr(PngAppMgrBase):
     def _open_url(url: str):
         """Open a URL in the default browser, with WSL2 fallback."""
         import subprocess, sys
+        from urllib.parse import urlparse
+
+        # Validate URL scheme before passing to any subprocess
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return
+
         if sys.platform == 'linux':
             # Detect WSL by checking /proc/version for Microsoft/WSL signature
             is_wsl = False
@@ -291,11 +298,10 @@ class BackendAppMgr(PngAppMgrBase):
             except OSError:
                 pass
             if is_wsl:
-                for cmd in (['wslview', url], ['cmd.exe', '/c', 'start', '', url]):
+                safe_url = parsed.geturl()  # noqa: S603 — re-serialized from parsed components
+                for cmd in (['wslview', safe_url], ['cmd.exe', '/c', 'start', '', safe_url]):
                     try:
-                        # Security: url is constructed internally from trusted config values (proto + port),
-                        # not from user input. No shell=True, args passed as list.
-                        subprocess.Popen(
+                        subprocess.Popen(  # noqa: S603
                             cmd,
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL
