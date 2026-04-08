@@ -103,7 +103,8 @@ docker run -d \
 ```
 
 | Flag | Purpose |
-|------|---------|n| `-p 4768:4768` | Web UI (HTTP) |
+|------|---------|
+| `-p 4768:4768` | Web UI (HTTP) |
 | `-p 4769:4769` | Save Data Viewer (HTTP) |
 | `-p 20777:20777/udp` | F1 telemetry data (UDP) — must be reachable from the F1 game host |
 | `-v ...png_config.json:/app/png_config.json:ro` | Mount your own config (read-only) |
