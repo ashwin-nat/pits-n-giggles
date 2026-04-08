@@ -92,7 +92,7 @@ async def handleUdpActionCodeChange(
     except KeyError:
         logger.error("Invalid udp action code field: %s", field)
         return {'status': 'failure', 'message': f"Invalid udp action code field: {field}"}
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception("Error updating udp action code: %s", e)
         return {'status': 'failure', 'message': f"Error updating udp action code: {e}"}
     return {'status': 'success'}

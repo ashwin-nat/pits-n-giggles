@@ -205,7 +205,7 @@ class PngRunner:
             now = time.perf_counter()
             diff = now - last
             if diff > threshold:
-                self.m_logger.warning("[HOGGING] Event loop blocked for %s seconds", diff)
+                self.m_logger.warning("[HOGGING] Event loop blocked for %.4f seconds", diff)
             last = now
 
 # -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
