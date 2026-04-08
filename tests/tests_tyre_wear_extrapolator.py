@@ -414,25 +414,25 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=8)
 
         self.assertTrue(extrap.isDataSufficient())
-        # The window contains only wet laps -> slope ~ 1.0
+        # The window contains only wet laps → slope ≈ 1.0
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
         self.assertAlmostEqual(extrap.rr_rate, 1.0, delta=0.1)
 
         pred = extrap.getTyreWearPrediction(total_laps)
         self.assertIsNotNone(pred)
         # Regression fitted on 8 wet points (indices 0-7).
-        # Slope 1.0, intercept 35.0 -> predict(14) = 49.0 for lap 25.
+        # Slope 1.0, intercept 35.0 → predict(14) = 49.0 for lap 25.
         self.assertAlmostEqual(pred.fl_tyre_wear, 49.0, delta=1.0)
 
     def test_dry_to_wet_without_window_has_higher_slope(self):
         """Without sliding window the slope averages over the whole stint,
-        producing a higher-than-wet-rate prediction -- the bug we're fixing."""
+        producing a higher-than-wet-rate prediction — the bug we're fixing."""
         data = self._build_dry_then_wet_data()
         total_laps = 25
 
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=None)
 
-        # Slope averaged over dry + wet -> clearly above the pure wet rate.
+        # Slope averaged over dry + wet → clearly above the pure wet rate.
         self.assertGreater(extrap.fl_rate, 1.5)
 
     def test_wet_to_dry_transition_with_sliding_window(self):
@@ -444,7 +444,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=8)
 
         self.assertTrue(extrap.isDataSufficient())
-        # The window contains only dry laps -> slope ~ 3.0
+        # The window contains only dry laps → slope ≈ 3.0
         self.assertAlmostEqual(extrap.fl_rate, 3.0, delta=0.1)
         self.assertAlmostEqual(extrap.rl_rate, 3.0, delta=0.1)
 
@@ -453,13 +453,13 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
 
     def test_wet_to_dry_without_window_has_lower_slope(self):
         """Without sliding window the slope averages wet + dry data,
-        producing a lower-than-dry-rate prediction -- potentially dangerous."""
+        producing a lower-than-dry-rate prediction — potentially dangerous."""
         data = self._build_wet_then_dry_data()
         total_laps = 25
 
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=None)
 
-        # Slope averaged -> clearly below the pure dry rate.
+        # Slope averaged → clearly below the pure dry rate.
         self.assertLess(extrap.fl_rate, 2.5)
 
     def test_window_size_none_preserves_old_behavior(self):
@@ -480,7 +480,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         )
 
     def test_window_size_zero_preserves_old_behavior(self):
-        """window_size=0 is an alias for 'use all data' -- same as None."""
+        """window_size=0 is an alias for 'use all data' — same as None."""
         data = [
             TyreWearPerLap(10.0, 10.0, 10.0, 10.0, lap_number=1, is_racing_lap=True),
             TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=2, is_racing_lap=True),
@@ -508,7 +508,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=4)
 
-        # At this point, 4 dry laps in window -> slope ~ 3.0
+        # At this point, 4 dry laps in window → slope ≈ 3.0
         self.assertAlmostEqual(extrap.fl_rate, 3.0, delta=0.1)
 
         # Rain arrives: add 4 wet laps (~1 %/lap)
@@ -517,11 +517,11 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
             wear += 1.0
             extrap.add(TyreWearPerLap(wear, wear, wear, wear, lap_number=lap, is_racing_lap=True))
 
-        # After 4 wet laps the window is fully flushed -> slope ~ 1.0
+        # After 4 wet laps the window is fully flushed → slope ≈ 1.0
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
 
     def test_dry_to_wet_transition_with_w6(self):
-        """With the production default window_size=6, a dry->wet transition
+        """With the production default window_size=6, a dry→wet transition
         should be tracked once enough wet laps fill the window."""
         # 6 dry racing laps (~3 %/lap) then 6 wet racing laps (~1 %/lap)
         data: List[TyreWearPerLap] = []
@@ -537,7 +537,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps, window_size=6)
 
         self.assertTrue(extrap.isDataSufficient())
-        # Window covers only the 6 wet laps -> slope ~ 1.0
+        # Window covers only the 6 wet laps → slope ≈ 1.0
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
         self.assertAlmostEqual(extrap.rr_rate, 1.0, delta=0.1)
 
@@ -549,7 +549,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
 
     def test_exact_window_size_uses_all_data(self):
         """Edge case: len(racing_data) == window_size.
-        The `>` condition does NOT trigger, so all data is used -- which is
+        The `>` condition does NOT trigger, so all data is used — which is
         identical to the last N entries anyway."""
         data = [
             TyreWearPerLap(5.0,  5.0,  5.0,  5.0,  lap_number=1, is_racing_lap=True),
@@ -561,7 +561,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=10, window_size=6)
 
-        # All 6 laps should be used -- slope = 2.0
+        # All 6 laps should be used — slope = 2.0
         self.assertAlmostEqual(extrap.fl_rate, 2.0, delta=0.01)
         self.assertEqual(extrap.num_samples, 6)
         self.assertEqual(extrap.m_regression_sample_count, 6)
@@ -583,7 +583,7 @@ class TestTyreWearExtrapolatorSlidingWindow(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=10, window_size=2)
 
-        # Regression on [14, 15] at indices [0, 1] -> slope = 1.0
+        # Regression on [14, 15] at indices [0, 1] → slope = 1.0
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.01)
         # But total racing laps collected is still 5
         self.assertEqual(extrap.num_samples, 5)
@@ -602,7 +602,7 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
     STORM = 5
 
     def test_weather_group_mapping(self):
-        """Dry = {0,1,2}, Wet = {3,4,5,6}."""
+        """Dry = {0,1,2}, Wet = {3,4,5,6}, Unknown returns None."""
         self.assertEqual(TyreWearExtrapolator._weather_group(0), "dry")
         self.assertEqual(TyreWearExtrapolator._weather_group(1), "dry")
         self.assertEqual(TyreWearExtrapolator._weather_group(2), "dry")
@@ -611,6 +611,9 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         self.assertEqual(TyreWearExtrapolator._weather_group(5), "wet")
         self.assertEqual(TyreWearExtrapolator._weather_group(6), "wet")
         self.assertIsNone(TyreWearExtrapolator._weather_group(None))
+        # Unknown/future weather types must return None, not "wet"
+        self.assertIsNone(TyreWearExtrapolator._weather_group(7))
+        self.assertIsNone(TyreWearExtrapolator._weather_group(99))
 
     def test_all_none_weather_backward_compat(self):
         """Legacy data without weather_id must behave identically to before."""
@@ -627,7 +630,7 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         self.assertAlmostEqual(pred.fl_tyre_wear, 26.0, delta=0.5)
 
     def test_segmentation_splits_on_weather_change(self):
-        """Dry->Wet in mid-race (all racing laps) produces separate segments."""
+        """Dry→Wet in mid-race (all racing laps) produces separate segments."""
         data = [
             TyreWearPerLap(5.0, 5.0, 5.0, 5.0, lap_number=1, weather_id=self.CLEAR),
             TyreWearPerLap(8.0, 8.0, 8.0, 8.0, lap_number=2, weather_id=self.CLEAR),
@@ -660,7 +663,7 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=15)
 
-        # Regression should be based on wet data -> slope ~ 1.0
+        # Regression should be based on wet data → slope ≈ 1.0
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
 
     def test_wet_to_dry_regression_uses_dry_segment(self):
@@ -679,7 +682,7 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=15)
 
-        # Regression should be based on dry data -> slope ~ 3.0
+        # Regression should be based on dry data → slope ≈ 3.0
         self.assertAlmostEqual(extrap.fl_rate, 3.0, delta=0.1)
 
     def test_short_wet_segment_falls_back_to_all_data(self):
@@ -691,14 +694,14 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
             TyreWearPerLap(11.0, 11.0, 11.0, 11.0, lap_number=3, weather_id=self.CLEAR),
             TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=4, weather_id=self.CLEAR),
             TyreWearPerLap(17.0, 17.0, 17.0, 17.0, lap_number=5, weather_id=self.CLEAR),
-            # Only 2 wet laps -- below threshold
+            # Only 2 wet laps — below threshold
             TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=6, weather_id=self.LIGHT_RAIN),
             TyreWearPerLap(19.0, 19.0, 19.0, 19.0, lap_number=7, weather_id=self.LIGHT_RAIN),
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=15)
 
         # Fallback: all 7 racing laps used. Slope is a mix of dry+wet.
-        # Not purely 3.0 or 1.0 -- somewhere in between.
+        # Not purely 3.0 or 1.0 — somewhere in between.
         self.assertGreater(extrap.fl_rate, 1.0)
         self.assertLess(extrap.fl_rate, 3.0)
         self.assertTrue(extrap.isDataSufficient())
@@ -716,18 +719,18 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=total_laps)
         self.assertAlmostEqual(extrap.fl_rate, 3.0, delta=0.1)
 
-        # Add 2 wet laps -- still in fallback
+        # Add 2 wet laps — still in fallback
         extrap.add(TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=6, weather_id=self.LIGHT_RAIN))
         extrap.add(TyreWearPerLap(19.0, 19.0, 19.0, 19.0, lap_number=7, weather_id=self.HEAVY_RAIN))
         # Slope is still mixed
         self.assertGreater(extrap.fl_rate, 1.0)
 
-        # Add 3rd wet lap -- threshold reached, regression switches to wet-only
+        # Add 3rd wet lap — threshold reached, regression switches to wet-only
         extrap.add(TyreWearPerLap(20.0, 20.0, 20.0, 20.0, lap_number=8, weather_id=self.HEAVY_RAIN))
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
 
     def test_no_weather_segment_break_within_same_group(self):
-        """Different weather IDs in the same group (e.g. Clear->Overcast) must NOT cause a break."""
+        """Different weather IDs in the same group (e.g. Clear→Overcast) must NOT cause a break."""
         data = [
             TyreWearPerLap(10.0, 10.0, 10.0, 10.0, lap_number=1, weather_id=self.CLEAR),
             TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=2, weather_id=self.LIGHT_CLOUD),
@@ -735,7 +738,7 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         ]
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=5)
 
-        # All dry -- single segment, slope = 4.0
+        # All dry — single segment, slope = 4.0
         self.assertEqual(len(extrap.m_intervals), 1)
         self.assertAlmostEqual(extrap.fl_rate, 4.0, delta=0.01)
 
@@ -777,12 +780,12 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
             data.append(TyreWearPerLap(wear, wear, wear, wear, lap_number=lap,
                                        is_racing_lap=True, weather_id=self.CLEAR))
             wear += 3.0
-        # 8 wet laps (~1%/lap) -- more than window_size=6
+        # 8 wet laps (~1%/lap) — more than window_size=6
         for lap in range(6, 14):
             data.append(TyreWearPerLap(wear, wear, wear, wear, lap_number=lap,
                                        is_racing_lap=True, weather_id=self.LIGHT_RAIN))
             wear += 1.0
         extrap = TyreWearExtrapolator(initial_data=data, total_laps=20, window_size=6)
 
-        # 8 wet laps -> filtered to wet (8 laps) -> window slices to last 6
+        # 8 wet laps → filtered to wet (8 laps) → window slices to last 6
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
