@@ -27,10 +27,11 @@ from .tests_capture_settings import TestCaptureSettings
 from .tests_diff_mixin import TestConfigDiffMixin
 from .tests_config_edge import (TestEdgeCases, TestMissingSectionsAndKeys,
                                 TestSampleSettingsFixture)
-from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration
+from .tests_config_io import TestLoadConfigFromIni, TestLoadConfigFromJson, TestConfigMigration, TestHudLayoutMigration
 from .tests_display_settings import TestDisplaySettings
 from .tests_file_path_str_config import TestFilePathStr
 from .tests_forwarding_settings import TestForwardingSettings
+from .tests_resolve_user_file import TestResolveUserFile
 from .tests_https_settings import TestHttpsSettings
 from .tests_hud_settings import TestHudSettings
 from .tests_network_settings import TestNetworkSettings
@@ -50,6 +51,7 @@ __all__ = [
     "TestLoadConfigFromIni",
     "TestLoadConfigFromJson",
     "TestConfigMigration",
+    "TestHudLayoutMigration",
     "TestDisplaySettings",
     "TestForwardingSettings",
     "TestNetworkSettings",
@@ -64,4 +66,5 @@ __all__ = [
 
     "TestFilePathStr",
     "TestConfigDiffMixin",
+    "TestResolveUserFile",
 ]

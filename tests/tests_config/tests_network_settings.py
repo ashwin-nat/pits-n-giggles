@@ -44,7 +44,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         settings = NetworkSettings()
         self.assertEqual(settings.telemetry_port, 20777)
         self.assertEqual(settings.server_port, 4768)
-        self.assertEqual(settings.save_viewer_port, 4769)
+        self.assertEqual(settings.save_viewer_port, 4767)
         self.assertEqual(settings.udp_tyre_delta_action_code, None)
         self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
@@ -53,7 +53,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.broker_xpub_port, 53838)
         self.assertEqual(settings.broker_xsub_port, 53835)
         self.assertEqual(settings.enable_pkt_ordering, False)
-        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -192,7 +191,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         NetworkSettings(
             telemetry_port=20777,      # UDP
             server_port=4768,          # TCP
-            save_viewer_port=4769,     # TCP
+            save_viewer_port=4767,     # TCP
             broker_xpub_port=53838,    # TCP
             broker_xsub_port=53835,    # TCP
         )
@@ -218,33 +217,6 @@ class TestNetworkSettings(TestF1ConfigBase):
                 broker_xpub_port=7000,
             )
 
-    def test_udp_action_button_debounce_ms_default(self):
-        settings = NetworkSettings()
-        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
-
-    def test_udp_action_button_debounce_ms_valid(self):
-        NetworkSettings(udp_action_button_debounce_ms=0)
-        NetworkSettings(udp_action_button_debounce_ms=250)
-        NetworkSettings(udp_action_button_debounce_ms=500)
-
-    def test_udp_action_button_debounce_ms_invalid(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms=-1)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms=501)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(udp_action_button_debounce_ms="cat")
-
-    def test_udp_action_debounce_sec(self):
-        settings = NetworkSettings(udp_action_button_debounce_ms=100)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.1)
-
-        settings = NetworkSettings(udp_action_button_debounce_ms=0)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.0)
-
-        settings = NetworkSettings(udp_action_button_debounce_ms=500)
-        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.5)
-
     def test_enable_pkt_ordering(self):
         net = NetworkSettings(enable_pkt_ordering=True)
         self.assertTrue(net.enable_pkt_ordering)
@@ -260,3 +232,30 @@ class TestNetworkSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             NetworkSettings(enable_pkt_ordering=69420)
+
+    def test_bind_address_default(self):
+        """Test that bind_address defaults to 0.0.0.0"""
+        settings = NetworkSettings()
+        self.assertEqual(settings.bind_address, "0.0.0.0")
+
+    def test_bind_address_valid_values(self):
+        """Test valid bind_address values"""
+        settings = NetworkSettings(bind_address="127.0.0.1")
+        self.assertEqual(settings.bind_address, "127.0.0.1")
+
+        settings = NetworkSettings(bind_address="192.168.1.100")
+        self.assertEqual(settings.bind_address, "192.168.1.100")
+
+        settings = NetworkSettings(bind_address="0.0.0.0")
+        self.assertEqual(settings.bind_address, "0.0.0.0")
+
+    def test_bind_address_invalid_values(self):
+        """Test that invalid bind_address values raise ValidationError"""
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="not-an-ip")
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="999.999.999.999")
+
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="")

@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
                                QRadioButton, QScrollArea, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
-from lib.config import PngSettings
+from lib.config import AdditionalServer, PngSettings
 
 from .collapsible_group import CollapsibleGroup
 from .reorderable_collection import ReorderableCollection
@@ -456,6 +456,10 @@ class SettingsWindow(QDialog):
         elif isinstance(field_value, dict):
             widget = self._build_dict_field(field_name, field_value, field_path, field_info)
             if widget:
+                layout.addWidget(widget)
+        elif isinstance(field_value, list):
+            if ui_type == "additional_servers_list":
+                widget = self._build_additional_servers_widget(field_name, field_value, field_path, field_info)
                 layout.addWidget(widget)
         else:
             widget = self._build_field_widget(field_name, field_value, field_path, field_info)

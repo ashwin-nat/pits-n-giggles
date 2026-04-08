@@ -58,7 +58,9 @@ class BaseWebServer:
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
-                 debug_mode: bool = False):
+                 debug_mode: bool = False,
+                 additional_ports: Optional[List[Dict[str, Any]]] = None,
+                 bind_address: str = "0.0.0.0"):
         """
         Initialize the BaseWebServer.
 
@@ -70,6 +72,7 @@ class BaseWebServer:
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
+            additional_ports (Optional[List[Dict[str, Any]]], optional): Additional ports with labels for multi-session.
         """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
@@ -77,6 +80,7 @@ class BaseWebServer:
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
+        self.m_bind_address: str = bind_address
         if client_event_mappings:
             self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
         else:
@@ -85,6 +89,13 @@ class BaseWebServer:
         self._on_client_register_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
         self._on_client_disconnect_callback: Optional[Callable[[str], Awaitable[None]]] = None
         self.m_stats = EventCounter()
+
+        # Multi-port: build port → label mapping
+        self.m_additional_ports: List[Dict[str, Any]] = additional_ports or []
+        self.m_port_labels: Dict[int, str] = {}
+        for entry in self.m_additional_ports:
+            self.m_port_labels[entry["port"]] = entry.get("label", "")
+        self.m_is_multi_port: bool = len(self.m_additional_ports) > 0
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -123,6 +134,21 @@ class BaseWebServer:
                     values['v'] = self.m_ver_str
                 return url_for(endpoint, **values)
             return {"url_for": dated_url_for}
+
+        # Inject port_info template variable for multi-port badge
+        @self.m_app.context_processor
+        def inject_port_info():
+            if not self.m_is_multi_port:
+                return {"port_info": None, "port_label": "", "port_number": self.m_port}
+            # Determine which port this request arrived on via ASGI scope
+            try:
+                server_tuple = quart_request.scope.get("server", (None, None))
+                req_port = server_tuple[1] if server_tuple else self.m_port
+            except RuntimeError:
+                req_port = self.m_port
+            label = self.m_port_labels.get(req_port, "(Primary)" if req_port == self.m_port else "")
+            port_info = f":{req_port} {label}".strip() if label else f":{req_port}"
+            return {"port_info": port_info, "port_label": label, "port_number": req_port}
 
         # Disable caching for template paths, always.
         @self.m_app.after_request
@@ -333,11 +359,14 @@ class BaseWebServer:
         Run the web server asynchronously using Uvicorn.
 
         Sets up the server configuration and starts serving the application.
+        When additional_ports are configured, binds multiple sockets so the
+        same ASGI app is served on all ports.
 
         Raises:
-            PngHttpPortInUseError: If the specified port is already in use.
+            PngHttpPortInUseError: If the primary port is already in use.
             OSError: If the server fails to start and error is not a port in use error.
         """
+
         # Register post start callback before running
         @self.m_app.before_serving
         async def before_serving() -> None:
@@ -345,27 +374,27 @@ class BaseWebServer:
             if self._post_start_callback:
                 await self._post_start_callback()
 
-        # Create a socket manually
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sockets: List[socket.socket] = []
 
-        # Platform-specific socket options:
-        # - Windows: SO_REUSEADDR allows multiple binds (unsafe), so we skip it entirely
-        # - Unix/Linux/macOS: SO_REUSEADDR allows binding to TIME_WAIT ports (safe for quick restart)
-        if platform.system() != "Windows":
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
+        # --- Primary port (mandatory — failure is fatal) ---
+        primary_sock = self._create_socket(self.m_port)
+        if primary_sock is None:
+            raise PngHttpPortInUseError()
+        sockets.append(primary_sock)
 
-        try:
-            sock.bind(("0.0.0.0", self.m_port))
-        except OSError as e:
-            sock.close()
-            if is_port_in_use_error(e.errno):
-                self.m_logger.error("Port %s is already in use", self.m_port)
-                raise PngHttpPortInUseError() from e
-            raise  # Re-raise if it's a different OSError
-
-        sock.listen(1024)
-        sock.setblocking(False)
+        # --- Additional ports (optional — failure is a warning) ---
+        for entry in self.m_additional_ports:
+            extra_port = entry["port"]
+            extra_label = entry.get("label", "")
+            extra_sock = self._create_socket(extra_port)
+            if extra_sock is None:
+                label_str = f" '{extra_label}'" if extra_label else ""
+                self.m_logger.warning(
+                    "Multi-session port %d%s could not be bound — skipping",
+                    extra_port, label_str
+                )
+                continue
+            sockets.append(extra_sock)
 
         config = uvicorn.Config(
             self.m_sio_app,
@@ -375,7 +404,31 @@ class BaseWebServer:
         )
 
         self._server = uvicorn.Server(config)
-        await self._server.serve(sockets=[sock])
+        await self._server.serve(sockets=sockets)
+
+    def _create_socket(self, port: int) -> Optional[socket.socket]:
+        """Create and bind a TCP socket on the given port.
+
+        Returns the socket on success, or None if the port is in use.
+        Raises OSError for non-port-in-use errors.
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        if platform.system() != "Windows":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        try:
+            sock.bind((self.m_bind_address, port))
+        except OSError as e:
+            sock.close()
+            if is_port_in_use_error(e.errno):
+                self.m_logger.error("Port %d is already in use", port)
+                return None
+            raise
+
+        sock.listen(1024)
+        sock.setblocking(False)
+        return sock
 
     def _compute_cors_origins(self) -> Union[str, List[str]]:
         """Compute CORS allowed origins based on the server's bind address.

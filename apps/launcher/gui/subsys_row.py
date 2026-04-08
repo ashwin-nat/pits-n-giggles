@@ -24,7 +24,7 @@
 
 from typing import TYPE_CHECKING
 from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout,
-    QLabel, QFrame
+    QLabel, QFrame, QPushButton, QToolButton
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -96,7 +96,11 @@ class SubsystemCard(QFrame):
         buttons_layout.setSpacing(6)
 
         for button in self.manager.get_buttons():
-            button.setFixedSize(32, 32)
+            if not isinstance(button, (QPushButton, QToolButton)):
+                # Composite widget (e.g. split-button) — already sized
+                pass
+            else:
+                button.setFixedSize(32, 32)
             buttons_layout.addWidget(button)
 
             # Disable buttons at start. post_start should enable them

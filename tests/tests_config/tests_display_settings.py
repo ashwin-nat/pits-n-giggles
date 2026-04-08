@@ -46,6 +46,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertEqual(settings.local_telemetry_rate, 5)
         self.assertEqual(settings.realtime_overlay_fps, 60)
         self.assertFalse(settings.use_cpu_acceleration)
+        self.assertEqual(settings.wdt_timeout, 5.0)
 
     def test_refresh_interval_validation(self):
         """Test refresh interval must be positive"""
@@ -130,3 +131,27 @@ class TestDisplaySettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             DisplaySettings(use_cpu_acceleration=123)
+
+    def test_wdt_timeout_default(self):
+        """Test WDT timeout defaults to 5.0"""
+        settings = DisplaySettings()
+        self.assertEqual(settings.wdt_timeout, 5.0)
+
+    def test_wdt_timeout_custom_value(self):
+        """Test WDT timeout accepts custom positive values"""
+        settings = DisplaySettings(wdt_timeout=10.0)
+        self.assertEqual(settings.wdt_timeout, 10.0)
+
+        settings = DisplaySettings(wdt_timeout=0.5)
+        self.assertEqual(settings.wdt_timeout, 0.5)
+
+    def test_wdt_timeout_validation(self):
+        """Test WDT timeout rejects zero and negative values"""
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=-1.0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout="notanumber")
