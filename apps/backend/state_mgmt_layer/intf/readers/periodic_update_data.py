@@ -104,7 +104,6 @@ class PeriodicUpdateData(BaseAPI):
             "wdt-status" : self.m_wdt_status,
             "tyre-temp-mode" : self.m_session_info.m_packet_session.m_tyreTemperatureMode.value \
                 if self.m_session_info.m_packet_session \
-                    and hasattr(self.m_session_info.m_packet_session, 'm_tyreTemperatureMode') \
                 else None,
         }
 

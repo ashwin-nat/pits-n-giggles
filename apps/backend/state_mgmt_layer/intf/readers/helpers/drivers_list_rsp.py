@@ -527,7 +527,6 @@ class DriversListRsp(BaseAPI):
 
     def _getTyreInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract tyre information section for JSON response."""
-        car_telemetry = driver_data.m_packet_copies.m_packet_car_telemetry
 
         result = {
             "wear-prediction": driver_data.getFullTyreWearPredictions(self.m_next_pit_stop_window),
@@ -541,24 +540,6 @@ class DriversListRsp(BaseAPI):
             "inner-temps": driver_data.m_tyre_info.getInnerTempsJSON(),
             "brakes-temps": driver_data.m_tyre_info.getBrakesTempsJSON(),
         }
-
-        # Only include car-telemetry-based temperatures when telemetry data is available
-        if car_telemetry:
-            surface_temps = car_telemetry.m_tyresSurfaceTemperature
-            # EA F1 tyre index order: [RL=0, RR=1, FL=2, FR=3]
-            result["tyre-surface-temps"] = {
-                "front-left": surface_temps[F1Utils.INDEX_FRONT_LEFT],
-                "front-right": surface_temps[F1Utils.INDEX_FRONT_RIGHT],
-                "rear-left": surface_temps[F1Utils.INDEX_REAR_LEFT],
-                "rear-right": surface_temps[F1Utils.INDEX_REAR_RIGHT],
-            }
-            inner_temps = car_telemetry.m_tyresInnerTemperature
-            result["tyre-inner-temps"] = {
-                "front-left": inner_temps[F1Utils.INDEX_FRONT_LEFT],
-                "front-right": inner_temps[F1Utils.INDEX_FRONT_RIGHT],
-                "rear-left": inner_temps[F1Utils.INDEX_REAR_LEFT],
-                "rear-right": inner_temps[F1Utils.INDEX_REAR_RIGHT],
-            }
 
         return result
 
