@@ -1,18 +1,13 @@
 class ModalManager {
   constructor(driverModal=true, settingsModal=true, raceStatsModal=true) {
     this.driverModal = null;
-    this.settingsModal = null;
+    this.settingsEnabled = settingsModal;
     this.raceStatsModal = null;
 
     const modalElement = document.getElementById('driverModal');
     try {
       if (driverModal && modalElement) this.driverModal = new bootstrap.Modal(modalElement);
     } catch (e) { console.error('Failed to init driverModal:', e); }
-
-    try {
-      const settingsElement = document.getElementById('settingsModal');
-      if (settingsModal && settingsElement) this.settingsModal = new bootstrap.Modal(settingsElement);
-    } catch (e) { console.error('Failed to init settingsModal:', e); }
 
     try {
       const raceStatsElement = document.getElementById('raceStatsModal');
@@ -22,16 +17,14 @@ class ModalManager {
     this.iconCache = new IconCache();
     this.setupEventListeners();
     console.log("Modal manager initialized with driverModal:", this.driverModal !== null,
-      "settingsModal:", this.settingsModal !== null, "raceStatsModal:", this.raceStatsModal !== null);
-    if(this.settingsModal) {
+      "settingsEnabled:", this.settingsEnabled, "raceStatsModal:", this.raceStatsModal !== null);
+    if(this.settingsEnabled) {
       this.toggleFuelTargetShowSetting(g_pref_showFuelTarget);
     }
   }
 
   setupEventListeners() {
-    if (this.settingsModal) {
-      document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
-      document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+    if (this.settingsEnabled) {
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
         this.toggleFuelTargetShowSetting(event.target.checked);
       });
@@ -164,11 +157,7 @@ class ModalManager {
   }
 
   openSettingsModal() {
-
-    if (!this.settingsModal) {
-      console.error("Settings modal not initialized");
-      return;
-    }
+    if (!this.settingsEnabled) return;
 
     // Populate the fields with the default values
     document.getElementById("carsToShow").value = g_pref_numAdjacentCars;
@@ -260,17 +249,17 @@ class ModalManager {
     document.getElementById("tempUnitMetric").checked = g_pref_tempUnitMetric;
     document.getElementById("tempUnitImperial").checked = !g_pref_tempUnitMetric;
 
-    this.settingsModal.show();
   }
 
   saveSettings() {
+    if (!this.settingsEnabled) return false;
 
     // Validate numAdjacentCars input
     const numAdjacentCars_temp = this.validateIntField('carsToShow', "Number of adjacent cars");
     const numWeatherForecastSamples_temp = this.validateIntField('weatherSamplesToShow', 'Number of weather forecast samples');
     const osdDurationSec_temp = this.validateIntField('tyreDeltaOsdDuration', 'OSD duration in seconds');
     if ((null === numAdjacentCars_temp) || (null === numWeatherForecastSamples_temp)) {
-      return;
+      return false;
     }
 
     // Collect and log the selected settings
@@ -294,10 +283,9 @@ class ModalManager {
 
     savePreferences();
 
-    this.settingsModal.hide();
-
     // Dispatch event for other components to react to settings changes
     window.dispatchEvent(new CustomEvent('settingsChanged'));
+    return true;
   }
 
   validateIntField(elementId, fieldName) {

@@ -4,6 +4,7 @@ const iconCache = new IconCache();
 const telemetryRenderer = new TelemetryRenderer(iconCache);
 telemetryRenderer.updateConnectedStatus(false);
 window.modalManager = new ModalManager();
+window.settingsPanel = new SettingsPanel();
 
 let awaitingResponse = false;
 let timeoutIntervalId;
