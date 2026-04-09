@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}</title>
+    <title>Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}{% if port_info %} - {{ port_info }}{% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
@@ -75,6 +75,9 @@
           <button id="settings-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Configure UI settings">
             <i class="bi bi-gear-fill"></i>
           </button>
+          {% if port_info %}
+          <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
+          {% endif %}
         </div>
       </header>
 

@@ -25,7 +25,8 @@
 from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, maybe_migrate_legacy_hud_layout,
                  save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
+from .schema import (AdditionalServer, CaptureSettings, DisplaySettings,
+                     ForwardingSettings,
                      HttpsSettings, HudSettings, HudOverlayFuelEstimationMode,
                      HudOverlaySpeedUnit, MfdPageId, MfdPageSettings, MfdSettings,
                      NetworkSettings, OverlayId, OverlayPosition, PitTimeLossF1,
@@ -37,6 +38,7 @@ from .types import FilePathStr
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    'AdditionalServer',
     'CaptureSettings',
     'DisplaySettings',
     'ForwardingSettings',
