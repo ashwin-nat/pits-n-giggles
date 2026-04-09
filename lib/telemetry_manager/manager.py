@@ -177,7 +177,7 @@ class AsyncF1TelemetryManager:
                 str(parsed_obj.m_header.m_packetId),
                 len(raw_packet),
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             packet_file = self._dumpPacketToFile(parsed_obj)
             self.m_stats.track_packet(
                 "__EXCEPTION_CB__",
@@ -216,5 +216,5 @@ class AsyncF1TelemetryManager:
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(packet_obj.toJSON(), f, ensure_ascii=False, indent=2)
             return filepath
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e: # pylint: disable=broad-exception-caught
             return f"<Failed to write packet to file: {e}>"

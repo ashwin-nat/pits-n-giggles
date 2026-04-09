@@ -87,7 +87,9 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
 
     @proc_mgr.on_heartbeat_missed
     def _heartbeat_missed_handler(count: int) -> None:
-        logger.warning(f"Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+        logger.warning("Missed heartbeat %s times. This process has probably been orphaned. Terminating...", count)
+        # os._exit required: child process must terminate immediately without
+        # running atexit handlers or flushing stdio buffers from parent.
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
     @proc_mgr.on("get-stats")
@@ -119,7 +121,7 @@ def entry_point():
     except PngError as e:
         png_logger.exception("Terminating due to Error: %s with code %d", e, e.exit_code)
         sys.exit(e.exit_code)
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e: # pylint: disable=broad-exception-caught
         png_logger.exception("Error in main: %s", e)
         sys.exit(1)
 

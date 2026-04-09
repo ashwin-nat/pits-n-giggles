@@ -81,20 +81,20 @@ async def open_file_helper(file_path):
             _json_data = json.load(f)
             _check_recompute_json(_json_data)
 
-        _logger.info(f"Opened file: {file_path}")
+        _logger.info("Opened file: %s", file_path)
         return {"status": "success"}
 
     except (FileNotFoundError, PermissionError) as e:
-        _logger.error(f"Failed to open file: {file_path}. Error: {e}")
+        _logger.error("Failed to open file: %s. Error: %s", file_path, e)
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
     except json.JSONDecodeError as e:
-        _logger.error(f"Invalid JSON in file: {file_path}. Error: {e}")
+        _logger.error("Invalid JSON in file: %s. Error: %s", file_path, e)
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
     except UnicodeDecodeError as e:
-        _logger.error(f"Invalid UTF-8 in file: {file_path}. Error: {e}")
+        _logger.error("Invalid UTF-8 in file: %s. Error: %s", file_path, e)
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
-    except Exception as e: # pylint: disable=broad-except
-        _logger.exception(f"Unexpected error opening file: {file_path}")
+    except Exception as e: # pylint: disable=broad-exception-caught
+        _logger.exception("Unexpected error opening file: %s", file_path)
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
 
 # -------------------------------------- HELPER FUNCTIONS --------------------------------------------------------------

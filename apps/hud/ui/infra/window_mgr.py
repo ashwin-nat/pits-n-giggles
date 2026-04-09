@@ -89,7 +89,7 @@ class WindowManager(QObject):
     def register_overlay(self, overlay_id: str, overlay: BaseOverlay):
         """Register an overlay and connect signals to its slots."""
         assert overlay_id not in self.overlays, f"Overlay ID {overlay_id} is already registered"
-        self.logger.debug(f"Registering overlay {overlay_id}")
+        self.logger.debug("Registering overlay %s", overlay_id)
         self.overlays[overlay_id] = overlay
 
         # Connect command and request signals TO the overlay
@@ -116,7 +116,7 @@ class WindowManager(QObject):
         with QMutexLocker(self._response_mutex):
             self._response_data = response_data
             self._response_received = True
-            self.logger.debug(f"Received response: {request_type}. Reponse={response_data}")
+            self.logger.debug("Received response: %s. Reponse=%s", request_type, response_data)
             self._response_condition.wakeAll()
 
     def request(self, recipient: str, request_type: str,
@@ -144,7 +144,7 @@ class WindowManager(QObject):
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
                 return self._response_data
-            self.logger.warning(f"Request timeout: {request_type} to {recipient or 'manager'}")
+            self.logger.warning("Request timeout: %s to %s", request_type, recipient or 'manager')
             return None
 
     # Keep existing methods for GUI thread use

@@ -60,7 +60,7 @@ class AsyncUDPTransport:
                     self.m_sockets[destination] = sock
                 except OSError as e:
                     if self.m_logger:
-                        self.m_logger.error(f"Error creating socket to {destination}: {e}")
+                        self.m_logger.error("Error creating socket to %s: %s", destination, e)
                     # Clean up any sockets created so far
                     self.close()
                     raise
@@ -75,9 +75,9 @@ class AsyncUDPTransport:
         for destination, sock in self.m_sockets.items():
             try:
                 sock.close()
-            except Exception as e:
+            except OSError as e:
                 if self.m_logger:
-                    self.m_logger.error(f"Error closing socket to {destination}: {e}")
+                    self.m_logger.error("Error closing socket to %s: %s", destination, e)
                 raise
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
@@ -132,7 +132,7 @@ class AsyncUDPForwarder:
             await self.m_transport.send(data, destination)
         except OSError as e:
             if self.m_logger:
-                self.m_logger.error(f"Error forwarding packet to {destination}: {e}")
+                self.m_logger.error("Error forwarding packet to %s: %s", destination, e)
 
     def close(self) -> None:
         """Safely close the transport."""

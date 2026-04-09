@@ -196,7 +196,7 @@ class IpcPubSubBroker:
 
         try:
             self.control.send(b"TERMINATE")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         if self._thread:
@@ -214,12 +214,12 @@ class IpcPubSubBroker:
         ):
             try:
                 sock.close(linger=0)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
         try:
             self.ctx.term()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         self.logger.debug("%s closed", self.name)

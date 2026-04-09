@@ -147,7 +147,7 @@ class BaseWebServer:
                     result = await func(*args, **inner_kwargs)
                     self.m_stats.track_event("__HTTP_OK__", route_key)
                     return result
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self.m_stats.track_event("__HTTP_EXCEPTION__", route_key)
                     raise
 
@@ -166,7 +166,7 @@ class BaseWebServer:
                     result = await func(*args, **inner_kwargs)
                     self.m_stats.track_event("__SOCKET_IN_OK__", event)
                     return result
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self.m_stats.track_event("__SOCKET_IN_EXCEPTION__", event)
                     raise
 
@@ -234,7 +234,7 @@ class BaseWebServer:
                     self.m_logger.debug('[CLIENT_REG] Client %s joined room %s', sid, client_type)
 
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
-                    self.m_logger.debug(f'[CLIENT_REG] Current members of {client_type}: {room}')
+                    self.m_logger.debug('[CLIENT_REG] Current members of %s: %s', client_type, room)
 
             interested_events = self.m_client_event_mappings.get(parsed_client_type)
             if interested_events:
@@ -244,7 +244,7 @@ class BaseWebServer:
                         self.m_logger.debug('Client %s joined room %s', sid, event)
 
                         room = self.m_sio.manager.rooms.get('/', {}).get(event)
-                        self.m_logger.debug(f'[CLIENT_REG] Current members of {event}: {room}')
+                        self.m_logger.debug('[CLIENT_REG] Current members of %s: %s', event, room)
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
         """
@@ -352,7 +352,7 @@ class BaseWebServer:
         except OSError as e:
             sock.close()
             if is_port_in_use_error(e.errno):
-                self.m_logger.error(f"Port {self.m_port} is already in use")
+                self.m_logger.error("Port %s is already in use", self.m_port)
                 raise PngHttpPortInUseError() from e
             raise  # Re-raise if it's a different OSError
 

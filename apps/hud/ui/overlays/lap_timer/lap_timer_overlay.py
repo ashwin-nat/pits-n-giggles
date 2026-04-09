@@ -122,8 +122,8 @@ class LapTimerOverlay(BaseOverlayQML):
             # Handle lap number changes
             lap_changed = bool(self.last_lap_num and self.last_lap_num != lap_info["current-lap"])
             if lap_changed:
-                self.logger.debug(f"{self.OVERLAY_ID} | Lap number changed from "
-                                  f"{self.last_lap_num} to {lap_info['current-lap']}")
+                self.logger.debug("%s | Lap number changed from "
+                                  "%s to %s", self.OVERLAY_ID, self.last_lap_num, lap_info['current-lap'])
                 self.show_last_lap_sector_bar = True
                 self.last_sector_display_timer.start(5000)
 
@@ -349,7 +349,7 @@ class LapTimerOverlay(BaseOverlayQML):
         """
         self.clear()
         self.curr_session_uid = session_uid
-        self.logger.info(f'{self.OVERLAY_ID} New session detected: {session_uid}')
+        self.logger.info('%s New session detected: %s', self.OVERLAY_ID, session_uid)
 
     def clear(self):
         """Reset all display fields to default values."""

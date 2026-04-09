@@ -131,7 +131,7 @@ class SocketioClient:
                     func(callback_data)
                     self.stats.track_event("__HANDLER__", "success")
                     self.stats.track_event("__HANDLED_EVENT__", event_name)
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self.stats.track_event("__ERROR__", "handler_exception")
                     self.stats.track_event("__HANDLER_ERROR_EVENT__", event_name)
                     raise
@@ -163,7 +163,7 @@ class SocketioClient:
         if self._connect_callback:
             try:
                 self._connect_callback()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.stats.track_event("__ERROR__", "on_connect_callback_exception")
                 self.logger.exception("Error in on_connect callback: %s", e)
 
@@ -175,7 +175,7 @@ class SocketioClient:
         if self._disconnect_callback:
             try:
                 self._disconnect_callback()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.stats.track_event("__ERROR__", "on_disconnect_callback_exception")
                 self.logger.exception("Error in on_disconnect callback: %s", e)
 
@@ -209,7 +209,7 @@ class SocketioClient:
                 self.stats.track_event("__ERROR__", "connect_error")
                 self.logger.debug("Connection error (%s). Will retry...", e)
 
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.stats.track_event("__ERROR__", "run_loop_exception")
                 self.logger.exception("Unexpected error: %s", e)
 
@@ -217,7 +217,7 @@ class SocketioClient:
                 if self._connected:
                     try:
                         self._sio.disconnect()
-                    except Exception as e:  # pylint: disable=broad-except
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         self.stats.track_event("__ERROR__", "disconnect_error")
                         self.logger.exception("Error during disconnect: %s", e)
 
@@ -237,7 +237,7 @@ class SocketioClient:
             self.logger.debug("Disconnecting from server...")
             try:
                 self._sio.disconnect()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.logger.exception("Error during disconnect: %s", e)
             finally:
                 self._connected = False
