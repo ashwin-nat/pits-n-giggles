@@ -102,7 +102,7 @@ class BaseWebServer:
 
         self.m_sio = socketio.AsyncServer(
             async_mode='asgi',
-            cors_allowed_origins="*",
+            cors_allowed_origins=self._compute_cors_origins(),
             logger=False,
             engineio_logger=False
         )
@@ -132,6 +132,14 @@ class BaseWebServer:
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
+
+            # Security headers (C-003)
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            if self.m_cert_path:
+                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
             return response
 
     def http_route(self, path: str, **kwargs) -> Callable:
@@ -368,6 +376,18 @@ class BaseWebServer:
 
         self._server = uvicorn.Server(config)
         await self._server.serve(sockets=[sock])
+
+    def _compute_cors_origins(self) -> Union[str, List[str]]:
+        """Compute CORS allowed origins based on the server's bind address.
+
+        When bound to 0.0.0.0 or other addresses (LAN mode), allow all origins
+        because clients connect from various IPs on the network.
+        """
+        # Currently, the server always binds to 0.0.0.0 (LAN mode).
+        # When localhost-only binding is supported, this can restrict origins.
+        scheme = "https" if self.m_cert_path else "http"
+        _ = scheme  # placeholder for future localhost-restricted origins
+        return "*"
 
     def register_post_start_callback(self, callback: Callable[[], Awaitable[None]]) -> None:
         """

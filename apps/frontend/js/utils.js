@@ -1,3 +1,22 @@
+/**
+ * Escape HTML special characters to prevent XSS when inserting dynamic
+ * content via innerHTML.  Returns non-string values unchanged.
+ *
+ * @param {*} unsafe - The value to sanitize.
+ * @returns {string|*} The escaped string, or the original value if not a string.
+ */
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== "string") {
+        return unsafe;
+    }
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function formatLapTime(milliseconds) {
     // Check if the input is 0 or null
     if (milliseconds === 0 || milliseconds === null) {
