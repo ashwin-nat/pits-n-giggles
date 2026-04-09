@@ -527,7 +527,8 @@ class DriversListRsp(BaseAPI):
 
     def _getTyreInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract tyre information section for JSON response."""
-        return {
+
+        result = {
             "wear-prediction": driver_data.getFullTyreWearPredictions(self.m_next_pit_stop_window),
             "current-wear": driver_data.getCurrentTyreWearJSON(),
             "tyre-age": self._getValueOrDefaultValue(driver_data.m_tyre_info.tyre_age),
@@ -540,12 +541,17 @@ class DriversListRsp(BaseAPI):
             "brakes-temps": driver_data.m_tyre_info.getBrakesTempsJSON(),
         }
 
+        return result
+
     def _getDamageInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract damage information section for JSON response."""
         return {
             "fl-wing-damage": driver_data.m_car_info.m_fl_wing_damage,
             "fr-wing-damage": driver_data.m_car_info.m_fr_wing_damage,
             "rear-wing-damage": driver_data.m_car_info.m_rear_wing_damage,
+            "floor-damage": driver_data.m_car_info.m_floor_damage,
+            "diffuser-damage": driver_data.m_car_info.m_diffuser_damage,
+            "sidepod-damage": driver_data.m_car_info.m_sidepod_damage,
         }
 
     def _calcFastestSectorMs(self, session_history: Dict[str, Any]) -> None:

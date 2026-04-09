@@ -389,7 +389,7 @@ class CarSetupData(F1SubPacketBase):
                 self.m_ballast,
                 self.m_fuelLoad
             )
-        if self.m_packetFormat == 2024:
+        if self.m_packetFormat >= 2024:
             return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_frontWing,
                 self.m_rearWing,
@@ -480,7 +480,7 @@ class CarSetupData(F1SubPacketBase):
             )
             return cls(raw_packet, packet_format)
 
-        if packet_format == 2024:
+        if packet_format >= 2024:
             raw_packet = cls.COMPILED_PACKET_STRUCT_24.pack(
                 front_wing,
                 rear_wing,
@@ -655,7 +655,7 @@ class PacketCarSetupData(F1PacketBase):
         if header.m_packetFormat == 2023:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             return cls(header, raw_bytes)
-        if header.m_packetFormat == 2024:
+        if header.m_packetFormat >= 2024:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             raw_bytes += struct.pack("<f", next_front_wing_value)
             return cls(header, raw_bytes)

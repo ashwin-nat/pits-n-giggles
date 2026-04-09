@@ -407,18 +407,19 @@ class RaceTableRowPopulator {
             return this;
         }
         const damageInfo = this.rowData["damage-info"];
-        // Wing damage key will always be present
-        const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fl-wing-damage"]) + "%";
-        const frWingDamage = damageInfo["fr-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fr-wing-damage"]) + "%";
-        const rearWingDamage = damageInfo["rear-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["rear-wing-damage"]) + "%";
+        const fmt = (key, label) => {
+            const v = damageInfo[key];
+            return label + ": " + (v == null ? "N/A" : formatFloat(v) + "%");
+        };
         this.createMultiLineCell([
-            "FL: " + flWingDamage,
-            "FR: " + frWingDamage,
-            "RW: " + rearWingDamage
+            fmt("fl-wing-damage", "FLW"),
+            fmt("fr-wing-damage", "FRW"),
+            fmt("rear-wing-damage", "RW"),
+            fmt("floor-damage", "Floor"),
+            fmt("diffuser-damage", "Diff"),
+            fmt("sidepod-damage", "SP"),
         ]);
+
         return this;
     }
 
