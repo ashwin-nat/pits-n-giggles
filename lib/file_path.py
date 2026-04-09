@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import os
 import sys
 from pathlib import Path
 
@@ -33,8 +34,10 @@ def resolve_user_file(filename: str) -> str:
     """
     Resolves the given filename to a user-writable path.
 
+    - On Windows, uses the path as-is (relative to current working directory)
     - On macOS, uses ~/Library/Application Support/pits_n_giggles/
-    - On other platforms, uses the path as-is (relative to current working directory)
+    - On Linux and other Unix-like platforms, uses $XDG_CONFIG_HOME/pits_n_giggles/
+      (default: ~/.config/pits_n_giggles/)
 
     Args:
         filename (str): The name of the file to resolve.
@@ -42,8 +45,15 @@ def resolve_user_file(filename: str) -> str:
     Returns:
         str: Full path to the resolved file location.
     """
-    if sys.platform != "darwin":
+    if sys.platform == "win32":
         return filename
-    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_SNAKE
+    if sys.platform == "darwin":
+        base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_SNAKE
+    else:
+        xdg_config = os.environ.get("XDG_CONFIG_HOME", "")
+        if xdg_config:
+            base_dir = Path(xdg_config) / APP_NAME_SNAKE
+        else:
+            base_dir = Path.home() / ".config" / APP_NAME_SNAKE
     base_dir.mkdir(parents=True, exist_ok=True)
     return str(base_dir / filename)
