@@ -47,6 +47,7 @@ class TyreWearPerLap:
     lap_number: Optional[int] = None
     is_racing_lap: bool = True
     desc: Optional[str] = None
+    weather_id: Optional[int] = None
 
     @property
     def m_average(self) -> float:
@@ -80,5 +81,6 @@ class TyreWearPerLap:
             "rear-left-wear": self.rl_tyre_wear,
             "rear-right-wear": self.rr_tyre_wear,
             "average" : self.m_average,
-            "desc" : self.desc
+            "desc" : self.desc,
+            "weather-id": self.weather_id
         }
