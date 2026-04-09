@@ -1,0 +1,30 @@
+# Version control
+.git/
+.gitignore
+
+# Tests
+tests/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Screenshots
+screenshots/
+
+# Dev tools & build scripts
+scripts/
+apps/dev_tools/
+
+# Data & recordings
+data/
+
+# Private
+private/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
