@@ -1,15 +1,47 @@
 let g_engView_predLapNum = null;
-function escapeHtml(unsafe) {
-    if (typeof unsafe !== "string") {
-        return unsafe;
-    }
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+
+// Tyre surface temperature thresholds per compound (°C).
+// Source: EA F1 tyre model data (F1 23/24/25 — identical across versions).
+// Color zones derived from these: blue (<min), yellow (min to optimal-5),
+// green (optimal ±5), orange (optimal+5 to max), red (>max).
+const TYRE_TEMP_THRESHOLDS = {
+    "C1":     { min:  90, optimal: 100, max: 115 },
+    "C2":     { min:  85, optimal:  95, max: 115 },
+    "C3":     { min:  80, optimal:  90, max: 105 },
+    "C4":     { min:  75, optimal:  85, max: 100 },
+    "C5":     { min:  70, optimal:  80, max:  90 },
+    "Inters": { min:  60, optimal:  70, max:  80 },
+    "Wet":    { min:  50, optimal:  60, max:  70 },
+};
+// Fallback for unknown/F2/classic compounds — uses C3 range as reasonable midpoint
+const TYRE_TEMP_THRESHOLDS_DEFAULT = TYRE_TEMP_THRESHOLDS["C3"];
+
+// Responsive column presets — columns visible at each breakpoint.
+// null (desktop) = all columns visible via gridApi.resetColumnState().
+const RESPONSIVE_COLUMN_PRESETS = {
+    desktop: null,
+    laptop: [
+        'position', 'name', 'delta',
+        'last-lap-time', 'last-sector-1', 'last-sector-2', 'last-sector-3',
+        'speed-trap',
+        'tyre-compound',
+        'front-left-wear', 'front-right-wear', 'rear-left-wear', 'rear-right-wear',
+        'front-left-temp', 'front-right-temp', 'rear-left-temp', 'rear-right-temp',
+        'fuel-in-tank',
+    ],
+    tablet: [
+        'position', 'name', 'delta',
+        'last-lap-time',
+        'tyre-compound', 'tyre-wear-agg', 'tyre-temp-agg',
+        'fuel-in-tank',
+    ],
+    compact: [
+        'position', 'name', 'delta',
+        'last-lap-time',
+        'tyre-compound',
+        'tyre-temp-agg',
+    ],
+};
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -63,7 +95,7 @@ class CustomNoRowsOverlay {
     init(params) {
         this.eGui = document.createElement('div');
         this.eGui.classList.add('ag-overlay-no-rows-center');
-        this.eGui.innerHTML = params.noRowsMessageFunc();
+        this.eGui.textContent = params.noRowsMessageFunc();
     }
 
     getGui() {
@@ -88,10 +120,8 @@ class EngViewRaceTable {
         this.GREEN_SECTOR = 1;
         this.PURPLE_SECTOR = 2;
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
-        this.COLUMN_PROFILES_LS_KEY = 'eng-view-table-column-profiles';
-        this.COLUMN_ACTIVE_PROFILE_LS_KEY = 'eng-view-table-active-profile';
-        this.DEFAULT_PROFILE_ID = '__default__';
         this.TELEMETRY_DISABLED_TEXT = "⌀";
+        this.tyreTempMode = 0; // 0 = Surface Only, 1 = Surface & Carcass
         this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
         this.previousTableData = []; // Stores the data from the previous update cycle
         this.refDriverTeam = null; // Team of the reference driver (player or spectated)
@@ -101,42 +131,26 @@ class EngViewRaceTable {
         this.settingsButton = document.getElementById('settings-btn');
         this.columnVisibilityPane = document.getElementById('column-visibility-pane');
         this.resetVisibilityButton = document.getElementById('reset-visibility-btn');
-        this.resetLayoutButton = document.getElementById('reset-layout-btn');
+        this.resetLayoutButton = document.getElementById('reset-layout-btn'); // New button
         this.closePaneButton = document.getElementById('close-pane-btn');
+        this.autoFitColumnsButton = document.getElementById('autoFitColumnsBtn');
         this.columnVisibilityContainer = document.getElementById('column-visibility-container');
-        this.columnProfileSelect = document.getElementById('column-profile-select');
-        this.renameProfileBtn = document.getElementById('rename-profile-btn');
-        this.newProfileBtn = document.getElementById('new-profile-btn');
-        this.deleteProfileBtn = document.getElementById('delete-profile-btn');
 
         this.initGrid();
         this.setupSettingsEventListeners();
     }
 
     saveColumnState() {
-        if (!this.gridApi) return null;
-
-        const activeProfile = this.getActiveProfileId();
-        if (activeProfile === this.DEFAULT_PROFILE_ID) {
-            // Default is always all-columns-visible with library defaults — never persist changes
-            return null;
-        }
-
-        const columnState = this.gridApi.getColumnState();
-        try {
-            localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
-            console.debug('Column state saved:', columnState);
-
-            const profiles = this.loadProfiles();
-            if (profiles[activeProfile]) {
-                profiles[activeProfile].state = columnState;
-                this.saveProfiles(profiles);
+        if (this.gridApi) {
+            const columnState = this.gridApi.getColumnState();
+            try {
+                localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
+                console.debug('Column state saved:', columnState);
+                return columnState;
+            } catch (error) {
+                console.warn('Failed to save column state:', error);
+                return null;
             }
-
-            return columnState;
-        } catch (error) {
-            console.warn('Failed to save column state:', error);
-            return null;
         }
     }
 
@@ -152,111 +166,32 @@ class EngViewRaceTable {
         return null; // Saved data not found
     }
 
-    // --- Profile management ---
+    getCurrentBreakpoint() {
+        const width = window.innerWidth;
+        if (width >= 1440) return 'desktop';
+        if (width >= 1024) return 'laptop';
+        if (width >= 768)  return 'tablet';
+        return 'compact';
+    }
 
-    loadProfiles() {
-        try {
-            const raw = localStorage.getItem(this.COLUMN_PROFILES_LS_KEY);
-            return raw ? JSON.parse(raw) : {};
-        } catch {
-            return {};
+    applyBreakpointPreset(breakpoint) {
+        const preset = RESPONSIVE_COLUMN_PRESETS[breakpoint];
+        const isTouch = (breakpoint === 'tablet' || breakpoint === 'compact');
+        this.gridApi.setGridOption('defaultColDef', {
+            ...this.gridApi.getGridOption('defaultColDef'),
+            resizable: !isTouch,
+        });
+        if (!preset) {
+            this.gridApi.resetColumnState();
+            return;
         }
-    }
-
-    saveProfiles(profiles) {
-        try {
-            localStorage.setItem(this.COLUMN_PROFILES_LS_KEY, JSON.stringify(profiles));
-        } catch (error) {
-            console.warn('Failed to save column profiles:', error);
-        }
-    }
-
-    getActiveProfileId() {
-        return localStorage.getItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY) || this.DEFAULT_PROFILE_ID;
-    }
-
-    setActiveProfileId(profileId) {
-        localStorage.setItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY, profileId);
-    }
-
-    applyProfile(profileId) {
-        this.setActiveProfileId(profileId);
-
-        let state = null;
-        if (profileId === this.DEFAULT_PROFILE_ID) {
-            // Clear saved state so grid defaults apply on next load; apply defaults now
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
-        } else {
-            const profiles = this.loadProfiles();
-            state = profiles[profileId]?.state || null;
-            if (state) {
-                try {
-                    localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(state));
-                } catch { /* ignore */ }
-            }
-        }
-
-        if (this.gridApi) {
-            if (state) {
-                this.gridApi.applyColumnState({ state, applyOrder: true });
-            } else {
-                this.gridApi.resetColumnState();
-            }
-        }
-
-        this.populateColumnVisibilityToggles();
-    }
-
-
-    createProfile(name) {
-        if (!this.gridApi) return null;
-        const profiles = this.loadProfiles();
-        // Generate a unique ID
-        const id = 'profile_' + Date.now();
-        profiles[id] = { name, state: this.gridApi.getColumnState() };
-        this.saveProfiles(profiles);
-        return id;
-    }
-
-    deleteProfile(profileId) {
-        if (profileId === this.DEFAULT_PROFILE_ID) return;
-        const profiles = this.loadProfiles();
-        delete profiles[profileId];
-        this.saveProfiles(profiles);
-    }
-
-    populateProfileSelect() {
-        const select = this.columnProfileSelect;
-        const activeId = this.getActiveProfileId();
-        select.innerHTML = '';
-
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = this.DEFAULT_PROFILE_ID;
-        defaultOpt.textContent = 'Default';
-        select.appendChild(defaultOpt);
-
-        const profiles = this.loadProfiles();
-        for (const [id, profile] of Object.entries(profiles)) {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = profile.name;
-            select.appendChild(opt);
-        }
-
-        select.value = activeId;
-        // Fall back to default if active profile was deleted
-        if (!select.value) {
-            select.value = this.DEFAULT_PROFILE_ID;
-            this.setActiveProfileId(this.DEFAULT_PROFILE_ID);
-        }
-
-        this.updateProfileButtons();
-    }
-
-    updateProfileButtons() {
-        const isDefault = this.columnProfileSelect.value === this.DEFAULT_PROFILE_ID;
-        this.deleteProfileBtn.disabled = isDefault;
-        this.renameProfileBtn.disabled = isDefault;
+        const visibleSet = new Set(preset);
+        const allColumns = this.gridApi.getColumns();
+        const newState = allColumns.map(col => ({
+            colId: col.getColId(),
+            hide: !visibleSet.has(col.getColId()),
+        }));
+        this.gridApi.applyColumnState({ state: newState });
     }
 
     initGrid() {
@@ -304,13 +239,15 @@ class EngViewRaceTable {
                 this.gridApi = params.api;
                 console.debug("AG Grid ready.");
 
-                // Apply saved column state (skip for Default — library defaults apply)
-                if (this.getActiveProfileId() !== this.DEFAULT_PROFILE_ID) {
-                    const savedColumnState = this.loadColumnState();
-                    if (savedColumnState) {
-                        this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
-                        console.debug('Applied saved column state:', savedColumnState);
-                    }
+                // Apply saved column state or breakpoint preset
+                const savedColumnState = this.loadColumnState();
+                if (savedColumnState) {
+                    this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
+                    console.debug('Applied saved column state:', savedColumnState);
+                } else {
+                    const breakpoint = this.getCurrentBreakpoint();
+                    this.applyBreakpointPreset(breakpoint);
+                    console.debug('Applied breakpoint preset:', breakpoint);
                 }
 
                 // Add event listeners for column state changes
@@ -357,18 +294,6 @@ class EngViewRaceTable {
         this.columnStateSaveTimeout = setTimeout(() => {
             this.saveColumnState();
         }, 500);
-    }
-
-    resetColumnState() {
-        try {
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
-            console.debug('Column state reset to default');
-            if (this.gridApi) {
-                this.gridApi.resetColumnState();
-            }
-        } catch (error) {
-            console.warn('Failed to reset column state:', error);
-        }
     }
 
     createSectorCellRenderer(sectorKey, timeKey, playerTimeKey, isLastLap) {
@@ -423,13 +348,35 @@ class EngViewRaceTable {
 
     createSectorCellRendererCurrLap(sectorKey, timeKey) {
         return (params) => {
-            const lapInfo = this.getCurrentLapInfo(params.data);
-            const sectorStatus = lapInfo["sector-status"];
+            const driverInfo = params.data;
+            const driverId = driverInfo.id;
+            const delayedData = this.delayedLapData.get(driverId);
+            const currentTime = Date.now();
+            const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
+
+            let lapInfo;
+            let sectorStatus;
+
+            if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
+                // Use delayed data
+                lapInfo = delayedData.oldLapData;
+                sectorStatus = lapInfo["sector-status"];
+            } else {
+                // Use current data
+                lapInfo = driverInfo["lap-info"]["curr-lap"];
+                sectorStatus = lapInfo["sector-status"];
+            }
 
             const timeMs = lapInfo[timeKey];
-            const cellText = (sectorKey === 'lap')
-                ? formatLapTime(timeMs)
-                : formatSectorTime(timeMs);
+            let cellText = '';
+            const status = lapInfo["driver-status"];
+            if (status === "FLYING_LAP" || status === "ON_TRACK" || timeKey !== 'lap-time-ms') {
+                cellText = (sectorKey === 'lap')
+                    ? formatLapTime(timeMs)
+                    : formatSectorTime(timeMs);
+            } else {
+                cellText = status;
+            }
 
             let timeClass = '';
             if (sectorStatus && sectorKey !== 'lap' && sectorKey !== 'delta') {
@@ -446,27 +393,6 @@ class EngViewRaceTable {
         };
     }
 
-    getCurrentLapInfo(driverInfo) {
-        const driverId = driverInfo.id;
-        const delayedData = this.delayedLapData.get(driverId);
-        const currentTime = Date.now();
-        const CURR_LAP_FREEZE_DURATION = 5000; // 5 sec
-
-        if (delayedData && (currentTime - delayedData.timestamp < CURR_LAP_FREEZE_DURATION)) {
-            return delayedData.oldLapData;
-        }
-
-        return driverInfo["lap-info"]["curr-lap"];
-    }
-
-    createStatusCellRendererCurrLap() {
-        return (params) => {
-            const lapInfo = this.getCurrentLapInfo(params.data);
-            const status = lapInfo["driver-status"] ?? "---";
-            return this.createSingleLineCell(status);
-        };
-    }
-
     createDeltaCellRendererCurrLap() {
         return (params) => {
             const driverInfo = params.data;
@@ -474,19 +400,6 @@ class EngViewRaceTable {
             const delta = currLapInfo["delta-ms"];
             const formattedTime = (delta !== null) ? formatFloat(delta/1000, { precision: 3, signed: true }) : '---';
             return this.createSingleLineCell(formattedTime);
-        };
-    }
-
-    createTempCellRenderer(section, wheel) {
-        return (params) => {
-            const driverInfo = params.data;
-            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-            if (!telemetryPublic) {
-                return this.getTelemetryRestrictedContent();
-            }
-            const temps = driverInfo["tyre-info"][section];
-            const val = temps?.[wheel];
-            return this.createSingleLineCell(val != null ? `${val}°` : "N/A");
         };
     }
 
@@ -511,6 +424,153 @@ class EngViewRaceTable {
             } else {
                 return this.getTelemetryRestrictedContent();
             }
+        };
+    }
+
+    createTyreTempCellRenderer(tempField) {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const tyreInfo = driverInfo["tyre-info"];
+            // tyre-temp-mode: 0 = Surface Only, 1 = Surface & Carcass
+            const useInner = this.tyreTempMode === 1;
+            const tyreTemps = useInner ? tyreInfo["tyre-inner-temps"] : tyreInfo["tyre-surface-temps"];
+            if (!tyreTemps) {
+                return this.createSingleLineCell("N/A");
+            }
+            const temp = tyreTemps[tempField];
+            if (temp == null) {
+                return this.createSingleLineCell("N/A");
+            }
+            const compound = tyreInfo["actual-tyre-compound"] ?? "";
+            const th = TYRE_TEMP_THRESHOLDS[compound] ?? TYRE_TEMP_THRESHOLDS_DEFAULT;
+            const tempClass = this.#getTyreTempClass(temp, th);
+            return this.createSingleLineCell(`${temp}°C`, { escape: false, className: tempClass });
+        };
+    }
+
+    createAggregatedTyreTempCellRenderer() {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const tyreInfo = driverInfo["tyre-info"];
+            // tyre-temp-mode: 0 = Surface Only, 1 = Surface & Carcass
+            const hasInner = this.tyreTempMode === 1;
+            const tyreTemps = hasInner ? tyreInfo["tyre-inner-temps"] : tyreInfo["tyre-surface-temps"];
+            if (!tyreTemps) {
+                return this.createSingleLineCell("N/A");
+            }
+            const allTemps = [
+                tyreTemps["front-left-temp"],
+                tyreTemps["front-right-temp"],
+                tyreTemps["rear-left-temp"],
+                tyreTemps["rear-right-temp"],
+            ];
+            if (allTemps.some(t => t == null)) {
+                return this.createSingleLineCell("N/A");
+            }
+            const compound = tyreInfo["actual-tyre-compound"] ?? "";
+            const th = TYRE_TEMP_THRESHOLDS[compound] ?? TYRE_TEMP_THRESHOLDS_DEFAULT;
+
+            const getSeverity = (temp) => {
+                if (temp > th.max)         return 4;
+                if (temp > th.optimal + 5) return 3;
+                if (temp < th.min)         return 2;
+                if (temp < th.optimal - 5) return 1;
+                return                            0;
+            };
+
+            let worstSeverity = -1;
+            let worstTemp = null;
+            for (const temp of allTemps) {
+                const s = getSeverity(temp);
+                if (s > worstSeverity || (s === worstSeverity && temp > worstTemp)) {
+                    worstSeverity = s;
+                    worstTemp = temp;
+                }
+            }
+
+            const tempClass = this.#getTyreTempClass(worstTemp, th);
+            return this.createSingleLineCell(`${worstTemp}°C`, { escape: false, className: tempClass });
+        };
+    }
+
+    createAggregatedTyreWearCellRenderer() {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const tyreInfo = driverInfo["tyre-info"];
+            const currWear = tyreInfo["current-wear"];
+            const wearValues = [
+                currWear["front-left-wear"],
+                currWear["front-right-wear"],
+                currWear["rear-left-wear"],
+                currWear["rear-right-wear"],
+            ];
+            const worstCurrentWear = Math.max(...wearValues);
+
+            const predictionLap = g_engView_predLapNum;
+            const predictedWearInfo = predictionLap
+                ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
+                : null;
+
+            let worstPredictedWear = null;
+            if (predictedWearInfo) {
+                const predictedValues = [
+                    predictedWearInfo["front-left-wear"],
+                    predictedWearInfo["front-right-wear"],
+                    predictedWearInfo["rear-left-wear"],
+                    predictedWearInfo["rear-right-wear"],
+                ];
+                worstPredictedWear = Math.max(...predictedValues);
+            }
+
+            return this.createMultiLineCell({
+                row1: formatFloat(worstCurrentWear) + '%',
+                row2: worstPredictedWear != null
+                    ? formatFloat(worstPredictedWear) + '%'
+                    : '---'
+            });
+        };
+    }
+
+    #getTyreTempClass(temp, thresholds) {
+        const greenLow = thresholds.optimal - 5;
+        const greenHigh = thresholds.optimal + 5;
+        if (temp < thresholds.min) return 'eng-temp-cold';
+        if (temp < greenLow) return 'eng-temp-warmup';
+        if (temp <= greenHigh) return 'eng-temp-optimal';
+        if (temp <= thresholds.max) return 'eng-temp-hot';
+        return 'eng-temp-overheat';
+    }
+
+    #getEngDamageClass(damage) {
+        if (damage == null || damage === 0) return '';
+        if (damage <= 20) return 'eng-dmg-light';
+        if (damage <= 50) return 'eng-dmg-moderate';
+        return 'eng-dmg-severe';
+    }
+
+    createDamageCellRenderer(damageField) {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const damage = driverInfo["damage-info"][damageField];
+            const text = `${formatFloat(damage)}%`;
+            const dmgClass = this.#getEngDamageClass(damage);
+            return this.createSingleLineCell(text, { escape: false, className: dmgClass });
         };
     }
 
@@ -788,16 +848,6 @@ class EngViewRaceTable {
                         equals: this.createSectorTimeEqualsComparator('curr-lap', 's3', 's3-time-ms'),
                     },
                     {
-                        headerName: "Status",
-                        colId: "curr-lap-status",
-                        context: {displayName: "Driver Status", },
-                        field: `lap-info`,
-                        cellRenderer: this.createStatusCellRendererCurrLap(),
-                        sortable: false,
-                        flex: 2.5,
-                        cellClass: 'ag-cell-single-line',
-                    },
-                    {
                         headerName: "Delta",
                         colId: "curr-lap-delta",
                         context: {displayName: "Delta", },
@@ -933,86 +983,95 @@ class EngViewRaceTable {
                         sortable: false,
                         cellClass: 'ag-cell-multiline',
                     },
-                ],
-            },
-            {
-                headerName: 'Surf T',
-                colId: 'tyre-surf-temps',
-                context: {displayName: 'Tyre Surface Temps'},
-                children: [
                     {
-                        headerName: "FL", colId: "tyre-surf-fl", context: {displayName: "Surface Temp FL"},
-                        field: "tyre-info.surface-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("surface-temps", "fl"),
-                    },
-                    {
-                        headerName: "FR", colId: "tyre-surf-fr", context: {displayName: "Surface Temp FR"},
-                        field: "tyre-info.surface-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("surface-temps", "fr"),
-                    },
-                    {
-                        headerName: "RL", colId: "tyre-surf-rl", context: {displayName: "Surface Temp RL"},
-                        field: "tyre-info.surface-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("surface-temps", "rl"),
-                    },
-                    {
-                        headerName: "RR", colId: "tyre-surf-rr", context: {displayName: "Surface Temp RR"},
-                        field: "tyre-info.surface-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("surface-temps", "rr"),
+                        headerName: "Wear",
+                        colId: "tyre-wear-agg",
+                        context: { displayName: "Tyre Wear (Worst)" },
+                        field: "tyre-info",
+                        flex: 3,
+                        hide: true,
+                        cellRenderer: this.createAggregatedTyreWearCellRenderer(),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
+                        equals: (val1, val2) => {
+                            if (!val1 || !val2) return val1 === val2;
+                            const wear1 = val1["current-wear"];
+                            const wear2 = val2["current-wear"];
+                            if (!wear1 || !wear2) return wear1 === wear2;
+                            return wear1["front-left-wear"] === wear2["front-left-wear"]
+                                && wear1["front-right-wear"] === wear2["front-right-wear"]
+                                && wear1["rear-left-wear"] === wear2["rear-left-wear"]
+                                && wear1["rear-right-wear"] === wear2["rear-right-wear"];
+                        },
                     },
                 ],
             },
             {
-                headerName: 'Inner T',
-                colId: 'tyre-inner-temps',
-                context: {displayName: 'Tyre Inner Temps'},
+                headerName: 'Tyre Temp',
+                colId: 'tyre-temp',
+                context: {displayName: 'Tyre Temp', },
                 children: [
                     {
-                        headerName: "FL", colId: "tyre-inner-fl", context: {displayName: "Inner Temp FL"},
-                        field: "tyre-info.inner-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("inner-temps", "fl"),
+                        headerName: "FL",
+                        colId: "front-left-temp",
+                        context: {displayName: "Front Left Temp", },
+                        field: "tyre-info.tyre-surface-temps.front-left-temp",
+                        flex: 2,
+                        cellRenderer: this.createTyreTempCellRenderer("front-left-temp"),
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "FR", colId: "tyre-inner-fr", context: {displayName: "Inner Temp FR"},
-                        field: "tyre-info.inner-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("inner-temps", "fr"),
+                        headerName: "FR",
+                        colId: "front-right-temp",
+                        context: {displayName: "Front Right Temp", },
+                        field: "tyre-info.tyre-surface-temps.front-right-temp",
+                        flex: 2,
+                        cellRenderer: this.createTyreTempCellRenderer("front-right-temp"),
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "RL", colId: "tyre-inner-rl", context: {displayName: "Inner Temp RL"},
-                        field: "tyre-info.inner-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("inner-temps", "rl"),
+                        headerName: "RL",
+                        colId: "rear-left-temp",
+                        context: {displayName: "Rear Left Temp", },
+                        field: "tyre-info.tyre-surface-temps.rear-left-temp",
+                        flex: 2,
+                        cellRenderer: this.createTyreTempCellRenderer("rear-left-temp"),
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "RR", colId: "tyre-inner-rr", context: {displayName: "Inner Temp RR"},
-                        field: "tyre-info.inner-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("inner-temps", "rr"),
-                    },
-                ],
-            },
-            {
-                headerName: 'Brake T',
-                colId: 'brake-temps',
-                context: {displayName: 'Brake Temps'},
-                children: [
-                    {
-                        headerName: "FL", colId: "brake-fl", context: {displayName: "Brake Temp FL"},
-                        field: "tyre-info.brakes-temps.fl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("brakes-temps", "fl"),
+                        headerName: "RR",
+                        colId: "rear-right-temp",
+                        context: {displayName: "Rear Right Temp", },
+                        field: "tyre-info.tyre-surface-temps.rear-right-temp",
+                        flex: 2,
+                        cellRenderer: this.createTyreTempCellRenderer("rear-right-temp"),
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "FR", colId: "brake-fr", context: {displayName: "Brake Temp FR"},
-                        field: "tyre-info.brakes-temps.fr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("brakes-temps", "fr"),
-                    },
-                    {
-                        headerName: "RL", colId: "brake-rl", context: {displayName: "Brake Temp RL"},
-                        field: "tyre-info.brakes-temps.rl", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("brakes-temps", "rl"),
-                    },
-                    {
-                        headerName: "RR", colId: "brake-rr", context: {displayName: "Brake Temp RR"},
-                        field: "tyre-info.brakes-temps.rr", flex: 2, sortable: false, cellClass: 'ag-cell-single-line',
-                        cellRenderer: this.createTempCellRenderer("brakes-temps", "rr"),
+                        headerName: "Temp",
+                        colId: "tyre-temp-agg",
+                        context: { displayName: "Tyre Temp (Worst)" },
+                        field: "tyre-info",
+                        flex: 2,
+                        hide: true,
+                        cellRenderer: this.createAggregatedTyreTempCellRenderer(),
+                        sortable: false,
+                        cellClass: 'ag-cell-single-line',
+                        equals: (val1, val2) => {
+                            if (!val1 || !val2) return val1 === val2;
+                            const temps1 = val1["tyre-inner-temps"] ?? val1["tyre-surface-temps"];
+                            const temps2 = val2["tyre-inner-temps"] ?? val2["tyre-surface-temps"];
+                            if (!temps1 || !temps2) return temps1 === temps2;
+                            return temps1["front-left-temp"] === temps2["front-left-temp"]
+                                && temps1["front-right-temp"] === temps2["front-right-temp"]
+                                && temps1["rear-left-temp"] === temps2["rear-left-temp"]
+                                && temps1["rear-right-temp"] === temps2["rear-right-temp"]
+                                && val1["actual-tyre-compound"] === val2["actual-tyre-compound"];
+                        },
                     },
                 ],
             },
@@ -1123,46 +1182,40 @@ class EngViewRaceTable {
                 context: {displayName: 'Damage', },
                 children: [
                     {
-                        headerName: "FL", colId: "fl-wing-damage", context: {displayName: "Front Left Wing", },
+                        headerName: "FLW", colId: "fl-wing-damage", context: {displayName: "Front Left Wing", },
                         field: "damage-info.fl-wing-damage", flex: 3.33,
-                        cellRenderer: (params) =>  {
-                            const driverInfo = params.data;
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const flWingDamage = driverInfo["damage-info"]["fl-wing-damage"];
-                                return this.createSingleLineCell(`${formatFloat(flWingDamage)}%`);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createDamageCellRenderer("fl-wing-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
-                        headerName: "FR", colId: "fr-wing-damage", context: {displayName: "Front Right Wing",},
+                        headerName: "FRW", colId: "fr-wing-damage", context: {displayName: "Front Right Wing",},
                         field: "damage-info.fr-wing-damage", flex: 3.33,
-                        cellRenderer: (params) =>  {
-                            const driverInfo = params.data;
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const frWingDamage = driverInfo["damage-info"]["fr-wing-damage"];
-                                return this.createSingleLineCell(`${formatFloat(frWingDamage)}%`);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createDamageCellRenderer("fr-wing-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
                     },
                     {
                         headerName: "RW", colId: "rear-wing-damage", context: {displayName: "Rear Wing", },
                         field: "damage-info.rear-wing-damage", flex: 3.33,
-                        cellRenderer: (params) =>  {
-                            const driverInfo = params.data;
-                            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
-                            if (telemetryPublic) {
-                                const rearWingDamage = driverInfo["damage-info"]["rear-wing-damage"];
-                                return this.createSingleLineCell(`${formatFloat(rearWingDamage)}%`);
-                            } else {
-                                return this.getTelemetryRestrictedContent();
-                            }
-                        }, sortable: false, cellClass: 'ag-cell-single-line',
+                        cellRenderer: this.createDamageCellRenderer("rear-wing-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "Floor", colId: "floor-damage", context: {displayName: "Floor", },
+                        field: "damage-info.floor-damage", flex: 3.33,
+                        cellRenderer: this.createDamageCellRenderer("floor-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "DF", colId: "diffuser-damage", context: {displayName: "Diffuser", },
+                        field: "damage-info.diffuser-damage", flex: 3.33,
+                        cellRenderer: this.createDamageCellRenderer("diffuser-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "SP", colId: "sidepod-damage", context: {displayName: "Sidepod", },
+                        field: "damage-info.sidepod-damage", flex: 3.33,
+                        cellRenderer: this.createDamageCellRenderer("sidepod-damage"),
+                        sortable: false, cellClass: 'ag-cell-single-line',
                     },
                 ],
             },
@@ -1352,68 +1405,28 @@ class EngViewRaceTable {
         this.settingsButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.closePaneButton.addEventListener('click', () => this.toggleColumnVisibilityPane());
         this.resetVisibilityButton.addEventListener('click', () => this.resetColumnVisibility());
-        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout());
-
-        this.columnProfileSelect.addEventListener('change', () => {
-            this.applyProfile(this.columnProfileSelect.value);
-            this.updateProfileButtons();
-        });
-
-        this.renameProfileBtn.addEventListener('click', () => {
-            const profileId = this.columnProfileSelect.value;
-            if (profileId === this.DEFAULT_PROFILE_ID) return;
-            const profiles = this.loadProfiles();
-            const currentName = profiles[profileId]?.name || '';
-            const newName = prompt('Enter a new name for this profile:', currentName);
-            if (!newName || !newName.trim() || newName.trim() === currentName) return;
-            profiles[profileId].name = newName.trim();
-            this.saveProfiles(profiles);
-            this.populateProfileSelect();
-        });
-
-        this.newProfileBtn.addEventListener('click', () => {
-            const name = prompt('Enter a name for the new profile:');
-            if (!name || !name.trim()) return;
-            const id = this.createProfile(name.trim());
-            if (id) {
-                this.populateProfileSelect();
-                this.columnProfileSelect.value = id;
-                this.setActiveProfileId(id);
-                this.updateProfileButtons();
+        this.resetLayoutButton.addEventListener('click', () => this.resetColumnLayout()); // New event listener
+        this.autoFitColumnsButton.addEventListener('click', () => {
+            if (this.gridApi) {
+                this.gridApi.autoSizeAllColumns();
             }
-        });
-
-        this.deleteProfileBtn.addEventListener('click', () => {
-            const profileId = this.columnProfileSelect.value;
-            if (profileId === this.DEFAULT_PROFILE_ID) return;
-            const profiles = this.loadProfiles();
-            const name = profiles[profileId]?.name || profileId;
-            if (!confirm(`Delete profile "${name}"?`)) return;
-            this.deleteProfile(profileId);
-            this.applyProfile(this.DEFAULT_PROFILE_ID);
-            this.populateProfileSelect();
         });
     }
 
     toggleColumnVisibilityPane() {
+        if (window.drawerManager) {
+            window.drawerManager.closeAllDrawers();
+        }
         this.columnVisibilityPane.classList.toggle('open');
         if (this.columnVisibilityPane.classList.contains('open')) {
-            this.populateProfileSelect();
             this.populateColumnVisibilityToggles();
         }
     }
 
     resetColumnVisibility() {
-        this.resetColumnState();
-        // If on a named profile, update its stored state after reset
-        const activeProfile = this.getActiveProfileId();
-        if (activeProfile !== this.DEFAULT_PROFILE_ID && this.gridApi) {
-            const profiles = this.loadProfiles();
-            if (profiles[activeProfile]) {
-                profiles[activeProfile].state = this.gridApi.getColumnState();
-                this.saveProfiles(profiles);
-            }
-        }
+        localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
+        const breakpoint = this.getCurrentBreakpoint();
+        this.applyBreakpointPreset(breakpoint);
         this.populateColumnVisibilityToggles();
     }
 
@@ -1423,7 +1436,7 @@ class EngViewRaceTable {
             return;
         }
 
-        this.columnVisibilityContainer.innerHTML = ''; // Clear existing toggles
+        this.columnVisibilityContainer.textContent = ''; // Clear existing toggles
         let groupCounter = 0; // synthetic IDs for groups without colId/field
 
         const createToggle = (colDef, parentColId = null, isGroup = false, initialIsVisible = null) => {
@@ -1540,34 +1553,44 @@ class EngViewRaceTable {
 
     resetColumnLayout() {
         if (this.gridApi) {
-            // Capture current visibility before resetting
-            const visibilityState = this.gridApi.getColumnState().reduce((acc, col) => {
+            // Get the initial column definitions to restore default widths and order
+            const initialColumnDefs = this.getColumnDefinitions();
+            const initialColumnState = [];
+
+            // Recursively process column definitions to build the initial state
+            const processColDefs = (colDefs) => {
+                colDefs.forEach(colDef => {
+                    if (colDef.children) {
+                        processColDefs(colDef.children);
+                    } else {
+                        initialColumnState.push({
+                            colId: colDef.colId,
+                            width: colDef.width || colDef.flex ? undefined : null, // Default width if not flex
+                            flex: colDef.flex,
+                            hide: false, // Ensure visibility is not reset here
+                            pinned: colDef.pinned || null,
+                        });
+                    }
+                });
+            };
+            processColDefs(initialColumnDefs);
+
+            // Get the current column visibility state
+            const currentColumnState = this.gridApi.getColumnState();
+            const visibilityState = currentColumnState.reduce((acc, col) => {
                 acc[col.colId] = col.hide;
                 return acc;
             }, {});
 
-            // Let the library restore its true defaults (order, widths, flex)
-            this.gridApi.resetColumnState();
-
-            // Re-apply visibility so columns the user hid stay hidden
-            const restoredState = this.gridApi.getColumnState().map(col => ({
-                colId: col.colId,
+            // Merge initial layout with current visibility
+            const newState = initialColumnState.map(col => ({
+                ...col,
                 hide: visibilityState[col.colId] !== undefined ? visibilityState[col.colId] : col.hide,
             }));
-            this.gridApi.applyColumnState({ state: restoredState });
 
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
+            this.gridApi.applyColumnState({ state: newState, applyOrder: true });
+            localStorage.removeItem(this.COLUMN_STATE_LS_KEY); // Clear saved state to ensure defaults are used
             console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
-
-            // If on a named profile, update its stored state after layout reset
-            const activeProfile = this.getActiveProfileId();
-            if (activeProfile !== this.DEFAULT_PROFILE_ID) {
-                const profiles = this.loadProfiles();
-                if (profiles[activeProfile]) {
-                    profiles[activeProfile].state = this.gridApi.getColumnState();
-                    this.saveProfiles(profiles);
-                }
-            }
         }
     }
 
@@ -1708,6 +1731,19 @@ class EngViewRaceStatus {
         this.pitLap = null;
         this.midLap = null;
 
+        // Collapse elements
+        this.collapseBtn = document.getElementById('raceStatusCollapseBtn');
+        this.raceStatusBody = document.getElementById('raceStatusBody');
+        this.summaryLap = document.getElementById('summaryLap');
+        this.summaryTrackTemp = document.getElementById('summaryTrackTemp');
+        this.summaryAirTemp = document.getElementById('summaryAirTemp');
+        this.summarySC = document.getElementById('summarySC');
+        this.summaryVSC = document.getElementById('summaryVSC');
+        this.LS_COLLAPSE_KEY = 'raceStatusCollapsed';
+        this._collapseMediaQuery = window.matchMedia('(max-width: 1439px)');
+
+        this._initCollapse();
+
         this.predictionLapInput.addEventListener('input', (e) => {
             let value = parseInt(e.target.value);
             if (!isNaN(value) && value >= e.target.min && value <= e.target.max) {
@@ -1736,6 +1772,48 @@ class EngViewRaceStatus {
         this.predictionPitBtn.disabled = true;
         this.predictionMidBtn.disabled = true;
         this.predictionLastBtn.disabled = true;
+    }
+
+    _initCollapse() {
+        // Toggle button click
+        this.collapseBtn.addEventListener('click', () => {
+            const isCollapsed = this.raceStatusBody.classList.toggle('rs-collapsed');
+            this.collapseBtn.classList.toggle('rs-open', !isCollapsed);
+            localStorage.setItem(this.LS_COLLAPSE_KEY, isCollapsed ? 'true' : 'false');
+        });
+
+        // Restore state from localStorage (only meaningful < 1440px)
+        const applyCollapse = () => {
+            if (this._collapseMediaQuery.matches) {
+                const saved = localStorage.getItem(this.LS_COLLAPSE_KEY);
+                // Default to collapsed when narrow
+                const shouldCollapse = saved !== 'false';
+                this.raceStatusBody.classList.toggle('rs-collapsed', shouldCollapse);
+                this.collapseBtn.classList.toggle('rs-open', !shouldCollapse);
+            } else {
+                // Wide screen — always show body, remove collapse state
+                this.raceStatusBody.classList.remove('rs-collapsed');
+                this.collapseBtn.classList.remove('rs-open');
+            }
+        };
+
+        applyCollapse();
+        this._collapseMediaQuery.addEventListener('change', applyCollapse);
+    }
+
+    #updateSummary(data) {
+        let lapText = '';
+        if (data['current-lap']) {
+            lapText += data['current-lap'].toString();
+        }
+        if (data['event-type'] !== 'Time Trial' && ((data['total-laps'] ?? 0) > 1)) {
+            lapText += '/' + data['total-laps'].toString();
+        }
+        this.summaryLap.textContent = lapText || '—';
+        this.summaryTrackTemp.textContent = data['track-temperature'] + ' °C';
+        this.summaryAirTemp.textContent = data['air-temperature'] + ' °C';
+        this.summarySC.textContent = data['num-sc'] ?? '0';
+        this.summaryVSC.textContent = data['num-vsc'] ?? '0';
     }
 
     #updatePredLapInputBox() {
@@ -1829,12 +1907,14 @@ class EngViewRaceStatus {
         if (shouldUpdatePred) {
             this.#updatePredLapInputBox();
         }
+
+        this.#updateSummary(data);
     }
 }
 
 // Weather table management class
 class EngViewWeatherTable {
-    constructor() {
+    constructor(weatherGraph) {
         this.tableBody = document.querySelector('.eng-view-weather-table tbody');
         this.sessionNameElement = document.getElementById('weatherSessionName');
         document.getElementById('weatherSessionPrevBtn').addEventListener('click', () => this.cycleSessionBackward());
@@ -1843,17 +1923,30 @@ class EngViewWeatherTable {
         this.numSessions = 0;
         this.numDisplayedSamples = 0;
         this.sessionUID = 0;
+        this.weatherGraph = weatherGraph;
+        this.weatherBySession = [];
     }
 
     cycleSessionForward() {
         if (this.numSessions === 0) return;
         this.currSessionIndex = (this.currSessionIndex + 1) % this.numSessions;
+        this.#updateGraph();
     }
 
     cycleSessionBackward() {
         if (this.numSessions === 0) return;
         this.currSessionIndex =
             (this.currSessionIndex - 1 + this.numSessions) % this.numSessions;
+        this.#updateGraph();
+    }
+
+    #updateGraph() {
+        if (!this.weatherGraph || this.weatherBySession.length === 0) return;
+        const currSession = this.weatherBySession[this.currSessionIndex];
+        if (currSession) {
+            const sessionKey = `${currSession["session_type"]}_${this.currSessionIndex}`;
+            this.weatherGraph.update(currSession["items"], sessionKey);
+        }
     }
 
     update(incomingData, incomingSessionUID) {
@@ -1867,15 +1960,15 @@ class EngViewWeatherTable {
             this.sessionUID = incomingSessionUID
         }
 
-        const weatherBySession = groupWeatherSamplesBySessionType(incomingData);
-        this.numSessions = weatherBySession.length;
+        this.weatherBySession = groupWeatherSamplesBySessionType(incomingData);
+        this.numSessions = this.weatherBySession.length;
         if (this.currSessionIndex < 0 ||
-            this.currSessionIndex >= weatherBySession.length) {
+            this.currSessionIndex >= this.weatherBySession.length) {
             console.debug('Invalid session index. Resetting to 0.');
             this.currSessionIndex = 0;
         }
 
-        const currSession = weatherBySession[this.currSessionIndex];
+        const currSession = this.weatherBySession[this.currSessionIndex];
         const sessionType = currSession["session_type"];
         this.sessionNameElement.textContent = `${sessionType} (${this.currSessionIndex + 1}/${this.numSessions})`;
 
@@ -1885,19 +1978,22 @@ class EngViewWeatherTable {
         // Create weather type row
         const typeRow = document.createElement('tr');
         typeRow.innerHTML = limitedData
-            .map(w => `<td>${w["weather"]}</td>`)
+            .map(w => `<td>${escapeHtml(w["weather"])}</td>`)
             .join('');
 
         // Create time and probability row
         const timeRow = document.createElement('tr');
         timeRow.innerHTML = limitedData
-            .map(w => `<td>+${w["time-offset"]}m (${w["rain-probability"]}%)</td>`)
+            .map(w => `<td>+${escapeHtml(String(w["time-offset"]))}m (${escapeHtml(String(w["rain-probability"]))}%)</td>`)
             .join('');
 
         // Clear and update table
-        this.tableBody.innerHTML = '';
+        this.tableBody.textContent = '';
         this.tableBody.appendChild(typeRow);
         this.tableBody.appendChild(timeRow);
+        this.numDisplayedSamples = limitedData.length;
+
+        this.#updateGraph();
     }
 
     clear() {
@@ -1910,20 +2006,99 @@ class EngViewWeatherTable {
         this.numSessions = 0;
         this.sessionUID = 0;
         this.numDisplayedSamples = 0;
+        this.weatherBySession = [];
+        if (this.weatherGraph) this.weatherGraph.update([], null);
     }
 }
 
 let raceTable;
 let raceStatus;
 let weatherTable;
+let weatherGraph;
 let iconCache;
+let trackMap;
+
+// Weather display mode toggle (table / graph / both)
+function initWeatherDisplayToggle() {
+    const LS_KEY = 'weatherDisplayMode';
+    const VALID_MODES = ['table', 'graph', 'both'];
+    const toggleGroup = document.getElementById('weatherDisplayToggle');
+    const tableWrapper = document.getElementById('weatherTableWrapper');
+    const graphContainer = document.getElementById('weatherGraphContainer');
+
+    function applyMode(mode) {
+        toggleGroup.querySelectorAll('button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.value === mode);
+        });
+        tableWrapper.style.display = (mode === 'graph') ? 'none' : '';
+        graphContainer.style.display = (mode === 'table') ? 'none' : '';
+    }
+
+    const saved = localStorage.getItem(LS_KEY);
+    applyMode(VALID_MODES.includes(saved) ? saved : 'both');
+
+    toggleGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-value]');
+        if (!btn || !VALID_MODES.includes(btn.dataset.value)) return;
+        localStorage.setItem(LS_KEY, btn.dataset.value);
+        applyMode(btn.dataset.value);
+    });
+}
+
+// ── Card Collapse Toggles (Weather + TrackMap at laptop breakpoint) ──
+
+function initCardCollapseToggles() {
+    const cards = [
+        { col: '.weather-col',   key: 'engViewWeatherCollapsed' },
+        { col: '.track-map-col', key: 'engViewTrackMapCollapsed' },
+    ];
+
+    for (const { col, key } of cards) {
+        const colEl = document.querySelector(col);
+        if (!colEl) continue;
+        const card = colEl.querySelector('.card');
+        const header = colEl.querySelector('.card-header');
+        const body = colEl.querySelector('.card-body');
+        if (!card || !header || !body) continue;
+
+        // Create toggle button
+        const btn = document.createElement('button');
+        btn.className = 'btn card-collapse-toggle';
+        btn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+        btn.title = 'Toggle collapse';
+        header.appendChild(btn);
+
+        // Restore saved state
+        const saved = localStorage.getItem(key);
+        if (saved === 'true') {
+            body.classList.add('card-body-collapsed');
+            btn.querySelector('i').classList.replace('bi-chevron-down', 'bi-chevron-up');
+        }
+
+        btn.addEventListener('click', () => {
+            const isCollapsed = body.classList.toggle('card-body-collapsed');
+            const icon = btn.querySelector('i');
+            if (isCollapsed) {
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            } else {
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            }
+            localStorage.setItem(key, isCollapsed);
+        });
+    }
+}
 
 // Initialize the dashboard
 function initDashboard() {
     iconCache = new IconCache();
     raceTable = new EngViewRaceTable(iconCache);
     raceStatus = new EngViewRaceStatus(iconCache);
-    weatherTable = new EngViewWeatherTable(iconCache);
+    weatherGraph = new WeatherGraph(document.getElementById('weatherGraphContainer'));
+    weatherTable = new EngViewWeatherTable(weatherGraph);
+    trackMap = new TrackMap();
+    initWeatherDisplayToggle();
+    initCardCollapseToggles();
+    window.drawerManager = new DrawerManager();
 
     const driverModal = true;
     const settingsModal = false;
@@ -1951,11 +2126,27 @@ function initDashboard() {
             "pit-time-loss": pitTimeLoss = null // Default to null
         } = data;
 
+        raceTable.tyreTempMode = data["tyre-temp-mode"] ?? 0;
+
         if (tableEntries || eventType === "Time Trial") {
             raceTable.update(tableEntries, isSpectating, eventType, spectatorCarIndex, fastestLapMs, sessionUID, pitTimeLoss);
         }
         raceStatus.update(data);
-        weatherTable.update(data["weather-forecast-samples"]);
+        weatherTable.update(data["weather-forecast-samples"], sessionUID);
+
+        // Track Map: load circuit SVG (no-op if already loaded) then update driver dots
+        const circuit = data["circuit"];
+        if (circuit) {
+            trackMap.loadTrack(circuit);
+        }
+        if (tableEntries && tableEntries.length > 0) {
+            trackMap.updateDrivers(
+                tableEntries,
+                isSpectating,
+                spectatorCarIndex,
+                raceTable.refDriverTeam
+            );
+        }
     });
 
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -1964,3 +2155,134 @@ function initDashboard() {
 
 // Start the dashboard when the page loads
 document.addEventListener('DOMContentLoaded', initDashboard);
+
+// ── Drawer Manager ──────────────────────────────────────────────
+
+class DrawerManager {
+    constructor() {
+        this.backdrop = document.getElementById('drawer-backdrop');
+        this.columnVisibilityPane = document.getElementById('column-visibility-pane');
+        this._drawerMediaQuery = window.matchMedia('(max-width: 1023px)');
+
+        // Inline content parents (for DOM-move)
+        this.weatherInlineParent = document.querySelector('.weather-col .card-body');
+        this.trackMapInlineParent = document.querySelector('.track-map-col .card-body');
+
+        // Drawer bodies
+        this.weatherDrawerBody = document.getElementById('weatherDrawerBody');
+        this.trackMapDrawerBody = document.getElementById('trackMapDrawerBody');
+
+        // Build drawer map
+        this.drawers = new Map();
+        document.querySelectorAll('.context-drawer').forEach(container => {
+            const id = container.id;
+            const body = container.querySelector('.context-drawer-body');
+            const toggleBtn = document.querySelector(`.drawer-toggle-btn[data-drawer="${id}"]`);
+            this.drawers.set(id, { container, body, toggleBtn });
+        });
+
+        // Toggle buttons
+        document.querySelectorAll('.drawer-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.toggleDrawer(btn.dataset.drawer));
+        });
+
+        // Close buttons inside drawers
+        document.querySelectorAll('.context-drawer-close').forEach(btn => {
+            btn.addEventListener('click', () => this.closeDrawer(btn.dataset.drawer));
+        });
+
+        // Backdrop click
+        this.backdrop.addEventListener('click', () => this.closeAllDrawers());
+
+        // Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this.closeAllDrawers();
+        });
+
+        // Observer: moves track map content to drawer when injected at < 1024px
+        this._trackMapObserver = new MutationObserver(() => {
+            if (this._drawerMediaQuery.matches) {
+                while (this.trackMapInlineParent.firstChild) {
+                    this.trackMapDrawerBody.appendChild(this.trackMapInlineParent.firstChild);
+                }
+            }
+        });
+
+        // MediaQuery listener
+        this._drawerMediaQuery.addEventListener('change', () => this._onBreakpointChange());
+
+        // Initial state
+        this._onBreakpointChange();
+    }
+
+    toggleDrawer(drawerId) {
+        const drawer = this.drawers.get(drawerId);
+        if (!drawer) return;
+
+        if (drawer.container.classList.contains('open')) {
+            this.closeDrawer(drawerId);
+            return;
+        }
+
+        // Close everything else first
+        this.closeAllDrawers();
+
+        // Close Column Visibility Pane if open
+        if (this.columnVisibilityPane.classList.contains('open')) {
+            this.columnVisibilityPane.classList.remove('open');
+        }
+
+        // Open this drawer
+        drawer.container.classList.add('open');
+        this.backdrop.classList.add('active');
+        if (drawer.toggleBtn) drawer.toggleBtn.classList.add('active');
+    }
+
+    closeDrawer(drawerId) {
+        const drawer = this.drawers.get(drawerId);
+        if (!drawer) return;
+        drawer.container.classList.remove('open');
+        if (drawer.toggleBtn) drawer.toggleBtn.classList.remove('active');
+
+        // Hide backdrop if no drawer is open
+        const anyOpen = [...this.drawers.values()].some(d => d.container.classList.contains('open'));
+        if (!anyOpen) this.backdrop.classList.remove('active');
+    }
+
+    closeAllDrawers() {
+        for (const [, drawer] of this.drawers) {
+            drawer.container.classList.remove('open');
+            if (drawer.toggleBtn) drawer.toggleBtn.classList.remove('active');
+        }
+        this.backdrop.classList.remove('active');
+    }
+
+    _moveContentToDrawers() {
+        while (this.weatherInlineParent.firstChild) {
+            this.weatherDrawerBody.appendChild(this.weatherInlineParent.firstChild);
+        }
+        while (this.trackMapInlineParent.firstChild) {
+            this.trackMapDrawerBody.appendChild(this.trackMapInlineParent.firstChild);
+        }
+        this._trackMapObserver.observe(this.trackMapInlineParent, { childList: true });
+    }
+
+    _moveContentToInline() {
+        this._trackMapObserver.disconnect();
+        while (this.weatherDrawerBody.firstChild) {
+            this.weatherInlineParent.appendChild(this.weatherDrawerBody.firstChild);
+        }
+        while (this.trackMapDrawerBody.firstChild) {
+            this.trackMapInlineParent.appendChild(this.trackMapDrawerBody.firstChild);
+        }
+    }
+
+    _onBreakpointChange() {
+        if (this._drawerMediaQuery.matches) {
+            this._moveContentToDrawers();
+        } else {
+            this.closeAllDrawers();
+            this._moveContentToInline();
+        }
+    }
+}

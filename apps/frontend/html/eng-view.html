@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="api-key" content="{{ api_key }}">
     <title>Pits n' Giggles Engineer View {{ version }}{% if port_info %} - {{ port_info }}{% endif %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" crossorigin="anonymous">
@@ -31,14 +32,37 @@
         <!-- Global Data Section -->
         <div class="eng-view-global-data-section">
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-md-5 race-status-col">
                     <div class="card border-secondary global-stats-section">
-                        <div class="card-header border-secondary d-flex justify-content-between align-items-center global-stats-section-header">
-                            <h5 class="mb-0" id="raceStatusHeader">Race Status</h5>
-                            <div class="d-flex">
+                        <div class="card-header border-secondary global-stats-section-header">
+                            <div class="d-flex align-items-center race-status-header-left">
+                                <h5 class="mb-0" id="raceStatusHeader">Race Status</h5>
+                                <span class="race-status-summary" id="raceStatusSummary">
+                                    <span class="race-status-summary-sep">|</span>
+                                    L <span id="summaryLap">—</span>
+                                    <span class="race-status-summary-sep">|</span>
+                                    <span id="summaryTrackTemp">—</span> / <span id="summaryAirTemp">—</span>
+                                    <span class="race-status-summary-sep">|</span>
+                                    SC:<span id="summarySC">0</span> VSC:<span id="summaryVSC">0</span>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <button id="raceStatusCollapseBtn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Toggle Race Status details">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
                                 <span style="font-size: 2.1rem;" data-bs-toggle="tooltip" data-bs-title="This symbol shows up when a driver has set their telemetry to restricted">⌀</span>
                                 <button id="race-stats-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Show Race Stats">
                                     🏁
+                                </button>
+                                <button id="track-map-drawer-btn" class="settings-button drawer-toggle-btn"
+                                        data-drawer="track-map-drawer"
+                                        data-bs-toggle="tooltip" data-bs-title="Show Track Map">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                </button>
+                                <button id="weather-drawer-btn" class="settings-button drawer-toggle-btn"
+                                        data-drawer="weather-drawer"
+                                        data-bs-toggle="tooltip" data-bs-title="Show Weather Forecast">
+                                    <i class="bi bi-cloud-sun-fill"></i>
                                 </button>
                                 <a id="driver-view-btn" class="btn settings-button" href="/" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">
                                     <i class="bi bi-car-front-fill"></i>
@@ -49,7 +73,8 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" id="raceStatusBody">
+                            <div class="eng-view-global-stats-container">
                             <div class="eng-view-global-stat">
                                 <label>Session Time</label>
                                 <span id="sessionTime"></span>
@@ -99,16 +124,28 @@
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4 weather-col">
                     <div class="card border-secondary global-stats-section">
                         <div class="card-header border-secondary global-stats-section-header">
-                            <h5>Weather Forecast</h5>
+                            <h5 class="mb-0">Weather Forecast</h5>
+                            <div class="btn-group btn-group-sm" role="group" id="weatherDisplayToggle">
+                                <button type="button" class="btn btn-outline-secondary" data-value="table" data-bs-toggle="tooltip" data-bs-title="Table only">
+                                    <i class="bi bi-table"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary active" data-value="both" data-bs-toggle="tooltip" data-bs-title="Table &amp; Graph">
+                                    <i class="bi bi-layout-split"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-value="graph" data-bs-toggle="tooltip" data-bs-title="Graph only">
+                                    <i class="bi bi-graph-up"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
                                 <button id="weatherSessionPrevBtn" class="btn btn-sm btn-secondary">
                                     <i class="bi bi-chevron-left"></i>
                                 </button>
@@ -117,13 +154,30 @@
                                     <i class="bi bi-chevron-right"></i>
                                 </button>
                             </div>
-                            <div class="table-responsive">
+                            <div id="weatherTableWrapper" class="table-responsive">
                                 <table class="table table-sm eng-view-weather-table">
                                     <tbody id="weatherTableBody">
                                         <!-- Weather data will be populated by JavaScript -->
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="weatherGraphContainer" style="height: 180px; margin-top: 0.25rem;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 track-map-col">
+                    <div class="card border-secondary global-stats-section">
+                        <div class="card-header border-secondary global-stats-section-header">
+                            <h5 class="mb-0" id="trackMapHeader">Track Map</h5>
+                            <a href="/eng-view/trackmap" target="_blank" rel="noopener noreferrer"
+                               class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip"
+                               data-bs-title="Open Track Map fullscreen in new tab">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                            </a>
+                        </div>
+                        <div class="card-body" id="trackMapContainer">
+                            <!-- Track map SVG and driver dots injected by trackMap.js -->
+                            <div class="track-map-fallback">Waiting for session data…</div>
                         </div>
                     </div>
                 </div>
@@ -139,27 +193,12 @@
         <div id="column-visibility-pane" class="column-visibility-pane">
             <div class="pane-header">
                 <h2>Column Settings</h2>
-                <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
-            </div>
-            <div class="pane-profiles-bar">
-                <div class="pane-profiles-row">
-                    <select id="column-profile-select" class="form-select form-select-sm profile-select" title="Select a column profile">
-                        <option value="__default__">Default</option>
-                    </select>
-                    <button id="rename-profile-btn" class="btn btn-sm btn-outline-light" data-bs-toggle="tooltip" data-bs-title="Rename this profile">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button id="new-profile-btn" class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip" data-bs-title="Create a new profile from current columns">
-                        <i class="bi bi-plus-lg"></i>
-                    </button>
-                    <button id="delete-profile-btn" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" data-bs-title="Delete this profile">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                <div>
+                    <button id="reset-visibility-btn" class="btn btn-sm btn-secondary me-2" data-bs-toggle="tooltip" data-bs-title="Reset all column visibilities to default">Reset Visibilities</button>
+                    <button id="reset-layout-btn" class="btn btn-sm btn-secondary me-2" data-bs-toggle="tooltip" data-bs-title="Reset all column positions and widths to default">Reset Layout</button>
+                    <button id="autoFitColumnsBtn" class="btn btn-sm btn-secondary me-2" data-bs-toggle="tooltip" data-bs-title="Auto-fit all columns to their content"><i class="bi bi-arrows-expand"></i> Auto-Fit</button>
+                    <button id="close-pane-btn" class="btn-close btn-close-white" aria-label="Close"></button>
                 </div>
-            </div>
-            <div class="pane-actions-bar">
-                <button id="reset-visibility-btn" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" data-bs-title="Reset all column visibilities to default">Reset Visibilities</button>
-                <button id="reset-layout-btn" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" data-bs-title="Reset all column positions and widths to default">Reset Layout</button>
             </div>
             <div class="pane-body">
                 <div id="column-visibility-container">
@@ -167,6 +206,29 @@
                 </div>
             </div>
         </div>
+
+        <!-- Track Map Drawer -->
+        <div id="track-map-drawer" class="context-drawer">
+            <div class="context-drawer-header">
+                <h5>Track Map</h5>
+                <button class="btn-close btn-close-white context-drawer-close"
+                        data-drawer="track-map-drawer" aria-label="Close"></button>
+            </div>
+            <div class="context-drawer-body" id="trackMapDrawerBody"></div>
+        </div>
+
+        <!-- Weather Drawer -->
+        <div id="weather-drawer" class="context-drawer">
+            <div class="context-drawer-header">
+                <h5>Weather</h5>
+                <button class="btn-close btn-close-white context-drawer-close"
+                        data-drawer="weather-drawer" aria-label="Close"></button>
+            </div>
+            <div class="context-drawer-body" id="weatherDrawerBody"></div>
+        </div>
+
+        <!-- Drawer Backdrop -->
+        <div id="drawer-backdrop" class="drawer-backdrop"></div>
 
         <!-- Driver Details Modal -->
         <div class="modal fade" id="driverModal" tabindex="-1" aria-labelledby="driverModalLabel" aria-hidden="true">
@@ -247,8 +309,10 @@
     <script src="{{ url_for('static', filename='js/lapSectorRecords.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreRecords.js') }}"></script>
     <script src="{{ url_for('static', filename='js/weatherUI.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/weatherGraph.js') }}"></script>
     <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreStintHistoryModal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/trackMap.js') }}"></script>
     <script src="{{ url_for('static', filename='js/engView.js') }}"></script>
 </body>
 </html>

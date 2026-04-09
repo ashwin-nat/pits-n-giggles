@@ -19,7 +19,7 @@ class WeatherGraph {
         }
 
         // Skip re-render if data and session haven't changed
-        if (sessionKey === this.lastSessionKey && weatherData === this.lastData) {
+        if (sessionKey === this.lastSessionKey && _.isEqual(weatherData, this.lastData)) {
             return;
         }
         const labels = weatherData.map(s => `+${s['time-offset']}m`);
