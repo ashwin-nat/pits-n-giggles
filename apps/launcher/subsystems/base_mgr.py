@@ -600,10 +600,9 @@ class PngAppMgrBase(QObject):
             port = self.ipc_port
 
             if not port:
-                # No port means child hasn't initialised yet - treat as a missed heartbeat
-                failed_count += 1
-                self._lifecycle_stats.track_event("heartbeat", "miss")
-                self.debug_log(f"{self.DISPLAY_NAME}: No IPC port yet, missed heartbeat count={failed_count}")
+                # No port means child hasn't initialised yet - wait for it
+                self.debug_log(f"{self.DISPLAY_NAME}: No IPC port yet, waiting for init...")
+                continue
             else:
                 try:
                     rsp = IpcClientSync(port, timeout_ms).heartbeat()
