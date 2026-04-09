@@ -54,6 +54,28 @@ const CIRCUIT_TO_SVG = {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/** Team → F1 color mapping for driver dots */
+function getF1TeamColor(teamName) {
+    const teamColors = {
+        'Red Bull Racing': 'rgba(54,113,198,1)',
+        'Red Bull': 'rgba(54,113,198,1)',
+        'VCARB': 'rgba(102,146,255,1)',
+        'RB': 'rgba(102,146,255,1)',
+        'Mercedes': 'rgba(39,244,210,1)',
+        'Ferrari': 'rgba(232,0,45,1)',
+        'McLaren': 'rgba(255,128,0,1)',
+        'Mclaren': 'rgba(255,128,0,1)',
+        'Aston Martin': 'rgba(34,153,113,1)',
+        'Alpine': 'rgba(255,135,188,1)',
+        'Alpha Tauri': 'rgba(30,40,80,1)',
+        'Alfa Romeo': 'rgba(155,0,0,1)',
+        'Haas': 'rgba(182,186,189,1)',
+        'Williams': 'rgba(100,196,255,1)',
+        'Sauber': 'rgba(82,226,82,1)',
+    };
+    return teamColors[teamName] || '#FFFFFF';
+}
+
 class TrackMap {
 
     constructor(containerSelector) {
