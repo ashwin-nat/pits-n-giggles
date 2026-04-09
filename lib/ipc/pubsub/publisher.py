@@ -103,7 +103,7 @@ class IpcPublisherAsync:
         sock.setsockopt(zmq.SNDHWM, 3)
         endpoint = f"tcp://{self.host}:{self.port}"
         sock.connect(endpoint)
-        self.logger.debug(f"IpcPublisherAsync configured endpoint {endpoint}")
+        self.logger.debug("IpcPublisherAsync configured endpoint %s", endpoint)
         return sock
 
     # ---------------------------------------------------------
@@ -121,7 +121,7 @@ class IpcPublisherAsync:
                     delay = self.RECONNECT_MIN_DELAY
                     self.stats.track_event("__RECONNECT__", "success")
 
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self._connected = False
                     self.stats.track_event("__RECONNECT__", "failure")
                     await asyncio.sleep(delay)

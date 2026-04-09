@@ -75,7 +75,7 @@ class IpcSubscriberSync:
         if self.socket:
             try:
                 self.socket.close(linger=0)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
         self.socket: zmq.Socket = self._context.socket(zmq.SUB)
@@ -88,7 +88,7 @@ class IpcSubscriberSync:
         endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
 
-        self.logger.debug(f"IpcSubscriberSync configured endpoint {endpoint}")
+        self.logger.debug("IpcSubscriberSync configured endpoint %s", endpoint)
 
     # ---------------------------------------------------------
     # Register handler
@@ -222,7 +222,7 @@ class IpcSubscriberSync:
                         data, message_id, send_ts_ns = self._parse_envelope(payload)
                         self._track_sequence(topic, message_id)
                         self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
-                    except Exception:
+                    except (ValueError, TypeError, KeyError):
                         self.stats.track_event("__DROP__", "invalid_envelope")
                         continue
 
@@ -243,20 +243,20 @@ class IpcSubscriberSync:
                         handler(data)
                         self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
                         self.stats.track_event(topic, "__HANDLER_OK__")
-                    except Exception as e:
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         self.stats.track_event("__TOTAL__", "__HANDLER_ERR__")
                         self.stats.track_event(topic, "__HANDLER_ERR__")
-                        self.logger.exception(f"Handler error for {topic}: {e}")
+                        self.logger.exception("Handler error for %s: %s", topic, e)
 
         # clean shutdown
         try:
             poller.unregister(self.socket)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         try:
             self.socket.close(linger=0)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         self.logger.debug("IpcSubscriberSync stopped")

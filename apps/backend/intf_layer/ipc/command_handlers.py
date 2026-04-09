@@ -47,7 +47,7 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     """Handle shutdown command"""
 
     reason = msg.get('reason', 'N/A')
-    logger.info(f"Received shutdown command. Reason: {reason}")
+    logger.info("Received shutdown command. Reason: %s", reason)
     await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
     return {
         'status': 'success',
@@ -74,6 +74,8 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
+    # os._exit required: child process must terminate immediately without
+    # running atexit handlers or flushing stdio buffers from parent.
     os._exit(PNG_LOST_CONN_TO_PARENT)
 
 async def handleUdpActionCodeChange(
@@ -84,13 +86,13 @@ async def handleUdpActionCodeChange(
 
     field = msg['action_code_field']
     action_code = msg['value']
-    logger.info(f"Received udp action code change command. Field: {field}, Action Code: {action_code}")
+    logger.info("Received udp action code change command. Field: %s, Action Code: %s", field, action_code)
     try:
         telemetry_handler.updateUdpActionCode(field, action_code)
     except KeyError:
-        logger.error(f"Invalid udp action code field: {field}")
+        logger.error("Invalid udp action code field: %s", field)
         return {'status': 'failure', 'message': f"Invalid udp action code field: {field}"}
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception("Error updating udp action code: %s", e)
         return {'status': 'failure', 'message': f"Error updating udp action code: {e}"}
     return {'status': 'success'}

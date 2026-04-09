@@ -151,12 +151,12 @@ class BaseOverlay():
 
     def toggle_visibility(self):
         """Common handler for toggling visibility."""
-        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
+        self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
         if self.get_visibility():
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
+            self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
         else:
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
+            self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
             self.set_visibility(True)
 
     def set_telemetry_active(self, active: bool):
@@ -282,20 +282,20 @@ class BaseOverlay():
         @self.on_request("get_window_info")
         def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
+            self.logger.debug('%s | Received request "get_window_info"', self.OVERLAY_ID)
             return self.get_window_info().toJSON()
 
         @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
             """Return current window stats."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
+            self.logger.debug('%s | Received request "get_window_stats"', self.OVERLAY_ID)
             return self.get_stats()
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
+            self.logger.debug('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
             self.set_locked_state(locked)
             if not locked:
                 # Enable all overlays so that the user can see the new layout
@@ -324,7 +324,7 @@ class BaseOverlay():
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
             config = OverlayPosition.fromJSON(data)
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
+            self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
 
         @self.on_event("__set_telemetry_active__")
@@ -354,10 +354,10 @@ class BaseOverlay():
         try:
             handler(payload)
         except AssertionError:
-            self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
+            self.logger.exception("%s | Assertion error handling command '%s'", self.OVERLAY_ID, cmd)
             raise # We want to crash on assertions for debugging
-        except Exception as e:  # pylint: disable=broad-except
-            self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("%s | Error handling command '%s': %s", self.OVERLAY_ID, cmd, e)
             self._stats.track_event("__EXCEPTION__", cmd)
 
     @Slot(str, str, object)
@@ -373,18 +373,18 @@ class BaseOverlay():
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
-            self.logger.debug(f"{self.OVERLAY_ID} | Handling request '{request_type}'")
+            self.logger.debug("%s | Handling request '%s'", self.OVERLAY_ID, request_type)
             try:
                 response = handler(request_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
             except AssertionError:
-                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling request '{request_type}'")
+                self.logger.exception("%s | Assertion error handling request '%s'", self.OVERLAY_ID, request_type)
                 raise # We want to crash on assertions for debugging
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.OVERLAY_ID} | Error handling request '{request_type}': {e}")
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.logger.exception("%s | Error handling request '%s': %s", self.OVERLAY_ID, request_type, e)
         else:
-            self.logger.debug(f"{self.OVERLAY_ID} | No handler for request '{request_type}'")
+            self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
 
     @Slot(object)
     def _handle_high_freq_data(self, payload: HighFreqBase):
