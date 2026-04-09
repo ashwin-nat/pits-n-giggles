@@ -1,15 +1,29 @@
 class ModalManager {
   constructor(driverModal=true, settingsModal=true, raceStatsModal=true) {
+    this.driverModal = null;
+    this.settingsModal = null;
+    this.raceStatsModal = null;
+
     const modalElement = document.getElementById('driverModal');
-    console.log("modalElement", modalElement);
-    this.driverModal = (driverModal) ? (new bootstrap.Modal(modalElement)) : (null);
-    this.settingsModal = (settingsModal) ? (new bootstrap.Modal(document.getElementById('settingsModal'))) : (null);
-    this.raceStatsModal = (raceStatsModal) ? (new bootstrap.Modal(document.getElementById('raceStatsModal'))) : (null);
+    try {
+      if (driverModal && modalElement) this.driverModal = new bootstrap.Modal(modalElement);
+    } catch (e) { console.error('Failed to init driverModal:', e); }
+
+    try {
+      const settingsElement = document.getElementById('settingsModal');
+      if (settingsModal && settingsElement) this.settingsModal = new bootstrap.Modal(settingsElement);
+    } catch (e) { console.error('Failed to init settingsModal:', e); }
+
+    try {
+      const raceStatsElement = document.getElementById('raceStatsModal');
+      if (raceStatsModal && raceStatsElement) this.raceStatsModal = new bootstrap.Modal(raceStatsElement);
+    } catch (e) { console.error('Failed to init raceStatsModal:', e); }
+
     this.iconCache = new IconCache();
     this.setupEventListeners();
-    console.log("Modal manager initialized with driverModal:", driverModal,
-      "settingsModal:", settingsModal, "raceStatsModal:", raceStatsModal);
-    if(settingsModal) {
+    console.log("Modal manager initialized with driverModal:", this.driverModal !== null,
+      "settingsModal:", this.settingsModal !== null, "raceStatsModal:", this.raceStatsModal !== null);
+    if(this.settingsModal) {
       this.toggleFuelTargetShowSetting(g_pref_showFuelTarget);
     }
   }
