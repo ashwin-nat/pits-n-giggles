@@ -72,6 +72,7 @@ class RaceTableRowPopulator {
         }
         const deltaInfo = this.rowData["delta-info"];
         const deltaCell = this.row.insertCell();
+        deltaCell.dataset.colGroup = 'delta';
         if (g_pref_relativeDelta) {
             deltaCell.textContent = formatDelta(deltaInfo["delta"]);
         } else {
@@ -86,6 +87,7 @@ class RaceTableRowPopulator {
             `${ersInfo["ers-mode"].toUpperCase()}`,
             `${ersInfo["ers-percent"]}`,
         ]);
+        cell.dataset.colGroup = 'ers';
         this.addErsBar(cell, ersInfo["ers-percent-float"]);
         return this;
     }
@@ -94,11 +96,12 @@ class RaceTableRowPopulator {
         const warnsPensInfo = this.rowData["warns-pens-info"];
         const dtPlusSg = warnsPensInfo["num-dt"] + "DT + " +
             warnsPensInfo["num-sg"] + "Serv";
-        this.createMultiLineCell([
+        const cell = this.createMultiLineCell([
             `Pens: ${warnsPensInfo["time-penalties"]} sec`,
             `Warns: ${warnsPensInfo["corner-cutting-warnings"]}`,
             dtPlusSg,
         ]);
+        cell.dataset.colGroup = 'warns-pens';
 
         return this;
     }
@@ -137,6 +140,7 @@ class RaceTableRowPopulator {
             ]);
         }
 
+        cell.dataset.colGroup = 'best-lap';
         if (lapInfo["lap-time-ms"]) {
             this.addSectorInfo(cell, lapInfo["sector-status"]);
         }
@@ -165,6 +169,7 @@ class RaceTableRowPopulator {
         cellContent.push(lapTimeContent);
 
         const cell = this.createMultiLineCell(cellContent);
+        cell.dataset.colGroup = 'last-lap';
         if (lapInfo["lap-time-ms"]) {
             this.addSectorInfo(cell, lapInfo["sector-status"]);
         }
@@ -179,6 +184,7 @@ class RaceTableRowPopulator {
         // Ensure the cell exists and is cleared for updates
         if (!this.currLapCell) {
             this.currLapCell = this.row.insertCell();
+            this.currLapCell.dataset.colGroup = 'current-lap';
         } else {
             this.currLapCell.innerHTML = ''; // Clear previous content
         }
@@ -268,6 +274,7 @@ class RaceTableRowPopulator {
     addCurrTyreInfo() {
         const tyreInfo = this.rowData["tyre-info"];
         const cell = this.row.insertCell();
+        cell.dataset.colGroup = 'tyre-info';
 
         // Add tyre compound and wear information
         this.#addTyreCompoundRow(cell, tyreInfo);
@@ -382,7 +389,9 @@ class RaceTableRowPopulator {
         const shouldHidePredictionColumn = false;
         if (!shouldHidePredictionColumn) {
             if (predictionData.length === 0) {
-                this.row.insertCell().textContent = "N/A";
+                const cell = this.row.insertCell();
+                cell.textContent = "N/A";
+                cell.dataset.colGroup = 'wear-prediction';
             } else {
                 const predictionContent = []
                 predictionData.forEach((prediction, index) => {
@@ -396,7 +405,8 @@ class RaceTableRowPopulator {
                         predictionContent.push("L" + lapNum + ": " + maxKey + " - " + maxWear + "%");
                     }
                 });
-                this.createMultiLineCell(predictionContent);
+                const cell = this.createMultiLineCell(predictionContent);
+                cell.dataset.colGroup = 'wear-prediction';
             }
         }
         return this;
@@ -411,7 +421,7 @@ class RaceTableRowPopulator {
             const v = damageInfo[key];
             return label + ": " + (v == null ? "N/A" : formatFloat(v) + "%");
         };
-        this.createMultiLineCell([
+        const cell = this.createMultiLineCell([
             fmt("fl-wing-damage", "FLW"),
             fmt("fr-wing-damage", "FRW"),
             fmt("rear-wing-damage", "RW"),
@@ -419,6 +429,7 @@ class RaceTableRowPopulator {
             fmt("diffuser-damage", "Diff"),
             fmt("sidepod-damage", "SP"),
         ]);
+        cell.dataset.colGroup = 'damage';
 
         return this;
     }
@@ -474,7 +485,8 @@ class RaceTableRowPopulator {
         const shouldHideFuelColumn = false;
         if (!shouldHideFuelColumn) {
           const metrics = this.#computeFuelMetrics(fuelInfo, this.raceEnded);
-          this.createMultiLineCell(metrics);
+          const cell = this.createMultiLineCell(metrics);
+          cell.dataset.colGroup = 'fuel';
         }
         return this;
       }
@@ -484,6 +496,7 @@ class RaceTableRowPopulator {
             // we will show this message only in race view, since wear prediction, damage and fuel are
             // only supported in race. in FP/quali, these columns are not shown. Hence, no need to show this
             const cell = this.row.insertCell();
+            cell.dataset.colGroup = 'restricted';
             cell.colSpan = 3;
             cell.style.textAlign = "center";
             cell.style.verticalAlign = "middle";

@@ -98,16 +98,16 @@
               <tr>
                 <th>POS</th>
                 <th>DRIVER</th>
-                <th id="delta-th" data-bs-toggle="tooltip">DELTA 🛈</th>
-                <th>ERS</th>
-                <th>WARNS/PENS</th>
-                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip">BEST LAP 🛈</th>
-                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip">LAST LAP 🛈</th>
-                <th id="curr-lap-th" class="curr-lap" data-bs-toggle="tooltip">CURRENT LAP</th>
-                <th id="tyre-info-th" data-bs-toggle="tooltip">TYRE INFO 🛈</th>
-                <th id="wear-prediction-th">WEAR PREDICTION</th>
-                <th>WING DAMAGE</th>
-                <th id="fuel-info-th" data-bs-toggle="tooltip">FUEL 🛈</th>
+                <th id="delta-th" data-col-group="delta" data-bs-toggle="tooltip">DELTA 🛈</th>
+                <th data-col-group="ers">ERS</th>
+                <th data-col-group="warns-pens">WARNS/PENS</th>
+                <th id="best-lap-th" data-col-group="best-lap" class="best-lap" data-bs-toggle="tooltip">BEST LAP 🛈</th>
+                <th id="last-lap-th" data-col-group="last-lap" class="last-lap" data-bs-toggle="tooltip">LAST LAP 🛈</th>
+                <th id="curr-lap-th" data-col-group="current-lap" class="curr-lap" data-bs-toggle="tooltip">CURRENT LAP</th>
+                <th id="tyre-info-th" data-col-group="tyre-info" data-bs-toggle="tooltip">TYRE INFO 🛈</th>
+                <th id="wear-prediction-th" data-col-group="wear-prediction">WEAR PREDICTION</th>
+                <th data-col-group="damage">WING DAMAGE</th>
+                <th id="fuel-info-th" data-col-group="fuel" data-bs-toggle="tooltip">FUEL 🛈</th>
               </tr>
             </thead>
             <tbody id="telemetry-data">
@@ -636,6 +636,7 @@
     <script src="{{ url_for('static', filename='js/tyreStintHistoryModal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
     <script src="{{ url_for('static', filename='js/columnConfig.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settingsPanel.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/populateRaceControlMessagesTab.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialDataPopulator.js') }}"></script>
