@@ -486,6 +486,13 @@ class BaseWebServer:
             route_handler = make_static_route_handler(route, config['file'], config['mimetype'])
             self.m_app.route(route)(route_handler)
 
+        # Serve track map SVGs from assets/track-maps/
+        @self.m_app.route('/track-maps/<path:filename>')
+        async def serve_track_map(filename: str):
+            return await self.send_from_directory(
+                assets_dir / "track-maps", filename, mimetype='image/svg+xml'
+            )
+
     def validate_int_get_request_param(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
         Validate integer get request parameter.
