@@ -115,6 +115,18 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
     udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker UDP Action Code")
 
+    udp_action_debounce_sec: float = Field(
+        default=0.3,
+        ge=0.05,
+        le=5.0,
+        description="UDP Action Button Debounce Time (sec)",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box"
+            }
+        }
+    )
+
     wdt_interval_sec: int = Field(
         default=30,
         ge=1,
