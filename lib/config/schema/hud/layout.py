@@ -87,10 +87,10 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=10,
         y=355,
     ),
-    # OverlayId.TRACK_MAP: OverlayPosition(
-    #     x=10,
-    #     y=600,
-    # ),
+    OverlayId.TRACK_MAP: OverlayPosition(
+        x=10,
+        y=600,
+    ),
     OverlayId.INPUT_TELEMETRY: OverlayPosition(
         x=10,
         y=600,

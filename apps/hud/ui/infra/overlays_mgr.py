@@ -30,7 +30,7 @@ from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
-                                  TrackRadarOverlay)
+                                  TrackMapOverlay, TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
@@ -108,18 +108,15 @@ class OverlaysMgr:
             window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
         )
 
-
-        # if settings.HUD.show_track_map:
-        #     self.window_manager.register_overlay(TrackMapOverlay.OVERLAY_ID, TrackMapOverlay(
-        #         self.config[TrackMapOverlay.OVERLAY_ID],
-        #         self.logger,
-        #         locked=True,
-        #         opacity=settings.HUD.overlays_opacity,
-        #         scale_factor=settings.HUD.track_map_ui_scale,
-        #         windowed_overlay=settings.HUD.use_windowed_overlays
-        #     ))
-        # else:
-        #     self.logger.debug("Track map overlay is disabled")
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_track_map,
+            overlay_cls=TrackMapOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TrackMapOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[TrackMapOverlay.OVERLAY_ID].scale_factor,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
 
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_track_radar_overlay,
