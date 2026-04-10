@@ -42,7 +42,11 @@ def initTelemetryLayer(
         ver_str: str,
         shutdown_event: asyncio.Event,
         session_state: SessionState,
-        tasks: List[asyncio.Task]) -> F1TelemetryHandler:
+    tasks: List[asyncio.Task],
+    packet_forward_queue_name: str = "packet-forward",
+    frontend_queue_name: str = "frontend-update",
+    hud_queue_name: str = "hud-notifier",
+    session_tag: str = "primary") -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
@@ -65,7 +69,11 @@ def initTelemetryLayer(
             session_state=session_state,
             logger=logger,
             ver_str=ver_str,
-            tasks=tasks
+            tasks=tasks,
+            packet_forward_queue_name=packet_forward_queue_name,
+            frontend_queue_name=frontend_queue_name,
+            hud_queue_name=hud_queue_name,
+            session_tag=session_tag,
         )
     except OSError as e:
         logger.error("setupTelemetryTask failed with error %s", e)
@@ -77,6 +85,7 @@ def initTelemetryLayer(
         forwarding_targets=settings.Forwarding.forwarding_targets,
         tasks=tasks,
         shutdown_event=shutdown_event,
-        logger=logger
+        logger=logger,
+        queue_name=packet_forward_queue_name,
     )
     return handler

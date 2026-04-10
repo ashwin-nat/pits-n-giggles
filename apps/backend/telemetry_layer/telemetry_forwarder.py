@@ -35,7 +35,8 @@ from lib.packet_forwarder import AsyncUDPForwarder
 def setupForwarder(forwarding_targets: List[Tuple[str, int]],
                    tasks: List[asyncio.Task],
                    shutdown_event: asyncio.Event,
-                   logger: logging.Logger) -> None:
+                   logger: logging.Logger,
+                   queue_name: str = "packet-forward") -> None:
     """Init the forwarding thread, if targets are defined
 
     Args:
@@ -47,14 +48,16 @@ def setupForwarder(forwarding_targets: List[Tuple[str, int]],
 
     # Register the task only if targets are defined
     if forwarding_targets:
-        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, shutdown_event, logger),
+        tasks.append(asyncio.create_task(
+            udpForwardingTask(forwarding_targets, shutdown_event, logger, queue_name),
                                          name="UDP Forwarder Task"))
     else:
         logger.debug("No forwarding targets defined. Not registering task.")
 
 async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]],
                             shutdown_event: asyncio.Event,
-                            logger: logging.Logger) -> None:
+                            logger: logging.Logger,
+                            queue_name: str = "packet-forward") -> None:
     """UDP Forwarding Task
 
     Args:
@@ -66,7 +69,7 @@ async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]],
     udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
     logger.info("Initialised forwarder. Targets=%s", forwarding_targets)
     while not shutdown_event.is_set():
-        if packet := await AsyncInterTaskCommunicator().receive("packet-forward"):
+        if packet := await AsyncInterTaskCommunicator().receive(queue_name):
             await udp_forwarder.forward(packet)
 
     udp_forwarder.close()

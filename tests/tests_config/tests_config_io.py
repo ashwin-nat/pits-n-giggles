@@ -434,7 +434,7 @@ udp_tyre_delta_action_code =
             Network=NetworkSettings(
                 telemetry_port=11111,
                 additional_servers=[
-                    AdditionalServer(port=4769, label="Driver 2"),
+                    AdditionalServer(port=4769, telemetry_port=20778, label="Driver 2"),
                 ],
             ),
         )
@@ -449,6 +449,7 @@ udp_tyre_delta_action_code =
             self.assertEqual(len(loaded.Network.additional_servers), 1)
             srv = loaded.Network.additional_servers[0]
             self.assertEqual(srv.port, 4769)
+            self.assertEqual(srv.telemetry_port, 20778)
             self.assertEqual(srv.label, "Driver 2")
             self.assertEqual(
                 loaded.Network.telemetry_port,

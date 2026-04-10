@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import random
-from typing import Any, Awaitable, Callable, List, Tuple
+from typing import Any, Awaitable, Callable, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -50,7 +50,10 @@ def initUiIntfLayer(
     ver_str: str,
     run_ipc_server: bool,
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
+    telemetry_handler: F1TelemetryHandler,
+    frontend_queue_name: str = "frontend-update",
+    hud_queue_name: str = "hud-notifier",
+    enable_ipc_publisher: bool = True) -> Tuple[TelemetryWebServer, Optional[IpcPublisherAsync]]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -76,20 +79,23 @@ def initUiIntfLayer(
         session_state=session_state,
         debug_mode=debug_mode,
     )
-    ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
-    tasks.append(ipc_pub.get_task())
+    ipc_pub: Optional[IpcPublisherAsync] = None
+    if enable_ipc_publisher:
+        ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
+        tasks.append(ipc_pub.get_task())
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
     # Setup periodic tasks
-    tasks.append(asyncio.create_task(
-        _periodic_task(
-            settings.Display.local_telemetry_interval_ms,
-            shutdown_event,
-            logger,
-            lowFreqLocalUpdateTask,
-            session_state,
-            ipc_pub), name="Low Frequency Local Update Task"
-        ))
+    if ipc_pub:
+        tasks.append(asyncio.create_task(
+            _periodic_task(
+                settings.Display.local_telemetry_interval_ms,
+                shutdown_event,
+                logger,
+                lowFreqLocalUpdateTask,
+                session_state,
+                ipc_pub), name="Low Frequency Local Update Task"
+            ))
     tasks.append(asyncio.create_task(
         _periodic_task(
             settings.Display.refresh_interval,
@@ -99,22 +105,24 @@ def initUiIntfLayer(
             web_server,
             session_state,
             settings.StreamOverlay.show_sample_data_at_start), name="Web Client Update Task"))
-    tasks.append(asyncio.create_task(
-        _periodic_task(
-            settings.Display.hud_refresh_interval,
-            shutdown_event,
-            logger,
-            highFreqLocalUpdateTask,
-            session_state,
-            ipc_pub), name="High Frequency Local Update Task"))
+    if ipc_pub:
+        tasks.append(asyncio.create_task(
+            _periodic_task(
+                settings.Display.hud_refresh_interval,
+                shutdown_event,
+                logger,
+                highFreqLocalUpdateTask,
+                session_state,
+                ipc_pub), name="High Frequency Local Update Task"))
 
     # Interrupt/event driven tasks
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event, frontend_queue_name),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event, hud_queue_name),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
+    if enable_ipc_publisher and ipc_pub is not None:
+        registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
     return web_server, ipc_pub
 
 async def lowFreqLocalUpdateTask(
@@ -169,7 +177,8 @@ async def webClientUpdateTask(
 
 async def frontEndMessageTask(
     server: TelemetryWebServer,
-    shutdown_event: asyncio.Event) -> None:
+    shutdown_event: asyncio.Event,
+    queue_name: str = "frontend-update") -> None:
     """Task to update clients with telemetry data
 
     Args:
@@ -178,7 +187,7 @@ async def frontEndMessageTask(
     """
 
     while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
+        if message := await AsyncInterTaskCommunicator().receive(queue_name):
             await server.send_to_clients_of_type(
                 event='frontend-update',
                 data=message.toJSON(),
@@ -188,7 +197,8 @@ async def frontEndMessageTask(
 
 async def hudInteractionTask(
     server: TelemetryWebServer,
-    shutdown_event: asyncio.Event) -> None:
+    shutdown_event: asyncio.Event,
+    queue_name: str = "hud-notifier") -> None:
     """Task to update HUD clients with telemetry data
 
     Args:
@@ -197,7 +207,7 @@ async def hudInteractionTask(
     """
 
     while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
+        if message := await AsyncInterTaskCommunicator().receive(queue_name):
             await server.send_to_clients_interested_in_event(
                 event=str(message.m_message_type),
                 data=message.toJSON())

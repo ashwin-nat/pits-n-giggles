@@ -217,6 +217,38 @@ class TestNetworkSettings(TestF1ConfigBase):
                 broker_xpub_port=7000,
             )
 
+    def test_additional_server_udp_ports_must_be_unique(self):
+        """Additional session telemetry UDP ports must not conflict."""
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                telemetry_port=20777,
+                additional_servers=[
+                    {"port": 4769, "telemetry_port": 20778, "label": "Driver 2"},
+                    {"port": 4770, "telemetry_port": 20778, "label": "Driver 3"},
+                ],
+            )
+
+    def test_additional_server_udp_port_cannot_match_primary(self):
+        """Additional session telemetry UDP port must not clash with primary telemetry port."""
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                telemetry_port=20777,
+                additional_servers=[
+                    {"port": 4769, "telemetry_port": 20777, "label": "Driver 2"},
+                ],
+            )
+
+    def test_additional_server_allows_same_numeric_udp_tcp_port(self):
+        """Same numeric value for UDP telemetry and TCP HTTP remains valid."""
+        settings = NetworkSettings(
+            telemetry_port=20777,
+            additional_servers=[
+                {"port": 4769, "telemetry_port": 4769, "label": "Driver 2"},
+            ],
+        )
+        self.assertEqual(settings.additional_servers[0].port, 4769)
+        self.assertEqual(settings.additional_servers[0].telemetry_port, 4769)
+
     def test_enable_pkt_ordering(self):
         net = NetworkSettings(enable_pkt_ordering=True)
         self.assertTrue(net.enable_pkt_ordering)

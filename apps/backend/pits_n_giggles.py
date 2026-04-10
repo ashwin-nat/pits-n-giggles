@@ -37,9 +37,10 @@ from wsproto.connection import LocalProtocolError
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
 from apps.backend.state_mgmt_layer import (SessionState,
                                            initStateManagementLayer)
+from apps.backend.state_mgmt_layer.telemetry_state import initSessionState
 from apps.backend.telemetry_layer import initTelemetryLayer
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import load_config_from_json
+from lib.config import AdditionalServer, load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcPublisherAsync
@@ -74,6 +75,9 @@ class PngRunner:
         self.m_version: str = get_version()
 
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
+        self.m_additional_session_states: List[SessionState] = []
+        self.m_additional_telemetry_handlers = []
+        self.m_additional_web_servers: List[TelemetryWebServer] = []
 
         self.m_session_state: SessionState = initStateManagementLayer(
             logger=self.m_logger,
@@ -96,6 +100,7 @@ class PngRunner:
             run_ipc_server=run_ipc_server,
             debug_mode=debug_mode
         )
+        self._setupAdditionalSessionRuntimes(debug_mode=debug_mode)
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
         # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
@@ -143,7 +148,122 @@ class PngRunner:
             run_ipc_server=run_ipc_server,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
+            frontend_queue_name=self._queue_name("frontend-update", "primary"),
+            hud_queue_name=self._queue_name("hud-notifier", "primary"),
+            enable_ipc_publisher=True,
         )
+
+    def _setupAdditionalSessionRuntimes(self, debug_mode: bool) -> None:
+        """Create isolated runtimes for additional multi-session entries."""
+
+        for index, server_cfg in enumerate(self.m_config.Network.additional_servers, start=1):
+            session_id = f"additional-{index}"
+            label = server_cfg.label or session_id
+
+            if not self._is_additional_session_bindable(server_cfg, label):
+                continue
+
+            scoped_settings = self.m_config.model_copy(deep=True)
+            scoped_settings.Network.server_port = server_cfg.port
+            scoped_settings.Network.telemetry_port = server_cfg.telemetry_port
+            scoped_settings.Network.additional_servers = []
+
+            session_state = initSessionState(logger=self.m_logger, settings=scoped_settings, ver_str=self.m_version)
+
+            try:
+                telemetry_handler = initTelemetryLayer(
+                    settings=scoped_settings,
+                    replay_server=False,
+                    logger=self.m_logger,
+                    ver_str=self.m_version,
+                    shutdown_event=self.m_shutdown_event,
+                    session_state=session_state,
+                    tasks=self.m_tasks,
+                    packet_forward_queue_name=self._queue_name("packet-forward", session_id),
+                    frontend_queue_name=self._queue_name("frontend-update", session_id),
+                    hud_queue_name=self._queue_name("hud-notifier", session_id),
+                    session_tag=session_id,
+                )
+            except PngError as exc:
+                self.m_logger.warning(
+                    "Skipping additional session '%s' due to telemetry bind/setup error (udp:%d http:%d): %s",
+                    label,
+                    server_cfg.telemetry_port,
+                    server_cfg.port,
+                    exc,
+                )
+                continue
+
+            web_server, _ = initUiIntfLayer(
+                settings=scoped_settings,
+                logger=self.m_logger,
+                session_state=session_state,
+                debug_mode=debug_mode,
+                tasks=self.m_tasks,
+                ver_str=self.m_version,
+                run_ipc_server=False,
+                shutdown_event=self.m_shutdown_event,
+                telemetry_handler=telemetry_handler,
+                frontend_queue_name=self._queue_name("frontend-update", session_id),
+                hud_queue_name=self._queue_name("hud-notifier", session_id),
+                enable_ipc_publisher=False,
+            )
+
+            self.m_additional_session_states.append(session_state)
+            self.m_additional_telemetry_handlers.append(telemetry_handler)
+            self.m_additional_web_servers.append(web_server)
+            self.m_logger.info(
+                "Started additional session '%s' on UDP:%d HTTP:%d",
+                label,
+                server_cfg.telemetry_port,
+                server_cfg.port,
+            )
+
+    def _is_additional_session_bindable(self, server_cfg: AdditionalServer, label: str) -> bool:
+        """Check whether additional session UDP/TCP ports are currently bindable."""
+        bind_address = self.m_config.Network.bind_address
+
+        if not self._can_bind_udp_port(server_cfg.telemetry_port, bind_address):
+            self.m_logger.warning(
+                "Skipping additional session '%s': UDP port %d is unavailable",
+                label,
+                server_cfg.telemetry_port,
+            )
+            return False
+
+        if not self._can_bind_tcp_port(server_cfg.port, bind_address):
+            self.m_logger.warning(
+                "Skipping additional session '%s': HTTP port %d is unavailable",
+                label,
+                server_cfg.port,
+            )
+            return False
+
+        return True
+
+    def _can_bind_udp_port(self, port: int, bind_address: str) -> bool:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind((bind_address, port))
+            return True
+        except OSError:
+            return False
+        finally:
+            sock.close()
+
+    def _can_bind_tcp_port(self, port: int, bind_address: str) -> bool:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.bind((bind_address, port))
+            return True
+        except OSError:
+            return False
+        finally:
+            sock.close()
+
+    @staticmethod
+    def _queue_name(base: str, session_id: str) -> str:
+        return base if session_id == "primary" else f"{base}:{session_id}"
 
     def _getLocalIpAddresses(self) -> Set[str]:
         """Get local IP addresses including '127.0.0.1' and 'localhost'.
@@ -186,6 +306,10 @@ class PngRunner:
         # Explicitly stop the tasks
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
+        for web_server in self.m_additional_web_servers:
+            await web_server.stop()
+        for telemetry_handler in self.m_additional_telemetry_handlers:
+            await telemetry_handler.stop()
         await self.m_ipc_pub.close()
         await asyncio.sleep(1)
 
