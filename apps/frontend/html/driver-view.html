@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}</title>
+    <meta name="api-key" content="{{ api_key }}">
+    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% else %}Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}{% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" integrity="sha384-/o6I2CkkWC//PSjvWC/eYN7l3xM3tJm8ZzVkCOfp//W05QcE3mlGskpoHB6XqI+B" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/weather.css') }}">
@@ -24,16 +25,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreDeltaToast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/timeTrial.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/barChart.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/columnConfig.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/raceStatsModal.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3.0.3/tsparticles.confetti.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha384-H6KKS1H1WwuERMSm+54dYLzjg0fKqRK5ZRyASdbrI/lwrCc6bXEmtGYr5SwvP1pZ" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10" integrity="sha384-v5sCAl8qZOHabzoh1+noJcE2yaDE9V/9+mBHgmxFdpiY5chhD/Qf1rQ7igh8ew0q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3.0.3/tsparticles.confetti.bundle.min.js" integrity="sha384-1n3JwVeqLzmKF9uu5W4+kfasynDhf+EmT6Hns9p2MChdjzpTJrtd8tlzi+Y3RGn3" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js" integrity="sha384-AZ8EPX4FWLU/SIr5Xfoem6KYnSN7QhmrnEZIzF2NjoDoX9PV9GMuA0XCI3jndPym" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js" integrity="sha384-rDpVEBXmk+lqowKuEMB9y1otKcek5RGQ35D+CoFcKZUGrbKrI2q2wNRxOulX1WGO" crossorigin="anonymous"></script>
   </head>
   <body>
     <div class="dashboard-container">
@@ -72,9 +74,15 @@
           <button id="race-stats-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Show Race Stats">
             🏁
           </button>
+          <button id="column-config-btn" class="settings-button" title="Configure visible columns">
+            <i class="bi bi-toggles"></i>
+          </button>
           <button id="settings-btn" class="settings-button" data-bs-toggle="tooltip" data-bs-title="Configure UI settings">
             <i class="bi bi-gear-fill"></i>
           </button>
+          {% if port_info %}
+          <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
+          {% endif %}
         </div>
       </header>
 
@@ -91,22 +99,25 @@
               <tr>
                 <th>POS</th>
                 <th>DRIVER</th>
-                <th id="delta-th" data-bs-toggle="tooltip">DELTA 🛈</th>
-                <th>ERS</th>
-                <th>WARNS/PENS</th>
-                <th id="best-lap-th" class="best-lap" data-bs-toggle="tooltip">BEST LAP 🛈</th>
-                <th id="last-lap-th" class="last-lap" data-bs-toggle="tooltip">LAST LAP 🛈</th>
-                <th id="curr-lap-th" class="curr-lap" data-bs-toggle="tooltip">CURRENT LAP</th>
-                <th id="tyre-info-th" data-bs-toggle="tooltip">TYRE INFO 🛈</th>
-                <th id="wear-prediction-th">WEAR PREDICTION</th>
-                <th>WING DAMAGE</th>
-                <th id="fuel-info-th" data-bs-toggle="tooltip">FUEL 🛈</th>
+                <th id="delta-th" data-column-group="delta" data-bs-toggle="tooltip">DELTA 🛈</th>
+                <th data-column-group="ers">ERS</th>
+                <th data-column-group="warns-pens">WARNS/PENS</th>
+                <th id="best-lap-th" class="best-lap" data-column-group="best-lap" data-bs-toggle="tooltip">BEST LAP 🛈</th>
+                <th id="last-lap-th" class="last-lap" data-column-group="last-lap" data-bs-toggle="tooltip">LAST LAP 🛈</th>
+                <th id="curr-lap-th" class="curr-lap" data-column-group="current-lap" data-bs-toggle="tooltip">CURRENT LAP</th>
+                <th id="tyre-info-th" data-column-group="tyre-info" data-bs-toggle="tooltip">TYRE INFO 🛈</th>
+                <th id="wear-prediction-th" data-column-group="wear-prediction">WEAR PREDICTION</th>
+                <th data-column-group="damage">DAMAGE</th>
+                <th id="fuel-info-th" data-column-group="fuel" data-bs-toggle="tooltip">FUEL 🛈</th>
               </tr>
             </thead>
             <tbody id="telemetry-data">
               <!-- Populated by JavaScript -->
             </tbody>
           </table>
+          <div id="all-columns-hidden-hint" class="all-columns-hidden-hint" style="display: none;">
+            All optional columns hidden. Click "Customize" to show columns.
+          </div>
         </div>
 
         <!-- Time Trial Body -->
@@ -251,6 +262,257 @@
       </main>
     </div>
 
+    <!-- Auto-Preset Toast -->
+    <div id="auto-preset-toast" class="auto-preset-toast" style="display: none;">
+      <span>📱 Small screen detected — switched to Compact layout. Click ⚙️ to customize.</span>
+      <button id="auto-preset-toast-dismiss" class="toast-dismiss-btn" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <!-- Combined Settings Panel -->
+    <div id="settings-panel" class="column-config-panel">
+      <div class="panel-header">
+        <h2>Settings</h2>
+        <button id="settings-panel-close-btn" class="panel-close-btn" aria-label="Close">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <!-- Tab Navigation -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="columns">📊 Columns</button>
+        <button class="panel-tab" data-tab="display">⚙️ Display</button>
+      </div>
+      <!-- Tab Content: Columns -->
+      <div class="panel-body tab-content" id="tab-columns">
+        <div id="preset-buttons-container" class="preset-grid">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div id="save-custom-preset-container"></div>
+        <div class="preset-divider"></div>
+        <div id="column-toggles-container">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+      <!-- Tab Content: Display -->
+      <div class="panel-body tab-content" id="tab-display" style="display: none;">
+        <!-- Number of cars to show -->
+        <div class="mb-3">
+          <label for="carsToShow" class="form-label">Number of cars to show (before/after player)</label>
+          <input type="number" class="form-control" id="carsToShow" value="1" min="0" max="22">
+        </div>
+        <!-- Number of weather forecast samples to show -->
+        <div class="mb-3">
+          <label for="weatherSamplesToShow" class="form-label">Number of weather forecast samples to show</label>
+          <input type="number" class="form-control" id="weatherSamplesToShow" value="3" min="1" max="5">
+        </div>
+        <!-- Team Name -->
+        <div class="mb-3">
+          <label for="teamName" class="form-label">My Team Name</label>
+          <input type="text" class="form-control" id="teamNameInput" value="My Team">
+        </div>
+        <!-- Time format -->
+        <div class="mb-3">
+          <label class="form-label">Time Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="timeFormat12" name="timeFormat" value="12">
+              <label class="form-check-label" for="timeFormat12">12 Hour</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="timeFormat24" name="timeFormat" value="24" checked>
+              <label class="form-check-label" for="timeFormat24">24 Hour</label>
+            </div>
+          </div>
+        </div>
+        <!-- Last lap time format -->
+        <div class="mb-3">
+          <label class="form-label">Last Lap Time Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="lastLapAbsolute" name="lastLapTimeFormat" value="absolute" checked>
+              <label class="form-check-label" for="lastLapAbsolute">Absolute</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="lastLapRelative" name="lastLapTimeFormat" value="relative">
+              <label class="form-check-label" for="lastLapRelative">Relative</label>
+            </div>
+          </div>
+        </div>
+        <!-- Best lap time format -->
+        <div class="mb-3">
+          <label class="form-label">Best Lap Time Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="bestLapAbsolute" name="bestLapTimeFormat" value="absolute" checked>
+              <label class="form-check-label" for="bestLapAbsolute">Absolute</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="bestLapRelative" name="bestLapTimeFormat" value="relative">
+              <label class="form-check-label" for="bestLapRelative">Relative</label>
+            </div>
+          </div>
+        </div>
+        <!-- Tyre wear format -->
+        <div class="mb-3">
+          <label class="form-label">Tyre Wear Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tyreWearAverage" name="tyreWearFormat" value="absolute" checked>
+              <label class="form-check-label" for="tyreWearAverage">Average</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tyreWearMax" name="tyreWearFormat" value="relative">
+              <label class="form-check-label" for="tyreWearMax">Max Worn Tyre</label>
+            </div>
+          </div>
+        </div>
+        <!-- Delta format -->
+        <div class="mb-3">
+          <label class="form-label">Delta Format (only for post race tool)</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="deltaLeader" name="deltaFormat" value="absolute">
+              <label class="form-check-label" for="deltaLeader">Leader</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="deltaRelative" name="deltaFormat" value="relative" checked>
+              <label class="form-check-label" for="deltaRelative">Relative</label>
+            </div>
+          </div>
+        </div>
+        <!-- Fuel Surplus Laps -->
+        <div class="mb-3">
+          <label class="form-label">Fuel Surplus Laps Source</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="fuelSurplusLapsGame" name="fuelSurplusLapsSrc" value="game">
+              <label class="form-check-label" for="fuelSurplusLapsGame">F1 Game</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="fuelSurplusLapsPng" name="fuelSurplusLapsSrc" value="png" checked>
+              <label class="form-check-label" for="fuelSurplusLapsPng">
+                Pits n' Giggles Calculations
+                <i class="bi bi-info-circle ms-1"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Keeps tabs on your fuel like a race engineer with trust issues —
+                          uses linear regression to predict laps ahead or behind based on real fuel burn.">
+                </i>
+              </label>
+            </div>
+          </div>
+        </div>
+        <!-- Fuel target show -->
+        <div class="mb-3">
+          <label class="form-label">Fuel Target Recommendation</label>
+          <div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="fuelTargetEnabled">
+            </div>
+          </div>
+        </div>
+        <!-- Fuel format -->
+        <div class="mb-3">
+          <label class="form-label">Fuel Recommendation Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="fuelTargetAverage" name="fuelFormat" value="relative" checked>
+              <label class="form-check-label" for="fuelTargetAverage">Average target for remaining laps</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="fuelTargetNextLap" name="fuelFormat" value="absolute">
+              <label class="form-check-label" for="fuelTargetNextLap">Target for next lap</label>
+            </div>
+          </div>
+        </div>
+        <!-- Tyre delta format -->
+        <div class="mb-3">
+          <label class="form-label">Tyre Delta Notification Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tyreDeltaTTS" name="tyreDeltaNotificationFormat" value="tts" checked>
+              <label class="form-check-label" for="tyreDeltaTTS">Text to Speech</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tyreDeltaOSD" name="tyreDeltaNotificationFormat" value="osd">
+              <label class="form-check-label" for="tyreDeltaOSD">On Screen Display</label>
+            </div>
+          </div>
+        </div>
+        <!-- TTS voice -->
+        <div class="mb-3 d-none">
+          <label for="voiceSelect" class="form-label">Text to Speech Voice</label>
+          <div class="input-group">
+            <select id="voiceSelect" class="form-select">
+              <!-- Options will be populated via JavaScript -->
+            </select>
+          </div>
+        </div>
+        <!-- TTS Volume Level -->
+        <div class="mb-3">
+          <label for="volumeRange" class="form-label">TTS Volume Level</label>
+          <div class="d-flex align-items-center">
+            <input
+              type="range"
+              class="form-range me-3"
+              id="volumeRange"
+              min="0"
+              max="100"
+              step="1"
+              value="50"
+              aria-label="TTS Volume Level"
+            >
+            <span id="volumeLabel" class="fw-bold">50</span>
+          </div>
+          <button id="playSampleButton" class="btn btn-secondary" type="button">Preview</button>
+        </div>
+        <!-- Tyre Delta OSD duration -->
+        <div class="mb-3">
+          <label for="tyreDeltaOsdDuration" class="form-label">Tyre Delta OSD Duration (seconds)</label>
+          <input type="number" class="form-control" id="tyreDeltaOsdDuration" value="5" min="1" max="20">
+        </div>
+        <!-- Speed format -->
+        <div class="mb-3">
+          <label class="form-label">Speed Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="speedUnitMetric" name="speedUnit" value="metric" checked>
+              <label class="form-check-label" for="speedUnitMetric">Metric (kmph)</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="speedUnitImperial" name="speedUnit" value="imperial">
+              <label class="form-check-label" for="speedUnitImperial">Imperial (mph)</label>
+            </div>
+          </div>
+        </div>
+        <!-- Temperature format -->
+        <div class="mb-3">
+          <label class="form-label">Temperature Format</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tempUnitMetric" name="tempUnit" value="metric" checked>
+              <label class="form-check-label" for="tempUnitMetric">°C (Celsius)</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" id="tempUnitImperial" name="tempUnit" value="imperial">
+              <label class="form-check-label" for="tempUnitImperial">°F (Fahrenheit)</label>
+            </div>
+          </div>
+        </div>
+        {% if not live_data_mode %}
+          <div class="text-warning w-100 mb-2 text-center">
+            Refresh the page after saving to see the changes.
+          </div>
+        {% endif %}
+        <div class="settings-panel-links">
+          <a href="https://www.pitsngiggles.com" target="_blank" rel="noopener noreferrer">Download latest version</a>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button id="reset-columns-btn" class="reset-columns-btn">Reset to Default</button>
+        <button id="saveSettings" class="reset-columns-btn save-settings-btn" style="display: none;">Save Settings</button>
+      </div>
+    </div>
+
     <!-- Driver Details Modal -->
     <div class="modal fade" id="driverModal" tabindex="-1" aria-labelledby="driverModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen driver-modal-dialog">
@@ -273,235 +535,6 @@
           </div>
           <div class="modal-body driver-modal-body border border-dark-subtle rounded d-flex flex-column">
             <!-- Nav tabs and tab content will be dynamically injected here by JavaScript -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="modal fade" id="settingsModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Pits n' Giggles Settings</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <!-- Number of cars to show -->
-            <div class="mb-3">
-              <label for="carsToShow" class="form-label">Number of cars to show (before/after player)</label>
-              <input type="number" class="form-control" id="carsToShow" value="1" min="0" max="22">
-            </div>
-            <!-- Number of weather forecast samples to show -->
-            <div class="mb-3">
-              <label for="weatherSamplesToShow" class="form-label">Number of weather forecast samples to show</label>
-              <input type="number" class="form-control" id="weatherSamplesToShow" value="3" min="1" max="5">
-            </div>
-            <!-- Team Name -->
-            <div class="mb-3">
-              <label for="teamName" class="form-label">My Team Name</label>
-              <input type="text" class="form-control" id="teamNameInput" value="My Team">
-            </div>
-            <!-- Time format -->
-            <div class="mb-3">
-              <label class="form-label">Time Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="timeFormat12" name="timeFormat" value="12">
-                  <label class="form-check-label" for="timeFormat12">12 Hour</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="timeFormat24" name="timeFormat" value="24" checked>
-                  <label class="form-check-label" for="timeFormat24">24 Hour</label>
-                </div>
-              </div>
-            </div>
-            <!-- Last lap time format -->
-            <div class="mb-3">
-              <label class="form-label">Last Lap Time Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="lastLapAbsolute" name="lastLapTimeFormat" value="absolute" checked>
-                  <label class="form-check-label" for="lastLapAbsolute">Absolute</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="lastLapRelative" name="lastLapTimeFormat" value="relative">
-                  <label class="form-check-label" for="lastLapRelative">Relative</label>
-                </div>
-              </div>
-            </div>
-            <!-- Best lap time format -->
-            <div class="mb-3">
-              <label class="form-label">Best Lap Time Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="bestLapAbsolute" name="bestLapTimeFormat" value="absolute" checked>
-                  <label class="form-check-label" for="bestLapAbsolute">Absolute</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="bestLapRelative" name="bestLapTimeFormat" value="relative">
-                  <label class="form-check-label" for="bestLapRelative">Relative</label>
-                </div>
-              </div>
-            </div>
-            <!-- Tyre wear format -->
-            <div class="mb-3">
-              <label class="form-label">Tyre Wear Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tyreWearAverage" name="tyreWearFormat" value="absolute" checked>
-                  <label class="form-check-label" for="tyreWearAverage">Average</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tyreWearMax" name="tyreWearFormat" value="relative">
-                  <label class="form-check-label" for="tyreWearMax">Max Worn Tyre</label>
-                </div>
-              </div>
-            </div>
-            <!-- Delta format -->
-            <div class="mb-3">
-              <label class="form-label">Delta Format (only for post race tool)</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="deltaLeader" name="deltaFormat" value="absolute">
-                  <label class="form-check-label" for="deltaLeader">Leader</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="deltaRelative" name="deltaFormat" value="relative" checked>
-                  <label class="form-check-label" for="deltaRelative">Relative</label>
-                </div>
-              </div>
-            </div>
-            <!-- Fuel Surplus Laps -->
-            <div class="mb-3">
-              <label class="form-label">Fuel Surplus Laps Source</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="fuelSurplusLapsGame" name="fuelSurplusLapsSrc" value="game">
-                  <label class="form-check-label" for="fuelSurplusLapsGame">F1 Game</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="fuelSurplusLapsPng" name="fuelSurplusLapsSrc" value="png" checked>
-                  <label class="form-check-label" for="fuelSurplusLapsPng">
-                    Pits n' Giggles Calculations
-                    <i class="bi bi-info-circle ms-1"
-                      data-bs-toggle="tooltip"
-                      data-bs-placement="top"
-                      title="Keeps tabs on your fuel like a race engineer with trust issues —
-                              uses linear regression to predict laps ahead or behind based on real fuel burn.">
-                    </i>
-                  </label>
-                </div>
-              </div>
-            </div>
-            <!-- Fuel target show -->
-            <div class="mb-3">
-              <label class="form-label">Fuel Target Recommendation</label>
-              <div>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" role="switch" id="fuelTargetEnabled">
-                </div>
-              </div>
-            </div>
-            <!-- Fuel format -->
-            <div class="mb-3">
-              <label class="form-label">Fuel Recommendation Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="fuelTargetAverage" name="fuelFormat" value="relative" checked>
-                  <label class="form-check-label" for="fuelTargetAverage">Average target for remaining laps</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="fuelTargetNextLap" name="fuelFormat" value="absolute">
-                  <label class="form-check-label" for="fuelTargetNextLap">Target for next lap</label>
-                </div>
-              </div>
-            </div>
-            <!-- Tyre delta format -->
-            <div class="mb-3">
-              <label class="form-label">Tyre Delta Notification Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tyreDeltaTTS" name="tyreDeltaNotificationFormat" value="tts" checked>
-                  <label class="form-check-label" for="tyreDeltaTTS">Text to Speech</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tyreDeltaOSD" name="tyreDeltaNotificationFormat" value="osd">
-                  <label class="form-check-label" for="tyreDeltaOSD">On Screen Display</label>
-                </div>
-              </div>
-            </div>
-            <!-- TTS voice -->
-            <div class="mb-3 d-none">
-              <label for="voiceSelect" class="form-label">Text to Speech Voice</label>
-              <div class="input-group">
-                <select id="voiceSelect" class="form-select">
-                  <!-- Options will be populated via JavaScript -->
-                </select>
-              </div>
-            </div>
-            <!-- TTS Volume Level -->
-            <div class="mb-3">
-              <label for="volumeRange" class="form-label">TTS Volume Level</label>
-              <div class="d-flex align-items-center">
-                <input
-                  type="range"
-                  class="form-range me-3"
-                  id="volumeRange"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value="50"
-                  aria-label="TTS Volume Level"
-                >
-                <span id="volumeLabel" class="fw-bold">50</span>
-              </div>
-              <button id="playSampleButton" class="btn btn-secondary" type="button">Preview</button>
-            </div>
-
-            <!-- Tyre Delta OSD duration -->
-            <div class="mb-3">
-              <label for="tyreDeltaOsdDuration" class="form-label">Tyre Delta OSD Duration (seconds)</label>
-              <input type="number" class="form-control" id="tyreDeltaOsdDuration" value="5" min="1" max="20">
-            </div>
-            <!-- Speed format -->
-            <div class="mb-3">
-              <label class="form-label">Speed Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="speedUnitMetric" name="speedUnit" value="metric" checked>
-                  <label class="form-check-label" for="speedUnitMetric">Metric (kmph)</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="speedUnitImperial" name="speedUnit" value="imperial">
-                  <label class="form-check-label" for="speedUnitImperial">Imperial (mph)</label>
-                </div>
-              </div>
-            </div>
-            <!-- Temperature format -->
-            <div class="mb-3">
-              <label class="form-label">Temperature Format</label>
-              <div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tempUnitMetric" name="tempUnit" value="metric" checked>
-                  <label class="form-check-label" for="tempUnitMetric">°C (Celsius)</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" id="tempUnitImperial" name="tempUnit" value="imperial">
-                  <label class="form-check-label" for="tempUnitImperial">°F (Fahrenheit)</label>
-                </div>
-              </div>
-            </div>
-          </div> <!-- End of Modal Body -->
-          <div class="modal-footer">
-            {% if not live_data_mode %}
-              <div class="text-warning w-100 mb-2 text-center">
-                Refresh the page after saving to see the changes.
-              </div>
-            {% endif %}
-            <a href="https://www.pitsngiggles.com" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Download latest</a>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="saveSettings">Save changes</button>
           </div>
         </div>
       </div>
@@ -596,7 +629,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/preferences.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
@@ -612,6 +645,7 @@
     <script src="{{ url_for('static', filename='js/tyreRecords.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreStintHistoryModal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/columnConfig.js') }}"></script>
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/populateRaceControlMessagesTab.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialDataPopulator.js') }}"></script>

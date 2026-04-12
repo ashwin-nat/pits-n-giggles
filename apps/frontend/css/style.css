@@ -7,10 +7,10 @@
   --f1-text: #ffffff;
   --f1-text-secondary: #9090a0;
 
-  font-size: 20px; /* Set the root font size */
+  font-size: clamp(13px, 1.1vw, 17px); /* Responsive root font size */
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* Prevents horizontal scroll */
+  overflow-x: auto; /* Allow horizontal scroll when content overflows */
 }
 
 * {
@@ -59,12 +59,31 @@ body {
   color: var(--f1-text);
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.75rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: color 0.2s;
 }
 
 .settings-button:hover {
   color: var(--f1-red);
+}
+
+.port-badge {
+  background: #0e639c;
+  color: #ffffff;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
 }
 
 .track-info {
@@ -208,18 +227,18 @@ body {
 .telemetry-table .best-lap,
 .telemetry-table .curr-lap,
 .telemetry-table .last-lap {
-  width: 12%; /* Equal width for "Best Lap", "Current Lap" and "Last Lap" */
+  width: 10%; /* Equal width for "Best Lap", "Current Lap" and "Last Lap" */
 }
 
-.telemetry-table th:nth-child(1) { width: 5%; } /* POS */
-.telemetry-table th:nth-child(2) { width: 13%; } /* DRIVER */
-.telemetry-table th:nth-child(3) { width: 8%; } /* DELTA */
-.telemetry-table th:nth-child(4) { width: 10%; } /* ERS */
-.telemetry-table th:nth-child(5) { width: 12%; } /* WARNS/PENS */
-.telemetry-table th:nth-child(8) { width: 12%; } /* TYRE INFO */
-.telemetry-table th:nth-child(9) { width: 10%; } /* WEAR PREDICTION */
-.telemetry-table th:nth-child(10) { width: 10%; } /* WING DAMAGE */
-.telemetry-table th:nth-child(11) { width: 8%; } /* FUEL */
+.telemetry-table th:nth-child(1) { width: 4%; } /* POS */
+.telemetry-table th:nth-child(2) { width: 12%; } /* DRIVER */
+.telemetry-table th:nth-child(3) { width: 7%; } /* DELTA */
+.telemetry-table th:nth-child(4) { width: 8%; } /* ERS */
+.telemetry-table th:nth-child(5) { width: 10%; } /* WARNS/PENS */
+.telemetry-table th:nth-child(9) { width: 9%; } /* TYRE INFO */
+.telemetry-table th:nth-child(10) { width: 8%; } /* WEAR PREDICTION */
+.telemetry-table th:nth-child(11) { width: 6%; } /* DAMAGE */
+.telemetry-table th:nth-child(12) { width: 6%; } /* FUEL */
 
 .player-row td {
   color: inherit; /* Inherit color for non-DRS rows */
@@ -437,4 +456,12 @@ a {
 /* For purple sector */
 .bg-purple {
     background-color: #800080;
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .blinking-dot {
+        animation: none;
+        opacity: 1;
+    }
 }

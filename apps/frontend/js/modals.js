@@ -3,7 +3,7 @@ class ModalManager {
     const modalElement = document.getElementById('driverModal');
     console.log("modalElement", modalElement);
     this.driverModal = (driverModal) ? (new bootstrap.Modal(modalElement)) : (null);
-    this.settingsModal = (settingsModal) ? (new bootstrap.Modal(document.getElementById('settingsModal'))) : (null);
+    this.settingsEnabled = settingsModal;
     this.raceStatsModal = (raceStatsModal) ? (new bootstrap.Modal(document.getElementById('raceStatsModal'))) : (null);
     this.iconCache = new IconCache();
     this.setupEventListeners();
@@ -15,7 +15,7 @@ class ModalManager {
   }
 
   setupEventListeners() {
-    if (this.settingsModal) {
+    if (this.settingsEnabled) {
       document.getElementById('settings-btn').addEventListener('click', () => this.openSettingsModal());
       document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
       document.getElementById('fuelTargetEnabled').addEventListener('change', (event) => {
@@ -93,7 +93,7 @@ class ModalManager {
     modalTitle.textContent = `${data["driver-name"]} - ${getTeamName(data["team"])}`;
 
     // Clear existing content
-    modalBody.innerHTML = '';
+    modalBody.textContent = '';
 
     // Create the modal content using the DriverModalPopulator class
     const modalDataPopulator = new DriverModalPopulator(data, this.iconCache);
@@ -151,10 +151,34 @@ class ModalManager {
 
   openSettingsModal() {
 
-    if (!this.settingsModal) {
-      console.error("Settings modal not initialized");
+    if (!this.settingsEnabled) {
+      console.error("Settings not enabled");
       return;
     }
+
+    this.populateSettingsFields();
+
+    // Open the combined panel on the Display tab
+    if (window.telemetryRenderer && window.telemetryRenderer._openSettingsPanel) {
+      window.telemetryRenderer._openSettingsPanel('display');
+    } else {
+      // Fallback: directly open panel
+      const panel = document.getElementById('settings-panel');
+      if (panel) {
+        panel.classList.add('open');
+        // Switch to display tab
+        panel.querySelectorAll('.panel-tab').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.tab === 'display');
+        });
+        document.getElementById('tab-columns').style.display = 'none';
+        document.getElementById('tab-display').style.display = '';
+        document.getElementById('reset-columns-btn').style.display = 'none';
+        document.getElementById('saveSettings').style.display = '';
+      }
+    }
+  }
+
+  populateSettingsFields() {
 
     // Populate the fields with the default values
     document.getElementById("carsToShow").value = g_pref_numAdjacentCars;
@@ -203,7 +227,7 @@ class ModalManager {
 
     // Populate the "Text to Speech Voice" dropdown
     const voiceSelect = document.getElementById("voiceSelect");
-    voiceSelect.innerHTML = ""; // Clear existing options
+    voiceSelect.textContent = ""; // Clear existing options
     const voices = window.speechSynthesis.getVoices(); // Get available voices
     console.log("voices", voices);
 
@@ -245,8 +269,6 @@ class ModalManager {
     // Set the radio buttons for temperature units
     document.getElementById("tempUnitMetric").checked = g_pref_tempUnitMetric;
     document.getElementById("tempUnitImperial").checked = !g_pref_tempUnitMetric;
-
-    this.settingsModal.show();
   }
 
   saveSettings() {
@@ -280,7 +302,13 @@ class ModalManager {
 
     savePreferences();
 
-    this.settingsModal.hide();
+    // Visual confirmation instead of closing panel
+    const saveBtn = document.getElementById('saveSettings');
+    if (saveBtn) {
+      const origText = saveBtn.textContent;
+      saveBtn.textContent = '✓ Saved!';
+      setTimeout(() => { saveBtn.textContent = origText; }, 1500);
+    }
 
     // Dispatch event for other components to react to settings changes
     window.dispatchEvent(new CustomEvent('settingsChanged'));
@@ -314,7 +342,7 @@ class ModalManager {
     modalTitle.textContent = `RACE STATS`;
 
     // Clear existing content
-    modalBody.innerHTML = '';
+    modalBody.textContent = '';
 
     // Create the modal content using the RaceStatsModalPopulator class
     const modalDataPopulator = new RaceStatsModalPopulator(data, this.iconCache);

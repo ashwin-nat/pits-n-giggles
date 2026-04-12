@@ -31,18 +31,17 @@ class IconCache {
     }
 
     createSVGElement(svgString) {
-        // Step 1: Create a temporary <div> element
-        const div = document.createElement('div');
+        // Use DOMParser to safely parse SVG strings without innerHTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString.trim(), 'image/svg+xml');
 
-        // Step 2: Assign the provided SVG string to the innerHTML of the <div>
-        // The `.trim()` ensures there are no leading/trailing whitespaces that might cause issues.
-        div.innerHTML = svgString.trim();
+        // Check for parse errors
+        const parseError = doc.querySelector('parsererror');
+        if (parseError) {
+            throw new Error('Invalid SVG string: Parse error');
+        }
 
-        // Step 3: Use querySelector to locate the <svg> element within the parsed content
-        // This is necessary because the SVG string might:
-        // - Contain leading/trailing whitespace (making div.firstChild a text node).
-        // - Be wrapped in other tags (e.g., <div><svg>...</svg></div>).
-        const svgElement = div.querySelector('svg');
+        const svgElement = doc.querySelector('svg');
 
         // Step 4: Check if an <svg> element was found
         if (!svgElement) {

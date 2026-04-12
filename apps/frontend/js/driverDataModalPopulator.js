@@ -410,7 +410,10 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="7">Tyre Stint History data not yet available</td>';
+                const td = document.createElement('td');
+                td.colSpan = 7;
+                td.textContent = 'Tyre Stint History data not yet available';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -494,7 +497,10 @@ class DriverModalPopulator {
                         // Skip lap 0 for ERS, we want that only for fuel
                         // If this is the only lap info available, print the standard error message
                         if (perLapInfo.length == 1) {
-                            row.innerHTML = '<td colspan="6">ERS data not available</td>';
+                            const td = document.createElement('td');
+                            td.colSpan = 6;
+                            td.textContent = 'ERS data not available';
+                            row.appendChild(td);
                         }
                         return;
                     }
@@ -548,7 +554,10 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="6">ERS data not available</td>';
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                td.textContent = 'ERS data not available';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -666,7 +675,10 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="6">Tyre wear prediction data not available</td>';
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                td.textContent = 'Tyre wear prediction data not available';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -806,7 +818,10 @@ class DriverModalPopulator {
                 });
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="6">No Warnings or Penalites</td>';
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                td.textContent = 'No Warnings or Penalites';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -919,7 +934,10 @@ class DriverModalPopulator {
                 ]);
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="2">No participant data</td>';
+                const td = document.createElement('td');
+                td.colSpan = 2;
+                td.textContent = 'No participant data';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -942,7 +960,10 @@ class DriverModalPopulator {
                 ]);
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = '<td colspan="2">No assists data</td>';
+                const td = document.createElement('td');
+                td.colSpan = 2;
+                td.textContent = 'No assists data';
+                row.appendChild(td);
             }
 
             table.appendChild(tbody);
@@ -1185,7 +1206,7 @@ class DriverModalPopulator {
                 }
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = `<td colspan="2">${errorMessage}</td>`;
+                row.innerHTML = `<td colspan="2">${escapeHtml(errorMessage)}</td>`;
             }
 
             table.appendChild(tbody);

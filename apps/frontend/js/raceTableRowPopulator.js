@@ -1,5 +1,5 @@
 class RaceTableRowPopulator {
-    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType, context) {
+    constructor(row, rowData, packetFormat, isLiveDataMode, iconCache, raceEnded, spectatorIndex, sessionType, context, columnConfig) {
         this.row = row;
         this.rowData = rowData;
         this.packetFormat = packetFormat;
@@ -10,6 +10,7 @@ class RaceTableRowPopulator {
         this.sessionType = sessionType;
         this.isTelemetryPublic = this.rowData["driver-info"]["telemetry-setting"] === "Public"
         this.context = context;
+        this.columnConfig = columnConfig;
         this.currLapCell = null; // Initialize the cell reference for current lap info
         if (this.context.currLap === undefined || this.context.currLap === null) {
             this.context.currLap = {}; // Initialize currLap context only if it doesn't exist
@@ -20,22 +21,28 @@ class RaceTableRowPopulator {
     populate() {
 
         this.addPositionInfo()
-            .addNameInfo()
-            .addDeltaInfo()
-            .addErsInfo()
-            .addWarningsPensInfo()
-            .addBestLapInfo()
-            .addLastLapInfo()
-            .addCurrLapInfo()
-            .addCurrTyreInfo();
+            .addNameInfo();
+
+        if (this._isGroupVisible('delta'))      this.addDeltaInfo();
+        if (this._isGroupVisible('ers'))         this.addErsInfo();
+        if (this._isGroupVisible('warns-pens'))  this.addWarningsPensInfo();
+        if (this._isGroupVisible('best-lap'))    this.addBestLapInfo();
+        if (this._isGroupVisible('last-lap'))    this.addLastLapInfo();
+        if (this._isGroupVisible('current-lap')) this.addCurrLapInfo();
+        if (this._isGroupVisible('tyre-info'))   this.addCurrTyreInfo();
 
         if (this.isTelemetryPublic) {
-            this.addTyrePredictionInfo()
-                .addDamageInfo()
-                .addFuelInfo();
+            if (this._isGroupVisible('wear-prediction')) this.addTyrePredictionInfo();
+            if (this._isGroupVisible('damage'))          this.addDamageInfo();
+            if (this._isGroupVisible('fuel'))             this.addFuelInfo();
         } else {
             this.addTelemetryRestrictedColspan();
         }
+    }
+
+    _isGroupVisible(groupId) {
+        if (!this.columnConfig) return true;
+        return this.columnConfig.isVisible(groupId);
     }
 
     addPositionInfo() {
@@ -180,7 +187,7 @@ class RaceTableRowPopulator {
         if (!this.currLapCell) {
             this.currLapCell = this.row.insertCell();
         } else {
-            this.currLapCell.innerHTML = ''; // Clear previous content
+            this.currLapCell.textContent = ''; // Clear previous content
         }
 
         const lapInfo = this.rowData["lap-info"]["curr-lap"];
@@ -225,7 +232,7 @@ class RaceTableRowPopulator {
                     showAbsoluteFormat: true,
                     isSaveViewerMode: !this.isLiveDataMode
                 });
-                sectorBarContainer.innerHTML = ''; // Clear previous sector bar
+                sectorBarContainer.textContent = ''; // Clear previous sector bar
                 if (lapTime) {
                     this.addSectorInfo(sectorBarContainer, sectorStatus);
                 }
@@ -269,16 +276,20 @@ class RaceTableRowPopulator {
         const tyreInfo = this.rowData["tyre-info"];
         const cell = this.row.insertCell();
 
-        // Add tyre compound and wear information
-        this.#addTyreCompoundRow(cell, tyreInfo);
+        // Sub-group visibility for tyre info sections
+        if (this._isGroupVisible('tyre-compound')) {
+            this.#addTyreCompoundRow(cell, tyreInfo);
+        }
 
-        // Add tyre age and pit information
-        this.#addTyreAgeRow(cell, tyreInfo);
+        if (this._isGroupVisible('tyre-age')) {
+            this.#addTyreAgeRow(cell, tyreInfo);
+        }
 
-        // Add pit rejoin information if in live mode and race not ended
-        if (!this.raceEnded && this.isLiveDataMode && isRaceSession(this.sessionType)) {
+        if (this._isGroupVisible('tyre-pit-rejoin') && !this.raceEnded && this.isLiveDataMode && isRaceSession(this.sessionType)) {
             this.#addPitRejoinRow(cell, tyreInfo);
         }
+
+        // tyre-temps: placeholder for future implementation
 
         return this;
     }
@@ -407,18 +418,24 @@ class RaceTableRowPopulator {
             return this;
         }
         const damageInfo = this.rowData["damage-info"];
-        // Wing damage key will always be present
-        const flWingDamage = damageInfo["fl-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fl-wing-damage"]) + "%";
-        const frWingDamage = damageInfo["fr-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["fr-wing-damage"]) + "%";
-        const rearWingDamage = damageInfo["rear-wing-damage"] == null ? "N/A" :
-            formatFloat(damageInfo["rear-wing-damage"]) + "%";
-        this.createMultiLineCell([
-            "FL: " + flWingDamage,
-            "FR: " + frWingDamage,
-            "RW: " + rearWingDamage
-        ]);
+        const cell = this.row.insertCell();
+
+        const damageItems = [
+            { label: "FLW", value: damageInfo["fl-wing-damage"] },
+            { label: "FRW", value: damageInfo["fr-wing-damage"] },
+            { label: "RW",  value: damageInfo["rear-wing-damage"] },
+            { label: "Floor", value: damageInfo["floor-damage"] },
+            { label: "Diff", value: damageInfo["diffuser-damage"] },
+            { label: "SP",  value: damageInfo["sidepod-damage"] },
+        ];
+
+        damageItems.forEach(item => {
+            const row = document.createElement("div");
+            const valueText = item.value == null ? "N/A" : formatFloat(item.value) + "%";
+            row.textContent = item.label + ": " + valueText;
+            cell.appendChild(row);
+        });
+
         return this;
     }
 
@@ -480,21 +497,23 @@ class RaceTableRowPopulator {
 
     addTelemetryRestrictedColspan() {
         if (this.isLiveDataMode && isRaceSession(this.sessionType)) {
-            // we will show this message only in race view, since wear prediction, damage and fuel are
-            // only supported in race. in FP/quali, these columns are not shown. Hence, no need to show this
+            // Count how many of the restricted columns are currently visible
+            const restrictedGroups = ['wear-prediction', 'damage', 'fuel'];
+            const visibleCount = restrictedGroups.filter(g => this._isGroupVisible(g)).length;
+            if (visibleCount === 0) return this;
+
             const cell = this.row.insertCell();
-            cell.colSpan = 3;
+            cell.colSpan = visibleCount;
             cell.style.textAlign = "center";
             cell.style.verticalAlign = "middle";
 
             const message = document.createElement("div");
             message.textContent = "Driver has telemetry set to Restricted";
-            message.style.fontStyle = "italic"; // Make the text italic
+            message.style.fontStyle = "italic";
             cell.appendChild(message);
         }
 
         return this;
-
     }
 
     createMultiLineCell(lines, onClick = null) {
