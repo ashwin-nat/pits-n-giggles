@@ -169,10 +169,8 @@ def check_endpoints_blocking(urls: list[str]) -> list[tuple[str, bool]]:
 
 def fetch_test_files() -> list[str]:
     """Download or retrieve cached test files."""
-    logger.test_log("Checking for cached test files...")
-
     if cached_files := get_cached_files():
-        logger.test_log(f"Found {len(cached_files)} cached files - skipping download")
+        logger.test_log(f"Found {len(cached_files)} cached test files")
         return cached_files
 
     logger.test_log("No cached files found. Downloading from Google Drive...")
@@ -188,7 +186,6 @@ def fetch_test_files() -> list[str]:
             sys.exit(1)
         logger.test_log(f"Downloaded {len(files)} test files")
         return files
-
     except Exception as e:
         logger.test_log(f"Error downloading from Google Drive: {e}")
         if files := get_cached_files():
@@ -379,7 +376,7 @@ if __name__ == "__main__":
     if not IS_WINDOWS:
         signal.signal(signal.SIGTERM, cleanup_and_exit)
 
-    config_file = "integration_test_cfg.json"
+    config_file = "png_config.json"
     settings = load_config_from_json(config_file)
     coverage_enabled = "--coverage" in sys.argv
 

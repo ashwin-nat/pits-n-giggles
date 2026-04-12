@@ -55,12 +55,17 @@ Beyond the overlays, Pits n' Giggles includes a full browser-based telemetry sui
 Click any driver (preferably not during a fast lap):
 
 - **Lap-by-lap history**
-- **Tyre wear**, with regression-based prediction
-- **Car damage breakdown**
+- **Tyre wear** with weather-aware regression prediction
+- **Car damage breakdown** across all six aero surfaces
 - **ERS deployment patterns**
 - **Fuel consumption modelling** based on your actual driving
 - **Stint history & compound strategy analysis**
 - Autosaved session JSON for deeper review
+
+### Engineer View
+- **Live Track Map** — SVG-based circuit map showing real-time driver positions, with fullscreen mode for dedicated monitors
+- **Weather Forecast Graph** — visual weather trend analysis alongside the existing tabular data
+- **Collapsible Race Status** with summary bar for lap, temperature, and safety car counts
 
 ---
 
@@ -74,8 +79,13 @@ Click any driver (preferably not during a fast lap):
 ## Advanced Capabilities
 - **OBS-ready stream overlays**
 - **Distributed client/server architecture**
+- **Multi-driver support** — dedicate a port per driver for training sessions with multiple players on one instance
+- **Configurable network binding** — restrict to localhost or open for LAN access
 - **Real-time data forwarding** to other apps
 - **Remote coaching** (engineers can watch from anywhere)
+- **Responsive design** — scales from phones to ultrawides with fluid typography
+- **Security headers** — X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS
+- **Subresource Integrity** on all CDN assets
 - **Minimal interaction, maximum visibility** design philosophy
 
 ---
@@ -84,6 +94,10 @@ Click any driver (preferably not during a fast lap):
 
 ### Windows
 Download the EXE from the [Releases Page](https://github.com/ashwin-nat/pits-n-giggles/releases).
+
+### Linux
+Build from source.
+See **[RUNNING.md](docs/RUNNING.md)**.
 
 ### macOS
 Build from source (macOS executables require mac hardware).
