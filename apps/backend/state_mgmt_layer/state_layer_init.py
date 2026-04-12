@@ -38,7 +38,8 @@ def initStateManagementLayer(
     settings: PngSettings,
     ver_str: str,
     tasks: List[asyncio.Task],
-    shutdown_event: asyncio.Event) -> SessionState:
+    shutdown_event: asyncio.Event,
+    itc_queue_suffix: str = "") -> SessionState:
     """Initialise the state management layer
 
     Args:
@@ -51,6 +52,6 @@ def initStateManagementLayer(
     Returns:
         SessionState: Handle to the session state data structure
     """
-    ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
-    initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
+    ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str, itc_queue_suffix=itc_queue_suffix)
+    initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref, itc_queue_suffix=itc_queue_suffix)
     return ref

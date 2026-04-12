@@ -367,7 +367,15 @@ class DriversListRsp(BaseAPI):
             "damage-info": self._getDamageInfoJSON(driver_data),
             "fuel-info": driver_data.getFuelStatsJSON(),
             "pit-info": driver_data.getPitInfoJSON(),
+            "world-pos": self._getWorldPosJSON(driver_data),
         }
+
+    def _getWorldPosJSON(self, driver_data: DataPerDriver) -> Optional[List[float]]:
+        """Extract world position [x, z] for track map rendering."""
+        motion = driver_data.m_packet_copies.m_packet_motion
+        if not motion:
+            return None
+        return [motion.m_worldPositionX, motion.m_worldPositionZ]
 
     def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract driver information section for JSON response.
@@ -446,12 +454,18 @@ class DriversListRsp(BaseAPI):
         }
 
     def _calculateLapProgress(self, driver_data: DataPerDriver) -> Optional[float]:
-        """Calculate lap progress percentage."""
+        """Calculate lap progress percentage.
+
+        m_lapDistance can be negative when a car is in the pit lane (pit exit
+        is behind the start/finish line) or on the grid (grid slots sit behind
+        the start/finish line).  Wrap via modulo so the dot appears at the
+        correct physical track position in all cases.
+        """
         lap_data = driver_data.m_packet_copies.m_packet_lap_data
         if not lap_data or not self.m_track_length:
             return None
 
-        return (lap_data.m_lapDistance / self.m_track_length) * 100.0
+        return (lap_data.m_lapDistance % self.m_track_length) / self.m_track_length * 100.0
 
     def _getSpeedTrapRecord(self, driver_data: DataPerDriver) -> Optional[float]:
         """Get speed trap record if available."""
@@ -527,6 +541,27 @@ class DriversListRsp(BaseAPI):
 
     def _getTyreInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract tyre information section for JSON response."""
+        car_telemetry = driver_data.m_packet_copies.m_packet_car_telemetry
+        if car_telemetry:
+            surface_temps = car_telemetry.m_tyresSurfaceTemperature
+            # EA F1 tyre index order: [RL=0, RR=1, FL=2, FR=3]
+            tyre_surface_temps = {
+                "front-left-temp": surface_temps[F1Utils.INDEX_FRONT_LEFT],
+                "front-right-temp": surface_temps[F1Utils.INDEX_FRONT_RIGHT],
+                "rear-left-temp": surface_temps[F1Utils.INDEX_REAR_LEFT],
+                "rear-right-temp": surface_temps[F1Utils.INDEX_REAR_RIGHT],
+            }
+            inner_temps = car_telemetry.m_tyresInnerTemperature
+            tyre_inner_temps = {
+                "front-left-temp": inner_temps[F1Utils.INDEX_FRONT_LEFT],
+                "front-right-temp": inner_temps[F1Utils.INDEX_FRONT_RIGHT],
+                "rear-left-temp": inner_temps[F1Utils.INDEX_REAR_LEFT],
+                "rear-right-temp": inner_temps[F1Utils.INDEX_REAR_RIGHT],
+            }
+        else:
+            tyre_surface_temps = None
+            tyre_inner_temps = None
+
         return {
             "wear-prediction": driver_data.getFullTyreWearPredictions(self.m_next_pit_stop_window),
             "current-wear": driver_data.getCurrentTyreWearJSON(),
@@ -546,6 +581,9 @@ class DriversListRsp(BaseAPI):
             "fl-wing-damage": driver_data.m_car_info.m_fl_wing_damage,
             "fr-wing-damage": driver_data.m_car_info.m_fr_wing_damage,
             "rear-wing-damage": driver_data.m_car_info.m_rear_wing_damage,
+            "floor-damage": driver_data.m_car_info.m_floor_damage,
+            "diffuser-damage": driver_data.m_car_info.m_diffuser_damage,
+            "sidepod-damage": driver_data.m_car_info.m_sidepod_damage,
         }
 
     def _calcFastestSectorMs(self, session_history: Dict[str, Any]) -> None:

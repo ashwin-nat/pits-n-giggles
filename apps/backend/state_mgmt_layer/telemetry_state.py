@@ -30,7 +30,7 @@ from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str) -> SessionState:
+def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str, itc_queue_suffix: str = "") -> SessionState:
     """Init the DriverData object
 
     Args:
@@ -44,5 +44,6 @@ def initSessionState(logger: logging.Logger, settings: PngSettings, ver_str: str
     return SessionState(
         logger,
         settings,
-        ver_str
+        ver_str,
+        itc_queue_suffix=itc_queue_suffix,
     )

@@ -74,8 +74,9 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
-    # os._exit required: child process must terminate immediately without
-    # running atexit handlers or flushing stdio buffers from parent.
+    # Forceful exit required — this is an orphaned child process whose parent (launcher) is gone.
+    # sys.exit() would only raise SystemExit, which asyncio's event loop and atexit handlers may
+    # catch or delay, leaving the process hanging indefinitely.
     os._exit(PNG_LOST_CONN_TO_PARENT)
 
 async def handleUdpActionCodeChange(

@@ -100,7 +100,7 @@ class ManualSaveRsp:
                 "status": "success",
                 "message": f"Data saved to {path}"
             }
-        except Exception as e:  # pylint: disable=broad-except
+        except (OSError, TypeError, ValueError) as e:
             self.m_logger.exception("Failed to write session info to %s", final_json_file_name)
             return {
                 "status": "error",

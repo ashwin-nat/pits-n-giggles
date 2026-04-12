@@ -27,6 +27,8 @@ import webbrowser
 from http import HTTPStatus
 from typing import Any, Dict, Tuple
 
+from quart import request as quart_request
+
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (DriverInfoRsp,
                                                 PeriodicUpdateData,
@@ -89,11 +91,18 @@ class TelemetryWebServer(BaseWebServer):
             },
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
-            debug_mode=debug_mode)
+            debug_mode=debug_mode,
+            additional_ports=[
+                {"port": s.port, "label": s.label}
+                for s in settings.Network.additional_servers
+            ],
+            bind_address=settings.Network.bind_address,
+        )
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.m_show_start_sample_data = settings.StreamOverlay.show_sample_data_at_start
-        self.m_session_state: SessionState = session_state
+        self.m_primary_port: int = settings.Network.server_port
+        self.m_port_session_map: Dict[int, SessionState] = {self.m_primary_port: session_state}
         self.m_disable_browser_autoload = settings.Display.disable_browser_autoload
 
     def define_routes(self) -> None:
@@ -142,6 +151,16 @@ class TelemetryWebServer(BaseWebServer):
             """
             return await self.render_template('player-stream-overlay.html')
 
+        @self.http_route('/eng-view/trackmap')
+        async def engineerViewTrackmap() -> str:
+            """
+            Render the fullscreen track map page.
+
+            Returns:
+                str: Rendered HTML content for the fullscreen track map.
+            """
+            return await self.render_template('eng-view-trackmap.html', live_data_mode=True, version=self.m_ver_str)
+
     def _defineDataRoutes(self) -> None:
         """
         Define HTTP routes for retrieving telemetry and race-related data.
@@ -157,7 +176,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return PeriodicUpdateData(self.m_session_state).toJSON(), HTTPStatus.OK
+            return PeriodicUpdateData(self.get_session_for_request()).toJSON(), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[str, int]:
@@ -167,7 +186,7 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return RaceInfoData(self.m_session_state).toJSON(), HTTPStatus.OK
+            return RaceInfoData(self.get_session_for_request()).toJSON(), HTTPStatus.OK
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[str, int]:
@@ -187,7 +206,33 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
+            return StreamOverlayData(self.get_session_for_request()).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
+
+    @property
+    def session_state(self) -> SessionState:
+        """Convenience property — returns the primary SessionState."""
+        return self.m_port_session_map[self.m_primary_port]
+
+    @property
+    def m_session_state(self) -> SessionState:
+        """Backward-compatible alias for session_state (primary)."""
+        return self.m_port_session_map[self.m_primary_port]
+
+    def register_session(self, port: int, session_state: SessionState) -> None:
+        """Register an additional SessionState for a given port."""
+        self.m_port_session_map[port] = session_state
+
+    def get_session_for_request(self) -> SessionState:
+        """Return the SessionState that matches the current request's port."""
+        try:
+            server_tuple = quart_request.scope.get("server", (None, None))
+            req_port = server_tuple[1] if server_tuple else None
+        except RuntimeError:
+            req_port = None
+
+        if req_port is not None and req_port in self.m_port_session_map:
+            return self.m_port_session_map[req_port]
+        return self.m_port_session_map[self.m_primary_port]
 
     def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
         """

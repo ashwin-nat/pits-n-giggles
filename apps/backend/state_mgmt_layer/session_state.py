@@ -319,12 +319,14 @@ class SessionState:
         'm_connected_to_sim',
         'm_race_ctrl',
         'm_flashback_occurred',
+        'm_itc_queue_suffix',
     )
 
     def __init__(self,
                  logger: logging.Logger,
                  settings: PngSettings,
-                 ver_str: str) -> None:
+                 ver_str: str,
+                 itc_queue_suffix: str = "") -> None:
         """Init the DriverData object
 
         Args:
@@ -334,6 +336,7 @@ class SessionState:
         """
 
         self.m_logger = logger
+        self.m_itc_queue_suffix: str = itc_queue_suffix
         self.m_pkt_count: int = 0
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
         self.m_player_index: Optional[int] = None
@@ -842,6 +845,9 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
             obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
             obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
+            obj_to_be_updated.m_car_info.m_floor_damage = car_damage.m_floorDamage
+            obj_to_be_updated.m_car_info.m_diffuser_damage = car_damage.m_diffuserDamage
+            obj_to_be_updated.m_car_info.m_sidepod_damage = car_damage.m_sidepodDamage
 
             # Update delayed tyre change data if events are pending
             obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
@@ -1524,7 +1530,7 @@ class SessionState:
 
     async def _notifyExternalApiTask(self) -> None:
         """Notify the external api task that the session has been updated"""
-        await AsyncInterTaskCommunicator().send("external-api-update", SessionChangeNotification(
+        await AsyncInterTaskCommunicator().send(f"external-api-update{self.m_itc_queue_suffix}", SessionChangeNotification(
             trackID=self.m_session_info.m_track,
             session_type=self.m_session_info.m_session_type,
             formula_type=self.m_session_info.m_formula

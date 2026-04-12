@@ -42,7 +42,9 @@ def initTelemetryLayer(
         ver_str: str,
         shutdown_event: asyncio.Event,
         session_state: SessionState,
-        tasks: List[asyncio.Task]) -> F1TelemetryHandler:
+        tasks: List[asyncio.Task],
+        is_primary: bool = True,
+        itc_queue_suffix: str = "") -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
@@ -53,6 +55,8 @@ def initTelemetryLayer(
         shutdown_event (asyncio.Event): Shutdown event
         session_state (SessionState): Handle to the session state
         tasks (List[asyncio.Task]): List of tasks to be executed
+        is_primary (bool): If True, also start the UDP packet forwarder.
+            Additional (non-primary) pipelines skip forwarding.
 
     Returns:
         F1TelemetryHandler: Telemetry handler
@@ -65,7 +69,8 @@ def initTelemetryLayer(
             session_state=session_state,
             logger=logger,
             ver_str=ver_str,
-            tasks=tasks
+            tasks=tasks,
+            itc_queue_suffix=itc_queue_suffix,
         )
     except OSError as e:
         logger.error("setupTelemetryTask failed with error %s", e)
@@ -73,10 +78,11 @@ def initTelemetryLayer(
             raise PngTelemetryPortInUseError() from e
         raise  # Re-raise if it's a different OSError
 
-    setupForwarder(
-        forwarding_targets=settings.Forwarding.forwarding_targets,
-        tasks=tasks,
-        shutdown_event=shutdown_event,
-        logger=logger
-    )
+    if is_primary:
+        setupForwarder(
+            forwarding_targets=settings.Forwarding.forwarding_targets,
+            tasks=tasks,
+            shutdown_event=shutdown_event,
+            logger=logger
+        )
     return handler

@@ -43,7 +43,6 @@ class PeriodicUpdateData(BaseAPI):
 
         self.m_session_info = session_state.m_session_info
         self.m_wdt_status = session_state.m_connected_to_sim
-        # TODO: evaluate if this is needed
         self.m_track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(
             session_state=session_state,
@@ -102,12 +101,17 @@ class PeriodicUpdateData(BaseAPI):
             "player-pit-window" : self._getValueOrDefaultValue(self.m_driver_list_rsp.m_next_pit_stop_window, None),
             "spectator-car-index" : self._getValueOrDefaultValue(self.m_session_info.m_spectator_car_index, None),
             "wdt-status" : self.m_wdt_status,
+            "tyre-temp-mode" : self.m_session_info.m_packet_session.m_tyreTemperatureMode.value \
+                if self.m_session_info.m_packet_session \
+                    and hasattr(self.m_session_info.m_packet_session, 'm_tyreTemperatureMode') \
+                else 0,
         }
 
         if str(self.m_session_info.m_session_type) == "Time Trial":
             final_json["tt-data"] = self.m_driver_list_rsp.toJSON()
         else:
             final_json["table-entries"] = self.m_driver_list_rsp.toJSON()
+            final_json["tyre-stint-history-v2"] = self.m_driver_list_rsp.getTyreStintHistoryJSONv2()
 
         final_json["fastest-lap-overall"] = self._getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)

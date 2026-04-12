@@ -37,7 +37,8 @@ def initExternalApiTask(
     logger: logging.Logger,
     tasks: List[asyncio.Task],
     shutdown_event: asyncio.Event,
-    session_state_ref: SessionState) -> None:
+    session_state_ref: SessionState,
+    itc_queue_suffix: str = "") -> None:
     """Initialise the state management layer
 
     Args:
@@ -46,12 +47,13 @@ def initExternalApiTask(
         shutdown_event (asyncio.Event): Shutdown event
         session_state_ref (SessionState): Reference to the session state
     """
-    tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task"))
+    tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref, itc_queue_suffix), name="External API Task"))
 
 async def externalApiTask(
         logger: logging.Logger,
         shutdown_event: asyncio.Event,
-        session_state_ref: SessionState) -> None:
+        session_state_ref: SessionState,
+        itc_queue_suffix: str = "") -> None:
     """The actual task that calls the external API's
 
     Args:
@@ -61,7 +63,7 @@ async def externalApiTask(
     """
 
     while not shutdown_event.is_set():
-        message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")
+        message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive(f"external-api-update{itc_queue_suffix}")
         if message:
             if not message.m_formula_type.is_f1() or not message.m_session_type.isTimeTrialTypeSession():
                 logger.debug("Skipping external API update as session is unsupported. %s", message)

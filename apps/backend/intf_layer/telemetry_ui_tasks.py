@@ -34,7 +34,6 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcPublisherAsync
-from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
@@ -97,7 +96,6 @@ def initUiIntfLayer(
             logger,
             webClientUpdateTask,
             web_server,
-            session_state,
             settings.StreamOverlay.show_sample_data_at_start), name="Web Client Update Task"))
     tasks.append(asyncio.create_task(
         _periodic_task(
@@ -108,11 +106,13 @@ def initUiIntfLayer(
             session_state,
             ipc_pub), name="High Frequency Local Update Task"))
 
-    # Interrupt/event driven tasks
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
-                                     name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
-                                     name="HUD Interaction Task"))
+    # Interrupt/event driven tasks (primary pipeline)
+    tasks.append(asyncio.create_task(
+        frontEndMessageTask(web_server, shutdown_event, settings.Network.server_port),
+        name="Front End Message Task"))
+    tasks.append(asyncio.create_task(
+        hudInteractionTask(web_server, shutdown_event, settings.Network.server_port),
+        name="HUD Interaction Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
     return web_server, ipc_pub
@@ -145,64 +145,79 @@ async def highFreqLocalUpdateTask(
 
 async def webClientUpdateTask(
     server: TelemetryWebServer,
-    session_state: SessionState,
     stream_overlay_start_sample_data: bool) -> None:
-    """Task to update web clients with telemetry data
+    """Task to update web clients with telemetry data.
+
+    Iterates over all registered port/session pairs and emits
+    data only to clients connected on the matching port.
 
     Args:
         server (TelemetryWebServer): The telemetry web server
-        session_state (SessionState): The session state
         stream_overlay_start_sample_data (bool): Whether to show sample data at start
     """
 
-    if server.is_any_client_interested_in_event('race-table-update'):
-        await server.send_to_clients_interested_in_event(
-            event='race-table-update',
-            data=PeriodicUpdateData(session_state).toJSON()
-        )
+    for port, session_state in server.m_port_session_map.items():
+        if server.is_any_client_in_port_room(port, 'race-table-update'):
+            await server.send_to_port_room(
+                port=port,
+                event='race-table-update',
+                data=PeriodicUpdateData(session_state).toJSON()
+            )
 
-    if server.is_any_client_interested_in_event('stream-overlay-update'):
-        await server.send_to_clients_interested_in_event(
-            event='stream-overlay-update',
-            data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
-        )
+        if server.is_any_client_in_port_room(port, 'stream-overlay-update'):
+            await server.send_to_port_room(
+                port=port,
+                event='stream-overlay-update',
+                data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
+            )
 
 async def frontEndMessageTask(
     server: TelemetryWebServer,
-    shutdown_event: asyncio.Event) -> None:
-    """Task to update clients with telemetry data
+    shutdown_event: asyncio.Event,
+    http_port: int,
+    itc_queue_suffix: str = "") -> None:
+    """Task to forward ITC frontend-update messages to web clients on a specific port.
 
     Args:
         server (TelemetryWebServer): The telemetry web server
         shutdown_event (asyncio.Event): Event to signal shutdown
+        http_port (int): The HTTP port this task emits to
+        itc_queue_suffix (str): ITC queue suffix for this pipeline
     """
 
+    queue_name = f"frontend-update{itc_queue_suffix}"
     while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await server.send_to_clients_of_type(
+        if message := await AsyncInterTaskCommunicator().receive(queue_name):
+            await server.send_to_port_room(
+                port=http_port,
                 event='frontend-update',
-                data=message.toJSON(),
-                client_type=ClientType.RACE_TABLE)
+                data=message.toJSON())
 
-    server.m_logger.debug("Shutting down front end message task")
+    server.m_logger.debug("Shutting down front end message task (port %d)", http_port)
 
 async def hudInteractionTask(
     server: TelemetryWebServer,
-    shutdown_event: asyncio.Event) -> None:
-    """Task to update HUD clients with telemetry data
+    shutdown_event: asyncio.Event,
+    http_port: int,
+    itc_queue_suffix: str = "") -> None:
+    """Task to forward ITC hud-notifier messages to HUD clients on a specific port.
 
     Args:
         server (TelemetryWebServer): The telemetry web server
         shutdown_event (asyncio.Event): Event to signal shutdown
+        http_port (int): The HTTP port this task emits to
+        itc_queue_suffix (str): ITC queue suffix for this pipeline
     """
 
+    queue_name = f"hud-notifier{itc_queue_suffix}"
     while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await server.send_to_clients_interested_in_event(
+        if message := await AsyncInterTaskCommunicator().receive(queue_name):
+            await server.send_to_port_room(
+                port=http_port,
                 event=str(message.m_message_type),
                 data=message.toJSON())
 
-    server.m_logger.debug("Shutting down HUD notifier task")
+    server.m_logger.debug("Shutting down HUD notifier task (port %d)", http_port)
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

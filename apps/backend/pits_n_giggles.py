@@ -35,9 +35,9 @@ import psutil
 from wsproto.connection import LocalProtocolError
 
 from apps.backend.intf_layer import TelemetryWebServer, initUiIntfLayer
-from apps.backend.state_mgmt_layer import (SessionState,
-                                           initStateManagementLayer)
-from apps.backend.telemetry_layer import initTelemetryLayer
+from apps.backend.intf_layer.telemetry_ui_tasks import frontEndMessageTask, hudInteractionTask
+from apps.backend.session_pipeline import SessionPipeline
+from apps.backend.state_mgmt_layer import SessionState
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
@@ -75,27 +75,64 @@ class PngRunner:
 
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
-        self.m_session_state: SessionState = initStateManagementLayer(
-            logger=self.m_logger,
+        self.m_primary_pipeline: SessionPipeline = SessionPipeline(
             settings=self.m_config,
-            ver_str=self.m_version,
-            tasks=self.m_tasks,
-            shutdown_event=self.m_shutdown_event
-        )
-
-        self.m_telemetry_handler = initTelemetryLayer(
-            settings=self.m_config,
-            replay_server=replay_server,
             logger=self.m_logger,
             ver_str=self.m_version,
             shutdown_event=self.m_shutdown_event,
-            session_state=self.m_session_state,
-            tasks=self.m_tasks
+            replay_server=replay_server,
+            http_port=self.m_config.Network.server_port,
+            telemetry_port=self.m_config.Network.telemetry_port,
+            label="Primary",
+            tasks=self.m_tasks,
+            is_primary=True,
         )
+
+        # Additional pipelines — one per additional_server entry (separate F1 game instance)
+        self.m_additional_pipelines: List[SessionPipeline] = []
+        for server in self.m_config.Network.additional_servers:
+            pipeline = SessionPipeline(
+                settings=self.m_config,
+                logger=self.m_logger,
+                ver_str=self.m_version,
+                shutdown_event=self.m_shutdown_event,
+                replay_server=replay_server,
+                http_port=server.port,
+                telemetry_port=server.telemetry_port,
+                label=server.label or f"UDP:{server.telemetry_port}",
+                tasks=self.m_tasks,
+                is_primary=False,
+            )
+            self.m_additional_pipelines.append(pipeline)
+            self.m_logger.info(
+                "Additional session pipeline '%s' — UDP %d → HTTP %d",
+                pipeline.label, server.telemetry_port, server.port
+            )
+
+        # Convenience aliases — used by _setupUiIntfLayer and _shutdown_tasks
+        self.m_session_state: SessionState = self.m_primary_pipeline.session_state
+        self.m_telemetry_handler = self.m_primary_pipeline.telemetry_handler
+
         self.m_web_server, self.m_ipc_pub = self._setupUiIntfLayer(
             run_ipc_server=run_ipc_server,
             debug_mode=debug_mode
         )
+
+        # Register additional sessions so the web server can serve per-port data
+        for pipeline in self.m_additional_pipelines:
+            self.m_web_server.register_session(pipeline.http_port, pipeline.session_state)
+            # Start per-pipeline ITC event tasks
+            self.m_tasks.append(asyncio.create_task(
+                frontEndMessageTask(
+                    self.m_web_server, self.m_shutdown_event,
+                    pipeline.http_port, pipeline.itc_queue_suffix),
+                name=f"Front End Message Task ({pipeline.label})"))
+            self.m_tasks.append(asyncio.create_task(
+                hudInteractionTask(
+                    self.m_web_server, self.m_shutdown_event,
+                    pipeline.http_port, pipeline.itc_queue_suffix),
+                name=f"HUD Interaction Task ({pipeline.label})"))
+
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
         # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
@@ -186,6 +223,8 @@ class PngRunner:
         # Explicitly stop the tasks
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
+        for pipeline in self.m_additional_pipelines:
+            await pipeline.stop()
         await self.m_ipc_pub.close()
         await asyncio.sleep(1)
 
