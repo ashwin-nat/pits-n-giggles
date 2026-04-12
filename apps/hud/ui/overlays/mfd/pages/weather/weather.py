@@ -96,6 +96,7 @@ class WeatherForecastPage(MfdPageBase):
     @final
     def on_page_activated(self, item: QQuickItem):
         item.setProperty("graphBasedUI", self.graph_based_ui)
+        super().on_page_activated(item)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
