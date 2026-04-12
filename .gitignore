@@ -15,6 +15,7 @@ launch.json
 build/*
 dist/*
 png-venv/
+.idea/
 .vercel
 *yappi*
 *.part
@@ -27,3 +28,4 @@ png-venv/
 htmlcov/
 coverage_reports/
 *.diff
+*:Zone.Identifier
