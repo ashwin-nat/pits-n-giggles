@@ -132,6 +132,16 @@ class TelemetryWebServer(BaseWebServer):
             """
             return await self.render_template('eng-view.html', live_data_mode=True, version=self.m_ver_str)
 
+        @self.http_route('/eng-view/trackmap')
+        async def engineerViewTrackmap() -> str:
+            """
+            Render the fullscreen track map page.
+
+            Returns:
+                str: Rendered HTML content for the fullscreen track map.
+            """
+            return await self.render_template('eng-view-trackmap.html', live_data_mode=True, version=self.m_ver_str)
+
         @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:
             """
