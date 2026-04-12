@@ -42,6 +42,14 @@ class OverlayId(str, Enum):
     HUD             = "hud_overlay"
     CIRCUIT_INFO    = "circuit_info"
 
+# Compatibility aliases for code using the old string constants
+LAP_TIMER_OVERLAY_ID        = OverlayId.LAP_TIMER
+TIMING_TOWER_OVERLAY_ID     = OverlayId.TIMING_TOWER
+MFD_OVERLAY_ID              = OverlayId.MFD
+TRACK_MAP_OVERLAY_ID        = OverlayId.TRACK_MAP
+INPUT_TELEMETRY_OVERLAY_ID  = OverlayId.INPUT_TELEMETRY
+TRACK_RADAR_OVERLAY_ID      = OverlayId.TRACK_RADAR
+
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
 class OverlayPosition(ConfigDiffMixin, BaseModel):

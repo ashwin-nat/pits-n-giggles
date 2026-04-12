@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import json
 import os
 import shutil
 from configparser import ConfigParser
@@ -84,6 +85,9 @@ def _stringify_dict(d: Any) -> Any:
     """
     Recursively convert all values in a nested dict to strings.
 
+    Lists of objects are serialised as JSON so that they survive
+    the INI round-trip (ConfigParser stores everything as strings).
+
     Args:
         d (Any): A nested dictionary or primitive.
 
@@ -92,6 +96,8 @@ def _stringify_dict(d: Any) -> Any:
     """
     if isinstance(d, dict):
         return {k: _stringify_dict(v) for k, v in d.items()}
+    if isinstance(d, list):
+        return json.dumps(d)
     return "" if d is None else str(d)
 
 def _backup_invalid_file(path: str, logger: Optional[Logger]) -> None:
@@ -183,7 +189,7 @@ def _validate_sections(
 
     for field_name, model_field in PngSettings.model_fields.items():
         section_model_cls = model_field.annotation
-        section_data = raw.get(field_name, {})
+        section_data = _deserialize_json_strings(raw.get(field_name, {}))
 
         try:
             section_model = section_model_cls(**section_data)
@@ -198,6 +204,19 @@ def _validate_sections(
         validated[field_name] = section_model
 
     return validated, restored, updated
+
+def _deserialize_json_strings(d: Dict[str, str]) -> Dict[str, Any]:
+    """Attempt to parse string values that look like JSON arrays or objects."""
+    result: Dict[str, Any] = {}
+    for k, v in d.items():
+        if isinstance(v, str) and v and v[0] in ("[", "{"):
+            try:
+                result[k] = json.loads(v)
+            except (json.JSONDecodeError, ValueError):
+                result[k] = v
+        else:
+            result[k] = v
+    return result
 
 def _maybe_update_config(
     raw: Dict[str, Dict[str, str]],

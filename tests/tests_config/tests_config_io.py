@@ -31,11 +31,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import configparser
 import tempfile
 
-from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
+from lib.config import (AdditionalServer, CaptureSettings, DisplaySettings,
+                        ForwardingSettings,
                         HttpsSettings, NetworkSettings,
                         PngSettings, PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, load_config_from_json,
-                        load_config_migrated, save_config_to_ini,
+                        load_config_migrated, maybe_migrate_legacy_hud_layout,
+                        save_config_to_ini,
                         save_config_to_json)
 
 from .tests_config_base import TestF1ConfigBase
@@ -426,6 +428,62 @@ udp_tyre_delta_action_code =
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
+    def test_roundtrip_additional_servers(self):
+        """AdditionalServer list survives INI save → load round-trip."""
+        original = PngSettings(
+            Network=NetworkSettings(
+                telemetry_port=11111,
+                additional_servers=[
+                    AdditionalServer(port=4769, telemetry_port=20778, label="Driver 2"),
+                ],
+            ),
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".ini") as f:
+            temp_path = f.name
+
+        try:
+            save_config_to_ini(original, temp_path)
+            loaded = load_config_from_ini(temp_path)
+
+            self.assertEqual(len(loaded.Network.additional_servers), 1)
+            srv = loaded.Network.additional_servers[0]
+            self.assertEqual(srv.port, 4769)
+            self.assertEqual(srv.telemetry_port, 20778)
+            self.assertEqual(srv.label, "Driver 2")
+            self.assertEqual(
+                loaded.Network.telemetry_port,
+                original.Network.telemetry_port,
+            )
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+    def test_roundtrip_additional_servers_empty_list(self):
+        """Empty additional_servers list round-trips correctly."""
+        original = PngSettings(
+            Network=NetworkSettings(
+                telemetry_port=11111,
+                additional_servers=[],
+            ),
+        )
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".ini") as f:
+            temp_path = f.name
+
+        try:
+            save_config_to_ini(original, temp_path)
+            loaded = load_config_from_ini(temp_path)
+
+            self.assertEqual(loaded.Network.additional_servers, [])
+            self.assertEqual(
+                loaded.Network.telemetry_port,
+                original.Network.telemetry_port,
+            )
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
 class TestLoadConfigFromJson(TestConfigIO):
 
     def setUp(self):
@@ -802,3 +860,89 @@ refresh_interval = 333
 
         loaded_again = load_config_migrated(self.ini_path, self.json_path)
         self.assertEqual(loaded_again.Display.refresh_interval, 333)
+
+
+class TestHudLayoutMigration(TestConfigIO):
+    """Tests for maybe_migrate_legacy_hud_layout()."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.json_config_path = os.path.join(self.tmp.name, "config.json")
+        self.legacy_layout_path = os.path.join(self.tmp.name, "png_overlays.json")
+        self.settings = PngSettings()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    # ------------------------------------------------------------------
+    # Happy path: valid legacy layout is migrated into settings
+    # ------------------------------------------------------------------
+    def test_legacy_layout_migrated_successfully(self):
+        """Valid legacy HUD layout file is merged into settings."""
+        legacy_data = {
+            "lap_timer": {"x": 100, "y": 200},
+            "timing_tower": {"x": 300, "y": 400},
+        }
+        with open(self.legacy_layout_path, "w", encoding="utf-8") as f:
+            json.dump(legacy_data, f)
+
+        result = maybe_migrate_legacy_hud_layout(
+            self.settings,
+            self.json_config_path,
+            self.legacy_layout_path,
+        )
+
+        # Overlay positions must be updated
+        self.assertEqual(result.HUD.layout["lap_timer"].x, 100)
+        self.assertEqual(result.HUD.layout["lap_timer"].y, 200)
+        self.assertEqual(result.HUD.layout["timing_tower"].x, 300)
+        self.assertEqual(result.HUD.layout["timing_tower"].y, 400)
+
+        # Legacy file must be deleted
+        self.assertFalse(os.path.exists(self.legacy_layout_path))
+
+        # JSON config must be written
+        self.assertTrue(os.path.exists(self.json_config_path))
+
+    # ------------------------------------------------------------------
+    # File not found: no legacy file → settings returned unchanged
+    # ------------------------------------------------------------------
+    def test_no_legacy_file_returns_settings_unchanged(self):
+        """When no legacy layout file exists, settings are returned as-is."""
+        self.assertFalse(os.path.exists(self.legacy_layout_path))
+
+        result = maybe_migrate_legacy_hud_layout(
+            self.settings,
+            self.json_config_path,
+            self.legacy_layout_path,
+        )
+
+        # Settings must be identical (same object)
+        self.assertIs(result, self.settings)
+
+        # No JSON config should have been written
+        self.assertFalse(os.path.exists(self.json_config_path))
+
+    # ------------------------------------------------------------------
+    # Parse error: broken legacy file → graceful fallback, no crash
+    # ------------------------------------------------------------------
+    def test_corrupt_legacy_file_handled_gracefully(self):
+        """Corrupt legacy layout file does not crash; settings revert to defaults."""
+        with open(self.legacy_layout_path, "w", encoding="utf-8") as f:
+            f.write("{{{not valid json!!!")
+
+        original_layout = dict(self.settings.HUD.layout)
+
+        result = maybe_migrate_legacy_hud_layout(
+            self.settings,
+            self.json_config_path,
+            self.legacy_layout_path,
+        )
+
+        # Layout must remain at defaults (no partial merge)
+        for overlay_id, pos in original_layout.items():
+            self.assertEqual(result.HUD.layout[overlay_id].x, pos.x)
+            self.assertEqual(result.HUD.layout[overlay_id].y, pos.y)
+
+        # Legacy file must still be deleted (cleanup in finally block)
+        self.assertFalse(os.path.exists(self.legacy_layout_path))

@@ -29,7 +29,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
-from ..utils import overlay_enable_field, udp_action_field
+from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
 from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
@@ -48,7 +48,6 @@ class HudOverlaySpeedUnit(str, Enum):
 class HudOverlayFuelEstimationMode(str, Enum):
     LINEAR_REGRESSION = "Linear regression"
     GAME_BUILT_IN = "Game built-in"
-
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
@@ -92,11 +91,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
     lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(description="Toggle lap timer overlay UDP action code",
                                                                         group="Lap Timer")
 
     # ============== TIMING TOWER OVERLAY ==============
     show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay", group="Timing Tower")
+    timing_tower_ui_scale: float = ui_scale_field(description="Timing tower UI scale")
     timing_tower_max_rows: int = Field(
         default=5,
         ge=1,
@@ -129,6 +130,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         'Recommended to also configure at least the "Next MFD page UDP action code" or '
         '"Previous MFD page UDP action code"'
     ])
+    mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
         description="MFD overlay settings",
@@ -187,12 +189,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     # ============== TRACK MAP OVERLAY ==============
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay",
                                                 default=False, visible=False, group="Track Map")
+    track_map_ui_scale: float = ui_scale_field(description="Track map UI scale")
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track map overlay UDP action code", visible=False, group="Track Map")
 
     # ============== INPUT TELEMETRY OVERLAY ==============
     show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay",
                                                     group="Input Telemetry")
+    input_overlay_ui_scale: float = ui_scale_field(description="Input telemetry overlay UI scale")
     input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle input telemetry overlay UDP action code", group="Input Telemetry")
     input_overlay_buffer_duration_sec: float = Field(
@@ -217,6 +221,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== TRACK RADAR OVERLAY ==============
     show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay", group="Track Radar")
+    track_radar_overlay_ui_scale: float = ui_scale_field(description="Track radar overlay UI scale")
     track_radar_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track radar overlay UDP action code", group="Track Radar")
     track_radar_idle_opacity: int = Field(
@@ -310,7 +315,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-
     # ============== GLOBAL OVERLAY CONTROLS ==============
 
     overlays_opacity: int = Field(

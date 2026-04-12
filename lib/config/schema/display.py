@@ -119,6 +119,17 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    wdt_timeout: float = Field(
+        default=5.0,
+        gt=0,
+        description="Watchdog timer timeout in seconds for overlay health monitoring",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+            }
+        }
+    )
 
     @property
     def hud_refresh_interval(self) -> int:
