@@ -33,7 +33,10 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (HudSettings, OverlayPosition, PngSettings)
+from lib.config import (HudSettings, OverlayPosition, PngSettings,
+                        LAP_TIMER_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
+                        MFD_OVERLAY_ID, TRACK_MAP_OVERLAY_ID,
+                        INPUT_TELEMETRY_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -69,7 +72,7 @@ class HudAppMgr(PngAppMgrBase):
         :param common_cfg: Common configuration for the HUD app manager
         """
         self.port = common_cfg.settings.Network.save_viewer_port
-        self.supported = (sys.platform == "win32") # Only supported on Windows
+        self.supported = True  # Supported on all platforms (Windows, Linux, macOS)
         self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0
         final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
@@ -490,12 +493,80 @@ class HudAppMgr(PngAppMgrBase):
 
         return False
 
+    def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
+        """Send UI scale change command to HUD app
+
+        Args:
+            oid (str): Overlay ID
+            data (Dict[str, Any]): UI scale data
+        """
+        self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-ui-scale", args={
+            "oid": oid,
+            "scale_factor": data["new_value"]
+        })
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to set {oid} UI scale: {rsp}")
+        else:
+            self.info_log(f"Set UI scale command for {oid} was successful")
+
     def show_overlays_adj_popup(self):
         """Show the overlays adjustment popup (opacity and other non-position settings)"""
         hud_settings = self.curr_settings.HUD
 
         # pylint: disable=unsubscriptable-object
         self.overlays_adj_popup.set_items([
+            SliderItem(
+                key=LAP_TIMER_OVERLAY_ID,
+                label="Lap Timer Scale",
+                min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.lap_timer_ui_scale * 100),
+                visible=hud_settings.show_lap_timer,
+            ),
+            SliderItem(
+                key=TIMING_TOWER_OVERLAY_ID,
+                label="Timing Tower Scale",
+                min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.timing_tower_ui_scale * 100),
+                visible=hud_settings.show_timing_tower,
+            ),
+            SliderItem(
+                key=MFD_OVERLAY_ID,
+                label="MFD Scale",
+                min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.mfd_ui_scale * 100),
+                visible=hud_settings.show_mfd,
+            ),
+            # SliderItem(
+            #     key=TRACK_MAP_OVERLAY_ID,
+            #     label="Track Map Scale",
+            #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
+            #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
+            #     value=int(hud_settings.track_map_ui_scale * 100),
+            #     visible=hud_settings.show_track_map_overlay,
+            # ),
+            SliderItem(
+                key=INPUT_TELEMETRY_OVERLAY_ID,
+                label="Input Telemetry Scale",
+                min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.input_overlay_ui_scale * 100),
+                visible=hud_settings.show_input_overlay,
+            ),
+            SliderItem(
+                key=TRACK_RADAR_OVERLAY_ID,
+                label="Track Radar Scale",
+                min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
+                max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
+                value=int(hud_settings.track_radar_overlay_ui_scale * 100),
+                visible=hud_settings.show_track_radar_overlay,
+            ),
+
+            # Opacity at the bottom
             SliderItem(
                 key="overlays_opacity",
                 label="Overlays Opacity",

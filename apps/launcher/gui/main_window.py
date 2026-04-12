@@ -276,7 +276,7 @@ class PngLauncherWindow(QMainWindow):
             "show-hide" : self._load_icon(icons_path_base / "show-hide.svg"),
             "start" : self._load_icon(icons_path_base / "start.svg"),
             "stop" : self._load_icon(icons_path_base / "stop.svg"),
-            "tp-dashboard" : self._load_icon(icons_path_base / "fab-dashboard.png"),
+            "tp-dashboard" : self._load_icon(icons_path_base / "fab-dashboard.svg"),
             "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
             "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
             "updates" : self._load_icon(icons_path_base / "updates.svg"),
@@ -699,8 +699,8 @@ class PngLauncherWindow(QMainWindow):
                 break
 
         stats = {subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems}
-        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}). "
-                      f"Final subsystem stats: {json.dumps(stats, sort_keys=True)}")
+        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
+        self.logger.info("Final subsystem stats: %s", json.dumps(stats, sort_keys=True))
         event.accept()
 
     def run(self):
@@ -859,7 +859,7 @@ class PngLauncherWindow(QMainWindow):
             path = self.config_file_path_new
         try:
             save_config_to_json(settings, path)
-        except Exception as e: # pylint: disable=broad-exception-caught
+        except (OSError, TypeError, ValueError) as e:
             self.error_log(f"Failed to save settings to {path}: {e}")
 
         self.info_log("Settings saved successfully to disk")

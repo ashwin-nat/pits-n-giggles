@@ -584,8 +584,6 @@ class PngAppMgrBase(QObject):
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
         timeout_ms = (int(self.heartbeat_interval) - 2) * 1000
         assert timeout_ms > 0
-        assert not self._stop_heartbeat.is_set(), "Heartbeat thread started with stop flag already set" # TODO: remove
-
         while not self._stop_heartbeat.is_set():
             if hb_gen != self._heartbeat_gen_num:
                 self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting (stale generation {hb_gen})")
@@ -678,7 +676,7 @@ class PngAppMgrBase(QObject):
                 _, alive = psutil.wait_procs([parent] + children, timeout=5)
                 for p in alive:
                     p.kill()
-            except Exception as e: # pylint: disable=broad-exception-caught
+            except (psutil.Error, OSError) as e:
                 self.debug_log(f"Failed to terminate process tree for PID {target_pid}: {e}")
 
     def _maybe_fire_post_start(self) -> None:

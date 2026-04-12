@@ -38,7 +38,11 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
                                QRadioButton, QScrollArea, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
-from lib.config import PngSettings
+from lib.config import AdditionalServer, PngSettings
+
+from .collapsible_group import CollapsibleGroup
+from .reorderable_collection import ReorderableCollection
+from .searchable_widget import SearchableWidget
 
 from .collapsible_group import CollapsibleGroup
 from .reorderable_collection import ReorderableCollection
@@ -456,6 +460,10 @@ class SettingsWindow(QDialog):
         elif isinstance(field_value, dict):
             widget = self._build_dict_field(field_name, field_value, field_path, field_info)
             if widget:
+                layout.addWidget(widget)
+        elif isinstance(field_value, list):
+            if ui_type == "additional_servers_list":
+                widget = self._build_additional_servers_widget(field_name, field_value, field_path, field_info)
                 layout.addWidget(widget)
         else:
             widget = self._build_field_widget(field_name, field_value, field_path, field_info)
@@ -1256,6 +1264,275 @@ class SettingsWindow(QDialog):
                 self.udp_list_layout.addWidget(row)
 
         self.udp_list_layout.addStretch()
+    # -------------------------------------- ADDITIONAL SERVERS LIST WIDGET -------------------------------------------
+
+    def _build_additional_servers_widget(self,
+                                         field_name: str,
+                                         field_value: list,
+                                         field_path: str,
+                                         field_info: FieldInfo) -> QWidget:
+        """Build widget for the additional servers port list."""
+        ui_config = (field_info.json_schema_extra or {}).get("ui", {})
+        ext_info = ui_config.get("ext_info", [])
+
+        container = QWidget()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(8)
+
+        # Info text
+        for info_text in ext_info:
+            info_label = QLabel(f"\u2139\ufe0f {info_text}")
+            info_label.setFont(QFont("Roboto", 9))
+            info_label.setStyleSheet("color: #808080;")
+            info_label.setWordWrap(True)
+            main_layout.addWidget(info_label)
+
+        # Entries container
+        entries_widget = QWidget()
+        entries_layout = QVBoxLayout()
+        entries_layout.setContentsMargins(0, 0, 0, 0)
+        entries_layout.setSpacing(4)
+        entries_widget.setLayout(entries_layout)
+
+        for server in field_value:
+            row = self._build_server_entry_row(server.port, server.telemetry_port, server.label, field_path, entries_layout)
+            entries_layout.addWidget(row)
+
+        main_layout.addWidget(entries_widget)
+
+        # Empty state label
+        empty_label = QLabel("No additional ports configured.")
+        empty_label.setFont(QFont("Roboto", 9))
+        empty_label.setStyleSheet("color: #808080; font-style: italic;")
+        empty_label.setVisible(len(field_value) == 0)
+        main_layout.addWidget(empty_label)
+
+        # Add Port button
+        add_btn = QPushButton("+ Add Port")
+        add_btn.setMaximumWidth(120)
+        add_btn.clicked.connect(
+            lambda: self._on_add_server_entry(field_path, entries_layout, empty_label)
+        )
+        main_layout.addWidget(add_btn)
+
+        container.setLayout(main_layout)
+
+        # Store references on container for rebuilding
+        container.entries_layout = entries_layout
+        container.empty_label = empty_label
+        container.field_path = field_path
+
+        self._register_searchable(container, field_info.description or field_name, field_name)
+        self.field_widgets[field_path] = container
+
+        return container
+
+    def _build_server_entry_row(self,
+                                port: int,
+                                telemetry_port: int,
+                                label: str,
+                                field_path: str,
+                                entries_layout: QVBoxLayout) -> QFrame:
+        """Build a single row for an additional server entry."""
+        row = QFrame()
+        row.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Sunken)
+        row.setStyleSheet("""
+            QFrame {
+                background-color: #2d2d2d;
+                border: 1px solid #3e3e3e;
+                border-radius: 4px;
+                padding: 4px;
+            }
+        """)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(8)
+
+        port_label = QLabel("HTTP:")
+        port_label.setFont(QFont("Roboto", 9))
+        layout.addWidget(port_label)
+
+        port_edit = QLineEdit(str(port))
+        port_edit.setFont(QFont("Formula1", 8))
+        port_edit.setMaximumWidth(80)
+        port_edit.setMaxLength(5)
+        port_edit.textChanged.connect(
+            lambda _text, fp=field_path: self._sync_additional_servers(fp)
+        )
+        layout.addWidget(port_edit)
+
+        telemetry_label = QLabel("UDP:")
+        telemetry_label.setFont(QFont("Roboto", 9))
+        layout.addWidget(telemetry_label)
+
+        telemetry_port_edit = QLineEdit(str(telemetry_port))
+        telemetry_port_edit.setFont(QFont("Formula1", 8))
+        telemetry_port_edit.setMaximumWidth(80)
+        telemetry_port_edit.setMaxLength(5)
+        telemetry_port_edit.textChanged.connect(
+            lambda _text, fp=field_path: self._sync_additional_servers(fp)
+        )
+        layout.addWidget(telemetry_port_edit)
+
+        label_lbl = QLabel("Label:")
+        label_lbl.setFont(QFont("Roboto", 9))
+        layout.addWidget(label_lbl)
+
+        label_edit = QLineEdit(label)
+        label_edit.setFont(QFont("Formula1", 8))
+        label_edit.setMaximumWidth(160)
+        label_edit.setMaxLength(24)
+        label_edit.setPlaceholderText("optional")
+        label_edit.textChanged.connect(
+            lambda _text, fp=field_path: self._sync_additional_servers(fp)
+        )
+        layout.addWidget(label_edit)
+
+        layout.addStretch()
+
+        remove_btn = QPushButton("X")
+        remove_btn.setFixedSize(28, 28)
+        remove_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3e3e3e;
+                color: #d4d4d4;
+                border: 1px solid #4e4e4e;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c74040;
+                border-color: #c74040;
+            }
+        """)
+        remove_btn.clicked.connect(
+            lambda _checked, r=row, fp=field_path, el=entries_layout:
+                self._on_remove_server_entry(r, fp, el)
+        )
+        layout.addWidget(remove_btn)
+
+        row.port_edit = port_edit
+        row.telemetry_port_edit = telemetry_port_edit
+        row.label_edit = label_edit
+        row.setLayout(layout)
+
+        return row
+
+    def _on_add_server_entry(self, field_path: str, entries_layout: QVBoxLayout, empty_label: QLabel):
+        """Add a new server entry with auto-suggested port."""
+        suggested_port = self._suggest_next_port()
+        suggested_telemetry_port = self._suggest_next_telemetry_port()
+        row = self._build_server_entry_row(suggested_port, suggested_telemetry_port, "", field_path, entries_layout)
+        entries_layout.addWidget(row)
+        empty_label.setVisible(False)
+        self._sync_additional_servers(field_path)
+
+    def _on_remove_server_entry(self, row: QFrame, field_path: str, entries_layout: QVBoxLayout):
+        """Remove a server entry row."""
+        entries_layout.removeWidget(row)
+        row.deleteLater()
+
+        container = self.field_widgets.get(field_path)
+        if container:
+            has_entries = any(
+                entries_layout.itemAt(i) is not None
+                and entries_layout.itemAt(i).widget() is not None
+                and hasattr(entries_layout.itemAt(i).widget(), 'port_edit')
+                for i in range(entries_layout.count())
+            )
+            container.empty_label.setVisible(not has_entries)
+
+        self._sync_additional_servers(field_path)
+
+    def _sync_additional_servers(self, field_path: str):
+        """Rebuild the additional_servers list in working_settings from UI widgets."""
+        container = self.field_widgets.get(field_path)
+        if not container or not hasattr(container, 'entries_layout'):
+            return
+
+        entries_layout = container.entries_layout
+        servers: List[AdditionalServer] = []
+
+        for i in range(entries_layout.count()):
+            item = entries_layout.itemAt(i)
+            if not item or not item.widget() or not hasattr(item.widget(), 'port_edit'):
+                continue
+            row = item.widget()
+            port_text = row.port_edit.text().strip()
+            label_text = row.label_edit.text().strip()
+
+            try:
+                port = int(port_text)
+            except ValueError:
+                continue
+            if port < 1024 or port > 65535:
+                continue
+
+            telemetry_port_text = row.telemetry_port_edit.text().strip()
+            try:
+                telemetry_port = int(telemetry_port_text)
+            except ValueError:
+                continue
+            if telemetry_port < 1024 or telemetry_port > 65535:
+                continue
+
+            servers.append(AdditionalServer(port=port, telemetry_port=telemetry_port, label=label_text))
+
+        self._set_nested_value(self.working_settings, field_path, servers)
+
+    def _suggest_next_port(self) -> int:
+        """Suggest the next free TCP port starting from 4769."""
+        network = self.working_settings.Network
+        used_ports = {
+            network.server_port,
+            network.save_viewer_port,
+            network.broker_xpub_port,
+            network.broker_xsub_port,
+            network.telemetry_port,
+        }
+        for server in network.additional_servers:
+            used_ports.add(server.port)
+            used_ports.add(server.telemetry_port)
+        port = 4769
+        while port in used_ports and port <= 65535:
+            port += 1
+        return port
+
+    def _suggest_next_telemetry_port(self) -> int:
+        """Suggest the next free UDP telemetry port starting from 20778."""
+        network = self.working_settings.Network
+        used_ports = {
+            network.telemetry_port,
+            network.server_port,
+            network.save_viewer_port,
+            network.broker_xpub_port,
+            network.broker_xsub_port,
+        }
+        for server in network.additional_servers:
+            used_ports.add(server.telemetry_port)
+            used_ports.add(server.port)
+        port = 20778
+        while port in used_ports and port <= 65535:
+            port += 1
+        return port
+
+    def _rebuild_additional_servers_entries(self, container: QWidget, servers: list):
+        """Rebuild additional servers entries from a new server list (for revert/reset)."""
+        entries_layout = container.entries_layout
+        field_path = container.field_path
+
+        while entries_layout.count():
+            item = entries_layout.takeAt(0)
+            if item and item.widget():
+                item.widget().deleteLater()
+
+        for server in servers:
+            row = self._build_server_entry_row(server.port, server.telemetry_port, server.label, field_path, entries_layout)
+            entries_layout.addWidget(row)
+
+        container.empty_label.setVisible(len(servers) == 0)
 
     # -------------------------------------- EVENT HANDLERS & UTILITIES ------------------------------------------------
 
@@ -1442,6 +1719,9 @@ class SettingsWindow(QDialog):
                 elif isinstance(widget, QLineEdit):
                     widget.setText(str(value) if value is not None else "")
 
+                elif hasattr(widget, 'entries_layout'):
+                    self._rebuild_additional_servers_entries(widget, value)
+
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
 
@@ -1471,7 +1751,7 @@ class SettingsWindow(QDialog):
                 return
 
             # Call the callback if provided
-            self.parent_window.debug_log(f"Settings changed: {json.dumps(diff, indent=2)}")
+            self.parent_window.debug_log(f"Settings changed: {json.dumps(diff, indent=2, default=str)}")
             if self.on_settings_change:
                 self.on_settings_change(validated_settings)
 
