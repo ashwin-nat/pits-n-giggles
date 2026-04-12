@@ -50,7 +50,9 @@ from tests_collision_analyzer import (TestCollisionAnalyzer,
 from tests_config import (TestCaptureSettings, TestConfigDiffMixin,
                           TestConfigMigration, TestDisplaySettings,
                           TestEdgeCases, TestFilePathStr,
+                          TestResolveUserFile,
                           TestForwardingSettings, TestHttpsSettings,
+                          TestHudLayoutMigration,
                           TestHudSettings, TestLoadConfigFromIni,
                           TestLoadConfigFromJson, TestMissingSectionsAndKeys,
                           TestNetworkSettings, TestPitTimeLossF1,
@@ -78,15 +80,19 @@ from tests_save_to_disk import TestSaveRaceInfo
 from tests_tyre_wear_extrapolator import (
     TestSimpleLinearRegression, TestTyreWearExtrapolator,
     TestTyreWearExtrapolatorWithMissingLaps,
-    TestTyreWearExtrapolatorWithNonRacingLaps)
+    TestTyreWearExtrapolatorWithNonRacingLaps,
+    TestTyreWearExtrapolatorSlidingWindow,
+    TestTyreWearExtrapolatorWeatherSegmentation)
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
+from tests_save_viewer_ipc import TestSaveViewerPathTraversal
+from tests_web_server import TestSocketBinding
 
 from tests.ipc import TestIpcParentChild, TestIpcPubSub, TestIpcSubscriber
 from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
                                          TestIsInitComplete, TestPidReport)
 from tests.tests_delta import TestF1Delta
-from tests.tests_race_ctrl import TestRaceControlMessages
+from tests.tests_race_ctrl import TestRaceControlMessages, TestRaceCtrlEventMsgFactory
 from tests.tests_rate_limiter import TestRateLimiter
 from tests.tests_rolling_history import TestRollingHistory
 from tests.tests_wdt import TestWatchDogTimerAsync, TestWatchDogTimerSync

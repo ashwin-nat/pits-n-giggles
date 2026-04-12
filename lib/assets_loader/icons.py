@@ -65,7 +65,7 @@ def load_icon(
         icon = QIcon(str(full_path))
         debug_log(f"Loaded icon from {full_path}")
         return icon
-    except Exception as e:  # pylint: disable=broad-except
+    except OSError as e:
         error_log(f"Failed to load icon from {relative_path}: {e}")
         return QIcon()
 
