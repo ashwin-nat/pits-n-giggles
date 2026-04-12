@@ -196,7 +196,7 @@ class IpcPubSubBroker:
 
         try:
             self.control.send(b"TERMINATE")
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             pass
 
         if self._thread:
@@ -214,12 +214,12 @@ class IpcPubSubBroker:
         ):
             try:
                 sock.close(linger=0)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception:
                 pass
 
         try:
             self.ctx.term()
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             pass
 
         self.logger.debug("%s closed", self.name)
@@ -262,8 +262,10 @@ class IpcPubSubBroker:
                 topic = topic_raw.decode("utf-8", errors="replace")
                 total_size = sum(len(part) for part in msg)
 
-                self.stats.track_packet("__OVERALL__", "traffic", total_size)
-                self.stats.track_packet("__TOPIC__", topic, total_size)
+                self.stats.track_packet("__OVERALL__", "__INCOMING__", total_size)
+                self.stats.track_packet(topic, "__INCOMING__", total_size)
+                self.stats.track_packet("__OVERALL__", "__OUTGOING__", total_size)
+                self.stats.track_packet(topic, "__OUTGOING__", total_size)
         except zmq.ZMQError:
             pass
         finally:

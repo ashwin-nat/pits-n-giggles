@@ -55,7 +55,8 @@ class AsyncF1TelemetryManager:
                  port_number: int,
                  logger: Logger = None,
                  replay_server: bool = False,
-                 frame_gate_enabled: bool = False):
+                 frame_gate_enabled: bool = False,
+                 bind_address: str = "0.0.0.0"):
         """Init the telemetry manager app and all its sub components
 
         Args:
@@ -64,13 +65,15 @@ class AsyncF1TelemetryManager:
             replay_server (bool): If True, the TCP based packet replay server will be created
                 NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
             frame_gate_enabled (bool): If True, the frame gate will be enabled
+            bind_address (str): The IP address to bind the UDP receiver to
         """
 
         self.m_replay_server = replay_server
         self.m_stats = EventCounter()
         self.m_port_number = port_number
         self.m_logger = logger
-        self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
+        self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger,
+                                                     bind_address=bind_address)
         self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {}
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
 
@@ -142,7 +145,7 @@ class AsyncF1TelemetryManager:
             raw_packet (bytes): The raw packet received from the UDP socket
         """
 
-        self.m_stats.track_packet("__RAW__", "__TOTAL__", len(raw_packet))
+        self.m_stats.track_packet("__RAW__", "__RAW__", len(raw_packet))
         # First, perform the raw packet callback
         if self.m_raw_packet_callback:
             await self.m_raw_packet_callback(raw_packet)

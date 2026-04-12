@@ -128,10 +128,11 @@ class PacketParserFactory:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryReceiver:
+def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger,
+                               bind_address: str = "0.0.0.0") -> TelemetryReceiver:
     """Creates a telemetry receiver based on the given port number and replay server mode."""
     if replay_server:
         logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)
         return TcpReceiver(port_number, "localhost")
-    logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
-    return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)
+    logger.info("LIVE RECEIVER MODE. PORT = %s BIND = %s", port_number, bind_address)
+    return UdpReceiver(port_number, bind_address, buffer_size=4096)
