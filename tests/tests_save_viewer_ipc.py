@@ -99,12 +99,13 @@ class TestSaveViewerPathTraversal(TestSaveViewerIpcBase):
         ipc = self._create_ipc()
 
         with patch('apps.save_viewer.save_viewer_state.open_file_helper', new_callable=AsyncMock) as mock_open, \
-             patch.object(ipc.m_server, 'send_to_clients_of_type', new_callable=AsyncMock):
+             patch.object(ipc.m_server, 'send_to_clients_of_type', new_callable=AsyncMock) as mock_broadcast:
             mock_open.return_value = {"status": "success"}
             result = await ipc._handle_open_file({"file-path": str(self.valid_file)})
 
         self.assertEqual(result["status"], "success")
         mock_open.assert_called_once()
+        mock_broadcast.assert_called_once()
 
     async def test_missing_file_path_rejected(self):
         """Missing file-path argument must be rejected."""
@@ -124,12 +125,13 @@ class TestSaveViewerPathTraversal(TestSaveViewerIpcBase):
         external_json.write_text('{"test": true}', encoding="utf-8")
 
         with patch('apps.save_viewer.save_viewer_state.open_file_helper', new_callable=AsyncMock) as mock_open, \
-             patch.object(ipc.m_server, 'send_to_clients_of_type', new_callable=AsyncMock):
+             patch.object(ipc.m_server, 'send_to_clients_of_type', new_callable=AsyncMock) as mock_broadcast:
             mock_open.return_value = {"status": "success"}
             result = await ipc._handle_open_file({"file-path": str(external_json)})
 
         self.assertEqual(result["status"], "success")
         mock_open.assert_called_once()
+        mock_broadcast.assert_called_once()
 
     async def test_wrong_extension_rejected(self):
         """Files with non-.json extension must be rejected."""
@@ -161,3 +163,13 @@ class TestSaveViewerPathTraversal(TestSaveViewerIpcBase):
 
         self.assertEqual(result["status"], "error")
         self.assertIn("not point to an existing file", result["message"])
+
+    async def test_path_resolve_oserror_rejected(self):
+        """If Path.resolve() raises OSError, the handler must return an error."""
+        ipc = self._create_ipc()
+
+        with patch('apps.save_viewer.save_viewer_ipc.Path.resolve', side_effect=OSError("bad path")):
+            result = await ipc._handle_open_file({"file-path": "/some/valid-looking/path.json"})
+
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Invalid file path", result["message"])
