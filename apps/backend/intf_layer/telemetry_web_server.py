@@ -251,7 +251,8 @@ class TelemetryWebServer(BaseWebServer):
 
         # Check if the given index is valid
         index_int = int(index_arg)
-        if not self.m_session_state.isIndexValid(index_int):
+        session = self.get_session_for_request()
+        if not session.isIndexValid(index_int):
             error_response = {
                 'error' : 'Invalid parameter value',
                 'message' : 'Invalid index',
@@ -260,7 +261,7 @@ class TelemetryWebServer(BaseWebServer):
             return self.jsonify(error_response), HTTPStatus.NOT_FOUND
 
         # Process parameters and generate response
-        return DriverInfoRsp(self.m_session_state, index_int).toJSON(), HTTPStatus.OK
+        return DriverInfoRsp(session, index_int).toJSON(), HTTPStatus.OK
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
