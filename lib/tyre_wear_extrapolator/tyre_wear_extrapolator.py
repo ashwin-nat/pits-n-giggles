@@ -62,6 +62,7 @@ class TyreWearExtrapolator:
         total_laps: int,
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
+        window_size: Optional[int] = None,
     ):
         """
         Initialize a TyreWearExtrapolator object.
@@ -72,6 +73,10 @@ class TyreWearExtrapolator:
             logger (Optional[logging.Logger], optional): Logger instance for extrapolator logs.
                 If None, a null logger is used.
             name (Optional[str], optional): Name prefix for all extrapolator log lines.
+            window_size (Optional[int], optional): Number of most recent racing laps to use
+                for regression. Limits the regression to the last N racing laps so the model
+                adapts to changing conditions (e.g., weather transitions) instead of averaging
+                over the entire stint. None or 0 means use all available data (original behaviour).
         """
 
         if logger is None:
@@ -80,6 +85,7 @@ class TyreWearExtrapolator:
             logger.propagate = False
         self.m_logger = logger
         self.m_name = name if name else self.__class__.__name__
+        self.m_window_size: Optional[int] = window_size
 
         self._initMembers(initial_data, total_laps)
 
@@ -102,7 +108,7 @@ class TyreWearExtrapolator:
 
     def _warning(self, message: str, *args) -> None:
         """Emit a warning with an extrapolator name prefix."""
-        self.m_logger.warning(f"[{self.m_name}] {message}", *args)
+        self.m_logger.warning("[%s] " + message, self.m_name, *args)
 
     def _enforce_tyre_monotonicity(self, prev: TyreWearPerLap, curr: TyreWearPerLap, attr: str, tyre: str) -> None:
         """Clamp one tyre wear attribute to be non-decreasing and log violations."""
@@ -271,6 +277,37 @@ class TyreWearExtrapolator:
         self._recomputeRacingLapsData()
         self._recompute()
 
+    _MIN_WEATHER_SEGMENT_LAPS = 3
+
+    def _filter_to_current_weather(self, racing_data: List[TyreWearPerLap]) -> List[TyreWearPerLap]:
+        """Return only the racing laps from the current (most recent) weather group.
+
+        If the current weather segment has fewer than ``_MIN_WEATHER_SEGMENT_LAPS``
+        racing laps, all racing data is returned so the sliding window can handle
+        the gradual transition.
+        """
+        if not racing_data:
+            return racing_data
+
+        current_group = self._weather_group(racing_data[-1].weather_id)
+        if current_group is None:
+            return racing_data  # No weather info → use all data
+
+        # Walk backwards to find consecutive laps in the same weather group
+        filtered: List[TyreWearPerLap] = []
+        for lap in reversed(racing_data):
+            if self._weather_group(lap.weather_id) == current_group:
+                filtered.append(lap)
+            else:
+                break
+        filtered.reverse()
+
+        if len(filtered) >= self._MIN_WEATHER_SEGMENT_LAPS:
+            return filtered
+
+        # Fallback: not enough data for the new weather → use all data
+        return racing_data
+
     def _performRegressions(self, racing_data: List[TyreWearPerLap]):
         """Perform linear regression for all 4 tyres wears
 
@@ -278,11 +315,30 @@ class TyreWearExtrapolator:
             racing_data (List[TyreWearPerLap]): List of all TyreWearPerLap only for racing laps
         """
 
-        laps = [point.lap_number for point in racing_data]
-        fl_wear = [point.fl_tyre_wear for point in racing_data]
-        fr_wear = [point.fr_tyre_wear for point in racing_data]
-        rl_wear = [point.rl_tyre_wear for point in racing_data]
-        rr_wear = [point.rr_tyre_wear for point in racing_data]
+        # Filter to current weather segment first; fall back to all data
+        # when the segment is too short for a stable regression.
+        weather_filtered = self._filter_to_current_weather(racing_data)
+
+        # Apply sliding window: when configured, use only the most recent racing
+        # laps for the regression.  This lets the model adapt to changing track
+        # conditions (e.g. dry→wet or wet→dry transitions) rather than averaging
+        # over the entire stint where earlier data may reflect a completely
+        # different wear rate.  With window_size=None/0 all data is used
+        # (original behaviour).
+        if self.m_window_size and len(weather_filtered) > self.m_window_size:
+            regression_data = weather_filtered[-self.m_window_size:]
+        else:
+            regression_data = weather_filtered
+        self.m_regression_sample_count = len(regression_data)
+
+        # Use sequential indices (0, 1, 2, ...) instead of actual lap numbers.
+        # This prevents gaps from SC periods or low-wear rain laps from
+        # diluting the regression slope and producing too-low predictions.
+        laps = list(range(len(regression_data)))
+        fl_wear = [point.fl_tyre_wear for point in regression_data]
+        fr_wear = [point.fr_tyre_wear for point in regression_data]
+        rl_wear = [point.rl_tyre_wear for point in regression_data]
+        rr_wear = [point.rr_tyre_wear for point in regression_data]
 
         # Initialize the simple linear regression models for each tyre
         self.m_fl_regression = SimpleLinearRegression()
@@ -361,6 +417,7 @@ class TyreWearExtrapolator:
         self.m_fr_regression: SimpleLinearRegression = None
         self.m_rl_regression: SimpleLinearRegression = None
         self.m_rr_regression: SimpleLinearRegression = None
+        self.m_regression_sample_count: int = 0
 
         # Cache racing data for efficient access
         self._recomputeRacingLapsData()
@@ -384,13 +441,20 @@ class TyreWearExtrapolator:
             assert self.m_rr_regression is not None
 
             self.m_predicted_tyre_wear = []
-            for lap in range(self.m_total_laps - self.m_remaining_laps + 1, self.m_total_laps + 1):
+            # Predict using sequential racing-lap indices then map back to actual lap numbers.
+            # The regression was fitted on indices 0..N-1 where N = number of (windowed)
+            # data points fed into the regression.
+            racing_index_start = self.m_regression_sample_count
+            actual_lap_start = self.m_total_laps - self.m_remaining_laps + 1
+            for i in range(self.m_remaining_laps):
+                racing_index = racing_index_start + i
+                actual_lap = actual_lap_start + i
                 prev = self.m_predicted_tyre_wear[-1] if self.m_predicted_tyre_wear else self.m_initial_data[-1]
 
-                fl_wear = self._clamp_wear(self.m_fl_regression.predict(lap),prev.fl_tyre_wear)
-                fr_wear = self._clamp_wear(self.m_fr_regression.predict(lap),prev.fr_tyre_wear)
-                rl_wear = self._clamp_wear(self.m_rl_regression.predict(lap),prev.rl_tyre_wear)
-                rr_wear = self._clamp_wear(self.m_rr_regression.predict(lap),prev.rr_tyre_wear)
+                fl_wear = self._clamp_wear(self.m_fl_regression.predict(racing_index), prev.fl_tyre_wear)
+                fr_wear = self._clamp_wear(self.m_fr_regression.predict(racing_index), prev.fr_tyre_wear)
+                rl_wear = self._clamp_wear(self.m_rl_regression.predict(racing_index), prev.rl_tyre_wear)
+                rr_wear = self._clamp_wear(self.m_rr_regression.predict(racing_index), prev.rr_tyre_wear)
 
                 # Add the predicted tyre wear for the current lap
                 predicted_tyre = TyreWearPerLap(
@@ -398,43 +462,71 @@ class TyreWearExtrapolator:
                     fr_tyre_wear=fr_wear,
                     rl_tyre_wear=rl_wear,
                     rr_tyre_wear=rr_wear,
-                    lap_number=lap,
+                    lap_number=actual_lap,
                 )
                 self.m_predicted_tyre_wear.append(predicted_tyre)
         self._enforce_monotonicity()
 
+    # Weather grouping: Dry (Clear=0, LightCloud=1, Overcast=2) vs Wet (LightRain=3, HeavyRain=4, Storm=5, Thunderstorm=6)
+    _DRY_WEATHER_IDS = frozenset({0, 1, 2})
+
+    @staticmethod
+    def _weather_group(weather_id: Optional[int]) -> Optional[str]:
+        """Map a weather enum value to a coarse group ('dry' or 'wet').
+
+        Returns None when the weather_id is unknown so that legacy data
+        without weather information never triggers a segment break.
+        """
+        if weather_id is None:
+            return None
+        return "dry" if weather_id in TyreWearExtrapolator._DRY_WEATHER_IDS else "wet"
+
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
-        Segment the data into intervals based on racing mode.
+        Segment the data into intervals based on racing mode and weather group.
 
-        A new segment is started whenever the `is_racing_lap` flag changes.
-        This helps us isolate continuous runs of either racing laps or non-racing laps.
+        A new segment is started whenever the `is_racing_lap` flag changes OR
+        the weather group (dry / wet) changes.  This isolates continuous runs
+        under the same racing conditions.
 
         Args:
             data (List[TyreWearPerLap]): List of TyreWearPerLap objects.
 
         Returns:
             List[List[TyreWearPerLap]]: Segmented intervals, where each interval contains
-            laps with the same `is_racing_lap` flag.
+            laps with the same `is_racing_lap` flag and weather group.
         """
 
         segment_indices : List[Tuple[int, int]] = []  # Stores (start_index, end_index) of each segment
         is_racing_mode = None                         # Tracks current segment's mode (True/False)
+        weather_group = None                          # Tracks current segment's weather group
         curr_start_index = None                       # Start index of the current segment
 
         for i, point in enumerate(data):
+            point_weather_group = self._weather_group(point.weather_id)
             if is_racing_mode is None:
                 # This is the first point — initialize the first segment
                 is_racing_mode = point.is_racing_lap
+                weather_group = point_weather_group
                 curr_start_index = i
-            elif is_racing_mode != point.is_racing_lap:
-                # Detected a switch in mode (racing <-> non-racing)
-                # Close the previous segment
-                segment_indices.append((curr_start_index, i - 1))
+            else:
+                # A new weather group of None (legacy data) never forces a break
+                weather_changed = (
+                    point_weather_group is not None
+                    and weather_group is not None
+                    and point_weather_group != weather_group
+                )
+                if is_racing_mode != point.is_racing_lap or weather_changed:
+                    # Close the previous segment
+                    segment_indices.append((curr_start_index, i - 1))
 
-                # Start a new segment
-                curr_start_index = i
-                is_racing_mode = point.is_racing_lap
+                    # Start a new segment
+                    curr_start_index = i
+                    is_racing_mode = point.is_racing_lap
+                    weather_group = point_weather_group
+                elif point_weather_group is not None:
+                    # Keep tracking the latest known weather group
+                    weather_group = point_weather_group
 
         # Add the final segment (either first and only, or the tail)
         segment_indices.append((curr_start_index, len(data) - 1))
