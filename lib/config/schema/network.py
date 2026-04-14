@@ -95,7 +95,7 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
     )
     save_viewer_port: int = port_field(
         f"{APP_NAME} Save Data Viewer Port",
-        default=4767,
+        default=4769,
         port_type=PortType.TCP
     )
     broker_xpub_port: int = port_field(
