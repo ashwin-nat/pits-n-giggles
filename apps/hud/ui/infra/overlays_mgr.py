@@ -271,7 +271,7 @@ class OverlaysMgr:
                     overlay_id,
                     curr_params,
                 )
-                layout[overlay_id] = curr_params
+                layout[overlay_id] = curr_params.toJSON() if curr_params else {}
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(
