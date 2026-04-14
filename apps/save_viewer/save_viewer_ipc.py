@@ -26,7 +26,6 @@ import asyncio
 import logging
 import os
 import webbrowser
-from pathlib import Path
 from typing import Any, Dict, List
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
@@ -87,57 +86,26 @@ class SaveViewerIpc:
 
         @self.m_ipc_server.on("open-file")
         async def _handle_open_file(args: dict) -> dict:
-            """Handles the 'open-file' IPC command.
+            """Handles the 'open-file' IPC command."""
+            file_path = args.get("file-path")
 
-            Args:
-                args (dict): IPC command arguments
-            """
-            return await self._handle_open_file(args)
+            result = await SaveViewerState.open_file_helper(file_path)
+            if result.get("status") != "success":
+                return result
 
-    async def _handle_open_file(self, args: dict) -> dict:
-        """Validate and process the 'open-file' command.
+            # Open the webpage once
+            if self.m_should_open_ui:
+                self.m_should_open_ui = False
+                webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
 
-        Extracted as a method for testability while keeping the
-        decorator-based IPC registration pattern.
-        """
-        if not (file_path := args.get("file-path")):
-            return {"status": "error", "message": "Missing or invalid file path"}
+            # Update all clients
+            await self.m_server.send_to_clients_of_type(
+                event='race-table-update',
+                data=SaveViewerState.getTelemetryInfo(),
+                client_type=ClientType.RACE_TABLE,
+            )
 
-        # Path traversal protection: block relative parent-directory escape
-        if ".." in Path(file_path).parts:
-            self.m_logger.warning("Path traversal attempt blocked: %s", file_path)
-            return {"status": "error", "message": "Path contains disallowed traversal sequence"}
-
-        try:
-            resolved = Path(file_path).resolve()
-        except (OSError, ValueError):
-            return {"status": "error", "message": "Invalid file path"}
-
-        # Must point to an existing regular file with allowed extension
-        if not resolved.is_file():
-            return {"status": "error", "message": "Path does not point to an existing file"}
-
-        if resolved.suffix.lower() != ".json":
-            return {"status": "error", "message": "File type not allowed"}
-
-        try:
-            await SaveViewerState.open_file_helper(str(resolved))
-        except Exception as e: # pylint: disable=broad-exception-caught
-            return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
-
-        # Open the webpage once
-        if self.m_should_open_ui:
-            self.m_should_open_ui = False
-            webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
-
-        # Update all clients
-        await self.m_server.send_to_clients_of_type(
-            event='race-table-update',
-            data=SaveViewerState.getTelemetryInfo(),
-            client_type=ClientType.RACE_TABLE,
-        )
-
-        return {"status": "success"}
+            return {"status": "success"}
 
         @self.m_ipc_server.on("get-stats")
         async def _handle_get_stats(_args: dict) -> Dict[str, Any]:
