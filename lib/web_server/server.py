@@ -147,7 +147,7 @@ class BaseWebServer:
                     result = await func(*args, **inner_kwargs)
                     self.m_stats.track_event("__HTTP_OK__", route_key)
                     return result
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     self.m_stats.track_event("__HTTP_EXCEPTION__", route_key)
                     raise
 
@@ -166,7 +166,7 @@ class BaseWebServer:
                     result = await func(*args, **inner_kwargs)
                     self.m_stats.track_event("__SOCKET_IN_OK__", event)
                     return result
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     self.m_stats.track_event("__SOCKET_IN_EXCEPTION__", event)
                     raise
 
