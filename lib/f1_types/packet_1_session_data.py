@@ -218,6 +218,18 @@ class WeatherForecastSample(F1SubPacketBase):
         STORM = 5
         THUNDERSTORM = 6
 
+        def isDry(self) -> bool:
+            """Return True if this weather condition is considered dry."""
+            return self in (
+                WeatherForecastSample.WeatherCondition.CLEAR,
+                WeatherForecastSample.WeatherCondition.LIGHT_CLOUD,
+                WeatherForecastSample.WeatherCondition.OVERCAST,
+            )
+
+        def isWet(self) -> bool:
+            """Return True if this weather condition is considered wet."""
+            return not self.isDry()
+
         def __str__(self):
             """
             Returns a human-readable string representation of the weather condition.

@@ -25,6 +25,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from lib.f1_types.packet_1_session_data import WeatherForecastSample
+
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
 @dataclass(slots=True)
@@ -47,7 +49,7 @@ class TyreWearPerLap:
     lap_number: Optional[int] = None
     is_racing_lap: bool = True
     desc: Optional[str] = None
-    weather_id: Optional[int] = None
+    weather_id: Optional[WeatherForecastSample.WeatherCondition] = None
 
     @property
     def m_average(self) -> float:

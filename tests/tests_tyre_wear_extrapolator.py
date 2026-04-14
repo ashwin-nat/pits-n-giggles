@@ -27,6 +27,7 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
 from lib.tyre_wear_extrapolator.simple_linear_regression import SimpleLinearRegression
+from lib.f1_types.packet_1_session_data import WeatherForecastSample
 
 
 class TestTyreWearPrediction(F1TelemetryUnitTestsBase):
@@ -594,22 +595,23 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
     and backward compatibility with legacy data (weather_id=None)."""
 
     # Weather enum constants
-    CLEAR = 0
-    LIGHT_CLOUD = 1
-    OVERCAST = 2
-    LIGHT_RAIN = 3
-    HEAVY_RAIN = 4
-    STORM = 5
+    CLEAR = WeatherForecastSample.WeatherCondition.CLEAR
+    LIGHT_CLOUD = WeatherForecastSample.WeatherCondition.LIGHT_CLOUD
+    OVERCAST = WeatherForecastSample.WeatherCondition.OVERCAST
+    LIGHT_RAIN = WeatherForecastSample.WeatherCondition.LIGHT_RAIN
+    HEAVY_RAIN = WeatherForecastSample.WeatherCondition.HEAVY_RAIN
+    STORM = WeatherForecastSample.WeatherCondition.STORM
 
     def test_weather_group_mapping(self):
         """Dry = {0,1,2}, Wet = {3,4,5,6}."""
-        self.assertEqual(TyreWearExtrapolator._weather_group(0), "dry")
-        self.assertEqual(TyreWearExtrapolator._weather_group(1), "dry")
-        self.assertEqual(TyreWearExtrapolator._weather_group(2), "dry")
-        self.assertEqual(TyreWearExtrapolator._weather_group(3), "wet")
-        self.assertEqual(TyreWearExtrapolator._weather_group(4), "wet")
-        self.assertEqual(TyreWearExtrapolator._weather_group(5), "wet")
-        self.assertEqual(TyreWearExtrapolator._weather_group(6), "wet")
+        WC = WeatherForecastSample.WeatherCondition
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.CLEAR), "dry")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.LIGHT_CLOUD), "dry")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.OVERCAST), "dry")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.LIGHT_RAIN), "wet")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.HEAVY_RAIN), "wet")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.STORM), "wet")
+        self.assertEqual(TyreWearExtrapolator._weather_group(WC.THUNDERSTORM), "wet")
         self.assertIsNone(TyreWearExtrapolator._weather_group(None))
 
     def test_all_none_weather_backward_compat(self):

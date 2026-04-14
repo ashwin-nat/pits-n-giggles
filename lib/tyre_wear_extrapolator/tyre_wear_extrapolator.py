@@ -27,6 +27,7 @@ from typing import List, Optional, Tuple
 
 from .simple_linear_regression import SimpleLinearRegression
 from .tyre_wear_per_lap import TyreWearPerLap
+from lib.f1_types.packet_1_session_data import WeatherForecastSample
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -55,6 +56,8 @@ class TyreWearExtrapolator:
         m_predicted_tyre_wear (List[TyreWearPerLap]): List of predicted tyre wear per lap. Will be updated whenever
             new data points are added
     """
+
+    _MIN_WEATHER_SEGMENT_LAPS = 3
 
     def __init__(
         self,
@@ -277,8 +280,6 @@ class TyreWearExtrapolator:
         self._recomputeRacingLapsData()
         self._recompute()
 
-    _MIN_WEATHER_SEGMENT_LAPS = 3
-
     def _filter_to_current_weather(self, racing_data: List[TyreWearPerLap]) -> List[TyreWearPerLap]:
         """Return only the racing laps from the current (most recent) weather group.
 
@@ -467,11 +468,8 @@ class TyreWearExtrapolator:
                 self.m_predicted_tyre_wear.append(predicted_tyre)
         self._enforce_monotonicity()
 
-    # Weather grouping: Dry (Clear=0, LightCloud=1, Overcast=2) vs Wet (LightRain=3, HeavyRain=4, Storm=5, Thunderstorm=6)
-    _DRY_WEATHER_IDS = frozenset({0, 1, 2})
-
     @staticmethod
-    def _weather_group(weather_id: Optional[int]) -> Optional[str]:
+    def _weather_group(weather_id) -> Optional[str]:
         """Map a weather enum value to a coarse group ('dry' or 'wet').
 
         Returns None when the weather_id is unknown so that legacy data
@@ -479,7 +477,9 @@ class TyreWearExtrapolator:
         """
         if weather_id is None:
             return None
-        return "dry" if weather_id in TyreWearExtrapolator._DRY_WEATHER_IDS else "wet"
+        if isinstance(weather_id, int):
+            weather_id = WeatherForecastSample.WeatherCondition(weather_id)
+        return "dry" if weather_id.isDry() else "wet"
 
     def _segmentData(self, data: List[TyreWearPerLap]) -> List[List[TyreWearPerLap]]:
         """
