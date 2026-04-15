@@ -25,9 +25,10 @@
 import logging
 from typing import List, Optional, Tuple
 
+from lib.f1_types.packet_1_session_data import WeatherForecastSample
+
 from .simple_linear_regression import SimpleLinearRegression
 from .tyre_wear_per_lap import TyreWearPerLap
-from lib.f1_types.packet_1_session_data import WeatherForecastSample
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
