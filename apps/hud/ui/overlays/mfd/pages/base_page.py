@@ -89,7 +89,7 @@ class MfdPageBase:
             self._track_event(event_type)
             try:
                 handler(data)
-            except Exception:  # Callback wrapper: handler is external code; tracked + re-raised
+            except Exception:
                 self._stats.track_event("__EXCEPTION__", event_type)
                 raise
 
