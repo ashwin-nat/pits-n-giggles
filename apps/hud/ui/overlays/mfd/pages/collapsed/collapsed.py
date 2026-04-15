@@ -37,5 +37,4 @@ class CollapsedPage(MfdPageBase):
         super().__init__(root, logger)
 
         # static text, set once
-        self.overlay._root.setProperty("collapsedTitle", "Pits n' Giggles MFD")
-
+        self.overlay.set_qml_property("collapsedTitle", "Pits n' Giggles MFD")
