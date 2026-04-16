@@ -96,6 +96,7 @@ from tests.tests_frame_gate import TestSessionFrameGate
 from tests.tests_track_segment_info import (TestSegmentRender,
                                              TestTrackSegments,
                                              TestTrackSegmentsDatabase)
+from tests.tests_save_viewer_ipc import TestOpenFileHelperValidation, TestSaveViewerIpcFlow
 
 # Initialize colorama
 init(autoreset=True)

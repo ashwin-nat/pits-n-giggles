@@ -141,7 +141,6 @@ class TestOpenFileHelperValidation(TestSaveViewerIpcBase):
 
         self.assertEqual(result["status"], "success")
 
-
 class TestSaveViewerIpcFlow(TestSaveViewerIpcBase):
     """Test IPC handler flow (open-file -> browser -> broadcast)."""
 
