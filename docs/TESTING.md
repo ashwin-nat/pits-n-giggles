@@ -18,15 +18,8 @@ To run unit tests with code coverage:
 poetry run python scripts/coverage_ut.py
 ```
 
-### Coverage Reports
-
 The coverage scripts generate an HTML report in the `htmlcov/` directory. Open
 `htmlcov/index.html` in a browser to inspect line-by-line coverage.
-
-A baseline coverage run (excluding integration tests) is available via:
-```bash
-poetry run python scripts/coverage_base.py
-```
 
 ## 2. Integration Tests
 

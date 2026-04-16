@@ -1,4 +1,3 @@
-import pytest
 import requests
 from tabulate import tabulate
 from colorama import Fore, Style, init
@@ -6,7 +5,6 @@ from colorama import Fore, Style, init
 # Initialize colorama (autoreset ensures clean output)
 init(autoreset=True)
 
-@pytest.mark.integration
 def test_endpoints_with_session(hostname, port, endpoints_config):
     base_url = f'http://{hostname}:{port}'
     session = requests.Session()
@@ -55,3 +53,48 @@ def test_endpoints_with_session(hostname, port, endpoints_config):
         ))
     else:
         print(f"{Fore.GREEN}All endpoints returned expected status codes.{Style.RESET_ALL}")
+
+
+# Define endpoint config: endpoint -> list of acceptable status codes
+endpoints_config = {
+    "/favicon.ico": [200],
+    "/tyre-icons/soft.svg": [200],
+    "/tyre-icons/super-soft.svg": [200],
+    "/tyre-icons/medium.svg": [200],
+    "/tyre-icons/hard.svg": [200],
+    "/tyre-icons/intermediate.svg": [200],
+    "/tyre-icons/wet.svg": [200],
+    "/": [200],
+    "/eng-view": [200],
+    "/player-stream-overlay": [200],
+    "/telemetry-info": [200],
+    "/race-info": [200],
+    "/driver-info?index=0": [200, 404],
+    "/stream-overlay-info": [200],
+    "/static/css/style.css": [200],
+    "/static/css/modals.css": [200],
+    "/static/css/weather.css": [200],
+    "/static/css/conditions.css": [200],
+    "/static/css/speedLimit.css": [200],
+    "/static/css/tyreStintHistoryModal.css": [200],
+    "/static/js/preferences.js": [200],
+    "/static/js/utils.js": [200],
+    "/static/js/iconCache.js": [200],
+    "/static/js/weatherUI.js": [200],
+    "/static/js/graph.js": [200],
+    "/static/js/driverDataModalPopulator.js": [200],
+    "/static/js/raceStatsModalPopulator.js": [200],
+    "/static/js/tyreStintHistoryModal.js": [200],
+    "/static/js/modals.js": [200],
+    "/static/js/raceTableRowPopulator.js": [200],
+    "/static/js/timeTrialDataPopulator.js": [200],
+    "/static/js/telemetryRenderer.js": [200],
+    "/static/js/frontendUpdate.js": [200],
+    "/static/js/app.js": [200],
+}
+
+# Example hostname and port
+hostname = "localhost"
+port = 4768
+
+test_endpoints_with_session(hostname, port, endpoints_config)
