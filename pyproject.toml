@@ -26,7 +26,6 @@ dependencies = [
     "pyside6 (>=6.10.0,<7.0.0)",
     "markdown (>=3.10,<4.0)",
     "orjson (>=3.11.5,<4.0.0)",
-    "pyinstaller (>=6.12.0,<7.0.0)",
 ]
 
 
