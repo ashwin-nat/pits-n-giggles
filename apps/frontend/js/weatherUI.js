@@ -36,13 +36,26 @@ function renderWeatherPrediction(prediction) {
   predictionElement.classList.add('weather-prediction');
 
   const weatherIcon = WEATHER_ICONS[prediction['weather']];
-  predictionElement.innerHTML = `
-    <i class="bi ${escapeHtml(weatherIcon.icon)} weather-icon ${escapeHtml(weatherIcon.class)}"></i>
-    <div class="weather-info">
-      <span class="weather-time">+${escapeHtml(String(prediction['time-offset']))}min</span>
-      <span class="weather-probability">${escapeHtml(String(prediction['rain-probability']))}%</span>
-    </div>
-  `;
+
+  const icon = document.createElement('i');
+  icon.classList.add('bi', weatherIcon.icon, 'weather-icon', weatherIcon.class);
+
+  const weatherInfo = document.createElement('div');
+  weatherInfo.classList.add('weather-info');
+
+  const timeSpan = document.createElement('span');
+  timeSpan.classList.add('weather-time');
+  timeSpan.textContent = `+${prediction['time-offset']}min`;
+
+  const probabilitySpan = document.createElement('span');
+  probabilitySpan.classList.add('weather-probability');
+  probabilitySpan.textContent = `${prediction['rain-probability']}%`;
+
+  weatherInfo.appendChild(timeSpan);
+  weatherInfo.appendChild(probabilitySpan);
+
+  predictionElement.appendChild(icon);
+  predictionElement.appendChild(weatherInfo);
 
   return predictionElement;
 }
@@ -73,13 +86,26 @@ class WeatherWidget {
     predictionElement.classList.add('weather-prediction');
 
     const weatherIcon = WEATHER_ICONS[prediction['weather']];
-    predictionElement.innerHTML = `
-      <i class="bi ${escapeHtml(weatherIcon.icon)} weather-icon ${escapeHtml(weatherIcon.class)}"></i>
-      <div class="weather-info">
-        <span class="weather-time">+${escapeHtml(String(prediction['time-offset']))}min</span>
-        <span class="weather-probability">${escapeHtml(String(prediction['rain-probability']))}%</span>
-      </div>
-    `;
+
+    const icon = document.createElement('i');
+    icon.classList.add('bi', weatherIcon.icon, 'weather-icon', weatherIcon.class);
+
+    const weatherInfo = document.createElement('div');
+    weatherInfo.classList.add('weather-info');
+
+    const timeSpan = document.createElement('span');
+    timeSpan.classList.add('weather-time');
+    timeSpan.textContent = `+${prediction['time-offset']}min`;
+
+    const probabilitySpan = document.createElement('span');
+    probabilitySpan.classList.add('weather-probability');
+    probabilitySpan.textContent = `${prediction['rain-probability']}%`;
+
+    weatherInfo.appendChild(timeSpan);
+    weatherInfo.appendChild(probabilitySpan);
+
+    predictionElement.appendChild(icon);
+    predictionElement.appendChild(weatherInfo);
 
     return predictionElement;
   }

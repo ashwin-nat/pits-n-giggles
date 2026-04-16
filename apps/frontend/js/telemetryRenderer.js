@@ -428,7 +428,11 @@ class TelemetryRenderer {
       if (this.columnConfig.activePreset === preset.id) {
         btn.classList.add('active');
       }
-      btn.innerHTML = `<span class="preset-emoji">${preset.emoji}</span>${preset.label}`;
+      const span = document.createElement('span');
+      span.classList.add('preset-emoji');
+      span.textContent = preset.emoji;
+      btn.appendChild(span);
+      btn.appendChild(document.createTextNode(preset.label));
       btn.addEventListener('click', () => {
         this.columnConfig.applyPreset(preset.id);
         const togglesContainer = document.getElementById('column-toggles-container');

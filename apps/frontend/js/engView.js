@@ -1873,15 +1873,17 @@ class EngViewWeatherTable {
 
         // Create weather type row
         const typeRow = document.createElement('tr');
-        typeRow.innerHTML = limitedData
-            .map(w => `<td>${w["weather"]}</td>`)
-            .join('');
+        limitedData.forEach(w => {
+            const cell = typeRow.insertCell();
+            cell.textContent = w["weather"];
+        });
 
         // Create time and probability row
         const timeRow = document.createElement('tr');
-        timeRow.innerHTML = limitedData
-            .map(w => `<td>+${w["time-offset"]}m (${w["rain-probability"]}%)</td>`)
-            .join('');
+        limitedData.forEach(w => {
+            const cell = timeRow.insertCell();
+            cell.textContent = `+${w["time-offset"]}m (${w["rain-probability"]}%)`;
+        });
 
         // Clear and update table
         this.tableBody.innerHTML = '';

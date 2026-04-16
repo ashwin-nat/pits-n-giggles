@@ -1206,7 +1206,9 @@ class DriverModalPopulator {
                 }
             } else {
                 const row = tbody.insertRow();
-                row.innerHTML = `<td colspan="2">${escapeHtml(errorMessage)}</td>`;
+                const cell = row.insertCell();
+                cell.colSpan = 2;
+                cell.textContent = errorMessage;
             }
 
             table.appendChild(tbody);

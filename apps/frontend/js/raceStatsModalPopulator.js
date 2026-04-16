@@ -151,15 +151,19 @@ class RaceStatsModalPopulator {
 
             this.data["custom-markers"].forEach(function (marker, index) {
                 const row = customMarkersTableBody.insertRow();
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${escapeHtml(marker["event-type"])}</td>
-                    <td>${escapeHtml(marker["track"])}</td>
-                    <td>${escapeHtml(marker["sector"])}</td>
-                    <td>${escapeHtml(marker["lap"])}</td>
-                    <td>${escapeHtml(marker["curr-lap-time"])}</td>
-                    <td>${escapeHtml(marker["curr-lap-percentage"])}</td>
-                `;
+                const cells = [
+                    index + 1,
+                    marker["event-type"],
+                    marker["track"],
+                    marker["sector"],
+                    marker["lap"],
+                    marker["curr-lap-time"],
+                    marker["curr-lap-percentage"]
+                ];
+                cells.forEach(cellValue => {
+                    const cell = row.insertCell();
+                    cell.textContent = cellValue;
+                });
             });
 
         } else {
@@ -391,13 +395,11 @@ class RaceStatsModalPopulator {
         const driverName = data["records"]["fastest"][searchKey]["driver-name"];
         const teamName = getTeamName(data["records"]["fastest"][searchKey]["team-id"]);
         const row = timesRecordsTableBody.insertRow();
-        row.innerHTML = `
-            <td>${escapeHtml(category)}</td>
-            <td>${escapeHtml(driverName)}</td>
-            <td>${escapeHtml(teamName)}</td>
-            <td>${escapeHtml(fastestLapNum)}</td>
-            <td>${escapeHtml(fastestLapTime)}</td>
-        `;
+        const cells = [category, driverName, teamName, fastestLapNum, fastestLapTime];
+        cells.forEach(cellValue => {
+            const cell = row.insertCell();
+            cell.textContent = cellValue;
+        });
     }
 
     insertTyreStintRecordRow(tyreStintRecordsTableBody, compound, compoundRecords) {
