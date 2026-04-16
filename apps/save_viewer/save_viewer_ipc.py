@@ -86,18 +86,12 @@ class SaveViewerIpc:
 
         @self.m_ipc_server.on("open-file")
         async def _handle_open_file(args: dict) -> dict:
-            """Handles the 'open-file' IPC command.
+            """Handles the 'open-file' IPC command."""
+            file_path = args.get("file-path")
 
-            Args:
-                args (dict): IPC command arguments
-            """
-            if not (file_path := args.get("file-path")):
-                return {"status": "error", "message": "Missing or invalid file path"}
-
-            try:
-                await SaveViewerState.open_file_helper(file_path)
-            except Exception as e: # pylint: disable=broad-exception-caught
-                return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+            result = await SaveViewerState.open_file_helper(file_path)
+            if result.get("status") != "success":
+                return result
 
             # Open the webpage once
             if self.m_should_open_ui:

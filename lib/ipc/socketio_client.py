@@ -131,7 +131,7 @@ class SocketioClient:
                     func(callback_data)
                     self.stats.track_event("__HANDLER__", "success")
                     self.stats.track_event("__HANDLED_EVENT__", event_name)
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     self.stats.track_event("__ERROR__", "handler_exception")
                     self.stats.track_event("__HANDLER_ERROR_EVENT__", event_name)
                     raise

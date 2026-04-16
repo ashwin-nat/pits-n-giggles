@@ -177,7 +177,7 @@ class AsyncF1TelemetryManager:
                 str(parsed_obj.m_header.m_packetId),
                 len(raw_packet),
             )
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             packet_file = self._dumpPacketToFile(parsed_obj)
             self.m_stats.track_packet(
                 "__EXCEPTION_CB__",

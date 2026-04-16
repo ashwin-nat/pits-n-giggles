@@ -83,6 +83,16 @@ class BaseOverlayQML(BaseOverlay, QObject):
 
     QML_FILE: Path = ""  # Derived classes MUST set this
 
+    _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
+    _RESIZE_MIN_WIDTH = 50    # minimum pixel width used to clamp raw_w before scale computation
+
+    _CORNER_CURSORS = {
+        Qt.Corner.TopLeftCorner:     Qt.CursorShape.SizeFDiagCursor,
+        Qt.Corner.TopRightCorner:    Qt.CursorShape.SizeBDiagCursor,
+        Qt.Corner.BottomLeftCorner:  Qt.CursorShape.SizeBDiagCursor,
+        Qt.Corner.BottomRightCorner: Qt.CursorShape.SizeFDiagCursor,
+    }
+
     def __init__(
         self,
         config: OverlayPosition,
@@ -305,9 +315,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def get_visibility(self) -> bool:
         return self._root.isVisible()
 
-    _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
-    _RESIZE_MIN_WIDTH = 50    # minimum pixel width used to clamp raw_w before scale computation
-
     def _get_resize_corner_px(self) -> int:
         """Return the corner handle size in logical pixels.
 
@@ -336,13 +343,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if x >= w - r and y >= h - r:
             return Qt.Corner.BottomRightCorner
         return None
-
-    _CORNER_CURSORS = {
-        Qt.Corner.TopLeftCorner:     Qt.CursorShape.SizeFDiagCursor,
-        Qt.Corner.TopRightCorner:    Qt.CursorShape.SizeBDiagCursor,
-        Qt.Corner.BottomLeftCorner:  Qt.CursorShape.SizeBDiagCursor,
-        Qt.Corner.BottomRightCorner: Qt.CursorShape.SizeFDiagCursor,
-    }
 
     def _on_mouse_press(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.MouseButton.LeftButton:
