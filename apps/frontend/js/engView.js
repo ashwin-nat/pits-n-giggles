@@ -1,15 +1,4 @@
 let g_engView_predLapNum = null;
-function escapeHtml(unsafe) {
-    if (typeof unsafe !== "string") {
-        return unsafe;
-    }
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
 function getShortERSMode(mode) {
     switch (mode) {

@@ -1,3 +1,15 @@
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== "string") {
+        return unsafe;
+    }
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function formatLapTime(milliseconds) {
     // Check if the input is 0 or null
     if (milliseconds === 0 || milliseconds === null) {

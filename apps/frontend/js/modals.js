@@ -269,6 +269,9 @@ class ModalManager {
     // Set the radio buttons for temperature units
     document.getElementById("tempUnitMetric").checked = g_pref_tempUnitMetric;
     document.getElementById("tempUnitImperial").checked = !g_pref_tempUnitMetric;
+
+    // Set the switch for sim damage display
+    document.getElementById("simDamageEnabled").checked = g_pref_simDamageEnabled;
   }
 
   saveSettings() {
@@ -299,6 +302,7 @@ class ModalManager {
     g_pref_tyreDeltaNotificationOsdDurationSec = osdDurationSec_temp;
     g_pref_speedUnitMetric = (document.querySelector('input[name="speedUnit"]:checked').value === "metric") ? (true) : (false);
     g_pref_tempUnitMetric = (document.querySelector('input[name="tempUnit"]:checked').value === "metric") ? (true) : (false);
+    g_pref_simDamageEnabled = (document.getElementById('simDamageEnabled').checked) ? (true) : (false);
 
     savePreferences();
 

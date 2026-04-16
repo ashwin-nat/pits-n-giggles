@@ -498,6 +498,16 @@
             </div>
           </div>
         </div>
+        <!-- Sim Damage display -->
+        <div class="mb-3">
+          <label class="form-label">Damage Display</label>
+          <div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="simDamageEnabled" data-bs-toggle="tooltip" data-bs-placement="top" title="Show all damage categories (front wings, rear wing) when ON. When OFF, show only FL and FR front wing damage.">
+              <label class="form-check-label" for="simDamageEnabled">Show all damage categories</label>
+            </div>
+          </div>
+        </div>
         {% if not live_data_mode %}
           <div class="text-warning w-100 mb-2 text-center">
             Refresh the page after saving to see the changes.

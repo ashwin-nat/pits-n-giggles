@@ -421,13 +421,18 @@ class RaceTableRowPopulator {
         const cell = this.row.insertCell();
 
         const damageItems = [
-            { label: "FLW", value: damageInfo["fl-wing-damage"] },
-            { label: "FRW", value: damageInfo["fr-wing-damage"] },
-            { label: "RW",  value: damageInfo["rear-wing-damage"] },
-            { label: "Floor", value: damageInfo["floor-damage"] },
-            { label: "Diff", value: damageInfo["diffuser-damage"] },
-            { label: "SP",  value: damageInfo["sidepod-damage"] },
+            { label: "FL", value: damageInfo["fl-wing-damage"] },
+            { label: "FR", value: damageInfo["fr-wing-damage"] },
         ];
+
+        if (g_pref_simDamageEnabled) {
+            damageItems.push(
+                { label: "RW",  value: damageInfo["rear-wing-damage"] },
+                { label: "Floor", value: damageInfo["floor-damage"] },
+                { label: "Diff", value: damageInfo["diffuser-damage"] },
+                { label: "SP",  value: damageInfo["sidepod-damage"] }
+            );
+        }
 
         damageItems.forEach(item => {
             const row = document.createElement("div");
