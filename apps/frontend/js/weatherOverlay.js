@@ -19,7 +19,7 @@ class WeatherOverlay {
         }
 
         this.lastProcessedData = weatherData;
-        this.container.innerHTML = '';
+        this.container.textContent = '';
 
         weatherData.forEach(sample => {
             const card = document.createElement('div');

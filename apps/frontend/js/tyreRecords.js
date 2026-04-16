@@ -8,7 +8,7 @@ class F1TyreRecords {
 
   init() {
     // Clear the container completely
-    this.container.innerHTML = '';
+    this.container.textContent = '';
 
     // Create main wrapper
     this.wrapper = document.createElement('div');
@@ -31,7 +31,7 @@ class F1TyreRecords {
     console.log('F1TyreRecords.render called, data:', this.data);
 
     // Clear content
-    this.contentContainer.innerHTML = '';
+    this.contentContainer.textContent = '';
 
     if (!this.data || Object.keys(this.data).length === 0) {
       console.log('No data available, showing empty state');

@@ -16,6 +16,7 @@ let g_pref_tyreDeltaNotificationTtsFormat;
 let g_pref_tyreDeltaNotificationOsdDurationSec;
 let g_pref_speedUnitMetric;
 let g_pref_tempUnitMetric;
+let g_pref_simDamageEnabled;
 
 function loadPreferences() {
     let missingPreference = false;
@@ -144,6 +145,13 @@ function loadPreferences() {
         missingPreference = true;
     }
 
+    if (localStorage.getItem('simDamageEnabled') !== null) {
+        g_pref_simDamageEnabled = localStorage.getItem('simDamageEnabled') === 'true';
+    } else {
+        g_pref_simDamageEnabled = false;
+        missingPreference = true;
+    }
+
     // If any preference was missing, save all current preferences
     if (missingPreference) {
         savePreferences();
@@ -166,7 +174,8 @@ function loadPreferences() {
         g_pref_tyreDeltaNotificationTtsFormat,
         g_pref_tyreDeltaNotificationOsdDurationSec,
         g_pref_speedUnitMetric,
-        g_pref_tempUnitMetric
+        g_pref_tempUnitMetric,
+        g_pref_simDamageEnabled
     });
     updateAllTooltips();
 }
@@ -189,6 +198,7 @@ function savePreferences() {
     localStorage.setItem('tyreDeltaNotificationOsdDurationSec', g_pref_tyreDeltaNotificationOsdDurationSec);
     localStorage.setItem('speedUnitMetric', g_pref_speedUnitMetric);
     localStorage.setItem('tempUnitMetric', g_pref_tempUnitMetric);
+    localStorage.setItem('simDamageEnabled', g_pref_simDamageEnabled);
 
     console.log("Saved Preferences:", {
         g_pref_myTeamName,
@@ -207,7 +217,8 @@ function savePreferences() {
         g_pref_tyreDeltaNotificationTtsFormat,
         g_pref_tyreDeltaNotificationOsdDurationSec,
         g_pref_speedUnitMetric,
-        g_pref_tempUnitMetric
+        g_pref_tempUnitMetric,
+        g_pref_simDamageEnabled
     });
 
     updateAllTooltips();
