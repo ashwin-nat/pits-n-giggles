@@ -6,9 +6,9 @@ This document outlines how to build the `Pits n' Giggles` app into a standalone 
 
 ## 🔧 Requirements
 
-- **Python 3.13**
+- **Python 3.12 or 3.13**
 - **[Poetry](https://python-poetry.org/)** for dependency management
-- A Windows machine (macOS support is planned but not yet active)
+- **Windows**, **Linux**, or **macOS**
 
 ---
 
@@ -36,8 +36,9 @@ poetry run python scripts/build.py
 - The resulting executable will appear in the `dist/` folder with a name like:
 
   ```
-  dist/pits_n_giggles_<ver>.exe
-  dist/pits_n_giggles_<ver>.app
+  dist/pits_n_giggles_<ver>.exe   # Windows
+  dist/pits_n_giggles_<ver>.app   # macOS
+  dist/pits_n_giggles_<ver>       # Linux
   ```
 
 ---
@@ -139,6 +140,8 @@ poetry run python scripts/build.py
 ---
 
 ## 🧪 Testing the Executable
+
+> **Note:** Binary names are platform-specific: `.exe` (Windows), `.app` (macOS), no extension (Linux). Examples below use Windows naming.
 
 To test the launcher:
 
