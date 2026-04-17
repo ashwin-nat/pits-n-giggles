@@ -137,11 +137,14 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertEqual(settings.wdt_timeout, 10.0)
 
         # Boundary condition
-        settings = DisplaySettings(wdt_timeout=0.1)
-        self.assertEqual(settings.wdt_timeout, 0.1)
+        settings = DisplaySettings(wdt_timeout=2.0)
+        self.assertEqual(settings.wdt_timeout, 2.0)
 
         settings = DisplaySettings(wdt_timeout=None)
         self.assertIsNone(settings.wdt_timeout)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=1.9)
 
         with self.assertRaises(ValidationError):
             DisplaySettings(wdt_timeout=0)

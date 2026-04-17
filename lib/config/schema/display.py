@@ -122,7 +122,7 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
 
     wdt_timeout: Optional[float] = Field(
         default=5.0,
-        gt=0,
+        ge=2.0,
         description="Overlays inactivity timeout (seconds)",
         json_schema_extra={
             "ui": {
