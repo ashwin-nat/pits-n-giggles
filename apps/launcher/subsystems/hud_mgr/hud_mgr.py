@@ -480,7 +480,7 @@ class HudAppMgr(PngAppMgrBase):
             "Display" : [
                 "refresh_interval",
                 "realtime_overlay_fps",
-                "use_gpu_acceleration",
+                "use_cpu_acceleration",
                 "wdt_timeout",
             ],
         }):

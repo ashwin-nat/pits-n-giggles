@@ -119,7 +119,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             DisplaySettings(realtime_overlay_fps="notanumber")
 
-    def test_use_gpu_acceleration(self):
+    def test_use_cpu_acceleration(self):
         settings = DisplaySettings(use_cpu_acceleration=True)
         self.assertTrue(settings.use_cpu_acceleration)
 
