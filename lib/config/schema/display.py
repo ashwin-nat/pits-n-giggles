@@ -120,6 +120,21 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    wdt_timeout: float = Field(
+        default=5.0,
+        gt=0,
+        description="Overlays inactivity timeout (seconds)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info" : [
+                    "Seconds to wait for data before hiding overlays and freeing screen space."
+                ]
+            }
+        }
+    )
+
     @property
     def hud_refresh_interval(self) -> int:
         # hz to ms
