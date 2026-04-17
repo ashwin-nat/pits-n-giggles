@@ -170,7 +170,7 @@ class MfdOverlay(BaseOverlayQML):
         """Apply the current page."""
         try:
             page = self._mfd_pages[self._current_index]
-        except IndexError as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error("%s | Failed to apply current page: %s", self.OVERLAY_ID, e)
             return
         qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))

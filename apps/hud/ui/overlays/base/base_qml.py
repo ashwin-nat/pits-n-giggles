@@ -150,8 +150,8 @@ class BaseOverlayQML(BaseOverlay, QObject):
             scale_factor,
             windowed_overlay,
         )
-        logger.debug("%s initialized. Path=%s. exists=%s",
-                     self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
+        logger.debug("%s initialized. Path=%s. "
+                     "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
 
     # ----------------------------------------------------------------------
     # Window + QML Setup
@@ -253,7 +253,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
     def set_opacity(self, opacity: int):
         self._root.setOpacity(opacity / 100.0)
 
-    @override
     def set_ui_scale(self, ui_scale: float):
         """
         Update the UI scale factor at runtime.
@@ -539,9 +538,6 @@ class BaseOverlayQML(BaseOverlay, QObject):
             Qt.ConnectionType.QueuedConnection,
             *(Q_ARG("QVariant", a) for a in args),
         )
-
-    def _track_frame(self) -> None:
-        self._stats.track_event("__FRAMES__", "__RENDERED__")
 
     def render_frame(self):
         """Derived classes must implement this method."""

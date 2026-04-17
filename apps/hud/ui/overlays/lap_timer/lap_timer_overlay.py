@@ -96,10 +96,6 @@ class LapTimerOverlay(BaseOverlayQML):
         @self.on_event("race_table_update")
         def handle_race_update(data: Dict[str, Any]) -> None:
             """Handle race table update events."""
-            if not self._root:
-                self.logger.debug("%s | Overlay not initialized yet", self.OVERLAY_ID)
-                return
-
             session_type = data["event-type"]
             if session_type == "None":
                 return
@@ -126,9 +122,8 @@ class LapTimerOverlay(BaseOverlayQML):
             # Handle lap number changes
             lap_changed = bool(self.last_lap_num and self.last_lap_num != lap_info["current-lap"])
             if lap_changed:
-                self.logger.debug("%s | Lap number changed from %s to %s",
-                                  self.OVERLAY_ID, self.last_lap_num, lap_info['current-lap'])
-                # Start 5 sec last-lap sector bar window
+                self.logger.debug("%s | Lap number changed from "
+                                  "%s to %s", self.OVERLAY_ID, self.last_lap_num, lap_info['current-lap'])
                 self.show_last_lap_sector_bar = True
                 self.last_sector_display_timer.start(5000)
 

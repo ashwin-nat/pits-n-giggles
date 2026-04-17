@@ -24,7 +24,6 @@
 
 import ctypes
 import logging
-import sys
 from pathlib import Path
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional, Type, TypeVar
@@ -87,7 +86,6 @@ class BaseOverlay():
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
         - `set_visibility()`     - show or hide the window
-        - `set_ui_scale()`       - set scale factor
         - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
@@ -187,8 +185,7 @@ class BaseOverlay():
         """Hook called after _setup_window() completes. Override in leaf classes with @final."""
 
     def _setup_window(self):
-        if sys.platform == 'win32':
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
         self.set_window_title(self.OVERLAY_ID)
         self.set_window_icon(load_icon(Path("assets") / "logo.png",
                                      debug_log_printer=self.logger.debug,
@@ -216,9 +213,6 @@ class BaseOverlay():
         raise NotImplementedError
 
     def set_window_position(self, config: OverlayPosition):
-        raise NotImplementedError
-
-    def set_ui_scale(self, scale_factor: float):
         raise NotImplementedError
 
     def set_visibility(self, visible: bool):
@@ -333,14 +327,6 @@ class BaseOverlay():
             self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
 
-        @self.on_event("__set_scale_factor__")
-        def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
-            """Set UI scale factor"""
-            scale_factor = data["scale_factor"]
-            self.logger.debug("%s | Setting UI scale to %s", self.OVERLAY_ID, scale_factor)
-            self.set_ui_scale(scale_factor)
-            self.scale_factor = scale_factor
-
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
             """Set telemetry active state."""
@@ -388,7 +374,6 @@ class BaseOverlay():
 
         if handler := self._request_handlers.get(request_type):
             self.logger.debug("%s | Handling request '%s'", self.OVERLAY_ID, request_type)
-
             try:
                 response = handler(request_data)
                 # Emit response back through window manager
