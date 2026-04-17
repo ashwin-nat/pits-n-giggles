@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -115,6 +115,22 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
                 "ext_info" : [
                     "Forces CPU-based rendering for compatibility with older GPU's.\n"
                     "May reduce visual quality and increase CPU usage."
+                ]
+            }
+        }
+    )
+
+    wdt_timeout: Optional[float] = Field(
+        default=5.0,
+        ge=2.0,
+        description="Overlays inactivity timeout (seconds)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info" : [
+                    "Seconds of inactivity before overlays are hidden to free screen space. "
+                    "Leave empty to keep overlays always visible."
                 ]
             }
         }

@@ -62,10 +62,12 @@ class OverlaysMgr:
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
+        self._local_wdt_ok: bool = False
+        self._core_wdt_ok: bool = False
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
-            timeout=5.0, # TODO: Make this configurable
-        )
+            timeout=settings.Display.wdt_timeout,
+        ) if settings.Display.wdt_timeout is not None else None
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
@@ -176,13 +178,15 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
-        self.wdt.start()
+        if self.wdt:
+            self.wdt.start()
         self.window_manager.run()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
-        self.wdt.stop()
+        if self.wdt:
+            self.wdt.stop()
         self.window_manager.stop()
 
     def get_stats(self) -> Dict[str, Any]:
@@ -200,10 +204,11 @@ class OverlaysMgr:
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
-        self.wdt.kick()
+        if self.wdt:
+            self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
-        # self._handle_core_wdt_status(data) #TODO: fix
+        self._handle_core_wdt_status(data)
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -269,7 +274,7 @@ class OverlaysMgr:
                     overlay_id,
                     curr_params,
                 )
-                layout[overlay_id] = curr_params
+                layout[overlay_id] = curr_params.toJSON() if curr_params else {}
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(
@@ -336,6 +341,12 @@ class OverlaysMgr:
         self._set_overlays_visibility(True)
         return rsp
 
+    def set_scale_factor(self, oid: str, scale_factor: float):
+        """Set overlays scale factor to specified overlay"""
+
+        self.logger.debug("Setting overlay %s scale factor to %s", oid, scale_factor)
+        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
+
     def set_track_radar_idle_opacity(self, opacity: int):
         self.logger.debug("Setting track radar idle opacity to %s%%", opacity)
         self.window_manager.unicast_data(
@@ -360,10 +371,13 @@ class OverlaysMgr:
         """"Reset config to default"""
         pass # TODO
 
-    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Dict[str, Any]:
+    def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
         self.logger.debug("Requesting window info for %s", overlay_id)
-        return self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
+        ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
+        if not ret:
+            return None
+        return OverlayPosition.fromJSON(ret)
 
     def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
         """Thread-safe query for specific window info."""
@@ -415,15 +429,21 @@ class OverlaysMgr:
         self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
 
     def _wdt_status_callback(self, active: bool):
-        """Watchdog status callback. Only handles loss of data from core."""
-        self.logger.debug("Watchdog status callback: %s", active)
-        if not active:
-            self._set_telemetry_active(False)
+        """Watchdog status callback. Tracks local WDT (data arriving from core)."""
+        self.logger.debug("Local WDT status: %s", active)
+        self._local_wdt_ok = active
+        self._update_telemetry_active()
 
     def _handle_core_wdt_status(self, data: Dict[str, Any]):
-        """Handle core watchdog status."""
-        core_wdt_status = data.get("wdt-status", False)
-        self._set_telemetry_active(core_wdt_status)
+        """Handle core watchdog status (core receiving sim data)."""
+        self._core_wdt_ok = data.get("wdt-status", False)
+        self._update_telemetry_active()
+
+    def _update_telemetry_active(self):
+        """Set telemetry active only when both local and core WDT are satisfied."""
+        local_ok = True if self.wdt is None else self._local_wdt_ok
+        combined = local_ok and self._core_wdt_ok
+        self._set_telemetry_active(combined)
 
     def _prep_race_table_data(self, data: Dict[str, Any]):
         """Prepare race table data for overlays."""

@@ -71,14 +71,14 @@ class TrackRadarOverlay(BaseOverlayQML):
     @final
     def set_opacity(self, opacity: int):
         """Set opacity."""
-        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting opacity to {opacity}')
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting opacity to %s', self.OVERLAY_ID, opacity)
         super().set_opacity(opacity)
         self._set_base_opacity_property(opacity)
 
     @final
     def set_locked_state(self, locked: bool):
         """Set locked state."""
-        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
         super().set_locked_state(locked)
         self._set_locked_property(locked)
 
