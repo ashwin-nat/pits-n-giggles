@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -120,7 +120,7 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
         }
     )
 
-    wdt_timeout: float = Field(
+    wdt_timeout: Optional[float] = Field(
         default=5.0,
         gt=0,
         description="Overlays inactivity timeout (seconds)",
@@ -129,7 +129,8 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
                 "type" : "text_box",
                 "visible": True,
                 "ext_info" : [
-                    "Seconds to wait for data before hiding overlays and freeing screen space."
+                    "Seconds of inactivity before overlays are hidden to free screen space. "
+                    "Leave empty to keep overlays always visible."
                 ]
             }
         }

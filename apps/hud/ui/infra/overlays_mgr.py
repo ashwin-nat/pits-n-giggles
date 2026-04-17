@@ -67,7 +67,7 @@ class OverlaysMgr:
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
             timeout=settings.Display.wdt_timeout,
-        )
+        ) if settings.Display.wdt_timeout is not None else None
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
@@ -178,13 +178,15 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
-        self.wdt.start()
+        if self.wdt:
+            self.wdt.start()
         self.window_manager.run()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
-        self.wdt.stop()
+        if self.wdt:
+            self.wdt.stop()
         self.window_manager.stop()
 
     def get_stats(self) -> Dict[str, Any]:
@@ -202,7 +204,8 @@ class OverlaysMgr:
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
-        self.wdt.kick()
+        if self.wdt:
+            self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
         self._handle_core_wdt_status(data)
@@ -438,7 +441,8 @@ class OverlaysMgr:
 
     def _update_telemetry_active(self):
         """Set telemetry active only when both local and core WDT are satisfied."""
-        combined = self._local_wdt_ok and self._core_wdt_ok
+        local_ok = True if self.wdt is None else self._local_wdt_ok
+        combined = local_ok and self._core_wdt_ok
         self._set_telemetry_active(combined)
 
     def _prep_race_table_data(self, data: Dict[str, Any]):

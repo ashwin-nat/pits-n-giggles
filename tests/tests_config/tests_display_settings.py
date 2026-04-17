@@ -140,14 +140,14 @@ class TestDisplaySettings(TestF1ConfigBase):
         settings = DisplaySettings(wdt_timeout=0.1)
         self.assertEqual(settings.wdt_timeout, 0.1)
 
+        settings = DisplaySettings(wdt_timeout=None)
+        self.assertIsNone(settings.wdt_timeout)
+
         with self.assertRaises(ValidationError):
             DisplaySettings(wdt_timeout=0)
 
         with self.assertRaises(ValidationError):
             DisplaySettings(wdt_timeout=-1)
-
-        with self.assertRaises(ValidationError):
-            DisplaySettings(wdt_timeout=None)
 
         with self.assertRaises(ValidationError):
             DisplaySettings(wdt_timeout="notanumber")
