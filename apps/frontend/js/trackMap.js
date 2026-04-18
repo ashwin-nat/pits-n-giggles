@@ -279,7 +279,7 @@ class TrackMap {
     /** Reset internal state (e.g. on session change). */
     clear() {
         this._stopRenderLoop();
-        this.container.innerHTML = '';
+        this.container.replaceChildren();
         this._wrapper = null;
         this._svgImg = null;
         this.canvas = null;
@@ -298,7 +298,7 @@ class TrackMap {
 
     _setupTrackView(svgImg) {
         // Clear previous content
-        this.container.innerHTML = '';
+        this.container.replaceChildren();
         this._drivers.clear();
         this._resetZoomState();
 
@@ -665,7 +665,7 @@ class TrackMap {
         this._drivers.clear();
         this._unpinPopup();
         this._resetZoomState();
-        // Re-append reset button (innerHTML wiped it)
+        // Re-append reset button (replaceChildren() removed it)
         this.container.appendChild(this._resetBtn);
     }
 

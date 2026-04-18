@@ -545,6 +545,7 @@ class EngViewRaceTable {
                 const compound = driverInfo["tyre-info"]["actual-tyre-compound"] ?? "";
                 const th = TYRE_TEMP_THRESHOLDS[compound] ?? TYRE_TEMP_THRESHOLDS_DEFAULT;
                 const tempClass = this.#getTyreTempClass(val, th);
+                // escape: false is safe here — tempClass comes from #getTyreTempClass, never user input
                 return this.createSingleLineCell(`${val}°`, { escape: false, className: tempClass });
             }
             return this.createSingleLineCell(`${val}°`);
@@ -644,6 +645,7 @@ class EngViewRaceTable {
             const damage = driverInfo["damage-info"][damageField];
             const text = `${formatFloat(damage)}%`;
             const dmgClass = this.#getEngDamageClass(damage);
+            // escape: false is safe here — dmgClass comes from #getEngDamageClass, never user input
             return this.createSingleLineCell(text, { escape: false, className: dmgClass });
         };
     }
@@ -2206,15 +2208,17 @@ function initCardCollapseToggles() {
         // Create toggle button
         const btn = document.createElement('button');
         btn.className = 'btn card-collapse-toggle';
-        btn.innerHTML = '<i class="bi bi-chevron-down"></i>';
         btn.title = 'Toggle collapse';
+        const icon = document.createElement('i');
+        icon.classList.add('bi', 'bi-chevron-down');
+        btn.appendChild(icon);
         header.appendChild(btn);
 
         // Restore saved state
         const saved = localStorage.getItem(key);
         if (saved === 'true') {
             body.classList.add('card-body-collapsed');
-            btn.querySelector('i').classList.replace('bi-chevron-down', 'bi-chevron-up');
+            icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
         }
 
         btn.addEventListener('click', () => {
@@ -2346,7 +2350,7 @@ class DrawerManager {
                 // Clear stale content (old canvas / fallback) before moving fresh content.
                 // Guard: only act when inline has content — the move itself triggers
                 // a second observer callback (removal from inline) which must be a no-op.
-                this.trackMapDrawerBody.innerHTML = '';
+                this.trackMapDrawerBody.replaceChildren();
                 while (this.trackMapInlineParent.firstChild) {
                     this.trackMapDrawerBody.appendChild(this.trackMapInlineParent.firstChild);
                 }
