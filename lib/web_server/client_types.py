@@ -31,6 +31,10 @@ class ClientType(Enum):
     RACE_TABLE = 'race-table'
     HUD = 'hud'
 
+    @classmethod
+    def is_valid(cls, value: str) -> bool:
+        return any(ct.value == value for ct in cls)
+
     def __str__(self) -> str:
         return self.value
 

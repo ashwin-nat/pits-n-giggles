@@ -58,9 +58,7 @@ class BaseWebServer:
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
-                 debug_mode: bool = False,
-                 additional_ports: Optional[List[Dict[str, Any]]] = None,
-                 bind_address: str = "0.0.0.0"):
+                 debug_mode: bool = False):
         """
         Initialize the BaseWebServer.
 
@@ -72,7 +70,6 @@ class BaseWebServer:
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
-            additional_ports (Optional[List[Dict[str, Any]]], optional): Additional ports with labels for multi-session.
         """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
@@ -80,7 +77,6 @@ class BaseWebServer:
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
         self.m_debug_mode: bool = debug_mode
-        self.m_bind_address: str = bind_address
         if client_event_mappings:
             self.m_client_event_mappings: Dict[ClientType, List[str]] = client_event_mappings
         else:
@@ -89,13 +85,6 @@ class BaseWebServer:
         self._on_client_register_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
         self._on_client_disconnect_callback: Optional[Callable[[str], Awaitable[None]]] = None
         self.m_stats = EventCounter()
-
-        # Multi-port: build port → label mapping
-        self.m_additional_ports: List[Dict[str, Any]] = additional_ports or []
-        self.m_port_labels: Dict[int, str] = {}
-        for entry in self.m_additional_ports:
-            self.m_port_labels[entry["port"]] = entry.get("label", "")
-        self.m_is_multi_port: bool = len(self.m_additional_ports) > 0
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -113,7 +102,7 @@ class BaseWebServer:
 
         self.m_sio = socketio.AsyncServer(
             async_mode='asgi',
-            cors_allowed_origins=self._compute_cors_origins(),
+            cors_allowed_origins="*",
             logger=False,
             engineio_logger=False
         )
@@ -122,7 +111,6 @@ class BaseWebServer:
 
         self._register_base_socketio_events()
         self._define_static_file_routes()
-        self._sid_port_map: Dict[str, int] = {}  # sid → port the client connected on
 
         # Automatically append version string to all static URL's
         # We're doing this because when version changes, we don't want the browser to load cached code
@@ -135,21 +123,6 @@ class BaseWebServer:
                     values['v'] = self.m_ver_str
                 return url_for(endpoint, **values)
             return {"url_for": dated_url_for}
-
-        # Inject port_info template variable for multi-port badge
-        @self.m_app.context_processor
-        def inject_port_info():
-            if not self.m_is_multi_port:
-                return {"port_info": None, "port_label": "", "port_number": self.m_port}
-            # Determine which port this request arrived on via ASGI scope
-            try:
-                server_tuple = quart_request.scope.get("server", (None, None))
-                req_port = server_tuple[1] if server_tuple else self.m_port
-            except RuntimeError:
-                req_port = self.m_port
-            label = self.m_port_labels.get(req_port, "(Primary)" if req_port == self.m_port else "")
-            port_info = f":{req_port} {label}".strip() if label else f":{req_port}"
-            return {"port_info": port_info, "port_label": label, "port_number": req_port}
 
         # Disable caching for template paths, always.
         @self.m_app.after_request
@@ -222,10 +195,6 @@ class BaseWebServer:
             """
             self.m_stats.track_event("__SOCKET_IN__", "__CONNECT__")
             self.m_logger.debug("Client connected: %s", sid)
-            # Extract the port from the ASGI scope and store for later use
-            port = _environ.get('asgi.scope', {}).get('server', (None, None))[1]
-            if port is not None:
-                self._sid_port_map[sid] = port
 
         @self.m_sio.event
         async def disconnect(sid: str) -> None:
@@ -237,7 +206,6 @@ class BaseWebServer:
             """
             self.m_stats.track_event("__SOCKET_IN__", "__DISCONNECT__")
             self.m_logger.debug("Client disconnected: %s", sid)
-            self._sid_port_map.pop(sid, None)
             if self._on_client_disconnect_callback:
                 await self._on_client_disconnect_callback(sid)
 
@@ -265,7 +233,7 @@ class BaseWebServer:
                 self.m_stats.track_event("__SOCKET_IN_INVALID__", "unknown-client-type")
                 return
 
-            if client_type in {ct.value for ct in ClientType}:
+            if ClientType.is_valid(client_type):
                 self.m_stats.track_event("__CLIENT_REG__", client_type)
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_register_callback:
@@ -285,15 +253,6 @@ class BaseWebServer:
 
                         room = self.m_sio.manager.rooms.get('/', {}).get(event)
                         self.m_logger.debug('[CLIENT_REG] Current members of %s: %s', event, room)
-
-            # Port-specific rooms (additive — client stays in global rooms too)
-            conn_port = self._sid_port_map.get(sid)
-            if conn_port is not None and interested_events:
-                for event in interested_events:
-                    port_room = f"port:{conn_port}:{event}"
-                    await self.m_sio.enter_room(sid, port_room)
-                    if self.m_debug_mode:
-                        self.m_logger.debug('[CLIENT_REG] Client %s joined port room %s', sid, port_room)
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
         """
@@ -364,31 +323,6 @@ class BaseWebServer:
         """
         return not self._is_room_empty(event)
 
-    async def send_to_port_room(self, port: int, event: str, data: Dict[str, Any]) -> None:
-        """Send data only to clients connected on a specific port that are interested in an event.
-
-        Args:
-            port (int): The port the clients connected on.
-            event (str): The event name to emit.
-            data (Dict[str, Any]): The data to send with the event.
-        """
-        port_room = f"port:{port}:{event}"
-        packed = msgpack.packb(data, use_bin_type=True)
-        await self.m_sio.emit(event, packed, room=port_room)
-
-    def is_any_client_in_port_room(self, port: int, event: str) -> bool:
-        """Check if any client is in a port-specific room.
-
-        Args:
-            port (int): The port to check.
-            event (str): The event name to check.
-
-        Returns:
-            bool: True if any client is in the port-specific room.
-        """
-        port_room = f"port:{port}:{event}"
-        return not self._is_room_empty(port_room)
-
     def _is_room_empty(self, room_name: str, namespace: Optional[str] = '/') -> bool:
         """Check if a room is empty"""
         participants = list(self.m_sio.manager.get_participants(namespace, room_name))
@@ -399,11 +333,9 @@ class BaseWebServer:
         Run the web server asynchronously using Uvicorn.
 
         Sets up the server configuration and starts serving the application.
-        When additional_ports are configured, binds multiple sockets so the
-        same ASGI app is served on all ports.
 
         Raises:
-            PngHttpPortInUseError: If the primary port is already in use.
+            PngHttpPortInUseError: If the specified port is already in use.
             OSError: If the server fails to start and error is not a port in use error.
         """
         # Register post start callback before running
@@ -413,27 +345,27 @@ class BaseWebServer:
             if self._post_start_callback:
                 await self._post_start_callback()
 
-        sockets: List[socket.socket] = []
+        # Create a socket manually
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        # --- Primary port (mandatory — failure is fatal) ---
-        primary_sock = self._create_socket(self.m_port)
-        if primary_sock is None:
-            raise PngHttpPortInUseError()
-        sockets.append(primary_sock)
+        # Platform-specific socket options:
+        # - Windows: SO_REUSEADDR allows multiple binds (unsafe), so we skip it entirely
+        # - Unix/Linux/macOS: SO_REUSEADDR allows binding to TIME_WAIT ports (safe for quick restart)
+        if platform.system() != "Windows":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
 
-        # --- Additional ports (optional — failure is a warning) ---
-        for entry in self.m_additional_ports:
-            extra_port = entry["port"]
-            extra_label = entry.get("label", "")
-            extra_sock = self._create_socket(extra_port)
-            if extra_sock is None:
-                label_str = f" '{extra_label}'" if extra_label else ""
-                self.m_logger.warning(
-                    "Multi-session port %d%s could not be bound — skipping",
-                    extra_port, label_str
-                )
-                continue
-            sockets.append(extra_sock)
+        try:
+            sock.bind(("0.0.0.0", self.m_port))
+        except OSError as e:
+            sock.close()
+            if is_port_in_use_error(e.errno):
+                self.m_logger.error("Port %s is already in use", self.m_port)
+                raise PngHttpPortInUseError() from e
+            raise  # Re-raise if it's a different OSError
+
+        sock.listen(1024)
+        sock.setblocking(False)
 
         config = uvicorn.Config(
             self.m_sio_app,
@@ -443,51 +375,7 @@ class BaseWebServer:
         )
 
         self._server = uvicorn.Server(config)
-        await self._server.serve(sockets=sockets)
-
-    def _create_socket(self, port: int) -> Optional[socket.socket]:
-        """Create and bind a TCP socket on the given port.
-
-        Returns the socket on success, or None if the port is in use.
-        Raises OSError for non-port-in-use errors.
-        """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        if platform.system() != "Windows":
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        try:
-            sock.bind((self.m_bind_address, port))
-        except OSError as e:
-            sock.close()
-            if is_port_in_use_error(e.errno):
-                self.m_logger.error("Port %d is already in use", port)
-                return None
-            raise
-
-        sock.listen(1024)
-        sock.setblocking(False)
-        return sock
-
-    def _compute_cors_origins(self) -> Union[str, List[str]]:
-        """Compute CORS allowed origins based on the bind address.
-
-        When bound to localhost/127.0.0.1, restrict origins to localhost URLs.
-        When bound to 0.0.0.0 or other addresses (LAN mode), allow all origins
-        because clients connect from various IPs on the network.
-        """
-        local_addresses = ("127.0.0.1", "localhost")
-        if self.m_bind_address in local_addresses:
-            scheme = "https" if self.m_cert_path else "http"
-            origins = [
-                f"{scheme}://localhost:{self.m_port}",
-                f"{scheme}://127.0.0.1:{self.m_port}",
-            ]
-            for entry in self.m_additional_ports:
-                origins.append(f"{scheme}://localhost:{entry['port']}")
-                origins.append(f"{scheme}://127.0.0.1:{entry['port']}")
-            return origins
-        return "*"
+        await self._server.serve(sockets=[sock])
 
     def register_post_start_callback(self, callback: Callable[[], Awaitable[None]]) -> None:
         """
