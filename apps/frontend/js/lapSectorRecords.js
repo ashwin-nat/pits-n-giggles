@@ -11,14 +11,14 @@ class F1LapSectorRecords {
   }
 
   showLoading() {
-    this.container.innerHTML = '';
+    this.container.textContent = '';
     const loadingDiv = this.createElement('div', 'f1-lapsec-records-loading');
     loadingDiv.textContent = 'Loading records...';
     this.container.appendChild(loadingDiv);
   }
 
   showError(message = 'Error loading records') {
-    this.container.innerHTML = '';
+    this.container.textContent = '';
     const errorDiv = this.createElement('div', 'f1-lapsec-records-error');
     errorDiv.textContent = message;
     this.container.appendChild(errorDiv);
@@ -171,7 +171,7 @@ class F1LapSectorRecords {
   }
 
   render() {
-    this.container.innerHTML = '';
+    this.container.textContent = '';
 
     const header = this.createHeader();
     this.container.appendChild(header);
@@ -220,7 +220,7 @@ class F1LapSectorRecords {
 
   // Method to clear the display
   clear() {
-    this.container.innerHTML = '';
+    this.container.textContent = '';
     this.data = null;
   }
 

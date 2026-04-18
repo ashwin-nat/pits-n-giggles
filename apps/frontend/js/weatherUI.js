@@ -36,20 +36,33 @@ function renderWeatherPrediction(prediction) {
   predictionElement.classList.add('weather-prediction');
 
   const weatherIcon = WEATHER_ICONS[prediction['weather']];
-  predictionElement.innerHTML = `
-    <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
-    <div class="weather-info">
-      <span class="weather-time">+${prediction['time-offset']}min</span>
-      <span class="weather-probability">${prediction['rain-probability']}%</span>
-    </div>
-  `;
+
+  const icon = document.createElement('i');
+  icon.classList.add('bi', weatherIcon.icon, 'weather-icon', weatherIcon.class);
+
+  const weatherInfo = document.createElement('div');
+  weatherInfo.classList.add('weather-info');
+
+  const timeSpan = document.createElement('span');
+  timeSpan.classList.add('weather-time');
+  timeSpan.textContent = `+${prediction['time-offset']}min`;
+
+  const probabilitySpan = document.createElement('span');
+  probabilitySpan.classList.add('weather-probability');
+  probabilitySpan.textContent = `${prediction['rain-probability']}%`;
+
+  weatherInfo.appendChild(timeSpan);
+  weatherInfo.appendChild(probabilitySpan);
+
+  predictionElement.appendChild(icon);
+  predictionElement.appendChild(weatherInfo);
 
   return predictionElement;
 }
 
 function updateWeatherUI(weatherContainer, weatherData) {
 
-  weatherContainer.innerHTML = '';
+  weatherContainer.textContent = '';
   if (weatherData.length === 0) {
     return;
   }
@@ -73,20 +86,33 @@ class WeatherWidget {
     predictionElement.classList.add('weather-prediction');
 
     const weatherIcon = WEATHER_ICONS[prediction['weather']];
-    predictionElement.innerHTML = `
-      <i class="bi ${weatherIcon.icon} weather-icon ${weatherIcon.class}"></i>
-      <div class="weather-info">
-        <span class="weather-time">+${prediction['time-offset']}min</span>
-        <span class="weather-probability">${prediction['rain-probability']}%</span>
-      </div>
-    `;
+
+    const icon = document.createElement('i');
+    icon.classList.add('bi', weatherIcon.icon, 'weather-icon', weatherIcon.class);
+
+    const weatherInfo = document.createElement('div');
+    weatherInfo.classList.add('weather-info');
+
+    const timeSpan = document.createElement('span');
+    timeSpan.classList.add('weather-time');
+    timeSpan.textContent = `+${prediction['time-offset']}min`;
+
+    const probabilitySpan = document.createElement('span');
+    probabilitySpan.classList.add('weather-probability');
+    probabilitySpan.textContent = `${prediction['rain-probability']}%`;
+
+    weatherInfo.appendChild(timeSpan);
+    weatherInfo.appendChild(probabilitySpan);
+
+    predictionElement.appendChild(icon);
+    predictionElement.appendChild(weatherInfo);
 
     return predictionElement;
   }
 
   // Method to update the weather UI with an array of weather predictions
   update(weatherData) {
-    this.weatherContainer.innerHTML = ''; // Clear previous content
+    this.weatherContainer.textContent = ''; // Clear previous content
     if (weatherData.length === 0) {
       return;
     }

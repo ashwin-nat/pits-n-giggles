@@ -46,6 +46,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertEqual(settings.local_telemetry_rate, 5)
         self.assertEqual(settings.realtime_overlay_fps, 60)
         self.assertFalse(settings.use_cpu_acceleration)
+        self.assertEqual(settings.wdt_timeout, 5.0)
 
     def test_refresh_interval_validation(self):
         """Test refresh interval must be positive"""
@@ -118,7 +119,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             DisplaySettings(realtime_overlay_fps="notanumber")
 
-    def test_use_gpu_acceleration(self):
+    def test_use_cpu_acceleration(self):
         settings = DisplaySettings(use_cpu_acceleration=True)
         self.assertTrue(settings.use_cpu_acceleration)
 
@@ -130,3 +131,26 @@ class TestDisplaySettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             DisplaySettings(use_cpu_acceleration=123)
+
+    def test_wdt_timeout_validation(self):
+        settings = DisplaySettings(wdt_timeout=10.0)
+        self.assertEqual(settings.wdt_timeout, 10.0)
+
+        # Boundary condition
+        settings = DisplaySettings(wdt_timeout=2.0)
+        self.assertEqual(settings.wdt_timeout, 2.0)
+
+        settings = DisplaySettings(wdt_timeout=None)
+        self.assertIsNone(settings.wdt_timeout)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=1.9)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout=-1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(wdt_timeout="notanumber")

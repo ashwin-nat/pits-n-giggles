@@ -24,6 +24,7 @@
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict, List
 
 import lib.overtake_analyzer as OvertakeAnalyzer
@@ -74,14 +75,35 @@ def getDriverInfo(index: int) -> Dict[str, Any]:
     return _getDriverInfo(_json_data, index)
 
 async def open_file_helper(file_path):
-    """Load the JSON file and parse it and update the module global."""
+    """Validate, load the JSON file and parse it and update the module global."""
+
+    if not file_path:
+        return {"status": "error", "message": "Missing or invalid file path"}
+
+    # Path traversal protection: block relative parent-directory escape
+    if ".." in Path(file_path).parts:
+        _logger.warning("Path traversal attempt blocked: %s", file_path)
+        return {"status": "error", "message": "Path contains disallowed traversal sequence"}
+
     try:
-        with open(file_path, 'r+', encoding='utf-8') as f:
+        resolved = Path(file_path).resolve()
+    except (OSError, ValueError):
+        return {"status": "error", "message": "Invalid file path"}
+
+    # Must point to an existing regular file with allowed extension
+    if not resolved.is_file():
+        return {"status": "error", "message": "Path does not point to an existing file"}
+
+    if resolved.suffix.lower() != ".json":
+        return {"status": "error", "message": "File type not allowed"}
+
+    try:
+        with open(str(resolved), 'r+', encoding='utf-8') as f:
             global _json_data
             _json_data = json.load(f)
             _check_recompute_json(_json_data)
 
-        _logger.info("Opened file: %s", file_path)
+        _logger.info("Opened file: %s", resolved)
         return {"status": "success"}
 
     except (FileNotFoundError, PermissionError) as e:
@@ -93,9 +115,9 @@ async def open_file_helper(file_path):
     except UnicodeDecodeError as e:
         _logger.error("Invalid UTF-8 in file: %s. Error: %s", file_path, e)
         return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
-    except Exception as e: # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught
         _logger.exception("Unexpected error opening file: %s", file_path)
-        return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+        return {"status": "error", "message": "Failed to open file"}
 
 # -------------------------------------- HELPER FUNCTIONS --------------------------------------------------------------
 

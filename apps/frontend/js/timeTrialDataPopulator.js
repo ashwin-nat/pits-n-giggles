@@ -217,7 +217,7 @@ class TimeTrialDataPopulator {
         const lapData = sessionHistory['lap-history-data'];
         const bestLapIndex = sessionHistory['best-lap-time-lap-num'] - 1;
 
-        tbody.innerHTML = '';
+        tbody.textContent = '';
 
         const bestLapTimeLapNum = sessionHistory["best-lap-time-lap-num"];
         const bestS1TimeLapNum  = sessionHistory["best-sector-1-lap-num"];
@@ -413,7 +413,7 @@ class TimeTrialDataPopulator {
         if (irlS1El) irlS1El.textContent = '--:---';
         if (irlS2El) irlS2El.textContent = '--:---';
         if (irlS3El) irlS3El.textContent = '--:---';
-        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
+        if (irlDetailsAssistsEl) irlDetailsAssistsEl.textContent = '';
     }
 
     /**
@@ -447,7 +447,7 @@ class TimeTrialDataPopulator {
      */
     clear() {
         const tbody = document.getElementById('tt-lap-table-body');
-        if (tbody) tbody.innerHTML = '';
+        if (tbody) tbody.textContent = '';
 
         // Clear comparison data
         ['pb', 'sb', 'rival'].forEach(prefix => {
