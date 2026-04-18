@@ -502,10 +502,14 @@ class TrackMap {
         const ersMode = escapeHtml(data.ersMode     || 'N/A');
         const wear    = escapeHtml(data.tyreWearAvg || 'N/A');
 
-        this.tooltip.innerHTML =
-            '<strong>' + name + ' (' + abbr + ')</strong><br>' +
-            'ERS: ' + ers + '% (' + ersMode + ')<br>' +
-            'Tyre Wear: ' + wear + '%';
+        this.tooltip.replaceChildren();
+        const strong = document.createElement('strong');
+        strong.textContent = name + ' (' + abbr + ')';
+        this.tooltip.appendChild(strong);
+        this.tooltip.appendChild(document.createElement('br'));
+        this.tooltip.appendChild(document.createTextNode('ERS: ' + ers + '% (' + ersMode + ')'));
+        this.tooltip.appendChild(document.createElement('br'));
+        this.tooltip.appendChild(document.createTextNode('Tyre Wear: ' + wear + '%'));
         this.tooltip.style.display = 'block';
         this._positionTooltip(event);
         this._activeTooltipDot = data.index;
@@ -531,10 +535,14 @@ class TrackMap {
             const ersMode = escapeHtml(data.ersMode     || 'N/A');
             const wear    = escapeHtml(data.tyreWearAvg || 'N/A');
 
-            this.tooltip.innerHTML =
-                '<strong>' + name + ' (' + abbr + ')</strong><br>' +
-                'ERS: ' + ers + '% (' + ersMode + ')<br>' +
-                'Tyre Wear: ' + wear + '%';
+            this.tooltip.replaceChildren();
+            const strong = document.createElement('strong');
+            strong.textContent = name + ' (' + abbr + ')';
+            this.tooltip.appendChild(strong);
+            this.tooltip.appendChild(document.createElement('br'));
+            this.tooltip.appendChild(document.createTextNode('ERS: ' + ers + '% (' + ersMode + ')'));
+            this.tooltip.appendChild(document.createElement('br'));
+            this.tooltip.appendChild(document.createTextNode('Tyre Wear: ' + wear + '%'));
             this.tooltip.style.display = 'block';
             this.tooltip.style.left = (touch.pageX + 12) + 'px';
             this.tooltip.style.top  = (touch.pageY - 28) + 'px';
@@ -594,12 +602,20 @@ class TrackMap {
         const wear     = escapeHtml(data.tyreWearAvg || 'N/A');
         const compound = escapeHtml(data.tyreCompound || 'N/A');
 
-        this._pinnedPopup.innerHTML =
-            '<span class="pinned-popup-close">&times;</span>' +
-            '<strong>' + name + ' (' + abbr + ')</strong><br>' +
-            'P' + pos + ' \u00b7 ' + compound + '<br>' +
-            'ERS: ' + ers + '% (' + ersMode + ')<br>' +
-            'Wear: ' + wear + '%';
+        this._pinnedPopup.replaceChildren();
+        const closeSpan = document.createElement('span');
+        closeSpan.className = 'pinned-popup-close';
+        closeSpan.textContent = '\u00d7';
+        this._pinnedPopup.appendChild(closeSpan);
+        const strong = document.createElement('strong');
+        strong.textContent = name + ' (' + abbr + ')';
+        this._pinnedPopup.appendChild(strong);
+        this._pinnedPopup.appendChild(document.createElement('br'));
+        this._pinnedPopup.appendChild(document.createTextNode('P' + pos + ' \u00b7 ' + compound));
+        this._pinnedPopup.appendChild(document.createElement('br'));
+        this._pinnedPopup.appendChild(document.createTextNode('ERS: ' + ers + '% (' + ersMode + ')'));
+        this._pinnedPopup.appendChild(document.createElement('br'));
+        this._pinnedPopup.appendChild(document.createTextNode('Wear: ' + wear + '%'));
         this._pinnedPopup.style.borderColor = getF1TeamColor(team);
     }
 
@@ -636,8 +652,11 @@ class TrackMap {
 
     _showFallback(message) {
         this._stopRenderLoop();
-        this.container.innerHTML =
-            '<div class="track-map-fallback">' + escapeHtml(message) + '</div>';
+        this.container.replaceChildren();
+        const fallback = document.createElement('div');
+        fallback.className = 'track-map-fallback';
+        fallback.textContent = message;
+        this.container.appendChild(fallback);
         this._wrapper = null;
         this._svgImg = null;
         this.canvas = null;
