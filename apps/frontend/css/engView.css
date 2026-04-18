@@ -867,7 +867,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 @media (max-width: 600px) {
 
-    /* ── Header: 2-Zeilen-Layout (Info + Actions) ──── */
+    /* ── Header: 2-row layout (info + actions) ──── */
 
     .global-stats-section-header {
         flex-direction: column;
@@ -876,7 +876,7 @@ input[type="number"]::-webkit-outer-spin-button {
         padding: 0.5rem 0.75rem;
     }
 
-    /* Zeile 1: Track-Name + Summary */
+    /* Row 1: track name + session summary */
     .race-status-header-left {
         width: 100%;
         flex-wrap: wrap;
@@ -907,7 +907,7 @@ input[type="number"]::-webkit-outer-spin-button {
         margin: 0 0.2rem;
     }
 
-    /* Zeile 2: Action-Buttons */
+    /* Row 2: action buttons */
     .global-stats-section-header > .d-flex:not(.race-status-header-left) {
         width: 100%;
         justify-content: space-between;
@@ -919,7 +919,7 @@ input[type="number"]::-webkit-outer-spin-button {
         gap: 0;
     }
 
-    /* Buttons: Touch Targets beibehalten, aber enger packen */
+    /* Buttons: keep 44px touch targets, tighten spacing */
     .global-stats-section-header .settings-button {
         font-size: 1.25rem;
         padding: 0.375rem;
@@ -930,7 +930,7 @@ input[type="number"]::-webkit-outer-spin-button {
         justify-content: center;
     }
 
-    /* ⌀-Symbol auch anpassen */
+    /* Scale the ⌀ restricted-telemetry symbol to match button row */
     .global-stats-section-header span[style*="font-size"] {
         font-size: 1.6rem !important;
     }
