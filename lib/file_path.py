@@ -29,6 +29,20 @@ from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- FUNCTIONS --------------------------------------------------------------------
 
+def get_app_base_dir() -> Path:
+    """
+    Returns the base directory for user-writable app data.
+
+    - On macOS: ~/Library/Application Support/pits_n_giggles/
+    - On other platforms: current working directory
+    """
+    if sys.platform != "darwin":
+        return Path(".")
+    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_SNAKE
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return base_dir
+
+
 def resolve_user_file(filename: str) -> str:
     """
     Resolves the given filename to a user-writable path.
@@ -42,8 +56,4 @@ def resolve_user_file(filename: str) -> str:
     Returns:
         str: Full path to the resolved file location.
     """
-    if sys.platform != "darwin":
-        return filename
-    base_dir = Path.home() / "Library" / "Application Support" / APP_NAME_SNAKE
-    base_dir.mkdir(parents=True, exist_ok=True)
-    return str(base_dir / filename)
+    return str(get_app_base_dir() / filename)
