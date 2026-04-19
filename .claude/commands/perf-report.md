@@ -7,7 +7,7 @@ Generate a full telemetry performance metrics report by extracting stats from th
 
 ## Input
 
-The user must provide a path to the launcher log file. If not provided, ask before proceeding.
+If the user does not provide a log file path, first search the project root for `png.log` using the Glob tool with pattern `png.log`. If found, use it automatically without asking. Only ask the user for a path if `png.log` is not found.
 
 ## Steps
 
