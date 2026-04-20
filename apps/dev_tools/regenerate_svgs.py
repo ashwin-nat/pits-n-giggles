@@ -217,7 +217,8 @@ def main():
             svg_path = game_dir / f"{name}.svg"
 
             # Load world coordinates
-            data = json.load(open(json_path))
+            with open(json_path) as f:
+                data = json.load(f)
             raw_points = [tuple(p) for p in data["points"]]
 
             # Apply per-track adjustments
@@ -225,6 +226,7 @@ def main():
             rot = adj.get("rotate_deg", 0)
             fx = adj.get("flip_x", False)
             fy = adj.get("flip_y", False)
+            has_adjustment = rot != 0 or fx or fy
 
             display_points = raw_points
             if rot:
@@ -232,36 +234,27 @@ def main():
             if fx or fy:
                 display_points = flip_points(display_points, fx, fy)
 
-            has_adjustment = rot != 0 or fx or fy
+            adj_info = " ".join(filter(None, [f"rot={rot}°" if rot else "", "flip_x" if fx else "", "flip_y" if fy else ""]))
 
             # Generate SVG pixel coordinates
             svg_pixel_pts = world_to_svg(display_points)
 
             if has_adjustment or not svg_path.exists():
-                # Write (re)generated SVG
                 if args.dry_run:
                     action = "WOULD REGENERATE" if svg_path.exists() else "WOULD CREATE"
-                    info = f"rot={rot}°" if rot else ""
-                    if fx: info += " flip_x"
-                    if fy: info += " flip_y"
-                    print(f"  {action} {name}.svg  ({info.strip()})")
+                    print(f"  {action} {name}.svg  ({adj_info})")
                 else:
                     write_svg(svg_pixel_pts, svg_path)
                     regenerated += 1
-                    info = f"rot={rot}°" if rot else ""
-                    if fx: info += " flip_x"
-                    if fy: info += " flip_y"
-                    tag = info.strip() if info.strip() else "no adjustment"
-                    print(f"  REGEN {name}.svg  ({tag})")
+                    print(f"  REGEN {name}.svg  ({adj_info or 'no adjustment'})")
             else:
-                # SVG exists without adjustment — use existing SVG for affine calculation
-                svg_text = svg_path.read_text()
-                m = re.search(r'points="([^"]+)"', svg_text)
+                # SVG exists without adjustment — read existing pixel coords for affine fit
+                # (avoids re-computing world→SVG mapping and drifting from the on-disk SVG)
+                m = re.search(r'points="([^"]+)"', svg_path.read_text())
                 if m:
                     pairs = m.group(1).strip().split()
-                    N = min(len(raw_points), len(pairs))
                     svg_pixel_pts = [
-                        tuple(float(v) for v in p.split(",")) for p in pairs[:N]
+                        tuple(float(v) for v in p.split(",")) for p in pairs[:len(raw_points)]
                     ]
                 print(f"  KEEP  {name}.svg  (unchanged)")
 
@@ -283,7 +276,8 @@ def main():
         # Write svg_transforms.json per game folder
         out_path = game_dir / "svg_transforms.json"
         if not args.dry_run:
-            json.dump(all_transforms, open(out_path, "w"), indent=2)
+            with open(out_path, "w") as f:
+                json.dump(all_transforms, f, indent=2)
             print(f"\n  Saved {len(all_transforms)} transforms to {out_path}")
             print(f"  Regenerated {regenerated} SVG(s)")
         else:
