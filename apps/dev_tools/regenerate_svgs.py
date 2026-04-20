@@ -217,7 +217,7 @@ def main():
             svg_path = game_dir / f"{name}.svg"
 
             # Load world coordinates
-            with open(json_path) as f:
+            with open(json_path, encoding="utf-8") as f:
                 data = json.load(f)
             raw_points = [tuple(p) for p in data["points"]]
 
@@ -261,7 +261,7 @@ def main():
             # Compute affine: raw world coords → SVG pixel coords
             world_arr = np.array(raw_points[:len(svg_pixel_pts)])
             svg_arr = np.array(svg_pixel_pts[:len(raw_points)])
-            params, avg_err, max_err = compute_affine(world_arr, svg_arr)
+            params, _, max_err = compute_affine(world_arr, svg_arr)
 
             if has_adjustment:
                 params["rotate_deg"] = rot
@@ -276,7 +276,7 @@ def main():
         # Write svg_transforms.json per game folder
         out_path = game_dir / "svg_transforms.json"
         if not args.dry_run:
-            with open(out_path, "w") as f:
+            with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(all_transforms, f, indent=2)
             print(f"\n  Saved {len(all_transforms)} transforms to {out_path}")
             print(f"  Regenerated {regenerated} SVG(s)")

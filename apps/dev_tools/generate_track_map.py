@@ -24,6 +24,8 @@ Workflow:
     4. SVG is generated automatically, tool exits
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import logging
@@ -33,9 +35,11 @@ from pathlib import Path
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+# pylint: disable=wrong-import-position
 from lib.f1_types import F1PacketType
 from lib.track_map_generator import TrackMapCollector
 from lib.telemetry_manager import AsyncF1TelemetryManager
+# pylint: enable=wrong-import-position
 
 
 def _setup_logger() -> logging.Logger:

@@ -23,10 +23,12 @@ from typing import Dict, List, NamedTuple, Optional, Tuple
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+# pylint: disable=wrong-import-position
 from lib.f1_types.header import F1PacketType, PacketHeader
 from lib.f1_types.packet_0_car_motion_data import PacketMotionData
 from lib.f1_types.packet_2_lap_data import PacketLapData
 from lib.packet_cap import F1PacketCapture
+# pylint: enable=wrong-import-position
 
 
 class TrackPoint(NamedTuple):
@@ -50,7 +52,7 @@ def extract_game_year(pcap_path: str) -> int:
             header = PacketHeader(raw[:header_len])
             year = header.m_gameYear
             return 2000 + year if year < 100 else year
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             continue
     return 0
 
@@ -82,7 +84,7 @@ def extract_track_points(pcap_path: str, min_lap: int = 2) -> List[TrackPoint]:
 
         try:
             header = PacketHeader(raw[:header_len])
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             continue
 
         payload = raw[header_len:]
@@ -91,7 +93,7 @@ def extract_track_points(pcap_path: str, min_lap: int = 2) -> List[TrackPoint]:
         if header.m_packetId == F1PacketType.MOTION:
             try:
                 pkt = PacketMotionData(header, payload)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 continue
             motion_frames[fid] = [
                 (c.m_worldPositionX, c.m_worldPositionZ)
@@ -101,7 +103,7 @@ def extract_track_points(pcap_path: str, min_lap: int = 2) -> List[TrackPoint]:
         elif header.m_packetId == F1PacketType.LAP_DATA:
             try:
                 pkt = PacketLapData(header, payload)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 continue
             lap_frames[fid] = pkt
 
@@ -218,6 +220,10 @@ def world_to_svg(
     """Transform world X/Z to SVG coordinates.
 
     Args:
+        points: World (X, Z) coordinate pairs.
+        width: SVG canvas width in pixels.
+        height: SVG canvas height in pixels.
+        padding: Padding on each side of the canvas in pixels.
         fill: If True, stretch independently on X/Y to fill the canvas
               (matches legacy MultiViewer SVG style). If False, preserve
               aspect ratio (geometrically correct).
