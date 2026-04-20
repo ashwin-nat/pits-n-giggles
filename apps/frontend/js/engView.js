@@ -1,15 +1,4 @@
 let g_engView_predLapNum = null;
-function escapeHtml(unsafe) {
-    if (typeof unsafe !== "string") {
-        return unsafe;
-    }
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -1884,15 +1873,17 @@ class EngViewWeatherTable {
 
         // Create weather type row
         const typeRow = document.createElement('tr');
-        typeRow.innerHTML = limitedData
-            .map(w => `<td>${w["weather"]}</td>`)
-            .join('');
+        limitedData.forEach(w => {
+            const cell = typeRow.insertCell();
+            cell.textContent = w["weather"];
+        });
 
         // Create time and probability row
         const timeRow = document.createElement('tr');
-        timeRow.innerHTML = limitedData
-            .map(w => `<td>+${w["time-offset"]}m (${w["rain-probability"]}%)</td>`)
-            .join('');
+        limitedData.forEach(w => {
+            const cell = timeRow.insertCell();
+            cell.textContent = `+${w["time-offset"]}m (${w["rain-probability"]}%)`;
+        });
 
         // Clear and update table
         this.tableBody.innerHTML = '';

@@ -30,6 +30,8 @@ from typing import Optional
 
 import aiofiles
 
+from lib.file_path import resolve_user_file
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 async def save_json_to_file(
@@ -51,7 +53,7 @@ async def save_json_to_file(
     """
     if base_dir is None:
         date_str = datetime.now().strftime("%Y_%m_%d")
-        base_dir = Path("data") / date_str
+        base_dir = Path(resolve_user_file("data")) / date_str
     else:
         base_dir = Path(base_dir) / "data"
 

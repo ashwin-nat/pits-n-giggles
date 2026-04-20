@@ -149,7 +149,7 @@ const detailRenderers = {
  */
 function populateRaceControlMessagesTab(containerElement, initialRowData) {
     // Clear any existing content in the container
-    containerElement.innerHTML = '';
+    containerElement.textContent = '';
 
     let gridApi; // Declare gridApi in a higher scope
 
