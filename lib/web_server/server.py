@@ -55,6 +55,7 @@ class BaseWebServer:
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 bind_address: str,
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
@@ -73,6 +74,7 @@ class BaseWebServer:
         """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
+        self.m_bind_address: str = bind_address
         self.m_ver_str = ver_str
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
@@ -356,7 +358,7 @@ class BaseWebServer:
             # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
 
         try:
-            sock.bind(("0.0.0.0", self.m_port))
+            sock.bind((self.m_bind_address, self.m_port))
         except OSError as e:
             sock.close()
             if is_port_in_use_error(e.errno):

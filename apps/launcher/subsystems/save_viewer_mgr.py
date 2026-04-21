@@ -136,13 +136,15 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """
 
         diff = self.curr_settings.diff(new_settings, {
-            "Network": ["save_viewer_port"],
+            "Network": [
+                "save_viewer_port",
+                "bind_address",
+            ],
         })
         self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
-        should_restart = (self.port != new_settings.Network.save_viewer_port)
         self.port = new_settings.Network.save_viewer_port
-        return should_restart
+        return bool(diff)
 
     def post_start(self):
         """Update buttons after app start"""
