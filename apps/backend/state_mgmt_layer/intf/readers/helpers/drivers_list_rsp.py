@@ -41,7 +41,8 @@ class DriversListRsp(BaseAPI):
                  session_state: SessionState,
                  is_spectator_mode: bool,
                  track_length: Optional[int] = None,
-                 is_tt_mode: bool = False
+                 is_tt_mode: bool = False,
+                 send_position_data: bool = True
                  ):
         """Get the drivers list and prepare the rsp fields
 
@@ -50,11 +51,13 @@ class DriversListRsp(BaseAPI):
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (Optional[int], optional): The track length. Defaults to None.
             is_tt_mode (bool, optional): Whether the player is in time trial mode
+            send_position_data (bool, optional): Whether to include world position in each entry. Defaults to True.
         """
 
         self.m_session_state: SessionState = session_state
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
+        self.m_send_position_data: bool = send_position_data
         self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
@@ -357,7 +360,7 @@ class DriversListRsp(BaseAPI):
         Returns:
             Dict[str, Any]: Driver JSON data.
         """
-        return {
+        entry = {
             "driver-info": self._getDriverInfoJSON(index, driver_data),
             "delta-info": self._getDeltaInfoJSON(driver_data),
             "ers-info": self._getERSInfoJSON(driver_data),
@@ -368,6 +371,10 @@ class DriversListRsp(BaseAPI):
             "fuel-info": driver_data.getFuelStatsJSON(),
             "pit-info": driver_data.getPitInfoJSON(),
         }
+        if self.m_send_position_data:
+            motion = driver_data.m_packet_copies.m_packet_motion
+            entry["world-pos"] = [motion.m_worldPositionX, motion.m_worldPositionZ] if motion else None
+        return entry
 
     def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract driver information section for JSON response.
