@@ -245,6 +245,29 @@ class TestNetworkSettings(TestF1ConfigBase):
         settings = NetworkSettings(udp_action_button_debounce_ms=500)
         self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.5)
 
+    def test_bind_address_default(self):
+        settings = NetworkSettings()
+        self.assertEqual(str(settings.bind_address), "0.0.0.0")
+
+    def test_bind_address_valid(self):
+        NetworkSettings(bind_address="127.0.0.1")
+        NetworkSettings(bind_address="192.168.1.100")
+        NetworkSettings(bind_address="10.0.0.1")
+
+    def test_bind_address_invalid(self):
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="not_an_ip")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="256.0.0.1")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="::1")  # IPv6 not accepted
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address=69420)
+
     def test_enable_pkt_ordering(self):
         net = NetworkSettings(enable_pkt_ordering=True)
         self.assertTrue(net.enable_pkt_ordering)

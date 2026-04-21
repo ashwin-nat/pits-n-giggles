@@ -45,6 +45,7 @@ class SaveViewerWebServer(BaseWebServer):
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 bind_address: str,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  debug_mode: bool = False):
@@ -59,7 +60,7 @@ class SaveViewerWebServer(BaseWebServer):
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
-        super().__init__(port, ver_str, logger, cert_path, key_path, debug_mode)
+        super().__init__(port, ver_str, logger, bind_address=bind_address, cert_path=cert_path, key_path=key_path, debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.register_on_client_register_callback(self._on_client_connect)
@@ -197,7 +198,7 @@ class SaveViewerWebServer(BaseWebServer):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task]) -> SaveViewerWebServer:
+def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task], bind_address: str) -> SaveViewerWebServer:
     """Initialize the web server and return the server object for proper cleanup
 
     Args:
@@ -205,10 +206,11 @@ def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: Lis
         ver_str (str): Version string
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks to be executed
+        bind_address (str): IP address to bind the server to
 
     Returns:
         SaveViewerWebServer: Web server
     """
-    _server = SaveViewerWebServer(port, ver_str, logger)
+    _server = SaveViewerWebServer(port, ver_str, logger, bind_address=bind_address)
     tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
     return _server

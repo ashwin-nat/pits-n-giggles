@@ -44,7 +44,7 @@ from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
-from lib.file_path import resolve_user_file
+from lib.file_path import get_app_base_dir, resolve_user_file
 from meta.meta import APP_NAME
 
 from .changelog_window import ChangelogWindow
@@ -176,6 +176,7 @@ class PngLauncherWindow(QMainWindow):
 
         self.ver_str = ver_str
         self.debug_mode = debug_mode
+        self._last_open_dir: Optional[str] = str(get_app_base_dir())
 
         self.console = None
 
@@ -793,10 +794,13 @@ class PngLauncherWindow(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             title,
-            "",
+            self._last_open_dir,
             file_filter
         )
-        return file_path or None
+        if file_path:
+            self._last_open_dir = str(Path(file_path).parent)
+            return file_path
+        return None
 
     def on_settings_clicked(self):
         """Handle settings button click"""

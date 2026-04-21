@@ -77,6 +77,7 @@ class TelemetryWebServer(BaseWebServer):
             port=settings.Network.server_port,
             ver_str=ver_str,
             logger=logger,
+            bind_address=settings.Network.bind_address,
             client_event_mappings={
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
                 ClientType.HUD: [

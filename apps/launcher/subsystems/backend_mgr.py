@@ -162,6 +162,7 @@ class BackendAppMgr(PngAppMgrBase):
             "Network": [
                 "telemetry_port",
                 "server_port",
+                "bind_address",
                 "wdt_interval_sec",
                 "broker_xsub_port",
                 "enable_pkt_ordering",
