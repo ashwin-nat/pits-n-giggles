@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,21 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .backend_mgr import BackendAppMgr
-from .base_mgr import PngAppMgrBase, PngAppMgrConfig
-from .broker_mgr import BrokerAppMgr
-from .hud_mgr import HudAppMgr
-from .mcp_mgr import McpAppMgr
-from .save_viewer_mgr import SaveViewerAppMgr
+from typing import Any, Dict, Optional
+from dataclasses import dataclass
+import time
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES ------------------------------------------------------------------------
 
-__all__ = [
-    "BackendAppMgr",
-    "BrokerAppMgr",
-    "HudAppMgr",
-    "PngAppMgrBase",
-    "PngAppMgrConfig",
-    "McpAppMgr",
-    "SaveViewerAppMgr",
-]
+@dataclass(slots=True)
+class StateEntry:
+    data: Any
+    ts: float
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+state_data: Dict[str, StateEntry] = {}
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def set_state_data(topic: str, data: Dict[str, Any]) -> None:
+    state_data[topic] = StateEntry(
+        data=data,
+        ts=time.time(),
+    )
+
+
+def get_state_data(topic: str, default: Optional[Any] = None) -> Optional[StateEntry]:
+    return state_data.get(topic, default)

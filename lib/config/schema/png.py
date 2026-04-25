@@ -37,6 +37,7 @@ from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
 from .subsys_ctrl import SubSysCtrl
+from .mcp_cfg import McpSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -52,6 +53,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")
     Prediction: PredictionSettings = Field(default_factory=PredictionSettings, description="Prediction")
+    MCP: McpSettings = Field(default_factory=McpSettings, description="MCP")
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl, description="Subsys Control")
     class Config:
         str_strip_whitespace = True

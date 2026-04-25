@@ -20,23 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+from apps.mcp_server.mcp_main import entry_point
 
-from .backend_mgr import BackendAppMgr
-from .base_mgr import PngAppMgrBase, PngAppMgrConfig
-from .broker_mgr import BrokerAppMgr
-from .hud_mgr import HudAppMgr
-from .mcp_mgr import McpAppMgr
-from .save_viewer_mgr import SaveViewerAppMgr
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "BackendAppMgr",
-    "BrokerAppMgr",
-    "HudAppMgr",
-    "PngAppMgrBase",
-    "PngAppMgrConfig",
-    "McpAppMgr",
-    "SaveViewerAppMgr",
-]
+if __name__ == "__main__":
+    entry_point()

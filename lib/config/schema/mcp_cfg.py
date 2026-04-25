@@ -22,21 +22,37 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .backend_mgr import BackendAppMgr
-from .base_mgr import PngAppMgrBase, PngAppMgrConfig
-from .broker_mgr import BrokerAppMgr
-from .hud_mgr import HudAppMgr
-from .mcp_mgr import McpAppMgr
-from .save_viewer_mgr import SaveViewerAppMgr
+from typing import Any, ClassVar, Dict
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from pydantic import BaseModel, Field
 
-__all__ = [
-    "BackendAppMgr",
-    "BrokerAppMgr",
-    "HudAppMgr",
-    "PngAppMgrBase",
-    "PngAppMgrConfig",
-    "McpAppMgr",
-    "SaveViewerAppMgr",
-]
+from .diff import ConfigDiffMixin
+from .utils import PortType, port_field
+
+# -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+class McpSettings(ConfigDiffMixin, BaseModel):
+
+    ui_meta: ClassVar[Dict[str, Any]] = {
+        "visible" : True,
+    }
+
+    mcp_http_server_enable: bool = Field(
+        default=False,
+        description="Enable MCP HTTP Server",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info": [
+                    "Allows AI assistants (like ChatGPT) and other advanced tools to access "
+                    "live race data from Pits n' Giggles."
+                ]
+            }
+        }
+    )
+
+    mcp_http_port: int = port_field(
+        "MCP HTTP Server Port",
+        default=4770,
+        port_type=PortType.TCP)
