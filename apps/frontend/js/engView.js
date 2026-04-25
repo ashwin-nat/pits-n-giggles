@@ -129,7 +129,6 @@ class EngViewRaceTable {
         this.previousTableData = []; // Stores the data from the previous update cycle
         this.refDriverTeam = null; // Team of the reference driver (player or spectated)
         this.INVALID_TEAMS = new Set(["F1 Generic"]);
-        this.MANUAL_REF_LS_KEY = 'eng-view-manual-ref-driver';
         this.manualRefDriverIndex = null;
 
         // Column visibility pane elements
@@ -147,7 +146,7 @@ class EngViewRaceTable {
 
         this.initGrid();
         this.setupSettingsEventListeners();
-        this.#loadManualRef();
+        document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
     }
 
     saveColumnState() {
@@ -1399,14 +1398,6 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
-    #loadManualRef() {
-        const saved = localStorage.getItem(this.MANUAL_REF_LS_KEY);
-        if (saved !== null) {
-            const parsed = parseInt(saved, 10);
-            this.manualRefDriverIndex = isNaN(parsed) ? null : parsed;
-        }
-        document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
-    }
 
 
     #setManualRef(index) {
@@ -1415,13 +1406,11 @@ class EngViewRaceTable {
             return;
         }
         this.manualRefDriverIndex = index;
-        localStorage.setItem(this.MANUAL_REF_LS_KEY, index.toString());
         if (this.gridApi) this.gridApi.redrawRows();
     }
 
     #clearManualRef() {
         this.manualRefDriverIndex = null;
-        localStorage.removeItem(this.MANUAL_REF_LS_KEY);
         if (this.gridApi) this.gridApi.redrawRows();
     }
 
