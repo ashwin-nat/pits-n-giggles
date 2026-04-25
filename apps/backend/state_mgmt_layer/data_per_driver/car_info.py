@@ -25,7 +25,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from lib.f1_types import CarStatusData
+from lib.f1_types import CarStatusData, CarDamageData
 from lib.fuel_rate_recommender import FuelRateRecommender
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -46,6 +46,9 @@ class CarInfo:
     m_fl_wing_damage: Optional[int] = None
     m_fr_wing_damage: Optional[int] = None
     m_rear_wing_damage: Optional[int] = None
+    m_floor_damage: Optional[int] = None
+    m_diffuser_damage: Optional[int] = None
+    m_sidepod_damage: Optional[int] = None
 
     m_curr_lap_ers_harv_mguk_j: Optional[float] = None
     m_curr_lap_ers_harv_mguh_j: Optional[float] = None
@@ -65,3 +68,16 @@ class CarInfo:
         self.m_curr_lap_ers_harv_mguk_j = None
         self.m_curr_lap_ers_harv_mguh_j = None
         self.m_curr_lap_ers_deployed_j = None
+
+    def updateDamage(self, car_damage: CarDamageData) -> None:
+        """Update the car damage data fields
+
+        Args:
+            car_damage (CarDamageData): The car damage data
+        """
+        self.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
+        self.m_fr_wing_damage = car_damage.m_frontRightWingDamage
+        self.m_rear_wing_damage = car_damage.m_rearWingDamage
+        self.m_floor_damage = car_damage.m_floorDamage
+        self.m_diffuser_damage = car_damage.m_diffuserDamage
+        self.m_sidepod_damage = car_damage.m_sidepodDamage

@@ -553,6 +553,9 @@ class DriversListRsp(BaseAPI):
             "fl-wing-damage": driver_data.m_car_info.m_fl_wing_damage,
             "fr-wing-damage": driver_data.m_car_info.m_fr_wing_damage,
             "rear-wing-damage": driver_data.m_car_info.m_rear_wing_damage,
+            "floor-damage": driver_data.m_car_info.m_floor_damage,
+            "diffuser-damage": driver_data.m_car_info.m_diffuser_damage,
+            "sidepod-damage": driver_data.m_car_info.m_sidepod_damage,
         }
 
     def _calcFastestSectorMs(self, session_history: Dict[str, Any]) -> None:
