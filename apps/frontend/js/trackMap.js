@@ -259,6 +259,17 @@ class TrackMap {
             const team     = driverInfo['team'];
             const isPlayer = driverInfo['is-player'];
 
+            // Skip DNF/DSQ drivers — they stay frozen at their last position
+            const dnfStatus = driverInfo['dnf-status'];
+            if (dnfStatus === 'DNF' || dnfStatus === 'DSQ') {
+                // Remove from map so they stop rendering
+                if (this._drivers.has(index)) {
+                    if (this._pinnedDriver === index) this._unpinPopup();
+                    this._drivers.delete(index);
+                }
+                continue;
+            }
+
             this._activeDriverIds.add(index);
 
             // Skip if no world position yet
