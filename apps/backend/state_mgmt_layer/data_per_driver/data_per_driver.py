@@ -96,6 +96,7 @@ class DataPerDriver:
         "m_delayed_tyre_change_data",
         "m_race_ctrl",
         "m_delta_mgr",
+        "m_state_ref",
     )
 
     CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
