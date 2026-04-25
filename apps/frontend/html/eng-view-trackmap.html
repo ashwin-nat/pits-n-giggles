@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
     <style>
         :root {
             --f1-dark: #15151e;
@@ -127,6 +128,45 @@
             background: rgba(60, 60, 80, 0.95);
         }
 
+        .track-map-rotation-ctrl {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(21, 21, 30, 0.85);
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 5px 10px;
+        }
+
+        .track-map-rotation-label {
+            color: #aaa;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .track-map-rotation-slider {
+            flex: 1;
+            min-width: 0;
+            accent-color: #e10600;
+            cursor: pointer;
+        }
+
+        .track-map-rotation-input {
+            width: 54px;
+            background: transparent;
+            border: 1px solid #555;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2px 4px;
+        }
+
         #trackLabel {
             position: absolute;
             top: 10px;
@@ -151,18 +191,7 @@
             const trackMap = new TrackMap('#trackMapContainer');
             const label = document.getElementById('trackLabel');
 
-            const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-                reconnection: true,
-                reconnectionAttempts: Infinity,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
-                transports: ['websocket', 'polling'],
-                secure: location.protocol === 'https:',
-            });
-
-            socketio.on('connect', () => {
-                socketio.emit('register-client', { type: 'race-table', id: 'eng-view-trackmap' });
-            });
+            const socketio = initializeSocketIO('race-table', 'eng-view-trackmap');
 
             let refDriverTeam = null;
 

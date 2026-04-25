@@ -129,6 +129,7 @@ class EngViewRaceTable {
         this.previousTableData = []; // Stores the data from the previous update cycle
         this.refDriverTeam = null; // Team of the reference driver (player or spectated)
         this.INVALID_TEAMS = new Set(["F1 Generic"]);
+        this.manualRefDriverIndex = null;
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -145,6 +146,7 @@ class EngViewRaceTable {
 
         this.initGrid();
         this.setupSettingsEventListeners();
+        document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
     }
 
     saveColumnState() {
@@ -391,7 +393,7 @@ class EngViewRaceTable {
             getRowClass: (params) => {
                 const data = params.data;
                 if (!data) return;
-                const isReferenceDriver = data.isPlayer || data.index === this.spectatorIndex;
+                const isReferenceDriver = this.#isRefDriver(data.index, data.isPlayer);
                 if (isReferenceDriver) {
                     return 'ref-row';
                 }
@@ -401,6 +403,7 @@ class EngViewRaceTable {
                 return '';
             },
             onRowClicked: (params) => {
+                if (params.event?.target?.closest('.pin-ref-btn')) return;
                 const data = params.data;
                 fetch(`/driver-info?index=${data.index}`)
                     .then(response => response.json())
@@ -416,6 +419,14 @@ class EngViewRaceTable {
             this.grid = agGrid.createGrid(gridDiv, gridOptions);
             this.gridInitialized = true;
         }
+
+        gridDiv.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pin-ref-btn');
+            if (btn) {
+                e.stopPropagation();
+                this.#setManualRef(parseInt(btn.dataset.driverIndex, 10));
+            }
+        });
     }
 
     debounceSaveColumnState() {
@@ -430,7 +441,7 @@ class EngViewRaceTable {
             const driverInfo = params.data;
             const lapInfo = (isLastLap) ? driverInfo["lap-info"]["last-lap"] : driverInfo["lap-info"]["best-lap"];
             const bestLapInfo = driverInfo["lap-info"]["best-lap"];
-            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
             const sectorStatus = lapInfo["sector-status"];
 
             const timeMs = lapInfo[timeKey];
@@ -671,10 +682,17 @@ class EngViewRaceTable {
                 flex: 12,
                 cellRenderer: (params) => {
                     const data = params.data;
-                    return this.createMultiLineCell({
-                        row1: data.name,
-                        row2: data.team
-                    });
+                    const isPinned = this.manualRefDriverIndex === data.index;
+                    const starIcon = isPinned ? 'bi-star-fill' : 'bi-star';
+                    const starStyle = isPinned ? 'color:#ffd700;' : '';
+                    return `<div class="driver-name-cell">` +
+                        `<div class="driver-name-cell-text">` +
+                            this.createMultiLineCell({ row1: data.name, row2: data.team }) +
+                        `</div>` +
+                        `<button class="pin-ref-btn" data-driver-index="${data.index}" title="Set as reference driver">` +
+                            `<i class="bi ${starIcon}" style="${starStyle}"></i>` +
+                        `</button>` +
+                    `</div>`;
                 },
                 sortable: false,
                 cellClass: 'ag-cell-multiline',
@@ -755,7 +773,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createLapTimeEqualsComparator('best-lap'),
@@ -770,7 +788,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('best-lap', 's1', 's1-time-ms'),
@@ -785,7 +803,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('best-lap', 's2', 's2-time-ms'),
@@ -800,7 +818,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('best-lap', 's3', 's3-time-ms'),
@@ -822,7 +840,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createLapTimeEqualsComparator('last-lap'),
@@ -837,7 +855,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('last-lap', 's1', 's1-time-ms'),
@@ -852,7 +870,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('last-lap', 's2', 's2-time-ms'),
@@ -867,7 +885,7 @@ class EngViewRaceTable {
                         flex: 2.5,
                         cellClass: (params) => {
                             const driverInfo = params.data;
-                            const isReferenceDriver = driverInfo.isPlayer || driverInfo.index === this.spectatorIndex;
+                            const isReferenceDriver = this.#isRefDriver(driverInfo.index, driverInfo.isPlayer);
                             return isReferenceDriver ? 'ag-cell-single-line' : 'ag-cell-multiline';
                         },
                         equals: this.createSectorTimeEqualsComparator('last-lap', 's3', 's3-time-ms'),
@@ -1380,6 +1398,45 @@ class EngViewRaceTable {
         return `<div class='${row1Class}'>${processedRow1}</div><div class='${row2Class}'>${processedRow2}</div>`;
     }
 
+
+
+    #setManualRef(index) {
+        if (this.manualRefDriverIndex === index) {
+            this.#clearManualRef();
+            return;
+        }
+        this.manualRefDriverIndex = index;
+        if (this.gridApi) this.gridApi.redrawRows();
+    }
+
+    #clearManualRef() {
+        this.manualRefDriverIndex = null;
+        if (this.gridApi) this.gridApi.redrawRows();
+    }
+
+    #getCurrentRefIndex() {
+        if (this.manualRefDriverIndex !== null) return this.manualRefDriverIndex;
+        if (this.isSpectating) return this.spectatorIndex;
+        const playerRow = this.previousTableData?.find(d => d.isPlayer);
+        return playerRow?.index ?? null;
+    }
+
+    get currentRefIndex() {
+        return this.#getCurrentRefIndex();
+    }
+
+    #isRefDriver(index, isPlayer) {
+        const refIndex = this.#getCurrentRefIndex();
+        if (refIndex !== null) return index === refIndex;
+        return isPlayer || index === this.spectatorIndex;
+    }
+
+    #isRefDriverEntry(entry) {
+        const driverInfo = entry["driver-info"];
+        if (!driverInfo) return false;
+        return this.#isRefDriver(driverInfo["index"], driverInfo["is-player"]);
+    }
+
     #clear() {
         this.previousTableData = [];
         this.delayedLapData = new Map();
@@ -1411,19 +1468,22 @@ class EngViewRaceTable {
             this.gridApi.hideOverlay();
         }
 
-        const refEntry = updateReferenceLapTimes(drivers, (entry) =>
-            this.isSpectating ?
-            entry["driver-info"]?.["index"] == this.spectatorIndex :
-            entry["driver-info"]?.["is-player"]
-        );
+        // If the manually-pinned driver is no longer in the session, clear the override
+        if (this.manualRefDriverIndex !== null) {
+            const stillPresent = drivers.some(d => d["driver-info"]["index"] === this.manualRefDriverIndex);
+            if (!stillPresent) {
+                this.#clearManualRef();
+            }
+        }
+
+        const refEntry = updateReferenceLapTimes(drivers, (entry) => this.#isRefDriverEntry(entry));
         if (refEntry) {
-            // this.refDriverTeam = refEntry["driver-info"]?.["team"] || '';
             this.refDriverTeam = refEntry["driver-info"]["team"];
         }
 
         // Sort, compute and insert rejoin positions
         drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
-        const refIndex = refEntry?.["driver-info"]?.["index"] ?? null;
+        const refIndex = this.#getCurrentRefIndex() ?? refEntry?.["driver-info"]?.["index"] ?? null;
         insertRejoinPositions(drivers, pitTimeLoss, refIndex);
         const newTableData = drivers.map(driver => ({
             ...driver,
@@ -1884,6 +1944,13 @@ class EngViewRaceStatus {
         this.LS_COLLAPSE_KEY = 'raceStatusCollapsed';
         this._collapseMediaQuery = window.matchMedia('(max-width: 1439px)');
 
+        // Collapsed accordion bar elements
+        this.collapsedBarCircuit = document.getElementById('collapsedBarCircuit');
+        this.collapsedBarTime = document.getElementById('collapsedBarTime');
+        this.collapsedBarTrackTemp = document.getElementById('collapsedBarTrackTemp');
+        this.collapsedBarAirTemp = document.getElementById('collapsedBarAirTemp');
+        this.collapsedPredictionLap = document.getElementById('collapsedPredictionLap');
+
         this._initCollapse();
 
         this.predictionLapInput.addEventListener('input', (e) => {
@@ -1914,6 +1981,21 @@ class EngViewRaceStatus {
         this.predictionPitBtn.disabled = true;
         this.predictionMidBtn.disabled = true;
         this.predictionLastBtn.disabled = true;
+
+        // Collapsed bar: clear-ref button mirrors main clear-ref
+        document.getElementById('collapsed-clear-ref-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('clear-ref-driver-btn')?.click();
+        });
+
+        // Collapsed bar: prediction input stays in sync with main input
+        this.collapsedPredictionLap?.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            if (!isNaN(value) && value >= 1) {
+                g_engView_predLapNum = value;
+                this.predictionLapInput.value = value;
+            }
+        });
     }
 
     _initCollapse() {
@@ -1960,6 +2042,7 @@ class EngViewRaceStatus {
 
     #updatePredLapInputBox() {
         this.predictionLapInput.value = g_engView_predLapNum;
+        if (this.collapsedPredictionLap) this.collapsedPredictionLap.value = g_engView_predLapNum;
         console.debug("Updated prediction element value", g_engView_predLapNum);
     }
 
@@ -2051,6 +2134,26 @@ class EngViewRaceStatus {
         }
 
         this.#updateSummary(data);
+        this.#updateCollapsedBar(data);
+    }
+
+    #updateCollapsedBar(data) {
+        if (this.collapsedBarCircuit) {
+            this.collapsedBarCircuit.textContent = this.#getRaceStatusHeaderString(data);
+        }
+        if (this.collapsedBarTime) {
+            this.collapsedBarTime.textContent = this.#getSessionTimeString(data);
+        }
+        if (this.collapsedBarTrackTemp) {
+            this.collapsedBarTrackTemp.textContent = data['track-temperature'] + ' °C';
+        }
+        if (this.collapsedBarAirTemp) {
+            this.collapsedBarAirTemp.textContent = data['air-temperature'] + ' °C';
+        }
+        if (this.collapsedPredictionLap && this.collapsedPredictionLap !== document.activeElement) {
+            this.collapsedPredictionLap.value = g_engView_predLapNum;
+            this.collapsedPredictionLap.max = this.totalLaps;
+        }
     }
 }
 
@@ -2234,6 +2337,30 @@ function initCardCollapseToggles() {
     }
 }
 
+// ── Upper Section Accordion ──────────────────────────────────────
+
+function initUpperSectionAccordion() {
+    const LS_KEY = 'engViewUpperSectionCollapsed';
+    const header = document.getElementById('upperSectionAccordionHeader');
+    const body   = document.getElementById('upperSectionAccordionBody');
+
+    const apply = (collapsed) => {
+        header.classList.toggle('collapsed', collapsed);
+        body.classList.toggle('collapsed', collapsed);
+    };
+
+    const saved = localStorage.getItem(LS_KEY);
+    apply(saved === 'true');
+
+    header.addEventListener('click', (e) => {
+        // Don't toggle when clicking interactive elements inside the collapsed bar
+        if (e.target.closest('#upperSectionCollapsedBar')) return;
+        const nowCollapsed = !body.classList.contains('collapsed');
+        apply(nowCollapsed);
+        localStorage.setItem(LS_KEY, nowCollapsed);
+    });
+}
+
 // Initialize the dashboard
 function initDashboard() {
     iconCache = new IconCache();
@@ -2242,6 +2369,7 @@ function initDashboard() {
     weatherGraph = new WeatherGraph(document.getElementById('weatherGraphContainer'));
     weatherTable = new EngViewWeatherTable(weatherGraph);
     trackMap = new TrackMap();
+    initUpperSectionAccordion();
     initWeatherDisplayToggle();
     initCardCollapseToggles();
     window.drawerManager = new DrawerManager();
@@ -2285,10 +2413,12 @@ function initDashboard() {
             trackMap.loadTrack(circuit, gameYear);
         }
         if (tableEntries && tableEntries.length > 0) {
+            const refIndex = raceTable.currentRefIndex ?? spectatorCarIndex;
+            const effectiveSpectating = isSpectating || (refIndex !== spectatorCarIndex);
             trackMap.updateDrivers(
                 tableEntries,
-                isSpectating,
-                spectatorCarIndex,
+                effectiveSpectating,
+                refIndex,
                 raceTable.refDriverTeam
             );
         }

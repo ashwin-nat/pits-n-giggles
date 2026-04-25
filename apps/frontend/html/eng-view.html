@@ -30,6 +30,43 @@
     <div class="container-fluid">
         <!-- Global Data Section -->
         <div class="eng-view-global-data-section">
+            <div class="upper-section-accordion-header" id="upperSectionAccordionHeader">
+                <span class="upper-section-accordion-title">
+                    <i class="bi bi-chevron-down upper-section-chevron" id="upperSectionChevron"></i>
+                    Session Overview
+                </span>
+                <!-- Collapsed info bar — only visible when accordion is collapsed -->
+                <div class="upper-section-collapsed-bar" id="upperSectionCollapsedBar">
+                    <span class="collapsed-bar-circuit" id="collapsedBarCircuit">—</span>
+                    <div class="collapsed-bar-sep"></div>
+                    <span class="collapsed-bar-time" id="collapsedBarTime">—</span>
+                    <div class="collapsed-bar-sep"></div>
+                    <div class="collapsed-bar-item" data-bs-toggle="tooltip" data-bs-title="Track Temperature">
+                        <img src="/overlays/track-temperature.svg" class="collapsed-bar-icon" alt="Track Temperature">
+                        <span id="collapsedBarTrackTemp">—</span>
+                    </div>
+                    <div class="collapsed-bar-item" data-bs-toggle="tooltip" data-bs-title="Air Temperature">
+                        <img src="/overlays/air-temperature.svg" class="collapsed-bar-icon" alt="Air Temperature">
+                        <span id="collapsedBarAirTemp">—</span>
+                    </div>
+                    <div class="collapsed-bar-sep"></div>
+                    <div class="collapsed-bar-item collapsed-bar-actions">
+                        <button id="collapsed-clear-ref-btn"
+                                class="btn collapsed-bar-action-btn"
+                                data-bs-toggle="tooltip"
+                                data-bs-title="Clear reference driver">
+                            <i class="bi bi-star-fill" style="color:#ffd700;"></i>
+                        </button>
+                        <div class="collapsed-bar-pred">
+                            <label class="collapsed-bar-pred-label">Pred L</label>
+                            <input type="number" id="collapsedPredictionLap"
+                                   class="form-control form-control-sm collapsed-bar-pred-input"
+                                   value="1" min="1" max="80">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="upper-section-accordion-body" id="upperSectionAccordionBody">
             <div class="row">
                 <div class="col-md-5 race-status-col">
                     <div class="card border-secondary global-stats-section">
@@ -66,6 +103,12 @@
                                 <a id="driver-view-btn" class="btn settings-button" href="/" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">
                                     <i class="bi bi-car-front-fill"></i>
                                 </a>
+                                <button id="clear-ref-driver-btn"
+                                        class="btn settings-button"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-title="Clear reference driver selection">
+                                    <i class="bi bi-star-fill" style="color:#ffd700;"></i>
+                                </button>
                                 <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
                                 {% if port_info %}
                                 <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
@@ -168,6 +211,11 @@
                     <div class="card border-secondary global-stats-section">
                         <div class="card-header border-secondary global-stats-section-header">
                             <h5 class="mb-0" id="trackMapHeader">Track Map</h5>
+                            <div class="track-map-rotation-ctrl" id="trackMapRotationCtrl">
+                                <i class="bi bi-arrow-repeat track-map-rotation-label"></i>
+                                <input type="range" class="track-map-rotation-slider" id="trackMapRotationSlider" min="0" max="359" value="0" step="1">
+                                <input type="number" class="track-map-rotation-input" id="trackMapRotationInput" min="0" max="359" value="0" step="1">
+                            </div>
                             <a href="/eng-view/trackmap" target="_blank" rel="noopener noreferrer"
                                class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip"
                                data-bs-title="Open Track Map fullscreen in new tab">
@@ -181,6 +229,7 @@
                     </div>
                 </div>
             </div>
+            </div><!-- /.upper-section-accordion-body -->
         </div>
 
         <!-- Race Table Section -->
@@ -226,6 +275,11 @@
         <div id="track-map-drawer" class="context-drawer">
             <div class="context-drawer-header">
                 <h5>Track Map</h5>
+                <div class="track-map-rotation-ctrl" id="trackMapDrawerRotationCtrl">
+                    <i class="bi bi-arrow-repeat track-map-rotation-label"></i>
+                    <input type="range" class="track-map-rotation-slider" id="trackMapDrawerRotationSlider" min="0" max="359" value="0" step="1">
+                    <input type="number" class="track-map-rotation-input" id="trackMapDrawerRotationInput" min="0" max="359" value="0" step="1">
+                </div>
                 <button class="btn-close btn-close-white context-drawer-close"
                         data-drawer="track-map-drawer" aria-label="Close"></button>
             </div>

@@ -115,7 +115,14 @@ class TrackMap {
         // Touch pinch state
         this._lastPinchDist = 0;
 
+        // -- Rotation state --
+        this._rotation = 0;
+        this._rotationSliders = [];
+        this._rotationInputs = [];
+        this._rotationCtrl = null;
+
         this._initZoomControls();
+        this._initRotationControls();
 
         // rAF loop
         this._rafId = null;
@@ -358,6 +365,9 @@ class TrackMap {
         this._wrapper.appendChild(this.canvas);
         this.container.appendChild(this._wrapper);
         this.container.appendChild(this._resetBtn);
+        if (this._rotationCtrl) {
+            this.container.appendChild(this._rotationCtrl);
+        }
 
         // Attach mouse/touch events for interaction
         this._initCanvasInteraction();
@@ -783,6 +793,87 @@ class TrackMap {
         });
     }
 
+    _initRotationControls() {
+        const { sliders, inputs, ctrl } = this._findOrCreateRotationControls();
+        this._rotationSliders = sliders;
+        this._rotationInputs = inputs;
+        this._rotationCtrl = ctrl || null;
+        this._wireRotationControls();
+    }
+
+    _findOrCreateRotationControls() {
+        // Prefer controls already in the HTML (eng-view card header + drawer header).
+        // Fall back to creating them in the container (fullscreen page).
+        if (document.getElementById('trackMapRotationCtrl')) {
+            return {
+                ctrl: null,
+                sliders: [
+                    document.getElementById('trackMapRotationSlider'),
+                    document.getElementById('trackMapDrawerRotationSlider'),
+                ].filter(Boolean),
+                inputs: [
+                    document.getElementById('trackMapRotationInput'),
+                    document.getElementById('trackMapDrawerRotationInput'),
+                ].filter(Boolean),
+            };
+        }
+
+        const ctrl = document.createElement('div');
+        ctrl.className = 'track-map-rotation-ctrl';
+
+        const label = document.createElement('i');
+        label.className = 'bi bi-arrow-repeat track-map-rotation-label';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.className = 'track-map-rotation-slider';
+        slider.min = 0;
+        slider.max = 359;
+        slider.value = 0;
+        slider.step = 1;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'track-map-rotation-input';
+        input.min = 0;
+        input.max = 359;
+        input.value = 0;
+        input.step = 1;
+
+        ctrl.appendChild(label);
+        ctrl.appendChild(slider);
+        ctrl.appendChild(input);
+
+        return { ctrl, sliders: [slider], inputs: [input] };
+    }
+
+    _wireRotationControls() {
+        const syncAll = (deg) => {
+            this._rotation = deg;
+            this._rotationSliders.forEach(s => s.value = deg);
+            this._rotationInputs.forEach(i => i.value = deg);
+            this._applyTransform();
+            if (this._resetBtn) {
+                this._resetBtn.style.display = deg !== 0 ? '' : 'none';
+            }
+        };
+
+        this._rotationSliders.forEach(slider => {
+            slider.addEventListener('input', () => {
+                syncAll(parseInt(slider.value, 10));
+            });
+        });
+
+        this._rotationInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                const v = parseInt(input.value, 10);
+                if (!Number.isNaN(v)) {
+                    syncAll(((v % 360) + 360) % 360);
+                }
+            });
+        });
+    }
+
     _getTouchDist(touches) {
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
@@ -818,14 +909,17 @@ class TrackMap {
     _applyTransform() {
         if (!this._wrapper) return;
         this._wrapper.style.transform =
-            'translate(' + this._panX + 'px, ' + this._panY + 'px) scale(' + this._zoom + ')';
+            'translate(' + this._panX + 'px, ' + this._panY + 'px) rotate(' + this._rotation + 'deg) scale(' + this._zoom + ')';
     }
 
     _resetZoomState() {
         this._zoom = 1;
         this._panX = 0;
         this._panY = 0;
+        this._rotation = 0;
         if (this._resetBtn) this._resetBtn.style.display = 'none';
+        if (this._rotationSliders) this._rotationSliders.forEach(s => s.value = 0);
+        if (this._rotationInputs) this._rotationInputs.forEach(i => i.value = 0);
     }
 
     /** Reset zoom and pan to default. */
