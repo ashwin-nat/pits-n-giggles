@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
     <style>
         :root {
             --f1-dark: #15151e;
@@ -151,18 +152,7 @@
             const trackMap = new TrackMap('#trackMapContainer');
             const label = document.getElementById('trackLabel');
 
-            const socketio = io(`${location.protocol}//${location.hostname}:${location.port}`, {
-                reconnection: true,
-                reconnectionAttempts: Infinity,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
-                transports: ['websocket', 'polling'],
-                secure: location.protocol === 'https:',
-            });
-
-            socketio.on('connect', () => {
-                socketio.emit('register-client', { type: 'race-table', id: 'eng-view-trackmap' });
-            });
+            const socketio = initializeSocketIO('race-table', 'eng-view-trackmap');
 
             let refDriverTeam = null;
 
