@@ -1,3 +1,10 @@
+/**
+ * Escape HTML special characters to prevent XSS when inserting dynamic
+ * content via innerHTML.  Returns non-string values unchanged.
+ *
+ * @param {*} unsafe - The value to sanitize.
+ * @returns {string|*} The escaped string, or the original value if not a string.
+ */
 function escapeHtml(unsafe) {
     if (typeof unsafe !== "string") {
         return unsafe;
@@ -361,6 +368,33 @@ function replaceRevSuffix(str) {
     return str;
 }
 
+/**
+ * Get the official F1 team color as an rgba() string.
+ * Source: https://www.reddit.com/r/formula1/comments/1avhmjb/f1_2024_hex_codes/
+ * @param {string} teamName - Team name as received from the backend (e.g. "Ferrari", "Red Bull Racing")
+ * @returns {string} rgba color string
+ */
+function getF1TeamColor(teamName) {
+    const teamColors = {
+        'Red Bull Racing': 'rgba(54,113,198, 1)',
+        'Red Bull': 'rgba(54,113,198, 1)',
+        'VCARB': 'rgba(102,146,255, 1)',
+        'RB': 'rgba(102,146,255, 1)',
+        'Mercedes': 'rgba(39,244,210, 1)',
+        'Ferrari': 'rgba(232,0,45, 1)',
+        'McLaren': 'rgba(255,128,0, 1)',
+        'Mclaren': 'rgba(255,128,0, 1)',
+        'Aston Martin': 'rgba(34,153,113, 1)',
+        'Alpine': 'rgba(255,135,188, 1)',
+        'Alpha Tauri': 'rgba(30, 40, 80, 1)',
+        'Alfa Romeo': 'rgba(155, 0, 0, 1)',
+        'Haas': 'rgba(182,186,189, 1)',
+        'Williams': 'rgba(100,196,255, 1)',
+        'Sauber': 'rgba(82,226,82,1)',
+    };
+    return teamColors[teamName] || 'rgba(128,128,128, 1)';
+}
+
 function formatSpeed(speedKmph, { isMetric = true, decimalPlaces = 1, addUnitSuffix = true } = {}) {
     if (typeof speedKmph !== 'number' || !isFinite(speedKmph)) {
         throw new Error(`Invalid speed: expected a finite number, got ${speedKmph} (type: ${typeof speedKmph})`);
@@ -502,14 +536,18 @@ function getRelevantRaceTableRows(data, numAdjacentCars, shouldInsertRejoinPosit
         insertRejoinPositions(sortedTableEntries, data["pit-time-loss"] ?? null, refIndex);
     }
 
-    // TODO: for spectator mode, add support for relevant rows
-    if (data["is-spectating"] || data["race-ended"]) {
+    if (data["race-ended"]) {
+        return sortedTableEntries;
+    }
+
+    const refRow = getRefRow(data);
+    if (!refRow) {
         return sortedTableEntries;
     }
 
     const totalCars = sortedTableEntries.length;
-    const playerPosition = getPlayerPosition(data);
-    const relevantPositions = getAdjacentPositions(playerPosition, totalCars, numAdjacentCars);
+    const refPosition = refRow["driver-info"]["position"];
+    const relevantPositions = getAdjacentPositions(refPosition, totalCars, numAdjacentCars);
 
     const lowerIndex = relevantPositions[0] - 1;
     const upperIndex = relevantPositions[relevantPositions.length - 1];
@@ -541,6 +579,7 @@ function getRefRow(data) {
 function groupWeatherSamplesBySessionType(data) {
     const groups = [];
     const index = {}; // session-type -> group index
+    const offsetMaps = {}; // session-type -> Map(time-offset -> item)
 
     for (const item of data) {
         const session = item["session-type"];
@@ -551,9 +590,18 @@ function groupWeatherSamplesBySessionType(data) {
                 session_type: session,
                 items: []
             });
+            offsetMaps[session] = new Map();
         }
 
-        groups[index[session]].items.push(item);
+        // Last write wins — newest forecast for each time-offset is kept
+        offsetMaps[session].set(item["time-offset"], item);
+    }
+
+    // Build deduplicated items sorted by time-offset ascending
+    for (const session in offsetMaps) {
+        const items = Array.from(offsetMaps[session].values());
+        items.sort((a, b) => a["time-offset"] - b["time-offset"]);
+        groups[index[session]].items = items;
     }
 
     return groups;

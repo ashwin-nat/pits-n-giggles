@@ -839,9 +839,7 @@ class SessionState:
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 desc=f"curr tyre wear {tyre_set_key}",
             ))
-            obj_to_be_updated.m_car_info.m_fl_wing_damage = car_damage.m_frontLeftWingDamage
-            obj_to_be_updated.m_car_info.m_fr_wing_damage = car_damage.m_frontRightWingDamage
-            obj_to_be_updated.m_car_info.m_rear_wing_damage = car_damage.m_rearWingDamage
+            obj_to_be_updated.m_car_info.updateDamage(car_damage)
 
             # Update delayed tyre change data if events are pending
             obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
