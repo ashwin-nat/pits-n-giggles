@@ -982,7 +982,11 @@ input[type="number"]::-webkit-outer-spin-button {
     }
 
     #raceStatusSummary {
-        flex-shrink: 0;
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 
@@ -1090,19 +1094,19 @@ input[type="number"]::-webkit-outer-spin-button {
         max-width: 100% !important;
     }
 
-    /* ── Mobile header fix: wrap title+summary / buttons ──── */
+    /* Allow header to wrap only when content doesn't fit — don't force 2 rows */
     .global-stats-section-header {
         flex-wrap: wrap;
     }
 
     .race-status-header-left {
-        width: 100%;
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .global-stats-section-header > .d-flex:not(.race-status-header-left) {
-        margin-left: auto;
-        flex-wrap: wrap;
-        gap: 0.25rem;
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
     }
 }
 
@@ -1110,26 +1114,27 @@ input[type="number"]::-webkit-outer-spin-button {
 
 @media (max-width: 600px) {
 
-    /* ── Header: 2-row layout (info + actions) ──── */
+    /* ── Header: wrap to 2 rows only when needed ──── */
 
     .global-stats-section-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.375rem;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
         padding: 0.5rem 0.75rem;
     }
 
-    /* Row 1: track name + session summary */
+    /* Info side: shrink but don't force full width */
     .race-status-header-left {
-        width: 100%;
-        flex-wrap: wrap;
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-wrap: nowrap;
         gap: 0;
         order: 0;
     }
 
     #raceStatusHeader {
-        width: 100%;
-        flex-shrink: 0;
+        flex-shrink: 1;
+        min-width: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
@@ -1138,28 +1143,32 @@ input[type="number"]::-webkit-outer-spin-button {
     }
 
     #raceStatusSummary {
-        width: 100%;
         flex-shrink: 1;
+        min-width: 0;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 0.72rem;
         margin-left: 0;
-        margin-top: 0.125rem;
     }
 
     .race-status-summary-sep {
         margin: 0 0.2rem;
     }
 
-    /* Row 2: action buttons */
+    /* Buttons side: don't force full width, sit next to info when space allows */
     .global-stats-section-header > .d-flex:not(.race-status-header-left) {
-        width: 100%;
-        justify-content: space-between;
+        flex: 0 0 auto;
+        justify-content: flex-end;
         flex-wrap: nowrap;
         order: 1;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        padding-top: 0.375rem;
-        margin-left: 0;
+        margin-left: auto;
         gap: 0;
+    }
+
+    /* When buttons wrap to their own row, stretch them edge-to-edge */
+    @supports (container-type: inline-size) {
+        /* fallback handled via the flex natural wrapping */
     }
 
     /* Buttons: keep 44px touch targets, tighten spacing */
@@ -1178,7 +1187,7 @@ input[type="number"]::-webkit-outer-spin-button {
         font-size: 1.6rem !important;
     }
 
-    /* Chevron: ganz links in der Button-Reihe */
+    /* Chevron: first in the button group */
     #raceStatusCollapseBtn {
         order: -1;
     }
