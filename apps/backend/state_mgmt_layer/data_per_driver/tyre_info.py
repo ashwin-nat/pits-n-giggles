@@ -417,6 +417,8 @@ class TyreInfo:
     """
     total_laps: InitVar[int]
     logger: InitVar[Logger]
+    weather_aware: InitVar[bool] = False
+    window_size: InitVar[Optional[int]] = None
 
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
@@ -434,11 +436,14 @@ class TyreInfo:
 
     m_logger: Logger = field(init=False, repr=False)
 
-    def __post_init__(self, total_laps: int, logger: Logger):
+    def __post_init__(self, total_laps: int, logger: Logger, weather_aware: bool, window_size: Optional[int]):
         """Init the utility objects and store logger"""
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
-        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps, logger=self.m_logger)
+        self.m_tyre_wear_extrapolator = TyreWearExtrapolator(
+            [], total_laps=total_laps, logger=self.m_logger,
+            weather_aware=weather_aware, window_size=window_size,
+        )
 
     def handleFlashback(self, outdated_laps: List[int]) -> None:
         """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator

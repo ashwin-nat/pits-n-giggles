@@ -177,6 +177,7 @@ class BackendAppMgr(PngAppMgrBase):
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
+            "Prediction": [],
         }):
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields change: "
                            f"{json.dumps(restart_required_fields_diff, indent=2)}")

@@ -29,7 +29,7 @@ from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
                      HttpsSettings, HudSettings, HudOverlayFuelEstimationMode,
                      HudOverlaySpeedUnit, MfdPageId, MfdPageSettings, MfdSettings,
                      NetworkSettings, OverlayId, OverlayPosition, PitTimeLossF1,
-                     PitTimeLossF2, PngSettings, PrivacySettings,
+                     PitTimeLossF2, PngSettings, PredictionSettings, PrivacySettings,
                      StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions,
                      WeatherMFDUIType)
 from .types import FilePathStr
@@ -45,6 +45,7 @@ __all__ = [
     'PitTimeLossF2',
     'SubSysCtrl',
     'PngSettings',
+    'PredictionSettings',
     'PrivacySettings',
     'StreamOverlaySettings',
     'HttpsSettings',

@@ -36,6 +36,7 @@ from .tests_hud_settings import TestHudSettings
 from .tests_network_settings import TestNetworkSettings
 from .tests_pit_time_loss import TestPitTimeLossF1, TestPitTimeLossF2
 from .tests_png_settings import TestPngSettings
+from .tests_prediction_settings import TestPredictionSettings, TestPngSettingsPrediction
 from .tests_privacy_settings import TestPrivacySettings
 from .tests_stream_overlay_settings import TestStreamOverlaySettings
 from .tests_subsysctrl import TestSubSysCtrl
@@ -59,6 +60,8 @@ __all__ = [
     "TestStreamOverlaySettings",
     "TestPitTimeLossF1",
     "TestPitTimeLossF2",
+    "TestPredictionSettings",
+    "TestPngSettingsPrediction",
     "TestSubSysCtrl",
     "TestHudSettings",
 
