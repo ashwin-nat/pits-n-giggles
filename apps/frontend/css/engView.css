@@ -673,7 +673,7 @@ input[type="number"]::-webkit-outer-spin-button {
     align-self: start;
 }
 
-.global-stats-section-header > :nth-child(2) {
+.global-stats-section-header > :last-child {
     margin-left: auto;
 }
 
@@ -783,6 +783,40 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .track-map-zoom-reset:hover {
     background: rgba(60, 60, 80, 0.95);
+}
+
+/* ── Track Map Rotation Control ──────────────────────────────── */
+
+.track-map-rotation-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.track-map-rotation-label {
+    color: #aaa;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.track-map-rotation-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: #e10600;
+    cursor: pointer;
+}
+
+.track-map-rotation-input {
+    width: 58px;
+    background: transparent;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 3px 4px;
 }
 
 /* ── Responsive: AG Grid font scaling ────────────────────────── */

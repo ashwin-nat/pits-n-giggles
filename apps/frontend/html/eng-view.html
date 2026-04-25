@@ -212,6 +212,11 @@
                     <div class="card border-secondary global-stats-section">
                         <div class="card-header border-secondary global-stats-section-header">
                             <h5 class="mb-0" id="trackMapHeader">Track Map</h5>
+                            <div class="track-map-rotation-ctrl" id="trackMapRotationCtrl">
+                                <i class="bi bi-arrow-repeat track-map-rotation-label"></i>
+                                <input type="range" class="track-map-rotation-slider" id="trackMapRotationSlider" min="0" max="359" value="0" step="1">
+                                <input type="number" class="track-map-rotation-input" id="trackMapRotationInput" min="0" max="359" value="0" step="1">
+                            </div>
                             <a href="/eng-view/trackmap" target="_blank" rel="noopener noreferrer"
                                class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip"
                                data-bs-title="Open Track Map fullscreen in new tab">
@@ -271,6 +276,11 @@
         <div id="track-map-drawer" class="context-drawer">
             <div class="context-drawer-header">
                 <h5>Track Map</h5>
+                <div class="track-map-rotation-ctrl" id="trackMapDrawerRotationCtrl">
+                    <i class="bi bi-arrow-repeat track-map-rotation-label"></i>
+                    <input type="range" class="track-map-rotation-slider" id="trackMapDrawerRotationSlider" min="0" max="359" value="0" step="1">
+                    <input type="number" class="track-map-rotation-input" id="trackMapDrawerRotationInput" min="0" max="359" value="0" step="1">
+                </div>
                 <button class="btn-close btn-close-white context-drawer-close"
                         data-drawer="track-map-drawer" aria-label="Close"></button>
             </div>
