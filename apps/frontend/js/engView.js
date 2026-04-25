@@ -1948,6 +1948,13 @@ class EngViewRaceStatus {
         this.LS_COLLAPSE_KEY = 'raceStatusCollapsed';
         this._collapseMediaQuery = window.matchMedia('(max-width: 1439px)');
 
+        // Collapsed accordion bar elements
+        this.collapsedBarCircuit = document.getElementById('collapsedBarCircuit');
+        this.collapsedBarTime = document.getElementById('collapsedBarTime');
+        this.collapsedBarTrackTemp = document.getElementById('collapsedBarTrackTemp');
+        this.collapsedBarAirTemp = document.getElementById('collapsedBarAirTemp');
+        this.collapsedPredictionLap = document.getElementById('collapsedPredictionLap');
+
         this._initCollapse();
 
         this.predictionLapInput.addEventListener('input', (e) => {
@@ -1978,6 +1985,21 @@ class EngViewRaceStatus {
         this.predictionPitBtn.disabled = true;
         this.predictionMidBtn.disabled = true;
         this.predictionLastBtn.disabled = true;
+
+        // Collapsed bar: clear-ref button mirrors main clear-ref
+        document.getElementById('collapsed-clear-ref-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('clear-ref-driver-btn')?.click();
+        });
+
+        // Collapsed bar: prediction input stays in sync with main input
+        this.collapsedPredictionLap?.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            if (!isNaN(value) && value >= 1) {
+                g_engView_predLapNum = value;
+                this.predictionLapInput.value = value;
+            }
+        });
     }
 
     _initCollapse() {
@@ -2024,6 +2046,7 @@ class EngViewRaceStatus {
 
     #updatePredLapInputBox() {
         this.predictionLapInput.value = g_engView_predLapNum;
+        if (this.collapsedPredictionLap) this.collapsedPredictionLap.value = g_engView_predLapNum;
         console.debug("Updated prediction element value", g_engView_predLapNum);
     }
 
@@ -2115,6 +2138,26 @@ class EngViewRaceStatus {
         }
 
         this.#updateSummary(data);
+        this.#updateCollapsedBar(data);
+    }
+
+    #updateCollapsedBar(data) {
+        if (this.collapsedBarCircuit) {
+            this.collapsedBarCircuit.textContent = this.#getRaceStatusHeaderString(data);
+        }
+        if (this.collapsedBarTime) {
+            this.collapsedBarTime.textContent = this.#getSessionTimeString(data);
+        }
+        if (this.collapsedBarTrackTemp) {
+            this.collapsedBarTrackTemp.textContent = data['track-temperature'] + ' °C';
+        }
+        if (this.collapsedBarAirTemp) {
+            this.collapsedBarAirTemp.textContent = data['air-temperature'] + ' °C';
+        }
+        if (this.collapsedPredictionLap && this.collapsedPredictionLap !== document.activeElement) {
+            this.collapsedPredictionLap.value = g_engView_predLapNum;
+            this.collapsedPredictionLap.max = this.totalLaps;
+        }
     }
 }
 
@@ -2313,7 +2356,9 @@ function initUpperSectionAccordion() {
     const saved = localStorage.getItem(LS_KEY);
     apply(saved === 'true');
 
-    header.addEventListener('click', () => {
+    header.addEventListener('click', (e) => {
+        // Don't toggle when clicking interactive elements inside the collapsed bar
+        if (e.target.closest('#upperSectionCollapsedBar')) return;
         const nowCollapsed = !body.classList.contains('collapsed');
         apply(nowCollapsed);
         localStorage.setItem(LS_KEY, nowCollapsed);

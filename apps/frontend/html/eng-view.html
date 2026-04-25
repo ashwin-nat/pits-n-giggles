@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" integrity="sha384-/o6I2CkkWC//PSjvWC/eYN7l3xM3tJm8ZzVkCOfp//W05QcE3mlGskpoHB6XqI+B" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/engView.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tyreSetsCards.css') }}">
@@ -35,6 +36,36 @@
                     <i class="bi bi-chevron-down upper-section-chevron" id="upperSectionChevron"></i>
                     Session Overview
                 </span>
+                <!-- Collapsed info bar — only visible when accordion is collapsed -->
+                <div class="upper-section-collapsed-bar" id="upperSectionCollapsedBar">
+                    <span class="collapsed-bar-circuit" id="collapsedBarCircuit">—</span>
+                    <div class="collapsed-bar-sep"></div>
+                    <span class="collapsed-bar-time" id="collapsedBarTime">—</span>
+                    <div class="collapsed-bar-sep"></div>
+                    <div class="collapsed-bar-item" data-bs-toggle="tooltip" data-bs-title="Track Temperature">
+                        <i class="fa-solid fa-road collapsed-bar-icon"></i>
+                        <span id="collapsedBarTrackTemp">—</span>
+                    </div>
+                    <div class="collapsed-bar-item" data-bs-toggle="tooltip" data-bs-title="Air Temperature">
+                        <i class="bi bi-thermometer-half collapsed-bar-icon"></i>
+                        <span id="collapsedBarAirTemp">—</span>
+                    </div>
+                    <div class="collapsed-bar-sep"></div>
+                    <div class="collapsed-bar-item collapsed-bar-actions">
+                        <button id="collapsed-clear-ref-btn"
+                                class="btn collapsed-bar-action-btn"
+                                data-bs-toggle="tooltip"
+                                data-bs-title="Clear reference driver">
+                            <i class="bi bi-star-fill" style="color:#ffd700;"></i>
+                        </button>
+                        <div class="collapsed-bar-pred">
+                            <label class="collapsed-bar-pred-label">Pred L</label>
+                            <input type="number" id="collapsedPredictionLap"
+                                   class="form-control form-control-sm collapsed-bar-pred-input"
+                                   value="1" min="1" max="80">
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="upper-section-accordion-body" id="upperSectionAccordionBody">
             <div class="row">
