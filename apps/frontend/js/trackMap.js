@@ -121,15 +121,44 @@ class TrackMap {
         this._rafId = null;
         this._boundRenderLoop = this._renderLoop.bind(this);
 
+        // Sorted driver list cache — rebuilt only when updateDrivers runs
+        this._sortedDrivers = [];
+        this._driversDirty = false;
+
         // Dismiss tooltip when tapping outside a driver dot (touch devices)
-        document.addEventListener('touchstart', (e) => {
+        this._boundDocTouchStart = (e) => {
             if (this._activeTooltipDot &&
                 !this._isDriverHit(e.touches[0].clientX, e.touches[0].clientY)) {
                 this._hideTooltip();
             }
-        });
+        };
+        this._boundDocMouseMove = (e) => {
+            if (!this._isPanning) return;
+            this._panX = this._panStartTransX + (e.clientX - this._panStartX);
+            this._panY = this._panStartTransY + (e.clientY - this._panStartY);
+            this._clampPan();
+            this._applyTransform();
+        };
+        this._boundDocMouseUp = () => {
+            if (this._isPanning) {
+                this._isPanning = false;
+                this.container.style.cursor = '';
+            }
+        };
+        document.addEventListener('touchstart', this._boundDocTouchStart);
+        document.addEventListener('mousemove', this._boundDocMouseMove);
+        document.addEventListener('mouseup', this._boundDocMouseUp);
 
         // Load transforms at construction time
+    }
+
+    destroy() {
+        this._stopRenderLoop();
+        document.removeEventListener('touchstart', this._boundDocTouchStart);
+        document.removeEventListener('mousemove', this._boundDocMouseMove);
+        document.removeEventListener('mouseup', this._boundDocMouseUp);
+        if (this.tooltip) this.tooltip.remove();
+        if (this._pinnedPopup) this._pinnedPopup.remove();
     }
 
     // -- Transform loading -----------------------------------------------
@@ -274,10 +303,11 @@ class TrackMap {
                 this._drivers.delete(id);
             }
         }
+
+        this._driversDirty = true;
     }
 
-    /** Reset internal state (e.g. on session change). */
-    clear() {
+    _teardown() {
         this._stopRenderLoop();
         this.container.replaceChildren();
         this._wrapper = null;
@@ -285,13 +315,19 @@ class TrackMap {
         this.canvas = null;
         this.ctx = null;
         this._currentTf = null;
-        this.currentCircuit = null;
         this._drivers.clear();
+        this._sortedDrivers = [];
+        this._driversDirty = false;
         this._activeTooltipDot = null;
         this._unpinPopup();
         this._resetZoomState();
-        // Re-append reset button
         this.container.appendChild(this._resetBtn);
+    }
+
+    /** Reset internal state (e.g. on session change). */
+    clear() {
+        this._teardown();
+        this.currentCircuit = null;
     }
 
     // -- Track view setup -------------------------------------------------
@@ -359,17 +395,19 @@ class TrackMap {
         // Clear transparent canvas (SVG background is a separate DOM element)
         ctx.clearRect(0, 0, SVG_W, SVG_H);
 
-        // Interpolate and draw driver dots
-        // Sort so player/teammate render on top
-        const sorted = [...this._drivers.values()].sort((a, b) => {
-            if (a.data.isRef) return 1;
-            if (b.data.isRef) return -1;
-            if (a.data.isTeammate) return 1;
-            if (b.data.isTeammate) return -1;
-            return 0;
-        });
+        // Rebuild sorted list only when driver set changes (not every frame)
+        if (this._driversDirty) {
+            this._sortedDrivers = [...this._drivers.values()].sort((a, b) => {
+                if (a.data.isRef) return 1;
+                if (b.data.isRef) return -1;
+                if (a.data.isTeammate) return 1;
+                if (b.data.isTeammate) return -1;
+                return 0;
+            });
+            this._driversDirty = false;
+        }
 
-        for (const driver of sorted) {
+        for (const driver of this._sortedDrivers) {
             // Smooth interpolation towards target
             driver.currentX += (driver.targetX - driver.currentX) * LERP_FACTOR;
             driver.currentY += (driver.targetY - driver.currentY) * LERP_FACTOR;
@@ -495,7 +533,7 @@ class TrackMap {
         document.body.appendChild(this.tooltip);
     }
 
-    _showTooltip(event, data) {
+    _buildTooltipContent(data) {
         const name    = escapeHtml(data.name || '');
         const abbr    = escapeHtml(this._getTeamAbbreviation(data.team));
         const ers     = escapeHtml(data.ersPercent  || 'N/A');
@@ -511,8 +549,12 @@ class TrackMap {
         this.tooltip.appendChild(document.createElement('br'));
         this.tooltip.appendChild(document.createTextNode('Tyre Wear: ' + wear + '%'));
         this.tooltip.style.display = 'block';
-        this._positionTooltip(event);
         this._activeTooltipDot = data.index;
+    }
+
+    _showTooltip(event, data) {
+        this._buildTooltipContent(data);
+        this._positionTooltip(event);
     }
 
     _positionTooltip(event) {
@@ -529,24 +571,9 @@ class TrackMap {
         if (this._activeTooltipDot === data.index) {
             this._hideTooltip();
         } else {
-            const name    = escapeHtml(data.name || '');
-            const abbr    = escapeHtml(this._getTeamAbbreviation(data.team));
-            const ers     = escapeHtml(data.ersPercent  || 'N/A');
-            const ersMode = escapeHtml(data.ersMode     || 'N/A');
-            const wear    = escapeHtml(data.tyreWearAvg || 'N/A');
-
-            this.tooltip.replaceChildren();
-            const strong = document.createElement('strong');
-            strong.textContent = name + ' (' + abbr + ')';
-            this.tooltip.appendChild(strong);
-            this.tooltip.appendChild(document.createElement('br'));
-            this.tooltip.appendChild(document.createTextNode('ERS: ' + ers + '% (' + ersMode + ')'));
-            this.tooltip.appendChild(document.createElement('br'));
-            this.tooltip.appendChild(document.createTextNode('Tyre Wear: ' + wear + '%'));
-            this.tooltip.style.display = 'block';
+            this._buildTooltipContent(data);
             this.tooltip.style.left = (touch.pageX + 12) + 'px';
             this.tooltip.style.top  = (touch.pageY - 28) + 'px';
-            this._activeTooltipDot = data.index;
         }
     }
 
@@ -651,22 +678,12 @@ class TrackMap {
     }
 
     _showFallback(message) {
-        this._stopRenderLoop();
-        this.container.replaceChildren();
+        this._teardown();
         const fallback = document.createElement('div');
         fallback.className = 'track-map-fallback';
         fallback.textContent = message;
-        this.container.appendChild(fallback);
-        this._wrapper = null;
-        this._svgImg = null;
-        this.canvas = null;
-        this.ctx = null;
-        this._currentTf = null;
-        this._drivers.clear();
-        this._unpinPopup();
-        this._resetZoomState();
-        // Re-append reset button (replaceChildren() removed it)
-        this.container.appendChild(this._resetBtn);
+        // Insert before the reset button
+        this.container.insertBefore(fallback, this._resetBtn);
     }
 
     // -- Zoom & Pan -------------------------------------------------------
@@ -716,20 +733,8 @@ class TrackMap {
             this.container.style.cursor = 'grabbing';
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!this._isPanning) return;
-            this._panX = this._panStartTransX + (e.clientX - this._panStartX);
-            this._panY = this._panStartTransY + (e.clientY - this._panStartY);
-            this._clampPan();
-            this._applyTransform();
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (this._isPanning) {
-                this._isPanning = false;
-                this.container.style.cursor = '';
-            }
-        });
+        // mousemove and mouseup are registered on document in the constructor
+        // so they can be removed via destroy().
 
         // Touch: pinch-to-zoom + pan
         this.container.addEventListener('touchstart', (e) => {
