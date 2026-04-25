@@ -25,8 +25,65 @@ body {
 
 .eng-view-global-data-section {
     flex: 0 1 auto;
-    padding: 1rem;
-    border-bottom: 1px solid #333;
+    padding: 0.75rem;
+    background: var(--f1-darker);
+}
+
+/* ── Upper Section Accordion ─────────────────────────────────── */
+
+.upper-section-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 1rem;
+    background: var(--f1-darker);
+    border: 1px solid var(--bs-secondary-border-subtle, #495057);
+    border-radius: 0.375rem 0.375rem 0 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.upper-section-accordion-header:hover {
+    background: var(--f1-gray);
+}
+
+.upper-section-accordion-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--f1-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.upper-section-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.upper-section-accordion-header.collapsed .upper-section-chevron {
+    transform: rotate(-90deg);
+}
+
+.upper-section-accordion-body {
+    padding: 0.75rem;
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+    max-height: 1000px;
+    opacity: 1;
+    border: 1px solid var(--bs-secondary-border-subtle, #495057);
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    background: var(--f1-dark);
+}
+
+.upper-section-accordion-body.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .eng-view-race-table-section {

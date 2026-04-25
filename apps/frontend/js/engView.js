@@ -2298,6 +2298,28 @@ function initCardCollapseToggles() {
     }
 }
 
+// ── Upper Section Accordion ──────────────────────────────────────
+
+function initUpperSectionAccordion() {
+    const LS_KEY = 'engViewUpperSectionCollapsed';
+    const header = document.getElementById('upperSectionAccordionHeader');
+    const body   = document.getElementById('upperSectionAccordionBody');
+
+    const apply = (collapsed) => {
+        header.classList.toggle('collapsed', collapsed);
+        body.classList.toggle('collapsed', collapsed);
+    };
+
+    const saved = localStorage.getItem(LS_KEY);
+    apply(saved === 'true');
+
+    header.addEventListener('click', () => {
+        const nowCollapsed = !body.classList.contains('collapsed');
+        apply(nowCollapsed);
+        localStorage.setItem(LS_KEY, nowCollapsed);
+    });
+}
+
 // Initialize the dashboard
 function initDashboard() {
     iconCache = new IconCache();
@@ -2306,6 +2328,7 @@ function initDashboard() {
     weatherGraph = new WeatherGraph(document.getElementById('weatherGraphContainer'));
     weatherTable = new EngViewWeatherTable(weatherGraph);
     trackMap = new TrackMap();
+    initUpperSectionAccordion();
     initWeatherDisplayToggle();
     initCardCollapseToggles();
     window.drawerManager = new DrawerManager();
