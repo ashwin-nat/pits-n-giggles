@@ -311,7 +311,9 @@ class IpcSubscriberAsync:
         self.socket: Optional[zmq.Socket] = None
 
         self._routes: Dict[str, Callable[[dict], Awaitable[None]]] = {}
+        self._last_message_id_by_topic: Dict[str, int] = {}
         self._running = True
+        self.stats = EventCounter()
 
         self._on_connect: Optional[OnConnectCbAsync] = None
         self._on_disconnect: Optional[OnDisconnectCbAsync] = None
@@ -357,6 +359,63 @@ class IpcSubscriberAsync:
         return decorator
 
     # ------------------------------------------------------------------
+    # Message envelope helpers
+    # ------------------------------------------------------------------
+
+    def _track_missed_messages(self, topic: str, count: int) -> None:
+        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
+        self.stats.track_event(topic, "__MISSED__", count=count)
+
+    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
+        message = orjson.loads(payload)
+        meta = message["__meta__"]
+        send_ts_ns = meta.get("send_ts_ns")
+
+        if not isinstance(send_ts_ns, int):
+            send_ts_ns = None
+
+        return message["__payload__"], meta["message_id"], send_ts_ns
+
+    def _track_latency(
+        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
+    ) -> None:
+        if send_ts_ns is None:
+            return
+
+        if recv_ts_ns is None:
+            recv_ts_ns = time.time_ns()
+
+        self.stats.track_packet_latency(
+            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+        self.stats.track_packet_latency(
+            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+
+    def _track_sequence(self, topic: str, message_id: int) -> None:
+        last_message_id = self._last_message_id_by_topic.get(topic)
+        if last_message_id is None:
+            self._last_message_id_by_topic[topic] = message_id
+            return
+
+        expected_next = last_message_id + 1
+        if message_id > expected_next:
+            missed = message_id - expected_next
+            self._track_missed_messages(topic, missed)
+            self.logger.debug(
+                "Detected %d missed messages on topic %s (expected %d, got %d)",
+                missed,
+                topic,
+                expected_next,
+                message_id,
+            )
+        elif message_id <= last_message_id:
+            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
+            self.stats.track_event(topic, "__SEQ_ANOMALY__")
+
+        self._last_message_id_by_topic[topic] = message_id
+
+    # ------------------------------------------------------------------
     # Main async loop (caller schedules this)
     # ------------------------------------------------------------------
 
@@ -374,6 +433,7 @@ class IpcSubscriberAsync:
                 # since the handlers will still execute on the main event loop
                 events = dict(await asyncio.to_thread(poller.poll, 100))
             except zmq.ZMQError as e:
+                self.stats.track_event("__ERROR__", "poll_failed")
                 self.logger.warning("Poll failed — reconnecting SUB socket")
                 await self._mark_disconnected(e)
                 await asyncio.sleep(self.RECONNECT_DELAY)
@@ -388,7 +448,10 @@ class IpcSubscriberAsync:
 
             try:
                 frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
+            except zmq.Again:
+                continue
             except zmq.ZMQError as e:
+                self.stats.track_event("__ERROR__", "recv_failed")
                 self.logger.warning("Receive failed — reconnecting SUB socket")
                 await self._mark_disconnected(e)
                 await asyncio.sleep(self.RECONNECT_DELAY)
@@ -398,22 +461,39 @@ class IpcSubscriberAsync:
                 continue
 
             if len(frames) != 2:
+                self.stats.track_event("__DROP__", "invalid_frame_count")
                 continue
 
             topic_bytes, payload = frames
             topic = topic_bytes.decode()
+            total_size = len(topic_bytes) + len(payload)
+
+            self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
+            self.stats.track_packet(topic, "__PACKETS__", total_size)
+
             await self._mark_connected()
 
             handler = self._routes.get(topic)
             if not handler:
+                self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
                 continue
 
             try:
-                message = orjson.loads(payload)
-                data = message["__payload__"]
+                data, message_id, send_ts_ns = self._parse_envelope(payload)
+                self._track_sequence(topic, message_id)
+                self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
+            except (ValueError, TypeError, KeyError):
+                self.stats.track_event("__DROP__", "invalid_envelope")
+                continue
+
+            try:
                 await handler(data)
-            except Exception: # pylint: disable=broad-except
-                self.logger.exception(f"Handler error for topic '{topic}'")
+                self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
+                self.stats.track_event(topic, "__HANDLER_OK__")
+            except Exception as e: # pylint: disable=broad-except
+                self.stats.track_event("__TOTAL__", "__HANDLER_ERR__")
+                self.stats.track_event(topic, "__HANDLER_ERR__")
+                self.logger.exception("Handler error for topic '%s': %s", topic, e)
 
         # graceful exit
         try:
@@ -436,6 +516,10 @@ class IpcSubscriberAsync:
     def close(self):
         """Signal the run() loop to exit."""
         self._running = False
+
+    def get_stats(self) -> dict:
+        """Get current subscriber stats snapshot."""
+        return self.stats.get_stats()
 
     # ------------------------------------------------------------------
     # Connection callbacks
