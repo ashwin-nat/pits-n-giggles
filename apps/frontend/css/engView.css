@@ -326,6 +326,48 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px !important;
 }
 
+/* Pin reference driver button inside Name cell */
+.driver-name-cell {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.driver-name-cell-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.pin-ref-btn {
+    background: none;
+    border: none;
+    color: var(--f1-text-secondary);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.ag-row:hover .pin-ref-btn {
+    opacity: 1;
+}
+
+.ref-row .pin-ref-btn {
+    opacity: 1;
+}
+
+.pin-ref-btn:hover {
+    color: #ffd700;
+}
+
+@media (hover: none) {
+    .pin-ref-btn { opacity: 1; }
+}
+
 .ag-header-cell-text {
     text-align: center;
 }

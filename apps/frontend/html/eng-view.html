@@ -66,6 +66,13 @@
                                 <a id="driver-view-btn" class="btn settings-button" href="/" data-bs-toggle="tooltip" data-bs-title="Switch to driver view">
                                     <i class="bi bi-car-front-fill"></i>
                                 </a>
+                                <button id="clear-ref-driver-btn"
+                                        class="btn settings-button"
+                                        style="display:none;"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-title="Clear pinned reference driver">
+                                    <i class="bi bi-pin-angle-fill" style="color:#ffd700;"></i>
+                                </button>
                                 <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
                                 {% if port_info %}
                                 <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
