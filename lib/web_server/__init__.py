@@ -24,10 +24,12 @@
 
 from .client_types import ClientType
 from .server import BaseWebServer
+from .socket import get_socket_for_uvicorn
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     'BaseWebServer',
     'ClientType',
+    'get_socket_for_uvicorn',
 ]
