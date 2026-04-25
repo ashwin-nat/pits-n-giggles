@@ -67,6 +67,7 @@ class TyreWearExtrapolator:
         logger: Optional[logging.Logger] = None,
         name: Optional[str] = None,
         window_size: Optional[int] = None,
+        weather_aware: bool = True,
     ):
         """
         Initialize a TyreWearExtrapolator object.
@@ -90,6 +91,7 @@ class TyreWearExtrapolator:
         self.m_logger = logger
         self.m_name = name if name else self.__class__.__name__
         self.m_window_size: Optional[int] = window_size
+        self.m_weather_aware: bool = weather_aware
 
         self._initMembers(initial_data, total_laps)
 
@@ -319,7 +321,7 @@ class TyreWearExtrapolator:
 
         # Filter to current weather segment first; fall back to all data
         # when the segment is too short for a stable regression.
-        weather_filtered = self._filter_to_current_weather(racing_data)
+        weather_filtered = self._filter_to_current_weather(racing_data) if self.m_weather_aware else racing_data
 
         # Apply sliding window: when configured, use only the most recent racing
         # laps for the regression.  This lets the model adapt to changing track

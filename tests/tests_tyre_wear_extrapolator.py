@@ -788,3 +788,115 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
 
         # 8 wet laps → filtered to wet (8 laps) → window slices to last 6
         self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
+
+
+class TestTyreWearExtrapolatorWeatherAwareFlag(TestTyreWearPrediction):
+    """Test that weather_aware=False disables weather-group filtering and
+    uses all racing laps for regression (legacy behaviour)."""
+
+    CLEAR = WeatherForecastSample.WeatherCondition.CLEAR
+    LIGHT_RAIN = WeatherForecastSample.WeatherCondition.LIGHT_RAIN
+    HEAVY_RAIN = WeatherForecastSample.WeatherCondition.HEAVY_RAIN
+
+    def test_default_is_weather_aware(self):
+        """weather_aware defaults to True — flag is stored correctly."""
+        extrap = TyreWearExtrapolator(initial_data=[], total_laps=10)
+        self.assertTrue(extrap.m_weather_aware)
+
+    def test_flag_stored_false(self):
+        """weather_aware=False is stored on the instance."""
+        extrap = TyreWearExtrapolator(initial_data=[], total_laps=10, weather_aware=False)
+        self.assertFalse(extrap.m_weather_aware)
+
+    def test_disabled_uses_all_racing_laps(self):
+        """With weather_aware=False, regression uses all racing laps regardless
+        of weather group — slope is a blend of dry and wet data."""
+        data = [
+            # 5 dry laps (~3%/lap)
+            TyreWearPerLap(5.0, 5.0, 5.0, 5.0, lap_number=1, weather_id=self.CLEAR),
+            TyreWearPerLap(8.0, 8.0, 8.0, 8.0, lap_number=2, weather_id=self.CLEAR),
+            TyreWearPerLap(11.0, 11.0, 11.0, 11.0, lap_number=3, weather_id=self.CLEAR),
+            TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=4, weather_id=self.CLEAR),
+            TyreWearPerLap(17.0, 17.0, 17.0, 17.0, lap_number=5, weather_id=self.CLEAR),
+            # 4 wet laps (~1%/lap)
+            TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=6, weather_id=self.LIGHT_RAIN),
+            TyreWearPerLap(19.0, 19.0, 19.0, 19.0, lap_number=7, weather_id=self.LIGHT_RAIN),
+            TyreWearPerLap(20.0, 20.0, 20.0, 20.0, lap_number=8, weather_id=self.HEAVY_RAIN),
+            TyreWearPerLap(21.0, 21.0, 21.0, 21.0, lap_number=9, weather_id=self.HEAVY_RAIN),
+        ]
+
+        extrap_aware = TyreWearExtrapolator(initial_data=list(data), total_laps=15)
+        extrap_legacy = TyreWearExtrapolator(initial_data=list(data), total_laps=15, weather_aware=False)
+
+        # Weather-aware: only 4 wet laps → slope ≈ 1.0
+        self.assertAlmostEqual(extrap_aware.fl_rate, 1.0, delta=0.1)
+
+        # Legacy: all 9 laps blended → slope clearly above 1.0
+        self.assertGreater(extrap_legacy.fl_rate, 1.5)
+
+    def test_disabled_short_wet_segment_does_not_fall_back(self):
+        """With weather_aware=False, even a short wet segment (< MIN_LAPS)
+        does NOT fall back — all racing data is always used."""
+        data = [
+            TyreWearPerLap(5.0, 5.0, 5.0, 5.0, lap_number=1, weather_id=self.CLEAR),
+            TyreWearPerLap(8.0, 8.0, 8.0, 8.0, lap_number=2, weather_id=self.CLEAR),
+            TyreWearPerLap(11.0, 11.0, 11.0, 11.0, lap_number=3, weather_id=self.CLEAR),
+            TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=4, weather_id=self.CLEAR),
+            TyreWearPerLap(17.0, 17.0, 17.0, 17.0, lap_number=5, weather_id=self.CLEAR),
+            # Only 2 wet laps — below threshold, weather-aware would fall back
+            TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=6, weather_id=self.LIGHT_RAIN),
+            TyreWearPerLap(19.0, 19.0, 19.0, 19.0, lap_number=7, weather_id=self.LIGHT_RAIN),
+        ]
+
+        extrap_aware = TyreWearExtrapolator(initial_data=list(data), total_laps=15)
+        extrap_legacy = TyreWearExtrapolator(initial_data=list(data), total_laps=15, weather_aware=False)
+
+        # Both use all 7 laps when weather_aware falls back — rates should match
+        self.assertAlmostEqual(extrap_aware.fl_rate, extrap_legacy.fl_rate, delta=0.01)
+
+    def test_disabled_matches_no_weather_data(self):
+        """weather_aware=False on data with explicit weather IDs produces the
+        same result as data with no weather IDs at all (true legacy behaviour)."""
+        data_with_weather = [
+            TyreWearPerLap(10.0, 10.0, 10.0, 10.0, lap_number=1, weather_id=self.CLEAR),
+            TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=2, weather_id=self.CLEAR),
+            TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=3, weather_id=self.CLEAR),
+        ]
+        data_no_weather = [
+            TyreWearPerLap(10.0, 10.0, 10.0, 10.0, lap_number=1),
+            TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=2),
+            TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=3),
+        ]
+
+        extrap_legacy = TyreWearExtrapolator(initial_data=data_with_weather, total_laps=5, weather_aware=False)
+        extrap_no_weather = TyreWearExtrapolator(initial_data=data_no_weather, total_laps=5)
+
+        self.assertAlmostEqual(extrap_legacy.fl_rate, extrap_no_weather.fl_rate, delta=0.01)
+        self.assertAlmostEqual(
+            extrap_legacy.getTyreWearPrediction(5).fl_tyre_wear,
+            extrap_no_weather.getTyreWearPrediction(5).fl_tyre_wear,
+            delta=0.01,
+        )
+
+    def test_disabled_with_sliding_window(self):
+        """weather_aware=False + window_size: sliding window still applies,
+        but on the full racing dataset (no weather filter)."""
+        data = [
+            # 5 dry laps (~3%/lap)
+            TyreWearPerLap(5.0, 5.0, 5.0, 5.0, lap_number=1, weather_id=self.CLEAR),
+            TyreWearPerLap(8.0, 8.0, 8.0, 8.0, lap_number=2, weather_id=self.CLEAR),
+            TyreWearPerLap(11.0, 11.0, 11.0, 11.0, lap_number=3, weather_id=self.CLEAR),
+            TyreWearPerLap(14.0, 14.0, 14.0, 14.0, lap_number=4, weather_id=self.CLEAR),
+            TyreWearPerLap(17.0, 17.0, 17.0, 17.0, lap_number=5, weather_id=self.CLEAR),
+            # 4 wet laps (~1%/lap)
+            TyreWearPerLap(18.0, 18.0, 18.0, 18.0, lap_number=6, weather_id=self.LIGHT_RAIN),
+            TyreWearPerLap(19.0, 19.0, 19.0, 19.0, lap_number=7, weather_id=self.LIGHT_RAIN),
+            TyreWearPerLap(20.0, 20.0, 20.0, 20.0, lap_number=8, weather_id=self.HEAVY_RAIN),
+            TyreWearPerLap(21.0, 21.0, 21.0, 21.0, lap_number=9, weather_id=self.HEAVY_RAIN),
+        ]
+        # window_size=4 slices the last 4 laps (all wet, ~1%/lap)
+        extrap = TyreWearExtrapolator(initial_data=data, total_laps=15, weather_aware=False, window_size=4)
+
+        # Even without weather filtering, the window isolates the 4 wet laps → slope ≈ 1.0
+        self.assertAlmostEqual(extrap.fl_rate, 1.0, delta=0.1)
+
