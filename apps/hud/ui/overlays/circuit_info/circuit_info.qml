@@ -77,9 +77,9 @@ Window {
 
         // ==========================================================
         // SEGMENT INFO  (fades on change)
-        //   primary bg  → anchored bottom to progressBarArea.top - 2
+        //   primary bg   → above progress bar  (segmentInfo.above)
         //   y=36 → progress bar    (12px)        bottom=48
-        //   secondary bg → anchored top to progressBarArea.bottom + 2
+        //   secondary bg → below progress bar  (segmentInfo.below)
         //   baseHeight=80
         // ==========================================================
         Item {
@@ -119,10 +119,7 @@ Window {
                 }
             }
 
-            // Primary label — sits above the bar
-            // straight       → segment name
-            // corner         → turn string e.g. "Turn 5"
-            // complex_corner → range string e.g. "Turns 3–5"
+            // Primary label — sits above the bar (segmentInfo.above)
             Rectangle {
                 id: primaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -139,23 +136,17 @@ Window {
 
                     readonly property var info: infoGroup.displayedInfo
 
-                    text: {
-                        if (!info) return ""
-                        if (info.type === "straight") return info.name
-                        return info.turns
-                    }
+                    text: info ? (info.above || "") : ""
 
                     color: "white"
                     font.family: "Formula1"
                     font.pixelSize: 20
-                    font.bold: !!info && info.type !== "straight"
+                    font.bold: false
                     visible: text.length > 0
                 }
             }
 
-            // Secondary label — sits below the bar
-            // straight               → nothing
-            // corner / complex_corner → corner name if available
+            // Secondary label — sits below the bar (segmentInfo.below)
             Rectangle {
                 id: secondaryBg
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -172,14 +163,12 @@ Window {
 
                     readonly property var info: infoGroup.displayedInfo
 
-                    text: {
-                        if (!info || info.type === "straight") return ""
-                        return info.name
-                    }
+                    text: info ? (info.below || "") : ""
 
                     color: Qt.rgba(1, 1, 1, 0.85)
                     font.family: "Formula1"
                     font.pixelSize: 18
+                    font.bold: true
                     visible: text.length > 0
                 }
             }

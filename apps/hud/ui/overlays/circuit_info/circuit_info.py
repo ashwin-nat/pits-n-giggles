@@ -161,8 +161,8 @@ class CircuitInfoOverlay(BaseOverlayQML):
             rendered = segment_info.render()
             self.set_qml_property("segmentInfo", {
                 "type": segment_info.type,
-                "name": rendered["name"],
-                "turns": rendered["turns"],
+                "above": rendered["above"],
+                "below": rendered["below"],
             })
         else:
             self.set_qml_property("segmentInfo", None)

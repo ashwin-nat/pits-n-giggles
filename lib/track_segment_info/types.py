@@ -73,7 +73,7 @@ class StraightSegmentInfo(BaseSegmentInfo):
         return v
 
     def render(self) -> Dict[str, str]:
-        return {"type": "straight", "name": self.name, "turns": ""}
+        return {"type": "straight", "above": self.name, "below": ""}
 
 
 class CornerSegmentInfo(BaseSegmentInfo):
@@ -83,8 +83,7 @@ class CornerSegmentInfo(BaseSegmentInfo):
     corner_number: int
 
     def render(self) -> Dict[str, str]:
-        turns = f"Turn {self.corner_number}" if not self.name else f"T{self.corner_number}"
-        return {"type": "corner", "name": self.name, "turns": turns}
+        return {"type": "corner", "above": self.name, "below": f"Turn {self.corner_number}"}
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
@@ -108,11 +107,7 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
 
     def render(self) -> Dict[str, str]:
         first, last = self.corner_numbers[0], self.corner_numbers[-1]
-        if not self.name:
-            turns = f"Turns {first}-{last}" if len(self.corner_numbers) > 2 else " / ".join(f"Turn {n}" for n in self.corner_numbers)
-        else:
-            turns = f"T{first}-T{last}" if len(self.corner_numbers) > 2 else " / ".join(f"T{n}" for n in self.corner_numbers)
-        return {"type": "corner", "name": self.name, "turns": turns}
+        return {"type": "complex_corner", "above": self.name, "below": f"Turns {first}-{last}"}
 
 
 SegmentInfo = Annotated[
