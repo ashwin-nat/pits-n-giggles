@@ -249,7 +249,7 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         return {
             "position": driver_info.get("position", 0),
-            "teamIcon": self.team_logo_uris.get(driver_info.get("team", "UNKNOWN"), ""),
+            "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
             "name": driver_info.get("name", "UNKNOWN"),
             "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index),
             "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
@@ -279,7 +279,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         Returns:
             Formatted delta string
         """
-        if driver_info.get("is_pitting", False):
+        if driver_info.get("is-pitting", False):
             return "PIT"
 
         dnf_status = driver_info.get("dnf-status", "")
