@@ -24,7 +24,7 @@
 
 import logging
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
@@ -43,9 +43,12 @@ from .driver_info import DriverInfo
 from .lap_info import LapInfo
 from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
+from .pit_info import PitInfo
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
-from .pit_info import PitInfo
+
+if TYPE_CHECKING:
+    from apps.backend.state_mgmt_layer.session_state import SessionState
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -123,7 +126,8 @@ class DataPerDriver:
     def __init__(self,
                  index: int,
                  logger: logging.Logger,
-                 total_laps: Optional[int]):
+                 total_laps: Optional[int],
+                 state_ref: "SessionState"):
         """
         Init the data per driver fields
 
@@ -131,6 +135,7 @@ class DataPerDriver:
             index (int): The index of the driver.
             logger (logging.Logger): Logger object
             total_laps (Optional[int]): The total number of laps. May be None
+            state_ref (SessionState): Reference to the session state
         """
 
         self.m_index = index
@@ -170,6 +175,9 @@ class DataPerDriver:
 
         # Lap delta
         self.m_delta_mgr: LapDeltaManager = LapDeltaManager()
+
+        # State/parent ref
+        self.m_state_ref: "SessionState" = state_ref
 
     @property
     def is_valid(self) -> bool:
@@ -596,7 +604,8 @@ class DataPerDriver:
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=self.m_driver_info.m_curr_lap_max_sc_status,
-                desc=f"end of lap {old_lap_number} snapshot. {tyre_set_key}"
+                desc=f"end of lap {old_lap_number} snapshot. {tyre_set_key}",
+                weather_id=self.m_state_ref.m_session_info.curr_weather
             )
             self.m_tyre_info.m_tyre_set_history_manager.addTyreWear(wear)
 
@@ -609,7 +618,8 @@ class DataPerDriver:
                 rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 lap_number=old_lap_number,
                 is_racing_lap=(self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR),
-                desc=tyre_set_id
+                desc=tyre_set_id,
+                weather_id=self.m_state_ref.m_session_info.curr_weather
             ))
 
         # Fuel stuff
@@ -698,7 +708,8 @@ class DataPerDriver:
                             rr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                             lap_number=0,
                             is_racing_lap=True,
-                            desc=f"end of zeroth lap data point {fitted_tyre_set_key}"
+                            desc=f"end of zeroth lap data point {fitted_tyre_set_key}",
+                            weather_id=self.m_state_ref.m_session_info.curr_weather
                         )
                         entry = TyreSetHistoryEntry(
                             start_lap=self.m_lap_info.m_current_lap,
@@ -747,7 +758,8 @@ class DataPerDriver:
                     self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
                                         str(self), self.m_lap_info.m_current_lap)
 
-    def onTyreSetChange(self, fitted_index: int, fitted_tyre_set_key: str, lap_number: int, initial_tyre_wear: TyreWearPerLap) -> None:
+    def onTyreSetChange(self, fitted_index: int, fitted_tyre_set_key: str, lap_number: int,
+                        initial_tyre_wear: TyreWearPerLap) -> None:
         """Update the tyre set history list, if required.
 
         Args:
@@ -850,7 +862,8 @@ class DataPerDriver:
             rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
             lap_number=self.m_lap_info.m_current_lap-1,
             is_racing_lap=True,
-            desc=f"Delayed tyre set change weird. new tyre val. key={self._getCurrentTyreSetKey()}"
+            desc=f"Delayed tyre set change weird. new tyre val. key={self._getCurrentTyreSetKey()}",
+            weather_id=self.m_state_ref.m_session_info.curr_weather
         )
         self.onTyreSetChange(
             fitted_index=self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx,
@@ -875,7 +888,8 @@ class DataPerDriver:
             rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
             lap_number=self.m_lap_info.m_current_lap-1, # -1 because this is the end of last lap value
             is_racing_lap=True,
-            desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}"
+            desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}",
+            weather_id=self.m_state_ref.m_session_info.curr_weather
         )
         self.onTyreSetChange(
             fitted_index=self.m_packet_copies.m_packet_tyre_sets.m_fittedIdx,

@@ -222,6 +222,11 @@ class SessionInfo:
         """Checks if the mode is an online mode."""
         return self.m_game_mode and self.m_game_mode.isOnlineMode()
 
+    @property
+    def curr_weather(self) -> Optional[WeatherForecastSample.WeatherCondition]:
+        """Get the current weather if available."""
+        return self.m_weather_forecast_samples[0].m_weather if self.m_weather_forecast_samples else None
+
     def processSessionUpdate(self, packet: PacketSessionData) -> bool:
         """Populates the fields from the session data packet
         Args:
@@ -487,7 +492,7 @@ class SessionState:
             lap_data: Lap data containing current lap number
         """
         # Capture zeroth lap snapshot if needed
-        if driver_obj.shouldCaptureZerothLapSnapshot():
+        if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot():
             driver_obj.onLapChange(
                 old_lap_number=0,
                 session_type=self.m_session_info.m_session_type
@@ -838,6 +843,7 @@ class SessionState:
                 rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
                 rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
                 desc=f"curr tyre wear {tyre_set_key}",
+                weather_id=self.m_session_info.curr_weather,
             ))
             obj_to_be_updated.m_car_info.updateDamage(car_damage)
 
@@ -1414,7 +1420,8 @@ class SessionState:
             obj = DataPerDriver(
                 index=index,
                 logger=self.m_logger,
-                total_laps=self.m_session_info.m_total_laps)
+                total_laps=self.m_session_info.m_total_laps,
+                state_ref=self)
             self.m_driver_data[index] = obj
             self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj
