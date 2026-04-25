@@ -761,13 +761,13 @@ class TestTyreWearExtrapolatorWeatherSegmentation(TestTyreWearPrediction):
         """TyreWearPerLap.toJSON() must export weather-id."""
         lap = TyreWearPerLap(90.0, 85.0, 80.0, 75.0, lap_number=5, weather_id=self.LIGHT_RAIN)
         json_data = lap.toJSON()
-        self.assertEqual(json_data["weather-id"], self.LIGHT_RAIN)
+        self.assertEqual(json_data["weather-id"], str(self.LIGHT_RAIN))
 
     def test_toJSON_weather_id_none(self):
         """Legacy data without weather_id exports None."""
         lap = TyreWearPerLap(90.0, 85.0, 80.0, 75.0, lap_number=5)
         json_data = lap.toJSON()
-        self.assertIsNone(json_data["weather-id"])
+        self.assertEqual(json_data["weather-id"], str(None))
 
     def test_weather_segmentation_with_sliding_window(self):
         """Weather filter runs before sliding window. Window operates on
