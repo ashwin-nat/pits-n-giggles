@@ -1288,7 +1288,10 @@ class SettingsWindow(QDialog):
         parts = path.split(".")
         model = self.working_settings
         for p in parts[:-1]:
-            model = getattr(model, p)
+            if isinstance(model, dict):
+                model = model[p]
+            else:
+                model = getattr(model, p)
         return type(model).model_fields[parts[-1]]
 
     def _on_text_changed(self, field_path: str, text: str, field_info: FieldInfo):

@@ -114,7 +114,8 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
         used_positions = {page.position for page in merged.values()}
 
         for key, default_page in DEFAULT_PAGES.items():
-            if key not in merged:
+            str_key = key.value if isinstance(key, MfdPageId) else key
+            if str_key not in merged:
                 new_page = default_page.model_copy(deep=True)
                 new_page.enabled = False
                 # Resolve position conflict: find the next free slot
@@ -123,7 +124,7 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
                     pos += 1
                 new_page.position = pos
                 used_positions.add(pos)
-                merged[key] = new_page
+                merged[str_key] = new_page
 
         self.pages = merged
         return self
