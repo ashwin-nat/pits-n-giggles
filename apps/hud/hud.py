@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import argparse
+import ctypes
 import logging
 import sys
 
@@ -86,6 +87,11 @@ def entry_point():
     if sys.platform != 'win32':
         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
 
+    # Request 1 ms system timer resolution so QTimer::PreciseTimer fires on time.
+    # Windows default is 15.6 ms, which causes frame-budget misses at 30 FPS.
+    winmm = ctypes.windll.winmm
+    winmm.timeBeginPeriod(1)
+
     report_pid_from_child()
     args = parseArgs()
     png_logger = get_logger("hud", args.debug, jsonl=True)
@@ -100,6 +106,8 @@ def entry_point():
     except Exception as e: # pylint: disable=broad-except
         png_logger.exception("Error in main: %s", e)
         sys.exit(1)
+    finally:
+        winmm.timeEndPeriod(1)
 
     png_logger.info("HUD application exiting normally.")
 
