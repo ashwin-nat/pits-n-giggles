@@ -234,6 +234,8 @@ Window {
                 anchors.bottom: parent.bottom
                 color: "white"
                 radius: 4
+                border.color: "black"
+                border.width: 1
                 x: progressBarArea.width * root.activeSectorStartFrac
                 width: Math.max(0, progressBarArea.animatedRightEdge - x)
             }
@@ -275,14 +277,17 @@ Window {
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
-                    ctx.fillStyle = "white"
                     ctx.beginPath()
                     ctx.moveTo(width / 2, 0)
                     ctx.lineTo(width, height / 2)
                     ctx.lineTo(width / 2, height)
                     ctx.lineTo(0, height / 2)
                     ctx.closePath()
+                    ctx.fillStyle = "white"
                     ctx.fill()
+                    ctx.strokeStyle = "black"
+                    ctx.lineWidth = 1.5
+                    ctx.stroke()
                 }
 
                 Component.onCompleted: requestPaint()
