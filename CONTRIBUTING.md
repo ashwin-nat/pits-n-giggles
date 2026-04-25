@@ -1,88 +1,123 @@
 # Contributing to Pits n' Giggles
 
-Thanks for your interest in contributing! 🎉 Whether it's bug reports, feature suggestions, code, or docs — all contributions are welcome.
+Thanks for your interest in contributing!  Whether it's bug reports, feature suggestions, code, or docs — all contributions are welcome.
 
 ---
 
-## 🛠 Project Setup
+## Project Setup
 
 For detailed instructions on setting up the project, please refer to the [RUNNING.md](docs/RUNNING.md) file.
 
 ---
 
-## 💬 Before You Start
+## Before You Start
 
-Before starting any work, **please discuss your idea with the maintainer (@ashwin-nat) first**.
+### Small Changes (No Prior Discussion Needed)
+
+You can directly open a PR for small, self-contained changes such as:
+- Typo fixes
+- Minor bug fixes
+- Incorrect constants or small logic corrections
+- Documentation updates
+
+---
+
+### Non-Trivial Changes (Discussion Required)
+
+For **larger fixes or features**, you must discuss your idea with the maintainer (@ashwin-nat) before starting work.
+
 This helps avoid duplicate work, ensures alignment with the project direction, and saves everyone time.
 
-You can reach out via:
+### What counts as a non-trivial change?
 
-* GitHub Issues (comments)
-* GitHub Discussions
-* Discord (**preferred**)
+Examples include:
+- Changes to telemetry ingestion or core data flow
+- Backend architecture changes
+- Introducing new pipelines, services, or subsystems
+- Large changes (roughly >500 lines or spanning multiple areas)
 
----
+If you're unsure, it's always better to ask first.
 
-## 🧑‍💻 Making Changes
-
-* **Please check with the maintainer (@ashwin-nat) on which branch to base your work on before getting started.**
-* To make a change:
-
-  1. Create a new **feature branch** from the branch specified.
-  2. Make **small, incremental commits** with clear messages.
-  3. Follow existing naming and code style conventions.
-  4. Test your changes before committing.
+You can start a discussion via:
+- GitHub Issues (comments)
+- GitHub Discussions
+- [Discord](https://discord.gg/qQsSEHhW2V) (**preferred**)
 
 ---
 
-## 📦 Pull Request Guidelines
+## Pull Request Guidelines
 
-### 🔹 Keep PRs Small
+### Keep PRs Small and Focused
 
-* **Small PRs are strongly preferred.**
-* If you're working on a large feature:
+- PRs should address a **single concern**
+- **Small PRs are strongly preferred**
 
-  * Break it into **multiple smaller PRs**.
-  * Discuss the feature with the maintainer (@ashwin-nat) beforehand.
-  * A **dedicated branch** may be created for you to target.
-  * You can merge incrementally into that branch.
-  * Once complete, the maintainer will handle merging into the appropriate branch.
-  * **Always confirm the correct target branch before opening a PR.**
+If you're working on a large feature:
+- Break it into **multiple smaller PRs**
+- Discuss the feature beforehand (see above)
 
-### 🔹 Before Opening a PR
-
-* Ensure the change has already been discussed (see above).
-* Make sure the PR is focused and not doing too many things at once.
-
-### 🔹 Submitting a PR
-
-1. Push your feature branch and open a **PR into the appropriate branch** (confirm if unsure).
-2. In the PR description, explain:
-
-   * What you changed
-   * Why you changed it
-   * Any relevant screenshots or logs
+If you're working on a UI change/feature, please include screenshots in the PR description
 
 ---
 
-## 📝 Reviews & Feedback
+### PRs Must Be Independent
 
-* The maintainer (@ashwin-nat) may leave comments or request changes on your PR.
-* Please try to **address feedback in a timely manner** so things can move forward smoothly.
-* Feel free to ask questions or discuss feedback if something is unclear.
+Each PR must be:
+- **Independently reviewable**
+- **Independently mergeable**
 
----
+Do not submit PRs that:
+- Depend on other open PRs
+- Require other unmerged changes to function or be reviewed
 
-## 📝 Style & Formatting
-
-* Use consistent naming, spacing, and docstrings.
-* Keep UI changes minimal unless the change is meant to be visual.
-* Write clean, readable code — comments are welcome!
+If your work requires multiple steps, please discuss the approach beforehand so that a good merge plan can be figured out
 
 ---
 
-## 🙋 Need Help?
+### Large Features / Multi-PR Work
 
-Open an issue or reach out via discussions/Discord.
+If your change is large and cannot reasonably be split into fully independent PRs, please include this in the discussion as well
 
-Thanks again for being awesome! ❤️
+---
+
+### Before Opening a PR
+
+- Ensure the change has already been discussed if it is non-trivial
+- Make sure the PR is focused and not doing too many things at once
+
+---
+
+### Important
+
+PRs may be closed or deferred without detailed review if they:
+- Are too large or unfocused
+- Introduce architectural changes without prior discussion
+- Depend on other unmerged PRs
+- Appear to be blindly generated or not well understood
+
+---
+
+## Reviews & Feedback
+
+- The maintainer (@ashwin-nat) may leave comments or request changes on your PR
+- Please address feedback in a timely manner
+- You may be asked questions about your approach, design decisions, or edge cases
+- Be prepared to explain and justify your implementation
+
+---
+
+## Use of AI Tools
+
+AI-assisted tools (e.g. ChatGPT, Copilot) are allowed.
+
+However:
+- You must fully understand any code you submit and be able to explain it
+- You are responsible for correctness, edge cases, and overall design
+
+---
+
+## Need Help?
+
+Open an issue or reach out via discussions/[Discord](https://discord.gg/qQsSEHhW2V).
+
+Thanks again for contributing!
