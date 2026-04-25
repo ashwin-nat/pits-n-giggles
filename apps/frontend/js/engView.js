@@ -131,7 +131,6 @@ class EngViewRaceTable {
         this.INVALID_TEAMS = new Set(["F1 Generic"]);
         this.MANUAL_REF_LS_KEY = 'eng-view-manual-ref-driver';
         this.manualRefDriverIndex = null;
-        this.clearRefDriverBtn = document.getElementById('clear-ref-driver-btn');
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -685,14 +684,14 @@ class EngViewRaceTable {
                 cellRenderer: (params) => {
                     const data = params.data;
                     const isPinned = this.manualRefDriverIndex === data.index;
-                    const pinIcon = isPinned ? 'bi-pin-fill' : 'bi-pin';
-                    const pinStyle = isPinned ? 'color:#ffd700;' : '';
+                    const starIcon = isPinned ? 'bi-star-fill' : 'bi-star';
+                    const starStyle = isPinned ? 'color:#ffd700;' : '';
                     return `<div class="driver-name-cell">` +
                         `<div class="driver-name-cell-text">` +
                             this.createMultiLineCell({ row1: data.name, row2: data.team }) +
                         `</div>` +
-                        `<button class="pin-ref-btn" data-driver-index="${data.index}" title="Pin as reference driver">` +
-                            `<i class="bi ${pinIcon}" style="${pinStyle}"></i>` +
+                        `<button class="pin-ref-btn" data-driver-index="${data.index}" title="Set as reference driver">` +
+                            `<i class="bi ${starIcon}" style="${starStyle}"></i>` +
                         `</button>` +
                     `</div>`;
                 },
@@ -1406,14 +1405,9 @@ class EngViewRaceTable {
             const parsed = parseInt(saved, 10);
             this.manualRefDriverIndex = isNaN(parsed) ? null : parsed;
         }
-        this.clearRefDriverBtn?.addEventListener('click', () => this.#clearManualRef());
-        this.#syncClearButton();
+        document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
     }
 
-    #syncClearButton() {
-        if (!this.clearRefDriverBtn) return;
-        this.clearRefDriverBtn.style.display = this.manualRefDriverIndex !== null ? '' : 'none';
-    }
 
     #setManualRef(index) {
         if (this.manualRefDriverIndex === index) {
@@ -1422,14 +1416,12 @@ class EngViewRaceTable {
         }
         this.manualRefDriverIndex = index;
         localStorage.setItem(this.MANUAL_REF_LS_KEY, index.toString());
-        this.#syncClearButton();
         if (this.gridApi) this.gridApi.redrawRows();
     }
 
     #clearManualRef() {
         this.manualRefDriverIndex = null;
         localStorage.removeItem(this.MANUAL_REF_LS_KEY);
-        this.#syncClearButton();
         if (this.gridApi) this.gridApi.redrawRows();
     }
 
@@ -1477,7 +1469,6 @@ class EngViewRaceTable {
             if (!stillPresent) {
                 this.manualRefDriverIndex = null;
                 localStorage.removeItem(this.MANUAL_REF_LS_KEY);
-                this.#syncClearButton();
             }
         }
 
