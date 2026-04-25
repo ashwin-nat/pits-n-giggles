@@ -25,6 +25,7 @@ import asyncio
 import os
 import sys
 import time
+import threading
 from typing import List
 
 # Add the parent directory to the Python path
@@ -54,12 +55,31 @@ class FakeClock:
         self.now += seconds
 
 
+class FakeSleep:
+    """
+    Fake sleep that unblocks immediately when woken, or after a real short cap.
+    Call wake() to unblock a sleeping watchdog thread without wall-clock delay.
+    """
+
+    def __init__(self):
+        self._event = threading.Event()
+
+    def __call__(self, seconds: float) -> None:
+        # Wake immediately if signalled, otherwise cap real wait to avoid test hangs
+        self._event.wait(timeout=min(seconds, 1.0))
+        self._event.clear()
+
+    def wake(self) -> None:
+        self._event.set()
+
+
 class TestWatchDogTimerSync(TestF1Wdt):
 
     def setUp(self):
         super().setUp()
 
         self.clock = FakeClock()
+        self.fake_sleep = FakeSleep()
         self.status_events: List[bool] = []
 
         def status_callback(active: bool):
@@ -69,14 +89,24 @@ class TestWatchDogTimerSync(TestF1Wdt):
             status_callback=status_callback,
             timeout=2.0,
             clock=self.clock,
-            check_interval=0.01,  # fast polling for tests
+            check_interval=0.01,
+            sleep=self.fake_sleep,
         )
 
         self.wdt.start()
 
     def tearDown(self):
+        self.fake_sleep.wake()
         self.wdt.stop()
         super().tearDown()
+
+    def _wait_for_events(self, count: int, timeout: float = 2.0) -> None:
+        """Poll until status_events reaches `count` entries or timeout."""
+        deadline = time.monotonic() + timeout
+        while len(self.status_events) < count:
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.001)
 
     # -------------------------------------------------------------
 
@@ -102,14 +132,16 @@ class TestWatchDogTimerSync(TestF1Wdt):
         self.wdt.kick()
 
         self.clock.advance(2.1)
-        time.sleep(0.05)  # allow watchdog thread to run
+        self.fake_sleep.wake()
+        self._wait_for_events(2)
 
         self.assertFalse(self.wdt.active)
         self.assertEqual(self.status_events, [True, False])
 
     def test_no_inactive_callback_if_never_activated(self):
         self.clock.advance(5.0)
-        time.sleep(0.05)
+        self.fake_sleep.wake()
+        self._wait_for_events(1)  # should never arrive
 
         self.assertFalse(self.wdt.active)
         self.assertEqual(self.status_events, [])
@@ -117,7 +149,8 @@ class TestWatchDogTimerSync(TestF1Wdt):
     def test_kick_after_timeout_reactivates(self):
         self.wdt.kick()
         self.clock.advance(2.1)
-        time.sleep(0.05)
+        self.fake_sleep.wake()
+        self._wait_for_events(2)
 
         self.wdt.kick()
 
@@ -129,7 +162,7 @@ class TestWatchDogTimerSync(TestF1Wdt):
         self.wdt.stop()
 
         self.clock.advance(10.0)
-        time.sleep(0.05)
+        self.fake_sleep.wake()
+        self._wait_for_events(2)  # should never arrive
 
-        # No inactive callback after stop
         self.assertEqual(self.status_events, [True])
