@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.session_state import SessionState
-from lib.f1_types import CarStatusData, F1Utils, VisualTyreCompound
+from lib.f1_types import CarStatusData, F1Utils, VisualTyreCompound, LapHistoryData
 
 from ...base import BaseAPI
 
@@ -41,7 +41,8 @@ class DriversListRsp(BaseAPI):
                  session_state: SessionState,
                  is_spectator_mode: bool,
                  track_length: Optional[int] = None,
-                 is_tt_mode: bool = False
+                 is_tt_mode: bool = False,
+                 send_position_data: bool = True
                  ):
         """Get the drivers list and prepare the rsp fields
 
@@ -50,11 +51,13 @@ class DriversListRsp(BaseAPI):
             is_spectator_mode (bool): Whether the player is in spectator mode
             track_length (Optional[int], optional): The track length. Defaults to None.
             is_tt_mode (bool, optional): Whether the player is in time trial mode
+            send_position_data (bool, optional): Whether to include world position in each entry. Defaults to True.
         """
 
         self.m_session_state: SessionState = session_state
         self.m_is_spectator_mode : bool = is_spectator_mode
         self.m_track_length : int = track_length
+        self.m_send_position_data: bool = send_position_data
         self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
@@ -271,12 +274,19 @@ class DriversListRsp(BaseAPI):
             self.m_fastest_lap_tyre = None
         self.m_fastest_lap_driver = player_obj.m_driver_info.name
         self.m_curr_lap = player_obj.m_lap_info.m_current_lap
+
+        self._calcFastestSectorMs(session_history)
+
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
             "tt-data": self.m_time_trial_packet.toJSON() if self.m_time_trial_packet else None,
             "tt-setups" : self._getTTSetupJSON(),
-            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None
+            "irl-pole-lap": self.m_irl_pole_lap.toJSON() if self.m_irl_pole_lap else None,
+            "rival-info": self._getTtRivalInfo(),
+            "current-lap-info" : self._getCurrLapSubsection(player_obj),
+            "best-lap-info" : self._getBestLapTT(player_obj),
+            "last-lap-info" : self._getLastLapTT(player_obj),
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:
@@ -321,6 +331,17 @@ class DriversListRsp(BaseAPI):
             "rival-session-best-setup": rival_setup,
         }
 
+    def _getTtRivalInfo(self) -> Dict[str, Any]:
+        packet = self.m_time_trial_packet
+        rival_idx = packet.m_rivalSessionBestDataSet.m_carIdx if packet else None
+        rival = self._safeGetDriver(rival_idx) if rival_idx is not None else None
+
+        if not rival:
+            return {"name": None, "team": None}
+
+        info = rival.m_driver_info
+        return {"name": info.name, "team": info.team}
+
     def _safeGetDriver(self, index: int) -> Optional[DataPerDriver]:
         """Safely get a non-None DataPerDriver from m_driver_data by index."""
         if 0 <= index < len(self.m_session_state.m_driver_data):
@@ -339,7 +360,7 @@ class DriversListRsp(BaseAPI):
         Returns:
             Dict[str, Any]: Driver JSON data.
         """
-        return {
+        entry = {
             "driver-info": self._getDriverInfoJSON(index, driver_data),
             "delta-info": self._getDeltaInfoJSON(driver_data),
             "ers-info": self._getERSInfoJSON(driver_data),
@@ -350,6 +371,10 @@ class DriversListRsp(BaseAPI):
             "fuel-info": driver_data.getFuelStatsJSON(),
             "pit-info": driver_data.getPitInfoJSON(),
         }
+        if self.m_send_position_data:
+            motion = driver_data.m_packet_copies.m_packet_motion
+            entry["world-pos"] = [motion.m_worldPositionX, motion.m_worldPositionZ] if motion else None
+        return entry
 
     def _getDriverInfoJSON(self, index: int, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract driver information section for JSON response.
@@ -517,6 +542,9 @@ class DriversListRsp(BaseAPI):
             "visual-tyre-compound": str(self._getValueOrDefaultValue(driver_data.m_tyre_info.tyre_vis_compound, default_value="")),
             "actual-tyre-compound": str(self._getValueOrDefaultValue(driver_data.m_tyre_info.tyre_act_compound, default_value="")),
             "num-pitstops": self._getValueOrDefaultValue(driver_data.m_pit_info.m_num_stops),
+            "surface-temps": driver_data.m_tyre_info.getSurfaceTempsJSON(),
+            "inner-temps": driver_data.m_tyre_info.getInnerTempsJSON(),
+            "brakes-temps": driver_data.m_tyre_info.getBrakesTempsJSON(),
         }
 
     def _getDamageInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
@@ -525,4 +553,146 @@ class DriversListRsp(BaseAPI):
             "fl-wing-damage": driver_data.m_car_info.m_fl_wing_damage,
             "fr-wing-damage": driver_data.m_car_info.m_fr_wing_damage,
             "rear-wing-damage": driver_data.m_car_info.m_rear_wing_damage,
+            "floor-damage": driver_data.m_car_info.m_floor_damage,
+            "diffuser-damage": driver_data.m_car_info.m_diffuser_damage,
+            "sidepod-damage": driver_data.m_car_info.m_sidepod_damage,
+        }
+
+    def _calcFastestSectorMs(self, session_history: Dict[str, Any]) -> None:
+        self.m_fastest_s1_ms = None
+        self.m_fastest_s2_ms = None
+        self.m_fastest_s3_ms = None
+
+        if not session_history:
+            return
+
+        best_s1 = best_s2 = best_s3 = None
+
+        for lap in session_history["lap-history-data"]:
+            flags = lap["lap-valid-bit-flags"]
+
+            if flags & LapHistoryData.SECTOR_1_VALID_BIT_MASK:
+                val = lap["sector-1-time-in-ms"]
+                best_s1 = val if best_s1 is None else min(best_s1, val)
+
+            if flags & LapHistoryData.SECTOR_2_VALID_BIT_MASK:
+                val = lap["sector-2-time-in-ms"]
+                best_s2 = val if best_s2 is None else min(best_s2, val)
+
+            if flags & LapHistoryData.SECTOR_3_VALID_BIT_MASK:
+                val = lap["sector-3-time-in-ms"]
+                best_s3 = val if best_s3 is None else min(best_s3, val)
+
+        pb = self.m_time_trial_packet.m_personalBestDataSet if self.m_time_trial_packet else None
+
+        def resolve(best, pb_value):
+            if best is None:
+                return None
+            return min(best, pb_value) if pb else best
+
+        self.m_fastest_s1_ms = resolve(best_s1, pb.m_sector1TimeInMS if pb else None)
+        self.m_fastest_s2_ms = resolve(best_s2, pb.m_sector2TimeInMS if pb else None)
+        self.m_fastest_s3_ms = resolve(best_s3, pb.m_sector3TimeInMS if pb else None)
+
+    def _getBestLapTT(self, driver_data: DataPerDriver) -> Dict[str, Any]:
+        """Create lap details subsection for last or best lap."""
+        dflt_val = {
+            "lap-time-ms": None,
+            "sector-status": [
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA
+            ],
+            "s1-time-ms": None,
+            "s2-time-ms": None,
+            "s3-time-ms": None,
+        }
+        if not self.m_time_trial_packet:
+            return dflt_val
+
+        pb_dataset = self.m_time_trial_packet.m_personalBestDataSet
+        if self.m_fastest_s1_ms:
+            best_s1_ms = min(pb_dataset.m_sector1TimeInMS, self.m_fastest_s1_ms)
+            is_pb_s1 = pb_dataset.m_sector1TimeInMS <= self.m_fastest_s1_ms
+        else:
+            best_s1_ms = pb_dataset.m_sector1TimeInMS
+            is_pb_s1 = True
+
+        if self.m_fastest_s2_ms:
+            best_s2_ms = min(pb_dataset.m_sector2TimeInMS, self.m_fastest_s2_ms)
+            is_pb_s2 = pb_dataset.m_sector2TimeInMS <= self.m_fastest_s2_ms
+        else:
+            best_s2_ms = pb_dataset.m_sector2TimeInMS
+            is_pb_s2 = True
+
+        if self.m_fastest_s3_ms:
+            best_s3_ms = min(pb_dataset.m_sector3TimeInMS, self.m_fastest_s3_ms)
+            is_pb_s3 = pb_dataset.m_sector3TimeInMS <= self.m_fastest_s3_ms
+        else:
+            best_s3_ms = pb_dataset.m_sector3TimeInMS
+            is_pb_s3 = True
+
+        return {
+            "lap-time-ms": pb_dataset.m_lapTimeInMS,
+            "sector-status": [
+                driver_data._get_sector_status(pb_dataset.m_sector1TimeInMS,
+                                               best_s1_ms,
+                                               is_personal_best_sector_lap=is_pb_s1,
+                                                sector_valid_flag=True),
+                driver_data._get_sector_status(pb_dataset.m_sector2TimeInMS,
+                                               best_s2_ms,
+                                               is_personal_best_sector_lap=is_pb_s2,
+                                               sector_valid_flag=True),
+                driver_data._get_sector_status(pb_dataset.m_sector3TimeInMS,
+                                               best_s3_ms,
+                                               is_personal_best_sector_lap=is_pb_s3,
+                                               sector_valid_flag=True)
+            ],
+            "s1-time-ms": pb_dataset.m_sector1TimeInMS,
+            "s2-time-ms": pb_dataset.m_sector2TimeInMS,
+            "s3-time-ms": pb_dataset.m_sector3TimeInMS,
+        }
+
+    def _getLastLapTT(self, driver_data: DataPerDriver,) -> Dict[str, Any]:
+        dflt_val = {
+            "lap-time-ms": None,
+            "sector-status": [
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA,
+                F1Utils.SECTOR_STATUS_NA
+            ],
+            "s1-time-ms": None,
+            "s2-time-ms": None,
+            "s3-time-ms": None,
+        }
+        session_history = driver_data.m_packet_copies.m_packet_session_history
+        if not session_history or len(session_history.m_lapHistoryData) < 2:
+            return dflt_val
+
+        last_lap_data = session_history.m_lapHistoryData[-2]
+        return {
+            "lap-time-ms": last_lap_data.m_lapTimeInMS,
+            "sector-status": [
+                driver_data._get_sector_status(last_lap_data.m_sector1TimeInMS,
+                                               self.m_fastest_s1_ms,
+                                               is_personal_best_sector_lap=(
+                                                   last_lap_data.m_sector1TimeInMS <= self.m_fastest_s1_ms \
+                                                    if self.m_fastest_s1_ms is not None else True),
+                                                sector_valid_flag=last_lap_data.isSector1Valid()),
+                driver_data._get_sector_status(last_lap_data.m_sector2TimeInMS,
+                                               self.m_fastest_s2_ms,
+                                               is_personal_best_sector_lap=(
+                                                    last_lap_data.m_sector2TimeInMS <= self.m_fastest_s2_ms \
+                                                    if self.m_fastest_s2_ms is not None else True),
+                                                    sector_valid_flag=last_lap_data.isSector2Valid()),
+                driver_data._get_sector_status(last_lap_data.m_sector3TimeInMS,
+                                               self.m_fastest_s3_ms,
+                                               is_personal_best_sector_lap=(
+                                                   last_lap_data.m_sector3TimeInMS <= self.m_fastest_s3_ms \
+                                                    if self.m_fastest_s3_ms is not None else True),
+                                               sector_valid_flag=last_lap_data.isSector3Valid())
+            ],
+            "s1-time-ms": last_lap_data.m_sector1TimeInMS,
+            "s2-time-ms": last_lap_data.m_sector2TimeInMS,
+            "s3-time-ms": last_lap_data.m_sector3TimeInMS,
         }

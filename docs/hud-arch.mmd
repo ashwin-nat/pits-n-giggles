@@ -1,115 +1,150 @@
-%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#fff','primaryTextColor':'#000','primaryBorderColor':'#999','lineColor':'#666','secondaryColor':'#f9f9f9','tertiaryColor':'#fff','background':'#ffffff','mainBkg':'#ffffff','clusterBkg':'#f8f9fa','clusterBorder':'#adb5bd','edgeLabelBackground':'#ffffff'}}}%%
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor':'#1e293b',
+  'primaryTextColor':'#e2e8f0',
+  'primaryBorderColor':'#475569',
+  'lineColor':'#94a3b8',
+  'secondaryColor':'#0f172a',
+  'tertiaryColor':'#1e293b',
+  'background':'#0f172a',
+  'mainBkg':'#1e293b',
+  'clusterBkg':'#1e293b',
+  'clusterBorder':'#334155',
+  'edgeLabelBackground':'#1e293b',
+  'titleColor':'#f1f5f9',
+  'fontSize':'15px'
+}}}%%
 
 graph TD
 
-subgraph EXT["🔌 External Threads"]
-    direction TB
+subgraph EXT["⚡ External Threads"]
     IPC["IPC Server Thread"]
     SUB["IPC Subscriber Client Thread"]
 end
 
-subgraph OM["L1 - OverlaysManager"]
-    direction TB
+subgraph OM["L1 · OverlaysManager"]
     OM_Cmd["handle_control_cmd()"]
     OM_Data["handle_data_update()"]
     OM_Req["perform_request()"]
 end
 
-subgraph WMALL["L2 - WindowManager"]
-    direction TB
-    subgraph WM["WindowManager API"]
-        direction TB
-        API_BC["broadcast_data()"]
-        API_UC["unicast_data()"]
-        API_REQ["request()"]
-    end
-
-    subgraph WMSIG["WindowManager Signals"]
-        direction TB
-        Sig_CMD["cmd_signal"]
-        Sig_REQ["request_signal"]
-        Sig_RESP["response_signal"]
-        RespStore["_response_data"]
-    end
+subgraph WMALL["L2 · WindowManager"]
+    API_BC["broadcast_data()"]
+    API_UC["unicast_data()"]
+    API_HF["send_high_freq_data()"]
+    API_REQ["request()"]
+    Sig_CMD["cmd_signal"]
+    Sig_HF["mgmt_high_freq_signal"]
+    Sig_REQ["request_signal"]
+    Sig_RESP["response_signal"]
+    RespStore["_response_data"]
 end
 
-subgraph BASE["L3 - Overlay Base Layer"]
-    direction TB
-    BaseOverlay["BaseOverlay<br/>Command Registry<br/>Request Registry"]
+subgraph BASE["L3 · BaseOverlay"]
+    BaseOverlay["BaseOverlay<br/><i>Command &amp; Request Registry · IPC dispatch · Lifecycle hooks</i>"]
 end
 
-subgraph OVERLAYS["L4 - Implementation Layer"]
-    direction TB
-    TimingTowerOverlay["Timing Tower Overlay"]
-    LapTimeOverlay["Lap Time Overlay"]
+subgraph BASEQML["L4 · BaseOverlayQML"]
+    BaseOverlayQML["BaseOverlayQML<br/><i>QML engine · Window management · Resize · Opacity · Visibility</i>"]
+    FrameTimer["QTimer · frame_timer<br/><i>periodic render_frame() tick</i>"]
+    HFCache["HF data cache<br/><i>_latest_hf · _hf_pending</i>"]
+end
 
-    subgraph MFD["MFD System"]
-        direction TB
+subgraph OVERLAYS["L5 · Overlay Implementations"]
+    subgraph EVTOVERLAYS["Event-driven"]
+        TimingTowerOverlay["Timing Tower"]
+        LapTimeOverlay["Lap Timer"]
+        TrackMapOverlay["Track Map"]
         MFDCommandRouter["MFD Overlay"]
-        subgraph MFDCTRL["Control Path"]
-            MFDHandlers["Control Handler"]
-            SwitchPage["_switch_page()"]
-        end
-
-        subgraph MFDDATA["Data Path"]
-            ForwardData["Forward to Page"]
-            ActivePage["Active Page"]
-        end
+    end
+    subgraph HFOVERLAYS["HF / Animation"]
+        InputTelemetryOverlay["Input Telemetry"]
+        CircuitInfoOverlay["Circuit Info"]
+        TrackRadarOverlay["Track Radar"]
+        HudOverlay["HUD Overlay"]
     end
 end
 
-subgraph PAGES["L5 - MFD Page Events"]
-    direction TB
+subgraph MFD["L5a · MFD Internals"]
+    MFDHandlers["Control Handler"]
+    SwitchPage["_switch_page()"]
+    ForwardData["Forward to Page"]
+    ActivePage["Active Page"]
+end
+
+subgraph PAGES["L6 · MFD Page Events"]
     PageReg["Event Registry"]
     UpdateUI["Update UI"]
 end
 
-%% ========= Top-Down Flows =========
-IPC -->|control cmd| OM_Cmd
-SUB -->|data update| OM_Data
-IPC -->|request| OM_Req
+%% ── External → OverlaysManager ──────────────────────────────────────────
+IPC -->|"control cmd"| OM_Cmd
+SUB -->|"data update"| OM_Data
+IPC -->|"request"| OM_Req
 
+%% ── OverlaysManager → WindowManager ─────────────────────────────────────
 OM_Cmd --> API_UC
 OM_Data --> API_BC
+OM_Data -->|"hf data"| API_HF
 OM_Req --> API_REQ
 
+%% ── WindowManager → Signals ──────────────────────────────────────────────
 API_BC --> Sig_CMD
 API_UC --> Sig_CMD
+API_HF --> Sig_HF
 API_REQ --> Sig_REQ
 
+%% ── Signals → BaseOverlay ────────────────────────────────────────────────
 Sig_CMD --> BaseOverlay
 Sig_REQ --> BaseOverlay
+Sig_HF -->|"_handle_high_freq_data()"| HFCache
 
-BaseOverlay --> TimingTowerOverlay
-BaseOverlay --> LapTimeOverlay
-BaseOverlay --> MFDCommandRouter
+%% ── BaseOverlay → BaseOverlayQML ─────────────────────────────────────────
+BaseOverlay --> BaseOverlayQML
+BaseOverlayQML --- FrameTimer
+BaseOverlayQML --- HFCache
 
-%% Response path (upward dotted)
-BaseOverlay -.->|emit response| Sig_RESP
-Sig_RESP --> RespStore
-RespStore --> OM_Req
+%% ── Event-driven overlays ────────────────────────────────────────────────
+BaseOverlayQML --> TimingTowerOverlay
+BaseOverlayQML --> LapTimeOverlay
+BaseOverlayQML --> TrackMapOverlay
+BaseOverlayQML --> MFDCommandRouter
 
-%% MFD-specific flows
-MFDCommandRouter -->|control| MFDHandlers
-MFDCommandRouter -->|data| ForwardData
+%% ── HF overlays ──────────────────────────────────────────────────────────
+FrameTimer -->|"render_frame()"| InputTelemetryOverlay
+FrameTimer -->|"render_frame()"| CircuitInfoOverlay
+FrameTimer -->|"render_frame()"| TrackRadarOverlay
+FrameTimer -->|"render_frame()"| HudOverlay
 
+%% ── Response path ────────────────────────────────────────────────────────
+OM_Req -.->|"awaits"| RespStore
+BaseOverlay -.->|"emit response"| Sig_RESP
+Sig_RESP -.-> RespStore
+
+%% ── MFD internals ────────────────────────────────────────────────────────
+MFDCommandRouter -->|"control"| MFDHandlers
+MFDCommandRouter -->|"data"| ForwardData
 MFDHandlers --> SwitchPage
 ForwardData --> ActivePage
-
 ActivePage --> PageReg
 PageReg --> UpdateUI
 
-%% ========= Light Theme Styles =========
-classDef thread fill:#fee2e2,stroke:#dc2626,color:#991b1b,stroke-width:2.5px,rx:8
-classDef manager fill:#dbeafe,stroke:#2563eb,color:#1e40af,stroke-width:2.5px,rx:8
-classDef signal fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2.5px,rx:8
-classDef overlay fill:#d1fae5,stroke:#10b981,color:#065f46,stroke-width:2.5px,rx:8
-classDef special fill:#e0e7ff,stroke:#6366f1,color:#3730a3,stroke-width:2.5px,rx:8
-classDef page fill:#fae8ff,stroke:#a855f7,color:#6b21a8,stroke-width:2.5px,rx:8
+%% ── Styles ───────────────────────────────────────────────────────────────
+classDef thread    fill:#450a0a,stroke:#ef4444,color:#fca5a5,stroke-width:2px,font-weight:bold
+classDef manager   fill:#172554,stroke:#3b82f6,color:#93c5fd,stroke-width:2px
+classDef signal    fill:#422006,stroke:#f59e0b,color:#fcd34d,stroke-width:2px
+classDef base      fill:#052e16,stroke:#22c55e,color:#86efac,stroke-width:2px,font-weight:bold
+classDef overlay   fill:#0f2722,stroke:#10b981,color:#6ee7b7,stroke-width:2px
+classDef hfoverlay fill:#1e1b4b,stroke:#818cf8,color:#c7d2fe,stroke-width:2px
+classDef timer     fill:#1c1917,stroke:#a8a29e,color:#d6d3d1,stroke-width:2px,stroke-dasharray:4 3
+classDef special   fill:#2e1065,stroke:#a855f7,color:#d8b4fe,stroke-width:2px
+classDef page      fill:#500724,stroke:#ec4899,color:#f9a8d4,stroke-width:2px
 
 class IPC,SUB thread
-class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_REQ,RespStore manager
-class Sig_CMD,Sig_REQ,Sig_RESP signal
-class BaseOverlay,TimingTowerOverlay,LapTimeOverlay overlay
-class MFDCommandRouter,MFDHandlers,SwitchPage,ForwardData special
-class ActivePage,PageReg,UpdateUI page
+class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_HF,API_REQ,RespStore manager
+class Sig_CMD,Sig_HF,Sig_REQ,Sig_RESP signal
+class BaseOverlay,BaseOverlayQML base
+class HFCache,FrameTimer timer
+class TimingTowerOverlay,LapTimeOverlay,TrackMapOverlay overlay
+class InputTelemetryOverlay,CircuitInfoOverlay,TrackRadarOverlay,HudOverlay hfoverlay
+class MFDCommandRouter,MFDHandlers,SwitchPage,ForwardData,ActivePage special
+class PageReg,UpdateUI page

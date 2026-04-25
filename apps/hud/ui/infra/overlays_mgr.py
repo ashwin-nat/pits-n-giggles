@@ -26,20 +26,18 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import QMetaObject, Qt
-from PySide6.QtWidgets import QApplication
-
 from apps.hud.common import get_ref_row_index
-from apps.hud.ui.overlays import (BaseOverlay, InputTelemetryOverlay,
-                                  LapTimerOverlay, MfdOverlay,
-                                  TimingTowerOverlay, TrackRadarOverlay)
+from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
+                                  InputTelemetryOverlay, LapTimerOverlay,
+                                  MfdOverlay, TimingTowerOverlay,
+                                  TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import InputTelemetryData, LiveSessionMotionInfo
+from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -60,19 +58,20 @@ class OverlaysMgr:
             os.environ["QT_QUICK_BACKEND"] = "software"
             logger.debug("Using software backend")
 
-        self.app = QApplication()
         self.logger = logger
-        load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
         self.debug_mode = debug
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
+        self._local_wdt_ok: bool = False
+        self._core_wdt_ok: bool = False
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
-            timeout=5.0, # TODO: Make this configurable
-        )
+            timeout=settings.Display.wdt_timeout,
+        ) if settings.Display.wdt_timeout is not None else None
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
+        load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
 
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_lap_timer,
@@ -80,7 +79,8 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.lap_timer_ui_scale,
+            scale_factor=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID].scale_factor,
+            min_overlay_style=settings.HUD.lap_timer_minimal,
         )
 
         self._register_overlay_if_enabled(
@@ -89,7 +89,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.timing_tower_ui_scale,
+            scale_factor=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID].scale_factor,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
             show_team_logos=settings.HUD.timing_tower_col_options.show_team_logos,
             show_tyre_info=settings.HUD.timing_tower_col_options.show_tyre_info,
@@ -105,7 +105,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.input_overlay_ui_scale,
+            scale_factor=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
         )
@@ -129,9 +129,32 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.track_radar_overlay_ui_scale,
+            scale_factor=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             idle_opacity=settings.HUD.track_radar_idle_opacity,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_hud_overlay,
+            overlay_cls=HudOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[HudOverlay.OVERLAY_ID].scale_factor,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            speed_unit=settings.HUD.hud_overlay_speed_unit,
+            fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_circuit_info,
+            overlay_cls=CircuitInfoOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID].scale_factor,
+            circuit_info_length=settings.HUD.circuit_info_length,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
         if settings.HUD.show_mfd:
@@ -143,7 +166,7 @@ class OverlaysMgr:
                     self.logger,
                     locked=True,
                     opacity=settings.HUD.overlays_opacity,
-                    scale_factor=settings.HUD.mfd_ui_scale,
+                    scale_factor=settings.HUD.layout[MfdOverlay.OVERLAY_ID].scale_factor,
                     windowed_overlay=settings.HUD.use_windowed_overlays
                 )
             )
@@ -155,18 +178,16 @@ class OverlaysMgr:
     def run(self):
         """Start the overlays manager"""
         self.running = True
-        self.wdt.start()
-        self.app.exec()
+        if self.wdt:
+            self.wdt.start()
+        self.window_manager.run()
 
     def stop(self):
         """Stop the overlays manager"""
         self.running = False
-        self.wdt.stop()
-        QMetaObject.invokeMethod(
-            self.app,
-            "quit",
-            Qt.ConnectionType.QueuedConnection
-        )
+        if self.wdt:
+            self.wdt.stop()
+        self.window_manager.stop()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get current stats for all overlays
@@ -183,17 +204,19 @@ class OverlaysMgr:
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
-        self.wdt.kick()
+        if self.wdt:
+            self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
-        # self._handle_core_wdt_status(data) #TODO: fix
+        self._handle_core_wdt_status(data)
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
         self._input_telemetry_update(data)
         self._motion_update(data)
+        self._hud_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID , 'stream_overlay_update', data)
+            self.window_manager.broadcast_data('stream_overlay_update', data)
 
     # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
@@ -227,7 +250,7 @@ class OverlaysMgr:
         # --------------------------------------------------
         try:
             self.window_manager.broadcast_data("__set_locked_state__", args, high_prio=True)
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception("Failed to broadcast locked state")
             rsp["status"] = "error"
             rsp["message"] = "Failed to apply locked state to overlays"
@@ -251,9 +274,9 @@ class OverlaysMgr:
                     overlay_id,
                     curr_params,
                 )
-                layout[overlay_id] = curr_params.toJSON()
+                layout[overlay_id] = curr_params.toJSON() if curr_params else {}
 
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(
                     "Aborting layout capture; failed for overlay '%s'",
                     overlay_id,
@@ -271,7 +294,7 @@ class OverlaysMgr:
 
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
-        self.logger.debug(f"Setting overlays opacity to {opacity}%")
+        self.logger.debug("Setting overlays opacity to %s%%", opacity)
         self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
@@ -305,7 +328,7 @@ class OverlaysMgr:
                     "__set_config__",
                     overlay_layout,
                 )
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(
                     "Failed to apply layout for overlay '%s'",
                     overlay_id,
@@ -321,15 +344,24 @@ class OverlaysMgr:
     def set_scale_factor(self, oid: str, scale_factor: float):
         """Set overlays scale factor to specified overlay"""
 
-        self.logger.debug(f"Setting overlay {oid} scale factor to {scale_factor}")
+        self.logger.debug("Setting overlay %s scale factor to %s", oid, scale_factor)
         self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
     def set_track_radar_idle_opacity(self, opacity: int):
-        self.logger.debug(f"Setting track radar idle opacity to {opacity}%")
+        self.logger.debug("Setting track radar idle opacity to %s%%", opacity)
         self.window_manager.unicast_data(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
+            high_prio=True,
+        )
+
+    def set_circuit_info_length(self, length: int):
+        self.logger.debug("Setting circuit info length to %spx", length)
+        self.window_manager.unicast_data(
+            overlay_id=CircuitInfoOverlay.OVERLAY_ID,
+            event='set_circuit_info_length',
+            data={'length': length},
             high_prio=True,
         )
 
@@ -341,7 +373,7 @@ class OverlaysMgr:
 
     def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window info for {overlay_id}")
+        self.logger.debug("Requesting window info for %s", overlay_id)
         ret = self.window_manager.request(overlay_id, "get_window_info", timeout_ms=timeout_ms)
         if not ret:
             return None
@@ -349,7 +381,7 @@ class OverlaysMgr:
 
     def _get_overlay_stats(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
         """Thread-safe query for specific window info."""
-        self.logger.debug(f"Requesting window stats for {overlay_id}")
+        self.logger.debug("Requesting window stats for %s", overlay_id)
         return self.window_manager.request(overlay_id, "get_window_stats", timeout_ms=timeout_ms)
 
     def _register_overlay_if_enabled(
@@ -363,7 +395,7 @@ class OverlaysMgr:
         **overlay_kwargs
     ):
         if not enabled:
-            self.logger.debug(f"{overlay_cls.OVERLAY_ID} overlay is disabled")
+            self.logger.debug("%s overlay is disabled", overlay_cls.OVERLAY_ID)
             return
 
         self.window_manager.register_overlay(
@@ -380,17 +412,15 @@ class OverlaysMgr:
 
     def _input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        self.window_manager.unicast_high_freq_data(
-            InputTelemetryOverlay.OVERLAY_ID,
-            InputTelemetryData.from_json(data)
-        )
+        self.window_manager.send_high_freq_data(InputTelemetryData.from_json(data))
 
     def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
-        self.window_manager.unicast_high_freq_data(
-            TrackRadarOverlay.OVERLAY_ID,
-            LiveSessionMotionInfo.from_json(data)
-        )
+        self.window_manager.send_high_freq_data(LiveSessionMotionInfo.from_json(data))
+
+    def _hud_overlay_update(self, data: Dict[str, Any]):
+        """Send HUD data to HUD overlay."""
+        self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
@@ -399,15 +429,21 @@ class OverlaysMgr:
         self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
 
     def _wdt_status_callback(self, active: bool):
-        """Watchdog status callback. Only handles loss of data from core."""
-        self.logger.debug(f"Watchdog status callback: {active}")
-        if not active:
-            self._set_telemetry_active(False)
+        """Watchdog status callback. Tracks local WDT (data arriving from core)."""
+        self.logger.debug("Local WDT status: %s", active)
+        self._local_wdt_ok = active
+        self._update_telemetry_active()
 
     def _handle_core_wdt_status(self, data: Dict[str, Any]):
-        """Handle core watchdog status."""
-        core_wdt_status = data.get("wdt-status", False)
-        self._set_telemetry_active(core_wdt_status)
+        """Handle core watchdog status (core receiving sim data)."""
+        self._core_wdt_ok = data.get("wdt-status", False)
+        self._update_telemetry_active()
+
+    def _update_telemetry_active(self):
+        """Set telemetry active only when both local and core WDT are satisfied."""
+        local_ok = True if self.wdt is None else self._local_wdt_ok
+        combined = local_ok and self._core_wdt_ok
+        self._set_telemetry_active(combined)
 
     def _prep_race_table_data(self, data: Dict[str, Any]):
         """Prepare race table data for overlays."""

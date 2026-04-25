@@ -30,6 +30,7 @@ from .pit_rejoin import PitRejoinPredictionPage
 from .tyre_sets import TyreSetsPage
 from .tyre_wear import TyreInfoPage
 from .weather import WeatherForecastPage
+from .pace_comp.pace_comp import PaceCompPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -42,4 +43,5 @@ __all__ = [
     "TyreSetsPage",
     "TyreInfoPage",
     "WeatherForecastPage",
+    "PaceCompPage",
 ]

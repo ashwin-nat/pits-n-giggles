@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from enum import Enum
 from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
@@ -31,65 +32,79 @@ from ..diff import ConfigDiffMixin
 
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
-LAP_TIMER_OVERLAY_ID = "lap_timer"
-TIMING_TOWER_OVERLAY_ID = "timing_tower"
-MFD_OVERLAY_ID = "mfd"
-TRACK_MAP_OVERLAY_ID = "track_map"
-INPUT_TELEMETRY_OVERLAY_ID = "input_telemetry"
-TRACK_RADAR_OVERLAY_ID = "track_radar"
+class OverlayId(str, Enum):
+    LAP_TIMER       = "lap_timer"
+    TIMING_TOWER    = "timing_tower"
+    MFD             = "mfd"
+    TRACK_MAP       = "track_map"
+    INPUT_TELEMETRY = "input_telemetry"
+    TRACK_RADAR     = "track_radar"
+    HUD             = "hud_overlay"
+    CIRCUIT_INFO    = "circuit_info"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
 class OverlayPosition(ConfigDiffMixin, BaseModel):
     """
-    Screen position for a single overlay.
+    Screen position and scale for a single overlay.
 
     No validation is intentionally performed here.
     """
     x: int = Field(description="X position in pixels")
     y: int = Field(description="Y position in pixels")
+    scale_factor: float = Field(default=1.0, description="UI scale factor (multiplier)")
 
 
-    def toJSON(self) -> Dict[str, int]:
+    def toJSON(self) -> Dict:
         """Used for Qt signal/slot transport."""
         return {
             "x": self.x,
             "y": self.y,
+            "scale_factor": self.scale_factor,
         }
 
     @classmethod
-    def fromJSON(cls, json_dict: Dict[str, int]) -> "OverlayPosition":
+    def fromJSON(cls, json_dict: Dict) -> "OverlayPosition":
         """Used for Qt signal/slot transport."""
         return cls(
             x=json_dict["x"],
             y=json_dict["y"],
+            scale_factor=json_dict.get("scale_factor", 1.0),
         )
 
 # -------------------------------------- DEFAULTS ----------------------------------------------------------------------
 
 DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
-    LAP_TIMER_OVERLAY_ID: OverlayPosition(
+    OverlayId.LAP_TIMER: OverlayPosition(
         x=600,
         y=60,
     ),
-    TIMING_TOWER_OVERLAY_ID: OverlayPosition(
+    OverlayId.TIMING_TOWER: OverlayPosition(
         x=10,
         y=55,
     ),
-    MFD_OVERLAY_ID: OverlayPosition(
+    OverlayId.MFD: OverlayPosition(
         x=10,
         y=355,
     ),
-    # TRACK_MAP_OVERLAY_ID: OverlayPosition(
+    # OverlayId.TRACK_MAP: OverlayPosition(
     #     x=10,
     #     y=600,
     # ),
-    INPUT_TELEMETRY_OVERLAY_ID: OverlayPosition(
+    OverlayId.INPUT_TELEMETRY: OverlayPosition(
         x=10,
         y=600,
     ),
-    TRACK_RADAR_OVERLAY_ID: OverlayPosition(
+    OverlayId.TRACK_RADAR: OverlayPosition(
         x=40,
+        y=600,
+    ),
+    OverlayId.HUD: OverlayPosition(
+        x=300,
+        y=600,
+    ),
+    OverlayId.CIRCUIT_INFO: OverlayPosition(
+        x=600,
         y=600,
     ),
 }

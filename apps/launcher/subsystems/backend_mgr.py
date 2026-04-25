@@ -147,6 +147,8 @@ class BackendAppMgr(PngAppMgrBase):
                 "input_overlay_toggle_udp_action_code",
                 "track_radar_overlay_toggle_udp_action_code",
                 "mfd_interaction_udp_action_code",
+                "hud_overlay_toggle_udp_action_code",
+                "circuit_info_toggle_udp_action_code",
             ],
         }):
             for fields_in_category in udp_action_codes_diff.values():
@@ -160,6 +162,7 @@ class BackendAppMgr(PngAppMgrBase):
             "Network": [
                 "telemetry_port",
                 "server_port",
+                "bind_address",
                 "wdt_interval_sec",
                 "broker_xsub_port",
                 "enable_pkt_ordering",
@@ -174,6 +177,7 @@ class BackendAppMgr(PngAppMgrBase):
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
+            "Prediction": [],
         }):
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields change: "
                            f"{json.dumps(restart_required_fields_diff, indent=2)}")

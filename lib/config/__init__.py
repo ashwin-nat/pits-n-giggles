@@ -25,13 +25,11 @@
 from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, maybe_migrate_legacy_hud_layout,
                  save_config_to_ini, save_config_to_json)
-from .schema import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                     MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                     TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                     CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, MfdPageSettings, MfdSettings,
-                     NetworkSettings, OverlayPosition, PitTimeLossF1,
-                     PitTimeLossF2, PngSettings, PrivacySettings,
+from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
+                     HttpsSettings, HudSettings, HudOverlayFuelEstimationMode,
+                     HudOverlaySpeedUnit, MfdPageId, MfdPageSettings, MfdSettings,
+                     NetworkSettings, OverlayId, OverlayPosition, PitTimeLossF1,
+                     PitTimeLossF2, PngSettings, PredictionSettings, PrivacySettings,
                      StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions,
                      WeatherMFDUIType)
 from .types import FilePathStr
@@ -47,14 +45,18 @@ __all__ = [
     'PitTimeLossF2',
     'SubSysCtrl',
     'PngSettings',
+    'PredictionSettings',
     'PrivacySettings',
     'StreamOverlaySettings',
     'HttpsSettings',
     'HudSettings',
+    'MfdPageId',
     'MfdSettings',
     'MfdPageSettings',
     'TimingTowerColOptions',
     'WeatherMFDUIType',
+    'HudOverlaySpeedUnit',
+    'HudOverlayFuelEstimationMode',
 
     'FilePathStr',
 
@@ -69,10 +71,5 @@ __all__ = [
 
     'OverlayPosition',
 
-    'INPUT_TELEMETRY_OVERLAY_ID',
-    'LAP_TIMER_OVERLAY_ID',
-    'MFD_OVERLAY_ID',
-    'TIMING_TOWER_OVERLAY_ID',
-    'TRACK_MAP_OVERLAY_ID',
-    'TRACK_RADAR_OVERLAY_ID',
+    'OverlayId',
 ]

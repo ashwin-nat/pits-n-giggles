@@ -31,6 +31,7 @@ from PySide6.QtQuick import QQuickItem
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 from lib.f1_types import F1Utils
 
 if TYPE_CHECKING:
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 
 class PitRejoinPredictionPage(MfdPageBase):
     """Pit rejoin position prediction page."""
-    KEY = "pit_rejoin"
+    KEY = MfdPageId.PIT_REJOIN
     QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
@@ -60,9 +61,6 @@ class PitRejoinPredictionPage(MfdPageBase):
                 data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
             """
             page_item = self._page_item
-            if not page_item:
-                return
-
             session_type = data["event-type"]
             if not is_race_type_session(session_type):
                 self._show_empty_table(page_item)

@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, final
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 
 class LapTimesPage(MfdPageBase):
     """Lap Times MFD Page."""
-    KEY = "lap_times"
+    KEY = MfdPageId.LAP_TIMES
     QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
 
     NUM_ROWS = 5
@@ -53,8 +54,7 @@ class LapTimesPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_activated(self, item: QQuickItem):
-        super().on_page_activated(item)
+    def on_page_activated(self, _: QQuickItem):
         # Invalidate the cache
         self._last_processed_data = []
 
@@ -89,8 +89,6 @@ class LapTimesPage(MfdPageBase):
             glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
 
             page_item = self._page_item
-            if not page_item:
-                return
 
             # Build the complete rows array
             all_rows = []

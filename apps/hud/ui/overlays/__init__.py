@@ -29,7 +29,8 @@ from .mfd import MfdOverlay
 from .timing_tower import TimingTowerOverlay
 from .track_map import TrackMapOverlay
 from .track_radar import TrackRadarOverlay
-
+from .hud_overlay.hud_overlay import HudOverlay
+from .circuit_info.circuit_info import CircuitInfoOverlay
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
@@ -40,4 +41,6 @@ __all__ = [
     "TimingTowerOverlay",
     "TrackMapOverlay",
     "TrackRadarOverlay",
+    "HudOverlay",
+    "CircuitInfoOverlay",
 ]

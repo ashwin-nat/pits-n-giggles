@@ -26,8 +26,10 @@ import logging
 import os
 import platform
 import socket
+from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union, List
+from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
+                    Union)
 
 import msgpack
 import socketio
@@ -41,6 +43,7 @@ from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
 from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
+from lib.event_counter import EventCounter
 
 from .client_types import ClientType
 
@@ -52,6 +55,7 @@ class BaseWebServer:
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 bind_address: str,
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
@@ -70,6 +74,7 @@ class BaseWebServer:
         """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
+        self.m_bind_address: str = bind_address
         self.m_ver_str = ver_str
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
@@ -81,6 +86,7 @@ class BaseWebServer:
         self._post_start_callback: Optional[Callable[[], Awaitable[None]]] = None
         self._on_client_register_callback: Optional[Callable[[ClientType, str], Awaitable[None]]] = None
         self._on_client_disconnect_callback: Optional[Callable[[str], Awaitable[None]]] = None
+        self.m_stats = EventCounter()
 
         self.m_base_dir = Path(__file__).resolve().parent.parent.parent
         template_dir = self.m_base_dir / "apps" / "frontend" / "html"
@@ -128,19 +134,53 @@ class BaseWebServer:
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
+
+            # Security headers (C-003)
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            if self.m_cert_path:
+                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
             return response
 
     def http_route(self, path: str, **kwargs) -> Callable:
         """Register a HTTP route."""
         def decorator(func: Callable[..., Coroutine]) -> Callable:
-            self.m_app.route(path, **kwargs)(func)
+            @wraps(func)
+            async def wrapped(*args: Any, **inner_kwargs: Any):
+                method = quart_request.method if quart_request else "UNKNOWN"
+                route_key = f"{method} {path}"
+                self.m_stats.track_event("__HTTP__", "__TOTAL__")
+                self.m_stats.track_event("__HTTP__", route_key)
+                try:
+                    result = await func(*args, **inner_kwargs)
+                    self.m_stats.track_event("__HTTP_OK__", route_key)
+                    return result
+                except Exception:
+                    self.m_stats.track_event("__HTTP_EXCEPTION__", route_key)
+                    raise
+
+            self.m_app.route(path, **kwargs)(wrapped)
             return func
         return decorator
 
     def socketio_event(self, event: str) -> Callable:
         """Register a SocketIO event."""
         def decorator(func: Callable[..., Coroutine]) -> Callable:
-            self.m_sio.on(event)(func)
+            @wraps(func)
+            async def wrapped(*args: Any, **inner_kwargs: Any):
+                self.m_stats.track_event("__SOCKET_IN__", "__TOTAL__")
+                self.m_stats.track_event("__SOCKET_IN__", event)
+                try:
+                    result = await func(*args, **inner_kwargs)
+                    self.m_stats.track_event("__SOCKET_IN_OK__", event)
+                    return result
+                except Exception:
+                    self.m_stats.track_event("__SOCKET_IN_EXCEPTION__", event)
+                    raise
+
+            self.m_sio.on(event)(wrapped)
             return func
         return decorator
 
@@ -155,6 +195,7 @@ class BaseWebServer:
             Args:
                 sid (str): Session ID of the connected client.
             """
+            self.m_stats.track_event("__SOCKET_IN__", "__CONNECT__")
             self.m_logger.debug("Client connected: %s", sid)
 
         @self.m_sio.event
@@ -165,6 +206,7 @@ class BaseWebServer:
             Args:
                 sid (str): Session ID of the disconnected client.
             """
+            self.m_stats.track_event("__SOCKET_IN__", "__DISCONNECT__")
             self.m_logger.debug("Client disconnected: %s", sid)
             if self._on_client_disconnect_callback:
                 await self._on_client_disconnect_callback(sid)
@@ -179,23 +221,32 @@ class BaseWebServer:
                 sid (str): Session ID of the registering client.
                 data (Dict[str, str]): Registration data containing client type.
             """
-            self.m_logger.debug('[CLIENT_REG] Client registered. SID = %s Type = %s ID=%s',
-                                sid, data['type'], data.get('id', 'N/A'))
             client_type = data.get('type')
+            self.m_stats.track_event("__SOCKET_IN__", "register-client")
+            self.m_logger.debug('[CLIENT_REG] Client registered. SID = %s Type = %s ID=%s',
+                                sid, client_type, data.get('id', 'N/A'))
             if not client_type:
+                self.m_stats.track_event("__SOCKET_IN_INVALID__", "missing-client-type")
                 return
 
-            if client_type in {'player-stream-overlay', 'race-table', 'hud'}:
+            try:
+                parsed_client_type = ClientType(client_type)
+            except ValueError:
+                self.m_stats.track_event("__SOCKET_IN_INVALID__", "unknown-client-type")
+                return
+
+            if ClientType.is_valid(client_type):
+                self.m_stats.track_event("__CLIENT_REG__", client_type)
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_register_callback:
-                    await self._on_client_register_callback(ClientType(client_type), sid)
+                    await self._on_client_register_callback(parsed_client_type, sid)
                 if self.m_debug_mode:
                     self.m_logger.debug('[CLIENT_REG] Client %s joined room %s', sid, client_type)
 
                     room = self.m_sio.manager.rooms.get('/', {}).get(client_type)
-                    self.m_logger.debug(f'[CLIENT_REG] Current members of {client_type}: {room}')
+                    self.m_logger.debug('[CLIENT_REG] Current members of %s: %s', client_type, room)
 
-            interested_events = self.m_client_event_mappings.get(ClientType(client_type))
+            interested_events = self.m_client_event_mappings.get(parsed_client_type)
             if interested_events:
                 for event in interested_events:
                     await self.m_sio.enter_room(sid, event)
@@ -203,7 +254,7 @@ class BaseWebServer:
                         self.m_logger.debug('Client %s joined room %s', sid, event)
 
                         room = self.m_sio.manager.rooms.get('/', {}).get(event)
-                        self.m_logger.debug(f'[CLIENT_REG] Current members of {event}: {room}')
+                        self.m_logger.debug('[CLIENT_REG] Current members of %s: %s', event, room)
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
         """
@@ -215,6 +266,7 @@ class BaseWebServer:
             client_type (ClientType): The client type to send the event to.
         """
         packed = msgpack.packb(data, use_bin_type=True)
+        self._track_socket_emit_mcast(packed, room=str(client_type))
         await self.m_sio.emit(event, packed, room=str(client_type))
 
     async def send_to_clients_interested_in_event(self, event: str, data: Dict[str, Any]) -> None:
@@ -226,6 +278,7 @@ class BaseWebServer:
             data (Dict[str, Any]): The data to send with the event.
         """
         packed = msgpack.packb(data, use_bin_type=True)
+        self._track_socket_emit_mcast(packed, room=event)
         await self.m_sio.emit(event, packed, room=event)
 
     async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
@@ -238,7 +291,17 @@ class BaseWebServer:
             client_id (str): The client ID to send the event to.
         """
         packed = msgpack.packb(data, use_bin_type=True)
+        self.m_stats.track_packet("__SOCKET_OUT__", "__UNICAST__", len(packed))
         await self.m_sio.emit(event, packed, to=client_id)
+
+    def _track_socket_emit_mcast(self,
+                           payload: bytes,
+                           room: str) -> None:
+        """Track outbound socket payload fan-out bytes/counter."""
+        recipients = len(list(self.m_sio.manager.get_participants("/", room)))
+
+        # Account for each recipient separately so packet count reflects actual fan-out.
+        self.m_stats.track_packet("__SOCKET_OUT__", f"__EVENT_{room}__", len(payload) * recipients)
 
     def is_client_of_type_connected(self, client_type: ClientType) -> bool:
         """Check if a client of a specific type is connected
@@ -277,7 +340,6 @@ class BaseWebServer:
             PngHttpPortInUseError: If the specified port is already in use.
             OSError: If the server fails to start and error is not a port in use error.
         """
-
         # Register post start callback before running
         @self.m_app.before_serving
         async def before_serving() -> None:
@@ -296,11 +358,11 @@ class BaseWebServer:
             # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
 
         try:
-            sock.bind(("0.0.0.0", self.m_port))
+            sock.bind((self.m_bind_address, self.m_port))
         except OSError as e:
             sock.close()
             if is_port_in_use_error(e.errno):
-                self.m_logger.error(f"Port {self.m_port} is already in use")
+                self.m_logger.error("Port %s is already in use", self.m_port)
                 raise PngHttpPortInUseError() from e
             raise  # Re-raise if it's a different OSError
 
@@ -384,6 +446,14 @@ class BaseWebServer:
             '/tyre-icons/wet.svg': {
                 'file': 'tyre-icons/wet_tyre.svg',
                 'mimetype': 'image/svg+xml'
+            },
+            '/overlays/track-temperature.svg': {
+                'file': 'overlays/track-temperature.svg',
+                'mimetype': 'image/svg+xml'
+            },
+            '/overlays/air-temperature.svg': {
+                'file': 'overlays/air-temperature.svg',
+                'mimetype': 'image/svg+xml'
             }
         }
 
@@ -413,6 +483,25 @@ class BaseWebServer:
 
             route_handler = make_static_route_handler(route, config['file'], config['mimetype'])
             self.m_app.route(route)(route_handler)
+
+        # Dynamic routes for track map SVGs and transforms, organized by game year.
+        # send_from_directory handles path-traversal protection via safe_join.
+        track_maps_dir = assets_dir / "track-maps"
+
+        # Per-game SVG transforms: /track-maps/f1_2025/svg_transforms.json
+        async def serve_svg_transforms(game_year: str):
+            game_dir = track_maps_dir / f"f1_{game_year}"
+            return await self.send_from_directory(game_dir, 'svg_transforms.json',
+                                                  mimetype='application/json')
+
+        self.m_app.route('/track-maps/f1_<game_year>/svg_transforms.json')(serve_svg_transforms)
+
+        # Per-game SVG track maps: /track-maps/f1_2025/Singapore.svg
+        async def serve_track_map(game_year: str, filename: str):
+            game_dir = track_maps_dir / f"f1_{game_year}"
+            return await self.send_from_directory(game_dir, filename, mimetype='image/svg+xml')
+
+        self.m_app.route('/track-maps/f1_<game_year>/<filename>')(serve_track_map)
 
     def validate_int_get_request_param(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -493,7 +582,12 @@ class BaseWebServer:
         Returns:
             Response: A Quart file response.
         """
+        self.m_stats.track_event("__STATIC__", filename)
         return await quart_send_from_directory(directory, filename, **kwargs)
+
+    def get_stats(self) -> dict:
+        """Get current web server stats snapshot."""
+        return self.m_stats.get_stats()
 
     async def stop(self) -> None:
         """Stop the web server."""

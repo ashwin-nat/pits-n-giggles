@@ -120,14 +120,18 @@ def qml_file(path, filename):
     return (full_path, path)
 
 datas.extend([
+    qml_file("apps/hud/ui/overlays/base", "OverlayBorder.qml"),
     qml_file("apps/hud/ui/overlays/track_radar", "track_radar.qml"),
     qml_file("apps/hud/ui/overlays/input_telemetry", "input_telemetry.qml"),
     qml_file("apps/hud/ui/overlays/timing_tower", "timing_tower.qml"),
     qml_file("apps/hud/ui/overlays/lap_timer", "lap_timer_overlay.qml"),
+    qml_file("apps/hud/ui/overlays/circuit_info", "circuit_info.qml"),
+    qml_file("apps/hud/ui/overlays/hud_overlay", "hud_overlay.qml"),
     qml_file("apps/hud/ui/overlays/mfd", "mfd.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/collapsed", "collapsed_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/fuel", "fuel_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/lap_times", "lap_times_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/pace_comp", "pace_comp_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/pit_rejoin", "pit_rejoin_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_sets", "tyre_sets_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_wear", "tyre_wear_page.qml"),

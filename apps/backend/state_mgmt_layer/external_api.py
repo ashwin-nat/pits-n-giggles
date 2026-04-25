@@ -70,7 +70,7 @@ async def externalApiTask(
                 try:
                     pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID, logger=logger)
                 except Exception as e: # pylint: disable=broad-exception-caught
-                    logger.error(f"Error fetching most recent pole lap: {e}")
+                    logger.error("Error fetching most recent pole lap: %s", e)
                     pole_lap = None
             session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
 

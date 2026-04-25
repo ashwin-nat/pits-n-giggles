@@ -26,11 +26,10 @@ import logging
 from pathlib import Path
 from typing import final
 
-from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import INPUT_TELEMETRY_OVERLAY_ID, OverlayPosition
+from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,7 +43,7 @@ class InputTelemetryOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "input_telemetry.qml"
-    OVERLAY_ID = INPUT_TELEMETRY_OVERLAY_ID
+    OVERLAY_ID = OverlayId.INPUT_TELEMETRY
 
     def __init__(self,
                  config: OverlayPosition,
@@ -63,9 +62,8 @@ class InputTelemetryOverlay(BaseOverlayQML):
         self.subscribe_hf(InputTelemetryData)
 
     @final
-    def _setup_window(self):
-        super()._setup_window()
-        self._root.setProperty("maxHistoryLength", self.num_window_samples)
+    def post_setup(self):
+        self.set_qml_property("maxHistoryLength", self.num_window_samples)
 
     @final
     def render_frame(self):
@@ -74,12 +72,4 @@ class InputTelemetryOverlay(BaseOverlayQML):
         if not data:
             return
 
-        QMetaObject.invokeMethod(
-            self._root,
-            "updateTelemetry",
-            Qt.ConnectionType.QueuedConnection,
-            Q_ARG("QVariant", data.throttle),
-            Q_ARG("QVariant", data.brake),
-            Q_ARG("QVariant", data.steering),
-            Q_ARG("QVariant", data.rev_pct),
-        )
+        self.invoke_qml_method("updateTelemetry", data.throttle, data.brake, data.steering, data.rev_pct)

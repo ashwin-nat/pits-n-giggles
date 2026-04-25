@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.event_counter import EventCounter
 from lib.web_server import BaseWebServer, ClientType
 
 # -------------------------------------- CLASSES ----------------------------------------------------------------
@@ -46,6 +45,7 @@ class SaveViewerWebServer(BaseWebServer):
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 bind_address: str,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  debug_mode: bool = False):
@@ -60,12 +60,10 @@ class SaveViewerWebServer(BaseWebServer):
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
-        super().__init__(port, ver_str, logger, cert_path, key_path, debug_mode)
-        self.m_stats = EventCounter()
+        super().__init__(port, ver_str, logger, bind_address=bind_address, cert_path=cert_path, key_path=key_path, debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.register_on_client_register_callback(self._on_client_connect)
-        self.register_on_client_disconnect_callback(self._on_client_disconnect)
 
     def define_routes(self) -> None:
         """
@@ -91,7 +89,6 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 str: Rendered HTML content for the index page.
             """
-            self.m_stats.track_event("__HTTP__", "/")
             return await self.render_template('driver-view.html', live_data_mode=False, version=self.m_ver_str)
 
     def _defineDataRoutes(self) -> None:
@@ -109,7 +106,6 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            self.m_stats.track_event("__HTTP__", "/telemetry-info")
             return SaveViewerState.getTelemetryInfo()
 
         @self.http_route('/race-info')
@@ -120,7 +116,6 @@ class SaveViewerWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            self.m_stats.track_event("__HTTP__", "/race-info")
             return SaveViewerState.getRaceInfo()
 
         @self.http_route('/driver-info')
@@ -132,7 +127,6 @@ class SaveViewerWebServer(BaseWebServer):
                 Tuple[str, int]: JSON response and HTTP status code.
             """
 
-            self.m_stats.track_event("__HTTP__", "/driver-info")
             index: str = self.request.args.get('index')
 
             # Check if only one parameter is provided
@@ -175,15 +169,8 @@ class SaveViewerWebServer(BaseWebServer):
             client_type (ClientType): Client type
             client_id (str): Client ID
         """
-        self.m_stats.track_event("__SOCKET_IN__", "__CONNECT__")
-        self.m_stats.track_event("__SOCKET_IN__", f"__CONNECT__{str(client_type)}")
         if client_type == ClientType.RACE_TABLE:
             await self._send_race_table(client_id)
-
-    async def _on_client_disconnect(self, _sid: str) -> None:
-        """Called when a client disconnects
-        """
-        self.m_stats.track_event("__SOCKET_IN__", "__DISCONNECT__")
 
     async def _send_race_table(self, client_id: str) -> None:
         """Send race table to all connected clients
@@ -197,15 +184,12 @@ class SaveViewerWebServer(BaseWebServer):
         self.m_logger.debug("Sending race table update")
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
         await super().send_to_clients_of_type(event, data, client_type)
 
     async def send_to_clients_interested_in_event(self, event: str, data: Dict[str, Any]) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
         await super().send_to_clients_interested_in_event(event, data)
 
     async def send_to_client(self, event: str, data: Dict[str, Any], client_id: str) -> None:
-        self.m_stats.track_event("__SOCKET_OUT__", event)
         await super().send_to_client(event, data, client_id)
 
     def get_stats(self) -> dict:
@@ -214,7 +198,7 @@ class SaveViewerWebServer(BaseWebServer):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task]) -> SaveViewerWebServer:
+def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task], bind_address: str) -> SaveViewerWebServer:
     """Initialize the web server and return the server object for proper cleanup
 
     Args:
@@ -222,10 +206,11 @@ def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: Lis
         ver_str (str): Version string
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks to be executed
+        bind_address (str): IP address to bind the server to
 
     Returns:
         SaveViewerWebServer: Web server
     """
-    _server = SaveViewerWebServer(port, ver_str, logger)
+    _server = SaveViewerWebServer(port, ver_str, logger, bind_address=bind_address)
     tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
     return _server

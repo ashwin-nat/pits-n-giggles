@@ -22,14 +22,28 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from dataclasses import dataclass, field
+from time import perf_counter_ns
+from typing import ClassVar
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+@dataclass(slots=True, frozen=True)
 class HighFreqBase:
-    __hf_type__: str
+    __timestamp__: int = field(default_factory=perf_counter_ns, init=False)
+    __seq__: int = field(default=0, init=False)
+    __hf_type__: ClassVar[str]
+    __seq_counter__: ClassVar[int] = 0
 
     def __init_subclass__(cls, **kwargs):
+        super(HighFreqBase, cls).__init_subclass__(**kwargs)
         cls.__hf_type__ = cls.__name__
+        cls.__seq_counter__ = 0
+
+    def __post_init__(self):
+        cls = type(self)
+        cls.__seq_counter__ += 1
+        object.__setattr__(self, "__seq__", cls.__seq_counter__)
 
     @classmethod
     def from_json(cls, json_data: dict) -> "HighFreqBase":

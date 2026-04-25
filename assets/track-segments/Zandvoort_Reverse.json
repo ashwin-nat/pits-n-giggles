@@ -1,0 +1,123 @@
+{
+  "circuit_name": "Zandvoort_Reverse",
+  "circuit_number": 41,
+  "track_length": 4258,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 308,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 308,
+      "end_m": 658,
+      "name": "Arie Luyendykbocht",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 658,
+      "end_m": 878,
+      "name": "Kumhobocht",
+      "corner_number": 2
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 988,
+      "end_m": 1268,
+      "name": "Hans Ernst Bocht",
+      "corner_numbers": [
+        3,
+        4
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 1268,
+      "end_m": 1608,
+      "name": "Back Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 1608,
+      "end_m": 1858,
+      "name": "Bocht 10",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 1908,
+      "end_m": 2108,
+      "name": "Bocht 9",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 2108,
+      "end_m": 2338,
+      "name": "Mastersbocht",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2428,
+      "end_m": 2703,
+      "name": "Scheivlak",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2703,
+      "end_m": 2908,
+      "name": "Slotemakerbocht",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2908,
+      "end_m": 3108,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "corner",
+      "start_m": 3118,
+      "end_m": 3231,
+      "name": "Hunserug",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3298,
+      "end_m": 3498,
+      "name": "Hugenholtzbocht",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 3498,
+      "end_m": 3658,
+      "name": "Gerlachbocht",
+      "corner_number": 13
+    },
+    {
+      "type": "corner",
+      "start_m": 3778,
+      "end_m": 4058,
+      "name": "Tarzanbocht",
+      "corner_number": 14
+    },
+    {
+      "type": "straight",
+      "start_m": 4058,
+      "end_m": 4258,
+      "name": "Pit Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 1293,
+    "s2": 2770
+  }
+}

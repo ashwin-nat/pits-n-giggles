@@ -1,0 +1,93 @@
+{
+  "circuit_name": "Austria",
+  "circuit_number": 17,
+  "track_length": 4323,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 320,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 320,
+      "end_m": 545,
+      "name": "Niki Lauda Kurve",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 1010,
+      "end_m": 1200,
+      "name": "",
+      "corner_number": 2
+    },
+    {
+      "type": "corner",
+      "start_m": 1200,
+      "end_m": 1460,
+      "name": "Remus",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 2050,
+      "end_m": 2300,
+      "name": "Schlossgold",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 2370,
+      "end_m": 2540,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 2540,
+      "end_m": 2870,
+      "name": "Rauch",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 2900,
+      "end_m": 3160,
+      "name": "Würth Kurve",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 3160,
+      "end_m": 3380,
+      "name": "",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 3650,
+      "end_m": 3900,
+      "name": "Rindt Kurve",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 3940,
+      "end_m": 4090,
+      "name": "Red Bull Mobile",
+      "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 4090,
+      "end_m": 4323,
+      "name": "Pit Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 1204,
+    "s2": 2935
+  }
+}

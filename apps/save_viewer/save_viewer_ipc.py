@@ -49,89 +49,71 @@ class SaveViewerIpc:
         self.m_server = server
         self.m_should_open_ui = True
         self.m_ipc_server = IpcServerAsync(name="Save Viewer")
-        self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
-        self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
+        self._register_routes()
         report_ipc_port_from_child(self.m_ipc_server.port)
 
     async def run(self) -> None:
         """Starts the IPC server."""
-        await self.m_ipc_server.run(self._handle_ipc_message)
+        await self.m_ipc_server.run()
 
-    async def _handle_ipc_message(self, msg: dict) -> dict:
-        """Handles incoming IPC messages and dispatches commands.
+    def _register_routes(self):
+        """Registers routes for the IPC server."""
 
-        Args:
-            msg (dict): IPC message
+        @self.m_ipc_server.on_heartbeat_missed
+        async def _heartbeat_missed_handler(count: int) -> dict:
+            """Handle terminate command"""
 
-        Returns:
-            dict: IPC response
-        """
-        self.m_logger.debug(f"Received IPC message: {msg}")
-        cmd = msg.get("cmd")
-        args: dict = msg.get("args", {})
+            print(f"[SAVE_VIEWER] Missed heartbeat {count} times. "
+                  "This process has probably been orphaned. Terminating...")
+            # os._exit required: child process must terminate immediately without
+            # running atexit handlers or flushing stdio buffers from parent.
+            os._exit(PNG_LOST_CONN_TO_PARENT)
 
-        if cmd == "open-file":
-            return await self._handle_open_file(args)
-        if cmd == "get-stats":
-            return await self._handle_get_stats()
+        @self.m_ipc_server.on_shutdown
+        async def _shutdown_handler(args: dict) -> Dict[str, Any]:
+            """Shutdown handler function.
 
-        return {"status": "error", "message": f"Unknown command: {cmd}"}
+            Args:
+                args (dict): IPC command arguments
 
-    async def _handle_open_file(self, args: dict) -> dict:
-        """Handles the 'open-file' IPC command.
+            Returns:
+                Dict[str, Any]: Shutdown response
+            """
+            reason = args["reason"]
+            self.m_logger.info("Shutting down. Reason: %s", reason)
+            await self.m_server.stop()
+            return {"status": "success"}
 
-        Args:
-            args (dict): IPC command arguments
-        """
-        if not (file_path := args.get("file-path")):
-            return {"status": "error", "message": "Missing or invalid file path"}
+        @self.m_ipc_server.on("open-file")
+        async def _handle_open_file(args: dict) -> dict:
+            """Handles the 'open-file' IPC command."""
+            file_path = args.get("file-path")
 
-        try:
-            await SaveViewerState.open_file_helper(file_path)
-        except Exception as e: # pylint: disable=broad-except
-            return {"status": "error", "message": f"Failed to open file: {file_path}. Error: {e}"}
+            result = await SaveViewerState.open_file_helper(file_path)
+            if result.get("status") != "success":
+                return result
 
-        # Open the webpage once
-        if self.m_should_open_ui:
-            self.m_should_open_ui = False
-            webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
+            # Open the webpage once
+            if self.m_should_open_ui:
+                self.m_should_open_ui = False
+                webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
 
-        # Update all clients
-        await self.m_server.send_to_clients_of_type(
-            event='race-table-update',
-            data=SaveViewerState.getTelemetryInfo(),
-            client_type=ClientType.RACE_TABLE,
-        )
+            # Update all clients
+            await self.m_server.send_to_clients_of_type(
+                event='race-table-update',
+                data=SaveViewerState.getTelemetryInfo(),
+                client_type=ClientType.RACE_TABLE,
+            )
 
-        return {"status": "success"}
+            return {"status": "success"}
 
-    async def _shutdown_handler(self, args: dict) -> Dict[str, Any]:
-        """Shutdown handler function.
-
-        Args:
-            args (dict): IPC command arguments
-
-        Returns:
-            Dict[str, Any]: Shutdown response
-        """
-        reason = args["reason"]
-        self.m_logger.info(f"Shutting down. Reason: {reason}")
-        await self.m_server.stop()
-        return {"status": "success"}
-
-    async def _handle_get_stats(self) -> Dict[str, Any]:
-        """Handle the 'get-stats' IPC command."""
-        return {
-            "status": "success",
-            "stats": self.m_server.get_stats(),
-        }
-
-    async def _heartbeat_missed_handler(self, count: int) -> dict:
-        """Handle terminate command"""
-
-        print(f"[SAVE_VIEWER] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
-        os._exit(PNG_LOST_CONN_TO_PARENT)
-
+        @self.m_ipc_server.on("get-stats")
+        async def _handle_get_stats(_args: dict) -> Dict[str, Any]:
+            """Handle the 'get-stats' IPC command."""
+            return {
+                "status": "success",
+                "stats": self.m_server.get_stats(),
+            }
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

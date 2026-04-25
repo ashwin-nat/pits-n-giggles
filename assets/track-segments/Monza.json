@@ -1,0 +1,88 @@
+{
+  "circuit_name": "Monza",
+  "circuit_number": 11,
+  "track_length": 5798,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 770,
+      "name": "Rettifilo Tribune"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 770,
+      "end_m": 1015,
+      "name": "Variante del Rettifilo",
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1060,
+      "end_m": 1860,
+      "name": "Curva Grande",
+      "corner_number": 3
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1950,
+      "end_m": 2250,
+      "name": "Variante della Roggia",
+      "corner_numbers": [
+        4,
+        5
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2400,
+      "end_m": 2650,
+      "name": "Curva di Lesmo 1",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 2755,
+      "end_m": 2970,
+      "name": "Curva di Lesmo 2",
+      "corner_number": 7
+    },
+    {
+      "type": "straight",
+      "start_m": 2970,
+      "end_m": 3790,
+      "name": "Curva del Serraglio"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3790,
+      "end_m": 4240,
+      "name": "Variante Ascari",
+      "corner_numbers": [
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 5000,
+      "end_m": 5540,
+      "name": "Parabolica",
+      "corner_number": 11
+    },
+    {
+      "type": "straight",
+      "start_m": 5540,
+      "end_m": 5798,
+      "name": "Rettifilo Tribune"
+    }
+  ],
+  "sectors": {
+    "s1": 1898,
+    "s2": 3727
+  }
+}

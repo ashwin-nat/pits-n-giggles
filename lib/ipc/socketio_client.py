@@ -30,6 +30,8 @@ import engineio.exceptions
 import msgpack
 import socketio.exceptions
 
+from lib.event_counter import EventCounter
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SocketioClient:
@@ -60,6 +62,7 @@ class SocketioClient:
         self._stop_event = threading.Event()
         self._connected = False
         self._msg_packed = msg_packed
+        self.stats = EventCounter()
 
         # storage for event bindings (so they persist across reconnects)
         self._event_handlers: list[tuple[str, Callable]] = []
@@ -94,24 +97,44 @@ class SocketioClient:
         Automatically unpacks msgpack data if self._msg_packed is True.
         """
         def decorator(func):
-            # wrap the user's handler to decode msgpack if needed
-            if self._msg_packed:
-                def wrapped_handler(data):
+            def wrapped_handler(data):
+                self.stats.track_event("__SOCKET_IN__", "__TOTAL__")
+                self.stats.track_event("__SOCKET_IN__", event_name)
+
+                payload_size = self._get_payload_size(data)
+                if payload_size is not None:
+                    self.stats.track_packet("__SOCKET_IN_PAYLOAD__", "__TOTAL__", payload_size)
+                    self.stats.track_packet("__SOCKET_IN_PAYLOAD__", event_name, payload_size)
+
+                if self._msg_packed:
                     try:
                         decoded = msgpack.unpackb(data, raw=False)
                     except (TypeError, ValueError) as e:
                         # Likely a Socket.IO internal packet, just ignore
+                        self.stats.track_event("__DROP__", "invalid_msgpack")
+                        self.stats.track_event("__DROP_EVENT__", event_name)
                         self.logger.warning(
                             "Skipping non-msgpack data for event %s (likely internal packet): %s. Error: %s",
                             event_name, str(data), e
                         )
                         return
                     except Exception as e: # pylint: disable=broad-exception-caught
+                        self.stats.track_event("__ERROR__", "decode_msgpack_exception")
+                        self.stats.track_event("__DECODE_ERROR_EVENT__", event_name)
                         self.logger.exception("Failed to decode msgpack for event %s: %s %s", event_name, e, data)
                         return  # consistently returns None
-                    func(decoded)  # call handler without returning its value
-            else:
-                wrapped_handler = func
+                    callback_data = decoded
+                else:
+                    callback_data = data
+
+                try:
+                    func(callback_data)
+                    self.stats.track_event("__HANDLER__", "success")
+                    self.stats.track_event("__HANDLED_EVENT__", event_name)
+                except Exception:
+                    self.stats.track_event("__ERROR__", "handler_exception")
+                    self.stats.track_event("__HANDLER_ERROR_EVENT__", event_name)
+                    raise
 
             # store handler for future rebinds
             self._event_handlers.append((event_name, wrapped_handler))
@@ -135,21 +158,25 @@ class SocketioClient:
     def _handle_connect(self):
         """Post connect callback."""
         self._connected = True
+        self.stats.track_event("__CONNECTIVITY__", "connected")
         self.logger.debug("Connected to server")
         if self._connect_callback:
             try:
                 self._connect_callback()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.stats.track_event("__ERROR__", "on_connect_callback_exception")
                 self.logger.exception("Error in on_connect callback: %s", e)
 
     def _handle_disconnect(self):
         """Post disconnect callback."""
         self._connected = False
+        self.stats.track_event("__CONNECTIVITY__", "disconnected")
         self.logger.debug("Disconnected from server")
         if self._disconnect_callback:
             try:
                 self._disconnect_callback()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.stats.track_event("__ERROR__", "on_disconnect_callback_exception")
                 self.logger.exception("Error in on_disconnect callback: %s", e)
 
     # ------------------- Public API -------------------
@@ -163,6 +190,7 @@ class SocketioClient:
             try:
                 if not self._connected:
                     self.logger.debug("Attempting connection to %s ...", self.url)
+                    self.stats.track_event("__CONNECTIVITY__", "connect_attempt")
                     self._sio.connect(
                         self.url,
                         wait=True,
@@ -178,17 +206,20 @@ class SocketioClient:
                 engineio.exceptions.ConnectionError,
                 ConnectionRefusedError,
             ) as e:
+                self.stats.track_event("__ERROR__", "connect_error")
                 self.logger.debug("Connection error (%s). Will retry...", e)
 
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.stats.track_event("__ERROR__", "run_loop_exception")
                 self.logger.exception("Unexpected error: %s", e)
 
             finally:
                 if self._connected:
                     try:
                         self._sio.disconnect()
-                    except Exception:  # pylint: disable=broad-except
-                        pass
+                    except Exception as e:  # pylint: disable=broad-exception-caught
+                        self.stats.track_event("__ERROR__", "disconnect_error")
+                        self.logger.exception("Error during disconnect: %s", e)
 
             if not self._stop_event.is_set():
                 self.logger.debug("Waiting before retry...")
@@ -206,7 +237,18 @@ class SocketioClient:
             self.logger.debug("Disconnecting from server...")
             try:
                 self._sio.disconnect()
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e: # pylint: disable=broad-exception-caught
                 self.logger.exception("Error during disconnect: %s", e)
             finally:
                 self._connected = False
+
+    def get_stats(self) -> dict:
+        """Get current socketio client stats snapshot."""
+        return self.stats.get_stats()
+
+    @staticmethod
+    def _get_payload_size(payload: object) -> Optional[int]:
+        """Best-effort payload length for traffic stats."""
+        if isinstance(payload, (bytes, bytearray, memoryview, str)):
+            return len(payload)
+        return None

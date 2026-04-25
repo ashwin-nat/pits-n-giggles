@@ -27,7 +27,7 @@ from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib.f1_types import (ActualTyreCompound, PacketTyreSetsData,
+from lib.f1_types import (ActualTyreCompound, F1Utils, PacketTyreSetsData,
                           VisualTyreCompound)
 from lib.rolling_history import RollingHistory
 from lib.tyre_wear_extrapolator import TyreWearExtrapolator, TyreWearPerLap
@@ -417,14 +417,18 @@ class TyreInfo:
     """
     total_laps: InitVar[int]
     logger: InitVar[Logger]
+    weather_aware: InitVar[bool] = False
+    window_size: InitVar[Optional[int]] = None
 
     tyre_age: Optional[int] = None
     tyre_vis_compound: Optional[VisualTyreCompound] = None
     tyre_act_compound: Optional[ActualTyreCompound] = None
     tyre_wear: TyreWearRecentHistory = field(default_factory=lambda: TyreWearRecentHistory(
         maxlen=_ROLLING_HISTORY_MAXLEN))
-    tyre_surface_temp: Optional[float] = None
-    tyre_inner_temp: Optional[float] = None
+
+    tyre_surface_temp_arr: Optional[List[int]] = None
+    tyre_inner_temp_arr: Optional[List[int]] = None
+    brake_temp_arr: Optional[List[int]] = None
     tyre_life_remaining_laps: Optional[int] = None
 
     m_tyre_set_history_manager: "TyreSetHistoryManager" = field(init=False)
@@ -432,11 +436,14 @@ class TyreInfo:
 
     m_logger: Logger = field(init=False, repr=False)
 
-    def __post_init__(self, total_laps: int, logger: Logger):
+    def __post_init__(self, total_laps: int, logger: Logger, weather_aware: bool, window_size: Optional[int]):
         """Init the utility objects and store logger"""
         self.m_logger = logger
         self.m_tyre_set_history_manager = TyreSetHistoryManager(self.m_logger)
-        self.m_tyre_wear_extrapolator = TyreWearExtrapolator([], total_laps=total_laps, logger=self.m_logger)
+        self.m_tyre_wear_extrapolator = TyreWearExtrapolator(
+            [], total_laps=total_laps, logger=self.m_logger,
+            weather_aware=weather_aware, window_size=window_size,
+        )
 
     def handleFlashback(self, outdated_laps: List[int]) -> None:
         """Handle flashback by removing the outdated laps from the tyre set history and tyre wear extrapolator
@@ -450,3 +457,22 @@ class TyreInfo:
         # Flashback is too error prone with tyre wear rolling history, so we just clear it.
         # User made the bed, they can lie in it.
         self.tyre_wear.clear()
+
+    def _arrToDict(self, arr: Optional[List[int]]) -> Optional[Dict[int, int]]:
+        if arr is None:
+            return None
+        return {
+            "fl" : arr[F1Utils.INDEX_FRONT_LEFT],
+            "fr" : arr[F1Utils.INDEX_FRONT_RIGHT],
+            "rl" : arr[F1Utils.INDEX_REAR_LEFT],
+            "rr" : arr[F1Utils.INDEX_REAR_RIGHT],
+        }
+
+    def getSurfaceTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.tyre_surface_temp_arr)
+
+    def getInnerTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.tyre_inner_temp_arr)
+
+    def getBrakesTempsJSON(self) -> Dict[str, int]:
+        return self._arrToDict(self.brake_temp_arr)

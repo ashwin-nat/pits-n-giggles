@@ -10,7 +10,8 @@
 
 body {
     font-family: 'Exo 2', sans-serif;
-    overflow: hidden;
+    font-size: clamp(13px, 1vw, 16px);
+    overflow-x: auto;
     background-color: var(--f1-darker);
 }
 
@@ -19,13 +20,182 @@ body {
     display: flex;
     flex-direction: column;
     padding: 0;
-    overflow: hidden;
+    overflow-y: hidden;
 }
 
 .eng-view-global-data-section {
-    flex: 0 0 15%;
-    padding: 1rem;
-    border-bottom: 1px solid #333;
+    flex: 0 1 auto;
+    padding: 0.75rem;
+    background: var(--f1-darker);
+}
+
+/* ── Upper Section Accordion ─────────────────────────────────── */
+
+.upper-section-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 1rem;
+    background: var(--f1-darker);
+    border: 1px solid var(--bs-secondary-border-subtle, #495057);
+    border-radius: 0.375rem 0.375rem 0 0;
+    cursor: pointer;
+    user-select: none;
+    min-height: 2.25rem;
+    transition: min-height 0.35s ease;
+}
+
+.upper-section-accordion-header.collapsed {
+    min-height: 3.25rem;
+    border-radius: 0.375rem;
+}
+
+.upper-section-accordion-header:hover {
+    background: var(--f1-gray);
+}
+
+.upper-section-accordion-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--f1-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.upper-section-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.upper-section-accordion-header.collapsed .upper-section-chevron {
+    transform: rotate(-90deg);
+}
+
+/* ── Collapsed Info Bar ──────────────────────────────────────── */
+
+.upper-section-collapsed-bar {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    margin-left: 1rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.upper-section-accordion-header.collapsed .upper-section-collapsed-bar {
+    display: flex;
+}
+
+.collapsed-bar-circuit {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--f1-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 14rem;
+}
+
+.collapsed-bar-time {
+    font-size: 0.85rem;
+    color: var(--f1-text-secondary);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.collapsed-bar-sep {
+    width: 1px;
+    height: 1.2rem;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.collapsed-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--f1-text);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.collapsed-bar-icon {
+    color: var(--f1-text-secondary);
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+}
+
+.collapsed-bar-actions {
+    margin-left: auto;
+    gap: 0.5rem;
+}
+
+.collapsed-bar-action-btn {
+    background: none;
+    border: none;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    color: var(--f1-text);
+    cursor: pointer;
+}
+
+.collapsed-bar-action-btn:hover {
+    color: var(--f1-red);
+}
+
+.collapsed-bar-pred {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.collapsed-bar-pred-label {
+    font-size: 0.75rem;
+    color: var(--f1-text-secondary);
+    white-space: nowrap;
+    margin: 0;
+}
+
+.collapsed-bar-pred-input {
+    width: 64px !important;
+    height: 26px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.8rem;
+    background-color: #111 !important;
+    color: var(--f1-text) !important;
+    border-color: #333 !important;
+}
+
+.collapsed-bar-pred-input:focus {
+    background-color: #222 !important;
+    border-color: #444 !important;
+    box-shadow: 0 0 0 0.15rem rgba(66, 70, 73, 0.5) !important;
+}
+
+.upper-section-accordion-body {
+    padding: 0.75rem;
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+    max-height: 1000px;
+    opacity: 1;
+    border: 1px solid var(--bs-secondary-border-subtle, #495057);
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    background: var(--f1-dark);
+}
+
+.upper-section-accordion-body.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .eng-view-race-table-section {
@@ -38,9 +208,7 @@ body {
 
 
 .eng-view-global-stat {
-    display: inline-block;
-    margin-right: 2rem;
-    margin-bottom: 1rem;
+    margin: 0;
 }
 
 .eng-view-global-stat label {
@@ -132,14 +300,21 @@ body {
 }
 
 /* Race status section layout */
-.card-body .eng-view-global-stats-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem 2rem;
-    align-items: center;
+.eng-view-global-stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem 1rem;
+}
+
+.eng-view-global-stats-container > .eng-view-global-stat:last-child {
+    grid-column: 1 / -1;
 }
 
 .global-stats-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
     background: var(--f1-dark);
     color: var(--f1-text);
 }
@@ -188,6 +363,20 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .settings-button:hover {
   color: var(--f1-red);
+}
+
+.port-badge {
+  background: #0e639c;
+  color: #ffffff;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
 }
 
 /* Player row highlight */
@@ -248,6 +437,106 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
+/* Tyre temperature — border + font color (same pattern as lap times) */
+.eng-temp-cold {
+    display: inline-block;
+    color: #3b82f6 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-warmup {
+    display: inline-block;
+    color: #a3e635 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-optimal {
+    display: inline-block;
+    color: #22c55e !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-hot {
+    display: inline-block;
+    color: #f97316 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-temp-overheat {
+    display: inline-block;
+    color: #ef4444 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+/* Damage — border + font color */
+.eng-dmg-light {
+    display: inline-block;
+    color: #eab308 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-dmg-moderate {
+    display: inline-block;
+    color: #f97316 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+.eng-dmg-severe {
+    display: inline-block;
+    color: #ef4444 !important;
+    border: 2px solid currentColor !important;
+    border-radius: 4px !important;
+}
+
+/* Pin reference driver button inside Name cell */
+.driver-name-cell {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.driver-name-cell-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.pin-ref-btn {
+    background: none;
+    border: none;
+    color: var(--f1-text-secondary);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.ag-row:hover .pin-ref-btn {
+    opacity: 1;
+}
+
+.ref-row .pin-ref-btn {
+    opacity: 1;
+}
+
+.pin-ref-btn:hover {
+    color: #ffd700;
+}
+
+@media (hover: none) {
+    .pin-ref-btn { opacity: 1; }
+}
+
 .ag-header-cell-text {
     text-align: center;
 }
@@ -268,21 +557,22 @@ input[type="number"]::-webkit-outer-spin-button {
 .column-visibility-pane {
     position: fixed;
     top: 0;
-    right: -300px; /* Start off-screen to the right */
-    width: 300px;
+    right: 0;
+    width: min(340px, 90vw);
     height: 100%;
     background-color: var(--f1-dark);
     border-left: 1px solid var(--f1-light-gray);
     box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
     z-index: 1050;
-    transition: right 0.3s ease-in-out;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
     display: flex;
     flex-direction: column;
     color: var(--f1-text);
 }
 
 .column-visibility-pane.open {
-    right: 0; /* Slide in */
+    transform: translateX(0);
 }
 
 .column-visibility-pane .pane-header {
@@ -377,4 +667,530 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .weather-session-name {
     color: #ffffff;
+}
+
+/* ── Track Map ─────────────────────────────────────────────────── */
+
+.track-map-col {
+    align-self: start;
+}
+
+.global-stats-section-header > :last-child {
+    margin-left: auto;
+}
+
+#trackMapContainer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 200px;
+    max-width: 500px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.track-map-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 3;
+    transform-origin: center center;
+    will-change: transform;
+}
+
+.track-map-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.track-map-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.track-map-tooltip {
+    position: absolute;
+    background: rgba(21, 21, 30, 0.95);
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 10px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-family: 'Exo 2', sans-serif;
+    pointer-events: none;
+    z-index: 1060;
+    white-space: nowrap;
+}
+
+.track-map-pinned-popup {
+    position: absolute;
+    background: #1a1a2e;
+    border: 2px solid #555;
+    border-radius: 6px;
+    padding: 8px 24px 8px 12px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-family: 'Exo 2', sans-serif;
+    z-index: 1055;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.pinned-popup-close {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #999;
+    line-height: 1;
+}
+
+.pinned-popup-close:hover {
+    color: #fff;
+}
+
+.track-map-fallback {
+    color: var(--f1-text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1.5rem 0.5rem;
+}
+
+/* ── Track Map Zoom Reset Button ─────────────────────────────── */
+
+.track-map-zoom-reset {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 10;
+    background: rgba(21, 21, 30, 0.85);
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 1.1rem;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.track-map-zoom-reset:hover {
+    background: rgba(60, 60, 80, 0.95);
+}
+
+/* ── Track Map Rotation Control ──────────────────────────────── */
+
+.track-map-rotation-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.track-map-rotation-label {
+    color: #aaa;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.track-map-rotation-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: #e10600;
+    cursor: pointer;
+}
+
+.track-map-rotation-input {
+    width: 58px;
+    background: transparent;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 3px 4px;
+}
+
+/* ── Responsive: AG Grid font scaling ────────────────────────── */
+
+.ag-theme-alpine-dark {
+    font-size: clamp(10px, 1.2vw, 14px);
+}
+
+/* ── Track Map: invisible touch hit-area behind dots ─────────── */
+
+.track-map-hit-area {
+    pointer-events: all;
+    transition: cx 0.4s ease, cy 0.4s ease;
+}
+
+/* ── Weather Toggle: touch-friendly targets ──────────────────── */
+
+#weatherDisplayToggle .btn {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* ── Race Status Collapse (< 1440px) ─────────────────────────── */
+
+#raceStatusSummary {
+    display: none;
+}
+
+#raceStatusCollapseBtn {
+    display: none;
+}
+
+.race-status-summary {
+    font-size: clamp(0.75rem, 1vw, 0.9rem);
+    color: var(--f1-text-secondary);
+    white-space: nowrap;
+    margin-left: 0.75rem;
+}
+
+.race-status-summary-sep {
+    margin: 0 0.35rem;
+    opacity: 0.4;
+}
+
+#raceStatusBody {
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+    overflow: hidden;
+    max-height: 500px;
+    opacity: 1;
+}
+
+#raceStatusBody.rs-collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+#raceStatusCollapseBtn {
+    font-size: 1.2rem;
+    padding: 0.25rem 0.4rem;
+    line-height: 1;
+}
+
+#raceStatusCollapseBtn .bi {
+    transition: transform 0.3s ease;
+}
+
+#raceStatusCollapseBtn.rs-open .bi {
+    transform: rotate(180deg);
+}
+
+/* ── Card Collapse Toggle (Weather + TrackMap ≤ 1439px) ────── */
+
+.card-collapse-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--f1-text);
+    font-size: 1.1rem;
+    padding: 0.25rem 0.4rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.card-collapse-toggle:hover {
+    color: var(--f1-red);
+}
+
+.card-collapse-toggle .bi {
+    transition: transform 0.3s ease;
+}
+
+.card-body-collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+}
+
+/* ── Responsive: Header Layout < 1440px ──────────────────────── */
+
+@media (max-width: 1439px) {
+    .card-collapse-toggle {
+        display: inline-block;
+    }
+
+    .weather-col .card-body,
+    .track-map-col .card-body {
+        transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+        max-height: 600px;
+        opacity: 1;
+    }
+
+    .eng-view-global-data-section > .row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .race-status-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        order: -1;
+    }
+
+    #raceStatusSummary {
+        display: inline;
+    }
+
+    #raceStatusCollapseBtn {
+        display: inline-block;
+    }
+
+    .weather-col {
+        flex: 0 0 60% !important;
+        max-width: 60% !important;
+    }
+
+    .track-map-col {
+        flex: 0 0 40% !important;
+        max-width: 40% !important;
+        min-width: 250px;
+    }
+
+    #trackMapContainer {
+        max-width: none;
+    }
+
+    .race-status-header-left {
+        min-width: 0;
+        overflow: visible;
+    }
+
+    #raceStatusHeader {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #raceStatusSummary {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* ── Context Drawers (Track Map + Weather) ───────────────────── */
+
+.context-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(300px, 85vw);
+    height: 100%;
+    background-color: var(--f1-dark);
+    border-left: 1px solid var(--f1-light-gray);
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    z-index: 1050;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    color: var(--f1-text);
+    overflow-y: auto;
+}
+
+.context-drawer.open {
+    transform: translateX(0);
+}
+
+.context-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: var(--f1-darker);
+    border-bottom: 1px solid var(--f1-light-gray);
+    flex-shrink: 0;
+}
+
+.context-drawer-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--f1-text);
+}
+
+.context-drawer-body {
+    padding: 0.75rem;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Track Map inside Drawer: full width */
+.context-drawer #trackMapContainer {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* ── Drawer Backdrop ─────────────────────────────────────────── */
+
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.drawer-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ── Drawer Toggle Buttons ───────────────────────────────────── */
+
+.drawer-toggle-btn {
+    display: none;
+}
+
+.drawer-toggle-btn.active {
+    color: var(--f1-red);
+}
+
+/* ── Responsive: Drawer Layout < 1024px ──────────────────────── */
+
+@media (max-width: 1023px) {
+    .ag-header-cell-resize {
+        display: none !important;
+    }
+
+    .drawer-toggle-btn {
+        display: inline-block;
+    }
+
+    .weather-col,
+    .track-map-col {
+        display: none !important;
+    }
+
+    .race-status-col {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Allow header to wrap only when content doesn't fit — don't force 2 rows */
+    .global-stats-section-header {
+        flex-wrap: wrap;
+    }
+
+    .race-status-header-left {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .global-stats-section-header > .d-flex:not(.race-status-header-left) {
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+    }
+}
+
+/* ── Responsive: Portrait phone ≤ 600px ──────────────────────── */
+
+@media (max-width: 600px) {
+
+    /* ── Header: wrap to 2 rows only when needed ──── */
+
+    .global-stats-section-header {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Info side: shrink but don't force full width */
+    .race-status-header-left {
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-wrap: nowrap;
+        gap: 0;
+        order: 0;
+    }
+
+    #raceStatusHeader {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 0.95rem;
+        line-height: 1.3;
+    }
+
+    #raceStatusSummary {
+        flex-shrink: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.72rem;
+        margin-left: 0;
+    }
+
+    .race-status-summary-sep {
+        margin: 0 0.2rem;
+    }
+
+    /* Buttons side: don't force full width, sit next to info when space allows */
+    .global-stats-section-header > .d-flex:not(.race-status-header-left) {
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        order: 1;
+        margin-left: auto;
+        gap: 0;
+    }
+
+    /* When buttons wrap to their own row, stretch them edge-to-edge */
+    @supports (container-type: inline-size) {
+        /* fallback handled via the flex natural wrapping */
+    }
+
+    /* Buttons: keep 44px touch targets, tighten spacing */
+    .global-stats-section-header .settings-button {
+        font-size: 1.25rem;
+        padding: 0.375rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Scale the ⌀ restricted-telemetry symbol to match button row */
+    .global-stats-section-header span[style*="font-size"] {
+        font-size: 1.6rem !important;
+    }
+
+    /* Chevron: first in the button group */
+    #raceStatusCollapseBtn {
+        order: -1;
+    }
 }

@@ -29,7 +29,7 @@ from typing import Any, ClassVar, Dict, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
-from ..utils import overlay_enable_field, udp_action_field, ui_scale_field
+from ..utils import overlay_enable_field, udp_action_field
 from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
@@ -40,6 +40,14 @@ from .timing_tower import TimingTowerColOptions
 class WeatherMFDUIType(str, Enum):
     CARDS = "Cards"
     GRAPH = "Graph"
+
+class HudOverlaySpeedUnit(str, Enum):
+    KMPH = "km/h"
+    MPH = "mph"
+
+class HudOverlayFuelEstimationMode(str, Enum):
+    LINEAR_REGRESSION = "Linear regression"
+    GAME_BUILT_IN = "Game built-in"
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -73,13 +81,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== LAP TIMER OVERLAY ==============
     show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer")
-    lap_timer_ui_scale: float = ui_scale_field(description="Lap Timer UI scale")
+    lap_timer_minimal: bool = Field(
+        default=False,
+        description="Use minimal lap timer overlay (shows only the current lap time)",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Lap Timer",
+            }
+        }
+    )
     lap_timer_toggle_udp_action_code: Optional[int] = udp_action_field(description="Toggle lap timer overlay UDP action code",
                                                                         group="Lap Timer")
 
     # ============== TIMING TOWER OVERLAY ==============
     show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay", group="Timing Tower")
-    timing_tower_ui_scale: float = ui_scale_field(description="Timing tower UI scale")
     timing_tower_max_rows: int = Field(
         default=5,
         ge=1,
@@ -112,7 +129,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         'Recommended to also configure at least the "Next MFD page UDP action code" or '
         '"Previous MFD page UDP action code"'
     ])
-    mfd_ui_scale: float = ui_scale_field(description="MFD UI scale")
     mfd_settings: MfdSettings = Field(
         default=MfdSettings(),
         description="MFD overlay settings",
@@ -171,14 +187,12 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     # ============== TRACK MAP OVERLAY ==============
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay",
                                                 default=False, visible=False, group="Track Map")
-    track_map_ui_scale: float = ui_scale_field(description="Track map UI scale" )
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track map overlay UDP action code", visible=False, group="Track Map")
 
     # ============== INPUT TELEMETRY OVERLAY ==============
     show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay",
                                                     group="Input Telemetry")
-    input_overlay_ui_scale: float = ui_scale_field(description="Input telemetry overlay UI scale")
     input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle input telemetry overlay UDP action code", group="Input Telemetry")
     input_overlay_buffer_duration_sec: float = Field(
@@ -203,7 +217,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== TRACK RADAR OVERLAY ==============
     show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay", group="Track Radar")
-    track_radar_overlay_ui_scale: float = ui_scale_field(description="Track radar overlay UI scale")
     track_radar_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track radar overlay UDP action code", group="Track Radar")
     track_radar_idle_opacity: int = Field(
@@ -220,6 +233,80 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "ext_info": [
                     'Track Radar opacity when no other cars are nearby'
                 ]
+            }
+        }
+    )
+
+    # ============== HUD OVERLAY ==============
+    show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay")
+    hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle HUD overlay UDP action code", group="HUD Overlay")
+    hud_overlay_speed_unit: HudOverlaySpeedUnit = Field(
+        default=HudOverlaySpeedUnit.KMPH,
+        description="Speed unit displayed in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in HudOverlaySpeedUnit],
+                "visible": True,
+                "group": "HUD Overlay",
+            }
+        }
+    )
+
+    @property
+    def hud_overlay_speed_unit_kmph(self) -> bool:
+        """True if the speed unit is km/h"""
+        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.KMPH
+
+    @property
+    def hud_overlay_speed_unit_mph(self) -> bool:
+        """True if the speed unit is mph"""
+        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.MPH
+
+    hud_overlay_fuel_estimation_mode: HudOverlayFuelEstimationMode = Field(
+        default=HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
+        description="Surplus fuel estimation technique used in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in HudOverlayFuelEstimationMode],
+                "visible": True,
+                "group": "HUD Overlay",
+                "ext_info": [
+                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
+                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
+                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
+                ]
+            }
+        }
+    )
+
+    @property
+    def hud_overlay_fuel_estimation_linear_regression(self) -> bool:
+        """True if fuel estimation uses linear regression"""
+        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.LINEAR_REGRESSION
+
+    @property
+    def hud_overlay_fuel_estimation_game_built_in(self) -> bool:
+        """True if fuel estimation uses the game built-in value"""
+        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
+
+    # ============== CIRCUIT INFO OVERLAY ==============
+    show_circuit_info: bool = overlay_enable_field(description="Enable circuit info overlay", group="Circuit Info")
+    circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
+        description="Toggle circuit info overlay UDP action code", group="Circuit Info")
+    circuit_info_length: int = Field(
+        default=800,
+        ge=200,
+        le=1500,
+        description="Circuit info overlay circuit length fallback (m)",
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": False,
+                "min": 200,
+                "max": 1500,
             }
         }
     )
@@ -248,7 +335,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "visible": False
-            }
+            },
+            "diff_exclude": True,
         }
     )
 

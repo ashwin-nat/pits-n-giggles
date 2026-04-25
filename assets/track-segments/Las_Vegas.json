@@ -1,0 +1,95 @@
+{
+  "circuit_name": "Las_Vegas",
+  "circuit_number": 31,
+  "track_length": 6200,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 185,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 185,
+      "end_m": 770,
+      "corner_numbers": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 770,
+      "end_m": 1415,
+      "name": "Koval Lane"
+    },
+    {
+      "type": "corner",
+      "start_m": 1415,
+      "end_m": 1655,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1685,
+      "end_m": 2310,
+      "name": "Sphere Section",
+      "corner_numbers": [
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 2310,
+      "end_m": 3110,
+      "name": "Sands Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 3110,
+      "end_m": 3310,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "straight",
+      "start_m": 3310,
+      "end_m": 5030,
+      "name": "Las Vegas Strip"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 5030,
+      "end_m": 5375,
+      "corner_numbers": [
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 5375,
+      "end_m": 5945,
+      "name": "E Harmon Avenue"
+    },
+    {
+      "type": "corner",
+      "start_m": 5945,
+      "end_m": 6200,
+      "name": "",
+      "corner_number": 17
+    }
+  ],
+  "sectors": {
+    "s1": 1704,
+    "s2": 3377
+  }
+}

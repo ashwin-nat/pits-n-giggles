@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 from lib.f1_types import F1Utils
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class FuelInfoPage(MfdPageBase):
-    KEY = "fuel_info"
+    KEY = MfdPageId.FUEL_INFO
     QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
@@ -55,17 +56,9 @@ class FuelInfoPage(MfdPageBase):
             if not ref_row:
                 return
 
-            root = self.root
-            if not self.root:
-                self.logger.error(f"{self.KEY} | Failed to find root")
-                return
-
             page_item = self._page_item
-            if not page_item:
-                return
-
             if ref_row["driver-info"]["telemetry-setting"] != "Public":
-                self._set_all_dim(root)
+                self._set_all_dim(page_item)
                 return
 
             session_type = data["event-type"]

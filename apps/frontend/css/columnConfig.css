@@ -1,0 +1,406 @@
+/* ===== Column Config Panel ===== */
+.column-config-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 100%;
+    background-color: #15151E;
+    border-left: 1px solid #333333;
+    box-shadow: -4px 0 12px rgba(0,0,0,0.5);
+    z-index: 1050;
+    transform: translateX(100%);
+    transition: transform 0.25s ease-out;
+    display: flex;
+    flex-direction: column;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+}
+
+.column-config-panel.open {
+    transform: translateX(0);
+}
+
+.column-config-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: #0c0c12;
+    border-bottom: 1px solid #333333;
+    flex-shrink: 0;
+}
+
+.column-config-panel .panel-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
+.column-config-panel .panel-close-btn {
+    background: none;
+    border: none;
+    color: #9090a0;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.column-config-panel .panel-close-btn:hover {
+    color: #FFFFFF;
+}
+
+.column-config-panel .panel-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* Toggle switches */
+.column-config-panel .column-toggle-item {
+    margin-bottom: 8px;
+}
+
+.column-config-panel .column-toggle-item .form-check-label {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+    color: #FFFFFF;
+    cursor: pointer;
+}
+
+.column-config-panel .column-toggle-item .form-check-input {
+    cursor: pointer;
+}
+
+.column-config-panel .column-toggle-item .form-check-input:checked {
+    background-color: #00D2BE;
+    border-color: #00D2BE;
+}
+
+.column-config-panel .column-toggle-item .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 210, 190, 0.25);
+    border-color: #00D2BE;
+}
+
+/* Reset button */
+.column-config-panel .panel-footer {
+    padding: 16px;
+    border-top: 1px solid #333333;
+    flex-shrink: 0;
+}
+
+.column-config-panel .reset-columns-btn {
+    width: 100%;
+    background-color: #1F1F2B;
+    border: 1px solid #333333;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.column-config-panel .reset-columns-btn:hover {
+    background-color: #2D2D3D;
+}
+
+/* "All columns hidden" hint below the table */
+.all-columns-hidden-hint {
+    text-align: center;
+    padding: 12px 16px;
+    color: #9090a0;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* ===== Preset Grid ===== */
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.preset-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: #1F1F2B;
+    border: 2px solid transparent;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    line-height: 1.3;
+}
+
+.preset-btn:hover {
+    background-color: #2D2D3D;
+}
+
+.preset-btn.active {
+    border-color: #00D2BE;
+}
+
+.preset-btn .preset-emoji {
+    display: block;
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+}
+
+.preset-divider {
+    border: none;
+    border-top: 1px solid #333333;
+    margin: 16px 0;
+}
+
+/* ===== Sub-Toggle Indent ===== */
+.column-toggle-sub-item {
+    margin-bottom: 8px;
+    padding-left: calc(2.5em + 24px);
+}
+
+.column-toggle-sub-item .form-check-label {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: #c0c0d0;
+    cursor: pointer;
+}
+
+.column-toggle-sub-item .form-check-input {
+    cursor: pointer;
+}
+
+.column-toggle-sub-item .form-check-input:checked {
+    background-color: #00D2BE;
+    border-color: #00D2BE;
+}
+
+.column-toggle-sub-item .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 210, 190, 0.25);
+    border-color: #00D2BE;
+}
+
+/* ===== Auto-Preset Toast ===== */
+.auto-preset-toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1F1F2B;
+    border: 1px solid #00D2BE;
+    border-radius: 8px;
+    padding: 12px 20px;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.85rem;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    animation: toast-slide-in 0.3s ease-out;
+}
+
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.toast-dismiss-btn {
+    background: none;
+    border: none;
+    color: #9090a0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.toast-dismiss-btn:hover {
+    color: #FFFFFF;
+}
+
+/* Laptop breakpoint */
+@media (max-width: 1439px) {
+    .column-config-panel {
+        width: 260px;
+    }
+}
+
+/* ===== Tab Navigation ===== */
+.panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #333333;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.panel-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #9090a0;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.panel-tab:hover {
+    color: #FFFFFF;
+}
+
+.panel-tab.active {
+    color: #00D2BE;
+    border-bottom-color: #00D2BE;
+}
+
+/* ===== Display Tab Settings Styling ===== */
+#tab-display label {
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+}
+
+#tab-display .form-check-input:checked {
+    background-color: #00D2BE;
+    border-color: #00D2BE;
+}
+
+#tab-display .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 210, 190, 0.25);
+    border-color: #00D2BE;
+}
+
+#tab-display input[type="number"],
+#tab-display input[type="text"],
+#tab-display select {
+    background-color: #1F1F2B;
+    border: 1px solid #333333;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+}
+
+#tab-display .form-range::-webkit-slider-thumb {
+    background: #00D2BE;
+}
+
+#tab-display .form-range::-moz-range-thumb {
+    background: #00D2BE;
+}
+
+#tab-display .fw-bold {
+    color: #FFFFFF;
+}
+
+#tab-display .btn-secondary {
+    background-color: #1F1F2B;
+    border: 1px solid #333333;
+    color: #FFFFFF;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.8rem;
+}
+
+#tab-display .btn-secondary:hover {
+    background-color: #2D2D3D;
+}
+
+#tab-display .form-check-label {
+    color: #c0c0d0;
+    font-size: 0.8rem;
+}
+
+#tab-display .text-warning {
+    font-size: 0.8rem;
+}
+
+.settings-panel-links {
+    text-align: center;
+    padding-top: 8px;
+}
+
+.settings-panel-links a {
+    color: #00D2BE;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+.settings-panel-links a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Save Settings Button ===== */
+.save-settings-btn {
+    background-color: #00D2BE !important;
+    border-color: #00D2BE !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
+    margin-top: 8px;
+}
+
+.save-settings-btn:hover {
+    background-color: #00b8a6 !important;
+    border-color: #00b8a6 !important;
+}
+
+/* ===== Custom Preset ===== */
+.save-custom-preset-btn {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: #1F1F2B;
+    border: 1px dashed #555;
+    color: #9090a0;
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    margin-top: 8px;
+}
+
+.save-custom-preset-btn:hover {
+    background-color: #2D2D3D;
+    border-color: #00D2BE;
+    color: #FFFFFF;
+}
+
+.preset-btn .preset-delete {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.7rem;
+    color: #9090a0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.preset-btn .preset-delete:hover {
+    color: #ff4444;
+}
+
+.preset-btn {
+    position: relative;
+}

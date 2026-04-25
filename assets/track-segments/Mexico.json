@@ -1,0 +1,102 @@
+{
+  "circuit_name": "Mexico",
+  "circuit_number": 19,
+  "track_length": 4525,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 1160,
+      "name": "Recta Principal"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1160,
+      "end_m": 1512,
+      "name": "Ese Moisés Solana",
+      "corner_numbers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 1512,
+      "end_m": 2060,
+      "name": "Recta Transera"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2060,
+      "end_m": 2300,
+      "name": "Ese del Lago",
+      "corner_numbers": [
+        4,
+        5
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2300,
+      "end_m": 2470,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2660,
+      "end_m": 3370,
+      "name": "Esses",
+      "corner_numbers": [
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 3370,
+      "end_m": 3740,
+      "name": "Recta Opuesta"
+    },
+    {
+      "type": "corner",
+      "start_m": 3740,
+      "end_m": 3910,
+      "name": "",
+      "corner_number": 12
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3910,
+      "end_m": 4175,
+      "name": "Foro Sol",
+      "corner_numbers": [
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4175,
+      "end_m": 4275,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "corner",
+      "start_m": 4275,
+      "end_m": 4525,
+      "name": "Nigel Mansell Turn",
+      "corner_number": 17
+    }
+  ],
+  "sectors": {
+    "s1": 2037,
+    "s2": 3592
+  }
+}

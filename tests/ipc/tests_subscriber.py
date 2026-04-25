@@ -70,8 +70,14 @@ class TestIpcSubscriber(TestIPC):
         def handler(data):
             return data
 
-        self.assertIn(("test-event", handler), subscriber._event_handlers)
-        self.mock_sio.on.assert_any_call("test-event", handler)
+        self.assertEqual(len(subscriber._event_handlers), 1)
+        event_name, wrapped_handler = subscriber._event_handlers[0]
+
+        self.assertEqual(event_name, "test-event")
+        self.assertTrue(callable(wrapped_handler))
+        self.assertIsNot(wrapped_handler, handler)
+
+        self.mock_sio.on.assert_any_call("test-event", wrapped_handler)
 
     def test_on_connect_disconnect_callbacks(self):
         subscriber = SocketioClient(self.url, self.logger)

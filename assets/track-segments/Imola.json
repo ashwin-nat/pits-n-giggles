@@ -1,0 +1,136 @@
+{
+  "circuit_name": "Imola",
+  "circuit_number": 27,
+  "track_length": 4910,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 200,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 200,
+      "end_m": 310,
+      "name": "",
+      "corner_number": 1
+    },
+    {
+      "type": "straight",
+      "start_m": 310,
+      "end_m": 780,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 780,
+      "end_m": 1150,
+      "name": "Variante Tamburello",
+      "corner_numbers": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1420,
+      "end_m": 1700,
+      "name": "Variante Villeneuve",
+      "corner_numbers": [
+        5,
+        6
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1800,
+      "end_m": 2000,
+      "name": "Tosa",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2280,
+      "end_m": 2420,
+      "name": "",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2430,
+      "end_m": 2640,
+      "name": "Piratella",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2670,
+      "end_m": 2780,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 2840,
+      "end_m": 3115,
+      "name": "Acque Minerali",
+      "corner_numbers": [
+        11,
+        12
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 3115,
+      "end_m": 3200,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3450,
+      "end_m": 3670,
+      "name": "Variante Alta",
+      "corner_numbers": [
+        14,
+        15
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4080,
+      "end_m": 4250,
+      "name": "",
+      "corner_number": 16
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 4250,
+      "end_m": 4560,
+      "name": "Rivazza",
+      "corner_numbers": [
+        17,
+        18
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 4560,
+      "end_m": 4660,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 4660,
+      "end_m": 4910,
+      "name": "",
+      "corner_number": 19
+    }
+  ],
+  "sectors": {
+    "s1": 1800,
+    "s2": 3389
+  }
+}

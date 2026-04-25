@@ -1,10 +1,10 @@
 # 🚀 Running pits-n-giggles (Manually)
 
-This project uses Python 3.12 and is structured as a suite of apps under the `apps/` directory. Each sub-app can be run independently using Python's `-m` module mode.
+This project uses Python 3.12 or 3.13 and is structured as a suite of apps under the `apps/` directory. Each sub-app can be run independently using Python's `-m` module mode.
 
 ## 🧰 Requirements
 
-- Python 3.12 installed and available in your `PATH`
+- Python 3.12 or 3.13 installed and available in your `PATH`
 - [Poetry](https://python-poetry.org/) installed (preferred for dependency management)
 
 ## 📦 Install Dependencies
@@ -63,6 +63,24 @@ poetry run python -m apps.dev_tools.telemetry_replayer --file-name example.f1pca
 - Use dot (`.`) separators for nested module paths.
 - You **must** be in the project root (`pits-n-giggles/`) when running these commands.
 - All directories under `apps/` should **avoid hyphens** (`-`). Use underscores or camelCase instead to remain Python-compatible.
+
+---
+
+## 🔒 Network Bind Address
+
+By default, the server binds to `0.0.0.0`, which makes it accessible to **all devices on your local network**. This is intentional — the tool is designed for LAN use so that tablets, phones, and other PCs can access the dashboard.
+
+If you want to restrict access to only the local machine, set `bind_address` to `"127.0.0.1"` in your `png_config.json`:
+
+```json
+{
+  "Network": {
+    "bind_address": "127.0.0.1"
+  }
+}
+```
+
+> **⚠️ Security Warning:** When `bind_address` is `0.0.0.0`, the HTTP server and UDP listener are reachable by anyone on your network. Do not use this setting on untrusted networks unless you understand the implications.
 
 ---
 

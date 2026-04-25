@@ -48,6 +48,10 @@ Generate user-facing release notes for the next release of Pits n' Giggles.
    - If a fix addresses a regression from a specific prior version, call that out
    - Emoji headings are fine if the past release used them
 
-5. **Output the notes as markdown** directly to the terminal. Do not write to a file unless asked.
+5. **Always write the notes to a file** named `release-notes-vX.Y.Z.md` in the repo root. Determine the version from `meta/meta.py` (`APP_VERSION`), not from the last tag. Also print the notes to the terminal.
+
+6. **Keep length in check.** Aim for concise bullets — one line per item. Avoid repeating the same theme across multiple sections. If a fix was already shipped in a hotfix release (visible in the commit log as "Hotfix vX.Y.Z"), skip it.
+
+7. **Credit contributors.** Check `git log ... --format="%an|%ae"` for authors other than `ashwin-nat`. If any exist, extract their GitHub username from the noreply email (`<id>+<username>@users.noreply.github.com`) and add a `### 🙏 Contributors` section at the end crediting them by `@username` with a brief summary of what they worked on.
 
 If there are no user-facing changes (e.g. the only commits are CI/internal), say so explicitly rather than generating empty notes.

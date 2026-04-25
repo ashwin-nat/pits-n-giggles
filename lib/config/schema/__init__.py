@@ -26,15 +26,14 @@ from .capture import CaptureSettings
 from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
-from .hud import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                  MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                  TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID, HudSettings,
-                  MfdPageSettings, MfdSettings, OverlayPosition,
+from .hud import (HudSettings, HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+                  MfdPageId, MfdPageSettings, MfdSettings, OverlayId, OverlayPosition,
                   TimingTowerColOptions, WeatherMFDUIType)
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
 from .png import PngSettings
+from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
 from .subsys_ctrl import SubSysCtrl
@@ -47,6 +46,7 @@ __all__ = [
     'ForwardingSettings',
     'HttpsSettings',
     'HudSettings',
+    'MfdPageId',
     'MfdSettings',
     'MfdPageSettings',
     'TimingTowerColOptions',
@@ -55,16 +55,14 @@ __all__ = [
     'PitTimeLossF1',
     'PitTimeLossF2',
     'PngSettings',
+    'PredictionSettings',
     'PrivacySettings',
     'StreamOverlaySettings',
     'SubSysCtrl',
 
     'WeatherMFDUIType',
+    'HudOverlaySpeedUnit',
+    'HudOverlayFuelEstimationMode',
 
-    'INPUT_TELEMETRY_OVERLAY_ID',
-    'LAP_TIMER_OVERLAY_ID',
-    'MFD_OVERLAY_ID',
-    'TIMING_TOWER_OVERLAY_ID',
-    'TRACK_MAP_OVERLAY_ID',
-    'TRACK_RADAR_OVERLAY_ID',
+    'OverlayId',
 ]

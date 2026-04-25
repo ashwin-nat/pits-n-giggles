@@ -1,0 +1,147 @@
+{
+  "circuit_name": "Silverstone",
+  "circuit_number": 7,
+  "track_length": 5890,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 275,
+      "name": "Hamilton Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 280,
+      "end_m": 500,
+      "name": "Abbey",
+      "corner_number": 1
+    },
+    {
+      "type": "corner",
+      "start_m": 500,
+      "end_m": 690,
+      "name": "Farm Curve",
+      "corner_number": 2
+    },
+    {
+      "type": "corner",
+      "start_m": 780,
+      "end_m": 950,
+      "name": "Village",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 960,
+      "end_m": 1125,
+      "name": "The Loop",
+      "corner_number": 4
+    },
+    {
+      "type": "corner",
+      "start_m": 1140,
+      "end_m": 1350,
+      "name": "Aintree",
+      "corner_number": 5
+    },
+    {
+      "type": "straight",
+      "start_m": 1350,
+      "end_m": 1800,
+      "name": "Wellington Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 1800,
+      "end_m": 2070,
+      "name": "Brooklands",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 2070,
+      "end_m": 2385,
+      "name": "Luffield",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2400,
+      "end_m": 2715,
+      "name": "Woodcote",
+      "corner_number": 8
+    },
+    {
+      "type": "straight",
+      "start_m": 2715,
+      "end_m": 2950,
+      "name": "National Pits Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 2950,
+      "end_m": 3260,
+      "name": "Copse",
+      "corner_number": 9
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3520,
+      "end_m": 4100,
+      "name": "Maggots & Becketts",
+      "corner_numbers": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4100,
+      "end_m": 4290,
+      "name": "Chapel",
+      "corner_number": 14
+    },
+    {
+      "type": "straight",
+      "start_m": 4290,
+      "end_m": 4880,
+      "name": "Hangar Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 4880,
+      "end_m": 5260,
+      "name": "Stowe",
+      "corner_number": 15
+    },
+    {
+      "type": "corner",
+      "start_m": 5420,
+      "end_m": 5560,
+      "name": "Vale",
+      "corner_number": 16
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 5560,
+      "end_m": 5840,
+      "name": "Club",
+      "corner_numbers": [
+        17,
+        18
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 5840,
+      "end_m": 5890,
+      "name": "Hamilton Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 1813,
+    "s2": 4294
+  }
+}

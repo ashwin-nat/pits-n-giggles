@@ -1,0 +1,125 @@
+{
+  "circuit_name": "Suzuka",
+  "circuit_number": 13,
+  "track_length": 5809,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 585,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 585,
+      "end_m": 975,
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1030,
+      "end_m": 1700,
+      "name": "'S' Curves",
+      "corner_numbers": [
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1700,
+      "end_m": 2125,
+      "name": "Dunlop",
+      "corner_number": 7
+    },
+    {
+      "type": "corner",
+      "start_m": 2190,
+      "end_m": 2385,
+      "name": "Degner Curve 1",
+      "corner_number": 8
+    },
+    {
+      "type": "corner",
+      "start_m": 2385,
+      "end_m": 2530,
+      "name": "Degner Curve 2",
+      "corner_number": 9
+    },
+    {
+      "type": "corner",
+      "start_m": 2720,
+      "end_m": 2830,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "corner",
+      "start_m": 2830,
+      "end_m": 3000,
+      "name": "Hairpin",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 3050,
+      "end_m": 3670,
+      "name": "200R",
+      "corner_number": 12
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3675,
+      "end_m": 4100,
+      "name": "Spoon Curve",
+      "corner_numbers": [
+        13,
+        14
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 4100,
+      "end_m": 4850,
+      "name": "Back Straight"
+    },
+    {
+      "type": "corner",
+      "start_m": 4850,
+      "end_m": 5180,
+      "name": "130R",
+      "corner_number": 15
+    },
+    {
+      "type": "straight",
+      "start_m": 5180,
+      "end_m": 5300,
+      "name": "Back Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 5300,
+      "end_m": 5500,
+      "name": "Casio Triangle",
+      "corner_numbers": [
+        16,
+        17
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 5500,
+      "end_m": 5809,
+      "name": "Pit Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 2226,
+    "s2": 4690
+  }
+}

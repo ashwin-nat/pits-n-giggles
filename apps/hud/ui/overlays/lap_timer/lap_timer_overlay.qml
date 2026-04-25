@@ -5,16 +5,12 @@ Window {
     id: root
 
     property real scaleFactor: 1.0
+    property bool minOverlayStyle: false
 
-    readonly property int baseWidth: 280
-    readonly property int baseHeight: 180
+    readonly property int baseWidth:  minOverlayStyle ? 145 : 280
+    readonly property int baseHeight: minOverlayStyle ? 76  : 180
 
-    readonly property int fontSizeLabel: 12
-    readonly property int fontSizeValue: 14
-    readonly property int fontSizeEstimated: 12
-    readonly property int fontSizeEstimatedValue: 14
-
-    width: baseWidth * scaleFactor
+    width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
     color: "#000000"
 
@@ -29,221 +25,332 @@ Window {
 
     // Sector status arrays (-2=NA, -1=Invalid, 0=Yellow, 1=Green, 2=Purple)
     property var currentSectorStatus: [-2, -2, -2]
-    property var lastSectorStatus: [-2, -2, -2]
-    property var bestSectorStatus: [-2, -2, -2]
+    property var lastSectorStatus:    [-2, -2, -2]
+    property var bestSectorStatus:    [-2, -2, -2]
 
-    // Scaled root item
+    // ── Design tokens ────────────────────────────────────────────────────────
+    readonly property color bgBase:    "#0c0c10"
+    readonly property color bgHero:    "#14141c"
+    readonly property color bgCard:    "#0f0f14"
+    readonly property color bgFooter:  "#141418"
+    readonly property color divider:   "#26263a"
+    readonly property color labelClr:  "#55556e"
+    readonly property color textClr:   "#c4c4d4"
+
+    // ── Scaled root ──────────────────────────────────────────────────────────
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: baseWidth
+        width:  baseWidth
         height: baseHeight
 
         transform: Scale {
             xScale: scaleFactor
             yScale: scaleFactor
-            origin.x: baseWidth / 2
+            origin.x: baseWidth  / 2
             origin.y: baseHeight / 2
         }
 
+        // ════════════════════════════════════════════════════════════════════
+        //  FULL OVERLAY
+        // ════════════════════════════════════════════════════════════════════
         Rectangle {
             anchors.fill: parent
-            color: "transparent"
+            color: bgBase
+            visible: !root.minOverlayStyle
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 2
-                spacing: 2
+                spacing: 0
 
-                // 2x2 Grid of cards
-                GridLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    columns: 2
-                    rowSpacing: 2
-                    columnSpacing: 2
-
-                    // Current lap card (top-left)
-                    Card {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumWidth: 135
-                        Layout.minimumHeight: 38
-
-                        labelText: "CURRENT"
-                        valueText: root.currentTime
-                        valueColor: root.currentColor
-                    }
-
-                    // Delta card (top-right)
-                    Card {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumWidth: 135
-                        Layout.minimumHeight: 38
-
-                        labelText: "DELTA"
-                        valueText: root.deltaTime
-                        valueColor: root.deltaColor
-                    }
-
-                    // Last lap card (bottom-left)
-                    CardWithSectorBar {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumWidth: 135
-                        Layout.minimumHeight: 46
-
-                        labelText: "LAST"
-                        valueText: root.lastTime
-                        valueColor: "#FFFFFF"
-                        sectorStatus: root.lastSectorStatus
-                    }
-
-                    // Best lap card (bottom-right)
-                    CardWithSectorBar {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumWidth: 135
-                        Layout.minimumHeight: 46
-
-                        labelText: "BEST"
-                        valueText: root.bestTime
-                        valueColor: "#00FF00"
-                        sectorStatus: root.bestSectorStatus
-                    }
-                }
-
-                // Estimated time bar
+                // ── HERO: current lap + delta ─────────────────────────────
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.minimumHeight: 36
-                    color: "#1a1a1a"
-                    border.color: "#333333"
-                    border.width: 1
+                    Layout.preferredHeight: 87
+                    color: bgHero
+
+                    // Coloured left accent bar
+                    Rectangle {
+                        width: 3
+                        height: parent.height
+                        color: root.currentColor
+                        opacity: 0.85
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 4
-                        anchors.rightMargin: 4
-                        anchors.topMargin: 2
-                        anchors.bottomMargin: 2
-                        spacing: 3
+                        anchors.leftMargin:   10
+                        anchors.rightMargin:  10
+                        anchors.topMargin:    8
+                        anchors.bottomMargin: 6
+                        spacing: 4
 
-                        Text {
-                            text: "ESTIMATED"
-                            font.family: "Formula1"
-                            font.pixelSize: root.fontSizeEstimated
-                            color: "#888888"
-                            Layout.alignment: Qt.AlignHCenter
+                        // Top row: label + time on left, delta on right
+                        RowLayout {
+                            Layout.fillWidth:  true
+                            Layout.fillHeight: true
+                            spacing: 8
+
+                            // Left column: label + big time
+                            ColumnLayout {
+                                Layout.fillWidth:  true
+                                Layout.fillHeight: true
+                                spacing: 3
+
+                                Text {
+                                    text: "CURRENT"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 9
+                                    font.letterSpacing: 1.5
+                                    color: labelClr
+                                }
+
+                                Text {
+                                    text: root.currentTime
+                                    font.family: "B612 Mono"
+                                    font.pixelSize: 22
+                                    font.weight: Font.Bold
+                                    color: root.currentColor
+                                }
+
+                                Item { Layout.fillHeight: true }
+                            }
+
+                            // Right column: label + delta value (fixed width, right-aligned)
+                            ColumnLayout {
+                                Layout.preferredWidth: 76
+                                Layout.alignment: Qt.AlignTop
+                                spacing: 3
+
+                                Text {
+                                    text: "DELTA"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 9
+                                    font.letterSpacing: 1.5
+                                    color: labelClr
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Text {
+                                    text: root.deltaTime
+                                    font.family: "B612 Mono"
+                                    font.pixelSize: 18
+                                    font.weight: Font.Bold
+                                    color: root.deltaColor
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
                         }
 
-                        Text {
-                            text: root.estimatedTime
-                            font.family: "Formula1"
-                            font.pixelSize: root.fontSizeEstimatedValue
-                            font.bold: true
-                            color: "#FFFFFF"
-                            Layout.alignment: Qt.AlignHCenter
+                        // Full-width sector bar at the bottom of the hero
+                        SectorStatusBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 9
+                            sectorStatus: root.currentSectorStatus
                         }
                     }
                 }
 
-                // Current sector status bar at bottom
+                // Divider
+                Rectangle { Layout.fillWidth: true; height: 1; color: divider }
+
+                // ── LAST / BEST row ───────────────────────────────────────
+                RowLayout {
+                    Layout.fillWidth:    true
+                    Layout.preferredHeight: 57
+                    spacing: 0
+
+                    // LAST card
+                    Rectangle {
+                        Layout.fillWidth:  true
+                        Layout.fillHeight: true
+                        color: bgCard
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin:   8
+                            anchors.rightMargin:  6
+                            anchors.topMargin:    6
+                            anchors.bottomMargin: 6
+                            spacing: 3
+
+                            Text {
+                                text: "LAST"
+                                font.family: "Formula1"
+                                font.pixelSize: 9
+                                font.letterSpacing: 1.2
+                                color: labelClr
+                            }
+
+                            Text {
+                                text: root.lastTime
+                                font.family: "B612 Mono"
+                                font.pixelSize: 14
+                                font.weight: Font.Bold
+                                color: textClr
+                            }
+
+                            Item { Layout.fillHeight: true }
+
+                            SectorStatusBar {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 5
+                                sectorStatus: root.lastSectorStatus
+                            }
+                        }
+                    }
+
+                    // Vertical divider
+                    Rectangle { width: 1; Layout.fillHeight: true; color: divider }
+
+                    // BEST card
+                    Rectangle {
+                        Layout.fillWidth:  true
+                        Layout.fillHeight: true
+                        color: bgCard
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin:   8
+                            anchors.rightMargin:  6
+                            anchors.topMargin:    6
+                            anchors.bottomMargin: 6
+                            spacing: 3
+
+                            RowLayout {
+                                spacing: 5
+
+                                Text {
+                                    text: "BEST"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 9
+                                    font.letterSpacing: 1.2
+                                    color: labelClr
+                                }
+
+                                // Purple pip — signals personal best / purple sector colour
+                                Rectangle {
+                                    width: 5; height: 5; radius: 2.5
+                                    color: "#9b30ff"
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                            }
+
+                            Text {
+                                text: root.bestTime
+                                font.family: "B612 Mono"
+                                font.pixelSize: 14
+                                font.weight: Font.Bold
+                                color: "#00e060"
+                            }
+
+                            Item { Layout.fillHeight: true }
+
+                            SectorStatusBar {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 5
+                                sectorStatus: root.bestSectorStatus
+                            }
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle { Layout.fillWidth: true; height: 1; color: divider }
+
+                // ── ESTIMATED footer ──────────────────────────────────────
+                Rectangle {
+                    Layout.fillWidth:    true
+                    Layout.preferredHeight: 34
+                    color: bgFooter
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin:   10
+                        anchors.rightMargin:  10
+                        anchors.topMargin:    2
+                        anchors.bottomMargin: 2
+                        spacing: 0
+
+                        Text {
+                            text: "EST"
+                            font.family: "Formula1"
+                            font.pixelSize: 9
+                            font.letterSpacing: 1.5
+                            color: labelClr
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Text {
+                            text: root.estimatedTime
+                            font.family: "B612 Mono"
+                            font.pixelSize: 13
+                            font.weight: Font.Bold
+                            color: "#9090a8"
+                        }
+                    }
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //  MINIMAL OVERLAY
+        // ════════════════════════════════════════════════════════════════════
+        Rectangle {
+            anchors.fill: parent
+            color: bgHero
+            visible: root.minOverlayStyle
+
+            // Left accent bar
+            Rectangle {
+                width: 3
+                height: parent.height
+                color: root.currentColor
+                opacity: 0.85
+            }
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.leftMargin:   10
+                anchors.rightMargin:  8
+                anchors.topMargin:    6
+                anchors.bottomMargin: 6
+                spacing: 3
+
+                Text {
+                    text: root.currentTime
+                    font.family: "B612 Mono"
+                    font.pixelSize: 20
+                    font.weight: Font.Bold
+                    color: root.currentColor
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillHeight: true
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Text {
+                    text: root.deltaTime
+                    font.family: "B612 Mono"
+                    font.pixelSize: 13
+                    font.weight: Font.Bold
+                    color: root.deltaColor
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
                 SectorStatusBar {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 12
-                    Layout.bottomMargin: 2
+                    Layout.preferredHeight: 9
                     sectorStatus: root.currentSectorStatus
                 }
             }
         }
     }
 
-    // Card component
-    component Card: Rectangle {
-        property string labelText: ""
-        property string valueText: ""
-        property string valueColor: "#FFFFFF"
-
-        color: "#1a1a1a"
-        border.color: "#333333"
-        border.width: 1
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 2
-            anchors.rightMargin: 2
-            anchors.topMargin: 1
-            anchors.bottomMargin: 1
-            spacing: 0
-
-            Text {
-                text: labelText
-                font.family: "Formula1"
-                font.pixelSize: root.fontSizeLabel
-                color: "#888888"
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Text {
-                text: valueText
-                font.family: "Formula1"
-                font.pixelSize: root.fontSizeValue
-                font.bold: true
-                color: valueColor
-                Layout.alignment: Qt.AlignHCenter
-            }
-        }
-    }
-
-    // Card with sector bar component
-    component CardWithSectorBar: Rectangle {
-        id: card
-
-        property string labelText: ""
-        property string valueText: ""
-        property string valueColor: "#FFFFFF"
-        property var sectorStatus: [0, 0, 0]
-
-        color: "#1a1a1a"
-        border.color: "#333333"
-        border.width: 1
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 2
-            anchors.rightMargin: 2
-            anchors.topMargin: 1
-            anchors.bottomMargin: 1
-            spacing: 0
-
-            Text {
-                text: labelText
-                font.family: "Formula1"
-                font.pixelSize: root.fontSizeLabel
-                color: "#888888"
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            Text {
-                text: valueText
-                font.family: "Formula1"
-                font.pixelSize: root.fontSizeValue
-                font.bold: true
-                color: valueColor
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            SectorStatusBar {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 8
-                sectorStatus: card.sectorStatus
-            }
-        }
-    }
-
-    // Sector status bar component
+    // ── SectorStatusBar ──────────────────────────────────────────────────────
+    // Renders three rounded pill segments with a small gap between each.
     component SectorStatusBar: Canvas {
         id: canvas
         property var sectorStatus: [-2, -2, -2]
@@ -254,27 +361,35 @@ Window {
             let ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
 
-            let sectorWidth = width / 3
+            let segW = width / 3
+
             let colors = {
-                "-2": "#6c757d",  // NA (gray)
-                "-1": "#dc3545",  // Invalid (red)
-                "0": "#ffc107",   // Yellow
-                "1": "#28a745",   // Green
-                "2": "#800080"    // Purple
+                "-2": "#222235",   // NA  – near-invisible
+                "-1": "#dc3545",   // Invalid
+                "0":  "#ffc107",   // Yellow
+                "1":  "#28a745",   // Green
+                "2":  "#9b30ff"    // Purple
             }
 
-            // Draw filled rectangles for each sector
             for (let i = 0; i < 3; i++) {
-                let status = sectorStatus[i]
-                ctx.fillStyle = colors[status.toString()] || "#323232"
-                ctx.fillRect(i * sectorWidth, 0, sectorWidth, height)
+                let x = i * segW
+                let y = 0
+                let w = segW
+                let h = height
+
+                ctx.fillStyle = colors[sectorStatus[i].toString()] || "#222235"
+
+                ctx.beginPath()
+                ctx.rect(x, y, w, h)
+                ctx.closePath()
+                ctx.fill()
             }
 
-            // Draw black separator lines
+            // Black separator lines between sectors
             ctx.strokeStyle = "#000000"
-            ctx.lineWidth = 1
+            ctx.lineWidth = 2
             for (let i = 1; i < 3; i++) {
-                let x = i * sectorWidth
+                let x = Math.round(i * segW)
                 ctx.beginPath()
                 ctx.moveTo(x, 0)
                 ctx.lineTo(x, height)

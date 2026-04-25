@@ -26,7 +26,7 @@ class TimeTrialDataPopulator {
 
             // Only update comparison data if packet format is 2024 or later
             if (packetFormat >= 2024) {
-                this.restoreComparisonCards();
+                this.restoreComparisonCards(data['rival-info']);
                 this.updateComparisonData(data['tt-data'], data['tt-setups']);
             } else {
                 this.hideComparisonCardsForOlderFormat();
@@ -43,11 +43,14 @@ class TimeTrialDataPopulator {
     /**
      * Restore comparison cards to their original structure for F1 2024+ format
      */
-    restoreComparisonCards() {
+    restoreComparisonCards(rivalInfo) {
+        const rivalName = rivalInfo?.name;
+        const rivalTitle = rivalName ? rivalName : 'Rival Best';
+
         const cardConfigs = [
             { class: 'tt-personal-best', prefix: 'pb', title: 'Personal Best' },
             { class: 'tt-session-best', prefix: 'sb', title: 'Session Best' },
-            { class: 'tt-rival-best', prefix: 'rival', title: 'Rival Best' }
+            { class: 'tt-rival-best', prefix: 'rival', title: rivalTitle }
         ];
 
         cardConfigs.forEach(config => {
@@ -214,7 +217,7 @@ class TimeTrialDataPopulator {
         const lapData = sessionHistory['lap-history-data'];
         const bestLapIndex = sessionHistory['best-lap-time-lap-num'] - 1;
 
-        tbody.innerHTML = '';
+        tbody.textContent = '';
 
         const bestLapTimeLapNum = sessionHistory["best-lap-time-lap-num"];
         const bestS1TimeLapNum  = sessionHistory["best-sector-1-lap-num"];
@@ -410,7 +413,7 @@ class TimeTrialDataPopulator {
         if (irlS1El) irlS1El.textContent = '--:---';
         if (irlS2El) irlS2El.textContent = '--:---';
         if (irlS3El) irlS3El.textContent = '--:---';
-        if (irlDetailsAssistsEl) irlDetailsAssistsEl.innerHTML = '';
+        if (irlDetailsAssistsEl) irlDetailsAssistsEl.textContent = '';
     }
 
     /**
@@ -444,7 +447,7 @@ class TimeTrialDataPopulator {
      */
     clear() {
         const tbody = document.getElementById('tt-lap-table-body');
-        if (tbody) tbody.innerHTML = '';
+        if (tbody) tbody.textContent = '';
 
         // Clear comparison data
         ['pb', 'sb', 'rival'].forEach(prefix => {

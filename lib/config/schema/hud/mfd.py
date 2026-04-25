@@ -23,11 +23,24 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import copy
+from enum import Enum
 from typing import Any, ClassVar, Dict
 
 from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
+
+# ------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+class MfdPageId(str, Enum):
+    COLLAPSED        = "collapsed"
+    LAP_TIMES        = "lap_times"
+    WEATHER_FORECAST = "weather_forecast"
+    FUEL_INFO        = "fuel_info"
+    TYRE_INFO        = "tyre_info"
+    PIT_REJOIN       = "pit_rejoin"
+    TYRE_SETS        = "tyre_sets"
+    PACE_COMP        = "pace_comp"
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -48,12 +61,13 @@ class MfdPageSettings(ConfigDiffMixin, BaseModel):
 
 
 DEFAULT_PAGES = {
-    "lap_times": MfdPageSettings(enabled=True, position=1, description="Lap Times"),
-    "weather_forecast": MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
-    "fuel_info": MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
-    "tyre_info": MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
-    "pit_rejoin": MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
-    "tyre_sets": MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
+    MfdPageId.LAP_TIMES:        MfdPageSettings(enabled=True, position=1, description="Lap Times"),
+    MfdPageId.WEATHER_FORECAST: MfdPageSettings(enabled=True, position=2, description="Weather Forecast"),
+    MfdPageId.FUEL_INFO:        MfdPageSettings(enabled=True, position=3, description="Fuel Info"),
+    MfdPageId.TYRE_INFO:        MfdPageSettings(enabled=True, position=4, description="Tyre Info"),
+    MfdPageId.PIT_REJOIN:       MfdPageSettings(enabled=True, position=5, description="Pit Rejoin"),
+    MfdPageId.TYRE_SETS:        MfdPageSettings(enabled=True, position=6, description="Tyre Sets"),
+    MfdPageId.PACE_COMP:        MfdPageSettings(enabled=True, position=7, description="Pace Comparison"),
 }
 
 
@@ -94,16 +108,23 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
     def add_missing_pages(self):
         """
         Ensure all DEFAULT_PAGES exist.
-        New pages are added as disabled by default.
+        New pages are added as disabled by default, with a non-conflicting position.
         """
         merged = dict(self.pages)
+        used_positions = {page.position for page in merged.values()}
 
         for key, default_page in DEFAULT_PAGES.items():
-            if key not in merged:
-                # Add new page, but disabled so UI does not break
+            str_key = key.value if isinstance(key, MfdPageId) else key
+            if str_key not in merged:
                 new_page = default_page.model_copy(deep=True)
                 new_page.enabled = False
-                merged[key] = new_page
+                # Resolve position conflict: find the next free slot
+                pos = new_page.position
+                while pos in used_positions:
+                    pos += 1
+                new_page.position = pos
+                used_positions.add(pos)
+                merged[str_key] = new_page
 
         self.pages = merged
         return self

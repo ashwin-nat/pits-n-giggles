@@ -53,6 +53,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertEqual(settings.broker_xpub_port, 53838)
         self.assertEqual(settings.broker_xsub_port, 53835)
         self.assertEqual(settings.enable_pkt_ordering, False)
+        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
 
     def test_invalid_port_ranges(self):
         """Test that invalid port numbers raise ValidationError"""
@@ -216,6 +217,56 @@ class TestNetworkSettings(TestF1ConfigBase):
                 save_viewer_port=7000,
                 broker_xpub_port=7000,
             )
+
+    def test_udp_action_button_debounce_ms_default(self):
+        settings = NetworkSettings()
+        self.assertEqual(settings.udp_action_button_debounce_ms, 100)
+
+    def test_udp_action_button_debounce_ms_valid(self):
+        NetworkSettings(udp_action_button_debounce_ms=0)
+        NetworkSettings(udp_action_button_debounce_ms=250)
+        NetworkSettings(udp_action_button_debounce_ms=500)
+
+    def test_udp_action_button_debounce_ms_invalid(self):
+        with self.assertRaises(ValidationError):
+            NetworkSettings(udp_action_button_debounce_ms=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(udp_action_button_debounce_ms=501)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(udp_action_button_debounce_ms="cat")
+
+    def test_udp_action_debounce_sec(self):
+        settings = NetworkSettings(udp_action_button_debounce_ms=100)
+        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.1)
+
+        settings = NetworkSettings(udp_action_button_debounce_ms=0)
+        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.0)
+
+        settings = NetworkSettings(udp_action_button_debounce_ms=500)
+        self.assertAlmostEqual(settings.udp_action_debounce_sec, 0.5)
+
+    def test_bind_address_default(self):
+        settings = NetworkSettings()
+        self.assertEqual(str(settings.bind_address), "0.0.0.0")
+
+    def test_bind_address_valid(self):
+        NetworkSettings(bind_address="127.0.0.1")
+        NetworkSettings(bind_address="192.168.1.100")
+        NetworkSettings(bind_address="10.0.0.1")
+
+    def test_bind_address_invalid(self):
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="not_an_ip")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="256.0.0.1")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="::1")  # IPv6 not accepted
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address="")
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(bind_address=69420)
 
     def test_enable_pkt_ordering(self):
         net = NetworkSettings(enable_pkt_ordering=True)

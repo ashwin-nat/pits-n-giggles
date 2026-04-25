@@ -37,7 +37,6 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QPushButton, QSplitter, QToolTip, QVBoxLayout,
                                QWidget)
 
-from apps.hud.common import deserialise_data
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       PngAppMgrBase, PngAppMgrConfig,
@@ -103,7 +102,7 @@ class StableTooltipController(QObject):
 class PngLauncherWindow(QMainWindow):
     """Main launcher window"""
 
-    update_data = Signal(str)
+    update_data = Signal(object)
     show_error_signal = Signal(str, str)
     show_success_signal = Signal(str, str)
 
@@ -894,7 +893,7 @@ class PngLauncherWindow(QMainWindow):
         """
         QMetaObject.invokeMethod(self, "close", Qt.ConnectionType.QueuedConnection)
 
-    def on_update_data(self, versions_serialised: str):
+    def on_update_data(self, newer_versions: List[Dict[str, Any]]):
         """Handle incoming updates event"""
-        self.newer_versions = deserialise_data(versions_serialised)
+        self.newer_versions = newer_versions
         self.mark_update_button_available()

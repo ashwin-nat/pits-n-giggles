@@ -1,0 +1,103 @@
+{
+  "circuit_name": "Montreal",
+  "circuit_number": 6,
+  "track_length": 4371,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 150,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 170,
+      "end_m": 500,
+      "name": "Virage Senna",
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 630,
+      "end_m": 880,
+      "corner_numbers": [
+        3,
+        4
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 950,
+      "end_m": 1130,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 1175,
+      "end_m": 1290,
+      "name": "",
+      "corner_number": 5
+    },
+    {
+      "type": "corner",
+      "start_m": 1290,
+      "end_m": 1470,
+      "name": "",
+      "corner_number": 6
+    },
+    {
+      "type": "corner",
+      "start_m": 1470,
+      "end_m": 1570,
+      "name": "",
+      "corner_number": 7
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1880,
+      "end_m": 2150,
+      "name": "Pont de la Concorde",
+      "corner_numbers": [
+        8,
+        9
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2550,
+      "end_m": 2850,
+      "name": "The Hairpin",
+      "corner_number": 10
+    },
+    {
+      "type": "straight",
+      "start_m": 2850,
+      "end_m": 3800,
+      "name": "Casino Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3850,
+      "end_m": 4070,
+      "name": "Wall Of Champions",
+      "corner_numbers": [
+        12,
+        13
+      ]
+    },
+    {
+      "type": "straight",
+      "start_m": 4070,
+      "end_m": 4371,
+      "name": "Pit Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 1101,
+    "s2": 2500
+  }
+}

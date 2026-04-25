@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
 
 class TyreInfoPage(MfdPageBase):
 
-    KEY = "tyre_info"
+    KEY = MfdPageId.TYRE_INFO
     QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
@@ -58,9 +59,6 @@ class TyreInfoPage(MfdPageBase):
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
             page_item = self._page_item
-            if not page_item:
-                return
-
             ref_row = get_ref_row(data)
             if not ref_row:
                 return
@@ -110,8 +108,6 @@ class TyreInfoPage(MfdPageBase):
         def _handle_stream_overlay_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
             page_item = self._page_item
-            if not page_item:
-                return
             tyre_sets_info = data["tyre-sets"]
             if not tyre_sets_info:
                 return
@@ -202,11 +198,16 @@ class TyreInfoPage(MfdPageBase):
 
                 rows_data.append({
                     'label': label,
+                    'lap_num': pred['lap-number'],
                     'fl': pred.get('front-left-wear', 0.0),
                     'fr': pred.get('front-right-wear', 0.0),
                     'rl': pred.get('rear-left-wear', 0.0),
                     'rr': pred.get('rear-right-wear', 0.0),
                 })
+
+        # Sort non-curr rows by ascending lap number (closest-prediction snapping
+        # can produce out-of-order results when predictions are sparse).
+        rows_data = rows_data[:1] + sorted(rows_data[1:], key=lambda r: r.get('lap_num', float('inf')))
 
         # Ensure we always have exactly 3 rows
         while len(rows_data) < 3:

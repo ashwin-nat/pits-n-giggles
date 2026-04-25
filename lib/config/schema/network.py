@@ -25,7 +25,9 @@
 from collections import defaultdict
 from typing import Any, ClassVar, Dict, Optional
 
-from pydantic import BaseModel, Field, model_validator
+import ipaddress
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from meta.meta import APP_NAME
 
@@ -66,6 +68,23 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         port_type=PortType.TCP,
     )
 
+    bind_address: str = Field(
+        default="0.0.0.0",
+        description="Server Bind Address",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box",
+                "ext_info": [
+                    "IP address the HTTP and UDP servers bind to.\n"
+                    "Use '0.0.0.0' to allow LAN access (default).\n"
+                    "Use '127.0.0.1' to restrict to this machine only.\n"
+                    "WARNING: '0.0.0.0' exposes the server to all devices on your network.\n"
+                    "Only IPv4 addresses are supported."
+                ]
+            }
+        }
+    )
+
     udp_tyre_delta_action_code: Optional[int] = udp_action_field("Tyre Delta Marker UDP Action Code")
     udp_custom_action_code: Optional[int] = udp_action_field("Custom Marker UDP Action Code")
 
@@ -90,6 +109,19 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
                 "ext_info": [
                     'The telemetry core will attempt to detect out of order packets and drop them accordingly.'
                 ]
+            }
+        }
+    )
+
+    udp_action_button_debounce_ms: int = Field(
+        default=100,
+        ge=0,
+        le=500,
+        description="UDP Action Button Debounce Time (ms)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True
             }
         }
     )
@@ -151,3 +183,16 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
             raise ValueError("Port conflict detected:\n" + "\n".join(messages))
 
         return self
+
+    @field_validator("bind_address")
+    @classmethod
+    def validate_bind_address(cls, v: str) -> str:
+        try:
+            ipaddress.IPv4Address(v)
+        except ValueError as exc:
+            raise ValueError(f"'{v}' is not a valid IPv4 address") from exc
+        return v
+
+    @property
+    def udp_action_debounce_sec(self) -> float:
+        return self.udp_action_button_debounce_ms / 1000.0

@@ -114,7 +114,7 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, tasks)
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
     return web_server, ipc_pub
 
 async def lowFreqLocalUpdateTask(
@@ -140,7 +140,7 @@ async def highFreqLocalUpdateTask(
         ipc_pub (IpcPublisherAsync): The IPC publisher
     """
 
-    data = StreamOverlayData(session_state).toJSON(False)
+    data = StreamOverlayData(session_state, export_hud_data=True).toJSON(False)
     await ipc_pub.publish("stream-overlay-update", data)
 
 async def webClientUpdateTask(
@@ -158,7 +158,7 @@ async def webClientUpdateTask(
     if server.is_any_client_interested_in_event('race-table-update'):
         await server.send_to_clients_interested_in_event(
             event='race-table-update',
-            data=PeriodicUpdateData(session_state).toJSON()
+            data=PeriodicUpdateData(session_state, send_position_data=True).toJSON()
         )
 
     if server.is_any_client_interested_in_event('stream-overlay-update'):

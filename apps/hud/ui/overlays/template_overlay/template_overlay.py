@@ -42,7 +42,7 @@ class TemplateOverlay(BaseOverlayQML):
 
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "minimal_overlay.qml"
-    OVERLAY_ID = "minimal_overlay" # Hard code the overlay ID in lib/config/schema/hud/layout.py and use it here
+    OVERLAY_ID = "minimal_overlay" # Add a new entry to OverlayId in lib/config/schema/hud/layout.py and use it here
 
     def __init__(
         self,

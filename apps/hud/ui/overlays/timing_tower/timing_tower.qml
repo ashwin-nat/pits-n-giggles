@@ -8,9 +8,9 @@ Window {
 
     property real scaleFactor: 1.0
     property int numRows: 5  // Set by Python
-    readonly property int rowHeight: 32
-    readonly property int headerHeight: 40
-    readonly property int margins: 25
+    readonly property int rowHeight: 28
+    readonly property int headerHeight: 34
+    readonly property int margins: 20
 
     // Column toggle properties - set by Python
     property bool showTeamLogos: true
@@ -32,13 +32,13 @@ Window {
             width += showPens ? cols.ers : cols.ers + 10;
         }
         if (showPens) width += cols.pens;
-        return width + 20; // Add padding
+        return width + 10; // Add padding
     }
 
     readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
 
-    width: baseWidth * scaleFactor
-    height: baseHeight * scaleFactor
+    width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
+    height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
     color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
@@ -48,54 +48,57 @@ Window {
     property int referenceRow: -1
     property string errorMessage: ""
     property bool showError: false
+    property string mode: "race"  // "race" or "tt"
+    property var ttTableData: []
+
+    // TT mode column widths and dimensions
+    readonly property int ttColLabel: 52
+    readonly property int ttColLapTime: 85
+    readonly property int ttColSector: 62
+    // +34: accounts for nested margins (outer rect 8, layout 8, col 4) + 4 left margin + 10 right padding
+    readonly property int ttBaseWidth: ttColLabel + ttColLapTime + ttColSector * 3 + 34
+    readonly property int ttColHeaderHeight: 22
+    readonly property int ttBaseHeight: headerHeight + ttColHeaderHeight + (rowHeight * 4) + margins
 
     // Global scaling root
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: baseWidth
-        height: baseHeight
+        width: mode === "tt" ? ttBaseWidth : baseWidth
+        height: mode === "tt" ? ttBaseHeight : baseHeight
 
         transform: Scale {
             xScale: scaleFactor
             yScale: scaleFactor
-            origin.x: baseWidth / 2
-            origin.y: baseHeight / 2
+            origin.x: scaledRoot.width / 2
+            origin.y: scaledRoot.height / 2
         }
 
         // Main container
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 5
-            color: Qt.rgba(0.04, 0.04, 0.04, 0.86)
+            anchors.margins: 4
+            color: Qt.rgba(0.04, 0.04, 0.06, 0.90)
             radius: 8
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 5
-                spacing: 5
+                anchors.margins: 4
+                spacing: 3
 
                 // Header section
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 35
-                    color: Qt.rgba(0.06, 0.06, 0.06, 0.78)
+                    Layout.preferredHeight: 28
+                    color: Qt.rgba(0.12, 0.12, 0.14, 0.95)
                     radius: 5
 
-                    Rectangle {
+                    Text {
                         anchors.centerIn: parent
-                        width: parent.width - 6
-                        height: 25
-                        color: Qt.rgba(0.16, 0.16, 0.16, 0.78)
-                        radius: 3
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: sessionInfo
-                            font.family: "Formula1"
-                            font.pixelSize: 15
-                            color: "#ffffff"
-                        }
+                        text: sessionInfo
+                        font.family: "Formula1"
+                        font.pixelSize: 13
+                        color: "#cccccc"
                     }
                 }
 
@@ -103,55 +106,71 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: Qt.rgba(0.06, 0.06, 0.06, 0.86)
+                    color: "transparent"
                     radius: 6
 
-                    // Error message display
+                    // Error message display (race mode only)
                     Text {
                         anchors.centerIn: parent
                         text: errorMessage
                         font.pixelSize: 12
                         font.bold: true
                         color: "#ffb86b"
-                        visible: showError
+                        visible: showError && mode === "race"
                     }
 
                     // Column widths
                     QtObject {
                         id: cols
-                        readonly property int pos: 40
-                        readonly property int team: 30
-                        readonly property int name: 160
-                        readonly property int delta: 90
-                        readonly property int tyre: 75
-                        readonly property int ers: 75
-                        readonly property int pens: 80
+                        readonly property int pos: 30
+                        readonly property int team: 25
+                        readonly property int name: 120
+                        readonly property int delta: 72
+                        readonly property int tyre: 58
+                        readonly property int ers: 58
+                        readonly property int pens: 56
                     }
 
-                    // Table content
+                    // Table content (race mode)
                     ListView {
                         id: tableView
                         anchors.fill: parent
                         anchors.margins: 2
                         clip: true
                         interactive: false
-                        visible: !showError
+                        visible: !showError && mode === "race"
 
                         model: tableData
 
-                        delegate: Rectangle {
+                        delegate: Item {
                             width: tableView.width
-                            height: 32
-                            color: index % 2 === 0 ? Qt.rgba(0.1, 0.1, 0.1, 0.7) : Qt.rgba(0.08, 0.08, 0.08, 0.7)
+                            height: 28
 
-                            // Reference row border
+                            // Row background
                             Rectangle {
                                 anchors.fill: parent
-                                color: "transparent"
-                                border.color: "white"
-                                border.width: modelData.isReference ? 2 : 0
-                                radius: 2
-                                visible: modelData.isReference
+                                color: modelData.isReference
+                                    ? Qt.rgba(1, 1, 1, 0.07)
+                                    : Qt.rgba(0.08, 0.08, 0.10, 0.6)
+                                radius: 3
+                            }
+
+                            // Bottom separator
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                height: 1
+                                color: Qt.rgba(1, 1, 1, 0.05)
+                            }
+
+                            // Reference row left accent
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 2
+                                height: parent.height - 6
+                                color: modelData.isReference ? "#ffffff" : "transparent"
+                                radius: 1
                             }
 
                             Row {
@@ -180,14 +199,17 @@ Window {
                                     visible: showTeamLogos
 
                                     Image {
-                                        anchors.centerIn: parent
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 4
+                                        anchors.verticalCenter: parent.verticalCenter
                                         width: 20
                                         height: 20
-                                        sourceSize.width: width * Screen.devicePixelRatio
-                                        sourceSize.height: height * Screen.devicePixelRatio
+                                        sourceSize.width: width * Screen.devicePixelRatio * 2
+                                        sourceSize.height: height * Screen.devicePixelRatio * 2
                                         source: modelData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
+                                        mipmap: true
                                         cache: true
                                         antialiasing: true
                                     }
@@ -253,61 +275,49 @@ Window {
                                 }
 
                                 // ERS/DRS
-                                Rectangle {
+                                Item {
                                     width: showErsDrsInfo ? cols.ers : 0
                                     height: parent.height
-                                    color: Qt.rgba(0.1, 0.1, 0.1, 0.7)
                                     visible: showErsDrsInfo
 
-                                    Row {
-                                        anchors.fill: parent
-                                        spacing: 0
-
-                                        // ERS bar (left)
-                                        Rectangle {
-                                            width: parent.width * 0.15
-                                            height: parent.height
-                                            color: {
-                                                switch(modelData.ersMode) {
-                                                    case "Medium": return "#ffff00"
-                                                    case "Hotlap": return "#00ff00"
-                                                    case "Overtake": return "#ff0000"
-                                                    default: return "#888888"
-                                                }
+                                    // ERS mode strip (left)
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 1
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: {
+                                            switch(modelData.ersMode) {
+                                                case "Medium": return "#e6d800"
+                                                case "Hotlap": return "#00e676"
+                                                case "Overtake": return "#ff1744"
+                                                default: return "#444444"
                                             }
-                                            border.color: "black"
-                                            border.width: 1
-                                        }
-
-                                        // ERS text (center)
-                                        Text {
-                                            width: parent.width * 0.70
-                                            height: parent.height
-                                            text: modelData.ers
-                                            font.family: "Formula1"
-                                            font.pixelSize: 12
-                                            color: "white"
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-
-                                        // DRS bar (right)
-                                        Rectangle {
-                                            width: parent.width * 0.15
-                                            height: parent.height
-                                            color: modelData.drs ? "#00ff00" : "#888888"
-                                            border.color: "black"
-                                            border.width: 1
                                         }
                                     }
 
-                                    // Reference border overlay for ERS column
+                                    // ERS text (center)
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.ers
+                                        font.family: "Consolas"
+                                        font.pixelSize: 13
+                                        color: "#dddddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    // DRS strip (right)
                                     Rectangle {
-                                        anchors.fill: parent
-                                        color: "transparent"
-                                        border.color: "white"
-                                        border.width: modelData.isReference ? 2 : 0
-                                        visible: modelData.isReference
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 1
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: modelData.drs ? "#00e676" : "#333333"
                                     }
                                 }
 
@@ -319,15 +329,158 @@ Window {
                                     visible: showPens
 
                                     Text {
-                                        anchors.centerIn: parent
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 4
+                                        anchors.verticalCenter: parent.verticalCenter
                                         text: modelData.penalties
                                         font.family: "Formula1"
                                         font.pixelSize: 11
                                         color: "white"
-                                        horizontalAlignment: Text.AlignHCenter
+                                        horizontalAlignment: Text.AlignLeft
                                         verticalAlignment: Text.AlignVCenter
                                         wrapMode: Text.NoWrap
                                         elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // TT table (time trial mode)
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 2
+                        spacing: 0
+                        visible: mode === "tt"
+
+                        // Column headers
+                        Row {
+                            width: parent.width
+                            height: ttColHeaderHeight
+
+                            Text {
+                                width: ttColLabel
+                                height: parent.height
+                                text: ""
+                            }
+                            Text {
+                                width: ttColLapTime
+                                height: parent.height
+                                text: "LAP"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S1"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S2"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: ttColSector
+                                height: parent.height
+                                text: "S3"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#888888"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        Repeater {
+                            model: ttTableData
+
+                            delegate: Item {
+                                width: parent.width
+                                height: 28
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: index % 2 === 0
+                                        ? Qt.rgba(0.10, 0.10, 0.12, 0.7)
+                                        : Qt.rgba(0.06, 0.06, 0.08, 0.5)
+                                    radius: 3
+                                }
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: 1
+                                    color: Qt.rgba(1, 1, 1, 0.05)
+                                }
+
+                                Row {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    height: parent.height
+
+                                    Text {
+                                        width: ttColLabel
+                                        height: parent.height
+                                        text: modelData.label
+                                        font.family: "Formula1"
+                                        font.pixelSize: 12
+                                        color: "#aaaaaa"
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColLapTime
+                                        height: parent.height
+                                        text: modelData["lap-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 13
+                                        color: "#ffffff"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s1-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s2-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Text {
+                                        width: ttColSector
+                                        height: parent.height
+                                        text: modelData["s3-time-str"]
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
                                     }
                                 }
                             }

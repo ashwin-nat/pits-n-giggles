@@ -55,10 +55,23 @@ class MfdPageBase:
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
         self._stats = EventCounter()
 
-    def on_event(self, event_type: str):
-        """Decorator to register an event handler for this page."""
+    def on_event(self, event_type: str, requires_page_item: bool = True):
+        """Decorator to register an event handler for this page.
+
+        Args:
+            event_type: The event type to handle.
+            requires_page_item: If True (default), the handler is skipped when the page is not active.
+        """
         def decorator(fn):
-            self._handlers[event_type] = fn
+            if requires_page_item:
+                def wrapper(data, _event_type=event_type):
+                    if not self._page_item:
+                        self._stats.track_event("__DROPPED_NO_PAGE__", _event_type)
+                        return None
+                    return fn(data)
+                self._handlers[event_type] = wrapper
+            else:
+                self._handlers[event_type] = fn
             return fn
         return decorator
 
@@ -89,24 +102,24 @@ class MfdPageBase:
         self._stats.track_event("__EVENTS__", event_type)
 
     @property
-    def root(self):
-        return self.overlay._root
-
-    @property
     def page_item(self):
         return self.overlay.current_page_item
 
-    def on_page_activated(self, item: QQuickItem):
-        """Called when the page becomes active. Interested overlays should override this method."""
+    def _on_page_activated(self, item: QQuickItem):
+        """Internal activation — stores item, tracks stats, then calls the public hook."""
         self._page_item = item
         self._stats.track_event("__LIFECYCLE__", "activated")
-        self.logger.debug(f"{self.KEY} | Page activated")
+        self.logger.debug("%s | Page activated", self.KEY)
+        self.on_page_activated(item)
+
+    def on_page_activated(self, _: QQuickItem):
+        """Called when the page becomes active. Override in subclasses with @final."""
 
     def on_page_deactivated(self):
         """Called when the page becomes active. Interested overlays should override this method."""
         self._page_item = None
         self._stats.track_event("__LIFECYCLE__", "deactivated")
-        self.logger.debug(f"{self.KEY} | Page deactivated")
+        self.logger.debug("%s | Page deactivated", self.KEY)
 
     @property
     def is_active(self) -> bool:

@@ -34,21 +34,25 @@ from .helpers import DriversListRsp
 class PeriodicUpdateData(BaseAPI):
     """This class will prepare the live race telemetry info response. Use toJSON() method to get the JSON rsp
     """
-    def __init__(self, session_state: SessionState) -> None:
+    def __init__(self, session_state: SessionState, send_position_data: bool = False) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
         Args:
             session_state (SessionState): Handle to the session state data structure
+            send_position_data (bool, optional): Whether to send position data. Defaults to False.
         """
 
         self.m_session_info = session_state.m_session_info
         self.m_wdt_status = session_state.m_connected_to_sim
-        track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
+        # TODO: evaluate if this is needed
+        self.m_track_length = self.m_session_info.m_packet_session.m_trackLength if self.m_session_info.m_packet_session else None
         self.m_driver_list_rsp = DriversListRsp(
             session_state=session_state,
             is_spectator_mode=self.m_session_info.m_is_spectating,
-            track_length=track_length,
-            is_tt_mode=(str(self.m_session_info.m_session_type) == "Time Trial"))
+            track_length=self.m_track_length,
+            is_tt_mode=(str(self.m_session_info.m_session_type) == "Time Trial"),
+            send_position_data=send_position_data
+        )
         self.m_curr_lap = self.m_driver_list_rsp.getCurrentLap()
         if self.m_session_info.m_weather_forecast_samples is None:
             self.m_session_info.m_weather_forecast_samples = []
@@ -66,6 +70,7 @@ class PeriodicUpdateData(BaseAPI):
             "f1-game-year" : self._getValueOrDefaultValue(self.m_session_info.m_game_year, None),
             "packet-format" : self._getValueOrDefaultValue(self.m_session_info.m_packet_format, None),
             "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",
+            "circuit-len": self._getValueOrDefaultValue(self.m_track_length, default_value=None),
             "formula": str(self.m_session_info.m_formula) if self.m_session_info.m_formula is not None else None,
             "pit-time-loss": self.m_session_info.m_pit_time_loss,
             "track-temperature": self._getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),

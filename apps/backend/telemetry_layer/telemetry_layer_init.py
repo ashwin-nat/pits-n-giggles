@@ -68,7 +68,7 @@ def initTelemetryLayer(
             tasks=tasks
         )
     except OSError as e:
-        logger.error(f"setupTelemetryTask failed with error {e}")
+        logger.error("setupTelemetryTask failed with error %s", e)
         if is_port_in_use_error(e.errno):
             raise PngTelemetryPortInUseError() from e
         raise  # Re-raise if it's a different OSError

@@ -32,17 +32,18 @@ from PySide6.QtQuick import QQuickItem
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
+                                            PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TyreInfoPage, TyreSetsPage,
                                             WeatherForecastPage)
-from lib.config import (MFD_OVERLAY_ID, OverlayPosition, PngSettings,
+from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
                         WeatherMFDUIType)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdOverlay(BaseOverlayQML):
 
-    OVERLAY_ID = MFD_OVERLAY_ID
+    OVERLAY_ID = OverlayId.MFD
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
     PAGES: List[MfdPageBase] = [
@@ -53,6 +54,7 @@ class MfdOverlay(BaseOverlayQML):
         TyreInfoPage,
         WeatherForecastPage,
         TyreSetsPage,
+        PaceCompPage,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -118,7 +120,7 @@ class MfdOverlay(BaseOverlayQML):
         """Initialize the order of the enabled pages in the MFD."""
         page_kwargs = self._get_page_kwargs(settings)
         self.enabled_pages = [
-            {"key": "collapsed", "cls": CollapsedPage, "position": 0, "kwargs": {}},
+            {"key": MfdPageId.COLLAPSED, "cls": CollapsedPage, "position": 0, "kwargs": {}},
             *[
                 {
                     "key": key,
@@ -131,10 +133,9 @@ class MfdOverlay(BaseOverlayQML):
         ]
 
     @final
-    def _setup_window(self):
-        """Load QML and extract the root QQuickWindow. Init the pages in the specified order"""
-        super()._setup_window()
-        self._root.pageLoaded.connect(self._on_page_loaded)
+    def post_setup(self):
+        """Init pages and QML properties after the window is ready."""
+        self.root.pageLoaded.connect(self._on_page_loaded)
 
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
@@ -143,8 +144,8 @@ class MfdOverlay(BaseOverlayQML):
         self._current_index = 0
 
         # Set total pages in QML
-        self._root.setProperty("totalPages", len(self._mfd_pages))
-        self._root.setProperty("currentPageIndex", 0)
+        self.set_qml_property("totalPages", len(self._mfd_pages))
+        self.set_qml_property("currentPageIndex", 0)
 
         self._apply_current_page()
 
@@ -161,7 +162,7 @@ class MfdOverlay(BaseOverlayQML):
         # Simplest fix, deactivate everything else except current
         for page in self._mfd_pages:
             if page.KEY == page_key:
-                page.on_page_activated(item)
+                page._on_page_activated(item)
             elif page.is_active:
                 page.on_page_deactivated()
 
@@ -170,16 +171,16 @@ class MfdOverlay(BaseOverlayQML):
         try:
             page = self._mfd_pages[self._current_index]
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.logger.error(f"{self.OVERLAY_ID} | Failed to apply current page: {e}")
+            self.logger.error("%s | Failed to apply current page: %s", self.OVERLAY_ID, e)
             return
         qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
 
         is_collapsed = (page.KEY == CollapsedPage.KEY)
 
-        self._root.setProperty("collapsed", is_collapsed)
-        self._root.setProperty("activePageKey", page.KEY)
-        self._root.setProperty("currentPageQml", qml_url)
-        self._root.setProperty("currentPageIndex", self._current_index)
+        self.set_qml_property("collapsed", is_collapsed)
+        self.set_qml_property("activePageKey", page.KEY)
+        self.set_qml_property("currentPageQml", qml_url)
+        self.set_qml_property("currentPageIndex", self._current_index)
 
         self.logger.debug(
             "%s | Applied page '%s' (index=%d, collapsed=%s)",
@@ -209,17 +210,18 @@ class MfdOverlay(BaseOverlayQML):
 
     @final
     def set_locked_state(self, locked):
-        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
 
         # We need to not be in the default/collapse page when unlocking, so that the user gets a sense of how much
         # width to configure.
         if not locked and self._current_index == 0:
-            self.logger.debug(f"{self.OVERLAY_ID} | Switching to next page before unlocking ...")
+            self.logger.debug("%s | Switching to next page before unlocking ...", self.OVERLAY_ID)
             self._next_page()
         super().set_locked_state(locked)
 
     @final
     def get_stats(self) -> dict:
+        """Get the base class level stats and page stats."""
         overlay_stats = super().get_stats()
         page_stats = {
             page.KEY: page.get_stats()
@@ -245,7 +247,7 @@ class MfdOverlay(BaseOverlayQML):
             index = self._current_index
         else:
             if dest_index < 0 or dest_index >= len(self._mfd_pages):
-                self.logger.warning(f"{self.OVERLAY_ID} | Page index {dest_index} out of range")
+                self.logger.warning("%s | Page index %s out of range", self.OVERLAY_ID, dest_index)
                 return
             index = dest_index
 
@@ -262,7 +264,7 @@ class MfdOverlay(BaseOverlayQML):
         self._current_index = (old + 1) % len(self._mfd_pages)
 
         self._apply_current_page()
-        self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")
+        self.logger.debug("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
 
     def _prev_page(self):
         """Go to the previous page in MFD overlay"""
@@ -274,12 +276,12 @@ class MfdOverlay(BaseOverlayQML):
         self._current_index = (old - 1) % len(self._mfd_pages)
 
         self._apply_current_page()
-        self.logger.debug(f"{self.OVERLAY_ID} | Page {old} -> {self._current_index}")
+        self.logger.debug("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
 
     @property
     def current_page_item(self) -> Optional[QQuickItem]:
         """Get the current page item."""
-        loader: Optional[QObject] = self._root.findChild(QObject, "pageLoader")
+        loader: Optional[QObject] = self.root.findChild(QObject, "pageLoader")
         if not loader:
             return None
 

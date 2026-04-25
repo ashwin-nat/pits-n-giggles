@@ -25,12 +25,12 @@
 import ctypes
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
+from time import perf_counter_ns
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import QIcon
 
-from apps.hud.common import deserialise_data, serialise_data
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
@@ -41,7 +41,6 @@ from meta.meta import APP_NAME_SNAKE
 
 OverlayCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
-OverlayHighFreqHandler = Callable[[HighFreqBase], None] # Takes high-freq payload, returns None
 
 HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
@@ -49,19 +48,17 @@ HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
 
 class BaseOverlay():
     """
-    Framework-agnostic overlay base class providing the core overlay lifecycle,
-    configuration handling, and inter-process command/request infrastructure.
+    Rendering-engine-agnostic overlay base class providing the core overlay lifecycle,
+    configuration handling, and command/request infrastructure.
 
-    This class contains *no* UI toolkit assumptions. It does not depend on
-    QWidget or QML. Instead, it defines the high-level behavior shared by all
-    overlay types (Widget or QML), while delegating rendering and windowing to
-    derived classes.
+    This class contains no UI toolkit assumptions and does not depend on any rendering
+    engine. It defines the high-level behavior shared by all overlay types, while
+    delegating rendering and windowing to derived classes.
 
     Responsibilities provided by BaseOverlay:
     -----------------------------------------
     - Stores overlay identity, configuration, and runtime state.
-    - Defines the IPC mechanism for overlay commands and requests.
-      Derived overlays automatically gain:
+    - Defines the command/request dispatch mechanism. Derived overlays automatically gain:
         - `on_event()` decorator for command handlers
         - `on_request()` decorator for request/response handlers
         - Automatic dispatch via `_handle_cmd()` and `_handle_request()`
@@ -72,14 +69,14 @@ class BaseOverlay():
         - applying new configuration
         - returning geometry/position (`get_window_info`)
     - Drives UI lifecycle by calling:
-        - `_setup_window()`     (implemented by UI subclass)
-        - `build_ui()`          (implemented by UI subclass)
-        - `apply_config()`      (UI-specific geometry/opacity)
-    - Ensures UI rebuilds occur when scale factor changes.
+        - `_setup_window()`     (partially implemented here; extended by rendering subclass)
+        - `post_setup()`        (no-op hook called after _setup_window; override in leaf classes)
+        - `build_ui()`          (implemented by rendering subclass)
+        - `apply_config()`      (UI-specific geometry/opacity; implemented by rendering subclass)
 
     What derived classes must implement:
     ------------------------------------
-    Derived classes (e.g., BaseOverlayWidget or BaseOverlayQML) must implement:
+    Rendering subclasses (e.g. BaseOverlayQML) must implement:
         - `set_window_title()`   - set window title
         - `set_window_icon()`    - set window icon
         - `build_ui()`           - construct the UI
@@ -88,13 +85,12 @@ class BaseOverlay():
         - `set_opacity()`        - apply opacity to the backend window
         - `get_window_info()`    - return window geometry
         - `set_window_position()`- set window position and update self.config
-        - `set_ui_scale()`       - set scale factor
+        - `set_visibility()`     - show or hide the window
         - `get_visibility()`     - return current visibility state
 
     When to subclass BaseOverlay:
     ------------------------------
     Do not subclass BaseOverlay directly for new overlays. Instead subclass one of:
-        - BaseOverlayWidget  - for QWidget-based overlays
         - BaseOverlayQML     - for QML-based overlays
 
     BaseOverlay deliberately contains no UI behavior so that multiple rendering
@@ -102,7 +98,7 @@ class BaseOverlay():
 
     Subclass BaseOverlay only if you need to add new UI-specific behavior.
     """
-    response_signal = Signal(str, str)   # request_type, response_data (serialised JSON)
+    response_signal = Signal(str, object)   # request_type, response_data
     OVERLAY_ID: str = ""
 
     def __init__(self,
@@ -125,13 +121,15 @@ class BaseOverlay():
 
         self._command_handlers: Dict[str, OverlayCommandHandler] = {}
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
-        self._high_freq_handlers: Dict[str, Callable[[Any], None]] = {}
         self._latest_hf: Dict[str, HighFreqBase] = {}
-        self._hf_subscriptions: Set[str] = set()
+        self._hf_subscriptions: set[str] = set()
+        self._hf_last_seq: Dict[str, int] = {}
+        self._hf_pending: set[str] = set()
         self._stats = EventCounter()
 
-        # Create the actual window backend (widget or QML)
+        # Create the actual window backend
         self._setup_window()
+        self.post_setup()
         self.build_ui()
         self.apply_config()
 
@@ -153,12 +151,12 @@ class BaseOverlay():
 
     def toggle_visibility(self):
         """Common handler for toggling visibility."""
-        self.logger.debug(f'{self.OVERLAY_ID} | Toggling visibility')
+        self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
         if self.get_visibility():
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading out overlay')
+            self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
         else:
-            self.logger.debug(f'{self.OVERLAY_ID} | Fading in overlay')
+            self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
             self.set_visibility(True)
 
     def set_telemetry_active(self, active: bool):
@@ -181,8 +179,11 @@ class BaseOverlay():
             self.set_visibility(False)
 
     # ----------------------------------------------------------------------
-    # Abstract interface — implemented by QWidget and QML subclasses
+    # Abstract interface - implemented by rendering subclasses
     # ----------------------------------------------------------------------
+    def post_setup(self):
+        """Hook called after _setup_window() completes. Override in leaf classes with @final."""
+
     def _setup_window(self):
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
         self.set_window_title(self.OVERLAY_ID)
@@ -217,9 +218,6 @@ class BaseOverlay():
     def set_visibility(self, visible: bool):
         raise NotImplementedError
 
-    def set_ui_scale(self, ui_scale: float):
-        raise NotImplementedError
-
     def get_visibility(self) -> bool:
         raise NotImplementedError
 
@@ -235,12 +233,6 @@ class BaseOverlay():
     def on_request(self, request_type: str):
         def decorator(func: OverlayRequestHandler):
             self._request_handlers[request_type] = func
-            return func
-        return decorator
-
-    def on_high_freq(self, hf_type: str):
-        def decorator(func: OverlayHighFreqHandler):
-            self._high_freq_handlers[hf_type] = func
             return func
         return decorator
 
@@ -270,6 +262,18 @@ class BaseOverlay():
         self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
         self._stats.track_event("__HF_EVENTS__", event_type)
 
+    def _clear_hf_pending(self) -> None:
+        """Mark all pending HF types as consumed by the current render frame."""
+        self._hf_pending.clear()
+
+    def _track_hf_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+
+    def _track_cmd_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
+        self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
+        self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+
     # ----------------------------------------------------------------------
     # Default handlers (same as before)
     # ----------------------------------------------------------------------
@@ -278,20 +282,20 @@ class BaseOverlay():
         @self.on_request("get_window_info")
         def _get_info(_data: dict):
             """Return current position as an OverlaysConfig."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_info"')
-            return serialise_data(self.get_window_info().toJSON())
+            self.logger.debug('%s | Received request "get_window_info"', self.OVERLAY_ID)
+            return self.get_window_info().toJSON()
 
         @self.on_request("get_window_stats")
         def _get_stats(_data: dict):
             """Return current window stats."""
-            self.logger.debug(f'{self.OVERLAY_ID} | Received request "get_window_stats"')
-            return serialise_data(self.get_stats())
+            self.logger.debug('%s | Received request "get_window_stats"', self.OVERLAY_ID)
+            return self.get_stats()
 
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             """Set locked state."""
             locked = data.get('new-value', False)
-            self.logger.debug(f'{self.OVERLAY_ID} | Setting locked state to {locked}')
+            self.logger.debug('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
             self.set_locked_state(locked)
             if not locked:
                 # Enable all overlays so that the user can see the new layout
@@ -320,16 +324,8 @@ class BaseOverlay():
         def _handle_set_window_config(data: Dict[str, Any]) -> None:
             """Set window config."""
             config = OverlayPosition.fromJSON(data)
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting window config to {config}")
+            self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
-
-        @self.on_event("__set_scale_factor__")
-        def _handle_set_scale_factor(data: Dict[str, Any]) -> None:
-            """Set UI scale factor"""
-            scale_factor = data["scale_factor"]
-            self.logger.debug(f"{self.OVERLAY_ID} | Setting UI scale to {scale_factor}")
-            self.set_ui_scale(scale_factor)
-            self.scale_factor = scale_factor
 
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
@@ -338,11 +334,11 @@ class BaseOverlay():
             self.set_telemetry_active(active)
 
     # ----------------------------------------------------------------------
-    # IPC — Signals/Slots
+    # IPC - Signals/Slots
     # ----------------------------------------------------------------------
-    @Slot(set, bool, str, str)
-    def _handle_cmd(self, recipients: Set[str], high_prio: bool, cmd: str, data: str):
-        if recipients and self.OVERLAY_ID not in recipients:
+    @Slot(str, bool, str, object)
+    def _handle_cmd(self, recipient: str, high_prio: bool, cmd: str, data: dict):
+        if recipient and recipient != self.OVERLAY_ID:
             return
         visibile = self.get_visibility()
         if not visibile and not high_prio:
@@ -352,63 +348,87 @@ class BaseOverlay():
         if not handler:
             return
         self._track_event(cmd)
-        parsed = deserialise_data(data)
+        payload = data["__payload__"]
+        timestamp = data["__meta__"]["__timestamp__"]
+        self._track_cmd_pipeline_latency(cmd, timestamp, perf_counter_ns())
         try:
-            handler(parsed)
+            handler(payload)
         except AssertionError:
-            self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{cmd}'")
+            self.logger.exception("%s | Assertion error handling command '%s'", self.OVERLAY_ID, cmd)
             raise # We want to crash on assertions for debugging
-        except Exception as e:  # pylint: disable=broad-except
-            self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{cmd}': {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("%s | Error handling command '%s': %s", self.OVERLAY_ID, cmd, e)
             self._stats.track_event("__EXCEPTION__", cmd)
 
-    @Slot(str, str, dict)
-    def _handle_request(self, recipient: str, request_type: str, request_data: str):
+    @Slot(str, str, object)
+    def _handle_request(self, recipient: str, request_type: str, request_data: object):
         """Internal request dispatcher for overlays.
 
         Args:
             recipient (str): Overlay ID that sent the request
             request_type (str): Request type
-            request_data (str): Request data JSON serialized as a string
+            request_data: Request data
         """
         if recipient and recipient != self.OVERLAY_ID:
             return  # Not for this overlay
 
         if handler := self._request_handlers.get(request_type):
-            self.logger.debug(f"{self.OVERLAY_ID} | Handling request '{request_type}'")
-            parsed_data = deserialise_data(request_data)
+            self.logger.debug("%s | Handling request '%s'", self.OVERLAY_ID, request_type)
             try:
-                response = handler(parsed_data)
+                response = handler(request_data)
                 # Emit response back through window manager
                 self.response_signal.emit(request_type, response)
             except AssertionError:
-                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling request '{request_type}'")
+                self.logger.exception("%s | Assertion error handling request '%s'", self.OVERLAY_ID, request_type)
                 raise # We want to crash on assertions for debugging
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.OVERLAY_ID} | Error handling request '{request_type}': {e}")
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.logger.exception("%s | Error handling request '%s': %s", self.OVERLAY_ID, request_type, e)
         else:
-            self.logger.debug(f"{self.OVERLAY_ID} | No handler for request '{request_type}'")
+            self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
 
-    @Slot(set, object)
-    def _handle_high_freq_data(self, recipients: Set[str], payload: HighFreqBase):
-        if self.OVERLAY_ID not in recipients:
+    @Slot(object)
+    def _handle_high_freq_data(self, payload: HighFreqBase):
+        if payload.__hf_type__ not in self._hf_subscriptions:
             return
 
-        visibile = self.get_visibility()
-        if not visibile:
-            # All high-frequency data is treated as low prio
-            # This channel is not meant for high-priority/control messages
+        self._track_hf_pipeline_latency(
+            payload.__hf_type__,
+            payload.__timestamp__,
+            perf_counter_ns(),
+        )
+
+        msg_type = payload.__hf_type__
+        curr_seq = payload.__seq__
+        prev_seq = self._hf_last_seq.get(msg_type)
+        if prev_seq is None:
+            # First message of this type - nothing to compare against
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq == prev_seq + 1:
+            # Consecutive - no updates were overwritten
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq > prev_seq + 1:
+            # Gap - (curr - prev - 1) updates were overwritten before we consumed them
+            lost = curr_seq - prev_seq - 1
+            self._stats.track_event("__HF_LOSS__", "__TOTAL__", count=lost)
+            self._stats.track_event("__HF_LOSS__", msg_type, count=lost)
+            self._hf_last_seq[msg_type] = curr_seq
+        else:
+            # Out-of-order or duplicate - ignore
+            self.logger.error(
+                "%s | HF out-of-order: type=%s prev_seq=%d curr_seq=%d",
+                self.OVERLAY_ID, msg_type, prev_seq, curr_seq,
+            )
             return
 
-        if payload.__hf_type__ in self._hf_subscriptions:
-            self._latest_hf[payload.__hf_type__] = payload
+        self._latest_hf[payload.__hf_type__] = payload
+        if self.get_visibility():
+            if payload.__hf_type__ in self._hf_pending:
+                # Previous update was overwritten before render_frame consumed it
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
+            else:
+                self._hf_pending.add(payload.__hf_type__)
             self._track_hf_event(payload.__hf_type__)
-
-        if handler := self._high_freq_handlers.get(payload.__hf_type__):
-            try:
-                handler(payload)
-            except AssertionError:
-                self.logger.exception(f"{self.OVERLAY_ID} | Assertion error handling command '{payload.__hf_type__}'")
-                raise # We want to crash on assertions for debugging
-            except Exception as e: # pylint: disable=broad-except
-                self.logger.exception(f"{self.OVERLAY_ID} | Error handling command '{payload.__hf_type__}': {e}")
+        else:
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)

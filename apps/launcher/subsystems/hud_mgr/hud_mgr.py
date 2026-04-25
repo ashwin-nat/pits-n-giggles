@@ -33,10 +33,7 @@ from pydantic import ValidationError
 from PySide6.QtWidgets import QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (INPUT_TELEMETRY_OVERLAY_ID, LAP_TIMER_OVERLAY_ID,
-                        MFD_OVERLAY_ID, TIMING_TOWER_OVERLAY_ID,
-                        TRACK_MAP_OVERLAY_ID, TRACK_RADAR_OVERLAY_ID,
-                        HudSettings, OverlayPosition, PngSettings)
+from lib.config import (HudSettings, OverlayPosition, PngSettings)
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -77,7 +74,7 @@ class HudAppMgr(PngAppMgrBase):
         self.integration_test_interval = 2.0
         final_args = common_cfg.args + ["--debug"] if common_cfg.debug_mode else (common_cfg.args or [])
         self.locked = True # HUD starts locked by default
-        self.debouncer = ButtonDebouncer(debounce_time=0.5)
+        self.debouncer = ButtonDebouncer(debounce_time=0.2)
         self.integration_test_thread = None
         self.integration_test_stop_event = threading.Event()
 
@@ -239,7 +236,7 @@ class HudAppMgr(PngAppMgrBase):
         if self.locked:
             self.overlays_adj_popup.hide()
         else:
-            self.show_scale_popup()
+            self.show_overlays_adj_popup()
 
     def reset_callback(self):
         """Reset HUD overlays to default layout."""
@@ -380,6 +377,22 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.info_log("Set overlays opacity command was successful")
 
+    def _send_circuit_info_length_change(self, length: int) -> None:
+        """Send circuit info length change to HUD app
+
+        Args:
+            length (int): New circuit info length (m)
+        """
+        self.debug_log("Sending set-circuit-info-length command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-circuit-info-length", args={
+            "length": length,
+        })
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to set circuit info length: {rsp}")
+        else:
+            self.info_log("Set circuit info length command was successful")
+
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
 
@@ -444,6 +457,7 @@ class HudAppMgr(PngAppMgrBase):
             "HUD": [
                 "enabled",
                 "show_lap_timer",
+                "lap_timer_minimal",
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "timing_tower_col_options",
@@ -454,6 +468,11 @@ class HudAppMgr(PngAppMgrBase):
                 "mfd_weather_page_ui_type",
                 "use_windowed_overlays",
                 "input_overlay_buffer_duration_sec",
+                "show_input_overlay",
+                "show_hud_overlay",
+                "hud_overlay_speed_unit",
+                "hud_overlay_fuel_estimation_mode",
+                "show_circuit_info",
             ],
             "Network": [
                 "broker_xpub_port",
@@ -461,7 +480,8 @@ class HudAppMgr(PngAppMgrBase):
             "Display" : [
                 "refresh_interval",
                 "realtime_overlay_fps",
-                "use_gpu_acceleration",
+                "use_cpu_acceleration",
+                "wdt_timeout",
             ],
         }):
             self.debug_log(f"HUD settings changed. Restarting app. Diff: {json.dumps(
@@ -471,80 +491,12 @@ class HudAppMgr(PngAppMgrBase):
 
         return False
 
-    def _send_ui_scale_change_cmd(self, oid: str, data: Dict[str, Any]) -> None:
-        """Send UI scale change command to HUD app
-
-        Args:
-            oid (str): Overlay ID
-            data (Dict[str, Any]): UI scale data
-        """
-        self.debug_log(f"Sending set-ui-scale command to HUD with oid {oid} and data {data}")
-        rsp = IpcClientSync(self.ipc_port).request(command="set-ui-scale", args={
-            "oid": oid,
-            "scale_factor": data["new_value"]
-        })
-        status = rsp.get("status")
-        if status != "success":
-            self.error_log(f"Failed to set {oid} UI scale: {rsp}")
-        else:
-            self.info_log(f"Set UI scale command for {oid} was successful")
-
-    def show_scale_popup(self):
-        """Show the scale popup"""
+    def show_overlays_adj_popup(self):
+        """Show the overlays adjustment popup (opacity and other non-position settings)"""
         hud_settings = self.curr_settings.HUD
 
         # pylint: disable=unsubscriptable-object
         self.overlays_adj_popup.set_items([
-            SliderItem(
-                key=LAP_TIMER_OVERLAY_ID,
-                label="Lap Timer Scale",
-                min=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["lap_timer_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.lap_timer_ui_scale * 100),
-                visible=hud_settings.show_lap_timer,
-            ),
-            SliderItem(
-                key=TIMING_TOWER_OVERLAY_ID,
-                label="Timing Tower Scale",
-                min=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["timing_tower_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.timing_tower_ui_scale * 100),
-                visible=hud_settings.show_timing_tower,
-            ),
-            SliderItem(
-                key=MFD_OVERLAY_ID,
-                label="MFD Scale",
-                min=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["mfd_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.mfd_ui_scale * 100),
-                visible=hud_settings.show_mfd,
-            ),
-            # SliderItem(
-            #     key=TRACK_MAP_OVERLAY_ID,
-            #     label="Track Map Scale",
-            #     min=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["min_ui"],
-            #     max=HudSettings.model_fields["track_map_ui_scale"].json_schema_extra["ui"]["max_ui"],
-            #     value=int(hud_settings.track_map_ui_scale * 100),
-            #     visible=hud_settings.show_track_map_overlay,
-            # ),
-            SliderItem(
-                key=INPUT_TELEMETRY_OVERLAY_ID,
-                label="Input Telemetry Scale",
-                min=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["input_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.input_overlay_ui_scale * 100),
-                visible=hud_settings.show_input_overlay,
-            ),
-            SliderItem(
-                key=TRACK_RADAR_OVERLAY_ID,
-                label="Track Radar Scale",
-                min=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["min_ui"],
-                max=HudSettings.model_fields["track_radar_overlay_ui_scale"].json_schema_extra["ui"]["max_ui"],
-                value=int(hud_settings.track_radar_overlay_ui_scale * 100),
-                visible=hud_settings.show_track_radar_overlay,
-            ),
-
-            # Opacity at the bottom
             SliderItem(
                 key="overlays_opacity",
                 label="Overlays Opacity",
@@ -562,6 +514,15 @@ class HudAppMgr(PngAppMgrBase):
                 value=hud_settings.track_radar_idle_opacity,
                 tooltip=HudSettings.model_fields["track_radar_idle_opacity"].json_schema_extra["ui"]["ext_info"][0],
                 visible=hud_settings.show_track_radar_overlay,
+            ),
+
+            SliderItem(
+                key="circuit_info_length",
+                label="Circuit Info Length (px)",
+                min=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
+                value=hud_settings.circuit_info_length,
+                visible=hud_settings.show_circuit_info,
             )
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
@@ -582,15 +543,9 @@ class HudAppMgr(PngAppMgrBase):
 
         # ---- Build candidate settings (ALLOW invalid intermediate state here) ----
         new_settings = self.curr_settings.model_copy(deep=True)
-        new_settings.HUD.lap_timer_ui_scale = values[LAP_TIMER_OVERLAY_ID] / 100.0
-        new_settings.HUD.timing_tower_ui_scale = values[TIMING_TOWER_OVERLAY_ID] / 100.0
-        new_settings.HUD.mfd_ui_scale = values[MFD_OVERLAY_ID] / 100.0
-        # new_settings.HUD.track_map_ui_scale = values[TRACK_MAP_OVERLAY_ID] / 100.0
-        new_settings.HUD.input_overlay_ui_scale = values[INPUT_TELEMETRY_OVERLAY_ID] / 100.0
-        new_settings.HUD.track_radar_overlay_ui_scale = values[TRACK_RADAR_OVERLAY_ID] / 100.0
-
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
+        new_settings.HUD.circuit_info_length = values["circuit_info_length"]
 
         # ---- FORCE VALIDATION (this is the important bit) ----
         try:
@@ -614,21 +569,7 @@ class HudAppMgr(PngAppMgrBase):
 
             self.show_error("Invalid HUD Settings", error_text)
 
-            # Optional: show user feedback later (QMessageBox / toast / inline)
             return
-
-        # ---- Compute diffs AFTER validation ----
-        hud_diff = self.curr_settings.HUD.diff(
-            validated_settings.HUD,
-            [
-                "lap_timer_ui_scale",
-                "timing_tower_ui_scale",
-                "mfd_ui_scale",
-                "track_map_ui_scale",
-                "input_overlay_ui_scale",
-                "track_radar_overlay_ui_scale",
-            ],
-        )
 
         global_opacity_changed = (
             self.curr_settings.HUD.overlays_opacity
@@ -638,6 +579,11 @@ class HudAppMgr(PngAppMgrBase):
         track_radar_idle_opacity_changed = (
             self.curr_settings.HUD.track_radar_idle_opacity
             != validated_settings.HUD.track_radar_idle_opacity
+        )
+
+        circuit_info_length_changed = (
+            self.curr_settings.HUD.circuit_info_length
+            != validated_settings.HUD.circuit_info_length
         )
 
         # ---- Apply runtime effects ----
@@ -651,22 +597,13 @@ class HudAppMgr(PngAppMgrBase):
                 validated_settings.HUD.track_radar_idle_opacity
             )
 
-        if hud_diff:
-            key_to_oid = {
-                "lap_timer_ui_scale": LAP_TIMER_OVERLAY_ID,
-                "timing_tower_ui_scale": TIMING_TOWER_OVERLAY_ID,
-                "mfd_ui_scale": MFD_OVERLAY_ID,
-                "track_map_ui_scale": TRACK_MAP_OVERLAY_ID,
-                "input_overlay_ui_scale": INPUT_TELEMETRY_OVERLAY_ID,
-                "track_radar_overlay_ui_scale": TRACK_RADAR_OVERLAY_ID,
-            }
-
-            for key, data in hud_diff.items():
-                oid = key_to_oid[key]
-                self._send_ui_scale_change_cmd(oid, data)
+        if circuit_info_length_changed:
+            self._send_circuit_info_length_change(
+                validated_settings.HUD.circuit_info_length
+            )
 
         # ---- Persist only VALIDATED settings ----
-        if hud_diff or global_opacity_changed or track_radar_idle_opacity_changed:
+        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed:
             self.window.update_settings(validated_settings)
             self.window.save_settings_to_disk(validated_settings)
 

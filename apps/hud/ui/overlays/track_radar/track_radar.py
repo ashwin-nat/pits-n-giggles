@@ -27,11 +27,10 @@ import math
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from PySide6.QtCore import Q_ARG, QMetaObject, Qt
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import TRACK_RADAR_OVERLAY_ID, OverlayPosition
+from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -45,7 +44,7 @@ class TrackRadarOverlay(BaseOverlayQML):
     """
 
     QML_FILE = Path(__file__).parent / "track_radar.qml"
-    OVERLAY_ID = TRACK_RADAR_OVERLAY_ID
+    OVERLAY_ID = OverlayId.TRACK_RADAR
 
     def __init__(self,
                  config: OverlayPosition,
@@ -64,23 +63,22 @@ class TrackRadarOverlay(BaseOverlayQML):
         self._register_handlers()
 
     @final
-    def _setup_window(self):
-        """Set the opacity property when the window is ready"""
-        super()._setup_window()
+    def post_setup(self):
+        """Set the opacity property when the window is ready."""
         self._set_base_opacity_property(self.opacity)
         self._set_idle_opacity_property(self.idle_opacity)
 
     @final
     def set_opacity(self, opacity: int):
         """Set opacity."""
-        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting opacity to {opacity}')
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting opacity to %s', self.OVERLAY_ID, opacity)
         super().set_opacity(opacity)
         self._set_base_opacity_property(opacity)
 
     @final
     def set_locked_state(self, locked: bool):
         """Set locked state."""
-        self.logger.debug(f'{self.OVERLAY_ID} | [OVERRIDDEN HANDLER] Setting locked state to {locked}')
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
         super().set_locked_state(locked)
         self._set_locked_property(locked)
 
@@ -108,12 +106,7 @@ class TrackRadarOverlay(BaseOverlayQML):
         driver_list = self._calculate_relative_positions(data, ref_driver)
 
         # Send data to QML and trigger update
-        QMetaObject.invokeMethod(
-            self._root,
-            "updateTelemetry",
-            Qt.ConnectionType.QueuedConnection,
-            Q_ARG("QVariant", driver_list)
-        )
+        self.invoke_qml_method("updateTelemetry", driver_list)
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""
@@ -181,13 +174,10 @@ class TrackRadarOverlay(BaseOverlayQML):
         return driver_list
 
     def _set_base_opacity_property(self, opacity: int):
-        if self._root:
-            self._root.setProperty("baseOpacity", opacity / 100.0)
+        self.set_qml_property("baseOpacity", opacity / 100.0)
 
     def _set_idle_opacity_property(self, opacity: int):
-        if self._root:
-            self._root.setProperty("idleOpacity", opacity / 100.0)
+        self.set_qml_property("idleOpacity", opacity / 100.0)
 
     def _set_locked_property(self, locked: bool):
-        if self._root:
-            self._root.setProperty("lockedMode", locked)
+        self.set_qml_property("lockedMode", locked)

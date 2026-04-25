@@ -32,7 +32,7 @@ from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 from apps.backend.state_mgmt_layer import SessionState
 from lib.button_debouncer import ButtonDebouncer
 from lib.event_counter import EventCounter
-from lib.config import CaptureSettings, PngSettings
+from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -65,6 +65,8 @@ class UdpActionCodes:
     toggle_track_radar_overlay: Optional[int] = None
     toggle_input_overlay: Optional[int] = None
     mfd_interaction: Optional[int] = None
+    toggle_hud_overlay: Optional[int] = None
+    toggle_circuit_info_overlay: Optional[int] = None
 
     _MAP = {
         "udp_tyre_delta_action_code": "tyre_delta",
@@ -78,6 +80,8 @@ class UdpActionCodes:
         "track_radar_overlay_toggle_udp_action_code": "toggle_track_radar_overlay",
         "input_overlay_toggle_udp_action_code": "toggle_input_overlay",
         "mfd_interaction_udp_action_code": "mfd_interaction",
+        "hud_overlay_toggle_udp_action_code": "toggle_hud_overlay",
+        "circuit_info_toggle_udp_action_code": "toggle_circuit_info_overlay",
     }
 
     def update(self, key: str, value: int):
@@ -168,7 +172,8 @@ class F1TelemetryHandler:
         self.m_data_cleared_this_session: bool = False
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
-        self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer()
+        self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer(
+            debounce_time=settings.Network.udp_action_debounce_sec)
         self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
@@ -190,6 +195,8 @@ class F1TelemetryHandler:
             toggle_track_radar_overlay=settings.HUD.track_radar_overlay_toggle_udp_action_code,
             toggle_input_overlay=settings.HUD.input_overlay_toggle_udp_action_code,
             mfd_interaction=settings.HUD.mfd_interaction_udp_action_code,
+            toggle_hud_overlay=settings.HUD.hud_overlay_toggle_udp_action_code,
+            toggle_circuit_info_overlay=settings.HUD.circuit_info_toggle_udp_action_code,
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
@@ -220,7 +227,7 @@ class F1TelemetryHandler:
             KeyError: If the key is not found
         """
         self.m_udp_action_codes.update(key, val)
-        self.m_logger.debug(f"Updated UDP action code {key} to {val}")
+        self.m_logger.debug("Updated UDP action code %s to %s", key, val)
 
     async def run(self):
         """
@@ -518,32 +525,42 @@ class F1TelemetryHandler:
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_lap_timer_overlay,
                                     'Toggle lap timer overlay',
-                                    lambda: self._processToggleHud('lap_timer'))
+                                    lambda: self._processToggleHud(OverlayId.LAP_TIMER))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_timing_tower_overlay,
                                     'Toggle timing tower overlay',
-                                    lambda: self._processToggleHud('timing_tower'))
+                                    lambda: self._processToggleHud(OverlayId.TIMING_TOWER))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_mfd_overlay,
                                     'Toggle MFD overlay',
-                                    lambda: self._processToggleHud('mfd'))
+                                    lambda: self._processToggleHud(OverlayId.MFD))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_track_radar_overlay,
                                     'Toggle track radar overlay',
-                                    lambda: self._processToggleHud('track_radar'))
+                                    lambda: self._processToggleHud(OverlayId.TRACK_RADAR))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.toggle_input_overlay,
                                     'Toggle input overlay',
-                                    lambda: self._processToggleHud('input_telemetry'))
+                                    lambda: self._processToggleHud(OverlayId.INPUT_TELEMETRY))
 
             await self._handle_udp_action(buttons,
                                     self.m_udp_action_codes.mfd_interaction,
                                     'MFD interaction',
                                     self._processMFDInteraction)
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_hud_overlay,
+                                    'Toggle HUD overlay',
+                                    lambda: self._processToggleHud(OverlayId.HUD))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_circuit_info_overlay,
+                                    'Toggle circuit info overlay',
+                                    lambda: self._processToggleHud(OverlayId.CIRCUIT_INFO))
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """
@@ -552,8 +569,8 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
-            self.m_logger.info(f"Flashback event received. Frame ID = {packet.mEventDetails.flashbackFrameIdentifier} "
-                               f"UID = {packet.m_header.m_sessionUID}")
+            self.m_logger.info("Flashback event received. Frame ID = %s "
+                               "UID = %s", packet.mEventDetails.flashbackFrameIdentifier, packet.m_header.m_sessionUID)
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -564,7 +581,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
             # In case session start was missed, clear data structures
-            self.m_logger.debug(f"Start lights event received. Lights = {packet.mEventDetails.numLights}")
+            self.m_logger.debug("Start lights event received. Lights = %s", packet.mEventDetails.numLights)
             if packet.mEventDetails.numLights == 1:
                 session_uid = packet.m_header.m_sessionUID
                 self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
@@ -660,7 +677,7 @@ class F1TelemetryHandler:
             await save_json_to_file(final_json, final_json_file_name)
             self.m_logger.info("Wrote race info to %s. Num pkts %d. Session UID %d", final_json_file_name,
                                self.m_session_state_ref.m_pkt_count, session_uid)
-        except Exception: # pylint: disable=broad-except
+        except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
 

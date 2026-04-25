@@ -31,6 +31,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -44,7 +45,7 @@ class SessionGroup:
 
 class WeatherForecastPage(MfdPageBase):
 
-    KEY = "weather_forecast"
+    KEY = MfdPageId.WEATHER_FORECAST
     QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
@@ -95,7 +96,6 @@ class WeatherForecastPage(MfdPageBase):
     @final
     def on_page_activated(self, item: QQuickItem):
         item.setProperty("graphBasedUI", self.graph_based_ui)
-        super().on_page_activated(item)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
@@ -133,7 +133,7 @@ class WeatherForecastPage(MfdPageBase):
         total = len(groups)
 
         if not (0 <= self.session_index < total):
-            self.logger.warning(f"{self.KEY} | Invalid session index {self.session_index}. Resetting it to 0")
+            self.logger.warning("%s | Invalid session index %s. Resetting it to 0", self.KEY, self.session_index)
             self.session_index = 0
 
         session = groups[self.session_index]
@@ -161,9 +161,6 @@ class WeatherForecastPage(MfdPageBase):
         assert forecast_data_flat
 
         page_item = self._page_item
-        if not page_item:
-            return
-
         session_title, session_forecast = self._get_session_info(forecast_data_flat)
 
         page_item.setProperty("forecastData", session_forecast[: self.MAX_SAMPLES])

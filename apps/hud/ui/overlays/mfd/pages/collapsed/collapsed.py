@@ -25,16 +25,16 @@
 from pathlib import Path
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import MfdPageId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class CollapsedPage(MfdPageBase):
-    KEY = "collapsed"
+    KEY = MfdPageId.COLLAPSED
     QML_FILE: Path = Path(__file__).parent / "collapsed_page.qml"
 
     def __init__(self, root, logger):
         super().__init__(root, logger)
 
         # static text, set once
-        self.overlay._root.setProperty("collapsedTitle", "Pits n' Giggles MFD")
-
+        self.overlay.set_qml_property("collapsedTitle", "Pits n' Giggles MFD")
