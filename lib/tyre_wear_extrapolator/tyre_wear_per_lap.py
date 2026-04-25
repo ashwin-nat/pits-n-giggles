@@ -84,5 +84,5 @@ class TyreWearPerLap:
             "rear-right-wear": self.rr_tyre_wear,
             "average" : self.m_average,
             "desc" : self.desc,
-            "weather-id": self.weather_id
+            "weather-id": str(self.weather_id)
         }
