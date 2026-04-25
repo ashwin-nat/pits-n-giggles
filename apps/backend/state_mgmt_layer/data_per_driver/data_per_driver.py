@@ -127,7 +127,9 @@ class DataPerDriver:
                  index: int,
                  logger: logging.Logger,
                  total_laps: Optional[int],
-                 state_ref: "SessionState"):
+                 state_ref: "SessionState",
+                 weather_aware_prediction: bool = False,
+                 tyre_wear_window_size: Optional[int] = None):
         """
         Init the data per driver fields
 
@@ -136,6 +138,8 @@ class DataPerDriver:
             logger (logging.Logger): Logger object
             total_laps (Optional[int]): The total number of laps. May be None
             state_ref (SessionState): Reference to the session state
+            weather_aware_prediction (bool): Enable weather-aware tyre wear prediction
+            tyre_wear_window_size (Optional[int]): Sliding window size for tyre wear regression
         """
 
         self.m_index = index
@@ -143,7 +147,11 @@ class DataPerDriver:
 
         self.m_driver_info: DriverInfo = DriverInfo()
         self.m_lap_info: LapInfo = LapInfo()
-        self.m_tyre_info: TyreInfo = TyreInfo(total_laps, self.m_logger)
+        self.m_tyre_info: TyreInfo = TyreInfo(
+            total_laps, self.m_logger,
+            weather_aware=weather_aware_prediction,
+            window_size=tyre_wear_window_size,
+        )
         self.m_pit_info: PitInfo = PitInfo()
         self.m_car_info: CarInfo = CarInfo(total_laps)
 

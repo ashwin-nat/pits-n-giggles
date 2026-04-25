@@ -55,6 +55,7 @@ from tests_config import (TestCaptureSettings, TestConfigDiffMixin,
                           TestLoadConfigFromJson, TestMissingSectionsAndKeys,
                           TestNetworkSettings, TestPitTimeLossF1,
                           TestPitTimeLossF2, TestPngSettings,
+                          TestPredictionSettings, TestPngSettingsPrediction,
                           TestPrivacySettings, TestSampleSettingsFixture,
                           TestStreamOverlaySettings, TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,

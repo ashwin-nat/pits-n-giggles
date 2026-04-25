@@ -318,6 +318,8 @@ class SessionState:
         'm_session_info',
         'm_process_car_setups',
         'm_save_race_ctrl_msgs',
+        'm_weather_aware_prediction',
+        'm_tyre_wear_window_size',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
@@ -361,6 +363,8 @@ class SessionState:
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
+        self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
+        self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -1421,7 +1425,9 @@ class SessionState:
                 index=index,
                 logger=self.m_logger,
                 total_laps=self.m_session_info.m_total_laps,
-                state_ref=self)
+                state_ref=self,
+                weather_aware_prediction=self.m_weather_aware_prediction,
+                tyre_wear_window_size=self.m_tyre_wear_window_size)
             self.m_driver_data[index] = obj
             self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj
