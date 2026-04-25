@@ -1425,11 +1425,27 @@ class EngViewRaceTable {
         if (this.gridApi) this.gridApi.redrawRows();
     }
 
+    #getCurrentRefIndex() {
+        if (this.manualRefDriverIndex !== null) return this.manualRefDriverIndex;
+        if (this.isSpectating) return this.spectatorIndex;
+        const playerRow = this.previousTableData?.find(d => d.isPlayer);
+        return playerRow?.index ?? null;
+    }
+
+    get currentRefIndex() {
+        return this.#getCurrentRefIndex();
+    }
+
     #isRefDriver(index, isPlayer) {
-        if (this.manualRefDriverIndex !== null) {
-            return index === this.manualRefDriverIndex;
-        }
+        const refIndex = this.#getCurrentRefIndex();
+        if (refIndex !== null) return index === refIndex;
         return isPlayer || index === this.spectatorIndex;
+    }
+
+    #isRefDriverEntry(entry) {
+        const driverInfo = entry["driver-info"];
+        if (!driverInfo) return false;
+        return this.#isRefDriver(driverInfo["index"], driverInfo["is-player"]);
     }
 
     #clear() {
@@ -1467,27 +1483,18 @@ class EngViewRaceTable {
         if (this.manualRefDriverIndex !== null) {
             const stillPresent = drivers.some(d => d["driver-info"]["index"] === this.manualRefDriverIndex);
             if (!stillPresent) {
-                this.manualRefDriverIndex = null;
-                localStorage.removeItem(this.MANUAL_REF_LS_KEY);
+                this.#clearManualRef();
             }
         }
 
-        const refEntry = updateReferenceLapTimes(drivers, (entry) => {
-            if (this.manualRefDriverIndex !== null) {
-                return entry["driver-info"]?.["index"] === this.manualRefDriverIndex;
-            }
-            return this.isSpectating
-                ? entry["driver-info"]?.["index"] == this.spectatorIndex
-                : entry["driver-info"]?.["is-player"];
-        });
+        const refEntry = updateReferenceLapTimes(drivers, (entry) => this.#isRefDriverEntry(entry));
         if (refEntry) {
-            // this.refDriverTeam = refEntry["driver-info"]?.["team"] || '';
             this.refDriverTeam = refEntry["driver-info"]["team"];
         }
 
         // Sort, compute and insert rejoin positions
         drivers.sort((a, b) => a["driver-info"]["position"] - b["driver-info"]["position"]);
-        const refIndex = this.manualRefDriverIndex ?? refEntry?.["driver-info"]?.["index"] ?? null;
+        const refIndex = this.#getCurrentRefIndex() ?? refEntry?.["driver-info"]?.["index"] ?? null;
         insertRejoinPositions(drivers, pitTimeLoss, refIndex);
         const newTableData = drivers.map(driver => ({
             ...driver,
@@ -2417,12 +2424,12 @@ function initDashboard() {
             trackMap.loadTrack(circuit, gameYear);
         }
         if (tableEntries && tableEntries.length > 0) {
-            const effectiveSpectating = isSpectating || (raceTable.manualRefDriverIndex !== null);
-            const effectiveRefIndex = raceTable.manualRefDriverIndex ?? spectatorCarIndex;
+            const refIndex = raceTable.currentRefIndex ?? spectatorCarIndex;
+            const effectiveSpectating = isSpectating || (refIndex !== spectatorCarIndex);
             trackMap.updateDrivers(
                 tableEntries,
                 effectiveSpectating,
-                effectiveRefIndex,
+                refIndex,
                 raceTable.refDriverTeam
             );
         }

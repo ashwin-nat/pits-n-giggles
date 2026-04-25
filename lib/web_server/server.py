@@ -446,6 +446,14 @@ class BaseWebServer:
             '/tyre-icons/wet.svg': {
                 'file': 'tyre-icons/wet_tyre.svg',
                 'mimetype': 'image/svg+xml'
+            },
+            '/overlays/track-temperature.svg': {
+                'file': 'overlays/track-temperature.svg',
+                'mimetype': 'image/svg+xml'
+            },
+            '/overlays/air-temperature.svg': {
+                'file': 'overlays/air-temperature.svg',
+                'mimetype': 'image/svg+xml'
             }
         }
 

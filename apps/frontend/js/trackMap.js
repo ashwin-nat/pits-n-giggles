@@ -117,8 +117,8 @@ class TrackMap {
 
         // -- Rotation state --
         this._rotation = 0;
-        this._rotationSlider = null;
-        this._rotationInput = null;
+        this._rotationSliders = [];
+        this._rotationInputs = [];
         this._rotationCtrl = null;
 
         this._initZoomControls();
@@ -329,7 +329,6 @@ class TrackMap {
         this._unpinPopup();
         this._resetZoomState();
         this.container.appendChild(this._resetBtn);
-        if (this._rotationCtrl) this.container.appendChild(this._rotationCtrl);
     }
 
     /** Reset internal state (e.g. on session change). */
@@ -366,7 +365,9 @@ class TrackMap {
         this._wrapper.appendChild(this.canvas);
         this.container.appendChild(this._wrapper);
         this.container.appendChild(this._resetBtn);
-        if (this._rotationCtrl) this.container.appendChild(this._rotationCtrl);
+        if (this._rotationCtrl) {
+            this.container.appendChild(this._rotationCtrl);
+        }
 
         // Attach mouse/touch events for interaction
         this._initCanvasInteraction();
@@ -793,61 +794,68 @@ class TrackMap {
     }
 
     _initRotationControls() {
+        const { sliders, inputs, ctrl } = this._findOrCreateRotationControls();
+        this._rotationSliders = sliders;
+        this._rotationInputs = inputs;
+        this._rotationCtrl = ctrl || null;
+        this._wireRotationControls();
+    }
+
+    _findOrCreateRotationControls() {
         // Prefer controls already in the HTML (eng-view card header + drawer header).
         // Fall back to creating them in the container (fullscreen page).
-        const existing = document.getElementById('trackMapRotationCtrl');
-        if (existing) {
-            this._rotationCtrl = null; // lives in header, not managed by teardown
-            this._rotationSliders = [
-                document.getElementById('trackMapRotationSlider'),
-                document.getElementById('trackMapDrawerRotationSlider'),
-            ].filter(Boolean);
-            this._rotationInputs = [
-                document.getElementById('trackMapRotationInput'),
-                document.getElementById('trackMapDrawerRotationInput'),
-            ].filter(Boolean);
-        } else {
-            const ctrl = document.createElement('div');
-            ctrl.className = 'track-map-rotation-ctrl';
-
-            const label = document.createElement('i');
-            label.className = 'bi bi-arrow-repeat track-map-rotation-label';
-
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.className = 'track-map-rotation-slider';
-            slider.min = 0;
-            slider.max = 359;
-            slider.value = 0;
-            slider.step = 1;
-
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.className = 'track-map-rotation-input';
-            input.min = 0;
-            input.max = 359;
-            input.value = 0;
-            input.step = 1;
-
-            ctrl.appendChild(label);
-            ctrl.appendChild(slider);
-            ctrl.appendChild(input);
-            this._rotationCtrl = ctrl;
-            this.container.appendChild(ctrl);
-
-            this._rotationSliders = [slider];
-            this._rotationInputs = [input];
+        if (document.getElementById('trackMapRotationCtrl')) {
+            return {
+                ctrl: null,
+                sliders: [
+                    document.getElementById('trackMapRotationSlider'),
+                    document.getElementById('trackMapDrawerRotationSlider'),
+                ].filter(Boolean),
+                inputs: [
+                    document.getElementById('trackMapRotationInput'),
+                    document.getElementById('trackMapDrawerRotationInput'),
+                ].filter(Boolean),
+            };
         }
 
-        // Keep the primary references for _resetZoomState compatibility
-        this._rotationSlider = this._rotationSliders[0] || null;
-        this._rotationInput = this._rotationInputs[0] || null;
+        const ctrl = document.createElement('div');
+        ctrl.className = 'track-map-rotation-ctrl';
 
+        const label = document.createElement('i');
+        label.className = 'bi bi-arrow-repeat track-map-rotation-label';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.className = 'track-map-rotation-slider';
+        slider.min = 0;
+        slider.max = 359;
+        slider.value = 0;
+        slider.step = 1;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'track-map-rotation-input';
+        input.min = 0;
+        input.max = 359;
+        input.value = 0;
+        input.step = 1;
+
+        ctrl.appendChild(label);
+        ctrl.appendChild(slider);
+        ctrl.appendChild(input);
+
+        return { ctrl, sliders: [slider], inputs: [input] };
+    }
+
+    _wireRotationControls() {
         const syncAll = (deg) => {
             this._rotation = deg;
             this._rotationSliders.forEach(s => s.value = deg);
             this._rotationInputs.forEach(i => i.value = deg);
             this._applyTransform();
+            if (this._resetBtn) {
+                this._resetBtn.style.display = deg !== 0 ? '' : 'none';
+            }
         };
 
         this._rotationSliders.forEach(slider => {
@@ -858,9 +866,10 @@ class TrackMap {
 
         this._rotationInputs.forEach(input => {
             input.addEventListener('input', () => {
-                let v = parseInt(input.value, 10);
-                if (isNaN(v)) return;
-                syncAll(((v % 360) + 360) % 360);
+                const v = parseInt(input.value, 10);
+                if (!Number.isNaN(v)) {
+                    syncAll(((v % 360) + 360) % 360);
+                }
             });
         });
     }
