@@ -301,8 +301,16 @@ class TestIpcPubSub(TestIPC):
         async def crash_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
             await pub.start()
+
+            # Wait until the reconnect task has actually established the connection
+            # before publishing. start() only schedules the task; _connected is set
+            # asynchronously, so publishing immediately would silently drop messages.
+            deadline = asyncio.get_event_loop().time() + 1.0
+            while not pub._connected and asyncio.get_event_loop().time() < deadline:
+                await asyncio.sleep(0.005)
+
             # Send a few messages, then crash before graceful close
-            for _ in range(3):
+            for _ in range(SEND_REPEATS):
                 await pub.publish("crashpub", {"alive": True})
                 await asyncio.sleep(MESSAGE_DELAY)
 

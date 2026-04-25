@@ -156,7 +156,7 @@ class SimpleApp:
 
     def save_to_file(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".f1pcap",
-                                                 filetypes=[("Custom files", "*.f1pcap"), ("All files", "*.*")])
+                                                 filetypes=[("F1 Packet Capture", "*.f1pcap"), ("All files", "*.*")])
         if file_path:
             global g_capture_table
             _, num_packets, _ = g_capture_table.dumpToFile(file_path)

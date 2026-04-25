@@ -77,6 +77,7 @@ class TelemetryWebServer(BaseWebServer):
             port=settings.Network.server_port,
             ver_str=ver_str,
             logger=logger,
+            bind_address=settings.Network.bind_address,
             client_event_mappings={
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
                 ClientType.HUD: [
@@ -131,6 +132,16 @@ class TelemetryWebServer(BaseWebServer):
                 str: Rendered HTML content for the stream overlay page.
             """
             return await self.render_template('eng-view.html', live_data_mode=True, version=self.m_ver_str)
+
+        @self.http_route('/eng-view/trackmap')
+        async def engineerViewTrackmap() -> str:
+            """
+            Render the fullscreen track map page.
+
+            Returns:
+                str: Rendered HTML content for the fullscreen track map.
+            """
+            return await self.render_template('eng-view-trackmap.html', live_data_mode=True, version=self.m_ver_str)
 
         @self.http_route('/player-stream-overlay')
         async def playerStreamOverlay() -> str:

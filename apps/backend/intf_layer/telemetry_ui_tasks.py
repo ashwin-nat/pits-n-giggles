@@ -158,7 +158,7 @@ async def webClientUpdateTask(
     if server.is_any_client_interested_in_event('race-table-update'):
         await server.send_to_clients_interested_in_event(
             event='race-table-update',
-            data=PeriodicUpdateData(session_state).toJSON()
+            data=PeriodicUpdateData(session_state, send_position_data=True).toJSON()
         )
 
     if server.is_any_client_interested_in_event('stream-overlay-update'):

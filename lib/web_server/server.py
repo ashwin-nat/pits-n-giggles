@@ -55,6 +55,7 @@ class BaseWebServer:
                  port: int,
                  ver_str: str,
                  logger: logging.Logger,
+                 bind_address: str,
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
@@ -73,6 +74,7 @@ class BaseWebServer:
         """
         self.m_logger: logging.Logger = logger
         self.m_port: int = port
+        self.m_bind_address: str = bind_address
         self.m_ver_str = ver_str
         self.m_cert_path: Optional[str] = cert_path
         self.m_key_path: Optional[str] = key_path
@@ -132,6 +134,14 @@ class BaseWebServer:
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
+
+            # Security headers (C-003)
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            if self.m_cert_path:
+                response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
             return response
 
     def http_route(self, path: str, **kwargs) -> Callable:
@@ -225,7 +235,7 @@ class BaseWebServer:
                 self.m_stats.track_event("__SOCKET_IN_INVALID__", "unknown-client-type")
                 return
 
-            if client_type in {'player-stream-overlay', 'race-table', 'hud'}:
+            if ClientType.is_valid(client_type):
                 self.m_stats.track_event("__CLIENT_REG__", client_type)
                 await self.m_sio.enter_room(sid, client_type)
                 if self._on_client_register_callback:
@@ -348,7 +358,7 @@ class BaseWebServer:
             # DO NOT set SO_REUSEPORT - it prevents proper port-in-use detection on Unix systems
 
         try:
-            sock.bind(("0.0.0.0", self.m_port))
+            sock.bind((self.m_bind_address, self.m_port))
         except OSError as e:
             sock.close()
             if is_port_in_use_error(e.errno):
@@ -436,6 +446,14 @@ class BaseWebServer:
             '/tyre-icons/wet.svg': {
                 'file': 'tyre-icons/wet_tyre.svg',
                 'mimetype': 'image/svg+xml'
+            },
+            '/overlays/track-temperature.svg': {
+                'file': 'overlays/track-temperature.svg',
+                'mimetype': 'image/svg+xml'
+            },
+            '/overlays/air-temperature.svg': {
+                'file': 'overlays/air-temperature.svg',
+                'mimetype': 'image/svg+xml'
             }
         }
 
@@ -465,6 +483,25 @@ class BaseWebServer:
 
             route_handler = make_static_route_handler(route, config['file'], config['mimetype'])
             self.m_app.route(route)(route_handler)
+
+        # Dynamic routes for track map SVGs and transforms, organized by game year.
+        # send_from_directory handles path-traversal protection via safe_join.
+        track_maps_dir = assets_dir / "track-maps"
+
+        # Per-game SVG transforms: /track-maps/f1_2025/svg_transforms.json
+        async def serve_svg_transforms(game_year: str):
+            game_dir = track_maps_dir / f"f1_{game_year}"
+            return await self.send_from_directory(game_dir, 'svg_transforms.json',
+                                                  mimetype='application/json')
+
+        self.m_app.route('/track-maps/f1_<game_year>/svg_transforms.json')(serve_svg_transforms)
+
+        # Per-game SVG track maps: /track-maps/f1_2025/Singapore.svg
+        async def serve_track_map(game_year: str, filename: str):
+            game_dir = track_maps_dir / f"f1_{game_year}"
+            return await self.send_from_directory(game_dir, filename, mimetype='image/svg+xml')
+
+        self.m_app.route('/track-maps/f1_<game_year>/<filename>')(serve_track_map)
 
     def validate_int_get_request_param(self, param: Any, param_name: str) -> Optional[Dict[str, Any]]:
         """

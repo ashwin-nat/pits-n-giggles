@@ -57,17 +57,18 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, server_port: int, version: str) -> None:
+async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
         server_port (int): Server port
         version (str): Version
+        bind_address (str): Bind address for the web server
     """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger)
-    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks)
+    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks, bind_address=bind_address)
     init_ipc_task(logger=logger, server=web_server, tasks=tasks)
 
     try:
@@ -96,7 +97,8 @@ def entry_point():
         asyncio.run(main(
             logger=png_logger,
             server_port=configs.Network.save_viewer_port,
-            version=version))
+            version=version,
+            bind_address=configs.Network.bind_address))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:

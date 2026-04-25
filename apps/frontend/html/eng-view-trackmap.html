@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pits n' Giggles Track Map {{ version }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/socketio.js') }}"></script>
+    <style>
+        :root {
+            --f1-dark: #15151e;
+            --f1-darker: #0c0c12;
+            --f1-text-secondary: #9090a0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background-color: var(--f1-darker);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #trackMapContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .track-map-wrapper {
+            position: relative;
+            width: min(95vw, calc(95vh * 5 / 3));
+            aspect-ratio: 5 / 3;
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        .track-map-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .track-map-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .track-map-tooltip {
+            position: absolute;
+            background: rgba(21, 21, 30, 0.95);
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 6px 10px;
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: 'Exo 2', sans-serif;
+            pointer-events: none;
+            z-index: 1060;
+            white-space: nowrap;
+        }
+
+        .track-map-pinned-popup {
+            position: absolute;
+            background: #1a1a2e;
+            border: 2px solid #555;
+            border-radius: 6px;
+            padding: 8px 24px 8px 12px;
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: 'Exo 2', sans-serif;
+            z-index: 1055;
+            white-space: nowrap;
+            pointer-events: auto;
+        }
+
+        .pinned-popup-close {
+            position: absolute;
+            top: 2px;
+            right: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #999;
+            line-height: 1;
+        }
+
+        .pinned-popup-close:hover {
+            color: #fff;
+        }
+
+        .track-map-fallback {
+            color: var(--f1-text-secondary);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .track-map-zoom-reset {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(21, 21, 30, 0.85);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1.4rem;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            line-height: 36px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .track-map-zoom-reset:hover {
+            background: rgba(60, 60, 80, 0.95);
+        }
+
+        .track-map-rotation-ctrl {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(21, 21, 30, 0.85);
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 5px 10px;
+        }
+
+        .track-map-rotation-label {
+            color: #aaa;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .track-map-rotation-slider {
+            flex: 1;
+            min-width: 0;
+            accent-color: #e10600;
+            cursor: pointer;
+        }
+
+        .track-map-rotation-input {
+            width: 54px;
+            background: transparent;
+            border: 1px solid #555;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2px 4px;
+        }
+
+        #trackLabel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 1rem;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="trackMapContainer">
+        <div class="track-map-fallback">Waiting for session data…</div>
+    </div>
+    <div id="trackLabel"></div>
+
+    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/trackMap.js') }}"></script>
+    <script>
+        (function () {
+            const trackMap = new TrackMap('#trackMapContainer');
+            const label = document.getElementById('trackLabel');
+
+            const socketio = initializeSocketIO('race-table', 'eng-view-trackmap');
+
+            let refDriverTeam = null;
+
+            socketio.on('race-table-update', (binaryData) => {
+                let data;
+                try {
+                    data = window.msgpack.decode(new Uint8Array(binaryData));
+                } catch (err) {
+                    console.error('Failed to decode race-table-update:', err);
+                    return;
+                }
+
+                const {
+                    "table-entries": tableEntries,
+                    "is-spectating": isSpectating,
+                    "spectator-car-index": spectatorCarIndex,
+                    "f1-game-year": gameYear,
+                    circuit,
+                } = data;
+
+                if (circuit && gameYear) {
+                    trackMap.loadTrack(circuit, gameYear);
+                    label.textContent = circuit.replace(/_/g, ' ');
+                }
+
+                if (tableEntries && tableEntries.length > 0) {
+                    // Determine ref driver team (player or first entry)
+                    if (!refDriverTeam) {
+                        const player = tableEntries.find(e => e['driver-info']?.['is-player']);
+                        refDriverTeam = player ? player['driver-info']['team'] : tableEntries[0]['driver-info']['team'];
+                    }
+
+                    trackMap.updateDrivers(
+                        tableEntries,
+                        isSpectating,
+                        spectatorCarIndex,
+                        refDriverTeam
+                    );
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
