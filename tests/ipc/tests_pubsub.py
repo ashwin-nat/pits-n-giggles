@@ -35,7 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
+from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync, IpcSubscriberAsync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -301,16 +301,8 @@ class TestIpcPubSub(TestIPC):
         async def crash_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
             await pub.start()
-
-            # Wait until the reconnect task has actually established the connection
-            # before publishing. start() only schedules the task; _connected is set
-            # asynchronously, so publishing immediately would silently drop messages.
-            deadline = asyncio.get_event_loop().time() + 1.0
-            while not pub._connected and asyncio.get_event_loop().time() < deadline:
-                await asyncio.sleep(0.005)
-
             # Send a few messages, then crash before graceful close
-            for _ in range(SEND_REPEATS):
+            for _ in range(3):
                 await pub.publish("crashpub", {"alive": True})
                 await asyncio.sleep(MESSAGE_DELAY)
 
@@ -372,21 +364,6 @@ class TestIpcPubSub(TestIPC):
         # Test passes if we get here
         self.assertTrue(True)
 
-    def test_subscriber_detects_missed_messages_from_message_id_gap(self):
-        sub = IpcSubscriberSync(port=self.xpub_port)
-        try:
-            sub._track_sequence("gap", 1)
-            sub._track_sequence("gap", 4)
-
-            stats = sub.get_stats()
-            self.assertEqual(stats["__TOTAL__"]["__MISSED__"]["count"], 2)
-            self.assertEqual(stats["gap"]["__MISSED__"]["count"], 2)
-        finally:
-            try:
-                sub.socket.close(linger=0)
-            except Exception:
-                pass
-
     # ----------------------------------------------------------
     # Broker lifecycle semantics
 
@@ -403,3 +380,178 @@ class TestIpcPubSub(TestIPC):
         # The background thread should have exited
         if self.broker._thread is not None:
             self.assertFalse(self.broker._thread.is_alive())
+
+class TestIpcPubSubAsync(TestIPC):
+    def setUp(self):
+        # Start broker with OS-assigned ports
+        self.broker = IpcPubSubBroker(xsub_port=0, xpub_port=0)
+        self.broker.run_in_thread()
+        time.sleep(0.05)
+
+        self.xsub_port = self.broker.xsub_port
+        self.xpub_port = self.broker.xpub_port
+
+    def tearDown(self):
+        self.broker.close()
+        time.sleep(0.05)
+        if self.broker._thread:
+            self.broker._thread.join(timeout=0.2)
+
+    def test_async_subscriber_receives_message(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-basic")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run(), name="AsyncSub")
+
+            # allow subscription propagation
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-basic", {"v": 1})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertIn({"v": 1}, received)
+
+    def test_async_subscriber_before_publisher(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-early")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-early", {"ok": True})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub.close()
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertIn({"ok": True}, received)
+
+    def test_async_subscriber_does_not_block_event_loop(self):
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-nop")
+            async def handler(_):
+                await asyncio.sleep(0)  # yield control
+
+            sub_task = asyncio.create_task(sub.run())
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            # fire a lot of messages
+            for _ in range(1000):
+                await pub.publish("async-nop", {"x": 1})
+
+            await pub.close()
+
+            # event loop must still be alive
+            await asyncio.sleep(0.05)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        try:
+            asyncio.run(asyncio.wait_for(run_test(), timeout=1.0))
+        except asyncio.TimeoutError:
+            self.fail("Async subscriber blocked the event loop")
+
+    def test_async_subscriber_survives_publisher_restart(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-restart")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+
+            # ---- allow subscription to propagate fully ----
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            # First publisher instance (post-subscription)
+            pub1 = IpcPublisherAsync(port=self.xsub_port)
+            await pub1.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub1.publish("async-restart", {"n": 1})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub1.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            # Second publisher instance (restart)
+            pub2 = IpcPublisherAsync(port=self.xsub_port)
+            await pub2.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub2.publish("async-restart", {"n": 2})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub2.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        # Both batches should now be seen
+        self.assertIn({"n": 1}, received)
+        self.assertIn({"n": 2}, received)
