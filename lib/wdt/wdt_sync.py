@@ -42,11 +42,13 @@ class WatchDogTimerSync:
         timeout: float = 2.0,
         clock: Callable[[], float] = time.time,
         check_interval: float = 0.5,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._status_callback = status_callback
         self._timeout = timeout
         self._clock = clock
         self._check_interval = check_interval
+        self._sleep = sleep
 
         self._last_kick_time = self._clock()
         self.active = False
@@ -86,7 +88,7 @@ class WatchDogTimerSync:
         Blocking watchdog loop (thread target).
         """
         while not self._stop_event.is_set():
-            time.sleep(self._check_interval)
+            self._sleep(self._check_interval)
 
             elapsed = self._clock() - self._last_kick_time
             if self.active and elapsed > self._timeout:
