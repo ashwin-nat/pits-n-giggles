@@ -116,11 +116,10 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
                 turns = f"T{first} / T{last}"
             else:
                 turns = f"Turn {first} / Turn {last}"
+        elif self.name:
+            turns = f"T{first}-T{last}"
         else:
-            if self.name:
-                turns = f"T{first}-T{last}"
-            else:
-                turns = f"Turns {first}-{last}"
+            turns = f"Turns {first}-{last}"
         return {"type": "corner", "name": self.name, "turns": turns}
 
 
