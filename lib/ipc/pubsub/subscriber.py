@@ -50,15 +50,14 @@ class _IpcSubscriberStats:
         self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
         self.stats.track_event(topic, "__MISSED__", count=count)
 
-    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
-        message = orjson.loads(payload)
-        meta = message["__meta__"]
+    def _parse_envelope(self, meta_bytes: bytes, payload_bytes: bytes) -> Tuple[dict, int, Optional[int]]:
+        meta = orjson.loads(meta_bytes)
         send_ts_ns = meta.get("send_ts_ns")
 
         if not isinstance(send_ts_ns, int):
             send_ts_ns = None
 
-        return message["__payload__"], meta["message_id"], send_ts_ns
+        return orjson.loads(payload_bytes), meta["message_id"], send_ts_ns
 
     def _track_latency(
         self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
@@ -218,13 +217,13 @@ class IpcSubscriberSync(_IpcSubscriberStats):
                         recv_failed = True
                         break
 
-                    if len(frames) != 2:
+                    if len(frames) != 3:
                         self.stats.track_event("__DROP__", "invalid_frame_count")
                         continue
 
-                    topic_bytes, payload = frames
+                    topic_bytes, meta_bytes, payload_bytes = frames
                     topic = topic_bytes.decode()
-                    total_size = len(topic_bytes) + len(payload)
+                    total_size = len(topic_bytes) + len(meta_bytes) + len(payload_bytes)
 
                     self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
                     self.stats.track_packet(topic, "__PACKETS__", total_size)
@@ -234,7 +233,7 @@ class IpcSubscriberSync(_IpcSubscriberStats):
                         continue
 
                     try:
-                        data, message_id, send_ts_ns = self._parse_envelope(payload)
+                        data, message_id, send_ts_ns = self._parse_envelope(meta_bytes, payload_bytes)
                         self._track_sequence(topic, message_id)
                         self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
                     except (ValueError, TypeError, KeyError):
@@ -409,13 +408,13 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
                 poller = await self._reconnect(poller, e)
                 continue
 
-            if len(frames) != 2:
+            if len(frames) != 3:
                 self.stats.track_event("__DROP__", "invalid_frame_count")
                 continue
 
-            topic_bytes, payload = frames
+            topic_bytes, meta_bytes, payload_bytes = frames
             topic = topic_bytes.decode()
-            total_size = len(topic_bytes) + len(payload)
+            total_size = len(topic_bytes) + len(meta_bytes) + len(payload_bytes)
 
             self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
             self.stats.track_packet(topic, "__PACKETS__", total_size)
@@ -428,7 +427,7 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
                 continue
 
             try:
-                data, message_id, send_ts_ns = self._parse_envelope(payload)
+                data, message_id, send_ts_ns = self._parse_envelope(meta_bytes, payload_bytes)
                 self._track_sequence(topic, message_id)
                 self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
             except (ValueError, TypeError, KeyError):
