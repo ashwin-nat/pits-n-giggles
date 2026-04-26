@@ -23,6 +23,8 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import functools
+import inspect
 import logging
 import socket
 import time
@@ -137,7 +139,7 @@ Rules:
         """Decorator factory: registers an MCP tool and wraps it to record
         per-tool call counts and processing-time latency via EventCounter."""
         def decorator(fn: Callable) -> Callable:
-            @self.mcp.tool(name=name, **kwargs)
+            @functools.wraps(fn)
             async def _instrumented(*args, **kw):
                 start_ns = time.time_ns()
                 try:
@@ -145,6 +147,8 @@ Rules:
                 finally:
                     self.stats.track_event("__MCP_TOOLS__", name)
                     self.stats.track_packet_latency("__MCP_LATENCY__", name, start_ns)
+            _instrumented.__signature__ = inspect.signature(fn)
+            self.mcp.tool(name=name, **kwargs)(_instrumented)
             return _instrumented
         return decorator
 
