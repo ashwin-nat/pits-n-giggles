@@ -87,7 +87,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
 
     if managed:
         logger.debug("Managed mode enabled")
-        init_ipc_task(logger, tasks, ipc_sub, mcp_task)
+        init_ipc_task(logger, tasks, ipc_sub, mcp_bridge, mcp_task)
         notify_parent_init_complete()
     else:
         logger.debug("Unmanaged mode; skipping IPC initialization")
@@ -124,7 +124,7 @@ def _entry_point():
         png_logger = get_logger("mcp", args.debug, jsonl=True) # Emit JSONL to stdout. Parent process will capture.
         report_pid_from_child()
     else:
-        png_logger = get_logger("mcp", args.debug, jsonl=False, file_path=args.log_file, console_output=False)
+        png_logger = get_logger("mcp", args.debug, jsonl=False, file_path=args.log_file)
     version = get_version()
 
     png_logger.info("Starting %s MCP server, version %s...", APP_NAME, version)

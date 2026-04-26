@@ -25,7 +25,8 @@
 import asyncio
 import logging
 import socket
-from typing import Any, Dict, Literal
+import time
+from typing import Any, Callable, Dict, Literal
 
 import uvicorn
 from fastmcp import FastMCP
@@ -34,6 +35,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from lib.error_status import PngError, PngHttpPortInUseError
+from lib.event_counter import EventCounter
 from lib.web_server import get_socket_for_uvicorn
 from meta.meta import APP_NAME
 
@@ -107,6 +109,8 @@ Rules:
         self.port = port
         self.core_server_port = core_server_port
 
+        self.stats = EventCounter()
+
         # FastMCP server
         self.mcp = FastMCP(
             name=f"{APP_NAME} MCP Server",
@@ -126,12 +130,27 @@ Rules:
         self.logger.debug("MCPBridge initialized (transport=%s)", transport)
 
     # ------------------------------------------------------------------
-    # Tool registration (unchanged semantics)
+    # Tool registration
     # ------------------------------------------------------------------
+
+    def _tool(self, name: str, **kwargs) -> Callable:
+        """Decorator factory: registers an MCP tool and wraps it to record
+        per-tool call counts and processing-time latency via EventCounter."""
+        def decorator(fn: Callable) -> Callable:
+            @self.mcp.tool(name=name, **kwargs)
+            async def _instrumented(*args, **kw):
+                start_ns = time.time_ns()
+                try:
+                    return await fn(*args, **kw)
+                finally:
+                    self.stats.track_event("__MCP_TOOLS__", name)
+                    self.stats.track_packet_latency("__MCP_LATENCY__", name, start_ns)
+            return _instrumented
+        return decorator
 
     def _register_tools(self) -> None:
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_session_info",
             description="Get current session information",
             title="Session Information - Globals",
@@ -145,13 +164,10 @@ Rules:
         )
         async def get_session_info_tool():
             rsp = get_session_info(self.logger)
-            self.logger.debug(
-                "get_session_info called: available=%s",
-                rsp.get("available", False),
-            )
+            self.logger.debug("get_session_info called: available=%s", rsp.get("available", False))
             return rsp
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_race_table",
             description="Full Race Snapshot",
             title="Current Race State",
@@ -170,13 +186,10 @@ Rules:
         )
         async def get_race_table_tool():
             rsp = get_race_table(self.logger)
-            self.logger.debug(
-                "get_race_table called: available=%s",
-                rsp.get("available", False),
-            )
+            self.logger.debug("get_race_table called: available=%s", rsp.get("available", False))
             return rsp
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_drivers_list",
             description="Get drivers list",
             title="Drivers List",
@@ -194,13 +207,10 @@ Rules:
         )
         async def get_drivers_list_tool():
             rsp = get_drivers_list(self.logger)
-            self.logger.debug(
-                "get_drivers_list called: available=%s",
-                rsp.get("available", False),
-            )
+            self.logger.debug("get_drivers_list called: available=%s", rsp.get("available", False))
             return rsp
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_driver_lap_times",
             description="Get lap time history for the driver with the given index (0-21)",
             title="Driver Lap Times (History)",
@@ -227,7 +237,7 @@ Rules:
                 driver_index=driver_index,
             )
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_session_events_for_driver",
             description="Get race control messages for events in the current session for the driver with the given index (0-21)",
             title="Driver Race Control Messages (History)",
@@ -254,7 +264,7 @@ Rules:
                 driver_index=driver_index,
             )
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_player_driver_info",
             description="Get player driver info. Get index, name, team, etc for the player/reference driver",
             title="Player/Reference Driver Info",
@@ -276,7 +286,7 @@ Rules:
         async def handle_get_player_driver_info():
             return get_player_driver_info(self.logger)
 
-        @self.mcp.tool(
+        @self._tool(
             name="get_car_damage",
             description="Get car damage info for a driver with given index (0-21)",
             title="Car Damage Info",
@@ -361,6 +371,10 @@ Rules:
         except Exception as e:
             self.logger.exception("MCP server failed: %s", e)
             raise
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get stats for the MCP server."""
+        return self.stats.get_stats()
 
     def _bind_socket(self) -> socket.socket:
         """Create and bind a TCP socket, raising on port conflict.

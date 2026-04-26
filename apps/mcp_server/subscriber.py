@@ -86,6 +86,14 @@ class McpSubscriber:
         set_state_data("connected", active)
         self.m_ipc_sub.logger.info("Subscriber connected state changed: %s", active)
 
+    def get_stats(self) -> dict:
+        """Get stats for the subscriber.
+
+        Returns:
+            dict: Stats dictionary
+        """
+        return self.m_ipc_sub.get_stats()
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def init_subscriber_task(port: int, logger: logging.Logger, tasks: List[asyncio.Task]) -> McpSubscriber:

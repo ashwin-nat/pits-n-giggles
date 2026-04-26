@@ -27,6 +27,7 @@ import logging
 import os
 from typing import Any, Dict, List
 
+from apps.mcp_server.mcp_server import MCPBridge
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.ipc import IpcServerAsync
@@ -36,58 +37,66 @@ from .subscriber import McpSubscriber
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpIpc:
-    def __init__(self, logger: logging.Logger, ipc_sub: McpSubscriber, mcp_task: asyncio.Task) -> None:
+    def __init__(self,
+                 logger: logging.Logger,
+                 ipc_sub: McpSubscriber,
+                 mcp_server: MCPBridge,
+                 mcp_task: asyncio.Task) -> None:
         """Initialize the IPC server.
 
         Args:
             logger (logging.Logger): Logger
             ipc_sub (McpSubscriber): MCP Subscriber
+            mcp_server (MCPBridge): MCP Bridge
             mcp_task (asyncio.Task): MCP Task
         """
         self.m_logger = logger
         self.m_should_open_ui = True
         self.m_ipc_server = IpcServerAsync(name="MCP IPC Server")
-        self.m_ipc_server.register_shutdown_callback(self._shutdown_handler)
-        self.m_ipc_server.register_heartbeat_missed_callback(self._heartbeat_missed_handler)
+        self._register_handlers()
         self.m_ipc_sub = ipc_sub
         self.m_mcp_task = mcp_task
+        self.m_mcp_server = mcp_server
         report_ipc_port_from_child(self.m_ipc_server.port)
 
     async def run(self) -> None:
         """Starts the IPC server."""
-        await self.m_ipc_server.run(self._handle_ipc_message)
+        await self.m_ipc_server.run()
 
-    async def _handle_ipc_message(self, msg: dict) -> dict:
-        """Handles incoming IPC messages and dispatches commands.
+    def _register_handlers(self):
+        """Registers handlers for IPC commands."""
 
-        Args:
-            msg (dict): IPC message
+        @self.m_ipc_server.on_shutdown
+        async def _shutdown_handler(args: dict) -> Dict[str, Any]:
+            """Shutdown handler function.
 
-        Returns:
-            dict: IPC response
-        """
-        self.m_logger.debug("Received IPC message: %s", msg)
-        return {"status": "error", "message": "IPC commands are not supported on this subsystem."}
+            Args:
+                args (dict): IPC command arguments
 
-    async def _shutdown_handler(self, args: dict) -> Dict[str, Any]:
-        """Shutdown handler function.
+            Returns:
+                Dict[str, Any]: Shutdown response
+            """
+            reason = args["reason"]
+            self.m_logger.info(f"Shutting down. Reason: {reason}")
+            asyncio.create_task(self._handle_shutdown_task())
+            return {"status": "success"}
 
-        Args:
-            args (dict): IPC command arguments
+        @self.m_ipc_server.on_heartbeat_missed
+        async def _heartbeat_missed_handler(count: int) -> dict:
+            """Handle terminate command"""
 
-        Returns:
-            Dict[str, Any]: Shutdown response
-        """
-        reason = args["reason"]
-        self.m_logger.info(f"Shutting down. Reason: {reason}")
-        asyncio.create_task(self._handle_shutdown_task())
-        return {"status": "success"}
+            print(f"[MCP] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
+            os._exit(PNG_LOST_CONN_TO_PARENT)
 
-    async def _heartbeat_missed_handler(self, count: int) -> dict:
-        """Handle terminate command"""
-
-        print(f"[MCP] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
-        os._exit(PNG_LOST_CONN_TO_PARENT)
+        @self.m_ipc_server.on("get-stats")
+        async def _get_stats(_args: dict) -> dict:
+            return {
+                "status": "success",
+                "stats": {
+                    "INGRESS": self.m_ipc_sub.get_stats(),
+                    "MCP": self.m_mcp_server.get_stats(),
+                }
+            }
 
     async def _handle_shutdown_task(self) -> None:
         """Handles shutdown signal."""
@@ -103,6 +112,7 @@ def init_ipc_task(
         logger: logging.Logger,
         tasks: List[asyncio.Task],
         ipc_sub: McpSubscriber,
+        mcp_bridge: MCPBridge,
         mcp_task: asyncio.Task) -> None:
     """Initialize the IPC task.
 
@@ -110,7 +120,8 @@ def init_ipc_task(
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
         ipc_sub (McpSubscriber): MCP Subscriber
+        mcp_bridge (MCPBridge): MCP Bridge
         mcp_task (asyncio.Task): MCP Task
     """
-    ipc_server = McpIpc(logger, ipc_sub=ipc_sub, mcp_task=mcp_task)
+    ipc_server = McpIpc(logger, ipc_sub=ipc_sub, mcp_server=mcp_bridge,mcp_task=mcp_task)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))
