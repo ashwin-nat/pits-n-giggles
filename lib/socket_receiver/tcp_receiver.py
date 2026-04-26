@@ -71,18 +71,15 @@ class TcpTransport(TelemetryTransport):
 
     async def run(self) -> None:
         """Run until cancelled, delivering packets to the registered callback."""
-        try:
-            while True:
-                await self._ensure_connection()
-                try:
-                    length_bytes = await self._reader.readexactly(4)
-                    message_length = struct.unpack('!I', length_bytes)[0]
-                    message = await self._reader.readexactly(message_length)
-                    await self._callback(message)
-                except (asyncio.IncompleteReadError, ConnectionError):
-                    await self._drop_connection()
-        except asyncio.CancelledError:
-            raise
+        while True:
+            await self._ensure_connection()
+            try:
+                length_bytes = await self._reader.readexactly(4)
+                message_length = struct.unpack('!I', length_bytes)[0]
+                message = await self._reader.readexactly(message_length)
+                await self._callback(message)
+            except (asyncio.IncompleteReadError, ConnectionError):
+                await self._drop_connection()
 
     async def _ensure_connection(self) -> None:
         """Accept a new connection if none is active."""
