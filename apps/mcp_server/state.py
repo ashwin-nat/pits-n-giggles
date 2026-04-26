@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,14 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .client_types import ClientType
-from .server import BaseWebServer
-from .socket import get_socket_for_uvicorn
+from typing import Any, Dict, Optional
+from dataclasses import dataclass
+import time
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES ------------------------------------------------------------------------
 
-__all__ = [
-    'BaseWebServer',
-    'ClientType',
-    'get_socket_for_uvicorn',
-]
+@dataclass(slots=True)
+class StateEntry:
+    data: Any
+    ts: float
+
+# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+
+state_data: Dict[str, StateEntry] = {}
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def set_state_data(topic: str, data: Dict[str, Any]) -> None:
+    state_data[topic] = StateEntry(
+        data=data,
+        ts=time.time(),
+    )
+
+
+def get_state_data(topic: str, default: Optional[Any] = None) -> Optional[StateEntry]:
+    return state_data.get(topic, default)

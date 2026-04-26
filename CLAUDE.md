@@ -104,6 +104,7 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - `.claude/commands/add-packet-type.md` — Scaffold a new F1 packet type across `lib/f1_types/` and `lib/telemetry_manager/`. Use when adding support for a new packet ID or season.
 - `.claude/commands/new-overlay.md` — Scaffold a new HUD overlay widget. Use when adding a new in-game display panel.
 - `.claude/commands/release-notes.md` — Generate user-facing release notes from commits since the last tag. Use when preparing a release.
+- `.claude/commands/add-mcp-tool.md` — Scaffold a new MCP tool in `apps/mcp_server/`. Use when adding a new tool to the MCP server.
 
 ### IPC Pattern
 

@@ -20,16 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+from apps.mcp_server.mcp_main import entry_point
 
-from .client_types import ClientType
-from .server import BaseWebServer
-from .socket import get_socket_for_uvicorn
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    'BaseWebServer',
-    'ClientType',
-    'get_socket_for_uvicorn',
-]
+if __name__ == "__main__":
+    entry_point()

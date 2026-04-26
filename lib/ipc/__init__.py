@@ -24,7 +24,7 @@
 
 from .pubsub.broker import IpcPubSubBroker
 from .pubsub.publisher import IpcPublisherAsync
-from .pubsub.subscriber import IpcSubscriberSync
+from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
 from .reqrep.async_server import IpcServerAsync
 from .reqrep.sync_client import IpcClientSync
 from .reqrep.sync_server import IpcServerSync
@@ -39,6 +39,7 @@ __all__ = [
     'IpcServerSync',
     'SocketioClient',
     'IpcPublisherAsync',
+    'IpcSubscriberAsync',
     'IpcSubscriberSync',
     'IpcPubSubBroker',
 

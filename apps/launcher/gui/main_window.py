@@ -39,7 +39,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
-                                      PngAppMgrBase, PngAppMgrConfig,
+                                      PngAppMgrBase, PngAppMgrConfig, McpAppMgr,
                                       SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
@@ -230,6 +230,7 @@ class PngLauncherWindow(QMainWindow):
             SaveViewerAppMgr(common_cfg),
             HudAppMgr(common_cfg),
             BrokerAppMgr(common_cfg),
+            McpAppMgr(common_cfg)
         ]
         for subsystem in self.subsystems:
             assert subsystem.SHORT_NAME
@@ -426,16 +427,18 @@ class PngLauncherWindow(QMainWindow):
         grid_layout.setContentsMargins(0, 0, 0, 0)
 
         # Number of subsystems per row
-        NUM_SUBSYS_PER_ROW = 3
+        NUM_SUBSYS_PER_ROW = 2
 
         # Add subsystem cards in a grid
-        for idx, subsystem in enumerate(self.subsystems):
+        rendered_subsystems_count = 0
+        for subsystem in self.subsystems:
             if not subsystem.SHOULD_DISPLAY:
                 continue
-            row = idx // NUM_SUBSYS_PER_ROW
-            col = idx % NUM_SUBSYS_PER_ROW
+            row = rendered_subsystems_count // NUM_SUBSYS_PER_ROW
+            col = rendered_subsystems_count % NUM_SUBSYS_PER_ROW
             card = SubsystemCard(subsystem)
             grid_layout.addWidget(card, row, col)
+            rendered_subsystems_count += 1
 
         layout.addLayout(grid_layout)
         layout.addStretch()
