@@ -88,7 +88,7 @@ class McpIpc:
             print(f"[MCP] Missed heartbeat {count} times. This process has probably been orphaned. Terminating...")
             os._exit(PNG_LOST_CONN_TO_PARENT)
 
-        @self.m_ipc_server.on("get-stats")
+        @self.m_ipc_server.on_get_stats
         async def _get_stats(_args: dict) -> dict:
             return {
                 "status": "success",

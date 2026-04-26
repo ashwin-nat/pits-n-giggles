@@ -92,7 +92,7 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
         # running atexit handlers or flushing stdio buffers from parent.
         os._exit(PNG_LOST_CONN_TO_PARENT)
 
-    @proc_mgr.on("get-stats")
+    @proc_mgr.on_get_stats
     def _get_stats_handler(_args: dict) -> dict:
         return {
             "status": "success",

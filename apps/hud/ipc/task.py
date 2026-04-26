@@ -151,7 +151,7 @@ def _register_routes(
             return {"status": "success", "message": "set-circuit-info-length handler executed."}
         return {"status": "error", "message": "Missing length value in set-circuit-info-length command."}
 
-    @ipc_server.on("get-stats")
+    @ipc_server.on_get_stats
     def _get_stats(_args: dict) -> dict:
         return {
             "status": "success",

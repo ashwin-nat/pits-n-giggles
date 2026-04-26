@@ -83,7 +83,7 @@ def registerIpcTask(
     async def _handle_udp_action_code_change(args: dict):
         return await handleUdpActionCodeChange(args, logger, telemetry_handler)
 
-    @server.on("get-stats")
+    @server.on_get_stats
     async def _handle_get_stats(_args: dict):
         return await handleGetStats(telemetry_handler, ipc_pub, web_server)
 

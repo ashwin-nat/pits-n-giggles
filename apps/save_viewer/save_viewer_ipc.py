@@ -107,9 +107,8 @@ class SaveViewerIpc:
 
             return {"status": "success"}
 
-        @self.m_ipc_server.on("get-stats")
+        @self.m_ipc_server.on_get_stats
         async def _handle_get_stats(_args: dict) -> Dict[str, Any]:
-            """Handle the 'get-stats' IPC command."""
             return {
                 "status": "success",
                 "stats": self.m_server.get_stats(),
