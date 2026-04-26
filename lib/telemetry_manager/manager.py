@@ -113,13 +113,15 @@ class AsyncF1TelemetryManager:
 
         pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()), self.m_logger)
 
+        @self.m_receiver.on_packet
+        async def _handle(raw_packet: bytes) -> None:
+            try:
+                await self._processPacket(pkt_factory, raw_packet)
+            except (UnsupportedPacketFormat, UnsupportedPacketType) as e:
+                self.m_logger.error(e, exc_info=True)
+
         try:
-            while True:
-                raw_packet = await self.m_receiver.getNextMessage()
-                try:
-                    await self._processPacket(pkt_factory, raw_packet)
-                except (UnsupportedPacketFormat, UnsupportedPacketType) as e:
-                    self.m_logger.error(e, exc_info=True)
+            await self.m_receiver.run()
         except asyncio.CancelledError:
             self.m_logger.debug("Receiver task cancelled - shutting down.")
             await self.m_receiver.close()

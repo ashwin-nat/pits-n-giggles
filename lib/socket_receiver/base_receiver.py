@@ -23,17 +23,21 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from typing import Awaitable, Callable
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-class TelemetryReceiver(ABC):
-    """Base class for socket receiver"""
+class TelemetryTransport(ABC):
+    """Base class for push-based socket transport."""
+
     @abstractmethod
-    async def getNextMessage(self) -> bytes:
-        """Asynchronously waits until the next message arrives, then returns it."""
-        pass
+    def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> None:
+        """Decorator to register the packet callback."""
+
+    @abstractmethod
+    async def run(self) -> None:
+        """Run until cancelled, delivering packets to the registered callback."""
 
     @abstractmethod
     async def close(self) -> None:
-        """Closes the socket receiver"""
-        pass
+        """Closes the transport."""
