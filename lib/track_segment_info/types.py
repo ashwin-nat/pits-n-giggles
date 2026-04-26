@@ -111,15 +111,7 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
 
     def render(self) -> Dict[str, str]:
         first, last = self.corner_numbers[0], self.corner_numbers[-1]
-        if len(self.corner_numbers) == 2:
-            if self.name:
-                turns = f"T{first} / T{last}"
-            else:
-                turns = f"Turn {first} / Turn {last}"
-        elif self.name:
-            turns = f"T{first}-T{last}"
-        else:
-            turns = f"Turns {first}-{last}"
+        turns = f"Turns {first}-{last}"
         return {"type": "corner", "name": self.name, "turns": turns}
 
 
