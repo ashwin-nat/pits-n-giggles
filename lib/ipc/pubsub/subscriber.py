@@ -50,14 +50,15 @@ class _IpcSubscriberStats:
         self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
         self.stats.track_event(topic, "__MISSED__", count=count)
 
-    def _parse_envelope(self, meta_bytes: bytes, payload_bytes: bytes) -> Tuple[dict, int, Optional[int]]:
+    def _parse_envelope(self, meta_bytes: bytes, payload_bytes: bytes) -> Tuple[str, bytes, int, Optional[int]]:
         meta = orjson.loads(meta_bytes)
         send_ts_ns = meta.get("send_ts_ns")
 
         if not isinstance(send_ts_ns, int):
             send_ts_ns = None
 
-        return orjson.loads(payload_bytes), meta["message_id"], send_ts_ns
+        content_type = meta.get("content_type", "json")
+        return content_type, payload_bytes, meta["message_id"], send_ts_ns
 
     def _track_latency(
         self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
@@ -130,6 +131,7 @@ class IpcSubscriberSync(_IpcSubscriberStats):
 
         self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
+        self._raw_routes: Dict[str, Tuple[str, Callable[[bytes], None]]] = {}
 
         self._running = False
         self.socket: Optional[zmq.Socket] = None
@@ -152,7 +154,7 @@ class IpcSubscriberSync(_IpcSubscriberStats):
         self.socket.setsockopt(zmq.LINGER, 0)
 
         # Restore all topic subscriptions
-        for topic in self._routes:
+        for topic in {**self._routes, **{t: None for t in self._raw_routes}}:
             self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode())
 
         endpoint = f"tcp://{self.host}:{self.port}"
@@ -161,17 +163,34 @@ class IpcSubscriberSync(_IpcSubscriberStats):
         self.logger.debug("IpcSubscriberSync configured endpoint %s", endpoint)
 
     # ---------------------------------------------------------
-    # Register handler
+    # Register handlers
     # ---------------------------------------------------------
     def route(self, topic: str):
-        topic_bytes = topic.encode()
+        """Register a JSON handler for topic. Raises ValueError if already registered as raw."""
+        if topic in self._raw_routes:
+            raise ValueError(f"Topic '{topic}' is already registered as a raw route")
 
-        # Subscribe immediately
+        topic_bytes = topic.encode()
         if self.socket:
             self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
 
-        def decorator(func):
+        def decorator(func: Callable[[dict], None]):
             self._routes[topic] = func
+            return func
+
+        return decorator
+
+    def route_raw(self, topic: str, content_type: str = "binary"):
+        """Register a raw bytes handler for topic. Raises ValueError if already registered as JSON."""
+        if topic in self._routes:
+            raise ValueError(f"Topic '{topic}' is already registered as a JSON route")
+
+        topic_bytes = topic.encode()
+        if self.socket:
+            self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
+
+        def decorator(func: Callable[[bytes], None]):
+            self._raw_routes[topic] = (content_type, func)
             return func
 
         return decorator
@@ -200,7 +219,7 @@ class IpcSubscriberSync(_IpcSubscriberStats):
             if self.socket in events:
                 # Drain all queued messages, keeping only the latest per topic.
                 # PUB/SUB semantics: consumers only need the freshest state.
-                latest_per_topic: Dict[str, dict] = {}
+                latest_per_topic: Dict[str, Tuple[str, bytes]] = {}
                 recv_failed = False
 
                 while True:
@@ -228,33 +247,47 @@ class IpcSubscriberSync(_IpcSubscriberStats):
                     self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
                     self.stats.track_packet(topic, "__PACKETS__", total_size)
 
-                    if topic not in self._routes:
+                    if topic not in self._routes and topic not in self._raw_routes:
                         self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
                         continue
 
                     try:
-                        data, message_id, send_ts_ns = self._parse_envelope(meta_bytes, payload_bytes)
+                        content_type, raw_payload, message_id, send_ts_ns = self._parse_envelope(
+                            meta_bytes, payload_bytes
+                        )
                         self._track_sequence(topic, message_id)
                         self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
                     except (ValueError, TypeError, KeyError):
                         self.stats.track_event("__DROP__", "invalid_envelope")
                         continue
 
+                    if topic in self._routes:
+                        if content_type != "json":
+                            self.stats.track_event("__DROP__", f"wrong_content_type_for_json_route_{topic}")
+                            continue
+                    else:
+                        expected_ct, _ = self._raw_routes[topic]
+                        if content_type != expected_ct:
+                            self.stats.track_event("__DROP__", f"wrong_content_type_for_raw_route_{topic}")
+                            continue
+
                     if topic in latest_per_topic:
                         self.stats.track_event("__TOTAL__", "__STALE_DROP__")
                         self.stats.track_event(topic, "__STALE_DROP__")
 
-                    latest_per_topic[topic] = data
+                    latest_per_topic[topic] = (content_type, raw_payload)
 
                 if recv_failed:
                     continue
 
-                for topic, data in latest_per_topic.items():
-                    handler = self._routes.get(topic)
-                    if not handler:
-                        continue
+                for topic, (content_type, raw_payload) in latest_per_topic.items():
                     try:
-                        handler(data)
+                        if topic in self._routes:
+                            handler = self._routes[topic]
+                            handler(orjson.loads(raw_payload))
+                        else:
+                            _, handler = self._raw_routes[topic]
+                            handler(raw_payload)
                         self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
                         self.stats.track_event(topic, "__HANDLER_OK__")
                     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -317,6 +350,7 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
         self.socket: Optional[zmq.Socket] = None
 
         self._routes: Dict[str, Callable[[dict], Awaitable[None]]] = {}
+        self._raw_routes: Dict[str, Tuple[str, Callable[[bytes], Awaitable[None]]]] = {}
         self._running = True
 
         self._on_connect: Optional[OnConnectCbAsync] = None
@@ -338,7 +372,7 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
         sock.setsockopt(zmq.LINGER, 0)
 
         # Restore subscriptions
-        for topic in self._routes:
+        for topic in {**self._routes, **{t: None for t in self._raw_routes}}:
             sock.setsockopt(zmq.SUBSCRIBE, topic.encode())
 
         endpoint = f"tcp://{self.host}:{self.port}"
@@ -352,10 +386,29 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
     # ------------------------------------------------------------------
 
     def route(self, topic: str):
+        """Register a JSON handler for topic. Raises ValueError if already registered as raw."""
+        if topic in self._raw_routes:
+            raise ValueError(f"Topic '{topic}' is already registered as a raw route")
+
         topic_bytes = topic.encode()
 
         def decorator(func: Callable[[dict], Awaitable[None]]):
             self._routes[topic] = func
+            if self.socket:
+                self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
+            return func
+
+        return decorator
+
+    def route_raw(self, topic: str, content_type: str = "binary"):
+        """Register a raw bytes handler for topic. Raises ValueError if already registered as JSON."""
+        if topic in self._routes:
+            raise ValueError(f"Topic '{topic}' is already registered as a JSON route")
+
+        topic_bytes = topic.encode()
+
+        def decorator(func: Callable[[bytes], Awaitable[None]]):
+            self._raw_routes[topic] = (content_type, func)
             if self.socket:
                 self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
             return func
@@ -421,21 +474,35 @@ class IpcSubscriberAsync(_IpcSubscriberStats):
 
             await self._mark_connected()
 
-            handler = self._routes.get(topic)
-            if not handler:
+            if topic not in self._routes and topic not in self._raw_routes:
                 self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
                 continue
 
             try:
-                data, message_id, send_ts_ns = self._parse_envelope(meta_bytes, payload_bytes)
+                content_type, raw_payload, message_id, send_ts_ns = self._parse_envelope(
+                    meta_bytes, payload_bytes
+                )
                 self._track_sequence(topic, message_id)
                 self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
             except (ValueError, TypeError, KeyError):
                 self.stats.track_event("__DROP__", "invalid_envelope")
                 continue
 
+            if topic in self._routes:
+                if content_type != "json":
+                    self.stats.track_event("__DROP__", f"wrong_content_type_for_json_route_{topic}")
+                    continue
+                handler = self._routes[topic]
+                payload = orjson.loads(raw_payload)
+            else:
+                expected_ct, handler = self._raw_routes[topic]
+                if content_type != expected_ct:
+                    self.stats.track_event("__DROP__", f"wrong_content_type_for_raw_route_{topic}")
+                    continue
+                payload = raw_payload
+
             try:
-                await handler(data)
+                await handler(payload)
                 self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
                 self.stats.track_event(topic, "__HANDLER_OK__")
             except Exception as e: # pylint: disable=broad-except

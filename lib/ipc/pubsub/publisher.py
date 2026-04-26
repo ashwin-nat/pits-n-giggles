@@ -139,26 +139,20 @@ class IpcPublisherAsync:
         self._topic_message_ids[topic] = current
         return current
 
-    def _build_envelope(self, topic: str, data: dict) -> tuple:
-        meta_bytes = orjson.dumps({
+    def _build_meta(self, topic: str, content_type: str) -> bytes:
+        return orjson.dumps({
             "message_id": self._next_message_id(topic),
             "send_ts_ns": time.time_ns(),
-            "content_type": "json",
+            "content_type": content_type,
         })
-        payload_bytes = orjson.dumps(data)
-        return meta_bytes, payload_bytes
+
+    def _build_envelope(self, topic: str, data: dict) -> tuple:
+        return self._build_meta(topic, "json"), orjson.dumps(data)
 
     # ---------------------------------------------------------
     # Publish
     # ---------------------------------------------------------
-    async def publish(self, topic: str, data: dict):
-        if not self._connected:
-            self.stats.track_event("__DROP__", "disconnected")
-            self.stats.track_event("__DROP_TOPIC__", topic)
-            return  # drop silently (ZeroMQ semantics)
-
-        topic_bytes = topic.encode("utf-8")
-        meta_bytes, payload_bytes = self._build_envelope(topic, data)
+    async def _do_send(self, topic: str, topic_bytes: bytes, meta_bytes: bytes, payload_bytes: bytes):
         total_size = len(topic_bytes) + len(meta_bytes) + len(payload_bytes)
 
         try:
@@ -181,6 +175,27 @@ class IpcPublisherAsync:
                 self.socket.close(linger=0)
             except:
                 pass
+
+    async def publish(self, topic: str, data: dict):
+        if not self._connected:
+            self.stats.track_event("__DROP__", "disconnected")
+            self.stats.track_event("__DROP_TOPIC__", topic)
+            return  # drop silently (ZeroMQ semantics)
+
+        topic_bytes = topic.encode("utf-8")
+        meta_bytes, payload_bytes = self._build_envelope(topic, data)
+        await self._do_send(topic, topic_bytes, meta_bytes, payload_bytes)
+
+    async def publish_raw(self, topic: str, payload: bytes, content_type: str = "binary"):
+        """Publish a raw binary payload. Subscribers receive the bytes object unchanged."""
+        if not self._connected:
+            self.stats.track_event("__DROP__", "disconnected")
+            self.stats.track_event("__DROP_TOPIC__", topic)
+            return  # drop silently (ZeroMQ semantics)
+
+        topic_bytes = topic.encode("utf-8")
+        meta_bytes = self._build_meta(topic, content_type)
+        await self._do_send(topic, topic_bytes, meta_bytes, payload)
 
     # ---------------------------------------------------------
     # Shutdown
