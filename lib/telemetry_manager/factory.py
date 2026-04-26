@@ -36,7 +36,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData)
-from lib.socket_receiver import TcpReceiver, TelemetryReceiver, UdpReceiver
+from lib.socket_receiver import TcpTransport, TelemetryTransport, UdpTransport
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
 
@@ -128,10 +128,10 @@ class PacketParserFactory:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryReceiver:
-    """Creates a telemetry receiver based on the given port number and replay server mode."""
+def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryTransport:
+    """Creates a telemetry transport based on the given port number and replay server mode."""
     if replay_server:
         logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)
-        return TcpReceiver(port_number, "localhost")
+        return TcpTransport(port_number, "localhost")
     logger.info("LIVE RECEIVER MODE. PORT = %s", port_number)
-    return UdpReceiver(port_number, "0.0.0.0", buffer_size=4096)
+    return UdpTransport(port_number, "0.0.0.0", buffer_size=4096)

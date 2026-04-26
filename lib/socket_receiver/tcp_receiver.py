@@ -25,103 +25,93 @@
 import asyncio
 import socket
 import struct
+from typing import Awaitable, Callable, Optional
 
-from .base_receiver import TelemetryReceiver
+from .base_receiver import TelemetryTransport
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TcpReceiver(TelemetryReceiver):
-    """This class represents a TCP server that handles one connection at a time.
+class TcpTransport(TelemetryTransport):
+    """TCP server transport that handles one connection at a time.
+
     Attributes:
-    - m_buffer_size - The buffer size being used
-    - m_port - The TCP port that this server is bound to
-    - m_bind_ip - The IP address this TCP server is bound to
-    - m_socket - The socket object handle associated with this server
-    - m_connection - The current connection object
-    Methods:
-    - getNextMessage()
+        m_buffer_size (int): The buffer size being used.
+        m_port (int): The TCP port that this server is bound to.
+        m_bind_ip (str): The IP address this TCP server is bound to.
+        m_socket (socket.socket): The socket object handle associated with this server.
+        m_connection: The current connection object.
     """
+
     def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
-        """Construct a TCPListener object
+        """
         Args:
-            port (int): The port number to initialise this server to
-            bind_ip (str): The IP address this server must be bound to
+            port (int): The port number to initialise this server to.
+            bind_ip (str): The IP address this server must be bound to.
             buffer_size (int, optional): The buffer size to be specified. Defaults to 16 kb.
         """
         self.m_buffer_size = buffer_size
         self.m_port = port
         self.m_bind_ip = bind_ip
 
-        # Create and configure the server socket
         self.m_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self.m_socket.listen(1)  # One connection queue
-        self.m_socket.setblocking(False)  # Non-blocking mode
+        self.m_socket.listen(1)
+        self.m_socket.setblocking(False)
 
         self.m_connection = None
         self._reader = None
         self._writer = None
+        self._callback: Optional[Callable[[bytes], Awaitable[None]]] = None
 
-    async def getNextMessage(self) -> bytes:
-        """
-        Asynchronously waits until the next message arrives on the current connection
-        or establishes a new connection, then returns it.
-        Returns:
-        bytes: The raw bytes that were received.
-        """
-        # Accept a new connection if needed
-        if self.m_connection is None:
-            try:
-                # Wait for a connection - this yields to the event loop
-                conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
-                self.m_connection = conn
-                self.m_connection.setblocking(False)
-                # Use streams for easier reading
-                self._reader, self._writer = await asyncio.open_connection(sock=conn)
-            except (OSError) as e:
-                print(f"Connection error: {e}")
-                return await self.getNextMessage()  # Try again
+    def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> Callable[[bytes], Awaitable[None]]:
+        """Decorator to register the packet callback."""
+        self._callback = callback
+        return callback
 
+    async def run(self) -> None:
+        """Run until cancelled, delivering packets to the registered callback."""
         try:
-            # Read length prefix (4 bytes)
-            length_bytes = await self._reader.readexactly(4)
-            message_length = struct.unpack('!I', length_bytes)[0]
-
-            # Read the message of specified length
-            return await self._reader.readexactly(message_length)
-
-        except (asyncio.IncompleteReadError, ConnectionError):
-            # Connection closed or error
-            if self._writer:
-                self._writer.close()
+            while True:
+                await self._ensure_connection()
                 try:
-                    await self._writer.wait_closed()
-                except ConnectionResetError:
-                    # Peer closed connection abruptly; safe to ignore
-                    pass
+                    length_bytes = await self._reader.readexactly(4)
+                    message_length = struct.unpack('!I', length_bytes)[0]
+                    message = await self._reader.readexactly(message_length)
+                    await self._callback(message)
+                except (asyncio.IncompleteReadError, ConnectionError):
+                    await self._drop_connection()
+        except asyncio.CancelledError:
+            raise
 
-            self.m_connection = None
-            self._reader = None
-            self._writer = None
+    async def _ensure_connection(self) -> None:
+        """Accept a new connection if none is active."""
+        if self.m_connection is not None:
+            return
+        try:
+            conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
+            self.m_connection = conn
+            self.m_connection.setblocking(False)
+            self._reader, self._writer = await asyncio.open_connection(sock=conn)
+        except OSError as e:
+            print(f"Connection error: {e}")
+            await self._ensure_connection()
 
-            # Try again with a new connection
-            return await self.getNextMessage()
-
-    async def close(self) -> None:
-        """Closes the socket receiver and any active connection."""
-        if self._writer is not None:
+    async def _drop_connection(self) -> None:
+        """Close and forget the current connection."""
+        if self._writer:
             self._writer.close()
             try:
                 await self._writer.wait_closed()
             except ConnectionResetError:
                 pass
-
-        if self.m_socket:
-            self.m_socket.close()
-
         self.m_connection = None
         self._reader = None
         self._writer = None
 
+    async def close(self) -> None:
+        """Close the transport and any active connection."""
+        await self._drop_connection()
+        if self.m_socket:
+            self.m_socket.close()
         self.m_socket = None

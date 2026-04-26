@@ -24,14 +24,14 @@
 
 import asyncio
 import socket
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
-from .base_receiver import TelemetryReceiver
+from .base_receiver import TelemetryTransport
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class UdpReceiver(TelemetryReceiver):
-    """An async-friendly UDP socket listener.
+class UdpTransport(TelemetryTransport):
+    """An async-friendly UDP socket transport.
 
     Attributes:
         m_buffer_size (int): The buffer size used for receiving data.
@@ -42,7 +42,7 @@ class UdpReceiver(TelemetryReceiver):
 
     def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
         """
-        Initialize the UDP listener.
+        Initialize the UDP transport.
 
         Args:
             port (int): Port number to bind to.
@@ -57,22 +57,22 @@ class UdpReceiver(TelemetryReceiver):
         self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.m_socket.setblocking(False)
         self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self._loop: Optional[asyncio.AbstractEventLoop] = None  # Lazy init
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._callback: Optional[Callable[[bytes], Awaitable[None]]] = None
 
-    async def getNextMessage(self) -> bytes:
-        """
-        Wait asynchronously for the next UDP message.
+    def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> Callable[[bytes], Awaitable[None]]:
+        """Decorator to register the packet callback."""
+        self._callback = callback
+        return callback
 
-        Returns:
-            bytes: The raw message bytes.
-        """
+    async def run(self) -> None:
+        """Run until cancelled, delivering packets to the registered callback."""
         if self._loop is None:
             self._loop = asyncio.get_running_loop()
-        message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
-        return message
+        while True:
+            message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
+            await self._callback(message)
 
     async def close(self) -> None:
-        """
-        Close the UDP socket.
-        """
+        """Close the UDP socket."""
         self.m_socket.close()
