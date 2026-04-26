@@ -250,7 +250,7 @@ def _get_race_table_info_driver(entry: Dict[str, Any]) -> Dict[str, Any]:
             "top_speed_kmph": lap_info_dict.get("top-speed-kmph"),
         },
         "tyre_info": {
-            "current_wear_percent": current_wear_info.get("wear-percent"),
+            "current_wear_percent": current_wear_info.get("average"),
             "tyre_compound": tyre_info_dict.get("visual-tyre-compound"),
             "tyre_age": tyre_info_dict.get("tyre-age"),
             "curr_tyre_wear" : {

@@ -51,11 +51,14 @@ from .tools.get_player_driver_info import (PLAYER_DRIVER_INFO_OUTPUT_SCHEMA,
                                            get_player_driver_info)
 from .tools.get_player_fuel_info import (PLAYER_FUEL_INFO_OUTPUT_SCHEMA,
                                          get_player_fuel_info)
+from .tools.get_player_tyre_wear import (PLAYER_TYRE_WEAR_OUTPUT_SCHEMA,
+                                         get_player_tyre_wear)
 from .tools.get_race_table import RACE_TABLE_OUTPUT_SCHEMA, get_race_table
 from .tools.get_session_events_for_driver import (
     DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA, get_session_events_for_driver)
 from .tools.get_session_info import (SESSION_INFO_OUTPUT_SCHEMA,
                                      get_session_info)
+from .tools.get_tyre_wear import TYRE_WEAR_OUTPUT_SCHEMA, get_tyre_wear
 
 TransportType = Literal["http", "stdio"]
 
@@ -94,6 +97,11 @@ Rules:
 - NEVER display raw milliseconds to the user.
 - NEVER mix formats.
 - If a value cannot be converted due to missing context, state that it is unavailable.
+
+TYRE WEAR THRESHOLDS:
+
+- Tyre wear above 80% on any individual tyre risks a puncture.
+- Proactively warn the user when any tyre wear value exceeds this threshold.
 
 """
 
@@ -332,6 +340,46 @@ Rules:
         async def handle_get_fuel_info(driver_index: int) -> Dict[str, Any]:
             self.logger.debug("get_fuel_info called: driver_index=%s", driver_index)
             return get_fuel_info(logger=self.logger, driver_index=driver_index)
+
+        @self._tool(
+            name="get_player_tyre_wear",
+            description=(
+                "Get tyre wear, wear rate, and predicted wear for the player/reference driver. "
+                "In player/driver mode returns the player's own tyre data. "
+                "In spectator mode returns the currently spectated driver's tyre data."
+            ),
+            title="Player Tyre Wear",
+            tags={"player", "tyre", "wear", "strategy"},
+            output_schema=PLAYER_TYRE_WEAR_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Player Tyre Wear",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
+        )
+        async def handle_get_player_tyre_wear() -> Dict[str, Any]:
+            self.logger.debug("get_player_tyre_wear called")
+            return get_player_tyre_wear(logger=self.logger)
+
+        @self._tool(
+            name="get_tyre_wear",
+            description=(
+                "Get tyre wear, wear rate, and predicted wear for a specific driver by index. "
+                "Valid indices depend on the current grid size (typically 0-21). "
+                "Use get_drivers_list to look up a driver's index."
+            ),
+            title="Driver Tyre Wear",
+            tags={"driver", "tyre", "wear", "strategy"},
+            output_schema=TYRE_WEAR_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Driver Tyre Wear",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
+        )
+        async def handle_get_tyre_wear(driver_index: int) -> Dict[str, Any]:
+            self.logger.debug("get_tyre_wear called: driver_index=%s", driver_index)
+            return get_tyre_wear(logger=self.logger, driver_index=driver_index)
 
         @self._tool(
             name="get_car_damage",
