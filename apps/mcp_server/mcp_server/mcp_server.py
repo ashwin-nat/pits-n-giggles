@@ -433,9 +433,8 @@ Rules:
           TIME_WAIT (safe for quick restart) but still fails when another
           process is actively listening.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            sock = get_socket_for_uvicorn(self.port)
+            sock = get_socket_for_uvicorn(self.port, host=self.host)
             return sock
         except PngHttpPortInUseError as e:
             self.logger.exception("Port %d is already in use", self.port)

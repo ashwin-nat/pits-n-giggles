@@ -347,7 +347,7 @@ class BaseWebServer:
                 await self._post_start_callback()
 
         try:
-            sock = get_socket_for_uvicorn(self.m_port)
+            sock = get_socket_for_uvicorn(self.m_port, host=self.m_bind_address)
         except PngHttpPortInUseError as e:
             self.m_logger.exception("Port %d is already in use", self.m_port)
             raise e

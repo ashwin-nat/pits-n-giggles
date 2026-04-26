@@ -39,7 +39,72 @@ OnDisconnectCbAsync = Callable[[Exception | None], Awaitable[None]]
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcSubscriberSync:
+class _IpcSubscriberStats:
+    """Shared envelope parsing, sequencing, and stats tracking for sync/async subscribers."""
+
+    def __init__(self) -> None:
+        self._last_message_id_by_topic: Dict[str, int] = {}
+        self.stats = EventCounter()
+
+    def _track_missed_messages(self, topic: str, count: int) -> None:
+        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
+        self.stats.track_event(topic, "__MISSED__", count=count)
+
+    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
+        message = orjson.loads(payload)
+        meta = message["__meta__"]
+        send_ts_ns = meta.get("send_ts_ns")
+
+        if not isinstance(send_ts_ns, int):
+            send_ts_ns = None
+
+        return message["__payload__"], meta["message_id"], send_ts_ns
+
+    def _track_latency(
+        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
+    ) -> None:
+        if send_ts_ns is None:
+            return
+
+        if recv_ts_ns is None:
+            recv_ts_ns = time.time_ns()
+
+        self.stats.track_packet_latency(
+            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+        self.stats.track_packet_latency(
+            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
+        )
+
+    def _track_sequence(self, topic: str, message_id: int) -> None:
+        last_message_id = self._last_message_id_by_topic.get(topic)
+        if last_message_id is None:
+            self._last_message_id_by_topic[topic] = message_id
+            return
+
+        expected_next = last_message_id + 1
+        if message_id > expected_next:
+            missed = message_id - expected_next
+            self._track_missed_messages(topic, missed)
+            self.logger.debug(  # type: ignore[attr-defined]
+                "Detected %d missed messages on topic %s (expected %d, got %d)",
+                missed,
+                topic,
+                expected_next,
+                message_id,
+            )
+        elif message_id <= last_message_id:
+            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
+            self.stats.track_event(topic, "__SEQ_ANOMALY__")
+
+        self._last_message_id_by_topic[topic] = message_id
+
+    def get_stats(self) -> dict:
+        """Get current subscriber stats snapshot."""
+        return self.stats.get_stats()
+
+
+class IpcSubscriberSync(_IpcSubscriberStats):
     """
     Auto-reconnecting synchronous subscriber.
     Survivable across broker restarts.
@@ -51,6 +116,8 @@ class IpcSubscriberSync:
         port: Optional[int] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        super().__init__()
+
         if port is None:
             raise ValueError("IpcSubscriberSync requires explicit port")
 
@@ -64,8 +131,6 @@ class IpcSubscriberSync:
 
         self._context = zmq.Context()
         self._routes: Dict[str, Callable[[dict], None]] = {}
-        self._last_message_id_by_topic: Dict[str, int] = {}
-        self.stats = EventCounter()
 
         self._running = False
         self.socket: Optional[zmq.Socket] = None
@@ -111,62 +176,6 @@ class IpcSubscriberSync:
             return func
 
         return decorator
-
-    # ---------------------------------------------------------
-    # Message envelope helpers
-    # ---------------------------------------------------------
-    def _track_missed_messages(self, topic: str, count: int) -> None:
-        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
-        self.stats.track_event(topic, "__MISSED__", count=count)
-
-    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
-        message = orjson.loads(payload)
-        meta = message["__meta__"]
-        send_ts_ns = meta.get("send_ts_ns")
-
-        if not isinstance(send_ts_ns, int):
-            send_ts_ns = None
-
-        return message["__payload__"], meta["message_id"], send_ts_ns
-
-    def _track_latency(
-        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
-    ) -> None:
-        if send_ts_ns is None:
-            return
-
-        if recv_ts_ns is None:
-            recv_ts_ns = time.time_ns()
-
-        self.stats.track_packet_latency(
-            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-        self.stats.track_packet_latency(
-            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-
-    def _track_sequence(self, topic: str, message_id: int) -> None:
-        last_message_id = self._last_message_id_by_topic.get(topic)
-        if last_message_id is None:
-            self._last_message_id_by_topic[topic] = message_id
-            return
-
-        expected_next = last_message_id + 1
-        if message_id > expected_next:
-            missed = message_id - expected_next
-            self._track_missed_messages(topic, missed)
-            self.logger.debug(
-                "Detected %d missed messages on topic %s (expected %d, got %d)",
-                missed,
-                topic,
-                expected_next,
-                message_id,
-            )
-        elif message_id <= last_message_id:
-            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
-            self.stats.track_event(topic, "__SEQ_ANOMALY__")
-
-        self._last_message_id_by_topic[topic] = message_id
 
     # ---------------------------------------------------------
     # Main loop with auto-reconnect
@@ -267,17 +276,13 @@ class IpcSubscriberSync:
 
         self.logger.debug("IpcSubscriberSync stopped")
 
-    def get_stats(self) -> dict:
-        """Get current subscriber stats snapshot."""
-        return self.stats.get_stats()
-
     # ---------------------------------------------------------
     # External shutdown
     # ---------------------------------------------------------
     def close(self):
         self._running = False
 
-class IpcSubscriberAsync:
+class IpcSubscriberAsync(_IpcSubscriberStats):
     """
     Async, auto-reconnecting ZeroMQ SUB subscriber.
 
@@ -295,6 +300,8 @@ class IpcSubscriberAsync:
         port: Optional[int] = None,
         logger: Optional[logging.Logger] = None,
     ):
+        super().__init__()
+
         if port is None:
             raise ValueError("IpcSubscriberAsync requires explicit port")
 
@@ -311,9 +318,7 @@ class IpcSubscriberAsync:
         self.socket: Optional[zmq.Socket] = None
 
         self._routes: Dict[str, Callable[[dict], Awaitable[None]]] = {}
-        self._last_message_id_by_topic: Dict[str, int] = {}
         self._running = True
-        self.stats = EventCounter()
 
         self._on_connect: Optional[OnConnectCbAsync] = None
         self._on_disconnect: Optional[OnDisconnectCbAsync] = None
@@ -359,65 +364,17 @@ class IpcSubscriberAsync:
         return decorator
 
     # ------------------------------------------------------------------
-    # Message envelope helpers
-    # ------------------------------------------------------------------
-
-    def _track_missed_messages(self, topic: str, count: int) -> None:
-        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
-        self.stats.track_event(topic, "__MISSED__", count=count)
-
-    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
-        message = orjson.loads(payload)
-        meta = message["__meta__"]
-        send_ts_ns = meta.get("send_ts_ns")
-
-        if not isinstance(send_ts_ns, int):
-            send_ts_ns = None
-
-        return message["__payload__"], meta["message_id"], send_ts_ns
-
-    def _track_latency(
-        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
-    ) -> None:
-        if send_ts_ns is None:
-            return
-
-        if recv_ts_ns is None:
-            recv_ts_ns = time.time_ns()
-
-        self.stats.track_packet_latency(
-            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-        self.stats.track_packet_latency(
-            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-
-    def _track_sequence(self, topic: str, message_id: int) -> None:
-        last_message_id = self._last_message_id_by_topic.get(topic)
-        if last_message_id is None:
-            self._last_message_id_by_topic[topic] = message_id
-            return
-
-        expected_next = last_message_id + 1
-        if message_id > expected_next:
-            missed = message_id - expected_next
-            self._track_missed_messages(topic, missed)
-            self.logger.debug(
-                "Detected %d missed messages on topic %s (expected %d, got %d)",
-                missed,
-                topic,
-                expected_next,
-                message_id,
-            )
-        elif message_id <= last_message_id:
-            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
-            self.stats.track_event(topic, "__SEQ_ANOMALY__")
-
-        self._last_message_id_by_topic[topic] = message_id
-
-    # ------------------------------------------------------------------
     # Main async loop (caller schedules this)
     # ------------------------------------------------------------------
+
+    async def _reconnect(self, poller: zmq.Poller, exc: Exception | None) -> zmq.Poller:
+        """Disconnect, wait, recreate socket, return a fresh poller."""
+        await self._mark_disconnected(exc)
+        await asyncio.sleep(self.RECONNECT_DELAY)
+        self._create_and_connect()
+        new_poller = zmq.Poller()
+        new_poller.register(self.socket, zmq.POLLIN)
+        return new_poller
 
     async def run(self):
         poller = zmq.Poller()
@@ -435,11 +392,7 @@ class IpcSubscriberAsync:
             except zmq.ZMQError as e:
                 self.stats.track_event("__ERROR__", "poll_failed")
                 self.logger.warning("Poll failed — reconnecting SUB socket")
-                await self._mark_disconnected(e)
-                await asyncio.sleep(self.RECONNECT_DELAY)
-                self._create_and_connect()
-                poller = zmq.Poller()
-                poller.register(self.socket, zmq.POLLIN)
+                poller = await self._reconnect(poller, e)
                 continue
 
             if self.socket not in events:
@@ -453,11 +406,7 @@ class IpcSubscriberAsync:
             except zmq.ZMQError as e:
                 self.stats.track_event("__ERROR__", "recv_failed")
                 self.logger.warning("Receive failed — reconnecting SUB socket")
-                await self._mark_disconnected(e)
-                await asyncio.sleep(self.RECONNECT_DELAY)
-                self._create_and_connect()
-                poller = zmq.Poller()
-                poller.register(self.socket, zmq.POLLIN)
+                poller = await self._reconnect(poller, e)
                 continue
 
             if len(frames) != 2:
@@ -517,10 +466,6 @@ class IpcSubscriberAsync:
         """Signal the run() loop to exit."""
         self._running = False
 
-    def get_stats(self) -> dict:
-        """Get current subscriber stats snapshot."""
-        return self.stats.get_stats()
-
     # ------------------------------------------------------------------
     # Connection callbacks
     # ------------------------------------------------------------------
@@ -537,13 +482,19 @@ class IpcSubscriberAsync:
         if not self._connected:
             self._connected = True
             if self._on_connect:
-                await self._on_connect()
+                try:
+                    await self._on_connect()
+                except Exception: # pylint: disable=broad-except
+                    self.logger.exception("Unhandled exception in on_connect callback")
 
     async def _mark_disconnected(self, exc: Exception | None):
         if self._connected:
             self._connected = False
             if self._on_disconnect:
-                await self._on_disconnect(exc)
+                try:
+                    await self._on_disconnect(exc)
+                except Exception: # pylint: disable=broad-except
+                    self.logger.exception("Unhandled exception in on_disconnect callback")
 
     @property
     def is_connected(self) -> bool:
