@@ -24,12 +24,20 @@
 
 import logging
 import time
-from typing import Awaitable, Callable, Dict, Generic, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Dict, Generic, Optional, Tuple, TypeVar
 
 import orjson
 import zmq
 
 from lib.event_counter import EventCounter
+from lib.ipc.pubsub.content_types import IpcContentType
+
+# -------------------------------------- MODULE GLOBALS ----------------------------------------------------------------
+
+_DECODERS: Dict[IpcContentType, Callable[[bytes], Any]] = {
+    IpcContentType.JSON:   orjson.loads,
+    IpcContentType.BINARY: lambda b: b,  # binary payloads need no decoding
+}
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -52,14 +60,14 @@ class _IpcSubscriberStats:
         self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
         self.stats.track_event(topic, "__MISSED__", count=count)
 
-    def _parse_envelope(self, meta_bytes: bytes, payload_bytes: bytes) -> Tuple[str, bytes, int, Optional[int]]:
+    def _parse_envelope(self, meta_bytes: bytes, payload_bytes: bytes) -> Tuple[IpcContentType, bytes, int, Optional[int]]:
         meta = orjson.loads(meta_bytes)
         send_ts_ns = meta.get("send_ts_ns")
 
         if not isinstance(send_ts_ns, int):
             send_ts_ns = None
 
-        content_type = meta.get("content_type", "json")
+        content_type = IpcContentType(meta.get("content_type", IpcContentType.JSON.value))
         return content_type, payload_bytes, meta["message_id"], send_ts_ns
 
     def _track_latency(
@@ -122,10 +130,15 @@ class _IpcSubscriberBase(_IpcSubscriberStats, Generic[_JsonHandlerT, _RawHandler
         self.logger = logger
 
         self._context = zmq.Context()
+        # topic → JSON handler
         self._routes: Dict[str, _JsonHandlerT] = {}
-        self._raw_routes: Dict[str, Tuple[str, _RawHandlerT]] = {}
+        # topic → (expected content type, handler)
+        self._raw_routes: Dict[str, Tuple[IpcContentType, _RawHandlerT]] = {}
         self._running = False
         self.socket: Optional[zmq.Socket] = None
+
+    def _decode(self, content_type: IpcContentType, raw: bytes) -> Any:
+        return _DECODERS[content_type](raw)
 
     def _create_and_connect(self) -> None:
         """Create a new SUB socket and connect to the broker."""
@@ -160,8 +173,10 @@ class _IpcSubscriberBase(_IpcSubscriberStats, Generic[_JsonHandlerT, _RawHandler
 
         return decorator  # type: ignore[return-value]
 
-    def route_raw(self, topic: str, content_type: str = "binary") -> Callable[[_RawHandlerT], _RawHandlerT]:
-        """Register a raw bytes handler for topic. Raises ValueError if already registered as JSON."""
+    def route_raw(
+        self, topic: str, content_type: IpcContentType = IpcContentType.BINARY
+    ) -> Callable[[_RawHandlerT], _RawHandlerT]:
+        """Register a handler for topic with the given content type. Raises ValueError if already registered as JSON."""
         if topic in self._routes:
             raise ValueError(f"Topic '{topic}' is already registered as a JSON route")
 
@@ -174,6 +189,18 @@ class _IpcSubscriberBase(_IpcSubscriberStats, Generic[_JsonHandlerT, _RawHandler
             return func
 
         return decorator  # type: ignore[return-value]
+
+    def _dispatch(self, topic: str, content_type: IpcContentType, raw_payload: bytes) -> Tuple[Any, Any]:
+        """Decode payload and return (handler, decoded_payload), or raise on mismatch."""
+        if topic in self._routes:
+            if content_type != IpcContentType.JSON:
+                raise ValueError(f"wrong_content_type_for_json_route_{topic}")
+            return self._routes[topic], self._decode(IpcContentType.JSON, raw_payload)
+
+        expected_ct, handler = self._raw_routes[topic]
+        if content_type != expected_ct:
+            raise ValueError(f"wrong_content_type_for_raw_route_{topic}")
+        return handler, self._decode(content_type, raw_payload)
 
     def close(self) -> None:
         """Signal the loop to exit."""

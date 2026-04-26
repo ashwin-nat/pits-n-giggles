@@ -31,6 +31,7 @@ import orjson
 import zmq
 
 from lib.event_counter import EventCounter
+from lib.ipc.pubsub.content_types import IpcContentType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -139,15 +140,15 @@ class IpcPublisherAsync:
         self._topic_message_ids[topic] = current
         return current
 
-    def _build_meta(self, topic: str, content_type: str) -> bytes:
+    def _build_meta(self, topic: str, content_type: IpcContentType) -> bytes:
         return orjson.dumps({
             "message_id": self._next_message_id(topic),
             "send_ts_ns": time.time_ns(),
-            "content_type": content_type,
+            "content_type": content_type.value,
         })
 
     def _build_envelope(self, topic: str, data: dict) -> tuple:
-        return self._build_meta(topic, "json"), orjson.dumps(data)
+        return self._build_meta(topic, IpcContentType.JSON), orjson.dumps(data)
 
     # ---------------------------------------------------------
     # Publish
@@ -186,7 +187,7 @@ class IpcPublisherAsync:
         meta_bytes, payload_bytes = self._build_envelope(topic, data)
         await self._do_send(topic, topic_bytes, meta_bytes, payload_bytes)
 
-    async def publish_raw(self, topic: str, payload: bytes, content_type: str = "binary"):
+    async def publish_raw(self, topic: str, payload: bytes, content_type: IpcContentType = IpcContentType.BINARY):
         """Publish a raw binary payload. Subscribers receive the bytes object unchanged."""
         if not self._connected:
             self.stats.track_event("__DROP__", "disconnected")

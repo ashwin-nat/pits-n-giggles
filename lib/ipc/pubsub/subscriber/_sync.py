@@ -26,9 +26,9 @@ import logging
 import time
 from typing import Callable, Dict, Optional, Tuple
 
-import orjson
 import zmq
 
+from lib.ipc.pubsub.content_types import IpcContentType
 from ._base import _IpcSubscriberBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -66,7 +66,7 @@ class IpcSubscriberSync(
         return super().route(topic)
 
     def route_raw(
-        self, topic: str, content_type: str = "binary"
+        self, topic: str, content_type: IpcContentType = IpcContentType.BINARY
     ) -> Callable[[Callable[[bytes], None]], Callable[[bytes], None]]:
         return super().route_raw(topic, content_type)
 
@@ -92,7 +92,7 @@ class IpcSubscriberSync(
                 continue
 
             if self.socket in events:
-                latest_per_topic: Dict[str, Tuple[str, bytes]] = {}
+                latest_per_topic: Dict[str, Tuple[IpcContentType, bytes]] = {}
                 recv_failed = False
 
                 while True:
@@ -134,16 +134,6 @@ class IpcSubscriberSync(
                         self.stats.track_event("__DROP__", "invalid_envelope")
                         continue
 
-                    if topic in self._routes:
-                        if content_type != "json":
-                            self.stats.track_event("__DROP__", f"wrong_content_type_for_json_route_{topic}")
-                            continue
-                    else:
-                        expected_ct, _ = self._raw_routes[topic]
-                        if content_type != expected_ct:
-                            self.stats.track_event("__DROP__", f"wrong_content_type_for_raw_route_{topic}")
-                            continue
-
                     if topic in latest_per_topic:
                         self.stats.track_event("__TOTAL__", "__STALE_DROP__")
                         self.stats.track_event(topic, "__STALE_DROP__")
@@ -155,12 +145,13 @@ class IpcSubscriberSync(
 
                 for topic, (content_type, raw_payload) in latest_per_topic.items():
                     try:
-                        if topic in self._routes:
-                            handler = self._routes[topic]
-                            handler(orjson.loads(raw_payload))
-                        else:
-                            _, handler = self._raw_routes[topic]
-                            handler(raw_payload)
+                        handler, payload = self._dispatch(topic, content_type, raw_payload)
+                    except ValueError as e:
+                        self.stats.track_event("__DROP__", str(e))
+                        continue
+
+                    try:
+                        handler(payload)
                         self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
                         self.stats.track_event(topic, "__HANDLER_OK__")
                     except Exception as e:  # pylint: disable=broad-exception-caught

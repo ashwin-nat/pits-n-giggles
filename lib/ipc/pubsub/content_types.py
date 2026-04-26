@@ -20,30 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+from enum import Enum
 
-from .pubsub.broker import IpcPubSubBroker
-from .pubsub.content_types import IpcContentType
-from .pubsub.publisher import IpcPublisherAsync
-from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
-from .reqrep.async_server import IpcServerAsync
-from .reqrep.sync_client import IpcClientSync
-from .reqrep.sync_server import IpcServerSync
-from .socketio_client import SocketioClient
-from .utils import get_free_tcp_port
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    'IpcClientSync',
-    'IpcServerAsync',
-    'IpcServerSync',
-    'SocketioClient',
-    'IpcContentType',
-    'IpcPublisherAsync',
-    'IpcSubscriberAsync',
-    'IpcSubscriberSync',
-    'IpcPubSubBroker',
-
-    'get_free_tcp_port',
-]
+class IpcContentType(str, Enum):
+    JSON   = "json"
+    BINARY = "binary"

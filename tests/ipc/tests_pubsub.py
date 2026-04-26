@@ -35,7 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync, IpcSubscriberAsync
+from lib.ipc import IpcContentType, IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync, IpcSubscriberAsync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -416,7 +416,7 @@ class TestIpcPubSub(TestIPC):
 
         sub = IpcSubscriberSync(port=self.xpub_port)
 
-        @sub.route_raw("raw-ct", content_type="msgpack")
+        @sub.route_raw("raw-ct", content_type=IpcContentType.BINARY)
         def handler(data: bytes):
             received.append(data)
 
@@ -428,7 +428,7 @@ class TestIpcPubSub(TestIPC):
             pub = IpcPublisherAsync(port=self.xsub_port)
             await pub.start()
             for _ in range(SEND_REPEATS):
-                await pub.publish_raw("raw-ct", b"msgpack-payload", content_type="msgpack")
+                await pub.publish_raw("raw-ct", b"raw-payload", content_type=IpcContentType.BINARY)
                 await asyncio.sleep(MESSAGE_DELAY)
             await pub.close()
 
@@ -439,7 +439,7 @@ class TestIpcPubSub(TestIPC):
         time.sleep(0.05)
         t.join(timeout=0.2)
 
-        self.assertIn(b"msgpack-payload", received)
+        self.assertIn(b"raw-payload", received)
 
     def test_route_raw_and_json_coexist(self):
         json_received = []

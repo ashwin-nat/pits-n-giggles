@@ -27,9 +27,9 @@ import logging
 import time
 from typing import Awaitable, Callable, Optional
 
-import orjson
 import zmq
 
+from lib.ipc.pubsub.content_types import IpcContentType
 from ._base import OnConnectCbAsync, OnDisconnectCbAsync, _IpcSubscriberBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -81,7 +81,7 @@ class IpcSubscriberAsync(
         return super().route(topic)
 
     def route_raw(
-        self, topic: str, content_type: str = "binary"
+        self, topic: str, content_type: IpcContentType = IpcContentType.BINARY
     ) -> Callable[[Callable[[bytes], Awaitable[None]]], Callable[[bytes], Awaitable[None]]]:
         return super().route_raw(topic, content_type)
 
@@ -157,18 +157,11 @@ class IpcSubscriberAsync(
                 self.stats.track_event("__DROP__", "invalid_envelope")
                 continue
 
-            if topic in self._routes:
-                if content_type != "json":
-                    self.stats.track_event("__DROP__", f"wrong_content_type_for_json_route_{topic}")
-                    continue
-                handler = self._routes[topic]
-                payload = orjson.loads(raw_payload)
-            else:
-                expected_ct, handler = self._raw_routes[topic]
-                if content_type != expected_ct:
-                    self.stats.track_event("__DROP__", f"wrong_content_type_for_raw_route_{topic}")
-                    continue
-                payload = raw_payload
+            try:
+                handler, payload = self._dispatch(topic, content_type, raw_payload)
+            except ValueError as e:
+                self.stats.track_event("__DROP__", str(e))
+                continue
 
             try:
                 await handler(payload)
