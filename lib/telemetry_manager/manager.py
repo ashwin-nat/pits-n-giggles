@@ -32,8 +32,10 @@ from typing import Awaitable, Callable, Dict, Optional
 from lib.event_counter import EventCounter
 from lib.f1_types import F1PacketBase, F1PacketType
 
+from lib.socket_receiver import TelemetryTransport
+
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
-from .factory import PacketParserFactory, telemetry_receiver_factory
+from .factory import PacketParserFactory
 from .frame_gate import SessionFrameGate
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -52,25 +54,20 @@ class AsyncF1TelemetryManager:
     """
 
     def __init__(self,
-                 port_number: int,
+                 transport: TelemetryTransport,
                  logger: Logger = None,
-                 replay_server: bool = False,
                  frame_gate_enabled: bool = False):
         """Init the telemetry manager app and all its sub components
 
         Args:
-            port_number (int): The port number to listen in on
+            transport (TelemetryTransport): The transport to receive packets from
             logger (Logger): The logger to use
-            replay_server (bool): If True, the TCP based packet replay server will be created
-                NOTE: This is not suited for game. It is meant to be used in conjunction with telemetry_replayer.py
             frame_gate_enabled (bool): If True, the frame gate will be enabled
         """
 
-        self.m_replay_server = replay_server
         self.m_stats = EventCounter()
-        self.m_port_number = port_number
         self.m_logger = logger
-        self.m_receiver = telemetry_receiver_factory(port_number, replay_server, logger)
+        self.m_transport = transport
         self.m_callbacks: Dict[F1PacketType, F1TelemetryCallback] = {}
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
 
@@ -108,12 +105,9 @@ class AsyncF1TelemetryManager:
 
     async def run(self) -> None:
         """Run the telemetry client asynchronously."""
-        if self.m_replay_server:
-            self.m_logger.info("REPLAY SERVER MODE. PORT = %s", self.m_port_number)
-
         pkt_factory = PacketParserFactory(set(self.m_callbacks.keys()), self.m_logger)
 
-        @self.m_receiver.on_packet
+        @self.m_transport.on_packet
         async def _handle(raw_packet: bytes) -> None:
             try:
                 await self._processPacket(pkt_factory, raw_packet)
@@ -121,10 +115,10 @@ class AsyncF1TelemetryManager:
                 self.m_logger.error(e, exc_info=True)
 
         try:
-            await self.m_receiver.run()
+            await self.m_transport.run()
         except asyncio.CancelledError:
             self.m_logger.debug("Receiver task cancelled - shutting down.")
-            await self.m_receiver.close()
+            await self.m_transport.close()
 
     def getStats(self) -> dict:
         """Get the current packet statistics

@@ -34,7 +34,7 @@ from typing import List, Tuple
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
-from lib.telemetry_manager import AsyncF1TelemetryManager
+from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
 from threading import Thread, Lock, Condition
 import queue
 
@@ -184,7 +184,8 @@ async def async_telemetry_main():
     print(f"[async telemetry] Starting server on port {port}")
     null_logger = logging.getLogger("null")
     null_logger.addHandler(logging.NullHandler())
-    telemetry_manager = AsyncF1TelemetryManager(port_number=port, logger=null_logger)
+    transport = telemetry_transport_factory(port, replay_server=False, logger=null_logger)
+    telemetry_manager = AsyncF1TelemetryManager(transport=transport, logger=null_logger)
     @telemetry_manager.on_raw_packet()
     async def handleRawPacket(packet: List[bytes]) -> None:
         """

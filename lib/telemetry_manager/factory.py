@@ -128,7 +128,7 @@ class PacketParserFactory:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def telemetry_receiver_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryTransport:
+def telemetry_transport_factory(port_number: int, replay_server: bool, logger: Logger) -> TelemetryTransport:
     """Creates a telemetry transport based on the given port number and replay server mode."""
     if replay_server:
         logger.info("REPLAY RECEIVER MODE. PORT = %s", port_number)

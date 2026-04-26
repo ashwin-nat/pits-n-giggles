@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base_receiver import TelemetryTransport
+from .ipc_transport import IpcTransport
 from .tcp_receiver import TcpTransport
 from .udp_receiver import UdpTransport
 
@@ -30,6 +31,7 @@ from .udp_receiver import UdpTransport
 
 __all__ = [
     "TelemetryTransport",
+    "IpcTransport",
     "TcpTransport",
     "UdpTransport",
 ]
