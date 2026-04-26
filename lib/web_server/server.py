@@ -24,8 +24,6 @@
 
 import logging
 import os
-import platform
-import socket
 from functools import wraps
 from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
@@ -42,7 +40,7 @@ from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 
-from lib.error_status import PngHttpPortInUseError, is_port_in_use_error
+from lib.error_status import PngHttpPortInUseError
 from lib.event_counter import EventCounter
 
 from .client_types import ClientType
