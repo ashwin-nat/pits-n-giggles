@@ -46,8 +46,11 @@ from .tools.get_driver_lap_times import (DRIVER_LAP_TIMES_OUTPUT_SCHEMA,
                                          get_driver_lap_times)
 from .tools.get_drivers_list import (DRIVERS_LIST_OUTPUT_SCHEMA,
                                      get_drivers_list)
+from .tools.get_fuel_info import FUEL_INFO_OUTPUT_SCHEMA, get_fuel_info
 from .tools.get_player_driver_info import (PLAYER_DRIVER_INFO_OUTPUT_SCHEMA,
                                            get_player_driver_info)
+from .tools.get_player_fuel_info import (PLAYER_FUEL_INFO_OUTPUT_SCHEMA,
+                                         get_player_fuel_info)
 from .tools.get_race_table import RACE_TABLE_OUTPUT_SCHEMA, get_race_table
 from .tools.get_session_events_for_driver import (
     DRIVER_SESSION_EVENTS_OUTPUT_SCHEMA, get_session_events_for_driver)
@@ -289,6 +292,46 @@ Rules:
         )
         async def handle_get_player_driver_info():
             return get_player_driver_info(self.logger)
+
+        @self._tool(
+            name="get_player_fuel_info",
+            description=(
+                "Get fuel information for the player/reference driver. "
+                "In player/driver mode returns the player's own fuel data. "
+                "In spectator mode returns the currently spectated driver's fuel data."
+            ),
+            title="Player Fuel Info",
+            tags={"player", "fuel", "consumption", "strategy"},
+            output_schema=PLAYER_FUEL_INFO_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Player Fuel Info",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
+        )
+        async def handle_get_player_fuel_info() -> Dict[str, Any]:
+            self.logger.debug("get_player_fuel_info called")
+            return get_player_fuel_info(logger=self.logger)
+
+        @self._tool(
+            name="get_fuel_info",
+            description=(
+                "Get fuel information for a specific driver by index. "
+                "Valid indices depend on the current grid size (typically 0-21). "
+                "Use get_drivers_list to look up a driver's index."
+            ),
+            title="Driver Fuel Info",
+            tags={"driver", "fuel", "consumption", "strategy"},
+            output_schema=FUEL_INFO_OUTPUT_SCHEMA,
+            annotations=ToolAnnotations(
+                title="Driver Fuel Info",
+                readOnlyHint=True,
+                openWorldHint=False,
+            ),
+        )
+        async def handle_get_fuel_info(driver_index: int) -> Dict[str, Any]:
+            self.logger.debug("get_fuel_info called: driver_index=%s", driver_index)
+            return get_fuel_info(logger=self.logger, driver_index=driver_index)
 
         @self._tool(
             name="get_car_damage",
