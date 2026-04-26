@@ -28,10 +28,11 @@ import inspect
 import logging
 import socket
 import time
-from typing import Any, Callable, Dict, Literal
+from typing import Annotated, Any, Callable, Dict, Literal
 
 import uvicorn
 from fastmcp import FastMCP
+from pydantic import Field
 from mcp.types import Icon, ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -167,7 +168,12 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_session_info",
-            description="Get current session information",
+            description=(
+                "Get global session metadata: circuit name, session type (Race/Qualifying/Practice), "
+                "formula type, lap progress, time remaining, air/track temperatures, weather forecast, "
+                "safety car status and deployment counts, red flag count, and spectating flag. "
+                "Use this to orient yourself before calling per-driver tools."
+            ),
             title="Session Information - Globals",
             tags={"session", "weather", "safetyCar"},
             output_schema=SESSION_INFO_OUTPUT_SCHEMA,
@@ -184,7 +190,16 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_race_table",
-            description="Full Race Snapshot",
+            description=(
+                "Get a full snapshot of the current race standings for every driver on the grid. "
+                "Each entry includes: position, driver name, team, DNF status, delta to leader (ms), "
+                "last/best lap times (ms), speed trap, tyre compound/age/wear per corner, "
+                "tyre wear rate (% per lap), fuel rate, fuel surplus laps (live and game estimates), "
+                "ERS percentage/mode, and front wing damage. "
+                "Use this for standings comparisons, strategy analysis, or any multi-driver overview. "
+                "For per-driver detail (full lap history, race control events, car damage), "
+                "call the dedicated per-driver tools instead."
+            ),
             title="Current Race State",
             tags={
                 "race",
@@ -206,7 +221,12 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_drivers_list",
-            description="Get drivers list",
+            description=(
+                "Get the list of all drivers in the current session with their index, name, team, "
+                "driver number, grid position, and telemetry-sharing setting. "
+                "Call this first to resolve a driver name to an index before calling any tool "
+                "that requires a driver_index parameter."
+            ),
             title="Drivers List",
             tags={
                 "drivers",
@@ -227,7 +247,13 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_driver_lap_times",
-            description="Get lap time history for the driver with the given index (0-21)",
+            description=(
+                "Get the complete lap-by-lap time history for a driver identified by index. "
+                "Returns each lap's overall time, three sector times (all in ms), top speed, "
+                "and validity flags for the lap and each sector. "
+                "Also returns the lap numbers that set the driver's personal-best lap time and "
+                "each sector best. Use get_drivers_list to look up a driver's index."
+            ),
             title="Driver Lap Times (History)",
             tags={
                 "driver",
@@ -244,7 +270,9 @@ TYRE WEAR THRESHOLDS:
                 openWorldHint=False,
             ),
         )
-        async def handle_get_driver_lap_times(driver_index: int) -> Dict[str, Any]:
+        async def handle_get_driver_lap_times(
+            driver_index: Annotated[int, Field(ge=0, le=21, description="Driver index. Use get_drivers_list to resolve a name to an index.")],
+        ) -> Dict[str, Any]:
             self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)
             return await get_driver_lap_times(
                 core_server_port=self.core_server_port,
@@ -254,7 +282,14 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_session_events_for_driver",
-            description="Get race control messages for events in the current session for the driver with the given index (0-21)",
+            description=(
+                "Get all race control messages logged for a specific driver during the current session. "
+                "Covers fastest laps, penalties (type and infringement), overtakes, collisions, "
+                "pit stops, tyre changes, wing changes, car damage events, retirements, safety car, "
+                "DRS enable/disable, red flags, and more. "
+                "Each message includes lap number, timestamp, and a plain-English description. "
+                "Use get_drivers_list to look up a driver's index."
+            ),
             title="Driver Race Control Messages (History)",
             tags={
                 "driver",
@@ -271,7 +306,9 @@ TYRE WEAR THRESHOLDS:
                 openWorldHint=False,
             ),
         )
-        async def handle_get_session_events_for_driver(driver_index: int) -> Dict[str, Any]:
+        async def handle_get_session_events_for_driver(
+            driver_index: Annotated[int, Field(ge=0, le=21, description="Driver index. Use get_drivers_list to resolve a name to an index.")],
+        ) -> Dict[str, Any]:
             self.logger.debug("get_session_events_for_driver called: driver_index=%s", driver_index)
             return await get_session_events_for_driver(
                 core_server_port=self.core_server_port,
@@ -281,7 +318,13 @@ TYRE WEAR THRESHOLDS:
 
         @self._tool(
             name="get_player_driver_info",
-            description="Get player driver info. Get index, name, team, etc for the player/reference driver",
+            description=(
+                "Get the identity of the player or currently-spectated driver: "
+                "their index, name, team, telemetry setting, and flags indicating "
+                "whether they are the actual player or a spectated AI. "
+                "Use this to resolve 'my driver' before calling per-driver tools, "
+                "without needing to scan get_drivers_list manually."
+            ),
             title="Player/Reference Driver Info",
             tags={
                 "player",
@@ -304,9 +347,12 @@ TYRE WEAR THRESHOLDS:
         @self._tool(
             name="get_player_fuel_info",
             description=(
-                "Get fuel information for the player/reference driver. "
-                "In player/driver mode returns the player's own fuel data. "
-                "In spectator mode returns the currently spectated driver's fuel data."
+                "Get fuel telemetry for the player or currently-spectated driver: "
+                "fuel remaining (kg), tank capacity, fuel mix setting, last-lap consumption, "
+                "rolling average burn rate, target burn rate and next-lap target (race sessions only), "
+                "and surplus/deficit expressed as laps — both from the live model and the game's built-in estimate. "
+                "data_sufficient is false until at least 2 racing laps are complete; "
+                "live estimates and targets are null until then."
             ),
             title="Player Fuel Info",
             tags={"player", "fuel", "consumption", "strategy"},
@@ -324,8 +370,12 @@ TYRE WEAR THRESHOLDS:
         @self._tool(
             name="get_fuel_info",
             description=(
-                "Get fuel information for a specific driver by index. "
-                "Valid indices depend on the current grid size (typically 0-21). "
+                "Get fuel telemetry for a specific driver by index: "
+                "fuel remaining (kg), tank capacity, fuel mix setting, last-lap consumption, "
+                "rolling average burn rate, target burn rate and next-lap target (race sessions only), "
+                "and surplus/deficit expressed as laps — both from the live model and the game's built-in estimate. "
+                "data_sufficient is false until at least 2 racing laps are complete; "
+                "live estimates and targets are null until then. "
                 "Use get_drivers_list to look up a driver's index."
             ),
             title="Driver Fuel Info",
@@ -337,16 +387,21 @@ TYRE WEAR THRESHOLDS:
                 openWorldHint=False,
             ),
         )
-        async def handle_get_fuel_info(driver_index: int) -> Dict[str, Any]:
+        async def handle_get_fuel_info(
+            driver_index: Annotated[int, Field(ge=0, le=21, description="Driver index. Use get_drivers_list to resolve a name to an index.")],
+        ) -> Dict[str, Any]:
             self.logger.debug("get_fuel_info called: driver_index=%s", driver_index)
             return get_fuel_info(logger=self.logger, driver_index=driver_index)
 
         @self._tool(
             name="get_player_tyre_wear",
             description=(
-                "Get tyre wear, wear rate, and predicted wear for the player/reference driver. "
-                "In player/driver mode returns the player's own tyre data. "
-                "In spectator mode returns the currently spectated driver's tyre data."
+                "Get tyre telemetry for the player or currently-spectated driver: "
+                "compound, tyre age (laps), per-corner wear percentage (FL/FR/RL/RR), "
+                "average wear across all four tyres, and per-corner wear rate (% per lap) "
+                "derived from linear regression. wear_rate_available is false until at "
+                "least 2 laps of data exist; rates are null until then. "
+                "Warn the user if any individual tyre wear exceeds 80%."
             ),
             title="Player Tyre Wear",
             tags={"player", "tyre", "wear", "strategy"},
@@ -364,8 +419,12 @@ TYRE WEAR THRESHOLDS:
         @self._tool(
             name="get_tyre_wear",
             description=(
-                "Get tyre wear, wear rate, and predicted wear for a specific driver by index. "
-                "Valid indices depend on the current grid size (typically 0-21). "
+                "Get tyre telemetry for a specific driver by index: "
+                "compound, tyre age (laps), per-corner wear percentage (FL/FR/RL/RR), "
+                "average wear across all four tyres, and per-corner wear rate (% per lap) "
+                "derived from linear regression. wear_rate_available is false until at "
+                "least 2 laps of data exist; rates are null until then. "
+                "Warn the user if any individual tyre wear exceeds 80%. "
                 "Use get_drivers_list to look up a driver's index."
             ),
             title="Driver Tyre Wear",
@@ -377,13 +436,23 @@ TYRE WEAR THRESHOLDS:
                 openWorldHint=False,
             ),
         )
-        async def handle_get_tyre_wear(driver_index: int) -> Dict[str, Any]:
+        async def handle_get_tyre_wear(
+            driver_index: Annotated[int, Field(ge=0, le=21, description="Driver index. Use get_drivers_list to resolve a name to an index.")],
+        ) -> Dict[str, Any]:
             self.logger.debug("get_tyre_wear called: driver_index=%s", driver_index)
             return get_tyre_wear(logger=self.logger, driver_index=driver_index)
 
         @self._tool(
             name="get_car_damage",
-            description="Get car damage info for a driver with given index (0-21)",
+            description=(
+                "Get detailed car damage state for a driver by index: "
+                "per-corner tyre wear and tyre damage, brake damage, "
+                "front/rear wing damage, floor, diffuser, and sidepod damage, "
+                "DRS and ERS fault flags, gearbox damage, "
+                "and individual engine component wear (ICE, MGU-H, MGU-K, ES, CE, TC). "
+                "Also reports whether the engine is blown or seized. "
+                "Use get_drivers_list to look up a driver's index."
+            ),
             title="Car Damage Info",
             tags={
                 "driver",
@@ -398,7 +467,9 @@ TYRE WEAR THRESHOLDS:
                 openWorldHint=False,
             ),
         )
-        async def handle_get_car_damage(driver_index: int) -> Dict[str, Any]:
+        async def handle_get_car_damage(
+            driver_index: Annotated[int, Field(ge=0, le=21, description="Driver index. Use get_drivers_list to resolve a name to an index.")],
+        ) -> Dict[str, Any]:
             self.logger.debug("get_car_damage called: driver_index=%s", driver_index)
             return await get_car_damage(
                 core_server_port=self.core_server_port,
