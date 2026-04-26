@@ -67,6 +67,11 @@ class UdpTransport(TelemetryTransport):
 
     async def run(self) -> None:
         """Run until cancelled, delivering packets to the registered callback."""
+        if self._callback is None:
+            raise RuntimeError(
+                "UdpTransport.run() called before a packet callback was registered. "
+                "Use `on_packet` to register an async callback before calling `run`."
+            )
         if self._loop is None:
             self._loop = asyncio.get_running_loop()
         while True:

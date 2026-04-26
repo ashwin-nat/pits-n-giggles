@@ -22,11 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
 from typing import Awaitable, Callable, Optional
 
-from lib.ipc.pubsub.subscriber import IpcSubscriberSync
+from lib.ipc.pubsub.subscriber import IpcSubscriberAsync
 
 from .base_receiver import TelemetryTransport
 
@@ -35,8 +34,8 @@ from .base_receiver import TelemetryTransport
 class IpcTransport(TelemetryTransport):
     """TelemetryTransport that reads raw F1 binary packets from an IPC pub/sub topic.
 
-    Bridges the synchronous blocking IpcSubscriberSync loop into the async world
-    via run_in_executor, delivering raw bytes to the registered on_packet callback.
+    Delivers raw bytes to the registered on_packet callback using the async-native
+    IpcSubscriberAsync, keeping all I/O on the event loop without cross-thread plumbing.
     """
 
     def __init__(self, host: str, port: int, topic: str, logger: Optional[logging.Logger] = None) -> None:
@@ -49,7 +48,7 @@ class IpcTransport(TelemetryTransport):
         """
         self._topic = topic
         self._logger = logger or logging.getLogger(__name__)
-        self._subscriber = IpcSubscriberSync(host=host, port=port, logger=self._logger)
+        self._subscriber = IpcSubscriberAsync(host=host, port=port, logger=self._logger)
         self._callback: Optional[Callable[[bytes], Awaitable[None]]] = None
 
     def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> Callable[[bytes], Awaitable[None]]:
@@ -59,13 +58,19 @@ class IpcTransport(TelemetryTransport):
 
     async def run(self) -> None:
         """Run until cancelled, delivering raw packets to the registered callback."""
-        loop = asyncio.get_running_loop()
+        if self._callback is None:
+            raise RuntimeError(
+                "IpcTransport.run() called before a packet callback was registered. "
+                "Use `on_packet` to register an async callback before calling `run`."
+            )
+
+        callback = self._callback
 
         @self._subscriber.route_raw(self._topic)
-        def _on_raw(raw: bytes) -> None:
-            asyncio.run_coroutine_threadsafe(self._callback(raw), loop)
+        async def _on_raw(raw: bytes) -> None:
+            await callback(raw)
 
-        await loop.run_in_executor(None, self._subscriber.start)
+        await self._subscriber.run()
 
     async def close(self) -> None:
         """Signal the subscriber loop to stop."""

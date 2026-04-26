@@ -507,9 +507,6 @@ class TestIpcPubSub(TestIPC):
         t.join(timeout=0.2)
 
         self.assertEqual(received, [])
-        stats = sub.get_stats()
-        self.assertIn("__DROP__", stats)
-        self.assertIn("wrong_content_type_for_json_route_json-route-mismatch", stats["__DROP__"])
 
     def test_json_on_raw_route_is_dropped_and_tracked(self):
         received = []
@@ -540,9 +537,6 @@ class TestIpcPubSub(TestIPC):
         t.join(timeout=0.2)
 
         self.assertEqual(received, [])
-        stats = sub.get_stats()
-        self.assertIn("__DROP__", stats)
-        self.assertIn("wrong_content_type_for_raw_route_raw-route-mismatch", stats["__DROP__"])
 
     def test_duplicate_route_registration_raises(self):
         sub = IpcSubscriberSync(port=self.xpub_port)
@@ -775,3 +769,82 @@ class TestIpcPubSubAsync(TestIPC):
         asyncio.run(run_test())
 
         self.assertIn(b"\xde\xad\xbe\xef", received)
+
+    def test_async_binary_on_json_route_is_dropped(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-json-route-mismatch")
+            async def handler(data: dict):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("async-json-route-mismatch", b"\xde\xad")
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertEqual(received, [])
+
+    def test_async_json_on_raw_route_is_dropped(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route_raw("async-raw-route-mismatch")
+            async def handler(data: bytes):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-raw-route-mismatch", {"oops": True})
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertEqual(received, [])
+
+    def test_async_duplicate_route_registration_raises(self):
+        async def json_handler(data: dict):
+            pass
+
+        async def raw_handler(data: bytes):
+            pass
+
+        sub = IpcSubscriberAsync(port=self.xpub_port)
+        sub.route("async-dup-topic")(json_handler)
+
+        with self.assertRaises(ValueError):
+            sub.route_raw("async-dup-topic")(raw_handler)

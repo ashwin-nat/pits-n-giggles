@@ -63,6 +63,7 @@ class TcpTransport(TelemetryTransport):
         self._reader = None
         self._writer = None
         self._callback: Optional[Callable[[bytes], Awaitable[None]]] = None
+        self._closed = False
 
     def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> Callable[[bytes], Awaitable[None]]:
         """Decorator to register the packet callback."""
@@ -70,9 +71,16 @@ class TcpTransport(TelemetryTransport):
         return callback
 
     async def run(self) -> None:
-        """Run until cancelled, delivering packets to the registered callback."""
-        while True:
+        """Run until close() is called, delivering packets to the registered callback."""
+        if self._callback is None:
+            raise RuntimeError(
+                "TcpTransport.run() called before a packet callback was registered. "
+                "Use `on_packet` to register an async callback before calling `run`."
+            )
+        while not self._closed:
             await self._ensure_connection()
+            if self._closed:
+                break
             try:
                 length_bytes = await self._reader.readexactly(4)
                 message_length = struct.unpack('!I', length_bytes)[0]
@@ -82,17 +90,18 @@ class TcpTransport(TelemetryTransport):
                 await self._drop_connection()
 
     async def _ensure_connection(self) -> None:
-        """Accept a new connection if none is active."""
-        if self.m_connection is not None:
-            return
-        try:
-            conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
-            self.m_connection = conn
-            self.m_connection.setblocking(False)
-            self._reader, self._writer = await asyncio.open_connection(sock=conn)
-        except OSError as e:
-            print(f"Connection error: {e}")
-            await self._ensure_connection()
+        """Accept a new connection if none is active. Returns early if closed."""
+        while self.m_connection is None and not self._closed:
+            try:
+                conn, _ = await asyncio.get_event_loop().sock_accept(self.m_socket)
+                self.m_connection = conn
+                self.m_connection.setblocking(False)
+                self._reader, self._writer = await asyncio.open_connection(sock=conn)
+            except OSError as e:
+                if self._closed:
+                    return
+                print(f"Connection error: {e}")
+                await asyncio.sleep(1.0)
 
     async def _drop_connection(self) -> None:
         """Close and forget the current connection."""
@@ -107,7 +116,8 @@ class TcpTransport(TelemetryTransport):
         self._writer = None
 
     async def close(self) -> None:
-        """Close the transport and any active connection."""
+        """Close the transport and any active connection, causing run() to return."""
+        self._closed = True
         await self._drop_connection()
         if self.m_socket:
             self.m_socket.close()
