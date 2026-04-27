@@ -47,7 +47,7 @@ from lib.inter_task_communicator import (
     TyreDeltaNotificationMessageCollection)
 from lib.logger import PngLogger
 from lib.save_to_disk import save_json_to_file
-from lib.telemetry_manager import AsyncF1TelemetryManager
+from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
 from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
@@ -159,10 +159,12 @@ class F1TelemetryHandler:
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
             - ver_str (str): Version string
         """
+        transport = telemetry_transport_factory(
+            settings.Network.telemetry_port, replay_server, logger
+        )
         self.m_manager = AsyncF1TelemetryManager(
-            port_number=settings.Network.telemetry_port,
+            transport=transport,
             logger=logger,
-            replay_server=replay_server,
             frame_gate_enabled=settings.Network.enable_pkt_ordering
         )
         self.m_logger: PngLogger = logger

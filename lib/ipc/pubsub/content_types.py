@@ -20,14 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+from enum import Enum
 
-from .factory import telemetry_transport_factory
-from .manager import AsyncF1TelemetryManager
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    'AsyncF1TelemetryManager',
-    'telemetry_transport_factory',
-]
+class IpcContentType(str, Enum):
+    JSON   = "json"
+    BINARY = "binary"

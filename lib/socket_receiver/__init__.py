@@ -22,14 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base_receiver import TelemetryReceiver
-from .tcp_receiver import TcpReceiver
-from .udp_receiver import UdpReceiver
+from .base_receiver import TelemetryTransport
+from .ipc_transport import IpcTransport
+from .tcp_receiver import TcpTransport
+from .udp_receiver import UdpTransport
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TelemetryReceiver",
-    "TcpReceiver",
-    "UdpReceiver"
+    "TelemetryTransport",
+    "IpcTransport",
+    "TcpTransport",
+    "UdpTransport",
 ]
