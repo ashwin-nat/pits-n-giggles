@@ -20,14 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
-
-from .factory import telemetry_transport_factory
-from .manager import AsyncF1TelemetryManager
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from ._async import IpcSubscriberAsync
+from ._sync import IpcSubscriberSync
 
 __all__ = [
-    'AsyncF1TelemetryManager',
-    'telemetry_transport_factory',
+    "IpcSubscriberAsync",
+    "IpcSubscriberSync",
 ]

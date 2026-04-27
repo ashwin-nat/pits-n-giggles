@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .pubsub.broker import IpcPubSubBroker
+from .pubsub.content_types import IpcContentType
 from .pubsub.publisher import IpcPublisherAsync
 from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
 from .reqrep.async_server import IpcServerAsync
@@ -38,6 +39,7 @@ __all__ = [
     'IpcServerAsync',
     'IpcServerSync',
     'SocketioClient',
+    'IpcContentType',
     'IpcPublisherAsync',
     'IpcSubscriberAsync',
     'IpcSubscriberSync',

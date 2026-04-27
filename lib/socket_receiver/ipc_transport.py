@@ -22,42 +22,33 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import socket
+import logging
 from typing import Awaitable, Callable, Optional
+
+from lib.ipc.pubsub.subscriber import IpcSubscriberAsync
 
 from .base_receiver import TelemetryTransport
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class UdpTransport(TelemetryTransport):
-    """An async-friendly UDP socket transport.
+class IpcTransport(TelemetryTransport):
+    """TelemetryTransport that reads raw F1 binary packets from an IPC pub/sub topic.
 
-    Attributes:
-        m_buffer_size (int): The buffer size used for receiving data.
-        m_port (int): The UDP port this client is bound to.
-        m_bind_ip (str): The IP address this client is bound to.
-        m_socket (socket.socket): The underlying UDP socket object.
+    Delivers raw bytes to the registered on_packet callback using the async-native
+    IpcSubscriberAsync, keeping all I/O on the event loop without cross-thread plumbing.
     """
 
-    def __init__(self, port: int, bind_ip: str, buffer_size: int = 16384) -> None:
+    def __init__(self, host: str, port: int, topic: str, logger: Optional[logging.Logger] = None) -> None:
         """
-        Initialize the UDP transport.
-
         Args:
-            port (int): Port number to bind to.
-            bind_ip (str): IP address to bind to (e.g., '127.0.0.1').
-            buffer_size (int, optional): Size of the receive buffer. Defaults to 16384 bytes.
+            host (str): IPC broker host.
+            port (int): IPC broker port.
+            topic (str): Topic to subscribe to (must carry raw F1 binary payloads).
+            logger (Logger, optional): Logger to use.
         """
-        self.m_buffer_size = buffer_size
-        self.m_port = port
-        self.m_bind_ip = bind_ip
-        self.m_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.m_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.m_socket.setblocking(False)
-        self.m_socket.bind((self.m_bind_ip, self.m_port))
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._topic = topic
+        self._logger = logger or logging.getLogger(__name__)
+        self._subscriber = IpcSubscriberAsync(host=host, port=port, logger=self._logger)
         self._callback: Optional[Callable[[bytes], Awaitable[None]]] = None
 
     def on_packet(self, callback: Callable[[bytes], Awaitable[None]]) -> Callable[[bytes], Awaitable[None]]:
@@ -66,18 +57,21 @@ class UdpTransport(TelemetryTransport):
         return callback
 
     async def run(self) -> None:
-        """Run until cancelled, delivering packets to the registered callback."""
+        """Run until cancelled, delivering raw packets to the registered callback."""
         if self._callback is None:
             raise RuntimeError(
-                "UdpTransport.run() called before a packet callback was registered. "
+                "IpcTransport.run() called before a packet callback was registered. "
                 "Use `on_packet` to register an async callback before calling `run`."
             )
-        if self._loop is None:
-            self._loop = asyncio.get_running_loop()
-        while True:
-            message, _ = await self._loop.sock_recvfrom(self.m_socket, self.m_buffer_size)
-            await self._callback(message)
+
+        callback = self._callback
+
+        @self._subscriber.route_raw(self._topic)
+        async def _on_raw(raw: bytes) -> None:
+            await callback(raw)
+
+        await self._subscriber.run()
 
     async def close(self) -> None:
-        """Close the UDP socket."""
-        self.m_socket.close()
+        """Signal the subscriber loop to stop."""
+        self._subscriber.close()
