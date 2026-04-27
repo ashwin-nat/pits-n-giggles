@@ -812,6 +812,6 @@ class F1TelemetryHandler:
         """
         if self._isUdpActionButtonPressed(buttons, code):
             self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
-            self.m_logger.info('UDP action %d pressed - %s', code, name)
+            self.m_logger.silent('UDP action %d pressed - %s', code, name)
             await coro()
 
