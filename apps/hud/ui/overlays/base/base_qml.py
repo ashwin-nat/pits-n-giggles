@@ -136,6 +136,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._frame_timer.timeout.connect(self._on_frame)
         self._frame_active: bool = False
+        self._last_render_ts_ns: int = 0  # written by render thread, read by main thread
         self._resize_origin: Optional[QPoint] = None
         self._resize_origin_size: Optional[QSize] = None
         self._resize_origin_pos: Optional[QPoint] = None
@@ -178,6 +179,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root = root
         self._root.installEventFilter(self)
         self._root.setProperty("scaleFactor", self.scale_factor)
+        self._root.beforeRendering.connect(self._on_before_rendering, Qt.ConnectionType.DirectConnection)
 
         super()._setup_window()
         self._create_unlock_overlay()
@@ -445,6 +447,10 @@ class BaseOverlayQML(BaseOverlay, QObject):
     # ----------------------------------------------------------------------
     # Rendering methods
     # ----------------------------------------------------------------------
+    def _on_before_rendering(self) -> None:
+        """Called by Qt on the render thread before each frame is painted."""
+        self._last_render_ts_ns = perf_counter_ns()
+
     def _on_frame(self):
         """
         Fixed-rate render tick for QML overlays.
@@ -471,10 +477,14 @@ class BaseOverlayQML(BaseOverlay, QObject):
         assert self._refresh_interval_ms
         assert self._fps
         self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+        ts = self._last_render_ts_ns
+        if ts:
+            self._stats.track_frame_render("__RENDER__", "__FRAME__", ts, self._fps)
 
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
         self._stats.reset_frame_timing("__FRAMES__", "__FRAME__")
+        self._stats.reset_frame_timing("__RENDER__", "__FRAME__")
 
     def invalidate_qml_cache(self, *names: str) -> None:
         """Remove one or more property names from the cache so the next
