@@ -222,6 +222,10 @@
         "weather_aware_prediction": true,
         "tyre_wear_window_size": 5
     },
+    "MCP": {
+        "mcp_http_server_enable": false,
+        "mcp_http_port": 4770
+    },
     "SubSysCtrlCfg__": {
         "heartbeat_interval": 5.0,
         "num_missable_heartbeats": 3

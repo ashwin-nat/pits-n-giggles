@@ -55,7 +55,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     }
 
     enabled: bool = Field(
-        default=False,
+        default=True,
         description="Enable Overlays (only on Windows, setting will be ignored on other OS's)",
         json_schema_extra={
             "ui": {

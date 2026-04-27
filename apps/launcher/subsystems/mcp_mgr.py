@@ -74,6 +74,9 @@ class McpAppMgr(PngAppMgrBase):
             settings_field='MCP Settings -> "MCP HTTP Server Port"'
         ))
 
+    def get_start_by_default(self) -> bool:
+        return self.enabled
+
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
         :return: List of button objects

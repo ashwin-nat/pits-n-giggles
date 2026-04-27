@@ -33,7 +33,7 @@ import os
 import platform
 import shutil
 import tempfile
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
 
@@ -94,11 +94,15 @@ hiddenimports = (
     collect_submodules("apps.backend") +
     collect_submodules("apps.save_viewer") +
     collect_submodules("apps.hud") +
-    collect_submodules("apps.broker")
+    collect_submodules("apps.broker") +
+    collect_submodules("apps.mcp_server")
 )
 
 # Automatically collect all assets and frontend files
 datas = []
+
+# Package metadata required by packages that call importlib.metadata.version() at import time
+datas += copy_metadata("fastmcp")
 
 # Frontend assets (CSS, HTML, JS)
 datas.extend(collect_directory("apps/frontend/css", "apps/frontend/css"))
