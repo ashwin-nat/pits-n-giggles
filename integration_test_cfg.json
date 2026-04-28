@@ -23,7 +23,6 @@
         "disable_browser_autoload": true,
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
-        "telemetry_rate": 30,
         "realtime_overlay_fps": 60,
         "use_cpu_acceleration": false,
         "wdt_timeout": 5.0
