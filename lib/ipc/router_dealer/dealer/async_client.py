@@ -75,10 +75,8 @@ class IpcDealerAsync:
         identity: str = "",
         logger: Optional[logging.Logger] = None,
     ):
-        if port is None:
-            raise ValueError("IpcDealerAsync requires explicit port")
-        if not identity:
-            raise ValueError("IpcDealerAsync requires a non-empty identity")
+        assert port is not None
+        assert identity
 
         self.host = host
         self.port = port

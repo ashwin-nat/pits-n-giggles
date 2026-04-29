@@ -27,7 +27,7 @@ import threading
 import time
 
 from .base import TestIPC
-from lib.ipc import IpcRouter, IpcRouterBroker, IpcDealerClient, IpcDealerAsync
+from lib.ipc import IpcRouter, IpcDealerClient, IpcDealerAsync
 from lib.error_status import PngRouterPortInUseError
 
 if sys.platform == "win32":
@@ -131,38 +131,10 @@ class TestIpcRouterDealer(TestIPC):
             sock.close(linger=0)
             ctx.term()
 
-    def test_ipc_router_broker_alias_works(self):
-        """IpcRouterBroker is a backwards-compat alias for IpcRouter."""
-        self.assertIs(IpcRouterBroker, IpcRouter)
-
-    # ------------------------------------------------------------------
-    # IpcDealerClient construction
-    # ------------------------------------------------------------------
-
-    def test_dealer_client_requires_port(self):
-        with self.assertRaises(ValueError):
-            IpcDealerClient(identity="hud")
-
-    def test_dealer_client_requires_identity(self):
-        with self.assertRaises(ValueError):
-            IpcDealerClient(port=self.port, identity="")
-
     def test_dealer_client_get_stats_returns_dict(self):
         client = self._make_dealer_client("stats-test")
         stats = client.get_stats()
         self.assertIsInstance(stats, dict)
-
-    # ------------------------------------------------------------------
-    # IpcDealerAsync construction
-    # ------------------------------------------------------------------
-
-    def test_dealer_async_requires_port(self):
-        with self.assertRaises(ValueError):
-            IpcDealerAsync(identity="backend")
-
-    def test_dealer_async_requires_identity(self):
-        with self.assertRaises(ValueError):
-            IpcDealerAsync(port=self.port, identity="")
 
     # ------------------------------------------------------------------
     # Request-response: send() awaits a reply

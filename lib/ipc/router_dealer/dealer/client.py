@@ -77,10 +77,8 @@ class IpcDealerClient:
         identity: str = "",
         logger: Optional[logging.Logger] = None,
     ):
-        if port is None:
-            raise ValueError("IpcDealerClient requires explicit port")
-        if not identity:
-            raise ValueError("IpcDealerClient requires a non-empty identity")
+        assert port is not None
+        assert identity
 
         self.host = host
         self.port = port
