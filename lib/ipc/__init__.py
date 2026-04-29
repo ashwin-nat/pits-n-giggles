@@ -30,6 +30,10 @@ from .reqrep.async_server import IpcServerAsync
 from .reqrep.sync_client import IpcClientSync
 from .reqrep.sync_server import IpcServerSync
 from .socketio_client import SocketioClient
+from .router.router import IpcRouter
+from .router.router import IpcRouter as IpcRouterBroker  # backwards-compat alias
+from .dealer.client import IpcDealerClient
+from .dealer.async_client import IpcDealerAsync
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -44,6 +48,10 @@ __all__ = [
     'IpcSubscriberAsync',
     'IpcSubscriberSync',
     'IpcPubSubBroker',
+    'IpcRouter',
+    'IpcRouterBroker',  # backwards-compat alias
+    'IpcDealerClient',
+    'IpcDealerAsync',
 
     'get_free_tcp_port',
 ]

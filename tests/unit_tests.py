@@ -55,7 +55,7 @@ from tests_config import (TestCaptureSettings, TestConfigDiffMixin,
                           TestLoadConfigFromJson, TestMissingSectionsAndKeys,
                           TestNetworkSettings, TestPitTimeLossF1,
                           TestPitTimeLossF2, TestPngSettings,
-                          TestPredictionSettings, TestPngSettingsPrediction,
+                          TestPngSettingsPrediction, TestPredictionSettings,
                           TestPrivacySettings, TestSampleSettingsFixture,
                           TestStreamOverlaySettings, TestSubSysCtrl)
 from tests_custom_markers import (TestCustomMarkerEntry,
@@ -87,7 +87,8 @@ from tests_tyre_wear_extrapolator import (
 from tests_udp_forwarder import TestAsyncUDPForwarder
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
-from tests.ipc import TestIpcParentChild, TestIpcPubSub, TestIpcSubscriber, TestIpcPubSubAsync
+from tests.ipc import (TestIpcParentChild, TestIpcPubSub, TestIpcPubSubAsync,
+                       TestIpcRouterDealer, TestIpcSubscriber)
 from tests.tests_child_proc_mgmt import (TestIpcPortExtraction,
                                          TestIsInitComplete, TestPidReport)
 from tests.tests_delta import TestF1Delta
