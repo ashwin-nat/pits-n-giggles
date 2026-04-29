@@ -367,9 +367,9 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             )
 
         # ---- Opacity relationship ----
-        if self.track_radar_idle_opacity > self.overlays_opacity:
+        if self.track_radar_idle_opacity >= self.overlays_opacity:
             raise ValueError(
-                "Track radar idle opacity cannot be greater than overlays opacity"
+                "Track radar idle opacity cannot be greater than or equal to overlays opacity"
             )
 
         return self

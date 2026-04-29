@@ -301,8 +301,16 @@ class TestIpcPubSub(TestIPC):
         async def crash_pub():
             pub = IpcPublisherAsync(port=self.xsub_port)
             await pub.start()
+
+            # Ensure reconnect loop has created and marked the PUB socket connected
+            # before we begin the pre-crash publish burst.
+            deadline = time.time() + 1.0
+            while not pub._connected and time.time() < deadline:
+                await asyncio.sleep(0.005)
+            self.assertTrue(pub._connected, "Publisher did not become connected in time")
+
             # Send a few messages, then crash before graceful close
-            for _ in range(3):
+            for _ in range(SEND_REPEATS):
                 await pub.publish("crashpub", {"alive": True})
                 await asyncio.sleep(MESSAGE_DELAY)
 

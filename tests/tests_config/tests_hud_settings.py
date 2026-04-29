@@ -45,7 +45,7 @@ class TestHudSettings(TestF1ConfigBase):
     def test_default_values(self):
         """Test default values"""
         settings = HudSettings()
-        self.assertEqual(settings.enabled, False)
+        self.assertEqual(settings.enabled, True)
         self.assertEqual(settings.toggle_overlays_udp_action_code, None)
         self.assertEqual(settings.show_lap_timer, True)
         self.assertEqual(settings.lap_timer_minimal, False)
@@ -290,10 +290,15 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(overlays_opacity=150)
 
-        # Boundary value: minimum (0)
+        # Boundary value: minimum (0) should fail because idle opacity must be strictly less
         min_opacity = 0
-        hud_settings_min = HudSettings(overlays_opacity=min_opacity)
-        self.assertEqual(hud_settings_min.overlays_opacity, min_opacity)
+        with self.assertRaises(ValidationError):
+            HudSettings(overlays_opacity=min_opacity, track_radar_idle_opacity=0)
+
+        # Smallest valid combo under strict idle-opacity rule
+        hud_settings_min_valid = HudSettings(overlays_opacity=1, track_radar_idle_opacity=0)
+        self.assertEqual(hud_settings_min_valid.overlays_opacity, 1)
+        self.assertEqual(hud_settings_min_valid.track_radar_idle_opacity, 0)
         # Boundary value: maximum (100)
         max_opacity = 100
         hud_settings_max = HudSettings(overlays_opacity=max_opacity)
@@ -714,7 +719,9 @@ class TestHudSettings(TestF1ConfigBase):
         # Boundary value: maximum (100)
         with self.assertRaises(ValidationError):
             HudSettings(track_radar_idle_opacity=101)
-        HudSettings(track_radar_idle_opacity=100)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_idle_opacity=100)
+        HudSettings(track_radar_idle_opacity=99)
 
         # Idle opacity more than overall opacity
         with self.assertRaises(ValidationError):
