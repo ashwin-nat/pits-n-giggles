@@ -171,6 +171,7 @@ class BackendAppMgr(PngAppMgrBase):
             "Capture" : [],
             "Display" : [
                 "refresh_interval",
+                "local_telemetry_rate",
             ],
             "Logging" : [],
             "Privacy" : [],
