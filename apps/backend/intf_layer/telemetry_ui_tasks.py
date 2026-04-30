@@ -33,7 +33,7 @@ from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
 from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
@@ -83,7 +83,7 @@ def initUiIntfLayer(
     dealer = IpcDealerAsync(
         host="127.0.0.1",
         port=settings.Network.broker_router_port,
-        identity="backend",
+        identity=str(PngAppId.BACKEND),
         logger=logger,
     )
 
@@ -205,7 +205,7 @@ async def hudInteractionTask(
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await dealer.fire("hud", str(message.m_message_type), message.toJSON())
+            await dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

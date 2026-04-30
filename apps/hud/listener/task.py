@@ -26,7 +26,7 @@ import logging
 import threading
 from typing import Tuple
 
-from lib.ipc import IpcDealerClient, IpcSubscriberSync
+from lib.ipc import IpcDealerClient, IpcSubscriberSync, PngAppId
 
 from ..ui.infra import OverlaysMgr
 
@@ -70,7 +70,7 @@ def _run_dealer_thread(
     dealer_client = IpcDealerClient(
         host="127.0.0.1",
         port=router_port,
-        identity="hud",
+        identity=str(PngAppId.HUD),
         logger=logger,
     )
 
