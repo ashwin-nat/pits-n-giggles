@@ -36,10 +36,10 @@ from lib.event_counter import EventCounter
 _REPLY_REQUIRED = b"\x01"
 _NO_REPLY       = b"\x00"
 
-# Sentinel pushed through the pipe to tell the loop to exit cleanly.
-_CMD_STOP  = b"\xff"
-_CMD_FIRE  = b"\x00"
-_CMD_SEND  = b"\x01"
+# Pipe command bytes — sent through the inproc PAIR pipe from caller threads to the loop thread.
+_PIPE_STOP  = b"\xff"
+_PIPE_FIRE  = b"\xfe"
+_PIPE_SEND  = b"\xfd"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -160,12 +160,6 @@ class IpcDealerClient:
         self.socket.connect(endpoint)
         self.logger.debug("IpcDealerClient [%s] connected to %s", self.identity, endpoint)
 
-    def _rebuild_poller(self) -> zmq.Poller:
-        poller = zmq.Poller()
-        poller.register(self.socket, zmq.POLLIN)
-        poller.register(self._pipe_read, zmq.POLLIN)
-        return poller
-
     # ---------------------------------------------------------
     # Register handler
     # ---------------------------------------------------------
@@ -191,11 +185,10 @@ class IpcDealerClient:
             data: Payload dict (JSON-serialisable).
         """
         payload = orjson.dumps(data)
-        # Push to pipe: [_CMD_FIRE, dest, topic, payload]
         with self._pipe_lock:
             try:
                 self._pipe_write.send_multipart(
-                    [_CMD_FIRE, dest_identity.encode(), topic.encode(), payload],
+                    [_PIPE_FIRE, dest_identity.encode(), topic.encode(), payload],
                     flags=zmq.NOBLOCK,
                 )
             except zmq.ZMQError as e:
@@ -242,15 +235,14 @@ class IpcDealerClient:
             with self._pipe_lock:
                 try:
                     self._pipe_write.send_multipart(
-                        [_CMD_SEND, dest_identity.encode(), topic.encode(), payload],
+                        [_PIPE_SEND, dest_identity.encode(), topic.encode(), payload],
                         flags=zmq.NOBLOCK,
                     )
                 except zmq.ZMQError as e:
                     self.stats.track_event("__ERROR__", "send_pipe_failed")
                     return {"status": "error", "reason": str(e)}
 
-            signalled = self._reply_event.wait(timeout=timeout)
-            if not signalled:
+            if not self._reply_event.wait(timeout=timeout):
                 self.stats.track_event("__ERROR__", "reply_timeout")
                 return {"status": "error", "reason": "ack timeout"}
 
@@ -260,10 +252,10 @@ class IpcDealerClient:
         return reply if reply is not None else {"status": "error", "reason": "empty reply"}
 
     # ---------------------------------------------------------
-    # Main receive loop — pipe and socket helpers
+    # Loop helpers
     # ---------------------------------------------------------
     def _handle_pipe_event(self, events: dict, awaiting_reply: bool) -> bool:
-        """Drain one command from the inproc pipe. Returns updated awaiting_reply."""
+        """Drain one pipe command and act on it. Returns updated awaiting_reply."""
         if self._pipe_read not in events:
             return awaiting_reply
 
@@ -276,65 +268,58 @@ class IpcDealerClient:
             self.logger.warning("IpcDealerClient [%s] pipe recv error: %s", self.identity, e)
             return awaiting_reply
 
-        if not pipe_frames:
-            return awaiting_reply
+        cmd = pipe_frames[0] if pipe_frames else None
 
-        cmd = pipe_frames[0]
-
-        if cmd == _CMD_STOP:
+        if cmd == _PIPE_STOP:
             self._running = False
-            return awaiting_reply
 
-        if cmd == _CMD_FIRE and len(pipe_frames) == 4:
+        elif cmd == _PIPE_FIRE and len(pipe_frames) == 4:
             _, dest, topic_b, payload_b = pipe_frames  # pylint: disable=unbalanced-tuple-unpacking
-            self._send_fire(dest, topic_b, payload_b)
-            return awaiting_reply
+            try:
+                self.socket.send_multipart([dest, _NO_REPLY, topic_b, payload_b], flags=zmq.NOBLOCK)
+                self.stats.track_packet("__FIRE__", topic_b.decode("utf-8", errors="replace"),
+                                        len(dest) + len(topic_b) + len(payload_b))
+            except zmq.ZMQError as e:
+                self.stats.track_event("__ERROR__", "fire_send_failed")
+                self.logger.warning("IpcDealerClient [%s] fire send error: %s", self.identity, e)
 
-        if cmd == _CMD_SEND and len(pipe_frames) == 4:
+        elif cmd == _PIPE_SEND and len(pipe_frames) == 4:
             _, dest, topic_b, payload_b = pipe_frames  # pylint: disable=unbalanced-tuple-unpacking
-            return self._send_request(dest, topic_b, payload_b)
+            try:
+                self.socket.send_multipart([dest, _REPLY_REQUIRED, topic_b, payload_b], flags=zmq.NOBLOCK)
+                self.stats.track_packet("__OUTGOING__", topic_b.decode("utf-8", errors="replace"),
+                                        len(dest) + len(topic_b) + len(payload_b))
+                awaiting_reply = True
+            except zmq.ZMQError as e:
+                self.stats.track_event("__ERROR__", "send_failed")
+                self.logger.warning("IpcDealerClient [%s] send error: %s", self.identity, e)
+                self._reply_slot = {"status": "error", "reason": str(e)}
+                self._reply_event.set()
 
         return awaiting_reply
 
-    def _send_fire(self, dest: bytes, topic_b: bytes, payload_b: bytes) -> None:
-        try:
-            self.socket.send_multipart(
-                [dest, _NO_REPLY, topic_b, payload_b],
-                flags=zmq.NOBLOCK,
-            )
-            self.stats.track_packet(
-                "__FIRE__",
-                topic_b.decode("utf-8", errors="replace"),
-                len(dest) + len(topic_b) + len(payload_b),
-            )
-        except zmq.ZMQError as e:
-            self.stats.track_event("__ERROR__", "fire_send_failed")
-            self.logger.warning("IpcDealerClient [%s] fire send error: %s", self.identity, e)
+    def _handle_dealer_event(self, events: dict, awaiting_reply: bool) -> bool:
+        """Receive and dispatch one frame batch from the DEALER socket. Returns updated awaiting_reply."""
+        if self.socket not in events:
+            return awaiting_reply
 
-    def _send_request(self, dest: bytes, topic_b: bytes, payload_b: bytes) -> bool:
-        """Send a request frame. Returns True if now awaiting a reply, False on error."""
         try:
-            self.socket.send_multipart(
-                [dest, _REPLY_REQUIRED, topic_b, payload_b],
-                flags=zmq.NOBLOCK,
-            )
-            self.stats.track_packet(
-                "__OUTGOING__",
-                topic_b.decode("utf-8", errors="replace"),
-                len(dest) + len(topic_b) + len(payload_b),
-            )
-            return True
-        except zmq.ZMQError as e:
-            self.stats.track_event("__ERROR__", "send_failed")
-            self.logger.warning("IpcDealerClient [%s] send error: %s", self.identity, e)
-            self._reply_slot = {"status": "error", "reason": str(e)}
-            self._reply_event.set()
-            return False
+            frames = self.socket.recv_multipart(flags=zmq.NOBLOCK)
+        except zmq.Again:
+            return awaiting_reply
+        except zmq.ZMQError:
+            if not self._running:
+                return awaiting_reply
+            self.stats.track_event("__ERROR__", "recv_failed")
+            self._create_and_connect()
+            if awaiting_reply:
+                self._reply_slot = {"status": "error", "reason": "socket reconnected"}
+                self._reply_event.set()
+                awaiting_reply = False
+            return awaiting_reply
 
-    def _handle_dealer_frames(self, frames: list, awaiting_reply: bool) -> bool:
-        """Process frames received from the DEALER socket. Returns updated awaiting_reply."""
+        # 2-frame reply to a pending send()
         if len(frames) == 2 and awaiting_reply:
-            awaiting_reply = False
             try:
                 reply = orjson.loads(frames[-1])
             except (ValueError, TypeError):
@@ -342,29 +327,17 @@ class IpcDealerClient:
             self.stats.track_event("__REPLY__", reply.get("status", "data"))
             self._reply_slot = reply
             self._reply_event.set()
-            return awaiting_reply
+            return False
 
+        # 4-frame inbound command
         if len(frames) < 4:
             self.stats.track_event("__DROP__", "short_frame")
             return awaiting_reply
 
-        sender_id, reply_flag, topic_bytes, payload_bytes = (
-            frames[0], frames[1], frames[2], frames[3]
-        )
-        self._dispatch_inbound(sender_id, reply_flag, topic_bytes, payload_bytes)
-        return awaiting_reply
-
-    def _dispatch_inbound(
-        self,
-        sender_id: bytes,
-        reply_flag: bytes,
-        topic_bytes: bytes,
-        payload_bytes: bytes,
-    ) -> None:
+        sender_id, reply_flag, topic_bytes, payload_bytes = frames[0], frames[1], frames[2], frames[3]
         wants_reply = (reply_flag == _REPLY_REQUIRED)
         topic = topic_bytes.decode("utf-8", errors="replace")
-        total_size = len(sender_id) + len(topic_bytes) + len(payload_bytes)
-        self.stats.track_packet("__INCOMING__", topic, total_size)
+        self.stats.track_packet("__INCOMING__", topic, sum(len(f) for f in frames))
 
         try:
             data = orjson.loads(payload_bytes)
@@ -372,26 +345,27 @@ class IpcDealerClient:
             self.stats.track_event("__DROP__", "invalid_json")
             if wants_reply:
                 self._send_reply(sender_id, {"status": "error", "reason": "invalid payload"})
-            return
+            return awaiting_reply
 
         handler = self._routes.get(topic)
         if handler is None:
             self.stats.track_event("__DROP__", f"unrouted_{topic}")
             if wants_reply:
                 self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
-            return
+            return awaiting_reply
 
         try:
             result = handler(data)
             self.stats.track_event("__HANDLER_OK__", topic)
             if wants_reply:
-                reply = result if isinstance(result, dict) else {"status": "ok"}
-                self._send_reply(sender_id, reply)
+                self._send_reply(sender_id, result if isinstance(result, dict) else {"status": "ok"})
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.stats.track_event("__HANDLER_ERR__", topic)
             self.logger.exception("Handler error for topic %r: %s", topic, e)
             if wants_reply:
                 self._send_reply(sender_id, {"status": "error", "reason": str(e)})
+
+        return awaiting_reply
 
     # ---------------------------------------------------------
     # Main receive loop
@@ -401,7 +375,9 @@ class IpcDealerClient:
         self._running = True
         self._loop_thread_id = threading.get_ident()
 
-        poller = self._rebuild_poller()
+        poller = zmq.Poller()
+        poller.register(self.socket, zmq.POLLIN)
+        poller.register(self._pipe_read, zmq.POLLIN)
         awaiting_reply = False
 
         while self._running:
@@ -412,75 +388,41 @@ class IpcDealerClient:
                     break
                 self.stats.track_event("__ERROR__", "poll_failed")
                 self._create_and_connect()
-                poller = self._rebuild_poller()
+                poller = zmq.Poller()
+                poller.register(self.socket, zmq.POLLIN)
+                poller.register(self._pipe_read, zmq.POLLIN)
                 continue
 
             awaiting_reply = self._handle_pipe_event(events, awaiting_reply)
-            if not self._running:
-                break
+            awaiting_reply = self._handle_dealer_event(events, awaiting_reply)
 
-            if self.socket not in events:
-                continue
-
-            try:
-                frames = self.socket.recv_multipart(flags=zmq.NOBLOCK)
-            except zmq.Again:
-                continue
-            except zmq.ZMQError:
-                if not self._running:
-                    break
-                self.stats.track_event("__ERROR__", "recv_failed")
-                self._create_and_connect()
-                poller = self._rebuild_poller()
-                if awaiting_reply:
-                    awaiting_reply = False
-                    self._reply_slot = {"status": "error", "reason": "socket reconnected"}
-                    self._reply_event.set()
-                continue
-
-            awaiting_reply = self._handle_dealer_frames(frames, awaiting_reply)
-
-        # ---- loop exit cleanup ----
         self._loop_thread_id = None
-        try:
-            poller.unregister(self.socket)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        try:
-            poller.unregister(self._pipe_read)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        try:
-            self.socket.close(linger=0)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        try:
-            self._pipe_read.close(linger=0)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        try:
-            self._pipe_write.close(linger=0)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        try:
-            self._ctx.term()
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
+        self._close_sockets(poller)
         self.logger.debug("IpcDealerClient [%s] stopped", self.identity)
 
     def _send_reply(self, sender_id: bytes, reply: dict) -> None:
         try:
-            self.socket.send_multipart(
-                [sender_id, orjson.dumps(reply)],
-                flags=zmq.NOBLOCK,
-            )
+            self.socket.send_multipart([sender_id, orjson.dumps(reply)], flags=zmq.NOBLOCK)
             self.stats.track_event("__REPLY__", reply.get("status", "data"))
         except zmq.ZMQError as e:
             self.stats.track_event("__ERROR__", "reply_send_failed")
             self.logger.warning("IpcDealerClient [%s] failed to send reply: %s", self.identity, e)
+
+    def _close_sockets(self, poller: zmq.Poller) -> None:
+        for sock in (self.socket, self._pipe_read):
+            try:
+                poller.unregister(sock)
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+        for sock in (self.socket, self._pipe_read, self._pipe_write):
+            try:
+                sock.close(linger=0)
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+        try:
+            self._ctx.term()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
 
     # ---------------------------------------------------------
     # Shutdown / stats
@@ -488,10 +430,9 @@ class IpcDealerClient:
     def close(self) -> None:
         """Signal the receive loop to stop."""
         self._running = False
-        # Wake the loop immediately via the pipe so it doesn't wait for the 100ms poll.
         with self._pipe_lock:
             try:
-                self._pipe_write.send_multipart([_CMD_STOP], flags=zmq.NOBLOCK)
+                self._pipe_write.send_multipart([_PIPE_STOP], flags=zmq.NOBLOCK)
             except zmq.ZMQError:
                 pass
 
