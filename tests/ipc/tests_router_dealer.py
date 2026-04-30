@@ -1183,7 +1183,7 @@ class TestIpcRouterDealer(TestIPC):
         tmp_router = IpcRouter(port=0)
         free_port = tmp_router.port
         tmp_router.close()
-        time.sleep(0.05)
+        time.sleep(0.2)  # give OS time to release the port reliably
 
         client_a = IpcDealerClient(port=free_port, identity="pre-a")
         client_a.route("hi")(lambda d: {"got": d})
@@ -1202,7 +1202,10 @@ class TestIpcRouterDealer(TestIPC):
         # Start the router after both clients are already "connected" (ZMQ will buffer).
         router2 = IpcRouter(port=free_port)
         router2.run_in_thread()
-        time.sleep(PROPAGATION_DELAY)
+        # Wait for both dealer loops to start and reconnect to router2. ZMQ reconnect
+        # typically completes within 100-300ms; the ROUTER learns each identity on first
+        # frame, so we also need client_b's loop to be polling before we send to it.
+        time.sleep(0.5)
 
         reply = client_a.send("pre-b", "hi", {"n": 1})
         router2.close()
