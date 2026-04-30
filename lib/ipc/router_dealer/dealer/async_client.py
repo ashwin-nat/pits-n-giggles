@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Callable, Dict, Optional
 
 import orjson
 import zmq
@@ -41,12 +41,12 @@ _NO_REPLY       = b"\x00"
 
 class IpcDealerAsync:
     """
-    Async ZeroMQ DEALER client for sending routed commands.
+    Async ZeroMQ DEALER client — bidirectional.
 
     Connects to an IpcRouter with a fixed ZMQ identity. ZMQ handles TCP
     reconnection internally — no reconnect loop is needed.
 
-    Supports two modes:
+    Outbound modes:
 
     **Fire-and-forget** — send and return immediately::
 
@@ -56,9 +56,27 @@ class IpcDealerAsync:
 
         stats = await dealer.send("hud", "get-stats", {})
 
+    Inbound (optional): register handlers via ``route(topic)`` and call
+    ``await dealer.start()`` to spawn the background receive loop. Inbound
+    frames arrive as ``[sender_id, reply_flag, topic, payload]``; replies to
+    a prior outbound ``send()`` arrive as ``[sender_id, reply_payload]`` and
+    are demuxed by frame count.
+
+    Notes:
+      - Only one outbound ``send()`` may be in-flight at a time (protocol has
+        no correlation ID). Enforced by an internal lock.
+      - Async handlers should be ``async def``; sync handlers must be fast —
+        anything that blocks stalls the recv loop.
+
     Usage::
 
         dealer = IpcDealerAsync(port=53836, identity="backend")
+
+        @dealer.route("ping")
+        async def on_ping(data: dict) -> dict:
+            return {"status": "ok", "echo": data}
+
+        await dealer.start()  # only needed if you registered routes
 
         await dealer.fire("hud", "hud-toggle-notification", {"oid": "mfd"})
         stats = await dealer.send("hud", "get-stats", {})
@@ -93,6 +111,11 @@ class IpcDealerAsync:
         self._send_lock = asyncio.Lock()
         self.stats = EventCounter()
 
+        self._routes: Dict[str, Callable[[dict], object]] = {}
+        self._pending_reply: Optional[asyncio.Future] = None
+        self._recv_task: Optional[asyncio.Task] = None
+        self._running = False
+
         self._connect()
 
     # ---------------------------------------------------------
@@ -111,6 +134,111 @@ class IpcDealerAsync:
         endpoint = f"tcp://{self.host}:{self.port}"
         self.socket.connect(endpoint)
         self.logger.debug("IpcDealerAsync [%s] connected to %s", self.identity, endpoint)
+
+    # ---------------------------------------------------------
+    # Inbound routing
+    # ---------------------------------------------------------
+    def route(self, topic: str):
+        """Decorator to register a handler for a topic string."""
+        def decorator(func: Callable[[dict], object]):
+            self._routes[topic] = func
+            return func
+        return decorator
+
+    async def start(self) -> None:
+        """
+        Spawn the background receive loop. Required only if inbound routing
+        is needed (i.e. handlers were registered via ``route()``).
+
+        Idempotent: calling twice has no effect.
+        """
+        if self._recv_task is not None and not self._recv_task.done():
+            return
+        self._running = True
+        self._recv_task = asyncio.create_task(self._recv_loop())
+
+    async def _recv_loop(self) -> None:
+        """
+        Single reader for the DEALER socket. Demuxes by frame count:
+          - 2 frames → reply to a pending outbound send()
+          - 4 frames → unsolicited inbound command → dispatch to handler
+        """
+        try:
+            while self._running:
+                try:
+                    frames = await self.socket.recv_multipart()
+                except zmq.ZMQError as e:
+                    if not self._running:
+                        return
+                    self.stats.track_event("__ERROR__", "recv_failed")
+                    self.logger.warning(
+                        "IpcDealerAsync [%s] recv error: %s", self.identity, e
+                    )
+                    continue
+
+                if len(frames) == 2:
+                    # Reply to a pending send()
+                    pending = self._pending_reply
+                    if pending is not None and not pending.done():
+                        pending.set_result(frames)
+                    else:
+                        self.stats.track_event("__DROP__", "unexpected_reply")
+                    continue
+
+                if len(frames) >= 4:
+                    await self._handle_inbound(frames)
+                    continue
+
+                self.stats.track_event("__DROP__", "short_frame")
+        except asyncio.CancelledError:
+            return
+
+    async def _handle_inbound(self, frames: list) -> None:
+        sender_id, reply_flag, topic_bytes, payload_bytes = (
+            frames[0], frames[1], frames[2], frames[3]
+        )
+        wants_reply = (reply_flag == _REPLY_REQUIRED)
+        topic = topic_bytes.decode("utf-8", errors="replace")
+        total_size = sum(len(f) for f in frames)
+
+        self.stats.track_packet("__INCOMING__", topic, total_size)
+
+        try:
+            data = orjson.loads(payload_bytes)
+        except (ValueError, TypeError):
+            self.stats.track_event("__DROP__", "invalid_json")
+            if wants_reply:
+                await self._send_reply(sender_id, {"status": "error", "reason": "invalid payload"})
+            return
+
+        handler = self._routes.get(topic)
+        if handler is None:
+            self.stats.track_event("__DROP__", f"unrouted_{topic}")
+            if wants_reply:
+                await self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
+            return
+
+        try:
+            result = handler(data)
+            if asyncio.iscoroutine(result):
+                result = await result
+            self.stats.track_event("__HANDLER_OK__", topic)
+            if wants_reply:
+                reply = result if isinstance(result, dict) else {"status": "ok"}
+                await self._send_reply(sender_id, reply)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.stats.track_event("__HANDLER_ERR__", topic)
+            self.logger.exception("Handler error for topic %r: %s", topic, e)
+            if wants_reply:
+                await self._send_reply(sender_id, {"status": "error", "reason": str(e)})
+
+    async def _send_reply(self, sender_id: bytes, reply: dict) -> None:
+        try:
+            await self.socket.send_multipart([sender_id, orjson.dumps(reply)])
+            self.stats.track_event("__REPLY__", reply.get("status", "data"))
+        except zmq.ZMQError as e:
+            self.stats.track_event("__ERROR__", "reply_send_failed")
+            self.logger.warning("IpcDealerAsync [%s] failed to send reply: %s", self.identity, e)
 
     # ---------------------------------------------------------
     # Fire-and-forget
@@ -161,33 +289,41 @@ class IpcDealerAsync:
         total_size = len(dest_identity) + len(topic) + len(payload)
 
         async with self._send_lock:
-            try:
-                await self.socket.send_multipart(
-                    [dest_identity.encode(), _REPLY_REQUIRED, topic.encode(), payload]
-                )
-                self.stats.track_packet("__OUTGOING__", topic, total_size)
-            except zmq.ZMQError as e:
-                self.stats.track_event("__ERROR__", "send_failed")
-                self.logger.warning(
-                    "IpcDealerAsync [%s] send error to %r: %s", self.identity, dest_identity, e
-                )
-                return {"status": "error", "reason": str(e)}
+            # Ensure the recv loop is running so replies can be delivered.
+            if self._recv_task is None or self._recv_task.done():
+                self._running = True
+                self._recv_task = asyncio.create_task(self._recv_loop())
+
+            loop = asyncio.get_event_loop()
+            future: asyncio.Future = loop.create_future()
+            self._pending_reply = future
 
             try:
-                frames = await asyncio.wait_for(
-                    self.socket.recv_multipart(),
-                    timeout=self.ACK_TIMEOUT,
-                )
-            except asyncio.TimeoutError:
-                self.stats.track_event("__ERROR__", "reply_timeout")
-                self.logger.warning(
-                    "IpcDealerAsync [%s] reply timeout for topic %r to %r",
-                    self.identity, topic, dest_identity,
-                )
-                return {"status": "error", "reason": "ack timeout"}
-            except zmq.ZMQError as e:
-                self.stats.track_event("__ERROR__", "recv_failed")
-                return {"status": "error", "reason": str(e)}
+                try:
+                    await self.socket.send_multipart(
+                        [dest_identity.encode(), _REPLY_REQUIRED, topic.encode(), payload]
+                    )
+                    self.stats.track_packet("__OUTGOING__", topic, total_size)
+                except zmq.ZMQError as e:
+                    self.stats.track_event("__ERROR__", "send_failed")
+                    self.logger.warning(
+                        "IpcDealerAsync [%s] send error to %r: %s", self.identity, dest_identity, e
+                    )
+                    return {"status": "error", "reason": str(e)}
+
+                try:
+                    frames = await asyncio.wait_for(future, timeout=self.ACK_TIMEOUT)
+                except asyncio.TimeoutError:
+                    self.stats.track_event("__ERROR__", "reply_timeout")
+                    self.logger.warning(
+                        "IpcDealerAsync [%s] reply timeout for topic %r to %r",
+                        self.identity, topic, dest_identity,
+                    )
+                    return {"status": "error", "reason": "ack timeout"}
+                except asyncio.CancelledError:
+                    return {"status": "error", "reason": "cancelled"}
+            finally:
+                self._pending_reply = None
 
         if not frames:
             return {"status": "error", "reason": "empty reply"}
@@ -204,6 +340,21 @@ class IpcDealerAsync:
     # Shutdown / stats
     # ---------------------------------------------------------
     async def close(self) -> None:
+        self._running = False
+
+        # Fail any in-flight send() so the awaiter unblocks immediately.
+        pending = self._pending_reply
+        if pending is not None and not pending.done():
+            pending.set_exception(asyncio.CancelledError("dealer closed"))
+
+        if self._recv_task is not None:
+            self._recv_task.cancel()
+            try:
+                await self._recv_task
+            except (asyncio.CancelledError, Exception):  # pylint: disable=broad-exception-caught
+                pass
+            self._recv_task = None
+
         if self.socket:
             try:
                 self.socket.close(linger=0)
