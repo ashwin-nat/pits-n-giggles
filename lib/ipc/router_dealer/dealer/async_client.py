@@ -360,6 +360,12 @@ class IpcDealerAsync:
                 self.socket.close(linger=0)
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
+
+        try:
+            self._ctx.term()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
         self.logger.debug("IpcDealerAsync [%s] closed", self.identity)
 
     def get_stats(self) -> dict:

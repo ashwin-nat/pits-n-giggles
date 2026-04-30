@@ -213,6 +213,11 @@ class IpcDealerClient:
         except Exception:  # pylint: disable=broad-exception-caught
             pass
 
+        try:
+            self._ctx.term()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
         self.logger.debug("IpcDealerClient [%s] stopped", self.identity)
 
     def _send_reply(self, sender_id: bytes, reply: dict) -> None:
