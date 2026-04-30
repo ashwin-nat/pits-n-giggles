@@ -811,3 +811,539 @@ class TestIpcRouterDealer(TestIPC):
         time.sleep(PROPAGATION_DELAY)
         self.assertEqual(reply.get("status"), "ok")
         self.assertIn({"v": 99}, received)
+
+    # ------------------------------------------------------------------
+    # IpcDealerClient outbound fire() / send()
+    # ------------------------------------------------------------------
+
+    def test_dealer_client_fire_delivers_to_async_receiver(self):
+        """IpcDealerClient.fire() reaches an IpcDealerAsync that has called start()."""
+        received = []
+
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="async-fire-recv")
+
+            @receiver.route("press")
+            def on_press(data):
+                received.append(data)
+
+            await receiver.start()
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            client = self._make_dealer_client("sync-fire-send", {})
+            time.sleep(PROPAGATION_DELAY)
+
+            client.fire("async-fire-recv", "press", {"btn": "x"})
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            await receiver.close()
+
+        self._run_async(run())
+        self.assertIn({"btn": "x"}, received)
+
+    def test_dealer_client_fire_delivers_to_sync_receiver(self):
+        """IpcDealerClient.fire() reaches another IpcDealerClient receiver."""
+        received = []
+
+        receiver = self._make_dealer_client("sync-recv-fire", {
+            "ping": lambda d: received.append(d),
+        })
+        sender = self._make_dealer_client("sync-send-fire", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        sender.fire("sync-recv-fire", "ping", {"v": 42})
+        time.sleep(PROPAGATION_DELAY * 3)
+
+        self.assertIn({"v": 42}, received)
+
+    def test_dealer_client_send_gets_reply_from_async_dealer(self):
+        """IpcDealerClient.send() → IpcDealerAsync handler returns dict → sync caller gets it."""
+        STATS = {"laps": 5, "tyre": "medium"}
+
+        # Run the async receiver in a background event loop so sync send() can be called
+        # from the test thread without deadlocking the event loop.
+        loop = asyncio.new_event_loop()
+        stop_event = threading.Event()
+        receiver_holder = []
+
+        async def async_main():
+            receiver = IpcDealerAsync(port=self.port, identity="async-send-reply")
+
+            @receiver.route("get-stats")
+            def on_get_stats(_data):
+                return STATS
+
+            await receiver.start()
+            receiver_holder.append(receiver)
+            # Wait until the test signals us to stop.
+            while not stop_event.is_set():
+                await asyncio.sleep(0.05)
+            await receiver.close()
+
+        loop_thread = threading.Thread(target=loop.run_until_complete, args=(async_main(),), daemon=True)
+        loop_thread.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        client = self._make_dealer_client("sync-send-rpc", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = client.send("async-send-reply", "get-stats", {})
+
+        stop_event.set()
+        loop_thread.join(timeout=2.0)
+        loop.close()
+
+        self.assertEqual(reply, STATS)
+
+    def test_dealer_client_send_gets_reply_from_sync_receiver(self):
+        """IpcDealerClient.send() → IpcDealerClient handler returns dict → caller gets it."""
+        receiver = self._make_dealer_client("sync-recv-rpc", {
+            "echo": lambda d: {"echoed": d},
+        })
+        sender = self._make_dealer_client("sync-send-rpc2", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = sender.send("sync-recv-rpc", "echo", {"x": 7})
+        self.assertEqual(reply.get("echoed"), {"x": 7})
+
+    def test_dealer_client_send_timeout_on_no_receiver(self):
+        """IpcDealerClient.send() to a non-existent identity returns error dict, no hang."""
+        sender = self._make_dealer_client("sync-timeout-sender", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = sender.send("ghost-identity", "press", {}, timeout=0.2)
+        self.assertEqual(reply.get("status"), "error")
+        self.assertIn("timeout", reply.get("reason", ""))
+
+    def test_dealer_client_send_unknown_topic_returns_error(self):
+        """Sending an unregistered topic to a sync receiver returns an error reply."""
+        receiver = self._make_dealer_client("sync-recv-unknown2", {})
+        sender = self._make_dealer_client("sync-send-unknown2", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = sender.send("sync-recv-unknown2", "no-such-topic", {})
+        self.assertEqual(reply.get("status"), "error")
+        self.assertIn("unknown topic", reply.get("reason", ""))
+
+    def test_dealer_client_send_does_not_block_inbound_receive(self):
+        """
+        While one thread calls send(), the loop must still process inbound commands.
+        Verify by having an inbound fire arrive during an outbound send.
+        """
+        inbound_received = []
+
+        # This receiver also handles inbound messages from someone else.
+        receiver = self._make_dealer_client("sync-bidir-loop", {
+            "inbound": lambda d: inbound_received.append(d),
+            "echo": lambda d: {"echoed": d},
+        })
+        sender = self._make_dealer_client("sync-bidir-sender", {})
+        # A third party that fires at the receiver while the send is in-flight.
+        third = self._make_dealer_client("sync-bidir-third", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        # Fire the inbound message first (it'll sit in the DEALER socket queue).
+        third.fire("sync-bidir-loop", "inbound", {"from": "third"})
+        time.sleep(0.02)
+
+        # Now do a send — the loop must deliver the inbound fire AND the reply.
+        reply = sender.send("sync-bidir-loop", "echo", {"x": 1})
+        time.sleep(PROPAGATION_DELAY)
+
+        self.assertEqual(reply.get("echoed"), {"x": 1})
+        self.assertIn({"from": "third"}, inbound_received)
+
+    def test_dealer_client_concurrent_fire_calls_all_delivered(self):
+        """N concurrent fire() calls from multiple threads all arrive."""
+        N = 20
+        received = []
+        receiver = self._make_dealer_client("sync-concurrent-recv", {
+            "press": lambda d: received.append(d),
+        })
+        sender = self._make_dealer_client("sync-concurrent-send", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        threads = []
+        for i in range(N):
+            t = threading.Thread(target=sender.fire, args=("sync-concurrent-recv", "press", {"seq": i}))
+            threads.append(t)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        time.sleep(PROPAGATION_DELAY * 3)
+        self.assertEqual(len(received), N)
+        for i in range(N):
+            self.assertIn({"seq": i}, received)
+
+    # ------------------------------------------------------------------
+    # Bidirectional exchange: sync ↔ async, both sides send and receive
+    # ------------------------------------------------------------------
+
+    def test_bidir_sync_sends_async_replies(self):
+        """Sync client calls send() → async dealer handles it → reply received."""
+        loop = asyncio.new_event_loop()
+        stop_event = threading.Event()
+
+        async def async_main():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-async-a")
+
+            @async_dealer.route("query")
+            def on_query(data):
+                return {"answer": data.get("q", "") + "-response"}
+
+            await async_dealer.start()
+            while not stop_event.is_set():
+                await asyncio.sleep(0.05)
+            await async_dealer.close()
+
+        loop_thread = threading.Thread(target=loop.run_until_complete, args=(async_main(),), daemon=True)
+        loop_thread.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        sync_client = self._make_dealer_client("bidir-sync-a", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = sync_client.send("bidir-async-a", "query", {"q": "hello"})
+
+        stop_event.set()
+        loop_thread.join(timeout=2.0)
+        loop.close()
+
+        self.assertEqual(reply.get("answer"), "hello-response")
+
+    def test_bidir_async_sends_sync_replies(self):
+        """Async dealer calls send() → sync client handles it → reply received."""
+        sync_client = self._make_dealer_client("bidir-sync-b", {
+            "ping": lambda d: {"pong": d.get("n", 0) * 2},
+        })
+
+        async def run():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-async-b")
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            reply = await async_dealer.send("bidir-sync-b", "ping", {"n": 21})
+            await async_dealer.close()
+            return reply
+
+        reply = self._run_async(run())
+        self.assertEqual(reply.get("pong"), 42)
+
+    def test_bidir_fire_both_directions(self):
+        """Both sides fire a message to each other; both arrive."""
+        sync_received = []
+        async_received = []
+
+        sync_client = self._make_dealer_client("bidir-fire-sync", {
+            "from-async": lambda d: sync_received.append(d),
+        })
+
+        async def run():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-fire-async")
+
+            @async_dealer.route("from-sync")
+            def on_from_sync(data):
+                async_received.append(data)
+
+            await async_dealer.start()
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sync_client.fire("bidir-fire-async", "from-sync", {"dir": "s→a"})
+            await async_dealer.fire("bidir-fire-sync", "from-async", {"dir": "a→s"})
+            await asyncio.sleep(PROPAGATION_DELAY * 2)
+
+            await async_dealer.close()
+
+        self._run_async(run())
+        time.sleep(PROPAGATION_DELAY)
+
+        self.assertIn({"dir": "s→a"}, async_received)
+        self.assertIn({"dir": "a→s"}, sync_received)
+
+    def test_bidir_simultaneous_exchange(self):
+        """Both sides send to each other in parallel; all replies correct."""
+        async def run():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-sim-async")
+
+            @async_dealer.route("async-echo")
+            def on_async_echo(data):
+                return {"async_got": data}
+
+            await async_dealer.start()
+
+            sync_client = self._make_dealer_client("bidir-sim-sync", {
+                "sync-echo": lambda d: {"sync_got": d},
+            })
+            await asyncio.sleep(PROPAGATION_DELAY)
+            time.sleep(PROPAGATION_DELAY)
+
+            # Run both sends concurrently using a thread for the blocking sync send.
+            sync_reply_holder = []
+
+            def do_sync_send():
+                sync_reply_holder.append(
+                    sync_client.send("bidir-sim-async", "async-echo", {"from": "sync"})
+                )
+
+            t = threading.Thread(target=do_sync_send)
+            t.start()
+
+            async_reply = await async_dealer.send("bidir-sim-sync", "sync-echo", {"from": "async"})
+            t.join(timeout=5.0)
+
+            await async_dealer.close()
+            return async_reply, sync_reply_holder[0] if sync_reply_holder else None
+
+        async_reply, sync_reply = self._run_async(run())
+        self.assertEqual(async_reply.get("sync_got"), {"from": "async"})
+        self.assertIsNotNone(sync_reply)
+        self.assertEqual(sync_reply.get("async_got"), {"from": "sync"})
+
+    def test_bidir_rapid_back_and_forth(self):
+        """N sequential send/reply cycles between sync and async complete correctly."""
+        N = 10
+
+        sync_client = self._make_dealer_client("bidir-rapid-sync", {
+            "increment": lambda d: {"n": d["n"] + 1},
+        })
+
+        async def run():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-rapid-async")
+
+            @async_dealer.route("double")
+            def on_double(data):
+                return {"n": data["n"] * 2}
+
+            await async_dealer.start()
+            await asyncio.sleep(PROPAGATION_DELAY)
+            time.sleep(PROPAGATION_DELAY)
+
+            results = []
+            for i in range(N):
+                # Async → sync
+                r1 = await async_dealer.send("bidir-rapid-sync", "increment", {"n": i})
+                results.append(("async→sync", i, r1))
+                # Sync → async (from a thread to avoid blocking the event loop)
+                loop = asyncio.get_event_loop()
+                r2 = await loop.run_in_executor(
+                    None, sync_client.send, "bidir-rapid-async", "double", {"n": i}
+                )
+                results.append(("sync→async", i, r2))
+
+            await async_dealer.close()
+            return results
+
+        results = self._run_async(run())
+        self.assertEqual(len(results), N * 2)
+        for direction, i, reply in results:
+            if direction == "async→sync":
+                self.assertEqual(reply.get("n"), i + 1, f"increment({i}) failed: {reply}")
+            else:
+                self.assertEqual(reply.get("n"), i * 2, f"double({i}) failed: {reply}")
+
+    # ------------------------------------------------------------------
+    # Startup order tests
+    # ------------------------------------------------------------------
+
+    def test_dealer_connects_before_router(self):
+        """Sync client started before router; first send() succeeds once router is up."""
+        # Grab a free port by letting a temporary router bind and immediately close.
+        tmp_router = IpcRouter(port=0)
+        free_port = tmp_router.port
+        tmp_router.close()
+        time.sleep(0.2)  # give OS time to release the port
+
+        # Start client pointing at that port before any router is bound there.
+        client = IpcDealerClient(port=free_port, identity="early-client")
+        client.route("pong")(lambda _: {"pong": True})
+        t = threading.Thread(target=client.start, daemon=True)
+        t.start()
+        self._clients.append(client)
+        self._threads.append(t)
+
+        # Now bind the router — ZMQ will reconnect the client automatically.
+        router2 = IpcRouter(port=free_port)
+        router2.run_in_thread()
+        time.sleep(0.5)  # ZMQ reconnect typically completes within 100-300ms
+
+        async def run():
+            sender = IpcDealerAsync(port=free_port, identity="late-sender")
+            await asyncio.sleep(PROPAGATION_DELAY)
+            reply = await sender.send("early-client", "pong", {})
+            await sender.close()
+            return reply
+
+        reply = self._run_async(run())
+        router2.close()
+        self.assertEqual(reply.get("pong"), True)
+
+    def test_router_starts_after_both_dealers(self):
+        """Both dealers started before the router; messages flow once router is up."""
+        tmp_router = IpcRouter(port=0)
+        free_port = tmp_router.port
+        tmp_router.close()
+        time.sleep(0.05)
+
+        client_a = IpcDealerClient(port=free_port, identity="pre-a")
+        client_a.route("hi")(lambda d: {"got": d})
+        ta = threading.Thread(target=client_a.start, daemon=True)
+        ta.start()
+        self._clients.append(client_a)
+        self._threads.append(ta)
+
+        client_b = IpcDealerClient(port=free_port, identity="pre-b")
+        client_b.route("hi")(lambda d: {"got": d})
+        tb = threading.Thread(target=client_b.start, daemon=True)
+        tb.start()
+        self._clients.append(client_b)
+        self._threads.append(tb)
+
+        # Start the router after both clients are already "connected" (ZMQ will buffer).
+        router2 = IpcRouter(port=free_port)
+        router2.run_in_thread()
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = client_a.send("pre-b", "hi", {"n": 1})
+        router2.close()
+        self.assertEqual(reply.get("got"), {"n": 1})
+
+    def test_dealer_reconnects_after_router_restart(self):
+        """Router closed and restarted on same port; dealer reconnects automatically."""
+        client = self._make_dealer_client("reconnect-client", {
+            "echo": lambda d: {"echoed": d},
+        })
+        time.sleep(PROPAGATION_DELAY)
+
+        # First send works.
+        async def run1():
+            sender = IpcDealerAsync(port=self.port, identity="reconnect-sender1")
+            await asyncio.sleep(PROPAGATION_DELAY)
+            r = await sender.send("reconnect-client", "echo", {"phase": 1})
+            await sender.close()
+            return r
+
+        r1 = self._run_async(run1())
+        self.assertEqual(r1.get("echoed"), {"phase": 1})
+
+        # Restart router on the same port.
+        old_port = self.port
+        self.router.close()
+        time.sleep(0.1)
+        self.router = IpcRouter(port=old_port)
+        self.router.run_in_thread()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def run2():
+            sender = IpcDealerAsync(port=old_port, identity="reconnect-sender2")
+            await asyncio.sleep(PROPAGATION_DELAY)
+            r = await sender.send("reconnect-client", "echo", {"phase": 2})
+            await sender.close()
+            return r
+
+        r2 = self._run_async(run2())
+        self.assertEqual(r2.get("echoed"), {"phase": 2})
+
+    # ------------------------------------------------------------------
+    # Crash / recovery tests
+    # ------------------------------------------------------------------
+
+    def test_sync_dealer_crash_send_returns_error(self):
+        """Async dealer sends to a crashed sync client → send() times out, no exception."""
+        client = IpcDealerClient(port=self.port, identity="crash-sync-client")
+        client.route("noop")(lambda d: None)
+        t = threading.Thread(target=client.start, daemon=True)
+        t.start()
+        self._clients.append(client)
+        self._threads.append(t)
+        time.sleep(PROPAGATION_DELAY)
+
+        # Crash the client.
+        client._running = False
+        try:
+            client.socket.close(linger=0)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        time.sleep(0.05)
+
+        async def run():
+            sender = IpcDealerAsync(port=self.port, identity="crash-async-sender")
+            sender.ACK_TIMEOUT = 0.3
+            await asyncio.sleep(PROPAGATION_DELAY)
+            reply = await sender.send("crash-sync-client", "noop", {})
+            await sender.close()
+            return reply
+
+        reply = self._run_async(run())
+        self.assertEqual(reply.get("status"), "error")
+
+    def test_async_dealer_crash_send_returns_error(self):
+        """Sync client sends to a crashed async dealer → send() times out, no exception."""
+        async def setup():
+            dealer = IpcDealerAsync(port=self.port, identity="crash-async-dealer")
+
+            @dealer.route("noop")
+            def noop(_d):
+                return None
+
+            await dealer.start()
+            await asyncio.sleep(PROPAGATION_DELAY)
+            # Crash it.
+            dealer._running = False
+            if dealer._recv_task:
+                dealer._recv_task.cancel()
+            dealer.socket.close(linger=0)
+
+        self._run_async(setup())
+        time.sleep(0.05)
+
+        client = self._make_dealer_client("crash-sync-sender", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        reply = client.send("crash-async-dealer", "noop", {}, timeout=0.3)
+        self.assertEqual(reply.get("status"), "error")
+
+    def test_sync_dealer_crash_and_reconnect(self):
+        """Sync client crashes and reconnects with same identity; next send() succeeds."""
+        # Phase 1: healthy.
+        client1 = IpcDealerClient(port=self.port, identity="resilient-sync")
+        client1.route("echo")(lambda d: {"echoed": d})
+        t1 = threading.Thread(target=client1.start, daemon=True)
+        t1.start()
+        self._clients.append(client1)
+        self._threads.append(t1)
+        time.sleep(PROPAGATION_DELAY)
+
+        async def run_send(identity, data, timeout=ACK_TIMEOUT):
+            sender = IpcDealerAsync(port=self.port, identity=identity)
+            sender.ACK_TIMEOUT = timeout
+            await asyncio.sleep(PROPAGATION_DELAY)
+            r = await sender.send("resilient-sync", "echo", data)
+            await sender.close()
+            return r
+
+        r1 = self._run_async(run_send("resilient-sndr-1", {"phase": 1}))
+        self.assertEqual(r1.get("echoed"), {"phase": 1})
+
+        # Phase 2: crash.
+        client1._running = False
+        try:
+            client1.socket.close(linger=0)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        time.sleep(0.05)
+
+        r2 = self._run_async(run_send("resilient-sndr-2", {"phase": 2}, timeout=0.3))
+        self.assertEqual(r2.get("status"), "error")
+
+        # Phase 3: new client reconnects with same identity.
+        client2 = IpcDealerClient(port=self.port, identity="resilient-sync")
+        client2.route("echo")(lambda d: {"echoed": d})
+        t2 = threading.Thread(target=client2.start, daemon=True)
+        t2.start()
+        self._clients.append(client2)
+        self._threads.append(t2)
+        time.sleep(PROPAGATION_DELAY)
+
+        r3 = self._run_async(run_send("resilient-sndr-3", {"phase": 3}))
+        self.assertEqual(r3.get("echoed"), {"phase": 3})
