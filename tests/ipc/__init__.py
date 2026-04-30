@@ -24,7 +24,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tests_parent_child import TestIpcParentChild
-from .tests_subscriber import TestIpcSubscriber
 from .tests_pubsub import TestIpcPubSub, TestIpcPubSubAsync
 from .tests_router_dealer import TestIpcRouterDealer
 
@@ -32,7 +31,6 @@ from .tests_router_dealer import TestIpcRouterDealer
 
 __all__ = [
     "TestIpcParentChild",
-    "TestIpcSubscriber",
     "TestIpcPubSub",
     "TestIpcRouterDealer",
     "TestIpcPubSubAsync",

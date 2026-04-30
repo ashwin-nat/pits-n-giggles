@@ -29,7 +29,6 @@ from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
 from .reqrep.async_server import IpcServerAsync
 from .reqrep.sync_client import IpcClientSync
 from .reqrep.sync_server import IpcServerSync
-from .socketio_client import SocketioClient
 from .router_dealer.router.router import IpcRouter
 from .router_dealer.dealer.client import IpcDealerClient
 from .router_dealer.dealer.async_client import IpcDealerAsync
@@ -41,7 +40,6 @@ __all__ = [
     'IpcClientSync',
     'IpcServerAsync',
     'IpcServerSync',
-    'SocketioClient',
     'IpcContentType',
     'IpcPublisherAsync',
     'IpcSubscriberAsync',
