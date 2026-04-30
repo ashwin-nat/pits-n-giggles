@@ -33,7 +33,7 @@ from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcPublisherAsync
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync
 from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
@@ -80,6 +80,13 @@ def initUiIntfLayer(
     tasks.append(ipc_pub.get_task())
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
+    dealer = IpcDealerAsync(
+        host="127.0.0.1",
+        port=settings.Network.broker_router_port,
+        identity="backend",
+        logger=logger,
+    )
+
     # Setup periodic tasks
     tasks.append(asyncio.create_task(
         _periodic_task(
@@ -111,7 +118,7 @@ def initUiIntfLayer(
     # Interrupt/event driven tasks
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
 
     registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
@@ -187,22 +194,18 @@ async def frontEndMessageTask(
     server.m_logger.debug("Shutting down front end message task")
 
 async def hudInteractionTask(
-    server: TelemetryWebServer,
+    dealer: IpcDealerAsync,
     shutdown_event: asyncio.Event) -> None:
-    """Task to update HUD clients with telemetry data
+    """Task to forward HUD button-press notifications via ZeroMQ DEALER.
 
     Args:
-        server (TelemetryWebServer): The telemetry web server
+        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await server.send_to_clients_interested_in_event(
-                event=str(message.m_message_type),
-                data=message.toJSON())
-
-    server.m_logger.debug("Shutting down HUD notifier task")
+            await dealer.fire("hud", str(message.m_message_type), message.toJSON())
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

@@ -67,16 +67,16 @@ def main(logger: logging.Logger, config: PngSettings, debug_mode: bool) -> None:
 
     overlays_mgr = OverlaysMgr(logger, config, debug=debug_mode)
 
-    socketio_client, ipc_sub = run_hud_update_threads(
+    dealer_client, ipc_sub = run_hud_update_threads(
         logger=logger,
         overlays_mgr=overlays_mgr,
-        port=config.Network.server_port,
+        router_port=config.Network.broker_router_port,
         xpub_port=config.Network.broker_xpub_port)
 
     run_ipc_task(
         logger=logger,
         overlays_mgr=overlays_mgr,
-        socketio_client=socketio_client,
+        dealer_client=dealer_client,
         ipc_sub=ipc_sub)
 
     overlays_mgr.run()
