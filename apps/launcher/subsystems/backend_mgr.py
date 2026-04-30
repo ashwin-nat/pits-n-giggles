@@ -165,6 +165,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "bind_address",
                 "wdt_interval_sec",
                 "broker_xsub_port",
+                "broker_router_port",
                 "enable_pkt_ordering",
             ],
             "Capture" : [],
