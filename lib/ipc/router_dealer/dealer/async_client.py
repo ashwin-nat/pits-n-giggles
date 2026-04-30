@@ -39,6 +39,29 @@ _NO_REPLY       = b"\x00"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class _ReplyCoordinator:
+    """Encapsulates the one-in-flight reply future for IpcDealerAsync."""
+
+    def __init__(self) -> None:
+        self._future: Optional[asyncio.Future] = None
+
+    def new_waiter(self) -> asyncio.Future:
+        loop = asyncio.get_running_loop()
+        fut = loop.create_future()
+        self._future = fut
+        return fut
+
+    def deliver(self, frames: list) -> bool:
+        if self._future is not None and not self._future.done():
+            self._future.set_result(frames)
+            return True
+        return False
+
+    def cancel(self, exc: Exception) -> None:
+        if self._future is not None and not self._future.done():
+            self._future.set_exception(exc)
+
+
 class IpcDealerAsync:
     """
     Async ZeroMQ DEALER client — bidirectional.
@@ -112,9 +135,8 @@ class IpcDealerAsync:
         self.stats = EventCounter()
 
         self._routes: Dict[str, Callable[[dict], object]] = {}
-        self._pending_reply: Optional[asyncio.Future] = None
+        self._replies = _ReplyCoordinator()
         self._recv_task: Optional[asyncio.Task] = None
-        self._running = False
 
         self._connect()
 
@@ -136,6 +158,13 @@ class IpcDealerAsync:
         self.logger.debug("IpcDealerAsync [%s] connected to %s", self.identity, endpoint)
 
     # ---------------------------------------------------------
+    # Recv loop lifecycle
+    # ---------------------------------------------------------
+    def _ensure_recv_loop(self) -> None:
+        if self._recv_task is None or self._recv_task.done():
+            self._recv_task = asyncio.create_task(self._recv_loop())
+
+    # ---------------------------------------------------------
     # Inbound routing
     # ---------------------------------------------------------
     def route(self, topic: str):
@@ -152,10 +181,7 @@ class IpcDealerAsync:
 
         Idempotent: calling twice has no effect.
         """
-        if self._recv_task is not None and not self._recv_task.done():
-            return
-        self._running = True
-        self._recv_task = asyncio.create_task(self._recv_loop())
+        self._ensure_recv_loop()
 
     async def _recv_loop(self) -> None:
         """
@@ -164,12 +190,10 @@ class IpcDealerAsync:
           - 4 frames → unsolicited inbound command → dispatch to handler
         """
         try:
-            while self._running:
+            while True:
                 try:
                     frames = await self.socket.recv_multipart()
                 except zmq.ZMQError as e:
-                    if not self._running:
-                        return
                     self.stats.track_event("__ERROR__", "recv_failed")
                     self.logger.warning(
                         "IpcDealerAsync [%s] recv error: %s", self.identity, e
@@ -178,10 +202,7 @@ class IpcDealerAsync:
 
                 if len(frames) == 2:
                     # Reply to a pending send()
-                    pending = self._pending_reply
-                    if pending is not None and not pending.done():
-                        pending.set_result(frames)
-                    else:
+                    if not self._replies.deliver(frames):
                         self.stats.track_event("__DROP__", "unexpected_reply")
                     continue
 
@@ -289,14 +310,8 @@ class IpcDealerAsync:
         total_size = len(dest_identity) + len(topic) + len(payload)
 
         async with self._send_lock:
-            # Ensure the recv loop is running so replies can be delivered.
-            if self._recv_task is None or self._recv_task.done():
-                self._running = True
-                self._recv_task = asyncio.create_task(self._recv_loop())
-
-            loop = asyncio.get_event_loop()
-            future: asyncio.Future = loop.create_future()
-            self._pending_reply = future
+            self._ensure_recv_loop()
+            future = self._replies.new_waiter()
 
             try:
                 try:
@@ -323,7 +338,7 @@ class IpcDealerAsync:
                 except asyncio.CancelledError:
                     return {"status": "error", "reason": "cancelled"}
             finally:
-                self._pending_reply = None
+                self._replies.cancel(Exception("send completed"))
 
         if not frames:
             return {"status": "error", "reason": "empty reply"}
@@ -340,12 +355,7 @@ class IpcDealerAsync:
     # Shutdown / stats
     # ---------------------------------------------------------
     async def close(self) -> None:
-        self._running = False
-
-        # Fail any in-flight send() so the awaiter unblocks immediately.
-        pending = self._pending_reply
-        if pending is not None and not pending.done():
-            pending.set_exception(asyncio.CancelledError("dealer closed"))
+        self._replies.cancel(asyncio.CancelledError("dealer closed"))
 
         if self._recv_task is not None:
             self._recv_task.cancel()
