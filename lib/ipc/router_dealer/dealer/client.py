@@ -74,16 +74,20 @@ class IpcDealerClient:
     ZMQ sockets are not thread-safe, so outbound sends are marshalled through
     an inproc PAIR pipe that the loop thread drains alongside the DEALER socket.
 
+    Every handler **must** accept exactly two positional arguments:
+    ``(data: dict, sender: str)``, where ``sender`` is the ZMQ identity string
+    of the peer that sent the message.
+
     Usage::
 
         client = IpcDealerClient(port=53836, identity="hud")
 
         @client.route("hud-toggle-notification")
-        def on_toggle(data: dict):
+        def on_toggle(data: dict, sender: str):
             overlays_mgr.toggle(data["oid"])
 
         @client.route("get-stats")
-        def on_get_stats(data: dict) -> dict:
+        def on_get_stats(data: dict, sender: str) -> dict:
             return overlays_mgr.get_stats()
 
         threading.Thread(target=client.start, daemon=True).start()
@@ -164,7 +168,12 @@ class IpcDealerClient:
     # Register handler
     # ---------------------------------------------------------
     def route(self, topic: str):
-        """Decorator to register a handler for a topic string."""
+        """Decorator to register a handler for a topic string.
+
+        The decorated function must accept two positional arguments:
+        ``(data: dict, sender: str)`` where ``sender`` is the ZMQ identity of
+        the message origin.
+        """
         def decorator(func: Callable[[dict], None]):
             self._routes[topic] = func
             return func
@@ -355,8 +364,9 @@ class IpcDealerClient:
                 self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
             return awaiting_reply
 
+        sender_str = sender_id.decode("utf-8", errors="replace")
         try:
-            result = handler(data)
+            result = handler(data, sender_str)
             self.stats.track_event("__HANDLER_OK__", topic)
             if wants_reply:
                 self._send_reply(sender_id, result if isinstance(result, dict) else {"status": "ok"})

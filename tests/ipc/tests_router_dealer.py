@@ -144,7 +144,7 @@ class TestIpcRouterDealer(TestIPC):
         received = []
 
         self._make_dealer_client("hud", {
-            "toggle": lambda data: received.append(data),
+            "toggle": lambda data, _sender: received.append(data),
         })
 
         async def run():
@@ -167,7 +167,7 @@ class TestIpcRouterDealer(TestIPC):
         STATS = {"laps": 42, "tyre": "soft"}
 
         self._make_dealer_client("hud-rich", {
-            "get-stats": lambda _: STATS,
+            "get-stats": lambda _, _sender: STATS,
         })
 
         async def run():
@@ -186,8 +186,8 @@ class TestIpcRouterDealer(TestIPC):
         calls = {"a": [], "b": []}
 
         self._make_dealer_client("hud-multi", {
-            "topic-a": lambda d: calls["a"].append(d),
-            "topic-b": lambda d: calls["b"].append(d),
+            "topic-a": lambda d, _sender: calls["a"].append(d),
+            "topic-b": lambda d, _sender: calls["b"].append(d),
         })
 
         async def run():
@@ -226,7 +226,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIn("unknown topic", reply.get("reason", ""))
 
     def test_send_handler_exception_returns_error(self):
-        def bad_handler(_data):
+        def bad_handler(_data, _sender):
             raise RuntimeError("boom")
 
         self._make_dealer_client("hud-exc", {"crash": bad_handler})
@@ -250,7 +250,7 @@ class TestIpcRouterDealer(TestIPC):
         received = []
 
         self._make_dealer_client("hud-rapid", {
-            "press": lambda d: received.append(d),
+            "press": lambda d, _sender: received.append(d),
         })
 
         async def run():
@@ -306,7 +306,7 @@ class TestIpcRouterDealer(TestIPC):
 
         # Phase 1: healthy
         client = IpcDealerClient(port=self.port, identity="hud-crash")
-        client.route("ping")(lambda d: received_before.append(d))
+        client.route("ping")(lambda d, _sender: received_before.append(d))
         t = threading.Thread(target=client.start, daemon=True)
         t.start()
         self._clients.append(client)
@@ -348,7 +348,7 @@ class TestIpcRouterDealer(TestIPC):
 
         # Phase 3: reconnect
         client2 = IpcDealerClient(port=self.port, identity="hud-crash")
-        client2.route("ping")(lambda d: received_after.append(d))
+        client2.route("ping")(lambda d, _sender: received_after.append(d))
         t2 = threading.Thread(target=client2.start, daemon=True)
         t2.start()
         self._clients.append(client2)
@@ -377,7 +377,7 @@ class TestIpcRouterDealer(TestIPC):
         received = []
 
         self._make_dealer_client("hud-fire", {
-            "press": lambda d: received.append(d),
+            "press": lambda d, _sender: received.append(d),
         })
 
         async def run():
@@ -401,7 +401,7 @@ class TestIpcRouterDealer(TestIPC):
         received = []
 
         self._make_dealer_client("hud-fire-rapid", {
-            "press": lambda d: received.append(d),
+            "press": lambda d, _sender: received.append(d),
         })
 
         async def run():
@@ -438,7 +438,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_fire_does_not_block_on_no_ack(self):
         """fire() to a client that never replies must return in under 0.5s."""
         self._make_dealer_client("hud-fire-noack", {
-            "press": lambda _: None,  # handler returns nothing, but fire() doesn't care
+            "press": lambda _, _sender: None,  # handler returns nothing, but fire() doesn't care
         })
 
         async def run():
@@ -464,8 +464,8 @@ class TestIpcRouterDealer(TestIPC):
     def test_two_clients_receive_only_own_messages(self):
         recv_a, recv_b = [], []
 
-        self._make_dealer_client("hud-a", {"msg": lambda d: recv_a.append(d)})
-        self._make_dealer_client("hud-b", {"msg": lambda d: recv_b.append(d)})
+        self._make_dealer_client("hud-a", {"msg": lambda d, _sender: recv_a.append(d)})
+        self._make_dealer_client("hud-b", {"msg": lambda d, _sender: recv_b.append(d)})
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-ab")
@@ -495,7 +495,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_dealer_client_stats_track_ok_handler(self):
         received = []
         client = self._make_dealer_client("hud-stats", {
-            "ping": lambda d: received.append(d),
+            "ping": lambda d, _sender: received.append(d),
         })
 
         async def run():
@@ -513,7 +513,7 @@ class TestIpcRouterDealer(TestIPC):
 
     def test_router_stats_increment_after_traffic(self):
         received = []
-        self._make_dealer_client("hud-bstats", {"x": lambda d: received.append(d)})
+        self._make_dealer_client("hud-bstats", {"x": lambda d, _sender: received.append(d)})
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-bstats")
@@ -540,7 +540,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-fire")
 
             @receiver.route("press")
-            def on_press(data):
+            def on_press(data, _sender):
                 received.append(data)
 
             asyncio.create_task(receiver.start())
@@ -567,7 +567,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-send")
 
             @receiver.route("get-stats")
-            def on_get_stats(_data):
+            def on_get_stats(_data, _sender):
                 return STATS
 
             asyncio.create_task(receiver.start())
@@ -591,7 +591,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-none")
 
             @receiver.route("ack")
-            def on_ack(_data):
+            def on_ack(_data, _sender):
                 return None
 
             asyncio.create_task(receiver.start())
@@ -615,7 +615,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-coro")
 
             @receiver.route("slow")
-            async def on_slow(data):
+            async def on_slow(data, _sender):
                 await asyncio.sleep(0.01)
                 return {"echo": data, "via": "coro"}
 
@@ -662,7 +662,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-exc")
 
             @receiver.route("crash")
-            def boom(_data):
+            def boom(_data, _sender):
                 raise RuntimeError("kaboom")
 
             asyncio.create_task(receiver.start())
@@ -675,7 +675,7 @@ class TestIpcRouterDealer(TestIPC):
 
             # Recv loop should still be alive after an exception — try again.
             @receiver.route("ok")
-            def on_ok(_data):
+            def on_ok(_data, _sender):
                 return {"status": "ok", "after": "crash"}
 
             reply2 = await sender.send("async-recv-exc", "ok", {})
@@ -697,7 +697,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-recv-badjson")
 
             @receiver.route("anything")
-            def on_anything(_data):
+            def on_anything(_data, _sender):
                 return {"status": "ok"}
 
             asyncio.create_task(receiver.start())
@@ -737,14 +737,14 @@ class TestIpcRouterDealer(TestIPC):
 
         # Sync client that the bridge will send to.
         self._make_dealer_client("sync-peer", {
-            "from-bridge": lambda d: sync_received.append(d),
+            "from-bridge": lambda d, _sender: sync_received.append(d),
         })
 
         async def run():
             bridge = IpcDealerAsync(port=self.port, identity="bridge")
 
             @bridge.route("from-other")
-            def on_from_other(data):
+            def on_from_other(data, _sender):
                 bridge_received.append(data)
                 return {"status": "ok", "ack": data}
 
@@ -779,7 +779,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="async-close-loop")
 
             @dealer.route("noop")
-            def noop(_data):
+            def noop(_data, _sender):
                 return None
 
             asyncio.create_task(dealer.start())
@@ -850,7 +850,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-fire-recv")
 
             @receiver.route("press")
-            def on_press(data):
+            def on_press(data, _sender):
                 received.append(data)
 
             asyncio.create_task(receiver.start())
@@ -872,7 +872,7 @@ class TestIpcRouterDealer(TestIPC):
         received = []
 
         receiver = self._make_dealer_client("sync-recv-fire", {
-            "ping": lambda d: received.append(d),
+            "ping": lambda d, _sender: received.append(d),
         })
         sender = self._make_dealer_client("sync-send-fire", {})
         time.sleep(PROPAGATION_DELAY)
@@ -896,7 +896,7 @@ class TestIpcRouterDealer(TestIPC):
             receiver = IpcDealerAsync(port=self.port, identity="async-send-reply")
 
             @receiver.route("get-stats")
-            def on_get_stats(_data):
+            def on_get_stats(_data, _sender):
                 return STATS
 
             asyncio.ensure_future(receiver.start())
@@ -924,7 +924,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_dealer_client_send_gets_reply_from_sync_receiver(self):
         """IpcDealerClient.send() → IpcDealerClient handler returns dict → caller gets it."""
         receiver = self._make_dealer_client("sync-recv-rpc", {
-            "echo": lambda d: {"echoed": d},
+            "echo": lambda d, _sender: {"echoed": d},
         })
         sender = self._make_dealer_client("sync-send-rpc2", {})
         time.sleep(PROPAGATION_DELAY)
@@ -974,8 +974,8 @@ class TestIpcRouterDealer(TestIPC):
 
         # This receiver also handles inbound messages from someone else.
         receiver = self._make_dealer_client("sync-bidir-loop", {
-            "inbound": lambda d: inbound_received.append(d),
-            "echo": lambda d: {"echoed": d},
+            "inbound": lambda d, _sender: inbound_received.append(d),
+            "echo": lambda d, _sender: {"echoed": d},
         })
         sender = self._make_dealer_client("sync-bidir-sender", {})
         # A third party that fires at the receiver while the send is in-flight.
@@ -998,7 +998,7 @@ class TestIpcRouterDealer(TestIPC):
         N = 20
         received = []
         receiver = self._make_dealer_client("sync-concurrent-recv", {
-            "press": lambda d: received.append(d),
+            "press": lambda d, _sender: received.append(d),
         })
         sender = self._make_dealer_client("sync-concurrent-send", {})
         time.sleep(PROPAGATION_DELAY)
@@ -1030,7 +1030,7 @@ class TestIpcRouterDealer(TestIPC):
             async_dealer = IpcDealerAsync(port=self.port, identity="bidir-async-a")
 
             @async_dealer.route("query")
-            def on_query(data):
+            def on_query(data, _sender):
                 return {"answer": data.get("q", "") + "-response"}
 
             asyncio.ensure_future(async_dealer.start())
@@ -1056,7 +1056,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_bidir_async_sends_sync_replies(self):
         """Async dealer calls send() → sync client handles it → reply received."""
         sync_client = self._make_dealer_client("bidir-sync-b", {
-            "ping": lambda d: {"pong": d.get("n", 0) * 2},
+            "ping": lambda d, _sender: {"pong": d.get("n", 0) * 2},
         })
 
         async def run():
@@ -1077,14 +1077,14 @@ class TestIpcRouterDealer(TestIPC):
         async_received = []
 
         sync_client = self._make_dealer_client("bidir-fire-sync", {
-            "from-async": lambda d: sync_received.append(d),
+            "from-async": lambda d, _sender: sync_received.append(d),
         })
 
         async def run():
             async_dealer = IpcDealerAsync(port=self.port, identity="bidir-fire-async")
 
             @async_dealer.route("from-sync")
-            def on_from_sync(data):
+            def on_from_sync(data, _sender):
                 async_received.append(data)
 
             asyncio.create_task(async_dealer.start())
@@ -1108,13 +1108,13 @@ class TestIpcRouterDealer(TestIPC):
             async_dealer = IpcDealerAsync(port=self.port, identity="bidir-sim-async")
 
             @async_dealer.route("async-echo")
-            def on_async_echo(data):
+            def on_async_echo(data, _sender):
                 return {"async_got": data}
 
             asyncio.create_task(async_dealer.start())
 
             sync_client = self._make_dealer_client("bidir-sim-sync", {
-                "sync-echo": lambda d: {"sync_got": d},
+                "sync-echo": lambda d, _sender: {"sync_got": d},
             })
             await asyncio.sleep(PROPAGATION_DELAY)
             time.sleep(PROPAGATION_DELAY)
@@ -1146,14 +1146,14 @@ class TestIpcRouterDealer(TestIPC):
         N = 10
 
         sync_client = self._make_dealer_client("bidir-rapid-sync", {
-            "increment": lambda d: {"n": d["n"] + 1},
+            "increment": lambda d, _sender: {"n": d["n"] + 1},
         })
 
         async def run():
             async_dealer = IpcDealerAsync(port=self.port, identity="bidir-rapid-async")
 
             @async_dealer.route("double")
-            def on_double(data):
+            def on_double(data, _sender):
                 return {"n": data["n"] * 2}
 
             asyncio.create_task(async_dealer.start())
@@ -1197,7 +1197,7 @@ class TestIpcRouterDealer(TestIPC):
 
         # Start client pointing at that port before any router is bound there.
         client = IpcDealerClient(port=free_port, identity="early-client")
-        client.route("pong")(lambda _: {"pong": True})
+        client.route("pong")(lambda _, _sender: {"pong": True})
         t = threading.Thread(target=client.start, daemon=True)
         t.start()
         self._clients.append(client)
@@ -1228,14 +1228,14 @@ class TestIpcRouterDealer(TestIPC):
         time.sleep(0.2)  # give OS time to release the port reliably
 
         client_a = IpcDealerClient(port=free_port, identity="pre-a")
-        client_a.route("hi")(lambda d: {"got": d})
+        client_a.route("hi")(lambda d, _sender: {"got": d})
         ta = threading.Thread(target=client_a.start, daemon=True)
         ta.start()
         self._clients.append(client_a)
         self._threads.append(ta)
 
         client_b = IpcDealerClient(port=free_port, identity="pre-b")
-        client_b.route("hi")(lambda d: {"got": d})
+        client_b.route("hi")(lambda d, _sender: {"got": d})
         tb = threading.Thread(target=client_b.start, daemon=True)
         tb.start()
         self._clients.append(client_b)
@@ -1256,7 +1256,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_dealer_reconnects_after_router_restart(self):
         """Router closed and restarted on same port; dealer reconnects automatically."""
         client = self._make_dealer_client("reconnect-client", {
-            "echo": lambda d: {"echoed": d},
+            "echo": lambda d, _sender: {"echoed": d},
         })
         time.sleep(PROPAGATION_DELAY)
 
@@ -1298,7 +1298,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_sync_dealer_crash_send_returns_error(self):
         """Async dealer sends to a crashed sync client → send() times out, no exception."""
         client = IpcDealerClient(port=self.port, identity="crash-sync-client")
-        client.route("noop")(lambda d: None)
+        client.route("noop")(lambda d, _sender: None)
         t = threading.Thread(target=client.start, daemon=True)
         t.start()
         self._clients.append(client)
@@ -1335,7 +1335,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="crash-async-dealer")
 
             @dealer.route("noop")
-            def noop(_d):
+            def noop(_d, _sender):
                 return None
 
             asyncio.create_task(dealer.start())
@@ -1358,7 +1358,7 @@ class TestIpcRouterDealer(TestIPC):
         """Sync client crashes and reconnects with same identity; next send() succeeds."""
         # Phase 1: healthy.
         client1 = IpcDealerClient(port=self.port, identity="resilient-sync")
-        client1.route("echo")(lambda d: {"echoed": d})
+        client1.route("echo")(lambda d, _sender: {"echoed": d})
         t1 = threading.Thread(target=client1.start, daemon=True)
         t1.start()
         self._clients.append(client1)
@@ -1390,7 +1390,7 @@ class TestIpcRouterDealer(TestIPC):
 
         # Phase 3: new client reconnects with same identity.
         client2 = IpcDealerClient(port=self.port, identity="resilient-sync")
-        client2.route("echo")(lambda d: {"echoed": d})
+        client2.route("echo")(lambda d, _sender: {"echoed": d})
         t2 = threading.Thread(target=client2.start, daemon=True)
         t2.start()
         self._clients.append(client2)
@@ -1413,7 +1413,7 @@ class TestIpcRouterDealer(TestIPC):
 
         slow_client = IpcDealerClient(port=self.port, identity="slow-responder")
 
-        def slow_handler(data):
+        def slow_handler(data, _sender):
             time.sleep(slow_reply_delay[0])
             return {"echoed": data}
 

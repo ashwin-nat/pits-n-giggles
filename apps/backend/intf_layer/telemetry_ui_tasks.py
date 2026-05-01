@@ -89,7 +89,8 @@ def initUiIntfLayer(
     )
 
     @dealer.route("driver-info-request")
-    async def _handle_driver_info_request(data: dict) -> dict:
+    async def _handle_driver_info_request(data: dict, sender: str) -> dict:
+        logger.debug("Received driver info request via router: %s from %s", data, sender)
         body, status = web_server._processDriverInfoRequest(data.get("index"))
         if status == HTTPStatus.OK:
             return {"ok": True, "data": body if isinstance(body, dict) else None}

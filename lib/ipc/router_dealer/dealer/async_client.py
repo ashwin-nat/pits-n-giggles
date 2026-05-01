@@ -71,14 +71,17 @@ class IpcDealerAsync:
         no correlation ID). Enforced by an internal lock.
       - Async handlers should be ``async def``; sync handlers must be fast —
         anything that blocks stalls the recv loop.
+      - Every handler **must** accept exactly two positional arguments:
+        ``(data: dict, sender: str)``, where ``sender`` is the ZMQ identity
+        string of the peer that sent the message.
 
     Usage::
 
         dealer = IpcDealerAsync(port=53836, identity="backend")
 
         @dealer.route("ping")
-        async def on_ping(data: dict) -> dict:
-            return {"status": "ok", "echo": data}
+        async def on_ping(data: dict, sender: str) -> dict:
+            return {"status": "ok", "echo": data, "from": sender}
 
         task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
@@ -142,7 +145,12 @@ class IpcDealerAsync:
     # Inbound routing
     # ---------------------------------------------------------
     def route(self, topic: str):
-        """Decorator to register a handler for a topic string."""
+        """Decorator to register a handler for a topic string.
+
+        The decorated function must accept two positional arguments:
+        ``(data: dict, sender: str)`` where ``sender`` is the ZMQ identity of
+        the message origin.
+        """
         def decorator(func: Callable[[dict], object]):
             self._routes[topic] = func
             return func
@@ -208,8 +216,9 @@ class IpcDealerAsync:
                 await self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
             return
 
+        sender_str = sender_id.decode("utf-8", errors="replace")
         try:
-            result = handler(data)
+            result = handler(data, sender_str)
             if asyncio.iscoroutine(result):
                 result = await result
             self.stats.track_event("__HANDLER_OK__", topic)

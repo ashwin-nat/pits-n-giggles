@@ -75,20 +75,20 @@ def _run_dealer_thread(
     )
 
     @dealer_client.route("hud-toggle-notification")
-    def _(data):
+    def _(data, _sender):
         oid = data.get("message", {}).get("oid") if isinstance(data, dict) else None
         overlays_mgr.toggle_overlays_visibility(oid)
 
     @dealer_client.route("hud-cycle-mfd-notification")
-    def _(_data):
+    def _(_data, _sender):
         overlays_mgr.next_page()
 
     @dealer_client.route("hud-prev-page-mfd-notification")
-    def _(_data):
+    def _(_data, _sender):
         overlays_mgr.prev_page()
 
     @dealer_client.route("hud-mfd-interaction-notification")
-    def _(_data):
+    def _(_data, _sender):
         overlays_mgr.mfd_interact()
 
     threading.Thread(target=dealer_client.start, daemon=True, name="HUD Dealer").start()
