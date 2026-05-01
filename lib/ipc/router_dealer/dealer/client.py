@@ -116,7 +116,7 @@ class IpcDealerClient:
             logger.propagate = False
         self.logger = logger
 
-        self._routes: Dict[str, Callable[[dict], None]] = {}
+        self._routes: Dict[str, Callable[[dict, str], object]] = {}
         self._running = False
         self.stats = EventCounter()
 
@@ -174,7 +174,7 @@ class IpcDealerClient:
         ``(data: dict, sender: str)`` where ``sender`` is the ZMQ identity of
         the message origin.
         """
-        def decorator(func: Callable[[dict], None]):
+        def decorator(func: Callable[[dict, str], object]):
             self._routes[topic] = func
             return func
         return decorator

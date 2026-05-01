@@ -118,7 +118,7 @@ class IpcDealerAsync:
         self._send_lock = asyncio.Lock()
         self.stats = EventCounter()
 
-        self._routes: Dict[str, Callable[[dict], object]] = {}
+        self._routes: Dict[str, Callable[[dict, str], object]] = {}
         self._pending_reply: Optional[asyncio.Future] = None
         self._recv_task: Optional[asyncio.Task] = None
 
@@ -151,7 +151,7 @@ class IpcDealerAsync:
         ``(data: dict, sender: str)`` where ``sender`` is the ZMQ identity of
         the message origin.
         """
-        def decorator(func: Callable[[dict], object]):
+        def decorator(func: Callable[[dict, str], object]):
             self._routes[topic] = func
             return func
         return decorator
