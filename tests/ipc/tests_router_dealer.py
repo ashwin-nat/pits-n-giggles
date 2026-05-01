@@ -149,6 +149,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="backend")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await dealer.send("hud", "toggle", {"oid": "mfd"})
@@ -171,6 +172,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="backend-rich")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await dealer.send("hud-rich", "get-stats", {})
@@ -190,6 +192,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-multi")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             r_a = await dealer.send("hud-multi", "topic-a", {"x": 1})
@@ -211,6 +214,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-unknown")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await dealer.send("hud-unknown", "no-such-topic", {})
@@ -229,6 +233,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-exc")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await dealer.send("hud-exc", "crash", {})
@@ -250,6 +255,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-rapid")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             replies = []
@@ -278,6 +284,7 @@ class TestIpcRouterDealer(TestIPC):
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-noexist")
             dealer.ACK_TIMEOUT = 0.2
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await dealer.send("ghost-client", "press", {"seq": 0})
@@ -308,6 +315,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run_phase1():
             dealer = IpcDealerAsync(port=self.port, identity="sender-crash")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await dealer.send("hud-crash", "ping", {"phase": 1})
             await dealer.close()
@@ -329,6 +337,7 @@ class TestIpcRouterDealer(TestIPC):
         async def run_phase2():
             dealer = IpcDealerAsync(port=self.port, identity="sender-crash2")
             dealer.ACK_TIMEOUT = 0.2
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await dealer.send("hud-crash", "ping", {"phase": 2})
             await dealer.close()
@@ -348,6 +357,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run_phase3():
             dealer = IpcDealerAsync(port=self.port, identity="sender-crash3")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await dealer.send("hud-crash", "ping", {"phase": 3})
             await dealer.close()
@@ -455,6 +465,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-ab")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             r_a = await dealer.send("hud-a", "msg", {"target": "a"})
@@ -485,6 +496,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-stats")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             await dealer.send("hud-stats", "ping", {"v": 1})
             await dealer.close()
@@ -501,6 +513,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-bstats")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             await dealer.send("hud-bstats", "x", {})
             await dealer.close()
@@ -993,7 +1006,7 @@ class TestIpcRouterDealer(TestIPC):
             def on_query(data):
                 return {"answer": data.get("q", "") + "-response"}
 
-            await async_dealer.start()
+            asyncio.ensure_future(async_dealer.start())
             while not stop_event.is_set():
                 await asyncio.sleep(0.05)
             await async_dealer.close()
@@ -1021,6 +1034,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             async_dealer = IpcDealerAsync(port=self.port, identity="bidir-async-b")
+            asyncio.create_task(async_dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             reply = await async_dealer.send("bidir-sync-b", "ping", {"n": 21})
@@ -1046,7 +1060,7 @@ class TestIpcRouterDealer(TestIPC):
             def on_from_sync(data):
                 async_received.append(data)
 
-            await async_dealer.start()
+            asyncio.create_task(async_dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             sync_client.fire("bidir-fire-async", "from-sync", {"dir": "s→a"})
@@ -1070,7 +1084,7 @@ class TestIpcRouterDealer(TestIPC):
             def on_async_echo(data):
                 return {"async_got": data}
 
-            await async_dealer.start()
+            asyncio.create_task(async_dealer.start())
 
             sync_client = self._make_dealer_client("bidir-sim-sync", {
                 "sync-echo": lambda d: {"sync_got": d},
@@ -1115,7 +1129,7 @@ class TestIpcRouterDealer(TestIPC):
             def on_double(data):
                 return {"n": data["n"] * 2}
 
-            await async_dealer.start()
+            asyncio.create_task(async_dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             time.sleep(PROPAGATION_DELAY)
 
@@ -1169,6 +1183,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             sender = IpcDealerAsync(port=free_port, identity="late-sender")
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             reply = await sender.send("early-client", "pong", {})
             await sender.close()
@@ -1221,6 +1236,7 @@ class TestIpcRouterDealer(TestIPC):
         # First send works.
         async def run1():
             sender = IpcDealerAsync(port=self.port, identity="reconnect-sender1")
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await sender.send("reconnect-client", "echo", {"phase": 1})
             await sender.close()
@@ -1239,6 +1255,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run2():
             sender = IpcDealerAsync(port=old_port, identity="reconnect-sender2")
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await sender.send("reconnect-client", "echo", {"phase": 2})
             await sender.close()
@@ -1272,6 +1289,7 @@ class TestIpcRouterDealer(TestIPC):
         async def run():
             sender = IpcDealerAsync(port=self.port, identity="crash-async-sender")
             sender.ACK_TIMEOUT = 0.3
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             reply = await sender.send("crash-sync-client", "noop", {})
             await sender.close()
@@ -1323,6 +1341,7 @@ class TestIpcRouterDealer(TestIPC):
         async def run_send(identity, data, timeout=ACK_TIMEOUT):
             sender = IpcDealerAsync(port=self.port, identity=identity)
             sender.ACK_TIMEOUT = timeout
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             r = await sender.send("resilient-sync", "echo", data)
             await sender.close()
