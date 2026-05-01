@@ -126,7 +126,10 @@ class AsyncF1TelemetryManager:
         Returns:
             dict: The current packet statistics
         """
-        return self.m_stats.get_stats()
+        return {
+            "packets": self.m_stats.get_stats(),
+            "transport": self.m_transport.get_stats(),
+        }
 
     async def _processPacket(self,
                              pkt_factory: PacketParserFactory,

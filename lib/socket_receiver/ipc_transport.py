@@ -75,3 +75,6 @@ class IpcTransport(TelemetryTransport):
     async def close(self) -> None:
         """Signal the subscriber loop to stop."""
         self._subscriber.close()
+
+    def get_stats(self) -> dict:
+        return self._subscriber.get_stats()

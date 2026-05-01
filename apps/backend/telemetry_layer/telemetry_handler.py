@@ -690,8 +690,8 @@ class F1TelemetryHandler:
             Dict[str, Any]: The telemetry handler stats.
         """
         return {
-            "__UDP_ACTION_BUTTONS__" : self.m_udp_action_stats.get_stats(),
-            **self.m_manager.getStats()
+            "__UDP_ACTION_BUTTONS__": self.m_udp_action_stats.get_stats(),
+            "manager": self.m_manager.getStats(),
         }
 
     def _shouldSaveData(self) -> bool:

@@ -81,3 +81,6 @@ class UdpTransport(TelemetryTransport):
     async def close(self) -> None:
         """Close the UDP socket."""
         self.m_socket.close()
+
+    def get_stats(self) -> dict:
+        return {}

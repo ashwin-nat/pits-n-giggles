@@ -122,3 +122,6 @@ class TcpTransport(TelemetryTransport):
         if self.m_socket:
             self.m_socket.close()
         self.m_socket = None
+
+    def get_stats(self) -> dict:
+        return {}

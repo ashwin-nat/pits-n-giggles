@@ -41,3 +41,7 @@ class TelemetryTransport(ABC):
     @abstractmethod
     async def close(self) -> None:
         """Closes the transport."""
+
+    @abstractmethod
+    def get_stats(self) -> dict:
+        """Return transport-level statistics."""
