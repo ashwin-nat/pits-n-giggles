@@ -95,7 +95,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
 
     if managed:
         logger.debug("Managed mode enabled")
-        init_ipc_task(logger, tasks, ipc_sub, mcp_bridge, mcp_task)
+        init_ipc_task(logger, tasks, ipc_sub, dealer, mcp_bridge, mcp_task)
         notify_parent_init_complete()
     else:
         logger.debug("Unmanaged mode; skipping IPC initialization")

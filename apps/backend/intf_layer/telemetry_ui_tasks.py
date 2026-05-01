@@ -72,7 +72,7 @@ def initUiIntfLayer(
     ver_str: str,
     run_ipc_server: bool,
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -87,7 +87,8 @@ def initUiIntfLayer(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
+        Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]: Web server, IPC publisher,
+                            and IPC dealer instances
     """
 
     # First, create the server instance
@@ -139,8 +140,8 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
-    return web_server, ipc_pub
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, dealer, web_server, tasks)
+    return web_server, ipc_pub, dealer
 
 async def lowFreqLocalUpdateTask(
         session_state: SessionState,

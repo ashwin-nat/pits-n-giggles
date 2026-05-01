@@ -31,10 +31,11 @@ from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
                                                 RaceInfoData,
                                                 StreamOverlayData)
-from .request_handlers import handleDriverInfoRequest, RequestError
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.web_server import BaseWebServer, ClientType
+
+from .request_handlers import RequestError, handleDriverInfoRequest
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
