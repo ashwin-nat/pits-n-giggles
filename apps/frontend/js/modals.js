@@ -285,7 +285,9 @@ class ModalManager {
     }
 
     // Collect and log the selected settings
-    g_pref_myTeamName = document.getElementById('teamNameInput').value;
+    const rawTeamName = document.getElementById('teamNameInput').value;
+    const normalizedTeamName = rawTeamName.trim();
+    g_pref_myTeamName = normalizedTeamName === "" ? "My Team" : normalizedTeamName;
     g_pref_is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
     g_pref_lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);

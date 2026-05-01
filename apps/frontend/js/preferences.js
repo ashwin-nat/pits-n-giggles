@@ -82,7 +82,7 @@ function loadPreferences() {
 
     g_pref_myTeamName = localStorage.getItem('myTeamName');
     if ((g_pref_myTeamName === null) || (g_pref_myTeamName === "")) {
-        g_pref_myTeamName = "Custom Team";
+        g_pref_myTeamName = "My Team";
         missingPreference = true;
     }
 
