@@ -95,7 +95,7 @@ def initUiIntfLayer(
             return {"ok": True, "data": body if isinstance(body, dict) else None}
         return {"ok": False, "error": str(status), "data": None}
 
-    asyncio.create_task(dealer.start(), name="Backend Dealer Start")
+    tasks.append(asyncio.create_task(dealer.start(), name="Backend Dealer Recv"))
 
     # Setup periodic tasks
     tasks.append(asyncio.create_task(

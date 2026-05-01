@@ -82,7 +82,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
         identity=str(PngAppId.MCP),
         logger=logger,
     )
-    await dealer.start()
+    tasks.append(asyncio.create_task(dealer.start(), name="MCP Dealer Recv"))
     mcp_bridge = MCPBridge(
         dealer=dealer,
         logger=logger,

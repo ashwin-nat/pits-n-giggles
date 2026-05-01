@@ -56,11 +56,15 @@ class IpcDealerAsync:
 
         stats = await dealer.send("hud", "get-stats", {})
 
-    Inbound (optional): register handlers via ``route(topic)`` and call
-    ``await dealer.start()`` to spawn the background receive loop. Inbound
-    frames arrive as ``[sender_id, reply_flag, topic, payload]``; replies to
-    a prior outbound ``send()`` arrive as ``[sender_id, reply_payload]`` and
-    are demuxed by frame count.
+    Inbound (optional): register handlers via ``route(topic)``.
+
+    ``start()`` is the blocking receive loop. The caller is responsible for
+    scheduling it as a task::
+
+        task = asyncio.create_task(dealer.start(), name="Dealer Recv")
+
+    ``start()`` must be called (and its task scheduled) before ``send()`` or
+    any inbound routing will work.
 
     Notes:
       - Only one outbound ``send()`` may be in-flight at a time (protocol has
@@ -76,7 +80,7 @@ class IpcDealerAsync:
         async def on_ping(data: dict) -> dict:
             return {"status": "ok", "echo": data}
 
-        await dealer.start()  # only needed if you registered routes
+        task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
         await dealer.fire("hud", "hud-toggle-notification", {"oid": "mfd"})
         stats = await dealer.send("hud", "get-stats", {})
@@ -134,10 +138,6 @@ class IpcDealerAsync:
         self.socket.connect(endpoint)
         self.logger.debug("IpcDealerAsync [%s] connected to %s", self.identity, endpoint)
 
-    def _ensure_recv_loop(self) -> None:
-        if self._recv_task is None or self._recv_task.done():
-            self._recv_task = asyncio.create_task(self._recv_loop())
-
     # ---------------------------------------------------------
     # Inbound routing
     # ---------------------------------------------------------
@@ -150,19 +150,18 @@ class IpcDealerAsync:
 
     async def start(self) -> None:
         """
-        Spawn the background receive loop. Required only if inbound routing
-        is needed (i.e. handlers were registered via ``route()``).
+        Blocking receive loop. The caller is responsible for scheduling this
+        as a task::
 
-        Idempotent: calling twice has no effect.
-        """
-        self._ensure_recv_loop()
+            task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
-    async def _recv_loop(self) -> None:
-        """
+        Must be called before ``send()`` or any inbound routing will work.
+
         Single reader for the DEALER socket. Demuxes by frame count:
           - 2 frames → reply to a pending outbound send()
           - 4 frames → unsolicited inbound command → dispatch to handler
         """
+        self._recv_task = asyncio.current_task()
         try:
             while True:
                 try:
@@ -269,8 +268,6 @@ class IpcDealerAsync:
         payload = orjson.dumps(data)
 
         async with self._send_lock:
-            self._ensure_recv_loop()
-
             future: asyncio.Future = asyncio.get_running_loop().create_future()
             self._pending_reply = future
 
