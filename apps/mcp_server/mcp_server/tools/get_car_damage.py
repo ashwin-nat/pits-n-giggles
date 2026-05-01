@@ -27,6 +27,8 @@ from typing import Any, Dict, List
 
 from lib.f1_types import F1Utils
 
+from lib.ipc import IpcDealerAsync
+
 from .common import _DRIVER_INFO_REQ_STATUS_SCHEMA, fetch_driver_info
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -119,13 +121,13 @@ CAR_DAMAGE_OUTPUT_SCHEMA = {
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 async def get_car_damage(
-        core_server_port: int,
+        dealer: IpcDealerAsync,
         logger: logging.Logger,
         driver_index: int) -> Dict[str, Any]:
     """Get race table from state data.
 
     Arguments:
-        core_server_port (int): Telemetry Core HTTP server port.
+        dealer (IpcDealerAsync): ZMQ DEALER client for backend requests.
         logger (logging.Logger): Logger instance.
         driver_index (int): Driver index.
 
@@ -134,7 +136,7 @@ async def get_car_damage(
     """
 
     rsp = await fetch_driver_info(
-        core_server_port=core_server_port,
+        dealer=dealer,
         logger=logger,
         driver_index=driver_index,
     )

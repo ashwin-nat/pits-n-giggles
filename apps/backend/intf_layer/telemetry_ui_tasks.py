@@ -25,6 +25,7 @@
 import asyncio
 import logging
 import random
+from http import HTTPStatus
 from typing import Any, Awaitable, Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -86,6 +87,15 @@ def initUiIntfLayer(
         identity=str(PngAppId.BACKEND),
         logger=logger,
     )
+
+    @dealer.route("driver-info-request")
+    async def _handle_driver_info_request(data: dict) -> dict:
+        body, status = web_server._processDriverInfoRequest(data.get("index"))
+        if status == HTTPStatus.OK:
+            return {"ok": True, "data": body if isinstance(body, dict) else None}
+        return {"ok": False, "error": str(status), "data": None}
+
+    asyncio.create_task(dealer.start(), name="Backend Dealer Start")
 
     # Setup periodic tasks
     tasks.append(asyncio.create_task(

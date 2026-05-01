@@ -22,11 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-import aiohttp
+from lib.ipc import IpcDealerAsync, PngAppId
 
 from apps.mcp_server.state import get_state_data
 
@@ -86,122 +85,40 @@ def _get_race_table_context(
     return telemetry_update, base_rsp
 
 async def fetch_driver_info(
-        core_server_port: int,
+        dealer: IpcDealerAsync,
         logger: logging.Logger,
         driver_index: int,
 ) -> Dict[str, Any]:
     """
-    Fetch /driver-info from telemetry core.
+    Fetch driver info from the backend via ZMQ DEALER request-response.
 
-    One connection per call.
     Never raises.
-    Centralizes all HTTP / network / decoding errors.
+    Centralizes all transport and backend errors.
     """
 
-    url = f"http://localhost:{core_server_port}/driver-info"
+    reply = await dealer.send(
+        str(PngAppId.BACKEND),
+        "driver-info-request",
+        {"index": driver_index},
+    )
 
-    params = {"index": driver_index}
-
-    try:
-        async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=3)
-        ) as session:
-            async with session.get(url, params=params) as resp:
-
-                if resp.status != 200:
-                    body = await resp.text()
-                    logger.error(
-                        f"[fetch_driver_info] HTTP {resp.status} | "
-                        f"driver_index={driver_index} | body={body}"
-                    )
-                    return {
-                        "status": {
-                            "ok": False,
-                            "error": "core_server_http_error",
-                            "status": resp.status,
-                            "details": body,
-                        },
-                        "data": None,
-                    }
-
-                try:
-                    data = await resp.json()
-                except Exception as e: # pylint: disable=broad-except
-                    logger.error(
-                        f"[fetch_driver_info] Invalid JSON response: {e}"
-                    )
-                    return {
-                        "status": {
-                            "ok": False,
-                            "error": "invalid_json",
-                            "status": resp.status,
-                            "details": str(e),
-                        },
-                        "data": None,
-                    }
-
-                return {
-                    "status": {
-                        "ok": True,
-                        "error": None,
-                        "status": resp.status,
-                        "details": None,
-                    },
-                    "data": data,
-                }
-
-    except asyncio.TimeoutError:
-        logger.error(
-            f"[fetch_driver_info] Timeout | driver_index={driver_index}"
-        )
+    if reply.get("status") == "error":
+        reason = reply.get("reason", "unknown")
+        error_key = "core_server_timeout" if "timeout" in reason else "core_server_unreachable"
+        logger.error("[fetch_driver_info] dealer error: %s", reason)
         return {
-            "status": {
-                "ok": False,
-                "error": "core_server_timeout",
-                "status": None,
-                "details": "Core server did not respond in time",
-            },
+            "status": {"ok": False, "error": error_key, "status": None, "details": reason},
             "data": None,
         }
 
-    except aiohttp.ClientConnectionError as e:
-        logger.error(
-            f"[fetch_driver_info] Connection error: {e}"
-        )
+    if not reply.get("ok"):
+        logger.error("[fetch_driver_info] backend returned not-ok: %s", reply)
         return {
-            "status": {
-                "ok": False,
-                "error": "core_server_unreachable",
-                "status": None,
-                "details": str(e),
-            },
+            "status": {"ok": False, "error": "backend_error", "status": None, "details": str(reply)},
             "data": None,
         }
 
-    except aiohttp.ClientError as e:
-        logger.error(
-            f"[fetch_driver_info] Client error: {e}"
-        )
-        return {
-            "status": {
-                "ok": False,
-                "error": "client_error",
-                "status": None,
-                "details": str(e),
-            },
-            "data": None,
-        }
-
-    except Exception as e: # pylint: disable=broad-exception-caught
-        logger.exception(
-            "[fetch_driver_info] Unexpected error"
-        )
-        return {
-            "status": {
-                "ok": False,
-                "error": "unknown_error",
-                "status": None,
-                "details": str(e),
-            },
-            "data": None,
-        }
+    return {
+        "status": {"ok": True, "error": None, "status": 200, "details": None},
+        "data": reply.get("data"),
+    }
