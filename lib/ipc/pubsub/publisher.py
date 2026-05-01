@@ -53,6 +53,7 @@ class IpcPublisherAsync:
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         logger: Optional[logging.Logger] = None,
+        sndhwm: int = 3,
     ):
         if port is None:
             raise ValueError("IpcPublisherAsync requires explicit port")
@@ -65,6 +66,7 @@ class IpcPublisherAsync:
             logger.propagate = False
         self.logger = logger
 
+        self._sndhwm = sndhwm
         self._context = zmq.Context()
         self.socket: Optional[zmq.Socket] = None
 
@@ -98,10 +100,7 @@ class IpcPublisherAsync:
     def _create_socket(self) -> zmq.Socket:
         sock: zmq.Socket = self._context.socket(zmq.PUB)
         sock.setsockopt(zmq.LINGER, 0)
-        # SNDHWM=3: At 30Hz (33ms/frame), a value of 1 caused ~10% silent kernel-level drops
-        # (never surfacing as zmq.Again). 3 gives enough slack for scheduler jitter while
-        # still discarding stale frames under genuine backpressure.
-        sock.setsockopt(zmq.SNDHWM, 3)
+        sock.setsockopt(zmq.SNDHWM, self._sndhwm)
         endpoint = f"tcp://{self.host}:{self.port}"
         sock.connect(endpoint)
         self.logger.debug("IpcPublisherAsync configured endpoint %s", endpoint)
