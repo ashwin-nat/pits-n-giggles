@@ -25,12 +25,41 @@
 import logging
 import math
 from pathlib import Path
-from typing import Any, Dict, Optional, final
+from typing import Any, Dict, NamedTuple, Optional, final
 
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayId, OverlayPosition
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+class _CarDims(NamedTuple):
+    width_m: float
+    length_m: float
+
+# Real-world car dimensions keyed by formula type string
+_CAR_DIMENSIONS_M: dict[str, _CarDims] = {
+    "F1 Modern":      _CarDims(2.00, 5.63),
+    "F1 Classic":     _CarDims(2.00, 5.63),
+    "F1 Generic":     _CarDims(2.00, 5.63),
+    "F1 World":       _CarDims(2.00, 5.63),
+    "F1 Elimination": _CarDims(2.00, 5.63),
+    "Esports":        _CarDims(2.00, 5.63),
+    "F2":             _CarDims(1.90, 5.285),
+    "F2 2021":        _CarDims(1.90, 5.285),
+}
+_DEFAULT_CAR_DIMENSIONS_M = _CarDims(2.00, 5.63)
+
+# Radar display constants (must match track_radar.qml)
+_RADAR_RANGE_M   = 25.0   # metres represented by half the radar area
+_RADAR_AREA_PX   = 255.0  # baseWidth * 0.85  (300 * 0.85)
+
+def _car_px(formula_type: str) -> tuple[float, float]:
+    """Return (width_px, length_px) scaled to the radar coordinate system."""
+    dims = _CAR_DIMENSIONS_M.get(formula_type, _DEFAULT_CAR_DIMENSIONS_M)
+    px_per_m = (_RADAR_AREA_PX / 2.0) / _RADAR_RANGE_M
+    return round(dims.width_m * px_per_m, 1), round(dims.length_m * px_per_m, 1)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -106,6 +135,9 @@ class TrackRadarOverlay(BaseOverlayQML):
         driver_list = self._calculate_relative_positions(data, ref_driver)
 
         # Send data to QML and trigger update
+        car_w_px, car_l_px = _car_px(data.formula_type)
+        self.set_qml_property("carWidthPx", car_w_px)
+        self.set_qml_property("carLengthPx", car_l_px)
         self.invoke_qml_method("updateTelemetry", driver_list)
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:

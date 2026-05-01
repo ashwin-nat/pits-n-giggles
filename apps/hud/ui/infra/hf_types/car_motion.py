@@ -116,6 +116,7 @@ class DriverMotionInfo:
 @dataclass(slots=True, frozen=True)
 class LiveSessionMotionInfo(HighFreqBase):
     motion_data: list[DriverMotionInfo]
+    formula_type: str = "F1 Modern"
 
     @classmethod
     def from_json(cls, json_data: dict) -> "LiveSessionMotionInfo":

@@ -17,6 +17,8 @@ Window {
 
     // Radar properties
     property var driverData: []
+    property real carWidthPx: 10.2   // initial value only; overwritten by Python on every frame
+    property real carLengthPx: 28.7  // initial value only; overwritten by Python on every frame
     property real radarRange: 25.0  // meters - zoomed in for side awareness
     property real baseOpacity: 1.0  // Externally controlled opacity
     property real idleOpacity: 0.3  // Opacity when no cars nearby (0.0 - 1.0)
@@ -192,8 +194,8 @@ Window {
                         if (opacity > 0) {
                             var centerX = width / 2;
                             var centerY = height / 2;
-                            var carWidth = 12;
-                            var carHeight = 34;
+                            var carWidth = root.carWidthPx;
+                            var carHeight = root.carLengthPx;
 
                             // Calculate angles for left side sector (USING RIGHT CORNERS)
                             // Top-right corner
@@ -243,8 +245,8 @@ Window {
                         if (opacity > 0) {
                             var centerX = width / 2;
                             var centerY = height / 2;
-                            var carWidth = 12;
-                            var carHeight = 34;
+                            var carWidth = root.carWidthPx;
+                            var carHeight = root.carLengthPx;
 
                             // Calculate angles for right side sector (USING LEFT CORNERS)
                             // Top-left corner
@@ -278,8 +280,8 @@ Window {
                 Rectangle {
                     id: refCar
                     anchors.centerIn: parent
-                    width: 12  // Width: 2m scaled
-                    height: 34 // Length: 5.63m scaled (ratio ~2.8:1)
+                    width: root.carWidthPx
+                    height: root.carLengthPx
                     color: "#00ff00"
                     border.color: "#ffffff"
                     border.width: 2
@@ -323,8 +325,8 @@ Window {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 12  // Width: 2m scaled
-                        height: 34 // Length: 5.63m scaled (ratio ~2.8:1)
+                        width: root.carWidthPx
+                        height: root.carLengthPx
                         color: "#ffffff"
                         border.color: "#888888"
                         border.width: 1
