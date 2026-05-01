@@ -220,11 +220,8 @@ class IpcDealerClient:
         Returns:
             Reply dict from the remote handler, or an error dict on timeout/failure.
         """
-        if self._loop_thread_id is not None and threading.get_ident() == self._loop_thread_id:
-            raise RuntimeError(
-                "IpcDealerClient.send() called from the loop thread; this will deadlock. "
-                "Use fire() or call send() from a different thread."
-            )
+        assert self._loop_thread_id is None or threading.get_ident() != self._loop_thread_id, \
+            "IpcDealerClient.send() called from the loop thread — deadlock. Use fire() or a different thread."
 
         payload = orjson.dumps(data)
 
