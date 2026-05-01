@@ -184,6 +184,8 @@ class IpcDealerClient:
             topic: Command topic string.
             data: Payload dict (JSON-serialisable).
         """
+        assert self._running, \
+            "IpcDealerClient.start() must be running before fire() — run it in a thread first"
         payload = orjson.dumps(data)
         with self._pipe_lock:
             try:
@@ -220,7 +222,9 @@ class IpcDealerClient:
         Returns:
             Reply dict from the remote handler, or an error dict on timeout/failure.
         """
-        assert self._loop_thread_id is None or threading.get_ident() != self._loop_thread_id, \
+        assert self._running, \
+            "IpcDealerClient.start() must be running before send() — run it in a thread first"
+        assert threading.get_ident() != self._loop_thread_id, \
             "IpcDealerClient.send() called from the loop thread — deadlock. Use fire() or a different thread."
 
         payload = orjson.dumps(data)

@@ -241,6 +241,8 @@ class IpcDealerAsync:
             topic: Command topic string.
             data: Payload dict (JSON-serialisable).
         """
+        assert self._recv_task is not None, \
+            "IpcDealerAsync.start() must be running before fire() — schedule it as a task first"
         payload = orjson.dumps(data)
         try:
             await self.socket.send_multipart([dest_identity.encode(), _NO_REPLY, topic.encode(), payload])
@@ -265,6 +267,8 @@ class IpcDealerAsync:
             Reply dict from the handler, e.g. ``{"status": "ok"}`` or rich data.
             Returns an error dict without raising on timeout or send failure.
         """
+        assert self._recv_task is not None, \
+            "IpcDealerAsync.start() must be running before send() — schedule it as a task first"
         payload = orjson.dumps(data)
 
         async with self._send_lock:

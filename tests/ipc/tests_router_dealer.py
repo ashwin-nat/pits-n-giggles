@@ -382,6 +382,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-fire")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             await dealer.fire("hud-fire", "press", {"btn": "mfd"})
@@ -405,6 +406,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-fire-rapid")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             for i in range(N):
@@ -425,6 +427,7 @@ class TestIpcRouterDealer(TestIPC):
         """fire() to unknown identity must silently drop, not raise."""
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-fire-ghost")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
             await dealer.fire("ghost", "press", {})  # must not raise
             await dealer.close()
@@ -440,6 +443,7 @@ class TestIpcRouterDealer(TestIPC):
 
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-fire-noack")
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             t0 = asyncio.get_event_loop().time()
@@ -542,6 +546,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(receiver.start())
 
             sender = IpcDealerAsync(port=self.port, identity="async-send-fire")
+            asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             await sender.fire("async-recv-fire", "press", {"btn": "mfd"})
@@ -793,6 +798,7 @@ class TestIpcRouterDealer(TestIPC):
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="async-close-inflight")
             dealer.ACK_TIMEOUT = 5.0  # we want close() to be the unblocker, not timeout
+            asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
             send_task = asyncio.create_task(
@@ -812,18 +818,25 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(reply.get("status"), "error")
 
     def test_async_dealer_send_requires_start(self):
-        """send() requires start() to be running — without it send() times out."""
+        """send() raises AssertionError if start() has not been called."""
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-no-start")
-            dealer.ACK_TIMEOUT = 0.2
             await asyncio.sleep(PROPAGATION_DELAY)
-
-            reply = await dealer.send("ghost", "ping", {"v": 99})
+            with self.assertRaises(AssertionError):
+                await dealer.send("ghost", "ping", {"v": 99})
             await dealer.close()
-            return reply
 
-        reply = self._run_async(run())
-        self.assertEqual(reply.get("status"), "error")
+        self._run_async(run())
+
+    def test_async_dealer_fire_requires_start(self):
+        """fire() raises AssertionError if start() has not been called."""
+        async def run():
+            dealer = IpcDealerAsync(port=self.port, identity="fire-no-start")
+            with self.assertRaises(AssertionError):
+                await dealer.fire("ghost", "ping", {})
+            await dealer.close()
+
+        self._run_async(run())
 
     # ------------------------------------------------------------------
     # IpcDealerClient outbound fire() / send()
@@ -918,6 +931,20 @@ class TestIpcRouterDealer(TestIPC):
 
         reply = sender.send("sync-recv-rpc", "echo", {"x": 7})
         self.assertEqual(reply.get("echoed"), {"x": 7})
+
+    def test_dealer_client_send_requires_start(self):
+        """IpcDealerClient.send() raises AssertionError if start() has not been called."""
+        client = IpcDealerClient(port=self.port, identity="sync-send-no-start")
+        with self.assertRaises(AssertionError):
+            client.send("ghost", "ping", {})
+        client.close()
+
+    def test_dealer_client_fire_requires_start(self):
+        """IpcDealerClient.fire() raises AssertionError if start() has not been called."""
+        client = IpcDealerClient(port=self.port, identity="sync-fire-no-start")
+        with self.assertRaises(AssertionError):
+            client.fire("ghost", "ping", {})
+        client.close()
 
     def test_dealer_client_send_timeout_on_no_receiver(self):
         """IpcDealerClient.send() to a non-existent identity returns error dict, no hang."""
