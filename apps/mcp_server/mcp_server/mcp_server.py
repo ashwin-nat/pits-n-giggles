@@ -39,6 +39,7 @@ from starlette.responses import JSONResponse
 
 from lib.error_status import PngError, PngHttpPortInUseError
 from lib.event_counter import EventCounter
+from lib.ipc import IpcDealerAsync
 from lib.web_server import get_socket_for_uvicorn
 from meta.meta import APP_NAME
 
@@ -108,7 +109,7 @@ TYRE WEAR THRESHOLDS:
 
     def __init__(
         self,
-        core_server_port: int,
+        dealer: IpcDealerAsync,
         logger: logging.Logger,
         version: str,
         *,
@@ -121,7 +122,7 @@ TYRE WEAR THRESHOLDS:
         self.transport = transport
         self.host = host
         self.port = port
-        self.core_server_port = core_server_port
+        self.dealer = dealer
 
         self.stats = EventCounter()
 
@@ -275,7 +276,7 @@ TYRE WEAR THRESHOLDS:
         ) -> Dict[str, Any]:
             self.logger.debug("get_driver_lap_times called: driver_index=%s", driver_index)
             return await get_driver_lap_times(
-                core_server_port=self.core_server_port,
+                dealer=self.dealer,
                 logger=self.logger,
                 driver_index=driver_index,
             )
@@ -311,7 +312,7 @@ TYRE WEAR THRESHOLDS:
         ) -> Dict[str, Any]:
             self.logger.debug("get_session_events_for_driver called: driver_index=%s", driver_index)
             return await get_session_events_for_driver(
-                core_server_port=self.core_server_port,
+                dealer=self.dealer,
                 logger=self.logger,
                 driver_index=driver_index,
             )
@@ -472,7 +473,7 @@ TYRE WEAR THRESHOLDS:
         ) -> Dict[str, Any]:
             self.logger.debug("get_car_damage called: driver_index=%s", driver_index)
             return await get_car_damage(
-                core_server_port=self.core_server_port,
+                dealer=self.dealer,
                 logger=self.logger,
                 driver_index=driver_index,
             )

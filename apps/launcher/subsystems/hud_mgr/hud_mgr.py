@@ -476,6 +476,7 @@ class HudAppMgr(PngAppMgrBase):
             ],
             "Network": [
                 "broker_xpub_port",
+                "broker_router_port",
             ],
             "Display" : [
                 "refresh_interval",

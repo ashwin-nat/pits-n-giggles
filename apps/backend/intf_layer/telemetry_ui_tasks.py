@@ -33,13 +33,35 @@ from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcPublisherAsync
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
 from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
+from .request_handlers import handleDriverInfoRequest
 from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _initDealer(
+    settings: PngSettings,
+    logger: logging.Logger,
+    session_state: SessionState) -> IpcDealerAsync:
+    dealer = IpcDealerAsync(
+        host="127.0.0.1",
+        port=settings.Network.broker_router_port,
+        identity=str(PngAppId.BACKEND),
+        logger=logger,
+    )
+
+    @dealer.route("driver-info-request")
+    async def _handle_driver_info_request(data: dict, sender: str) -> dict:
+        logger.debug("Received driver info request via router: %s from %s", data, sender)
+        result = handleDriverInfoRequest(session_state, data.get("index"))
+        if result.ok:
+            return {"ok": True, "data": result.data}
+        return {"ok": False, "error": result.detail, "data": None}
+
+    return dealer
 
 def initUiIntfLayer(
     settings: PngSettings,
@@ -50,7 +72,7 @@ def initUiIntfLayer(
     ver_str: str,
     run_ipc_server: bool,
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
+    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]:
     """Initialize the UI interface layer and return then server obj for proper cleanup
 
     Args:
@@ -65,7 +87,8 @@ def initUiIntfLayer(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
+        Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]: Web server, IPC publisher,
+                            and IPC dealer instances
     """
 
     # First, create the server instance
@@ -79,6 +102,9 @@ def initUiIntfLayer(
     ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
     tasks.append(ipc_pub.get_task())
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
+
+    dealer = _initDealer(settings, logger, session_state)
+    tasks.append(asyncio.create_task(dealer.start(), name="Backend Dealer Recv"))
 
     # Setup periodic tasks
     tasks.append(asyncio.create_task(
@@ -111,11 +137,11 @@ def initUiIntfLayer(
     # Interrupt/event driven tasks
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
                                      name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, web_server, tasks)
-    return web_server, ipc_pub
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, dealer, web_server, tasks)
+    return web_server, ipc_pub, dealer
 
 async def lowFreqLocalUpdateTask(
         session_state: SessionState,
@@ -187,22 +213,18 @@ async def frontEndMessageTask(
     server.m_logger.debug("Shutting down front end message task")
 
 async def hudInteractionTask(
-    server: TelemetryWebServer,
+    dealer: IpcDealerAsync,
     shutdown_event: asyncio.Event) -> None:
-    """Task to update HUD clients with telemetry data
+    """Task to forward HUD button-press notifications via ZeroMQ DEALER.
 
     Args:
-        server (TelemetryWebServer): The telemetry web server
+        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await server.send_to_clients_interested_in_event(
-                event=str(message.m_message_type),
-                data=message.toJSON())
-
-    server.m_logger.debug("Shutting down HUD notifier task")
+            await dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())
 
 # -------------------------------------- UTILS -------------------------------------------------------------------------
 

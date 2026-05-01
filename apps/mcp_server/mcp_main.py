@@ -33,6 +33,7 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PngError
+from lib.ipc import IpcDealerAsync, PngAppId
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -75,8 +76,15 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
     tasks: List[asyncio.Task] = []
     transport = "http" if managed else "stdio"
     ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
+    dealer = IpcDealerAsync(
+        host="127.0.0.1",
+        port=settings.Network.broker_router_port,
+        identity=str(PngAppId.MCP),
+        logger=logger,
+    )
+    tasks.append(asyncio.create_task(dealer.start(), name="MCP Dealer Recv"))
     mcp_bridge = MCPBridge(
-        core_server_port=settings.Network.server_port,
+        dealer=dealer,
         logger=logger,
         version=version,
         transport=transport,
@@ -87,7 +95,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
 
     if managed:
         logger.debug("Managed mode enabled")
-        init_ipc_task(logger, tasks, ipc_sub, mcp_bridge, mcp_task)
+        init_ipc_task(logger, tasks, ipc_sub, dealer, mcp_bridge, mcp_task)
         notify_parent_init_complete()
     else:
         logger.debug("Unmanaged mode; skipping IPC initialization")
@@ -99,6 +107,7 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, mana
         logger.debug("Main task was cancelled.")
         for task in tasks:
             task.cancel()
+        await dealer.close()
         raise  # Ensure proper cancellation behavior
     except PngError as e:
         logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")

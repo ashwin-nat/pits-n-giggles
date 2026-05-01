@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,35 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .pubsub.broker import IpcPubSubBroker
-from .pubsub.content_types import IpcContentType
-from .pubsub.publisher import IpcPublisherAsync
-from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
-from .reqrep.async_server import IpcServerAsync
-from .reqrep.sync_client import IpcClientSync
-from .reqrep.sync_server import IpcServerSync
-from .router_dealer.router.router import IpcRouter
-from .router_dealer.dealer.client import IpcDealerClient
-from .router_dealer.dealer.async_client import IpcDealerAsync
-from .router_dealer.app_id import PngAppId
-from .utils import get_free_tcp_port
+from enum import Enum
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    'IpcClientSync',
-    'IpcServerAsync',
-    'IpcServerSync',
-    'IpcContentType',
-    'IpcPublisherAsync',
-    'IpcSubscriberAsync',
-    'IpcSubscriberSync',
-    'IpcPubSubBroker',
-    'IpcRouter',
-    'IpcDealerClient',
-    'IpcDealerAsync',
+class PngAppId(Enum):
+    """Fixed ZMQ identities for PNG apps that connect to the router."""
+    BACKEND = "backend"
+    HUD = "hud"
+    MCP = "mcp"
 
-    'PngAppId',
-
-    'get_free_tcp_port',
-]
+    def __str__(self):
+        return self.value

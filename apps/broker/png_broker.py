@@ -32,7 +32,7 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
-from lib.ipc import IpcPubSubBroker, IpcServerSync
+from lib.ipc import IpcPubSubBroker, IpcRouter, IpcServerSync
 from lib.logger import get_logger
 from meta.meta import APP_NAME
 
@@ -69,6 +69,9 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
         logger=logger)
     broker_thread = broker.run_in_thread()
 
+    router = IpcRouter(port=config.Network.broker_router_port, logger=logger)
+    router.run_in_thread()
+
     proc_mgr = IpcServerSync(
         name="pitwall_ipc",
         max_missed_heartbeats=3,
@@ -81,6 +84,7 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
     def _shutdown_handler(_args: dict) -> dict:
         logger.debug("Received IPC shutdown. Shutting down the broker...")
         broker.close()
+        router.close()
         return {
             "status": "success",
         }
@@ -96,7 +100,10 @@ def main(logger: logging.Logger, config: PngSettings) -> None:
     def _get_stats_handler(_args: dict) -> dict:
         return {
             "status": "success",
-            "stats": broker.get_stats(),
+            "stats": {
+                "broker": broker.get_stats(),
+                "router": router.get_stats(),
+            },
         }
 
     proc_mgr.serve()

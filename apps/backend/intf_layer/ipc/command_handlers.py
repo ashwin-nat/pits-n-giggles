@@ -56,6 +56,7 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
 async def handleGetStats(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
+        ipc_dealer: AsyncInterTaskCommunicator,
         web_server: TelemetryWebServer,
         ) -> dict:
     """Handle get-stats command."""
@@ -66,6 +67,7 @@ async def handleGetStats(
             "egress" : {
                 "ipc_pub" : ipc_pub.get_stats(),
                 "web_server" : web_server.get_stats(),
+                "dealer": ipc_dealer.get_stats(),
             }
         },
     }

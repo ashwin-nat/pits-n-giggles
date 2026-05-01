@@ -28,9 +28,8 @@ import threading
 
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcServerSync, IpcSubscriberSync
+from lib.ipc import IpcDealerClient, IpcServerSync, IpcSubscriberSync
 
-from ..listener import HudClient
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -38,7 +37,7 @@ from ..ui.infra import OverlaysMgr
 def run_ipc_task(
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        socketio_client: HudClient,
+        dealer_client: IpcDealerClient,
         ipc_sub: IpcSubscriberSync
         ) -> threading.Thread:
     """Runs the IPC task.
@@ -46,7 +45,7 @@ def run_ipc_task(
     Args:
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        socketio_client (HudClient): Receiver client
+        dealer_client (IpcDealerClient): ZeroMQ DEALER client
         ipc_sub (IpcSubscriberSync): IPC subscriber
 
     Returns:
@@ -63,7 +62,7 @@ def run_ipc_task(
         ipc_server=ipc_server,
         logger=logger,
         overlays_mgr=overlays_mgr,
-        socketio_client=socketio_client,
+        dealer_client=dealer_client,
         ipc_sub=ipc_sub,
     )
     return ipc_server.serve_in_thread()
@@ -72,7 +71,7 @@ def _register_routes(
         ipc_server: IpcServerSync,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        socketio_client: HudClient,
+        dealer_client: IpcDealerClient,
         ipc_sub: IpcSubscriberSync,
         ) -> None:
     """Register all IPC routes using decorator-style handlers."""
@@ -158,7 +157,7 @@ def _register_routes(
             "stats": {
                 "overlays": overlays_mgr.get_stats(),
                 "ingress" : {
-                    "socketio": socketio_client.get_stats(),
+                    "dealer": dealer_client.get_stats(),
                     "subscriber": ipc_sub.get_stats(),
                 }
             }
@@ -170,7 +169,7 @@ def _register_routes(
             args,
             logger=logger,
             overlays_mgr=overlays_mgr,
-            socketio_client=socketio_client,
+            dealer_client=dealer_client,
             ipc_sub=ipc_sub,
         )
 
@@ -182,7 +181,7 @@ def _shutdown_handler(
         args: dict,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        socketio_client: HudClient,
+        dealer_client: IpcDealerClient,
         ipc_sub: IpcSubscriberSync
         ) -> dict:
     """Handles shutdown command.
@@ -191,12 +190,12 @@ def _shutdown_handler(
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        socketio_client (HudClient): Receiver client obj
-        ipc_sub (PngShmReader): Shared memory reader
+        dealer_client (IpcDealerClient): ZeroMQ DEALER client
+        ipc_sub (IpcSubscriberSync): IPC subscriber
     """
 
     logger.debug("In shutdown handler")
-    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, socketio_client, ipc_sub,),
+    threading.Thread(target=_stop_other_tasks, args=(args, logger, overlays_mgr, dealer_client, ipc_sub,),
                      name="Shutdown tasks").start()
     return {
         "status": "success",
@@ -207,7 +206,7 @@ def _stop_other_tasks(
         args: dict,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
-        socketio_client: HudClient,
+        dealer_client: IpcDealerClient,
         ipc_sub: IpcSubscriberSync
         ) -> None:
     """Stop all other tasks when IPC shutdown is received.
@@ -215,13 +214,13 @@ def _stop_other_tasks(
         args (dict): IPC message
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
-        socketio_client (HudClient): Receiver client
+        dealer_client (IpcDealerClient): ZeroMQ DEALER client
         ipc_sub (IpcSubscriberSync): IPC subscriber
     """
     reason = args.get("reason", "N/A")
     logger.info("Shutdown command received via IPC. Reason: %s. Stopping all tasks...", reason)
 
-    socketio_client.stop()
+    dealer_client.close()
     ipc_sub.close()
     overlays_mgr.stop()
 

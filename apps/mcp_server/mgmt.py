@@ -30,7 +30,7 @@ from typing import Any, Dict, List
 from apps.mcp_server.mcp_server import MCPBridge
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcServerAsync
+from lib.ipc import IpcDealerAsync, IpcServerAsync
 
 from .subscriber import McpSubscriber
 
@@ -40,6 +40,7 @@ class McpIpc:
     def __init__(self,
                  logger: logging.Logger,
                  ipc_sub: McpSubscriber,
+                 ipc_dealer: IpcDealerAsync,
                  mcp_server: MCPBridge,
                  mcp_task: asyncio.Task) -> None:
         """Initialize the IPC server.
@@ -47,6 +48,7 @@ class McpIpc:
         Args:
             logger (logging.Logger): Logger
             ipc_sub (McpSubscriber): MCP Subscriber
+            ipc_dealer (IpcDealerAsync): IPC Dealer
             mcp_server (MCPBridge): MCP Bridge
             mcp_task (asyncio.Task): MCP Task
         """
@@ -55,6 +57,7 @@ class McpIpc:
         self.m_ipc_server = IpcServerAsync(name="MCP IPC Server")
         self._register_handlers()
         self.m_ipc_sub = ipc_sub
+        self.m_ipc_dealer = ipc_dealer
         self.m_mcp_task = mcp_task
         self.m_mcp_server = mcp_server
         report_ipc_port_from_child(self.m_ipc_server.port)
@@ -95,6 +98,7 @@ class McpIpc:
                 "stats": {
                     "INGRESS": self.m_ipc_sub.get_stats(),
                     "MCP": self.m_mcp_server.get_stats(),
+                    "DEALER": self.m_ipc_dealer.get_stats(),
                 }
             }
 
@@ -104,6 +108,7 @@ class McpIpc:
         self.m_ipc_sub.m_wdt.stop()
         self.m_mcp_task.cancel()
         await self.m_ipc_sub.close()
+        await self.m_ipc_dealer.close()
         self.m_logger.debug("MCP shutdown task completed")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -112,6 +117,7 @@ def init_ipc_task(
         logger: logging.Logger,
         tasks: List[asyncio.Task],
         ipc_sub: McpSubscriber,
+        ipc_dealer: IpcDealerAsync,
         mcp_bridge: MCPBridge,
         mcp_task: asyncio.Task) -> None:
     """Initialize the IPC task.
@@ -120,8 +126,9 @@ def init_ipc_task(
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks
         ipc_sub (McpSubscriber): MCP Subscriber
+        ipc_dealer (IpcDealerAsync): IPC Dealer
         mcp_bridge (MCPBridge): MCP Bridge
         mcp_task (asyncio.Task): MCP Task
     """
-    ipc_server = McpIpc(logger, ipc_sub=ipc_sub, mcp_server=mcp_bridge,mcp_task=mcp_task)
+    ipc_server = McpIpc(logger, ipc_sub=ipc_sub, ipc_dealer=ipc_dealer, mcp_server=mcp_bridge, mcp_task=mcp_task)
     tasks.append(asyncio.create_task(ipc_server.run(), name="IPC Server Task"))
