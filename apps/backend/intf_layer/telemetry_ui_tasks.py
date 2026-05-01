@@ -25,7 +25,6 @@
 import asyncio
 import logging
 import random
-from http import HTTPStatus
 from typing import Any, Awaitable, Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
@@ -38,9 +37,31 @@ from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
 from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
+from .request_handlers import handleDriverInfoRequest
 from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _initDealer(
+    settings: PngSettings,
+    logger: logging.Logger,
+    session_state: SessionState) -> IpcDealerAsync:
+    dealer = IpcDealerAsync(
+        host="127.0.0.1",
+        port=settings.Network.broker_router_port,
+        identity=str(PngAppId.BACKEND),
+        logger=logger,
+    )
+
+    @dealer.route("driver-info-request")
+    async def _handle_driver_info_request(data: dict, sender: str) -> dict:
+        logger.debug("Received driver info request via router: %s from %s", data, sender)
+        result = handleDriverInfoRequest(session_state, data.get("index"))
+        if result.ok:
+            return {"ok": True, "data": result.data}
+        return {"ok": False, "error": result.detail, "data": None}
+
+    return dealer
 
 def initUiIntfLayer(
     settings: PngSettings,
@@ -81,21 +102,7 @@ def initUiIntfLayer(
     tasks.append(ipc_pub.get_task())
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
-    dealer = IpcDealerAsync(
-        host="127.0.0.1",
-        port=settings.Network.broker_router_port,
-        identity=str(PngAppId.BACKEND),
-        logger=logger,
-    )
-
-    @dealer.route("driver-info-request")
-    async def _handle_driver_info_request(data: dict, sender: str) -> dict:
-        logger.debug("Received driver info request via router: %s from %s", data, sender)
-        body, status = web_server._processDriverInfoRequest(data.get("index"))
-        if status == HTTPStatus.OK:
-            return {"ok": True, "data": body if isinstance(body, dict) else None}
-        return {"ok": False, "error": str(status), "data": None}
-
+    dealer = _initDealer(settings, logger, session_state)
     tasks.append(asyncio.create_task(dealer.start(), name="Backend Dealer Recv"))
 
     # Setup periodic tasks

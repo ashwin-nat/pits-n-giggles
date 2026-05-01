@@ -25,13 +25,13 @@
 import logging
 import webbrowser
 from http import HTTPStatus
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.state_mgmt_layer.intf import (DriverInfoRsp,
-                                                PeriodicUpdateData,
+from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
                                                 RaceInfoData,
                                                 StreamOverlayData)
+from .request_handlers import handleDriverInfoRequest, RequestError
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import PngSettings
 from lib.web_server import BaseWebServer, ClientType
@@ -188,7 +188,15 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return self._processDriverInfoRequest(self.request.args.get('index'))
+            result = handleDriverInfoRequest(self.m_session_state, self.request.args.get('index'))
+            if result.ok:
+                return result.data, HTTPStatus.OK
+            http_status = {
+                RequestError.MISSING_PARAM: HTTPStatus.BAD_REQUEST,
+                RequestError.INVALID_PARAM: HTTPStatus.BAD_REQUEST,
+                RequestError.NOT_FOUND:     HTTPStatus.NOT_FOUND,
+            }[result.error]
+            return {'error': result.detail}, http_status
 
         @self.http_route('/stream-overlay-info')
         async def streamOverlayInfoHTTP() -> Tuple[str, int]:
@@ -199,34 +207,6 @@ class TelemetryWebServer(BaseWebServer):
                 Tuple[str, int]: JSON response and HTTP status code.
             """
             return StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
-
-    def _processDriverInfoRequest(self, index_arg: Any) -> Tuple[Dict[str, Any], HTTPStatus]:
-        """
-        Process driver info request.
-
-        Args:
-            index_arg (Any): The index parameter, expected to be a number.
-
-        Returns:
-            Tuple[Dict[str, Any], HTTPStatus]: The response and HTTP status code.
-        """
-
-        # Validate the input
-        if error_response := self.validate_int_get_request_param(index_arg, 'index'):
-            return error_response, HTTPStatus.BAD_REQUEST
-
-        # Check if the given index is valid
-        index_int = int(index_arg)
-        if not self.m_session_state.isIndexValid(index_int):
-            error_response = {
-                'error' : 'Invalid parameter value',
-                'message' : 'Invalid index',
-                'index' : index_arg
-            }
-            return self.jsonify(error_response), HTTPStatus.NOT_FOUND
-
-        # Process parameters and generate response
-        return DriverInfoRsp(self.m_session_state, index_int).toJSON(), HTTPStatus.OK
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
