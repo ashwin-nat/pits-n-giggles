@@ -105,6 +105,7 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - `.claude/commands/new-overlay.md` — Scaffold a new HUD overlay widget. Use when adding a new in-game display panel.
 - `.claude/commands/release-notes.md` — Generate user-facing release notes from commits since the last tag. Use when preparing a release.
 - `.claude/commands/add-mcp-tool.md` — Scaffold a new MCP tool in `apps/mcp_server/`. Use when adding a new tool to the MCP server.
+- `.claude/commands/add-config-field.md` — Add a new config field with validation, subsystem wiring, and tests. Use when adding any new field to `png_config.json`.
 
 ### IPC Pattern
 
