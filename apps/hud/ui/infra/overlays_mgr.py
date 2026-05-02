@@ -26,7 +26,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from apps.hud.common import get_ref_row_index
+from apps.hud.common import get_ref_row_index, get_ref_row
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
@@ -440,8 +440,21 @@ class OverlaysMgr:
             return
         if data.get("in-menu", False):
             self._set_telemetry_active(False)
-        else:
-            self._update_telemetry_active()
+            return
+
+        if not data.get("is-spectating", False):
+            ref_row = get_ref_row(data)
+            # In FP/Quali the player may be parked in garage and navigating menus
+            # while periodic data keeps arriving — hide overlays in that case
+            if ref_row:
+                lap_info = ref_row.get("lap-info", {})
+                curr_lap = lap_info.get("curr-lap", {})
+                driver_status = curr_lap.get("driver-status")
+                if driver_status == "IN_GARAGE":
+                    self._set_telemetry_active(False)
+                    return
+
+        self._update_telemetry_active()
 
     def _update_telemetry_active(self):
         """Set telemetry active state based on local WDT."""
