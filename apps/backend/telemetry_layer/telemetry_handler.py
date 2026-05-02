@@ -52,8 +52,6 @@ from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
 
-_MENU_SILENCE_THRESHOLD_SEC = 3.0
-
 @dataclass
 class UdpActionCodes:
     custom_marker: Optional[int] = None
@@ -127,6 +125,7 @@ def setupTelemetryTask(
     )
     tasks.append(telemetry_server.getTask())
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
+    tasks.append(asyncio.create_task(telemetry_server.m_menu_wdt.run(), name="Menu Silence WDT Task"))
 
     return telemetry_server
 
@@ -186,6 +185,11 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
+        self.m_auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
+        self.m_menu_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
+            status_callback=lambda active: self.m_session_state_ref.setInMenu(not active),
+            timeout=float(settings.HUD.menu_silence_threshold_sec),
+        )
 
         self.m_udp_action_codes = UdpActionCodes(
             custom_marker=settings.Network.udp_custom_action_code,
@@ -204,7 +208,6 @@ class F1TelemetryHandler:
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
-        self._menu_silence_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
     def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
@@ -244,16 +247,9 @@ class F1TelemetryHandler:
         await self.m_manager.run()
 
     def _kick_periodic_packet_timer(self) -> None:
-        """Reset the menu-silence timer. Called on every periodic (non-EVENT) packet."""
-        if self._menu_silence_task:
-            self._menu_silence_task.cancel()
-        self.m_session_state_ref.setInMenu(False)
-        self._menu_silence_task = asyncio.create_task(self._menu_silence_cb())
-
-    async def _menu_silence_cb(self) -> None:
-        """Fires after silence threshold with no periodic packets — player is in a menu."""
-        await asyncio.sleep(_MENU_SILENCE_THRESHOLD_SEC)
-        self.m_session_state_ref.setInMenu(True)
+        """Kick the menu-detection watchdog. Called on every periodic (non-EVENT) packet."""
+        if self.m_auto_hide_in_menu:
+            self.m_menu_wdt.kick()
 
     async def stop(self) -> None:
         """
@@ -261,9 +257,8 @@ class F1TelemetryHandler:
         """
         if self.m_manager_task:
             self.m_manager_task.cancel()
-        if self._menu_silence_task:
-            self._menu_silence_task.cancel()
         self.m_wdt.stop()
+        self.m_menu_wdt.stop()
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     def getWatchdogTask(self) -> Coroutine:
