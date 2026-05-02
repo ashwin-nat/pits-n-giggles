@@ -24,7 +24,10 @@ Window {
     property bool carOnLeft: false
     property bool carOnRight: false
 
-    // Single property write per frame — flat array [x, y, heading, inRange, name, ...] stride 5
+    // Set by Python post_setup to match _RADAR_AREA_RATIO — single source of truth
+    property real radarAreaRatio: 0.85
+
+    // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
     property var carData: []
 
     onCarDataChanged:    radarCanvas.requestPaint()
@@ -68,7 +71,7 @@ Window {
                 const h = height;
                 const cx = w / 2;
                 const cy = h / 2;
-                const halfR = w * 0.85 / 2;
+                const halfR = w * root.radarAreaRatio / 2;
 
                 ctx.clearRect(0, 0, w, h);
 
@@ -130,14 +133,14 @@ Window {
                     ctx.fill();
                 }
 
-                // --- Other cars ---
+                // --- Other cars — stride 4: [x, y, heading, inRange] ---
                 const cars = root.carData;
-                const count = Math.floor(cars.length / 5);
+                const count = Math.floor(cars.length / 4);
                 const cw = root.carWidthPx;
                 const cl = root.carLengthPx;
 
                 for (let i = 0; i < count; i++) {
-                    const base = i * 5;
+                    const base = i * 4;
                     if (!cars[base + 3]) continue;
 
                     ctx.save();
