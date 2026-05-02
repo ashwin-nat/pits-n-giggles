@@ -135,7 +135,7 @@ Window {
                     Canvas {
                         id: canvas
                         anchors.fill: parent
-                        renderStrategy: Canvas.Cooperative
+                        renderStrategy: Canvas.Threaded
 
                         onPaint: {
                             let ctx = getContext("2d")

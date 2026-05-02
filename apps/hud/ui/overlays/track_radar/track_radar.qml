@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Window
-import QtQuick.Layouts
 
 Window {
     id: root
@@ -16,93 +15,33 @@ Window {
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     // Radar properties
-    property var driverData: []
-    property real carWidthPx: 10.2   // initial value only; overwritten by Python on every frame
-    property real carLengthPx: 28.7  // initial value only; overwritten by Python on every frame
-    property real radarRange: 25.0  // meters - zoomed in for side awareness
-    property real baseOpacity: 1.0  // Externally controlled opacity
-    property real idleOpacity: 0.3  // Opacity when no cars nearby (0.0 - 1.0)
-    property bool lockedMode: true  // Enable/disable fade behavior
-    property bool carsNearby: false  // Track if cars are in vicinity
-    // Default value is false so that the radar stays faded in menu when the app is launched
-    // When actual data starts coming, the correct computed value will be set
+    property real carWidthPx: 10.2
+    property real carLengthPx: 28.7
+    property real baseOpacity: 1.0
+    property real idleOpacity: 0.3
+    property bool lockedMode: true
+    property bool carsNearby: false
+    property bool carOnLeft: false
+    property bool carOnRight: false
 
-    function updateTelemetry(drivers) {
-        driverData = drivers || [];
-        carsNearby = hasCarInVicinity();
-    }
+    // Set by Python post_setup to match _RADAR_AREA_RATIO — single source of truth
+    property real radarAreaRatio: 0.85
 
-    // Helper functions for side detection
-    function hasCarOnLeft() {
-        for (var i = 0; i < driverData.length; i++) {
-            var driver = driverData[i];
-            if (driver.is_ref) continue;
+    // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
+    property var carData: []
 
-            var relX = driver.relX || 0;
-            var relZ = driver.relZ || 0;
+    onCarDataChanged:    radarCanvas.requestPaint()
+    onCarOnLeftChanged:  radarCanvas.requestPaint()
+    onCarOnRightChanged: radarCanvas.requestPaint()
 
-            // Check if car is on left side and within alongside range
-            // Left is negative X, alongside is similar Z position
-            if (relX < -1.5 && relX > -4.0 && Math.abs(relZ) < 8.0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function hasCarOnRight() {
-        for (var i = 0; i < driverData.length; i++) {
-            var driver = driverData[i];
-            if (driver.is_ref) continue;
-
-            var relX = driver.relX || 0;
-            var relZ = driver.relZ || 0;
-
-            // Check if car is on right side and within alongside range
-            // Right is positive X, alongside is similar Z position
-            if (relX > 1.5 && relX < 4.0 && Math.abs(relZ) < 8.0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Check if any car is in vicinity (within radar range)
-    function hasCarInVicinity() {
-        var count = 0;
-        for (var i = 0; i < driverData.length; i++) {
-            var driver = driverData[i];
-            if (driver.is_ref) continue;
-
-            var relX = driver.relX || 0;
-            var relZ = driver.relZ || 0;
-            var distance = Math.sqrt(relX * relX + relZ * relZ);
-
-            if (distance <= radarRange) {
-                count++;
-            }
-        }
-        return count > 0;
-    }
-
-    // ==========================================================
-    // GLOBAL SCALING ROOT
-    // ==========================================================
     Item {
         id: scaledRoot
         anchors.centerIn: parent
         width: baseWidth
         height: baseHeight
 
-        // Fade in/out based on car vicinity (only if lockedMode is true)
-        opacity: {
-            let targetOpacity = lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity;
-            return targetOpacity;
-        }
-
-        Behavior on opacity {
-            NumberAnimation { duration: 500 }
-        }
+        opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
+        Behavior on opacity { NumberAnimation { duration: 500 } }
 
         transform: Scale {
             xScale: scaleFactor
@@ -111,258 +50,121 @@ Window {
             origin.y: baseHeight / 2
         }
 
-        // Background (fully transparent)
-        Rectangle {
+        Canvas {
+            id: radarCanvas
             anchors.fill: parent
-            color: "transparent"
-        }
+            renderStrategy: Canvas.Threaded
 
-        // Radar display area
-        Item {
-            id: radarArea
-            anchors.centerIn: parent
-            width: parent.width * 0.85
-            height: parent.height * 0.85
-
-            readonly property real centerX: width / 2
-            readonly property real centerY: height / 2
-
-            // Grid lines
-            Repeater {
-                model: 4
-                delegate: Canvas {
-                    property real circleRadius: (index + 1) * (radarArea.width / 8)
-                    x: radarArea.centerX - circleRadius
-                    y: radarArea.centerY - circleRadius
-                    width: circleRadius * 2
-                    height: circleRadius * 2
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
-
-                        ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.22);
-                        ctx.lineWidth = 1;
-                        ctx.setLineDash([5, 5]); // Dashed pattern: 5px dash, 5px gap
-
-                        ctx.beginPath();
-                        ctx.arc(width / 2, height / 2, circleRadius, 0, 2 * Math.PI);
-                        ctx.stroke();
-                    }
-
-                    Component.onCompleted: requestPaint()
-                }
+            function roundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y,     x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x,     y + h, r);
+                ctx.arcTo(x,     y + h, x,     y,     r);
+                ctx.arcTo(x,     y,     x + w, y,     r);
+                ctx.closePath();
             }
 
-            // Crosshair
-            Rectangle {
-                x: radarArea.centerX - width / 2
-                y: 0
-                width: 1
-                height: radarArea.height
-                color: Qt.rgba(1, 1, 1, 0.28)
-            }
-            Rectangle {
-                x: 0
-                y: radarArea.centerY - height / 2
-                width: radarArea.width
-                height: 1
-                color: Qt.rgba(1, 1, 1, 0.28)
-            }
+            onPaint: {
+                const ctx = getContext("2d");
+                const w = width;
+                const h = height;
+                const cx = w / 2;
+                const cy = h / 2;
+                const halfR = w * root.radarAreaRatio / 2;
 
-            // Reference car (center) with side indicators
-            Item {
-                x: radarArea.centerX
-                y: radarArea.centerY
+                ctx.clearRect(0, 0, w, h);
 
-                // Left side radial gradient sector
-                Canvas {
-                    id: leftSector
-                    anchors.centerIn: parent
-                    width: radarArea.width
-                    height: radarArea.height
-                    opacity: hasCarOnLeft() ? 1.0 : 0.0
+                // --- Grid circles ---
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                for (let i = 1; i <= 4; i++) {
+                    const r = i * (halfR / 2);
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
 
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
+                // --- Crosshair ---
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - halfR);
+                ctx.lineTo(cx, cy + halfR);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(cx - halfR, cy);
+                ctx.lineTo(cx + halfR, cy);
+                ctx.stroke();
 
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
+                // --- Sector glows ---
+                const halfW = root.carWidthPx / 2;
+                const halfL = root.carLengthPx / 2;
 
-                        if (opacity > 0) {
-                            var centerX = width / 2;
-                            var centerY = height / 2;
-                            var carWidth = root.carWidthPx;
-                            var carHeight = root.carLengthPx;
-
-                            // Calculate angles for left side sector (USING RIGHT CORNERS)
-                            // Top-right corner
-                            var topRightX = carWidth / 2;
-                            var topRightY = -carHeight / 2;
-                            var angleTopRight = Math.atan2(topRightY, topRightX);
-
-                            // Bottom-right corner
-                            var bottomRightX = carWidth / 2;
-                            var bottomRightY = carHeight / 2;
-                            var angleBottomRight = Math.atan2(bottomRightY, bottomRightX);
-
-                            // Create radial gradient
-                            var gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(width, height) / 2);
-                            gradient.addColorStop(0, "rgba(255, 0, 0, 0.8)");
-                            gradient.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                            gradient.addColorStop(1, "rgba(255, 0, 0, 0.0)");
-
-                            ctx.fillStyle = gradient;
-                            ctx.beginPath();
-                            ctx.moveTo(centerX, centerY);
-                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleTopRight, angleBottomRight, false);  // clockwise
-                            ctx.lineTo(centerX, centerY);
-                            ctx.fill();
-                        }
-                    }
-
-                    onOpacityChanged: requestPaint()
+                if (root.carOnLeft) {
+                    const angleTopRight    = Math.atan2(-halfL,  halfW);
+                    const angleBottomRight = Math.atan2( halfL,  halfW);
+                    const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
+                    gL.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
+                    gL.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
+                    gL.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
+                    ctx.fillStyle = gL;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.arc(cx, cy, halfR, angleTopRight, angleBottomRight, false);
+                    ctx.lineTo(cx, cy);
+                    ctx.fill();
                 }
 
-                // Right side radial gradient sector
-                Canvas {
-                    id: rightSector
-                    anchors.centerIn: parent
-                    width: radarArea.width
-                    height: radarArea.height
-                    opacity: hasCarOnRight() ? 1.0 : 0.0
-
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
-
-                        if (opacity > 0) {
-                            var centerX = width / 2;
-                            var centerY = height / 2;
-                            var carWidth = root.carWidthPx;
-                            var carHeight = root.carLengthPx;
-
-                            // Calculate angles for right side sector (USING LEFT CORNERS)
-                            // Top-left corner
-                            var topLeftX = -carWidth / 2;
-                            var topLeftY = -carHeight / 2;
-                            var angleTopLeft = Math.atan2(topLeftY, topLeftX);
-
-                            // Bottom-left corner
-                            var bottomLeftX = -carWidth / 2;
-                            var bottomLeftY = carHeight / 2;
-                            var angleBottomLeft = Math.atan2(bottomLeftY, bottomLeftX);
-
-                            // Create radial gradient
-                            var gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(width, height) / 2);
-                            gradient.addColorStop(0, "rgba(255, 0, 0, 0.8)");
-                            gradient.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                            gradient.addColorStop(1, "rgba(255, 0, 0, 0.0)");
-
-                            ctx.fillStyle = gradient;
-                            ctx.beginPath();
-                            ctx.moveTo(centerX, centerY);
-                            ctx.arc(centerX, centerY, Math.min(width, height) / 2, angleBottomLeft, angleTopLeft, false);  // clockwise
-                            ctx.lineTo(centerX, centerY);
-                            ctx.fill();
-                        }
-                    }
-
-                    onOpacityChanged: requestPaint()
+                if (root.carOnRight) {
+                    const angleTopLeft    = Math.atan2(-halfL, -halfW);
+                    const angleBottomLeft = Math.atan2( halfL, -halfW);
+                    const gR = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
+                    gR.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
+                    gR.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
+                    gR.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
+                    ctx.fillStyle = gR;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.arc(cx, cy, halfR, angleBottomLeft, angleTopLeft, false);
+                    ctx.lineTo(cx, cy);
+                    ctx.fill();
                 }
 
-                Rectangle {
-                    id: refCar
-                    anchors.centerIn: parent
-                    width: root.carWidthPx
-                    height: root.carLengthPx
-                    color: "#00ff00"
-                    border.color: "#ffffff"
-                    border.width: 2
-                    radius: 2
+                // --- Other cars — stride 4: [x, y, heading, inRange] ---
+                const cars = root.carData;
+                const count = Math.floor(cars.length / 4);
+                const cw = root.carWidthPx;
+                const cl = root.carLengthPx;
+
+                for (let i = 0; i < count; i++) {
+                    const base = i * 4;
+                    if (!cars[base + 3]) continue;
+
+                    ctx.save();
+                    ctx.translate(cars[base], cars[base + 1]);
+                    ctx.rotate(cars[base + 2] * Math.PI / 180);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.strokeStyle = "#888888";
+                    ctx.lineWidth = 1;
+                    radarCanvas.roundRect(ctx, -cw / 2, -cl / 2, cw, cl, 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
                 }
-            }
 
-            // Other cars
-            Repeater {
-                model: driverData
-                delegate: Item {
-                    id: carMarker
-
-                    property var driver: modelData
-                    property bool isRef: driver.is_ref || false
-
-                    visible: !isRef && driver.relX !== undefined && driver.relZ !== undefined
-
-                    // Convert world position to radar coordinates (flip X axis)
-                    // relX: world-space lateral offset from player.
-                    // Convention: +relX = car is to the right of the player.
-                    //
-                    // NOTE:
-                    // Radar screen space intentionally mirrors world X so that the radar
-                    // matches the driver's perspective. As a result:
-                    //   - +relX (world right) is drawn to the LEFT on screen
-                    //   - -relX (world left)  is drawn to the RIGHT on screen
-                    //
-                    // Side-awareness logic (hasCarOnLeft/Right) always uses world-space relX.
-                    property real radarX: radarArea.centerX - (driver.relX / root.radarRange) * (radarArea.width / 2)
-                    property real radarY: radarArea.centerY - (driver.relZ / root.radarRange) * (radarArea.height / 2)
-
-                    // Check if within radar range
-                    property real distance: Math.sqrt(driver.relX * driver.relX + driver.relZ * driver.relZ)
-                    property bool inRange: distance <= root.radarRange
-
-                    x: radarX
-                    y: radarY
-
-                    opacity: inRange ? 1.0 : 0.0
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: root.carWidthPx
-                        height: root.carLengthPx
-                        color: "#ffffff"
-                        border.color: "#888888"
-                        border.width: 1
-                        radius: 2
-                        rotation: -(driver.heading || 0)  // Invert rotation
-                    }
-
-                    // Driver name on hover
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.top
-                        anchors.bottomMargin: 5
-                        width: nameText.width + 8
-                        height: nameText.height + 4
-                        color: "#000000"
-                        opacity: 0.8
-                        radius: 3
-                        visible: mouseArea.containsMouse
-
-                        Text {
-                            id: nameText
-                            anchors.centerIn: parent
-                            text: driver.name || ""
-                            color: "#ffffff"
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
-                    }
-
-                    MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-                        anchors.margins: -10
-                        hoverEnabled: true
-                    }
-                }
+                // --- Reference car ---
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.fillStyle = "#00ff00";
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                radarCanvas.roundRect(ctx, -halfW, -halfL, cw, cl, 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
             }
         }
     }
