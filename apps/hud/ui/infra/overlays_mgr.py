@@ -63,7 +63,7 @@ class OverlaysMgr:
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
         self._local_wdt_ok: bool = False
-        self._core_wdt_ok: bool = False
+        self._auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
             timeout=settings.Display.wdt_timeout,
@@ -208,7 +208,7 @@ class OverlaysMgr:
             self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
-        self._handle_core_wdt_status(data)
+        self._handle_in_menu_status(data)
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -434,16 +434,18 @@ class OverlaysMgr:
         self._local_wdt_ok = active
         self._update_telemetry_active()
 
-    def _handle_core_wdt_status(self, data: Dict[str, Any]):
-        """Handle core watchdog status (core receiving sim data)."""
-        self._core_wdt_ok = data.get("wdt-status", False)
-        self._update_telemetry_active()
+    def _handle_in_menu_status(self, data: Dict[str, Any]):
+        """Hide overlays when backend reports in-menu state; restore when session resumes."""
+        if not self._auto_hide_in_menu:
+            return
+        if data.get("in-menu", False):
+            self._set_telemetry_active(False)
+        else:
+            self._update_telemetry_active()
 
     def _update_telemetry_active(self):
-        """Set telemetry active only when both local and core WDT are satisfied."""
-        local_ok = True if self.wdt is None else self._local_wdt_ok
-        combined = local_ok and self._core_wdt_ok
-        self._set_telemetry_active(combined)
+        """Set telemetry active state based on local WDT."""
+        self._set_telemetry_active(True if self.wdt is None else self._local_wdt_ok)
 
     def _prep_race_table_data(self, data: Dict[str, Any]):
         """Prepare race table data for overlays."""
