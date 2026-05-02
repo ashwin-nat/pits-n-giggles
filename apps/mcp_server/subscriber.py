@@ -23,11 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
-from lib.logger import PngLogger
 from typing import Any, Dict, List, Optional
 
 from lib.ipc import IpcSubscriberAsync
+from lib.logger import PngLogger
 from lib.wdt import WatchDogTimerAsync
 
 from .state import set_state_data
