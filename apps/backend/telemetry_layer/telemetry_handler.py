@@ -125,7 +125,7 @@ def setupTelemetryTask(
     )
     tasks.append(telemetry_server.getTask())
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
-    tasks.append(asyncio.create_task(telemetry_server.m_menu_wdt.run(), name="Menu Silence WDT Task"))
+    tasks.append(asyncio.create_task(telemetry_server.getMenuWatchdogTask(), name="Menu Silence WDT Task"))
 
     return telemetry_server
 
@@ -267,6 +267,14 @@ class F1TelemetryHandler:
         Coroutine: The watchdog task.
         """
         return self.m_wdt.run()
+
+    def getMenuWatchdogTask(self) -> Coroutine:
+        """Get the menu-silence watchdog task.
+
+        Returns:
+            Coroutine: The menu silence watchdog task.
+        """
+        return self.m_menu_wdt.run()
 
     def registerCallbacks(self) -> None:
         """
