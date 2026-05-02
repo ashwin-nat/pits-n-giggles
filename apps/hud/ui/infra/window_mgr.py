@@ -23,12 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+import os
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional
 
-from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject,
-                            QTimer, QWaitCondition, Qt, QtMsgType, Signal,
-                            Slot, qInstallMessageHandler)
+from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
+                            QTimer, QtMsgType, QWaitCondition, Signal, Slot,
+                            qInstallMessageHandler)
 from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
@@ -49,7 +50,6 @@ class WindowManager(QObject):
         Args:
             logger: Logger
         """
-        import os
         os.environ.setdefault("QSG_RENDER_LOOP", "threaded")
         self.app = QApplication()
         super().__init__()
