@@ -72,6 +72,7 @@ class AsyncF1TelemetryManager:
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
+        self._last_session_uid: Optional[int] = None
 
     def on_packet(self, packet_type: F1PacketType):
         """Decorator to register a callback for a specific packet type
@@ -167,6 +168,12 @@ class AsyncF1TelemetryManager:
                 len(raw_packet)
             )
             return
+
+        uid = parsed_obj.m_header.m_sessionUID
+        if uid != self._last_session_uid:
+            self.m_logger.info("Session UID changed: %s -> %d (packet=%s)",
+                               self._last_session_uid, uid, parsed_obj.m_header.m_packetId)
+            self._last_session_uid = uid
 
         # Perform the registered callback
         try:
