@@ -49,9 +49,12 @@ class WindowManager(QObject):
         Args:
             logger: Logger
         """
+        import os
+        os.environ.setdefault("QSG_RENDER_LOOP", "threaded")
         self.app = QApplication()
         super().__init__()
         self.logger = logger
+        self.logger.info("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
 
         qInstallMessageHandler(self._qt_message_handler)

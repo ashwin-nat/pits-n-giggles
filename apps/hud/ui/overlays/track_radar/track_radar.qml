@@ -223,7 +223,7 @@ Window {
                         }
                     }
 
-                    onOpacityChanged: requestPaint()
+                    onOpacityChanged: { if (opacity >= 0.99 || opacity <= 0.01) requestPaint() }
                 }
 
                 // Right side radial gradient sector
@@ -274,7 +274,7 @@ Window {
                         }
                     }
 
-                    onOpacityChanged: requestPaint()
+                    onOpacityChanged: { if (opacity >= 0.99 || opacity <= 0.01) requestPaint() }
                 }
 
                 Rectangle {
