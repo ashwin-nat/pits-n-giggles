@@ -170,7 +170,9 @@ class TrackRadarOverlay(BaseOverlayQML):
                 car_on_right = True
 
             radar_x, radar_y = self._to_radar_coords(rel_x, rel_z)
-            car_data.extend([radar_x, radar_y, d['heading'], dist <= _RADAR_RANGE_M])
+            # Preserve pre-rewrite visual heading convention from QML:
+            # old delegate used `rotation: -(driver.heading || 0)`.
+            car_data.extend([radar_x, radar_y, -d['heading'], dist <= _RADAR_RANGE_M])
 
         return cars_nearby, car_on_left, car_on_right, car_data
 
@@ -184,9 +186,12 @@ class TrackRadarOverlay(BaseOverlayQML):
 
     @staticmethod
     def _to_radar_coords(rel_x: float, rel_z: float) -> tuple[float, float]:
-        half = _RADAR_AREA_PX / 2
-        scale = half / _RADAR_RANGE_M
-        return half - rel_x * scale, half - rel_z * scale
+        # Match legacy QML projection exactly:
+        #   radarArea.center + local offset where radarArea was inset in 300x300 root.
+        # This resolves to root center while keeping radarArea-sized scaling.
+        center = _RADAR_BASE_WIDTH / 2
+        scale = (_RADAR_AREA_PX / 2) / _RADAR_RANGE_M
+        return center - rel_x * scale, center - rel_z * scale
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""
