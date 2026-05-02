@@ -311,6 +311,38 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    # ============== AUTO-HIDE IN MENU ==============
+    auto_hide_in_menu: bool = Field(
+        default=True,
+        description="Auto-hide overlays when the game is in a menu",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Auto-hide in Menu",
+            }
+        }
+    )
+    menu_silence_threshold_sec: float = Field(
+        default=3.0,
+        ge=1.0,
+        le=30.0,
+        description="Seconds of telemetry silence before overlays are hidden (menu detection threshold)",
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": True,
+                "min": 1,
+                "max": 30,
+                "group": "Auto-hide in Menu",
+                "ext_info": [
+                    "How long (in seconds) the backend must receive no periodic telemetry packets "
+                    "before treating the game as being in a menu and hiding the overlays."
+                ],
+            }
+        }
+    )
+
     # ============== GLOBAL OVERLAY CONTROLS ==============
 
     overlays_opacity: int = Field(
