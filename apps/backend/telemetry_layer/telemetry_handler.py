@@ -396,7 +396,6 @@ class F1TelemetryHandler:
                 packet - PacketCarStatusData object
             """
 
-            self._kick_periodic_packet_timer()
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return

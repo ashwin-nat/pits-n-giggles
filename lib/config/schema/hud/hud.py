@@ -330,11 +330,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Seconds of telemetry silence before overlays are hidden (menu detection threshold)",
         json_schema_extra={
             "ui": {
-                "type": "slider",
-                "visible": False,
-                "min": 1,
-                "max": 30,
-                "group": "Auto-hide in Menu",
+                "type" : "text_box",
+                "visible": True,
                 "ext_info": [
                     "How long (in seconds) the backend must receive no periodic telemetry packets "
                     "before treating the game as being in a menu and hiding the overlays."
