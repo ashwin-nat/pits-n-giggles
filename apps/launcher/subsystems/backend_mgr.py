@@ -180,6 +180,9 @@ class BackendAppMgr(PngAppMgrBase):
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
             "Prediction": [],
+            "HUD": [
+                "menu_silence_threshold_sec",
+            ],
         }):
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields change: "
                            f"{json.dumps(restart_required_fields_diff, indent=2)}")

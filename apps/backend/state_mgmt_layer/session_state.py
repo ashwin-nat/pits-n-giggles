@@ -326,6 +326,7 @@ class SessionState:
         'm_connected_to_sim',
         'm_race_ctrl',
         'm_flashback_occurred',
+        'm_in_menu',
     )
 
     def __init__(self,
@@ -368,6 +369,7 @@ class SessionState:
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
+        self.m_in_menu: bool = True
 
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
         self.m_flashback_occurred: bool = False
@@ -426,6 +428,16 @@ class SessionState:
         Set the race as completed.
         """
         self.m_race_completed = True
+
+    def setInMenu(self, in_menu: bool) -> None:
+        """Set whether the player is currently in a menu (no periodic packets flowing).
+
+        Args:
+            in_menu (bool): True if in menu, False if in an active session
+        """
+        if in_menu != self.m_in_menu:
+            self.m_logger.info("In-menu status: [%s]->[%s]", self.m_in_menu, in_menu)
+            self.m_in_menu = in_menu
 
     def setConnectedToSim(self, connected: bool) -> None:
         """Set whether the client is connected to the simulator. Based on WDT

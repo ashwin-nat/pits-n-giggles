@@ -85,6 +85,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.circuit_info_length, 800)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
+        self.assertTrue(settings.auto_hide_in_menu)
+        self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_hud_overlay_speed_unit_validation(self):
@@ -833,4 +835,35 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_length=1501)
         HudSettings(circuit_info_length=1500)
+
+    def test_auto_hide_in_menu_validation(self):
+        """Test auto_hide_in_menu accepts booleans and rejects invalid types"""
+        self.assertTrue(HudSettings(auto_hide_in_menu=True).auto_hide_in_menu)
+        self.assertFalse(HudSettings(auto_hide_in_menu=False).auto_hide_in_menu)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(auto_hide_in_menu="notabool")
+        with self.assertRaises(ValidationError):
+            HudSettings(auto_hide_in_menu=None)  # type: ignore
+
+    def test_menu_silence_threshold_sec_validation(self):
+        """Test menu_silence_threshold_sec boundary and type validation"""
+        # Valid values
+        self.assertEqual(HudSettings(menu_silence_threshold_sec=1.0).menu_silence_threshold_sec, 1.0)
+        self.assertEqual(HudSettings(menu_silence_threshold_sec=3.0).menu_silence_threshold_sec, 3.0)
+        self.assertEqual(HudSettings(menu_silence_threshold_sec=30.0).menu_silence_threshold_sec, 30.0)
+
+        # Below minimum
+        with self.assertRaises(ValidationError):
+            HudSettings(menu_silence_threshold_sec=0.9)
+
+        # Above maximum
+        with self.assertRaises(ValidationError):
+            HudSettings(menu_silence_threshold_sec=30.1)
+
+        # Invalid type
+        with self.assertRaises(ValidationError):
+            HudSettings(menu_silence_threshold_sec="fast")
+        with self.assertRaises(ValidationError):
+            HudSettings(menu_silence_threshold_sec=None)  # type: ignore
 

@@ -456,6 +456,7 @@ class HudAppMgr(PngAppMgrBase):
         if settings_requiring_restart := self.curr_settings.diff(new_settings, {
             "HUD": [
                 "enabled",
+                "auto_hide_in_menu",
                 "show_lap_timer",
                 "lap_timer_minimal",
                 "show_timing_tower",

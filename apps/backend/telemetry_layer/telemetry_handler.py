@@ -125,6 +125,7 @@ def setupTelemetryTask(
     )
     tasks.append(telemetry_server.getTask())
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
+    tasks.append(asyncio.create_task(telemetry_server.getMenuWatchdogTask(), name="Menu Silence WDT Task"))
 
     return telemetry_server
 
@@ -184,6 +185,10 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
+        self.m_menu_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
+            status_callback=lambda active: self.m_session_state_ref.setInMenu(not active),
+            timeout=float(settings.HUD.menu_silence_threshold_sec),
+        )
 
         self.m_udp_action_codes = UdpActionCodes(
             custom_marker=settings.Network.udp_custom_action_code,
@@ -240,6 +245,10 @@ class F1TelemetryHandler:
         """
         await self.m_manager.run()
 
+    def _kick_periodic_packet_timer(self) -> None:
+        """Kick the menu-detection watchdog. Called on every periodic (non-EVENT) packet."""
+        self.m_menu_wdt.kick()
+
     async def stop(self) -> None:
         """
         Stop the telemetry manager and watchdog timer.
@@ -247,6 +256,7 @@ class F1TelemetryHandler:
         if self.m_manager_task:
             self.m_manager_task.cancel()
         self.m_wdt.stop()
+        self.m_menu_wdt.stop()
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     def getWatchdogTask(self) -> Coroutine:
@@ -257,6 +267,14 @@ class F1TelemetryHandler:
         Coroutine: The watchdog task.
         """
         return self.m_wdt.run()
+
+    def getMenuWatchdogTask(self) -> Coroutine:
+        """Get the menu-silence watchdog task.
+
+        Returns:
+            Coroutine: The menu silence watchdog task.
+        """
+        return self.m_menu_wdt.run()
 
     def registerCallbacks(self) -> None:
         """
@@ -284,6 +302,7 @@ class F1TelemetryHandler:
                 packet (PacketSessionData): The session data telemetry packet.
             """
 
+            self._kick_periodic_packet_timer()
             if packet.m_sessionDuration == 0:
                 self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
                                    packet.m_header.m_sessionUID)
@@ -302,6 +321,7 @@ class F1TelemetryHandler:
                 packet (PacketLapData): Lap Data packet
             """
 
+            self._kick_periodic_packet_timer()
             if self.m_session_state_ref.m_session_info.m_total_laps is not None:
                 self.m_session_state_ref.processLapDataUpdate(packet)
                 self.m_session_state_ref.setRaceOngoing()
@@ -339,6 +359,7 @@ class F1TelemetryHandler:
                 packet (PacketParticipantsData): The pariticpants info packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processParticipantsUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY)
@@ -349,6 +370,7 @@ class F1TelemetryHandler:
                 packet (PacketCarTelemetryData): The car telemetry update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarTelemetryUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -360,6 +382,7 @@ class F1TelemetryHandler:
                 packet (PacketCarStatusData): The car status update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarStatusUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -373,6 +396,7 @@ class F1TelemetryHandler:
                 packet - PacketCarStatusData object
             """
 
+            self._kick_periodic_packet_timer()
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
@@ -407,6 +431,7 @@ class F1TelemetryHandler:
                 packet (PacketCarDamageData): The car damage update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarDamageUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -418,6 +443,7 @@ class F1TelemetryHandler:
                 packet (PacketSessionHistoryData): The session history update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processSessionHistoryUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -429,6 +455,7 @@ class F1TelemetryHandler:
                 packet (PacketTyreSetsData): The tyre history update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processTyreSetsUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -440,6 +467,7 @@ class F1TelemetryHandler:
                 packet (PacketMotionData): The motion update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processMotionUpdate(packet)
 
         # Register the car setup handler if and only if user has allowed this
@@ -453,6 +481,7 @@ class F1TelemetryHandler:
                     packet (PacketCarSetupData): The car setup update packet
                 """
 
+                self._kick_periodic_packet_timer()
                 self.m_session_state_ref.processCarSetupsUpdate(packet)
         else:
             self.m_logger.debug("Not processing car setups")
@@ -465,6 +494,7 @@ class F1TelemetryHandler:
                 packet (PacketTimeTrialData): The time trial update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processTimeTrialUpdate(packet)
 
         # We're not using this data, no need to waste CPU cycles processing it.
