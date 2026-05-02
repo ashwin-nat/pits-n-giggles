@@ -24,6 +24,7 @@
 
 import asyncio
 import logging
+from lib.logger import PngLogger
 from typing import Any, Dict, List, Optional
 
 from lib.ipc import IpcSubscriberAsync
@@ -34,11 +35,11 @@ from .state import set_state_data
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpSubscriber:
-    def __init__(self, logger: logging.Logger, port: int, timeout: float) -> None:
+    def __init__(self, logger: PngLogger, port: int, timeout: float) -> None:
         """Initialize the IPC server.
 
         Args:
-            logger (logging.Logger): Logger
+            logger (PngLogger): Logger
             port (int): IPC port
             timeout (float): Connection timeout in seconds
         """
@@ -55,11 +56,11 @@ class McpSubscriber:
         """Initialize connection callbacks."""
         @self.m_ipc_sub.on_connect
         async def _on_connect() -> None:
-            self.m_ipc_sub.logger.info("IPC Subscriber connected")
+            self.m_ipc_sub.logger.silent("IPC Subscriber connected")
 
         @self.m_ipc_sub.on_disconnect
         async def _on_disconnect(_exc: Optional[Exception]) -> None:
-            self.m_ipc_sub.logger.info("IPC Subscriber disconnected")
+            self.m_ipc_sub.logger.silent("IPC Subscriber disconnected")
 
     def _init_routes(self) -> None:
         """Initialize the IPC routes."""
@@ -96,12 +97,12 @@ class McpSubscriber:
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_subscriber_task(port: int, logger: logging.Logger, tasks: List[asyncio.Task]) -> McpSubscriber:
+def init_subscriber_task(port: int, logger: PngLogger, tasks: List[asyncio.Task]) -> McpSubscriber:
     """Initialize the IPC task.
 
     Args:
         port (int): IPC port
-        logger (logging.Logger): Logger
+        logger (PngLogger): Logger
         tasks (List[asyncio.Task]): List of tasks
 
     Returns:

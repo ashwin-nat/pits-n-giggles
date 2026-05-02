@@ -326,7 +326,7 @@ class LapTimerOverlay(BaseOverlayQML):
                 driver_lap_ms = best_ms
 
                 # Try to get current lap estimate for any session
-                curr_lap = entry["lap-info"]["current-lap"]
+                curr_lap = entry["lap-info"]["current-lap-info"]
                 if curr_lap:
                     delta_ms = curr_lap.get("delta-ms")
                     if delta_ms is not None:
