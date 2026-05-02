@@ -24,6 +24,7 @@
 
 import json
 import sys
+import time
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -39,8 +40,8 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
-                                      PngAppMgrBase, PngAppMgrConfig, McpAppMgr,
-                                      SaveViewerAppMgr)
+                                      McpAppMgr, PngAppMgrBase,
+                                      PngAppMgrConfig, SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -177,6 +178,7 @@ class PngLauncherWindow(QMainWindow):
         self.ver_str = ver_str
         self.debug_mode = debug_mode
         self._last_open_dir: Optional[str] = str(get_app_base_dir())
+        self._start_time = time.time()
 
         self.console = None
 
@@ -702,7 +704,10 @@ class PngLauncherWindow(QMainWindow):
                 forced_shutdown = True
                 break
 
-        stats = {subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems}
+        stats = {
+            **{subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems},
+            "uptime_seconds": round(time.time() - self._start_time, 3),
+        }
         self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}). "
                       f"Final subsystem stats: {json.dumps(stats, sort_keys=True)}")
         event.accept()
