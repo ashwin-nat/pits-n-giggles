@@ -185,7 +185,6 @@ class F1TelemetryHandler:
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
         )
-        self.m_auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
         self.m_menu_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=lambda active: self.m_session_state_ref.setInMenu(not active),
             timeout=float(settings.HUD.menu_silence_threshold_sec),
@@ -248,8 +247,7 @@ class F1TelemetryHandler:
 
     def _kick_periodic_packet_timer(self) -> None:
         """Kick the menu-detection watchdog. Called on every periodic (non-EVENT) packet."""
-        if self.m_auto_hide_in_menu:
-            self.m_menu_wdt.kick()
+        self.m_menu_wdt.kick()
 
     async def stop(self) -> None:
         """

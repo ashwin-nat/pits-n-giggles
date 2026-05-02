@@ -331,7 +331,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type": "slider",
-                "visible": True,
+                "visible": False,
                 "min": 1,
                 "max": 30,
                 "group": "Auto-hide in Menu",
