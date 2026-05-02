@@ -554,20 +554,18 @@ class HudAppMgr(PngAppMgrBase):
                 new_settings.model_dump()
             )
         except ValidationError as e:
-            self.error_log("Invalid HUD settings from slider popup:")
             for err in e.errors():
                 field = ".".join(str(p) for p in err.get("loc", []))
                 message = err.get("msg", "Invalid value")
 
-                self.error_log(f"HUD validation failed at '{field}': {message}")
+                self.warning_log(f"HUD validation failed at '{field}': {message}")
                 raw_msg = e.errors()[0]["msg"]
                 prefix = "Value error, "
                 if raw_msg.startswith(prefix):
                     error_text = raw_msg[len(prefix):]
                 else:
                     error_text = raw_msg
-            self.error_log(error_text)
-
+            self.warning_log(error_text)
             self.show_error("Invalid HUD Settings", error_text)
 
             return
