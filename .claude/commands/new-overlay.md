@@ -24,9 +24,11 @@ Work through these in order. Read each target file before editing it.
 
 ### 1. Config knobs — `lib/config/schema/hud/hud.py`
 
+> **Use the `/add-config-field` skill for this step.** Present the full set of config knobs below as a single group plan for user approval, then implement and test them all together. Do not do them one by one.
+
 Read the file first to understand field ordering and helper functions (`udp_action_field`, `overlay_enable_field`, `ui_scale_field` from `lib/config/schema/utils.py`).
 
-Add, grouped together under a comment `# ============== <OVERLAY NAME> OVERLAY ==============`:
+The group of fields to plan and add together, under a comment `# ============== <OVERLAY NAME> OVERLAY ==============`:
 
 **a) Enable/disable knob** (catastrophic — requires HUD restart):
 ```python
@@ -40,7 +42,7 @@ show_<overlay_name>: bool = overlay_enable_field(description="Enable <Overlay Na
 )
 ```
 
-**c) Any additional interaction UDP action codes** the user requested — one `udp_action_field` per interaction, same group.
+**c) Any additional interaction UDP action codes** the user requested — one `udp_action_field` per interaction, same group. Include these in the same group plan.
 
 Also add the overlay ID constant at the top of the file (or in `lib/config/schema/hud/__init__.py` if that's where the other `*_OVERLAY_ID` constants live):
 ```python
