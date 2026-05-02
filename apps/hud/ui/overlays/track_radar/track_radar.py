@@ -137,11 +137,10 @@ class TrackRadarOverlay(BaseOverlayQML):
 
         driver_list = self._calculate_relative_positions(data, ref_driver)
 
-        # Compute side-awareness and vicinity flags in Python (position math belongs here)
         cars_nearby = False
         car_on_left = False
         car_on_right = False
-        slot = 0
+        car_data: list = []
         for d in driver_list:
             if d['is_ref']:
                 continue
@@ -156,16 +155,14 @@ class TrackRadarOverlay(BaseOverlayQML):
                 car_on_right = True
 
             radar_x = _RADAR_AREA_PX / 2 - (rel_x / _RADAR_RANGE_M) * (_RADAR_AREA_PX / 2)
-            radar_y = _RADAR_AREA_PX / 2 - (d['relZ'] / _RADAR_RANGE_M) * (_RADAR_AREA_PX / 2)
+            radar_y = _RADAR_AREA_PX / 2 - (rel_z / _RADAR_RANGE_M) * (_RADAR_AREA_PX / 2)
             in_range = dist <= _RADAR_RANGE_M
-            self.invoke_qml_method("updateCarSlot",
-                                   slot, radar_x, radar_y, d['heading'], in_range, d['name'])
-            slot += 1
+            car_data.extend([radar_x, radar_y, d['heading'], in_range, d['name']])
 
         self.set_qml_property("carsNearby", cars_nearby)
         self.set_qml_property("carOnLeft",  car_on_left)
         self.set_qml_property("carOnRight", car_on_right)
-        self.invoke_qml_method("commitFrame", slot)
+        self.set_qml_property("carData",    car_data)
 
     def _get_reference_driver(self, session: LiveSessionMotionInfo) -> Optional[DriverMotionInfo]:
         """Get the reference driver from session data."""
