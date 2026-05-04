@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import QtQuick.Shapes
 
 Window {
     id: root
@@ -29,10 +30,22 @@ Window {
 
     // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
     property var carData: []
+    readonly property int maxCars: 22
 
-    onCarDataChanged:    radarCanvas.requestPaint()
-    onCarOnLeftChanged:  radarCanvas.requestPaint()
-    onCarOnRightChanged: radarCanvas.requestPaint()
+    onCarDataChanged: {
+        const cars = carData;
+        for (let i = 0; i < maxCars; i++) {
+            const slot = carPool.children[i];
+            const base = i * 4;
+            const inRange = base + 3 < cars.length && cars[base + 3];
+            slot.visible = inRange;
+            if (inRange) {
+                slot.x        = cars[base]     - carWidthPx  / 2;
+                slot.y        = cars[base + 1] - carLengthPx / 2;
+                slot.rotation = cars[base + 2];
+            }
+        }
+    }
 
     Item {
         id: scaledRoot
@@ -40,6 +53,7 @@ Window {
         width: baseWidth
         height: baseHeight
 
+        clip: true
         opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
         Behavior on opacity { NumberAnimation { duration: 500 } }
 
@@ -50,122 +64,125 @@ Window {
             origin.y: baseHeight / 2
         }
 
-        Canvas {
-            id: radarCanvas
+        // --- Static layer: grid circles (scene graph, paid once) ---
+        readonly property real halfR: baseWidth * radarAreaRatio / 2
+
+        Repeater {
+            model: 3
+            Shape {
+                anchors.centerIn: parent
+                width: baseWidth
+                height: baseHeight
+                ShapePath {
+                    strokeColor: Qt.rgba(1, 1, 1, 0.22)
+                    strokeWidth: 1
+                    fillColor: "transparent"
+                    strokeStyle: ShapePath.DashLine
+                    dashPattern: [5, 5]
+                    PathAngleArc {
+                        centerX: baseWidth / 2
+                        centerY: baseHeight / 2
+                        radiusX: (index + 1) * scaledRoot.halfR / 3
+                        radiusY: (index + 1) * scaledRoot.halfR / 3
+                        startAngle: 0
+                        sweepAngle: 360
+                    }
+                }
+            }
+        }
+
+        // --- Static layer: crosshair (scene graph, paid once) ---
+        Rectangle {
+            anchors.centerIn: parent
+            width: 1
+            height: scaledRoot.halfR * 2
+            color: Qt.rgba(1, 1, 1, 0.28)
+        }
+        Rectangle {
+            anchors.centerIn: parent
+            width: scaledRoot.halfR * 2
+            height: 1
+            color: Qt.rgba(1, 1, 1, 0.28)
+        }
+
+        // --- Sector glows — pre-baked images, GPU opacity fade (scene graph) ---
+        Image {
             anchors.fill: parent
-            renderStrategy: Canvas.Threaded
+            source: "image://radar/glow-left"
+            opacity: root.carOnLeft ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
+        Image {
+            anchors.fill: parent
+            source: "image://radar/glow-right"
+            opacity: root.carOnRight ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
 
-            function roundRect(ctx, x, y, w, h, r) {
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.arcTo(x + w, y,     x + w, y + h, r);
-                ctx.arcTo(x + w, y + h, x,     y + h, r);
-                ctx.arcTo(x,     y + h, x,     y,     r);
-                ctx.arcTo(x,     y,     x + w, y,     r);
-                ctx.closePath();
-            }
+        // --- Other cars — fixed 22-slot Rectangle pool (scene graph) ---
+        // carData is a flat array [cx, cy, heading, inRange, ...] stride 4.
+        // cx/cy are radar centre-relative; QML Rectangle origin is top-left,
+        // so x = cx - width/2, y = cy - height/2. rotation is around item centre (default transformOrigin).
+        Item {
+            id: carPool
+            anchors.fill: parent
 
-            onPaint: {
-                const ctx = getContext("2d");
-                const w = width;
-                const h = height;
-                const cx = w / 2;
-                const cy = h / 2;
-                const halfR = w * root.radarAreaRatio / 2;
+            // Slot 0
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 1
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 2
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 3
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 4
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 5
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 6
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 7
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 8
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 9
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 10
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 11
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 12
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 13
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 14
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 15
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 16
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 17
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 18
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 19
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 20
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 21
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+        }
 
-                ctx.clearRect(0, 0, w, h);
-
-                // --- Grid circles ---
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                for (let i = 1; i <= 4; i++) {
-                    const r = i * (halfR / 4);
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-                    ctx.stroke();
-                }
-                ctx.setLineDash([]);
-
-                // --- Crosshair ---
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy - halfR);
-                ctx.lineTo(cx, cy + halfR);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(cx - halfR, cy);
-                ctx.lineTo(cx + halfR, cy);
-                ctx.stroke();
-
-                // --- Sector glows ---
-                const halfW = root.carWidthPx / 2;
-                const halfL = root.carLengthPx / 2;
-
-                if (root.carOnLeft) {
-                    const angleTopRight    = Math.atan2(-halfL,  halfW);
-                    const angleBottomRight = Math.atan2( halfL,  halfW);
-                    const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
-                    gL.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
-                    gL.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                    gL.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
-                    ctx.fillStyle = gL;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy);
-                    ctx.arc(cx, cy, halfR, angleTopRight, angleBottomRight, false);
-                    ctx.lineTo(cx, cy);
-                    ctx.fill();
-                }
-
-                if (root.carOnRight) {
-                    const angleTopLeft    = Math.atan2(-halfL, -halfW);
-                    const angleBottomLeft = Math.atan2( halfL, -halfW);
-                    const gR = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
-                    gR.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
-                    gR.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                    gR.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
-                    ctx.fillStyle = gR;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy);
-                    ctx.arc(cx, cy, halfR, angleBottomLeft, angleTopLeft, false);
-                    ctx.lineTo(cx, cy);
-                    ctx.fill();
-                }
-
-                // --- Other cars — stride 4: [x, y, heading, inRange] ---
-                const cars = root.carData;
-                const count = Math.floor(cars.length / 4);
-                const cw = root.carWidthPx;
-                const cl = root.carLengthPx;
-
-                for (let i = 0; i < count; i++) {
-                    const base = i * 4;
-                    if (!cars[base + 3]) continue;
-
-                    ctx.save();
-                    ctx.translate(cars[base], cars[base + 1]);
-                    ctx.rotate(cars[base + 2] * Math.PI / 180);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.strokeStyle = "#888888";
-                    ctx.lineWidth = 1;
-                    radarCanvas.roundRect(ctx, -cw / 2, -cl / 2, cw, cl, 2);
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.restore();
-                }
-
-                // --- Reference car ---
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.fillStyle = "#00ff00";
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 2;
-                radarCanvas.roundRect(ctx, -halfW, -halfL, cw, cl, 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            }
+        // --- Reference car — always visible, centred (scene graph) ---
+        Rectangle {
+            id: refCar
+            anchors.centerIn: parent
+            width: root.carWidthPx
+            height: root.carLengthPx
+            color: "#00ff00"
+            border.color: "#ffffff"
+            border.width: 2
+            radius: 2
         }
     }
 }
