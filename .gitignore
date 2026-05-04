@@ -29,3 +29,4 @@ htmlcov/
 coverage_reports/
 *.diff
 *:Zone.Identifier
+*.db

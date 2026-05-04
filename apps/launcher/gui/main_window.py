@@ -48,6 +48,7 @@ from lib.config import (PngSettings, load_config_migrated,
 from lib.file_path import get_app_base_dir, resolve_user_file
 from meta.meta import APP_NAME
 
+from ..perf_db import save_session_stats
 from .changelog_window import ChangelogWindow
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
@@ -708,8 +709,11 @@ class PngLauncherWindow(QMainWindow):
             **{subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems},
             "uptime_seconds": round(time.time() - self._start_time, 3),
         }
-        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}). "
-                      f"Final subsystem stats: {json.dumps(stats, sort_keys=True)}")
+        try:
+            save_session_stats(get_app_base_dir(), stats)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.error_log(f"Failed to save perf stats to DB: {e}")
+        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
         event.accept()
 
     def run(self):
