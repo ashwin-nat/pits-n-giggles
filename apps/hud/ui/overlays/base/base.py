@@ -183,7 +183,11 @@ class BaseOverlay():
     # Abstract interface - implemented by rendering subclasses
     # ----------------------------------------------------------------------
     def pre_setup(self):
-        """Hook called before _setup_window(). Override in leaf classes with @final."""
+        """Hook called before _setup_window(). Override in leaf classes with @final.
+
+        Called from base __init__ before subclass __init__ has run — overrides must not
+        depend on any subclass-initialized state.
+        """
 
     def post_setup(self):
         """Hook called after _setup_window() completes. Override in leaf classes with @final."""

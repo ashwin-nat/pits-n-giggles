@@ -30,10 +30,11 @@ Window {
 
     // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
     property var carData: []
+    readonly property int maxCars: 22
 
     onCarDataChanged: {
         const cars = carData;
-        for (let i = 0; i < 22; i++) {
+        for (let i = 0; i < maxCars; i++) {
             const slot = carPool.children[i];
             const base = i * 4;
             const inRange = base + 3 < cars.length && cars[base + 3];

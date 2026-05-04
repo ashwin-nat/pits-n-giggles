@@ -72,7 +72,7 @@ def _car_px(formula_type: str) -> tuple[float, float]:
 
 def _make_glow_image(is_left: bool, car_w_px: float, car_l_px: float) -> QImage:
     """
-    Generate a single 300x300 glow sector image for the left or right side.
+    Generate a single _RADAR_BASE_WIDTH x _RADAR_BASE_WIDTH glow sector image for the left or right side.
 
     Replicates the Canvas atan2-based pie sector with a radial gradient:
       centre → 0.8 alpha, 30% out → 0.4 alpha, edge → 0.0 alpha.
