@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import QtQuick.Shapes
 
 Window {
     id: root
@@ -40,6 +41,7 @@ Window {
         width: baseWidth
         height: baseHeight
 
+        clip: true
         opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
         Behavior on opacity { NumberAnimation { duration: 500 } }
 
@@ -48,6 +50,47 @@ Window {
             yScale: scaleFactor
             origin.x: baseWidth / 2
             origin.y: baseHeight / 2
+        }
+
+        // --- Static layer: grid circles (scene graph, paid once) ---
+        readonly property real halfR: baseWidth * radarAreaRatio / 2
+
+        Repeater {
+            model: 4
+            Shape {
+                anchors.centerIn: parent
+                width: baseWidth
+                height: baseHeight
+                ShapePath {
+                    strokeColor: Qt.rgba(1, 1, 1, 0.22)
+                    strokeWidth: 1
+                    fillColor: "transparent"
+                    strokeStyle: ShapePath.DashLine
+                    dashPattern: [5, 5]
+                    PathAngleArc {
+                        centerX: baseWidth / 2
+                        centerY: baseHeight / 2
+                        radiusX: (index + 1) * scaledRoot.halfR / 2
+                        radiusY: (index + 1) * scaledRoot.halfR / 2
+                        startAngle: 0
+                        sweepAngle: 360
+                    }
+                }
+            }
+        }
+
+        // --- Static layer: crosshair (scene graph, paid once) ---
+        Rectangle {
+            anchors.centerIn: parent
+            width: 1
+            height: scaledRoot.halfR * 2
+            color: Qt.rgba(1, 1, 1, 0.28)
+        }
+        Rectangle {
+            anchors.centerIn: parent
+            width: scaledRoot.halfR * 2
+            height: 1
+            color: Qt.rgba(1, 1, 1, 0.28)
         }
 
         Canvas {
@@ -74,30 +117,6 @@ Window {
                 const halfR = w * root.radarAreaRatio / 2;
 
                 ctx.clearRect(0, 0, w, h);
-
-                // --- Grid circles ---
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                for (let i = 1; i <= 4; i++) {
-                    const r = i * (halfR / 2);
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-                    ctx.stroke();
-                }
-                ctx.setLineDash([]);
-
-                // --- Crosshair ---
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.28)";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy - halfR);
-                ctx.lineTo(cx, cy + halfR);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(cx - halfR, cy);
-                ctx.lineTo(cx + halfR, cy);
-                ctx.stroke();
 
                 // --- Sector glows ---
                 const halfW = root.carWidthPx / 2;
