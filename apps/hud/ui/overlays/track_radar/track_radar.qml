@@ -31,9 +31,7 @@ Window {
     // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
     property var carData: []
 
-    onCarDataChanged:    radarCanvas.requestPaint()
-    onCarOnLeftChanged:  radarCanvas.requestPaint()
-    onCarOnRightChanged: radarCanvas.requestPaint()
+    onCarDataChanged: radarCanvas.requestPaint()
 
     Item {
         id: scaledRoot
@@ -93,6 +91,20 @@ Window {
             color: Qt.rgba(1, 1, 1, 0.28)
         }
 
+        // --- Sector glows — pre-baked images, GPU opacity fade (scene graph) ---
+        Image {
+            anchors.fill: parent
+            source: "image://radar/glow-left"
+            opacity: root.carOnLeft ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
+        Image {
+            anchors.fill: parent
+            source: "image://radar/glow-right"
+            opacity: root.carOnRight ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
+
         Canvas {
             id: radarCanvas
             anchors.fill: parent
@@ -117,40 +129,6 @@ Window {
                 const halfR = w * root.radarAreaRatio / 2;
 
                 ctx.clearRect(0, 0, w, h);
-
-                // --- Sector glows ---
-                const halfW = root.carWidthPx / 2;
-                const halfL = root.carLengthPx / 2;
-
-                if (root.carOnLeft) {
-                    const angleTopRight    = Math.atan2(-halfL,  halfW);
-                    const angleBottomRight = Math.atan2( halfL,  halfW);
-                    const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
-                    gL.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
-                    gL.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                    gL.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
-                    ctx.fillStyle = gL;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy);
-                    ctx.arc(cx, cy, halfR, angleTopRight, angleBottomRight, false);
-                    ctx.lineTo(cx, cy);
-                    ctx.fill();
-                }
-
-                if (root.carOnRight) {
-                    const angleTopLeft    = Math.atan2(-halfL, -halfW);
-                    const angleBottomLeft = Math.atan2( halfL, -halfW);
-                    const gR = ctx.createRadialGradient(cx, cy, 0, cx, cy, halfR);
-                    gR.addColorStop(0,   "rgba(255, 0, 0, 0.8)");
-                    gR.addColorStop(0.3, "rgba(255, 0, 0, 0.4)");
-                    gR.addColorStop(1,   "rgba(255, 0, 0, 0.0)");
-                    ctx.fillStyle = gR;
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy);
-                    ctx.arc(cx, cy, halfR, angleBottomLeft, angleTopLeft, false);
-                    ctx.lineTo(cx, cy);
-                    ctx.fill();
-                }
 
                 // --- Other cars — stride 4: [x, y, heading, inRange] ---
                 const cars = root.carData;
@@ -180,7 +158,7 @@ Window {
                 ctx.fillStyle = "#00ff00";
                 ctx.strokeStyle = "#ffffff";
                 ctx.lineWidth = 2;
-                radarCanvas.roundRect(ctx, -halfW, -halfL, cw, cl, 2);
+                radarCanvas.roundRect(ctx, -cw / 2, -cl / 2, cw, cl, 2);
                 ctx.fill();
                 ctx.stroke();
                 ctx.restore();
