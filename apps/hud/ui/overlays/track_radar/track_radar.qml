@@ -80,7 +80,7 @@ Window {
                 ctx.lineWidth = 1;
                 ctx.setLineDash([5, 5]);
                 for (let i = 1; i <= 4; i++) {
-                    const r = i * (halfR / 2);
+                    const r = i * (halfR / 4);
                     ctx.beginPath();
                     ctx.arc(cx, cy, r, 0, 2 * Math.PI);
                     ctx.stroke();
