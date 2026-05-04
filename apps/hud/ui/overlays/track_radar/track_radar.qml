@@ -68,7 +68,7 @@ Window {
         readonly property real halfR: baseWidth * radarAreaRatio / 2
 
         Repeater {
-            model: 4
+            model: 3
             Shape {
                 anchors.centerIn: parent
                 width: baseWidth
@@ -82,8 +82,8 @@ Window {
                     PathAngleArc {
                         centerX: baseWidth / 2
                         centerY: baseHeight / 2
-                        radiusX: (index + 1) * scaledRoot.halfR / 2
-                        radiusY: (index + 1) * scaledRoot.halfR / 2
+                        radiusX: (index + 1) * scaledRoot.halfR / 3
+                        radiusY: (index + 1) * scaledRoot.halfR / 3
                         startAngle: 0
                         sweepAngle: 360
                     }
