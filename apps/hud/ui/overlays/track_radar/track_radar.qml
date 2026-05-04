@@ -31,7 +31,20 @@ Window {
     // Single property write per frame — flat array [x, y, heading, inRange, ...] stride 4
     property var carData: []
 
-    onCarDataChanged: radarCanvas.requestPaint()
+    onCarDataChanged: {
+        const cars = carData;
+        for (let i = 0; i < 22; i++) {
+            const slot = carPool.children[i];
+            const base = i * 4;
+            const inRange = base + 3 < cars.length && cars[base + 3];
+            slot.visible = inRange;
+            if (inRange) {
+                slot.x        = cars[base]     - carWidthPx  / 2;
+                slot.y        = cars[base + 1] - carLengthPx / 2;
+                slot.rotation = cars[base + 2];
+            }
+        }
+    }
 
     Item {
         id: scaledRoot
@@ -105,64 +118,70 @@ Window {
             Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
-        Canvas {
-            id: radarCanvas
+        // --- Other cars — fixed 22-slot Rectangle pool (scene graph) ---
+        // carData is a flat array [cx, cy, heading, inRange, ...] stride 4.
+        // cx/cy are radar centre-relative; QML Rectangle origin is top-left,
+        // so x = cx - width/2, y = cy - height/2. rotation is around item centre (default transformOrigin).
+        Item {
+            id: carPool
             anchors.fill: parent
-            renderStrategy: Canvas.Threaded
 
-            function roundRect(ctx, x, y, w, h, r) {
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.arcTo(x + w, y,     x + w, y + h, r);
-                ctx.arcTo(x + w, y + h, x,     y + h, r);
-                ctx.arcTo(x,     y + h, x,     y,     r);
-                ctx.arcTo(x,     y,     x + w, y,     r);
-                ctx.closePath();
-            }
+            // Slot 0
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 1
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 2
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 3
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 4
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 5
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 6
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 7
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 8
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 9
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 10
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 11
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 12
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 13
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 14
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 15
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 16
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 17
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 18
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 19
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 20
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+            // Slot 21
+            Rectangle { width: root.carWidthPx; height: root.carLengthPx; color: "#ffffff"; border.color: "#888888"; border.width: 1; radius: 2; visible: false }
+        }
 
-            onPaint: {
-                const ctx = getContext("2d");
-                const w = width;
-                const h = height;
-                const cx = w / 2;
-                const cy = h / 2;
-                const halfR = w * root.radarAreaRatio / 2;
-
-                ctx.clearRect(0, 0, w, h);
-
-                // --- Other cars — stride 4: [x, y, heading, inRange] ---
-                const cars = root.carData;
-                const count = Math.floor(cars.length / 4);
-                const cw = root.carWidthPx;
-                const cl = root.carLengthPx;
-
-                for (let i = 0; i < count; i++) {
-                    const base = i * 4;
-                    if (!cars[base + 3]) continue;
-
-                    ctx.save();
-                    ctx.translate(cars[base], cars[base + 1]);
-                    ctx.rotate(cars[base + 2] * Math.PI / 180);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.strokeStyle = "#888888";
-                    ctx.lineWidth = 1;
-                    radarCanvas.roundRect(ctx, -cw / 2, -cl / 2, cw, cl, 2);
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.restore();
-                }
-
-                // --- Reference car ---
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.fillStyle = "#00ff00";
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 2;
-                radarCanvas.roundRect(ctx, -cw / 2, -cl / 2, cw, cl, 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
-            }
+        // --- Reference car — always visible, centred (scene graph) ---
+        Rectangle {
+            id: refCar
+            anchors.centerIn: parent
+            width: root.carWidthPx
+            height: root.carLengthPx
+            color: "#00ff00"
+            border.color: "#ffffff"
+            border.width: 2
+            radius: 2
         }
     }
 }
