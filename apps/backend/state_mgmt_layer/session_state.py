@@ -1666,6 +1666,8 @@ class SessionState:
         """
         packet = PacketFinalClassificationData.from_values(None, 0, [])
         packet.m_numCars = self.m_num_active_cars
+        # Field values don't matter - buildFinalClassificationJSON only iterates over
+        # m_classificationData for its length; all real data comes from DataPerDriver.
         packet.m_classificationData = [self._getDummyFinalClassificationData() for _ in range(self.m_num_active_cars)]
         return packet
 
