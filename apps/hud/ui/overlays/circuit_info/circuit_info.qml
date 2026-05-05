@@ -197,6 +197,8 @@ Window {
                 anchors.fill: parent
                 color: Qt.rgba(1, 1, 1, 0.18)
                 radius: 4
+                border.color: "black"
+                border.width: 1
             }
 
             // Sector 1 fill — shown as completed when car is in sector 2 or 3
@@ -206,8 +208,6 @@ Window {
                 anchors.left: parent.left
                 color: root.completedSector1Color
                 radius: 4
-                border.color: "black"
-                border.width: 1
                 visible: root.sectorsInfo !== null && root.currentSector > 1
                 width: root.sectorsInfo && root.circuitLength > 0
                     ? progressBarArea.width * (root.sectorsInfo.s1 / root.circuitLength)
@@ -220,8 +220,6 @@ Window {
                 anchors.bottom: parent.bottom
                 color: root.completedSector2Color
                 radius: 4
-                border.color: "black"
-                border.width: 1
                 visible: root.sectorsInfo !== null && root.currentSector > 2
                 x: root.sectorsInfo && root.circuitLength > 0
                     ? progressBarArea.width * (root.sectorsInfo.s1 / root.circuitLength)
@@ -238,8 +236,6 @@ Window {
                 anchors.bottom: parent.bottom
                 color: "white"
                 radius: 4
-                border.color: "black"
-                border.width: 1
                 x: progressBarArea.width * root.activeSectorStartFrac
                 width: Math.max(0, progressBarArea.animatedRightEdge - x)
             }
