@@ -49,6 +49,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          SessionChangeNotification,
                                          TyreDeltaMessage)
+from lib.logger import PngLogger
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
@@ -111,18 +112,19 @@ class SessionInfo:
         "m_game_year",
         "m_packet_format",
         "m_most_recent_pole_lap",
+        "m_chequered_flag",
     )
 
-    def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
         """
         Init the SessionInfo object fields to None
 
         Args:
             settings (PngSettings): App Settings
-            logger (logging.Logger): Logger
+            logger (PngLogger): Logger
         """
 
-        self.m_logger: logging.Logger = logger
+        self.m_logger: PngLogger = logger
         self.m_formula: Optional[PacketSessionData.FormulaType] = None
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
@@ -143,6 +145,7 @@ class SessionInfo:
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
         self.m_most_recent_pole_lap : Optional[MostRecentPoleLap] = None
+        self.m_chequered_flag : Optional[bool] = False
 
         # Initialize the pit time loss dicts
         track_name_to_enum = {str(member): member for member in TrackID}
@@ -204,7 +207,7 @@ class SessionInfo:
         self.m_packet_format = None
         self.m_pit_time_loss = None
         self.m_most_recent_pole_lap = None
-
+        self.m_chequered_flag = False
         # Dont clear the pit loss dicts. they are static
 
     @property
@@ -329,13 +332,13 @@ class SessionState:
     )
 
     def __init__(self,
-                 logger: logging.Logger,
+                 logger: PngLogger,
                  settings: PngSettings,
                  ver_str: str) -> None:
         """Init the DriverData object
 
         Args:
-            logger (logging.Logger): Logger
+            logger (PngLogger): Logger
             settings (PngSettings): Settings
             ver_str (str): Version string
         """
@@ -1055,6 +1058,14 @@ class SessionState:
         if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
             self.m_race_ctrl.add_message(msg)
 
+    def setChequeredFlagState(self, flag_val: bool) -> None:
+        """Set the chequered flag status
+
+        Args:
+            flag_val (bool): The value to set for the chequered flag status
+        """
+        self.m_session_info.m_chequered_flag = flag_val
+
     ##### Public Getters #####
 
     def getDriverInfoJsonByIndex(self, index: int) -> Optional[Dict[str, Any]]:
@@ -1388,6 +1399,26 @@ class SessionState:
 
         return  (0 <= index < len(self.m_driver_data)) and \
                 (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
+
+    def shouldSaveJustInCase(self, session_uid: int) -> str:
+        """Determines whether to save the data just in case based on the session UID and internal heuristics
+
+        Args:
+            session_uid (int): The session UID
+
+        Returns:
+            str: Reason
+        """
+
+        if self.m_session_info.m_chequered_flag:
+            return "Chequered flag waved"
+
+        # TODO: check if sufficient amount of laps have passed, in case chequered flag event is missed
+
+        # TODO: remove logs
+        self.m_logger.silent("Should not save. curr UID: %s, incoming UID: %s",
+                             self.m_session_info.m_session_uid, session_uid)
+        return None
 
     ##### Internal Helpers #####
 

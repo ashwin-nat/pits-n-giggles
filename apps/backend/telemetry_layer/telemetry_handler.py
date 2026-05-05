@@ -322,6 +322,7 @@ class F1TelemetryHandler:
                 PacketEventData.EventPacketType.COLLISION: processCollisionsEvent,
                 PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
                 PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
+                PacketEventData.EventPacketType.CHEQUERED_FLAG: handleChequeredFlagEvent,
             }.get(packet.m_eventCode)
 
             if event_handler:
@@ -485,6 +486,11 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the session start packet's contents.
             """
 
+            if reason := self.m_session_state_ref.shouldSaveJustInCase(packet.m_header.m_sessionUID):
+                self.m_logger.warning("Suspicious session start event. Session UID %d. "
+                                      "Data structures not cleared to avoid data loss. Reason: %s",
+                                      packet.m_header.m_sessionUID, reason)
+                # TODO: save just in case
             self.m_last_session_uid = packet.m_header.m_sessionUID
             self.clearAllDataStructures(f"SESSION_START event - UID {packet.m_header.m_sessionUID}")
 
@@ -632,6 +638,15 @@ class F1TelemetryHandler:
             """
             record: PacketEventData.Overtake = packet.mEventDetails
             self.m_session_state_ref.processOvertakeEvent(record)
+
+        async def handleChequeredFlagEvent(packet: PacketEventData) -> None:
+            """Handle the chequered flag event
+
+            Args:
+                packet (PacketEventData): The event packet
+            """
+            self.m_logger.info("Chequered flag waved. UID = %d", packet.m_header.m_sessionUID)
+            self.m_session_state_ref.setChequeredFlagState(flag_val=True)
 
     def clearAllDataStructures(self, reason: str) -> None:
         """Clear all the data structures
