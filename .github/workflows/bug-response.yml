@@ -1,39 +1,183 @@
-name: Check Bug Report Fields
+name: Validate Bug Report Attachments
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  check-missing-fields:
+  check-bug-report-attachments:
     runs-on: ubuntu-latest
     steps:
-      - name: Check for missing fields in the bug report
+      - name: Validate required bug report uploads
         uses: actions/github-script@v6
         with:
           script: |
             const issue = context.payload.issue;
-            let missingFields = [];
+            const body = issue.body || "";
+            const issueNumber = issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-            // Check if required fields are missing
-            if (!issue.body.includes('**Log File**')) {
-              missingFields.push('Log File');
+            const issueLabels = (issue.labels || []).map((l) => (l.name || "").toLowerCase());
+            const hasBugLabel = issueLabels.includes("bug");
+            const looksLikeBugForm = body.includes("### UDP telemetry") || body.includes("### Steps to reproduce");
+            const looksLikeBugTitle = /^\s*\[bug\]/i.test(issue.title || "");
+            const isBugIssue = hasBugLabel || looksLikeBugForm || looksLikeBugTitle;
+
+            if (!isBugIssue) {
+              return;
             }
-            if (!issue.body.includes('**Steps to Reproduce**')) {
-              missingFields.push('Steps to Reproduce');
+
+            const requiredSections = [
+              "Platform",
+              "How are you running the app?",
+              "UDP telemetry",
+              "UDP broadcast mode",
+              "UDP port",
+              "UDP send rate",
+              "UDP format",
+              "Your telemetry",
+              "Show player names",
+              "Game mode",
+              "Game and version",
+              "Pits n' Giggles version",
+              "Description of the issue",
+              "Steps to reproduce",
+              "Expected behavior",
+              "Attach png.log (required)",
+              "Attach png_config.json (required)"
+            ];
+
+            const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const hasSection = (label) => body.includes(`### ${label}`);
+            const isNoResponse = (label) =>
+              new RegExp(`### ${escapeRegex(label)}\\s*_No response_`, "i").test(body);
+            const getSectionValue = (label) => {
+              const regex = new RegExp(
+                `### ${escapeRegex(label)}\\s*\\n([\\s\\S]*?)(?:\\n### |$)`,
+                "i"
+              );
+              const match = body.match(regex);
+              if (!match) {
+                return "";
+              }
+              return match[1].trim();
+            };
+
+            const removedFields = [];
+            const blankFields = [];
+
+            for (const section of requiredSections) {
+              if (!hasSection(section)) {
+                removedFields.push(section);
+                continue;
+              }
+              if (isNoResponse(section)) {
+                blankFields.push(section);
+              }
             }
 
-            if (missingFields.length > 0) {
-              const comment = `Thanks for submitting your bug report! However, it looks like the following required fields are missing:
-              - ${missingFields.join(', ')}
-              
-              Please update your issue with the missing information. If you're unsure how to gather these, feel free to reach out! We'll get to your report once the information is complete.`;
+            const violations = [];
+            if (removedFields.length > 0) {
+              violations.push(...removedFields.map((f) => `Removed required section: ${f}`));
+            }
+            if (blankFields.length > 0) {
+              violations.push(...blankFields.map((f) => `Required field is blank: ${f}`));
+            }
 
-              // Post the comment
+            const versionLabel = "Pits n' Giggles version";
+            if (hasSection(versionLabel) && !isNoResponse(versionLabel)) {
+              const rawVersion = getSectionValue(versionLabel).split("\n")[0].trim();
+              const normalizedVersion = `v${rawVersion.replace(/^v/i, "")}`;
+              const versionPattern = /^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+
+              if (!versionPattern.test(normalizedVersion)) {
+                violations.push(
+                  `Invalid version format: ${rawVersion} (expected like 4.2.0 or v4.2.0)`
+                );
+              } else {
+                try {
+                  const tags = await github.paginate(github.rest.repos.listTags, {
+                    owner,
+                    repo,
+                    per_page: 100
+                  });
+                  const tagNames = new Set(tags.map((t) => t.name));
+                  const tagNamesLower = new Set(tags.map((t) => (t.name || "").toLowerCase()));
+                  if (!tagNames.has(normalizedVersion) && !tagNamesLower.has(normalizedVersion.toLowerCase())) {
+                    violations.push(
+                      `Version not found in released tags: ${rawVersion} (normalized to ${normalizedVersion})`
+                    );
+                  }
+                } catch (err) {
+                  core.warning(`Could not validate version against tags: ${err.message}`);
+                }
+              }
+            }
+
+            if (violations.length > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  labels: ["needs-info"]
+                });
+              } catch (err) {
+                core.info(`Could not add label 'needs-info': ${err.message}`);
+              }
+
+              const commentLines = [
+                "Thanks for the report. This issue is missing required bug-report data:",
+                "",
+                ...violations.map((field) => `- ${field}`),
+                "",
+                "Please edit the issue and restore/fill all required sections.",
+                "Once updated, this workflow will re-check automatically."
+              ];
+              const comment = commentLines.join('\n');
+
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
+                owner,
+                repo,
+                issue_number: issueNumber,
                 body: comment
+              });
+
+              if (issue.state === "open") {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  state: "closed",
+                  state_reason: "not_planned"
+                });
+              }
+              return;
+            }
+
+            if (issueLabels.includes("needs-info")) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  name: "needs-info"
+                });
+              } catch (err) {
+                core.info(`Could not remove label 'needs-info': ${err.message}`);
+              }
+            }
+
+            if (issue.state === "closed") {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                state: "open"
               });
             }
