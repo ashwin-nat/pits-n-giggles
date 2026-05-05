@@ -81,10 +81,18 @@ class TyreInfoPage(MfdPageBase):
             # Calculate and display wear rate
             tyre_wear_rates: Dict[str, Any] = tyre_info.get('wear-prediction', {}).get('rate', {})
             if tyre_wear_rates:
-                avg_rate = sum(tyre_wear_rates.values()) / len(tyre_wear_rates.values())
-                page_item.setProperty("wearRate", avg_rate)
+                _KEY_LABELS = {
+                    'front-left-wear':  'FL',
+                    'front-right-wear': 'FR',
+                    'rear-left-wear':   'RL',
+                    'rear-right-wear':  'RR',
+                }
+                max_key = max(tyre_wear_rates, key=tyre_wear_rates.__getitem__)
+                page_item.setProperty("wearRate", tyre_wear_rates[max_key])
+                page_item.setProperty("wearRateTyre", _KEY_LABELS.get(max_key, ""))
             else:
                 page_item.setProperty("wearRate", 0.0)
+                page_item.setProperty("wearRateTyre", "")
 
             if telemetry_settings != "Public":
                 page_item.setProperty("telemetryDisabled", True)

@@ -21,6 +21,7 @@ Item {
     property string currentCompoundVisual: ""
     property int    tyreAge: 0
     property real   wearRate: 0.0
+    property string wearRateTyre: ""
     property bool   telemetryDisabled: false
     property var    wearTableData: []
     property var    tyreCounts: ({
@@ -125,7 +126,9 @@ Item {
                         }
 
                         Text {
-                            text: root.wearRate > 0 ? root.wearRate.toFixed(2) + "%/L" : "—"
+                            text: root.wearRate > 0
+                                  ? root.wearRate.toFixed(2) + "%/L" + (root.wearRateTyre ? " (" + root.wearRateTyre + ")" : "")
+                                  : "—"
                             font.family: "Formula1"
                             font.pixelSize: 12
                             font.bold: true
