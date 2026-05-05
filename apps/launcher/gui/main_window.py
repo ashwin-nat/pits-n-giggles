@@ -634,7 +634,7 @@ class PngLauncherWindow(QMainWindow):
                     timestamp, console_text, level, src
                 )
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, KeyError):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
             # Unknown messages always go everywhere
