@@ -1,0 +1,233 @@
+name: Bug report
+description: Report a bug or issue with Pits n' Giggles
+title: "[Bug] "
+labels:
+  - bug
+assignees:
+  - ashwin-nat
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill this out as completely as possible.
+
+        Required attachments:
+        1. `png.log`
+        2. `png_config.json`
+
+        Reports missing either file are hard to debug and may be returned for more information.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: What OS are you running?
+      options:
+        - Windows 11
+        - Windows 10
+        - Mac OSX
+        - Other
+
+    validations:
+      required: true
+
+  - type: input
+    id: run_mode
+    attributes:
+      label: How are you running the app?
+      description: Example - same PC as the game, separate laptop on LAN.
+      placeholder: same PC as game
+    validations:
+      required: true
+
+  - type: dropdown
+    id: udp_telemetry
+    attributes:
+      label: UDP telemetry
+      description: In-game setting.
+      options:
+        - "On"
+        - "Off"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: udp_broadcast_mode
+    attributes:
+      label: UDP broadcast mode
+      description: In-game setting.
+      options:
+        - "On"
+        - "Off"
+    validations:
+      required: true
+
+  - type: input
+    id: udp_ip_address
+    attributes:
+      label: UDP IP address
+      description: Local/LAN IP only (safe to share). Do not share public IP.
+      placeholder: 192.168.x.x
+    validations:
+      required: false
+
+  - type: input
+    id: udp_port
+    attributes:
+      label: UDP port
+      description: In-game setting.
+      placeholder: "20777"
+    validations:
+      required: true
+
+  - type: input
+    id: udp_send_rate
+    attributes:
+      label: UDP send rate
+      description: In-game setting.
+      placeholder: 60 Hz
+    validations:
+      required: true
+
+  - type: input
+    id: udp_format
+    attributes:
+      label: UDP format
+      description: In-game setting.
+      placeholder: "2025"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: your_telemetry
+    attributes:
+      label: Your telemetry
+      description: In-game setting.
+      options:
+        - Public
+        - Restricted
+    validations:
+      required: true
+
+  - type: dropdown
+    id: show_player_names
+    attributes:
+      label: Show player names
+      description: In-game setting.
+      options:
+        - "On"
+        - "Off"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_apps
+    attributes:
+      label: Additional telemetry apps
+      description: Example - SimHub, wheel software, overlays.
+      placeholder: SimHub
+    validations:
+      required: false
+
+  - type: input
+    id: game_mode
+    attributes:
+      label: Game mode
+      description: Example - Time Trial, Multiplayer, Career, FP, Quali, Sprint, Race.
+      placeholder: Race
+    validations:
+      required: true
+
+  - type: input
+    id: game_version
+    attributes:
+      label: Game and version
+      description: Example - F1 23, F1 24.
+      placeholder: F1 24
+    validations:
+      required: true
+
+  - type: input
+    id: png_version
+    attributes:
+      label: Pits n' Giggles version
+      description: Check executable metadata or release/tag version.
+      placeholder: v1.2.3
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the issue
+      description: What is happening? Include patterns and triggers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. Launch the app
+        2. Start a race in [game/mode]
+        3. [Describe how to trigger the issue]
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: upload
+    id: log_file
+    attributes:
+      label: Attach png.log (required)
+      description: Upload the `png.log` file from the app folder.
+    validations:
+      required: true
+
+  - type: upload
+    id: config_file
+    attributes:
+      label: Attach png_config.json (required)
+      description: Upload your active config file from the app folder.
+    validations:
+      required: true
+
+  - type: upload
+    id: perf_db
+    attributes:
+      label: Attach png_perf.db (optional, v4.1.0+)
+      description: Optional performance DB to help diagnose performance issues.
+    validations:
+      required: false
+
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)
+      description: If relevant, add screenshots/video clips.
+    validations:
+      required: false
+
+  - type: input
+    id: local_ip
+    attributes:
+      label: Local network info (optional)
+      description: Local/LAN IP only, never your public IP.
+      placeholder: 192.168.x.x
+    validations:
+      required: false
+
+  - type: textarea
+    id: anything_else
+    attributes:
+      label: Anything else?
+      description: Any additional context that can help us debug faster.
+    validations:
+      required: false
