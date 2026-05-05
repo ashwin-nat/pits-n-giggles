@@ -153,6 +153,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         logger.debug("%s initialized. Path=%s. "
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
 
+    @property
+    def qml_engine(self) -> QQmlApplicationEngine:
+        """The QML engine for this overlay."""
+        return self._engine
+
     # ----------------------------------------------------------------------
     # Window + QML Setup
     # ----------------------------------------------------------------------

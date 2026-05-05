@@ -128,6 +128,7 @@ class BaseOverlay():
         self._stats = EventCounter()
 
         # Create the actual window backend
+        self.pre_setup()
         self._setup_window()
         self.post_setup()
         self.build_ui()
@@ -181,6 +182,13 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # Abstract interface - implemented by rendering subclasses
     # ----------------------------------------------------------------------
+    def pre_setup(self):
+        """Hook called before _setup_window(). Override in leaf classes with @final.
+
+        Called from base __init__ before subclass __init__ has run — overrides must not
+        depend on any subclass-initialized state.
+        """
+
     def post_setup(self):
         """Hook called after _setup_window() completes. Override in leaf classes with @final."""
 
