@@ -1418,26 +1418,6 @@ class SessionState:
         return  (0 <= index < len(self.m_driver_data)) and \
                 (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
 
-    def shouldSaveJustInCase(self, session_uid: int) -> str:
-        """Determines whether to save the data just in case based on the session UID and internal heuristics
-
-        Args:
-            session_uid (int): The session UID
-
-        Returns:
-            str: Reason
-        """
-
-        if self.m_session_info.m_chequered_flag:
-            return "Chequered flag waved"
-
-        # TODO: check if sufficient amount of laps have passed, in case chequered flag event is missed
-
-        # TODO: remove logs
-        self.m_logger.silent("Should not save. curr UID: %s, incoming UID: %s",
-                             self.m_session_info.m_session_uid, session_uid)
-        return None
-
     ##### Internal Helpers #####
 
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:

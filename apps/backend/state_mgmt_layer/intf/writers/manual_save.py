@@ -73,7 +73,8 @@ class ManualSaveRsp:
 
         # Construct output filename using timestamp
         timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
-        final_json_file_name = f"{self.m_event_str}_{self.m_reason}_{timestamp_str}.json"
+        # event_str is already suffixed with an underscore
+        final_json_file_name = f"{self.m_event_str}{self.m_reason}_{timestamp_str}.json"
 
         # Build final classification JSON
         final_json = self.m_session_state.buildFinalClassificationJSON()
