@@ -740,6 +740,21 @@ class SessionState:
 
         self.setRaceCompleted()
 
+    def _computePenaltyAdjustedPositions(self) -> Dict[int, int]:
+        """Compute penalty-adjusted positions using total distance and accumulated time penalties.
+
+        Returns:
+            Dict[int, int]: Mapping of car index to penalty-adjusted position (1-based).
+                            Cars with no lap data are excluded.
+        """
+        entries = []
+        for index, driver in enumerate(self.m_driver_data):
+            if driver and driver.is_valid and driver.m_packet_copies.m_packet_lap_data:
+                lap_data = driver.m_packet_copies.m_packet_lap_data
+                entries.append((index, lap_data.m_totalDistance, lap_data.m_penalties))
+        entries.sort(key=lambda x: (-x[1], x[2]))
+        return {car_index: pos + 1 for pos, (car_index, _, _) in enumerate(entries)}
+
     def buildFinalClassificationJSON(self) -> Dict[str, Any]:
         """
         Constructs the final classification JSON from internal state.
@@ -766,6 +781,8 @@ class SessionState:
 
         speed_trap_records = []
         driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
+        is_dummy = session_info.m_packet_final_classification is None
+        adjusted_positions = self._computePenaltyAdjustedPositions() if is_dummy else {}
 
         # --- Initialize optional structures
         if is_position_history_supported:
@@ -780,7 +797,8 @@ class SessionState:
                 # Add driver's classification info
                 final_json["classification-data"].append(driver.toJSON(index=index,
                                                                        include_race_ctrl_msgs=self.m_save_race_ctrl_msgs,
-                                                                       driver_info_dict=driver_info_dict))
+                                                                       driver_info_dict=driver_info_dict,
+                                                                       position_override=adjusted_positions.get(index)))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 

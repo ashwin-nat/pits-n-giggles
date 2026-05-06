@@ -221,7 +221,8 @@ class DataPerDriver:
                include_tyre_wear_prediction : Optional[bool] = False,
                selected_pit_stop_lap : Optional[int] = None,
                include_race_ctrl_msgs : Optional[bool] = False,
-               driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
+               driver_info_dict: Optional[Dict[int, dict]] = None,
+               position_override: Optional[int] = None) -> Dict[str, Any]:
         """Get a JSON representation of this DataPerDriver object
 
         Args:
@@ -230,6 +231,7 @@ class DataPerDriver:
             selected_pit_stop_lap (Optional[int]): The lap number of the selected pit stop
             include_race_ctrl_msgs (Optional[bool]): Whether to include race control messages
             driver_info_dict (Optional[Dict[int, dict]]): Dictionary of driver info
+            position_override (Optional[int]): Override track position (e.g. penalty-adjusted). Uses live position if None.
 
         Returns:
             Dict[str, Any]: The JSON dict
@@ -241,7 +243,7 @@ class DataPerDriver:
             final_json["index"] = index
         final_json["is-player"] = self.m_driver_info.is_player
         final_json["driver-name"] = self.m_driver_info.name
-        final_json["track-position"] = self.m_driver_info.position
+        final_json["track-position"] = position_override if position_override is not None else self.m_driver_info.position
         final_json["team"] = self.m_driver_info.team
         final_json["telemetry-settings"] = str(self.m_driver_info.telemetry_setting)
         final_json["current-lap"] = self.m_lap_info.m_current_lap
