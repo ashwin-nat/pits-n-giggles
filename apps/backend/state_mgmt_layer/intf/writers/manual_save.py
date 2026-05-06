@@ -36,16 +36,18 @@ class ManualSaveRsp:
     Manual save response class.
     """
 
-    def __init__(self, logger: logging.Logger, session_state: SessionState):
+    def __init__(self, logger: logging.Logger, session_state: SessionState, reason: str = "Manual"):
         """Get the drivers list and prepare the rsp fields
 
         Args:
             logger (logging.Logger): Logger
             session_state_ref (TelState.SessionState): Reference to the session state
+            reason (str, optional): Reason for the save. Defaults to "Manual".
         """
 
         self.m_logger: logging.Logger = logger
         self.m_session_state: SessionState = session_state
+        self.m_reason: str = reason
         self.m_data_available = self.m_session_state.is_data_available
         self.m_event_str = self.m_session_state.getEventInfoStr()
         if self.m_data_available:
@@ -71,7 +73,7 @@ class ManualSaveRsp:
 
         # Construct output filename using timestamp
         timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
-        final_json_file_name = f"{self.m_event_str}Manual_{timestamp_str}.json"
+        final_json_file_name = f"{self.m_event_str}_{self.m_reason}_{timestamp_str}.json"
 
         # Build final classification JSON
         final_json = self.m_session_state.buildFinalClassificationJSON()
