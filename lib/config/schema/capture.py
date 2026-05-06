@@ -87,3 +87,20 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    suspicious_session_start_autosave: bool = Field(
+        default=True,
+        description="Autosave on suspicious session start (new session detected before previous session ended cleanly)",
+        json_schema_extra={
+            "ui": {
+                "type" : "check_box",
+                "visible": True,
+                "ext_info": [
+                    "F1 25 has a bug where SESSION_START is sent just before FINAL_CLASSIFICATION, "
+                    "causing Pits n' Giggles to think a new session is starting and clear all data. "
+                    "When enabled, if a SESSION_START arrives after the chequered flag but before "
+                    "FINAL_CLASSIFICATION is processed, the current session data is saved to disk "
+                    "before clearing, preventing data loss."
+                ]
+            }
+        }
+    )
