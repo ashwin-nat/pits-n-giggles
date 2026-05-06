@@ -850,21 +850,24 @@ class F1TelemetryHandler:
             session_uid (int): The session UID for which the suspicious session start event was received.
         """
 
+        self.m_logger.info("SESSION_START event received. %d", session_uid)
+
+        if not self.m_capture_settings.suspicious_session_start_autosave:
+            return
+
         if not self._shouldSaveData():
             return
 
-        if (self.m_capture_settings.suspicious_session_start_autosave
-            and not self.m_save_task
-            and (
-                not self.m_final_classification_processed
-                or not self.m_session_state_ref.m_session_info.m_chequered_flag
-            )):
-            self.m_logger.warning("Suspicious session start event. Session UID %d. "
-                                    "Data structures not cleared to avoid data loss. "
-                                    "Final classification processed: %s "
-                                    "Chequered flag state: %s. Saving just in case data.",
-                                    session_uid, self.m_final_classification_processed,
-                                    self.m_session_state_ref.m_session_info.m_chequered_flag)
+        if self.m_final_classification_processed:
+            self.m_logger.debug("Final classification already processed for this session. "
+                                "Not treating this session start as suspicious.")
+            return
+
+        if self.m_save_task:
+            self.m_logger.debug("A save task is already running.")
+            return
+
+        if self.m_session_state_ref.isSuspiciousSessionStart(session_uid):
             self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(session_uid),
                                                     name="Just in case save task")
 
