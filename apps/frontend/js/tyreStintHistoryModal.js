@@ -221,10 +221,24 @@ class TyreStintChart {
     if (!driverInfo || !stints) return;
 
     // Calculate the left offset (driver info width + margin)
-    const driverInfoRect = driverInfo.getBoundingClientRect();
-    const stintsRect = stints.getBoundingClientRect();
     const containerRect = this.gridContainer.getBoundingClientRect();
 
+    // Container is detached or inside a hidden tab — defer until visible
+    if (containerRect.width === 0) {
+      if (!this._gridResizeObserver) {
+        this._gridResizeObserver = new ResizeObserver(() => {
+          if (this.gridContainer.getBoundingClientRect().width > 0) {
+            this._gridResizeObserver.disconnect();
+            this._gridResizeObserver = null;
+            this.positionGridLines();
+          }
+        });
+        this._gridResizeObserver.observe(this.gridContainer);
+      }
+      return;
+    }
+
+    const stintsRect = stints.getBoundingClientRect();
     const leftOffset = stintsRect.left - containerRect.left;
     const rightOffset = containerRect.right - stintsRect.right;
 
@@ -464,6 +478,10 @@ class TyreStintChart {
   destroy() {
     if (this.tooltip && this.tooltip.parentNode) {
       this.tooltip.parentNode.removeChild(this.tooltip);
+    }
+    if (this._gridResizeObserver) {
+      this._gridResizeObserver.disconnect();
+      this._gridResizeObserver = null;
     }
   }
 }
