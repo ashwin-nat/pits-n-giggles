@@ -850,7 +850,11 @@ class F1TelemetryHandler:
             session_uid (int): The session UID for which the suspicious session start event was received.
         """
 
-        if (not self.m_save_task
+        if not self._shouldSaveData():
+            return
+
+        if (self.m_capture_settings.suspicious_session_start_autosave
+            and not self.m_save_task
             and (
                 not self.m_final_classification_processed
                 or not self.m_session_state_ref.m_session_info.m_chequered_flag

@@ -132,3 +132,16 @@ class TestCaptureSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             CaptureSettings(save_race_ctrl_msg="notaboolean")
+
+    def test_default_suspicious_session_start_autosave(self):
+        self.assertTrue(CaptureSettings().suspicious_session_start_autosave)
+
+    def test_boolean_validation_suspicious_session_start_autosave(self):
+        self.assertTrue(CaptureSettings(suspicious_session_start_autosave=True).suspicious_session_start_autosave)
+        self.assertFalse(CaptureSettings(suspicious_session_start_autosave=False).suspicious_session_start_autosave)
+        self.assertTrue(CaptureSettings(suspicious_session_start_autosave="True").suspicious_session_start_autosave)
+        self.assertFalse(CaptureSettings(suspicious_session_start_autosave="False").suspicious_session_start_autosave)
+
+    def test_invalid_suspicious_session_start_autosave_raises(self):
+        with self.assertRaises(ValidationError):
+            CaptureSettings(suspicious_session_start_autosave="notaboolean")
