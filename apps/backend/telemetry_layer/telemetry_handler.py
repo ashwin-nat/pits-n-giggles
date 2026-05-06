@@ -883,7 +883,7 @@ class F1TelemetryHandler:
                 session_state=self.m_session_state_ref,
                 reason="Just_in_case").saveToDisk()
             self.m_logger.info("Saving just in case data. Session UID %d. status=%s", session_uid, rsp)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             self.m_logger.error("Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
 
         self.m_save_task = None
