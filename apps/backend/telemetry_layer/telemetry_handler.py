@@ -852,7 +852,7 @@ class F1TelemetryHandler:
 
         self.m_logger.info("SESSION_START event received. %d", session_uid)
 
-        if not self.m_capture_settings.suspicious_session_start_autosave:
+        if not self.m_capture_settings.just_in_case_autosave:
             return
 
         if not self._shouldSaveData():
