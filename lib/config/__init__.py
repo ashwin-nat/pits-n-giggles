@@ -26,10 +26,12 @@ from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, maybe_migrate_legacy_hud_layout,
                  save_config_to_ini, save_config_to_json)
 from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudSettings, HudOverlayFuelEstimationMode,
-                     HudOverlaySpeedUnit, MfdPageId, MfdPageSettings, MfdSettings,
-                     NetworkSettings, OverlayId, OverlayPosition, PitTimeLossF1,
-                     PitTimeLossF2, PngSettings, PredictionSettings, PrivacySettings,
+                     HttpsSettings, HudOverlayFuelEstimationMode,
+                     HudOverlaySpeedUnit, HudSettings, MfdPageId,
+                     MfdPageSettings, MfdSettings, MfdTyreWearRateType,
+                     NetworkSettings, OverlayId, OverlayPosition,
+                     PitTimeLossF1, PitTimeLossF2, PngSettings,
+                     PredictionSettings, PrivacySettings,
                      StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions,
                      WeatherMFDUIType)
 from .types import FilePathStr
@@ -55,6 +57,7 @@ __all__ = [
     'MfdPageSettings',
     'TimingTowerColOptions',
     'WeatherMFDUIType',
+    'MfdTyreWearRateType',
     'HudOverlaySpeedUnit',
     'HudOverlayFuelEstimationMode',
 

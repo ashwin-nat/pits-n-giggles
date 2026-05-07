@@ -656,6 +656,8 @@ class SettingsWindow(QDialog):
             self.parent_window.warning_log(f"No options provided for radio_buttons field {field_path}")
             return None
 
+        tooltips = ui_config.get("tooltips", {})
+
         radio_container = QWidget()
         radio_layout = QHBoxLayout()
         radio_layout.setContentsMargins(0, 0, 0, 0)
@@ -666,6 +668,7 @@ class SettingsWindow(QDialog):
         for option in options:
             radio_btn = QRadioButton(str(option))
             radio_btn.setFont(QFont("Roboto", 10))
+            tooltip_text = tooltips.get(str(option), "")
 
             if option == field_value:
                 radio_btn.setChecked(True)
@@ -676,7 +679,22 @@ class SettingsWindow(QDialog):
             )
 
             button_group.addButton(radio_btn)
-            radio_layout.addWidget(radio_btn)
+
+            if tooltip_text:
+                option_container = QWidget()
+                option_layout = QHBoxLayout()
+                option_layout.setContentsMargins(0, 0, 0, 0)
+                option_layout.setSpacing(4)
+                option_layout.addWidget(radio_btn)
+                info_label = QLabel("ⓘ")
+                info_label.setToolTip(tooltip_text)
+                info_label.setFixedWidth(20)
+                info_label.setCursor(Qt.CursorShape.WhatsThisCursor)
+                option_layout.addWidget(info_label)
+                option_container.setLayout(option_layout)
+                radio_layout.addWidget(option_container)
+            else:
+                radio_layout.addWidget(radio_btn)
 
         radio_layout.addStretch()
         radio_container.setLayout(radio_layout)

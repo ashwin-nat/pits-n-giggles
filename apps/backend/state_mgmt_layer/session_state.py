@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -49,6 +48,7 @@ from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          SessionChangeNotification,
                                          TyreDeltaMessage)
+from lib.logger import PngLogger
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
@@ -111,18 +111,19 @@ class SessionInfo:
         "m_game_year",
         "m_packet_format",
         "m_most_recent_pole_lap",
+        "m_chequered_flag",
     )
 
-    def __init__(self, settings: PngSettings, logger: logging.Logger) -> None:
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
         """
         Init the SessionInfo object fields to None
 
         Args:
             settings (PngSettings): App Settings
-            logger (logging.Logger): Logger
+            logger (PngLogger): Logger
         """
 
-        self.m_logger: logging.Logger = logger
+        self.m_logger: PngLogger = logger
         self.m_formula: Optional[PacketSessionData.FormulaType] = None
         self.m_track : Optional[TrackID] = None
         self.m_track_len: Optional[int] = None
@@ -143,6 +144,7 @@ class SessionInfo:
         self.m_game_year : Optional[int] = None
         self.m_packet_format : Optional[int] = None
         self.m_most_recent_pole_lap : Optional[MostRecentPoleLap] = None
+        self.m_chequered_flag : Optional[bool] = False
 
         # Initialize the pit time loss dicts
         track_name_to_enum = {str(member): member for member in TrackID}
@@ -204,7 +206,7 @@ class SessionInfo:
         self.m_packet_format = None
         self.m_pit_time_loss = None
         self.m_most_recent_pole_lap = None
-
+        self.m_chequered_flag = False
         # Dont clear the pit loss dicts. they are static
 
     @property
@@ -329,13 +331,13 @@ class SessionState:
     )
 
     def __init__(self,
-                 logger: logging.Logger,
+                 logger: PngLogger,
                  settings: PngSettings,
                  ver_str: str) -> None:
         """Init the DriverData object
 
         Args:
-            logger (logging.Logger): Logger
+            logger (PngLogger): Logger
             settings (PngSettings): Settings
             ver_str (str): Version string
         """
@@ -737,6 +739,21 @@ class SessionState:
 
         self.setRaceCompleted()
 
+    def _computePenaltyAdjustedPositions(self) -> Dict[int, int]:
+        """Compute penalty-adjusted positions using total distance and accumulated time penalties.
+
+        Returns:
+            Dict[int, int]: Mapping of car index to penalty-adjusted position (1-based).
+                            Cars with no lap data are excluded.
+        """
+        entries = []
+        for index, driver in enumerate(self.m_driver_data):
+            if driver and driver.is_valid and driver.m_packet_copies.m_packet_lap_data:
+                lap_data = driver.m_packet_copies.m_packet_lap_data
+                entries.append((index, lap_data.m_totalDistance, lap_data.m_penalties))
+        entries.sort(key=lambda x: (-x[1], x[2]))
+        return {car_index: pos + 1 for pos, (car_index, _, _) in enumerate(entries)}
+
     def buildFinalClassificationJSON(self) -> Dict[str, Any]:
         """
         Constructs the final classification JSON from internal state.
@@ -763,6 +780,8 @@ class SessionState:
 
         speed_trap_records = []
         driver_info_dict = self._getRaceCtrlHelperDict() if self.m_save_race_ctrl_msgs else None
+        is_dummy = session_info.m_packet_final_classification is None
+        adjusted_positions = self._computePenaltyAdjustedPositions() if is_dummy else {}
 
         # --- Initialize optional structures
         if is_position_history_supported:
@@ -777,7 +796,8 @@ class SessionState:
                 # Add driver's classification info
                 final_json["classification-data"].append(driver.toJSON(index=index,
                                                                        include_race_ctrl_msgs=self.m_save_race_ctrl_msgs,
-                                                                       driver_info_dict=driver_info_dict))
+                                                                       driver_info_dict=driver_info_dict,
+                                                                       position_override=adjusted_positions.get(index)))
                 # Collect speed trap info
                 speed_trap_records.append(driver.getSpeedTrapRecordJSON())
 
@@ -1054,6 +1074,14 @@ class SessionState:
 
         if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
             self.m_race_ctrl.add_message(msg)
+
+    def setChequeredFlagState(self, flag_val: bool) -> None:
+        """Set the chequered flag status
+
+        Args:
+            flag_val (bool): The value to set for the chequered flag status
+        """
+        self.m_session_info.m_chequered_flag = flag_val
 
     ##### Public Getters #####
 
@@ -1389,6 +1417,35 @@ class SessionState:
         return  (0 <= index < len(self.m_driver_data)) and \
                 (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
 
+    def isSuspiciousSessionStart(self, session_uid: int) -> bool:
+        """Check if the session start event is suspicious.
+
+        Args:
+            session_uid (int): The session UID
+
+        Returns:
+            bool: True if the session start event is suspicious, False otherwise
+        """
+
+        if self.m_session_info.m_chequered_flag:
+            self.m_logger.warning("Suspicious session start event message for session %d after CHEQUERED_FLAG event",
+                                    session_uid)
+            return True
+
+        driver = self.getDriverInfoByPosition(1)
+        if not driver:
+            self.m_logger.warning("Cannot find P1 driver in session %d", session_uid)
+            return False
+
+        if driver.m_lap_info.m_current_lap >= self.m_session_info.m_total_laps:
+                self.m_logger.warning("Suspicious session start event message for session %d - "
+                                      "leader may have completed race (lap %d)",
+                                        session_uid, driver.m_lap_info.m_current_lap)
+                return True
+
+        self.m_logger.debug("SESSION_START for %d doesn't seem suspicious", session_uid)
+        return False
+
     ##### Internal Helpers #####
 
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
@@ -1635,6 +1692,8 @@ class SessionState:
         """
         packet = PacketFinalClassificationData.from_values(None, 0, [])
         packet.m_numCars = self.m_num_active_cars
+        # Field values don't matter - buildFinalClassificationJSON only iterates over
+        # m_classificationData for its length; all real data comes from DataPerDriver.
         packet.m_classificationData = [self._getDummyFinalClassificationData() for _ in range(self.m_num_active_cars)]
         return packet
 
