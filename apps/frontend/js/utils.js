@@ -565,7 +565,15 @@ function getRefRow(data) {
 
     if (isSpectating && (spectatorIndex != null)) {
         if (spectatorIndex >= 0 && spectatorIndex < data["table-entries"].length) {
-            return data["table-entries"][spectatorIndex];
+            const tableEntries = data["table-entries"];
+            const result = tableEntries.find(entry => {
+                return entry["driver-info"]["index"] === spectatorIndex;
+            });
+            if (!result) {
+                console.warn(`Could not find spectator with driver index ${spectatorIndex}.`);
+                return null;
+            }
+            return result;
         } else {
             console.warn(`Spectator index ${spectatorIndex} is out of bounds.`);
             return null;

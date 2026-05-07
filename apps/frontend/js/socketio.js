@@ -8,7 +8,7 @@ function initializeSocketIO(clientType, clientId) {
         reconnectionDelayMax: 5000,
         randomizationFactor: 0.3,
         timeout: 10000,
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'],
         upgrade: true,
         secure: location.protocol === 'https:',
     });

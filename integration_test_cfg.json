@@ -17,7 +17,8 @@
         "post_quali_data_autosave": true,
         "post_fp_data_autosave": false,
         "post_tt_data_autosave": false,
-        "save_race_ctrl_msg": false
+        "save_race_ctrl_msg": false,
+        "just_in_case_autosave": true
     },
     "Display": {
         "disable_browser_autoload": true,
@@ -96,6 +97,7 @@
             }
         },
         "mfd_tyre_wear_threshold": 80,
+        "mfd_tyre_wear_rate_type": "Max",
         "mfd_weather_page_ui_type": "Cards",
         "mfd_toggle_udp_action_code": null,
         "mfd_interaction_udp_action_code": null,

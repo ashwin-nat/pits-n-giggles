@@ -49,6 +49,10 @@ class HudOverlayFuelEstimationMode(str, Enum):
     LINEAR_REGRESSION = "Linear regression"
     GAME_BUILT_IN = "Game built-in"
 
+class MfdTyreWearRateType(str, Enum):
+    MAX = "Max"
+    AVERAGE = "Average"
+
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
@@ -154,6 +158,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                     "Used by the Tyre Wear page in the MFD to select the end lap.\n"
                     "The first lap exceeding this wear value is chosen; if none do, the final prediction lap is used."
                 ],
+            }
+        }
+    )
+    mfd_tyre_wear_rate_type: MfdTyreWearRateType = Field(
+        default=MfdTyreWearRateType.MAX,
+        description="Tyre wear rate display mode for MFD (Tyre Wear Page)",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in MfdTyreWearRateType],
+                "tooltips": {
+                    "Max":     "The tyre with the max wear rate is displayed",
+                    "Average": "The average wear rate of all tyres is displayed",
+                },
+                "visible": True,
+                "group": "MFD",
             }
         }
     )

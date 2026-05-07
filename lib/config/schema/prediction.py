@@ -43,9 +43,9 @@ class PredictionSettings(ConfigDiffMixin, BaseModel):
                 "type": "check_box",
                 "visible": True,
                 "ext_info": [
-                    "EXPERIMENTAL: When enabled, tyre wear regression uses only laps from the "
-                    "current weather group (dry or wet), ignoring earlier laps recorded under "
-                    "different conditions. This improves accuracy after weather transitions but "
+                    "EXPERIMENTAL: When enabled, tyre wear regression uses only laps from the \n"
+                    "current weather group (dry or wet), ignoring earlier laps recorded under \n"
+                    "different conditions. This improves accuracy after weather transitions but \n"
                     "may produce unstable predictions early in a new weather segment."
                 ]
             }
@@ -61,9 +61,10 @@ class PredictionSettings(ConfigDiffMixin, BaseModel):
                 "type": "text_box",
                 "visible": True,
                 "ext_info": [
-                    "EXPERIMENTAL: Limits tyre wear regression to the N most recent racing laps. "
-                    "Helps the model adapt quickly to changing conditions (e.g. dry to wet) "
-                    "instead of averaging over the entire stint. "
+                    "EXPERIMENTAL: Limits tyre wear regression to the N most recent racing laps. \n"
+                    "Helps the model adapt quickly to changing conditions (e.g. dry to wet) \n"
+                    "instead of averaging over the entire stint. \n"
+                    "If interested, recommended values are 4-6 laps. \n"
                     "Leave empty to use all available data (default behaviour)."
                 ]
             }

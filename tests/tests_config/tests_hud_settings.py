@@ -30,9 +30,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import (HudSettings, HudOverlaySpeedUnit,
-                        HudOverlayFuelEstimationMode, MfdPageId, MfdPageSettings, MfdSettings,
-                        OverlayId, OverlayPosition, TimingTowerColOptions, WeatherMFDUIType)
+from lib.config import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+                        HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
+                        MfdTyreWearRateType, OverlayId, OverlayPosition,
+                        TimingTowerColOptions, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 
 from .tests_config_base import TestF1ConfigBase
@@ -63,6 +64,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
         self.assertEqual(settings.mfd_tyre_wear_threshold, 80)
+        self.assertEqual(settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
         self.assertEqual(settings.mfd_weather_page_ui_type, WeatherMFDUIType.CARDS)
         self.assertEqual(settings.cycle_mfd_udp_action_code, None)
         self.assertEqual(settings.prev_mfd_page_udp_action_code, None)
@@ -771,6 +773,34 @@ class TestHudSettings(TestF1ConfigBase):
 
         with self.assertRaises(AttributeError):
             HudSettings(mfd_weather_page_ui_type=WeatherMFDUIType.UNKNOWN)
+
+    def test_mfd_tyre_wear_rate_type_default(self):
+        hud_settings = HudSettings()
+        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
+
+    def test_mfd_tyre_wear_rate_type_valid_values(self):
+        for value in MfdTyreWearRateType:
+            hud_settings = HudSettings(mfd_tyre_wear_rate_type=value)
+            self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, value)
+
+        hud_settings = HudSettings(mfd_tyre_wear_rate_type="Max")
+        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.MAX)
+
+        hud_settings = HudSettings(mfd_tyre_wear_rate_type="Average")
+        self.assertEqual(hud_settings.mfd_tyre_wear_rate_type, MfdTyreWearRateType.AVERAGE)
+
+    def test_mfd_tyre_wear_rate_type_invalid_value(self):
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_rate_type="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_rate_type=None)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(mfd_tyre_wear_rate_type=42)
+
+        with self.assertRaises(AttributeError):
+            HudSettings(mfd_tyre_wear_rate_type=MfdTyreWearRateType.UNKNOWN)
 
     def test_show_circuit_info(self):
         hud_settings = HudSettings(show_circuit_info=True)

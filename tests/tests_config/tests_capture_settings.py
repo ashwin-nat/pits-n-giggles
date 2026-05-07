@@ -132,3 +132,16 @@ class TestCaptureSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             CaptureSettings(save_race_ctrl_msg="notaboolean")
+
+    def test_default_just_in_case_autosave(self):
+        self.assertTrue(CaptureSettings().just_in_case_autosave)
+
+    def test_boolean_validation_just_in_case_autosave(self):
+        self.assertTrue(CaptureSettings(just_in_case_autosave=True).just_in_case_autosave)
+        self.assertFalse(CaptureSettings(just_in_case_autosave=False).just_in_case_autosave)
+        self.assertTrue(CaptureSettings(just_in_case_autosave="True").just_in_case_autosave)
+        self.assertFalse(CaptureSettings(just_in_case_autosave="False").just_in_case_autosave)
+
+    def test_invalid_just_in_case_autosave_raises(self):
+        with self.assertRaises(ValidationError):
+            CaptureSettings(just_in_case_autosave="notaboolean")

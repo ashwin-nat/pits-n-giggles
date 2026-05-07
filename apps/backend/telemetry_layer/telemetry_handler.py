@@ -30,9 +30,10 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
 
 from apps.backend.state_mgmt_layer import SessionState
+from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.button_debouncer import ButtonDebouncer
-from lib.event_counter import EventCounter
 from lib.config import CaptureSettings, OverlayId, PngSettings
+from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetryData, PacketEventData,
@@ -207,6 +208,9 @@ class F1TelemetryHandler:
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
+        # Task handle because asyncio expects a handle to be saved,
+        # otherwise it is not guaranteed to be run to completion without being garbage collected
+        self.m_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
     def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
@@ -257,6 +261,21 @@ class F1TelemetryHandler:
             self.m_manager_task.cancel()
         self.m_wdt.stop()
         self.m_menu_wdt.stop()
+        if self.m_save_task:
+            self.m_logger.debug("Waiting for save task to complete...")
+
+            try:
+                await asyncio.wait_for(self.m_save_task, timeout=5.0)
+                self.m_logger.debug("Save task completed.")
+
+            except asyncio.TimeoutError:
+                self.m_logger.debug("Save task timed out. Cancelling...")
+
+                self.m_save_task.cancel()
+                await asyncio.gather(self.m_save_task, return_exceptions=True)
+
+                self.m_logger.debug("Save task cancelled.")
+
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
 
     def getWatchdogTask(self) -> Coroutine:
@@ -338,12 +357,13 @@ class F1TelemetryHandler:
             event_handler: Dict[PacketEventData.EventPacketType, Callable[[PacketEventData], Awaitable[None]]] = {
                 PacketEventData.EventPacketType.BUTTON_STATUS: handleButtonStatus,
                 PacketEventData.EventPacketType.FASTEST_LAP: processFastestLapUpdate,
-                PacketEventData.EventPacketType.SESSION_STARTED: handeSessionStartEvent,
+                PacketEventData.EventPacketType.SESSION_STARTED: handleSessionStartEvent,
                 PacketEventData.EventPacketType.RETIREMENT: processRetirementEvent,
                 PacketEventData.EventPacketType.OVERTAKE: processOvertakeEvent,
                 PacketEventData.EventPacketType.COLLISION: processCollisionsEvent,
                 PacketEventData.EventPacketType.FLASHBACK: handleFlashBackEvent,
                 PacketEventData.EventPacketType.START_LIGHTS: handleStartLightsEvent,
+                PacketEventData.EventPacketType.CHEQUERED_FLAG: handleChequeredFlagEvent,
             }.get(packet.m_eventCode)
 
             if event_handler:
@@ -508,7 +528,7 @@ class F1TelemetryHandler:
 
         #     self.m_session_state_ref.processLapPositionsUpdate(packet)
 
-        async def handeSessionStartEvent(packet: PacketEventData) -> None:
+        async def handleSessionStartEvent(packet: PacketEventData) -> None:
             """
             Handle and process the session start event
 
@@ -516,6 +536,7 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the session start packet's contents.
             """
 
+            self._handleSuspiciousSessionStart(packet.m_header.m_sessionUID)
             self.m_last_session_uid = packet.m_header.m_sessionUID
             self.clearAllDataStructures(f"SESSION_START event - UID {packet.m_header.m_sessionUID}")
 
@@ -663,6 +684,15 @@ class F1TelemetryHandler:
             """
             record: PacketEventData.Overtake = packet.mEventDetails
             self.m_session_state_ref.processOvertakeEvent(record)
+
+        async def handleChequeredFlagEvent(packet: PacketEventData) -> None:
+            """Handle the chequered flag event
+
+            Args:
+                packet (PacketEventData): The event packet
+            """
+            self.m_logger.info("Chequered flag waved. UID = %d", packet.m_header.m_sessionUID)
+            self.m_session_state_ref.setChequeredFlagState(flag_val=True)
 
     def clearAllDataStructures(self, reason: str) -> None:
         """Clear all the data structures
@@ -844,3 +874,53 @@ class F1TelemetryHandler:
             self.m_logger.silent('UDP action %d pressed - %s', code, name)
             await coro()
 
+    def _handleSuspiciousSessionStart(self, session_uid: int) -> None:
+        """Save data just in case when a suspicious session start event is received.
+
+        Args:
+            session_uid (int): The session UID for which the suspicious session start event was received.
+        """
+
+        self.m_logger.info("SESSION_START event received. %d", session_uid)
+
+        if not self.m_capture_settings.just_in_case_autosave:
+            return
+
+        if not self._shouldSaveData():
+            return
+
+        if self.m_final_classification_processed:
+            self.m_logger.debug("Final classification already processed for this session. "
+                                "Not treating this session start as suspicious.")
+            return
+
+        if self.m_save_task:
+            self.m_logger.debug("A save task is already running.")
+            return
+
+        if self.m_session_state_ref.isSuspiciousSessionStart(session_uid):
+            try:
+                save_rsp = ManualSaveRsp(
+                    logger=self.m_logger,
+                    session_state=self.m_session_state_ref,
+                    reason="Just_in_case")
+            except ValueError as e:
+                self.m_logger.warning("Not saving just in case data for session %d: %s", session_uid, e)
+                return
+            self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(session_uid, save_rsp),
+                                                    name="Just in case save task")
+
+    async def _saveJustInCaseDataTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
+        """Write the pre-prepared save data to disk.
+
+        Args:
+            session_uid (int): The session UID for which the suspicious session start event was received.
+            save_rsp (ManualSaveRsp): Already-prepared save response (data captured before task creation).
+        """
+        try:
+            rsp = await save_rsp.saveToDisk()
+            self.m_logger.info("Saving just in case data. Session UID %d. status=%s", session_uid, rsp)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.m_logger.error("Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
+
+        self.m_save_task = None

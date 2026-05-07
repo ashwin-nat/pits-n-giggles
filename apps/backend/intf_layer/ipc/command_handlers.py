@@ -41,7 +41,13 @@ async def handleManualSave(
         session_state: SessionState,
         ) -> dict:
     """Handle manual save command"""
-    return await ManualSaveRsp(logger, session_state).saveToDisk()
+    try:
+        return await ManualSaveRsp(logger, session_state).saveToDisk()
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    except Exception as e:  # pylint: disable=broad-except
+        logger.exception("Unexpected error during manual save")
+        return {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
 
 async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
     """Handle shutdown command"""
