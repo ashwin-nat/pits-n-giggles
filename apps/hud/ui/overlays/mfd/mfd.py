@@ -111,7 +111,10 @@ class MfdOverlay(BaseOverlayQML):
     def _get_page_kwargs(self, settings: PngSettings) -> dict:
         """Get initialization kwargs for pages from settings."""
         return {
-            TyreInfoPage.KEY: {"tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold},
+            TyreInfoPage.KEY: {
+                "tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold,
+                "tyre_wear_rate_type": settings.HUD.mfd_tyre_wear_rate_type,
+            },
             WeatherForecastPage.KEY: {"graph_based_ui": (
                 settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
         }

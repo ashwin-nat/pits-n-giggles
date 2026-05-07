@@ -30,7 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId
+from lib.config import MfdPageId, MfdTyreWearRateType
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -44,12 +44,21 @@ class TyreInfoPage(MfdPageBase):
 
     NUM_DECIMAL_PLACES = 2
 
+    KEY_LABELS = {
+        'front-left':  'FL',
+        'front-right': 'FR',
+        'rear-left':   'RL',
+        'rear-right':  'RR',
+    }
+
     def __init__(self,
                  overlay: "MfdOverlay",
                  logger: logging.Logger,
                  tyre_wear_threshold: int,
+                 tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX,
                  ):
         self.tyre_wear_threshold = tyre_wear_threshold
+        self.tyre_wear_rate_type = tyre_wear_rate_type
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -81,15 +90,15 @@ class TyreInfoPage(MfdPageBase):
             # Calculate and display wear rate
             tyre_wear_rates: Dict[str, Any] = tyre_info.get('wear-prediction', {}).get('rate', {})
             if tyre_wear_rates:
-                _KEY_LABELS = {
-                    'front-left-wear':  'FL',
-                    'front-right-wear': 'FR',
-                    'rear-left-wear':   'RL',
-                    'rear-right-wear':  'RR',
-                }
-                max_key = max(tyre_wear_rates, key=tyre_wear_rates.__getitem__)
-                page_item.setProperty("wearRate", tyre_wear_rates[max_key])
-                page_item.setProperty("wearRateTyre", _KEY_LABELS.get(max_key, ""))
+
+                if self.tyre_wear_rate_type == MfdTyreWearRateType.AVERAGE:
+                    rate = sum(tyre_wear_rates.values()) / len(tyre_wear_rates)
+                    page_item.setProperty("wearRate", rate)
+                    page_item.setProperty("wearRateTyre", "Avg")
+                else:
+                    max_key = max(tyre_wear_rates, key=tyre_wear_rates.__getitem__)
+                    page_item.setProperty("wearRate", tyre_wear_rates[max_key])
+                    page_item.setProperty("wearRateTyre", self.KEY_LABELS.get(max_key, ""))
             else:
                 page_item.setProperty("wearRate", 0.0)
                 page_item.setProperty("wearRateTyre", "")
