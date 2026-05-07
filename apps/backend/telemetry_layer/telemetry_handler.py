@@ -868,20 +868,26 @@ class F1TelemetryHandler:
             return
 
         if self.m_session_state_ref.isSuspiciousSessionStart(session_uid):
-            self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(session_uid),
+            try:
+                save_rsp = ManualSaveRsp(
+                    logger=self.m_logger,
+                    session_state=self.m_session_state_ref,
+                    reason="Just_in_case")
+            except ValueError as e:
+                self.m_logger.warning("Not saving just in case data for session %d: %s", session_uid, e)
+                return
+            self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(session_uid, save_rsp),
                                                     name="Just in case save task")
 
-    async def _saveJustInCaseDataTask(self, session_uid: int) -> None:
-        """Save data just in case when a suspicious session start event is received.
+    async def _saveJustInCaseDataTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
+        """Write the pre-prepared save data to disk.
 
         Args:
             session_uid (int): The session UID for which the suspicious session start event was received.
+            save_rsp (ManualSaveRsp): Already-prepared save response (data captured before task creation).
         """
         try:
-            rsp = await ManualSaveRsp(
-                logger=self.m_logger,
-                session_state=self.m_session_state_ref,
-                reason="Just_in_case").saveToDisk()
+            rsp = await save_rsp.saveToDisk()
             self.m_logger.info("Saving just in case data. Session UID %d. status=%s", session_uid, rsp)
         except Exception as e: # pylint: disable=broad-exception-caught
             self.m_logger.error("Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
