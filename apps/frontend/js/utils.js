@@ -569,6 +569,10 @@ function getRefRow(data) {
             const result = tableEntries.find(entry => {
                 return entry["driver-info"]["index"] === spectatorIndex;
             });
+            if (!result) {
+                console.warn(`Could not find spectator with driver index ${spectatorIndex}.`);
+                return null;
+            }
             return result;
         } else {
             console.warn(`Spectator index ${spectatorIndex} is out of bounds.`);

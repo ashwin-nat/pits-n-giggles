@@ -24,7 +24,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from apps.backend.state_mgmt_layer.session_state import SessionState
 from lib.save_to_disk import save_json_to_file
@@ -50,7 +50,7 @@ class ManualSaveRsp:
         event_str, final_json = self._prepareData(session_state)
         now = datetime.now().astimezone()
         self.m_file_name: str = self._buildFileName(event_str, reason, now)
-        self.m_final_json: Dict[str, Any] = self._injectDebugFields(final_json, session_state, now)
+        self.m_final_json: Dict[str, Any] = self._injectDebugFields(final_json, session_state, now, reason, self.m_file_name)
 
     @staticmethod
     def _prepareData(session_state: SessionState):
@@ -85,17 +85,22 @@ class ManualSaveRsp:
         final_json: Dict[str, Any],
         session_state: SessionState,
         now: datetime,
+        reason: str,
+        file_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Stamp debug metadata into the JSON payload and return it."""
         final_json["debug"] = final_json.get("debug", {})
-        final_json["debug"].update({
+        debug_fields: Dict[str, Any] = {
             "session-uid": session_state.m_session_info.m_session_uid,
             "timestamp": now.strftime("%Y-%m-%d %H:%M:%S %Z"),
             "timezone": now.tzinfo.key if hasattr(now.tzinfo, "key") else str(now.tzinfo),
             "utc-offset-seconds": int(now.utcoffset().total_seconds()),
-            "reason": "Manual save",
+            "reason": reason,
             "packet-count": session_state.m_pkt_count,
-        })
+        }
+        if file_name is not None:
+            debug_fields["file-name"] = file_name
+        final_json["debug"].update(debug_fields)
         return final_json
 
     async def saveToDisk(self) -> Dict[str, Any]:

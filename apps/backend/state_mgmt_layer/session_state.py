@@ -1435,10 +1435,11 @@ class SessionState:
         driver = self.getDriverInfoByPosition(1)
         if not driver:
             self.m_logger.warning("Cannot find P1 driver in session %d", session_uid)
+            return False
 
         if driver.m_lap_info.m_current_lap >= self.m_session_info.m_total_laps:
                 self.m_logger.warning("Suspicious session start event message for session %d - "
-                                      "leader may have completed race",
+                                      "leader may have completed race (lap %d)",
                                         session_uid, driver.m_lap_info.m_current_lap)
                 return True
 

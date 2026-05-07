@@ -843,7 +843,7 @@ class F1TelemetryHandler:
             self.m_logger.info('UDP action %d pressed - %s', code, name)
             await coro()
 
-    async def _handleSuspiciousSessionStart(self, session_uid: int) -> None:
+    def _handleSuspiciousSessionStart(self, session_uid: int) -> None:
         """Save data just in case when a suspicious session start event is received.
 
         Args:
