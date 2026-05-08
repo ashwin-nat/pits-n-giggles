@@ -191,11 +191,11 @@ class HudAppMgr(PngAppMgrBase):
 
     def hide_show_callback(self):
         """Open the dashboard viewer in a web browser."""
-        self.info_log("Sending hide/show command to HUD...")
+        self.debug_log("Sending hide/show command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="toggle-overlays-visibility", args={}
         )
-        self.info_log(str(rsp))
+        self.debug_log(str(rsp))
 
     def lock_callback(self):
         """Lock or unlock the HUD from receiving data."""
@@ -240,7 +240,7 @@ class HudAppMgr(PngAppMgrBase):
 
     def reset_callback(self):
         """Reset HUD overlays to default layout."""
-        self.info_log("Sending reset overlays command to HUD...")
+        self.debug_log("Sending reset overlays command to HUD...")
 
         default_layout_json = HudSettings.get_default_layout_json()
         try:
@@ -270,27 +270,27 @@ class HudAppMgr(PngAppMgrBase):
 
     def next_page_callback(self):
         """Cycle to the next page of the HUD."""
-        self.info_log("Sending next page command to HUD...")
+        self.debug_log("Sending next page command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="next-page", args={}
         )
-        self.info_log(str(rsp))
+        self.debug_log(str(rsp))
 
     def prev_page_callback(self):
         """Cycle to the previous page of the HUD."""
-        self.info_log("Sending previous page command to HUD...")
+        self.debug_log("Sending previous page command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="prev-page", args={}
         )
-        self.info_log(str(rsp))
+        self.debug_log(str(rsp))
 
     def mfd_interact_callback(self):
         """Interact with the MFD."""
-        self.info_log("Sending MFD interact command to HUD...")
+        self.debug_log("Sending MFD interact command to HUD...")
         rsp = IpcClientSync(self.ipc_port).request(
             command="mfd-interact", args={}
         )
-        self.info_log(str(rsp))
+        self.debug_log(str(rsp))
 
     def start(self, reason: str):
         """Check for enabled flag before starting"""
@@ -375,7 +375,7 @@ class HudAppMgr(PngAppMgrBase):
         if status != "success":
             self.error_log(f"Failed to set overlays opacity: {rsp}")
         else:
-            self.info_log("Set overlays opacity command was successful")
+            self.debug_log("Set overlays opacity command was successful")
 
     def _send_circuit_info_length_change(self, length: int) -> None:
         """Send circuit info length change to HUD app
@@ -391,7 +391,7 @@ class HudAppMgr(PngAppMgrBase):
         if status != "success":
             self.error_log(f"Failed to set circuit info length: {rsp}")
         else:
-            self.info_log("Set circuit info length command was successful")
+            self.debug_log("Set circuit info length command was successful")
 
     def _send_track_radar_idle_opacity_change(self, opacity: int) -> None:
         """Send track radar idle opacity change to HUD app
@@ -407,7 +407,7 @@ class HudAppMgr(PngAppMgrBase):
         if status != "success":
             self.error_log(f"Failed to set track radar idle opacity: {rsp}")
         else:
-            self.info_log("Set track radar idle opacity command was successful")
+            self.debug_log("Set track radar idle opacity command was successful")
 
     def _start_integration_test_thread(self):
         """Start the integration test thread"""

@@ -497,7 +497,7 @@ TYRE WEAR THRESHOLDS:
                 # 1. Bind the socket ourselves — this is where port-conflict
                 #    errors surface cleanly, before uvicorn is involved at all.
                 sock = self._bind_socket()
-                self.logger.info("Starting MCP server (transport=%s port=%s)", self.transport, self.port)
+                self.logger.debug("Starting MCP server (transport=%s port=%s)", self.transport, self.port)
 
                 # 2. Get the ASGI app out of FastMCP without starting a server.
                 asgi_app = self.mcp.http_app()
@@ -518,7 +518,7 @@ TYRE WEAR THRESHOLDS:
                     await server.serve(sockets=[sock])
 
             elif self.transport == "stdio":
-                self.logger.info(
+                self.logger.debug(
                     "Starting MCP server (transport=%s)", self.transport
                 )
                 await self.mcp.run_async(

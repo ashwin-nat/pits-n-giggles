@@ -84,7 +84,10 @@ class McpSubscriber:
             active (bool): True if Subscriptions are active (i.e.) "connected" to producer
         """
         set_state_data("connected", active)
-        self.m_ipc_sub.logger.info("Subscriber connected state changed: %s", active)
+        if active:
+            self.m_ipc_sub.logger.info("Connected to data stream", active)
+        else:
+            self.m_ipc_sub.logger.warning("Disconnected from data stream", active)
 
     def get_stats(self) -> dict:
         """Get stats for the subscriber.

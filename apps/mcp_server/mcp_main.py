@@ -136,8 +136,9 @@ def _entry_point():
         png_logger = get_logger("mcp", args.debug, jsonl=False, file_path=args.log_file)
     version = get_version()
 
-    png_logger.info("Starting %s MCP server, version %s...", APP_NAME, version)
     configs = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
+    transport = "http" if args.managed else "stdio"
+    png_logger.info("Starting %s MCP server, version %s transport %s...", APP_NAME, version, transport)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
