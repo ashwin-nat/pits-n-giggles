@@ -44,14 +44,16 @@ Generate user-facing release notes for the next release of Pits n' Giggles.
    - Use `###` headings for each logical group of changes
    - Use bullet points under each heading
    - Write for a non-technical user who races in F1 games — avoid internal code terms
+   - Never use emojis or em dashes
    - Be specific about what changed and what it means for the user (e.g. "The pit rejoin prediction now accounts for time spent in the pit lane, giving a more accurate result")
+   - Avoid internal technical terms: no Qt/QML renderer names, no IPC layer names, no "track segments" (say "circuit info overlay" instead)
+   - Lead with the most user-visible feature — put it as the first section
    - If a fix addresses a regression from a specific prior version, call that out
-   - Emoji headings are fine if the past release used them
 
 5. **Always write the notes to a file** named `release-notes-vX.Y.Z.md` in the repo root. Determine the version from `meta/meta.py` (`APP_VERSION`), not from the last tag. Also print the notes to the terminal.
 
 6. **Keep length in check.** Aim for concise bullets — one line per item. Avoid repeating the same theme across multiple sections. If a fix was already shipped in a hotfix release (visible in the commit log as "Hotfix vX.Y.Z"), skip it.
 
-7. **Credit contributors.** Check `git log ... --format="%an|%ae"` for authors other than `ashwin-nat`. If any exist, extract their GitHub username from the noreply email (`<id>+<username>@users.noreply.github.com`) and add a `### 🙏 Contributors` section at the end crediting them by `@username` with a brief summary of what they worked on.
+7. **Credit contributors.** Check `git log ... --format="%an|%ae"` for authors other than `ashwin-nat`. If any exist, extract their GitHub username from the noreply email (`<id>+<username>@users.noreply.github.com`) and add a `### Contributors` section at the end crediting them by `@username` with a brief summary of what they worked on.
 
 If there are no user-facing changes (e.g. the only commits are CI/internal), say so explicitly rather than generating empty notes.
