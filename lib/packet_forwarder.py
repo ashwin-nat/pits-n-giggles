@@ -46,24 +46,36 @@ class AsyncUDPTransport:
 
         for destination in forward_addresses:
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.setblocking(False)
-                sock.connect(destination)
-                self.m_sockets[destination] = sock
-            except OSError as e:
-                if self.m_logger:
-                    self.m_logger.error("Error creating socket to %s: %s", destination, e)
+                self._open_socket(destination)
+            except OSError:
                 self.close()
                 raise
 
+    def _open_socket(self, destination: Tuple[str, int]) -> None:
+        """Open a non-blocking UDP socket for destination and add it to m_sockets."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setblocking(False)
+            sock.connect(destination)
+            self.m_sockets[destination] = sock
+        except OSError as e:
+            if self.m_logger:
+                self.m_logger.error("Error creating socket to %s: %s", destination, e)
+            raise
+
+    def _close_socket(self, destination: Tuple[str, int]) -> None:
+        """Pop destination from m_sockets and close its socket."""
+        sock = self.m_sockets.pop(destination)
+        try:
+            sock.close()
+        except OSError as e:
+            if self.m_logger:
+                self.m_logger.error("Error closing socket to %s: %s", destination, e)
+
     def close(self) -> None:
         """Safely close all sockets."""
-        for destination, sock in list(self.m_sockets.items()):
-            try:
-                sock.close()
-            except OSError as e:
-                if self.m_logger:
-                    self.m_logger.error("Error closing socket to %s: %s", destination, e)
+        for destination in list(self.m_sockets.keys()):
+            self._close_socket(destination)
 
     def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
         """Update forwarding destinations without restarting the task.
@@ -79,23 +91,10 @@ class AsyncUDPTransport:
         old_set: Set[Tuple[str, int]] = set(self.m_sockets.keys())
 
         for dest in new_set - old_set:
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.setblocking(False)
-                sock.connect(dest)
-                self.m_sockets[dest] = sock
-            except OSError as e:
-                if self.m_logger:
-                    self.m_logger.error("Error creating socket to %s: %s", dest, e)
-                raise
+            self._open_socket(dest)
 
         for dest in old_set - new_set:
-            old_sock = self.m_sockets.pop(dest)
-            try:
-                old_sock.close()
-            except OSError as e:
-                if self.m_logger:
-                    self.m_logger.error("Error closing socket to %s: %s", dest, e)
+            self._close_socket(dest)
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
         """

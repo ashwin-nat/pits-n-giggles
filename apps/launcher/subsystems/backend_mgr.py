@@ -158,6 +158,12 @@ class BackendAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"{self.DISPLAY_NAME} UDP action codes NO CHANGE")
 
+        # Update forwarding targets if changed — no restart needed
+        if self.curr_settings.diff(new_settings, {"Forwarding": []}):
+            self.send_forwarding_config_change(new_settings.Forwarding.forwarding_targets)
+        else:
+            self.debug_log(f"{self.DISPLAY_NAME} Forwarding targets NO CHANGE")
+
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "telemetry_port",
@@ -175,7 +181,6 @@ class BackendAppMgr(PngAppMgrBase):
             ],
             "Logging" : [],
             "Privacy" : [],
-            "Forwarding" : [],
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
@@ -239,6 +244,14 @@ class BackendAppMgr(PngAppMgrBase):
         rsp = ipc_client.request("udp-action-code-change", {"action_code_field": action_code_field, "value": value})
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to change UDP action code: {rsp}")
+
+    def send_forwarding_config_change(self, targets):
+        """Send updated forwarding targets to the backend without restarting it."""
+        self.debug_log(f"Sending forwarding config change to backend. Targets: {targets}")
+        ipc_client = IpcClientSync(self.ipc_port)
+        rsp = ipc_client.request("forwarding-config-change", {"targets": [list(t) for t in targets]})
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to update forwarding config: {rsp}")
         else:
             self.debug_log(f"Change UDP action code response: {rsp}")
 
