@@ -307,7 +307,7 @@ body {
 }
 
 .eng-view-global-stats-container > .eng-view-global-stat:last-child {
-    grid-column: 1 / -1;
+    grid-column: span 2;
 }
 
 .global-stats-section-header {

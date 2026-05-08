@@ -16,33 +16,16 @@ const TYRE_TEMP_THRESHOLDS = {
 // Fallback for unknown/F2/classic compounds — uses C3 range as reasonable midpoint
 const TYRE_TEMP_THRESHOLDS_DEFAULT = TYRE_TEMP_THRESHOLDS["C3"];
 
-// Responsive column presets — columns visible at each breakpoint.
-// null (desktop) = all columns visible via gridApi.resetColumnState().
-const RESPONSIVE_COLUMN_PRESETS = {
-    desktop: null,
-    laptop: [
-        'position', 'name', 'delta',
-        'last-lap-time', 'last-sector-1', 'last-sector-2', 'last-sector-3',
-        'speed-trap',
-        'tyre-compound',
-        'front-left-wear', 'front-right-wear', 'rear-left-wear', 'rear-right-wear',
-        'tyre-inner-fl', 'tyre-inner-fr', 'tyre-inner-rl', 'tyre-inner-rr',
-        'fuel-in-tank',
-    ],
-    tablet: [
-        'position', 'name', 'delta',
-        'last-lap-time',
-        'tyre-compound', 'tyre-wear-agg',
-        'tyre-inner-fl', 'tyre-inner-fr', 'tyre-inner-rl', 'tyre-inner-rr',
-        'fuel-in-tank',
-    ],
-    compact: [
-        'position', 'name', 'delta',
-        'last-lap-time',
-        'tyre-compound',
-        'tyre-inner-fl', 'tyre-inner-fr', 'tyre-inner-rl', 'tyre-inner-rr',
-    ],
-};
+// Columns visible in the Minimal built-in preset. Add colIds here to expand it.
+const MINIMAL_PRESET_COLS = [
+    'position', 'name', 'delta',
+    'track-warnings', 'time-penalties', 'drive-through', 'stop-go',
+    'best-lap-time', 'best-sector-1', 'best-sector-2', 'best-sector-3',
+    'last-lap-time', 'last-sector-1', 'last-sector-2', 'last-sector-3',
+    'tyre-compound', 'tyre-wear-agg',
+    'wing-damage-agg',
+];
+
 
 function getShortERSMode(mode) {
     switch (mode) {
@@ -123,7 +106,9 @@ class EngViewRaceTable {
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.COLUMN_PROFILES_LS_KEY = 'eng-view-table-column-profiles';
         this.COLUMN_ACTIVE_PROFILE_LS_KEY = 'eng-view-table-active-profile';
-        this.DEFAULT_PROFILE_ID = '__default__';
+        this.FULL_PRESET_ID = '__full__';
+        this.MINIMAL_PRESET_ID = '__minimal__';
+        this.DEFAULT_PROFILE_ID = this.FULL_PRESET_ID; // kept for any residual references
         this.TELEMETRY_DISABLED_TEXT = "⌀";
         this.delayedLapData = new Map(); // Stores { oldLapData, timestamp } for each driver
         this.previousTableData = []; // Stores the data from the previous update cycle
@@ -153,9 +138,18 @@ class EngViewRaceTable {
         if (!this.gridApi) return null;
 
         const activeProfile = this.getActiveProfileId();
-        if (activeProfile === this.DEFAULT_PROFILE_ID) {
-            // Default is always all-columns-visible with library defaults — never persist changes
-            return null;
+        if (this.isBuiltinProfile(activeProfile)) {
+            // Fork: detach from the builtin into a new uniquely-named custom profile
+            const existingNames = new Set(Object.values(this.loadProfiles()).map(p => p.name));
+            let name = 'Custom';
+            for (let i = 1; existingNames.has(name); i++) name = `Custom ${i}`;
+            const id = this.createProfile(name);
+            if (!id) return null;
+            this.setActiveProfileId(id);
+            if (this.columnVisibilityPane.classList.contains('open')) {
+                this.populateProfileSelect();
+            }
+            return this.gridApi.getColumnState();
         }
 
         const columnState = this.gridApi.getColumnState();
@@ -208,35 +202,45 @@ class EngViewRaceTable {
     }
 
     getActiveProfileId() {
-        return localStorage.getItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY) || this.DEFAULT_PROFILE_ID;
+        const stored = localStorage.getItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY);
+        // First visit or legacy __default__ → start with Minimal
+        if (!stored || stored === '__default__') return this.MINIMAL_PRESET_ID;
+        return stored;
     }
 
     setActiveProfileId(profileId) {
         localStorage.setItem(this.COLUMN_ACTIVE_PROFILE_LS_KEY, profileId);
     }
 
+    isBuiltinProfile(profileId) {
+        return profileId === this.FULL_PRESET_ID || profileId === this.MINIMAL_PRESET_ID;
+    }
+
     applyProfile(profileId) {
         this.setActiveProfileId(profileId);
+        localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
 
-        let state = null;
-        if (profileId === this.DEFAULT_PROFILE_ID) {
-            // Clear saved state so grid defaults apply on next load; apply defaults now
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
+        if (profileId === this.FULL_PRESET_ID) {
+            if (this.gridApi) this.gridApi.resetColumnState();
+        } else if (profileId === this.MINIMAL_PRESET_ID) {
+            if (this.gridApi) {
+                const visibleSet = new Set(MINIMAL_PRESET_COLS);
+                const newState = this.gridApi.getColumns().map(col => ({
+                    colId: col.getColId(),
+                    hide: !visibleSet.has(col.getColId()),
+                }));
+                this.gridApi.applyColumnState({ state: newState });
+            }
         } else {
             const profiles = this.loadProfiles();
-            state = profiles[profileId]?.state || null;
+            const state = profiles[profileId]?.state || null;
             if (state) {
                 try {
                     localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(state));
                 } catch { /* ignore */ }
-            }
-        }
-
-        if (this.gridApi) {
-            if (state) {
-                this.gridApi.applyColumnState({ state, applyOrder: true });
+                if (this.gridApi) this.gridApi.applyColumnState({ state, applyOrder: true });
             } else {
-                this.gridApi.resetColumnState();
+                if (this.gridApi) this.gridApi.resetColumnState();
             }
         }
 
@@ -255,7 +259,7 @@ class EngViewRaceTable {
     }
 
     deleteProfile(profileId) {
-        if (profileId === this.DEFAULT_PROFILE_ID) return;
+        if (this.isBuiltinProfile(profileId)) return;
         const profiles = this.loadProfiles();
         delete profiles[profileId];
         this.saveProfiles(profiles);
@@ -266,10 +270,12 @@ class EngViewRaceTable {
         const activeId = this.getActiveProfileId();
         select.innerHTML = '';
 
-        const defaultOpt = document.createElement('option');
-        defaultOpt.value = this.DEFAULT_PROFILE_ID;
-        defaultOpt.textContent = 'Default';
-        select.appendChild(defaultOpt);
+        for (const [id, label] of [[this.FULL_PRESET_ID, 'Full'], [this.MINIMAL_PRESET_ID, 'Minimal']]) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = label;
+            select.appendChild(opt);
+        }
 
         const profiles = this.loadProfiles();
         for (const [id, profile] of Object.entries(profiles)) {
@@ -280,47 +286,19 @@ class EngViewRaceTable {
         }
 
         select.value = activeId;
-        // Fall back to default if active profile was deleted
+        // Fall back to Full if active profile was deleted
         if (!select.value) {
-            select.value = this.DEFAULT_PROFILE_ID;
-            this.setActiveProfileId(this.DEFAULT_PROFILE_ID);
+            select.value = this.FULL_PRESET_ID;
+            this.setActiveProfileId(this.FULL_PRESET_ID);
         }
 
         this.updateProfileButtons();
     }
 
     updateProfileButtons() {
-        const isDefault = this.columnProfileSelect.value === this.DEFAULT_PROFILE_ID;
-        this.deleteProfileBtn.disabled = isDefault;
-        this.renameProfileBtn.disabled = isDefault;
-    }
-
-    getCurrentBreakpoint() {
-        const width = window.innerWidth;
-        if (width >= 1440) return 'desktop';
-        if (width >= 1024) return 'laptop';
-        if (width >= 768)  return 'tablet';
-        return 'compact';
-    }
-
-    applyBreakpointPreset(breakpoint) {
-        const preset = RESPONSIVE_COLUMN_PRESETS[breakpoint];
-        const isTouch = (breakpoint === 'tablet' || breakpoint === 'compact');
-        this.gridApi.setGridOption('defaultColDef', {
-            ...this.gridApi.getGridOption('defaultColDef'),
-            resizable: !isTouch,
-        });
-        if (!preset) {
-            this.gridApi.resetColumnState();
-            return;
-        }
-        const visibleSet = new Set(preset);
-        const allColumns = this.gridApi.getColumns();
-        const newState = allColumns.map(col => ({
-            colId: col.getColId(),
-            hide: !visibleSet.has(col.getColId()),
-        }));
-        this.gridApi.applyColumnState({ state: newState });
+        const isBuiltin = this.isBuiltinProfile(this.columnProfileSelect.value);
+        this.deleteProfileBtn.disabled = isBuiltin;
+        this.renameProfileBtn.disabled = isBuiltin;
     }
 
     initGrid() {
@@ -368,17 +346,18 @@ class EngViewRaceTable {
                 this.gridApi = params.api;
                 console.debug("AG Grid ready.");
 
-                // Apply saved column state (skip for Default — library defaults apply)
-                if (this.getActiveProfileId() !== this.DEFAULT_PROFILE_ID) {
+                // Apply saved column state or builtin preset
+                const activeProfile = this.getActiveProfileId();
+                if (this.isBuiltinProfile(activeProfile)) {
+                    this.applyProfile(activeProfile);
+                } else {
                     const savedColumnState = this.loadColumnState();
                     if (savedColumnState) {
                         this.gridApi.applyColumnState({ state: savedColumnState, applyOrder: true });
                         console.debug('Applied saved column state:', savedColumnState);
+                    } else {
+                        this.applyProfile(this.FULL_PRESET_ID);
                     }
-                } else {
-                    const breakpoint = this.getCurrentBreakpoint();
-                    this.applyBreakpointPreset(breakpoint);
-                    console.debug('Applied breakpoint preset:', breakpoint);
                 }
 
                 // Add event listeners for column state changes
@@ -587,7 +566,13 @@ class EngViewRaceTable {
         };
     }
 
-    createAggregatedTyreWearCellRenderer() {
+    createMaxTyreWearCellRenderer() {
+        const WEAR_KEYS = [
+            { key: 'FL', field: 'front-left-wear' },
+            { key: 'FR', field: 'front-right-wear' },
+            { key: 'RL', field: 'rear-left-wear' },
+            { key: 'RR', field: 'rear-right-wear' },
+        ];
         return (params) => {
             const driverInfo = params.data;
             const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
@@ -596,35 +581,57 @@ class EngViewRaceTable {
             }
             const tyreInfo = driverInfo["tyre-info"];
             const currWear = tyreInfo["current-wear"];
-            const wearValues = [
-                currWear["front-left-wear"],
-                currWear["front-right-wear"],
-                currWear["rear-left-wear"],
-                currWear["rear-right-wear"],
-            ];
-            const worstCurrentWear = Math.max(...wearValues);
+
+            let maxVal = -Infinity, maxKey = '';
+            for (const { key, field } of WEAR_KEYS) {
+                if (currWear[field] > maxVal) { maxVal = currWear[field]; maxKey = key; }
+            }
 
             const predictionLap = g_engView_predLapNum;
             const predictedWearInfo = predictionLap
                 ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
                 : null;
 
-            let worstPredictedWear = null;
+            let predMaxVal = null, predMaxKey = '';
             if (predictedWearInfo) {
-                const predictedValues = [
-                    predictedWearInfo["front-left-wear"],
-                    predictedWearInfo["front-right-wear"],
-                    predictedWearInfo["rear-left-wear"],
-                    predictedWearInfo["rear-right-wear"],
-                ];
-                worstPredictedWear = Math.max(...predictedValues);
+                predMaxVal = -Infinity;
+                for (const { key, field } of WEAR_KEYS) {
+                    if (predictedWearInfo[field] > predMaxVal) { predMaxVal = predictedWearInfo[field]; predMaxKey = key; }
+                }
             }
 
             return this.createMultiLineCell({
-                row1: formatFloat(worstCurrentWear) + '%',
-                row2: worstPredictedWear != null
-                    ? formatFloat(worstPredictedWear) + '%'
-                    : '---'
+                row1: `${maxKey}: ${formatFloat(maxVal)}%`,
+                row2: predMaxVal != null ? `${predMaxKey}: ${formatFloat(predMaxVal)}%` : '---'
+            });
+        };
+    }
+
+    createAvgTyreWearCellRenderer() {
+        const WEAR_FIELDS = ['front-left-wear', 'front-right-wear', 'rear-left-wear', 'rear-right-wear'];
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const tyreInfo = driverInfo["tyre-info"];
+            const currWear = tyreInfo["current-wear"];
+            const avgCurrent = WEAR_FIELDS.reduce((sum, f) => sum + currWear[f], 0) / 4;
+
+            const predictionLap = g_engView_predLapNum;
+            const predictedWearInfo = predictionLap
+                ? tyreInfo["wear-prediction"]["predictions"].find(p => p["lap-number"] === predictionLap)
+                : null;
+
+            let avgPredicted = null;
+            if (predictedWearInfo) {
+                avgPredicted = WEAR_FIELDS.reduce((sum, f) => sum + predictedWearInfo[f], 0) / 4;
+            }
+
+            return this.createMultiLineCell({
+                row1: formatFloat(avgCurrent) + '%',
+                row2: avgPredicted != null ? formatFloat(avgPredicted) + '%' : '---'
             });
         };
     }
@@ -644,6 +651,24 @@ class EngViewRaceTable {
         if (damage <= 20) return 'eng-dmg-light';
         if (damage <= 50) return 'eng-dmg-moderate';
         return 'eng-dmg-severe';
+    }
+
+    createWingDamageCellRenderer() {
+        return (params) => {
+            const driverInfo = params.data;
+            const telemetryPublic = driverInfo["driver-info"]["telemetry-setting"] === "Public";
+            if (!telemetryPublic) {
+                return this.getTelemetryRestrictedContent();
+            }
+            const dmgInfo = driverInfo["damage-info"];
+            const fl = dmgInfo["fl-wing-damage"];
+            const fr = dmgInfo["fr-wing-damage"];
+            // escape: false is safe — classes come from #getEngDamageClass, never user input
+            const text = `<span class="${this.#getEngDamageClass(fl)}">${formatFloat(fl)}%</span>`
+                       + ` / `
+                       + `<span class="${this.#getEngDamageClass(fr)}">${formatFloat(fr)}%</span>`;
+            return this.createSingleLineCell(text, { escape: false });
+        };
     }
 
     createDamageCellRenderer(damageField) {
@@ -752,7 +777,7 @@ class EngViewRaceTable {
                     {
                         headerName: 'Serv',
                         colId: 'stop-go',
-                        context: {displayName: "Stop Go", },
+                        context: {displayName: "Servable Penalties", },
                         field: 'warns-pens-info.num-sg', flex: 1.5, sortable: false, cellClass: 'ag-cell-single-line',
                         cellRenderer: this.createPenaltyCellRenderer("num-sg"),
                     },
@@ -1088,13 +1113,34 @@ class EngViewRaceTable {
                         cellClass: 'ag-cell-multiline',
                     },
                     {
-                        headerName: "Wear",
+                        headerName: "Max",
                         colId: "tyre-wear-agg",
-                        context: { displayName: "Tyre Wear (Worst)" },
+                        context: { displayName: "Tyre Wear (Max)" },
                         field: "tyre-info",
                         flex: 3,
                         hide: true,
-                        cellRenderer: this.createAggregatedTyreWearCellRenderer(),
+                        cellRenderer: this.createMaxTyreWearCellRenderer(),
+                        sortable: false,
+                        cellClass: 'ag-cell-multiline',
+                        equals: (val1, val2) => {
+                            if (!val1 || !val2) return val1 === val2;
+                            const wear1 = val1["current-wear"];
+                            const wear2 = val2["current-wear"];
+                            if (!wear1 || !wear2) return wear1 === wear2;
+                            return wear1["front-left-wear"] === wear2["front-left-wear"]
+                                && wear1["front-right-wear"] === wear2["front-right-wear"]
+                                && wear1["rear-left-wear"] === wear2["rear-left-wear"]
+                                && wear1["rear-right-wear"] === wear2["rear-right-wear"];
+                        },
+                    },
+                    {
+                        headerName: "Avg",
+                        colId: "tyre-wear-avg",
+                        context: { displayName: "Tyre Wear (Avg)" },
+                        field: "tyre-info",
+                        flex: 3,
+                        hide: true,
+                        cellRenderer: this.createAvgTyreWearCellRenderer(),
                         sortable: false,
                         cellClass: 'ag-cell-multiline',
                         equals: (val1, val2) => {
@@ -1332,6 +1378,18 @@ class EngViewRaceTable {
                         field: "damage-info.sidepod-damage", flex: 3.33,
                         cellRenderer: this.createDamageCellRenderer("sidepod-damage"),
                         sortable: false, cellClass: 'ag-cell-single-line',
+                    },
+                    {
+                        headerName: "Wing", colId: "wing-damage-agg", context: {displayName: "Wing Damage (FL/FR)"},
+                        field: "damage-info", flex: 5,
+                        hide: true,
+                        cellRenderer: this.createWingDamageCellRenderer(),
+                        sortable: false, cellClass: 'ag-cell-single-line',
+                        equals: (val1, val2) => {
+                            if (!val1 || !val2) return val1 === val2;
+                            return val1["fl-wing-damage"] === val2["fl-wing-damage"]
+                                && val1["fr-wing-damage"] === val2["fr-wing-damage"];
+                        },
                     },
                 ],
             },
@@ -1572,7 +1630,7 @@ class EngViewRaceTable {
 
         this.renameProfileBtn.addEventListener('click', () => {
             const profileId = this.columnProfileSelect.value;
-            if (profileId === this.DEFAULT_PROFILE_ID) return;
+            if (this.isBuiltinProfile(profileId)) return;
             const profiles = this.loadProfiles();
             const currentName = profiles[profileId]?.name || '';
             const newName = prompt('Enter a new name for this profile:', currentName);
@@ -1596,7 +1654,7 @@ class EngViewRaceTable {
 
         this.deleteProfileBtn.addEventListener('click', () => {
             const profileId = this.columnProfileSelect.value;
-            if (profileId === this.DEFAULT_PROFILE_ID) return;
+            if (this.isBuiltinProfile(profileId)) return;
             const profiles = this.loadProfiles();
             const name = profiles[profileId]?.name || profileId;
             if (!confirm(`Delete profile "${name}"?`)) return;
@@ -1624,22 +1682,18 @@ class EngViewRaceTable {
     }
 
     resetColumnVisibility() {
-        this.resetColumnState();
-        // If on a named profile, update its stored state after reset
         const activeProfile = this.getActiveProfileId();
-        if (activeProfile !== this.DEFAULT_PROFILE_ID && this.gridApi) {
+        if (this.isBuiltinProfile(activeProfile)) {
+            this.applyProfile(activeProfile);
+        } else {
+            this.gridApi.resetColumnState();
             const profiles = this.loadProfiles();
             if (profiles[activeProfile]) {
                 profiles[activeProfile].state = this.gridApi.getColumnState();
                 this.saveProfiles(profiles);
             }
-        } else {
-            // For default profile, apply responsive breakpoint
-            localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
-            const breakpoint = this.getCurrentBreakpoint();
-            this.applyBreakpointPreset(breakpoint);
+            this.populateColumnVisibilityToggles();
         }
-        this.populateColumnVisibilityToggles();
     }
 
     populateColumnVisibilityToggles() {
@@ -1784,9 +1838,9 @@ class EngViewRaceTable {
             localStorage.removeItem(this.COLUMN_STATE_LS_KEY);
             console.debug('Column layout (positions and widths) reset to default, visibility preserved.');
 
-            // If on a named profile, update its stored state after layout reset
+            // If on a user profile, update its stored state after layout reset
             const activeProfile = this.getActiveProfileId();
-            if (activeProfile !== this.DEFAULT_PROFILE_ID) {
+            if (!this.isBuiltinProfile(activeProfile)) {
                 const profiles = this.loadProfiles();
                 if (profiles[activeProfile]) {
                     profiles[activeProfile].state = this.gridApi.getColumnState();

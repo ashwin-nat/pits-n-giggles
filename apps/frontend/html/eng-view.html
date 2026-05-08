@@ -149,11 +149,11 @@
                                 <label>Pit Time Loss</label>
                                 <span id="pitTimeLoss"></span>
                             </div>
-                            <div class="eng-view-global-stat border border-secondary rounded p-2">
+                            <div class="eng-view-global-stat">
                                 <label>Prediction Lap</label>
                                 <div class="d-flex align-items-center">
                                     <input type="number" id="predictionLap" class="form-control form-control-sm bg-dark text-light border-secondary" value="1" min="1" max="80">
-                                    <div class="ms-2 d-flex">
+                                    <div class="ms-2 d-flex align-items-center">
                                         <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to pit lap (if available)">
                                             <button id="predictionPitBtn" class="btn btn-sm btn-secondary me-1">Pit</button>
                                         </span>
@@ -246,7 +246,7 @@
             <div class="pane-profiles-bar">
                 <div class="pane-profiles-row">
                     <select id="column-profile-select" class="form-select form-select-sm profile-select" title="Select a column profile">
-                        <option value="__default__">Default</option>
+                        <option value="__full__">Full</option>
                     </select>
                     <button id="rename-profile-btn" class="btn btn-sm btn-outline-light" data-bs-toggle="tooltip" data-bs-title="Rename this profile">
                         <i class="bi bi-pencil"></i>
