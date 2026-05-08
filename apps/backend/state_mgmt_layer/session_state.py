@@ -438,7 +438,7 @@ class SessionState:
             in_menu (bool): True if in menu, False if in an active session
         """
         if in_menu != self.m_in_menu:
-            self.m_logger.info("In-menu status: [%s]->[%s]", self.m_in_menu, in_menu)
+            self.m_logger.debug("In-menu status: [%s]->[%s]", self.m_in_menu, in_menu)
             self.m_in_menu = in_menu
 
     def setConnectedToSim(self, connected: bool) -> None:
