@@ -35,36 +35,36 @@ from lib.packet_forwarder import AsyncUDPForwarder
 def setupForwarder(forwarding_targets: List[Tuple[str, int]],
                    tasks: List[asyncio.Task],
                    shutdown_event: asyncio.Event,
-                   logger: logging.Logger) -> None:
-    """Init the forwarding thread, if targets are defined
+                   logger: logging.Logger) -> AsyncUDPForwarder:
+    """Init the forwarding task and return the forwarder so targets can be updated at runtime.
 
     Args:
-        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
+        forwarding_targets (List[Tuple[str, int]]): Initial forwarding targets (may be empty)
         tasks (List[asyncio.Task]): List of tasks
         shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
+
+    Returns:
+        AsyncUDPForwarder: The forwarder instance (call update_targets() to change destinations)
     """
 
-    # Register the task only if targets are defined
-    if forwarding_targets:
-        tasks.append(asyncio.create_task(udpForwardingTask(forwarding_targets, shutdown_event, logger),
-                                         name="UDP Forwarder Task"))
-    else:
-        logger.debug("No forwarding targets defined. Not registering task.")
+    udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
+    tasks.append(asyncio.create_task(udpForwardingTask(udp_forwarder, shutdown_event, logger),
+                                     name="UDP Forwarder Task"))
+    logger.debug("UDP Forwarder task registered. Initial targets=%s", forwarding_targets)
+    return udp_forwarder
 
-async def udpForwardingTask(forwarding_targets: List[Tuple[str, int]],
+async def udpForwardingTask(udp_forwarder: AsyncUDPForwarder,
                             shutdown_event: asyncio.Event,
                             logger: logging.Logger) -> None:
     """UDP Forwarding Task
 
     Args:
-        forwarding_targets (List[Tuple[str, int]]): Forwarding Targets list
+        udp_forwarder (AsyncUDPForwarder): Forwarder instance (shared with IPC handler for hot-reload)
         shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
     """
 
-    udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
-    logger.info("Initialised forwarder. Targets=%s", forwarding_targets)
     while not shutdown_event.is_set():
         if packet := await AsyncInterTaskCommunicator().receive("packet-forward"):
             await udp_forwarder.forward(packet)

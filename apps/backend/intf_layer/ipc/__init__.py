@@ -31,8 +31,8 @@ from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.ipc import IpcServerAsync, IpcPublisherAsync, IpcDealerAsync
 from lib.child_proc_mgmt import report_ipc_port_from_child
 
-from .command_handlers import (handleGetStats, handleManualSave, handleHeartbeatMissed, handleShutdown,
-                               handleUdpActionCodeChange)
+from .command_handlers import (handleForwardingConfigChange, handleGetStats, handleManualSave,
+                               handleHeartbeatMissed, handleShutdown, handleUdpActionCodeChange)
 from ..telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -84,6 +84,10 @@ def registerIpcTask(
     @server.on("udp-action-code-change")
     async def _handle_udp_action_code_change(args: dict):
         return await handleUdpActionCodeChange(args, logger, telemetry_handler)
+
+    @server.on("forwarding-config-change")
+    async def _handle_forwarding_config_change(args: dict):
+        return await handleForwardingConfigChange(args, logger, telemetry_handler)
 
     @server.on_get_stats
     async def _handle_get_stats(_args: dict):

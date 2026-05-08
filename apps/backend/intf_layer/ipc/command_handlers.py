@@ -86,6 +86,21 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     # running atexit handlers or flushing stdio buffers from parent.
     os._exit(PNG_LOST_CONN_TO_PARENT)
 
+async def handleForwardingConfigChange(
+        msg: dict,
+        logger: logging.Logger,
+        telemetry_handler: F1TelemetryHandler) -> dict:
+    """Handle forwarding-config-change command — update targets without restarting the backend."""
+
+    targets = [tuple(t) for t in msg.get('targets', [])]
+    logger.info("Received forwarding config change. Targets: %s", targets)
+    try:
+        telemetry_handler.update_forwarding_targets(targets)
+    except OSError as e:
+        logger.error("Failed to update forwarding targets: %s", e)
+        return {'status': 'failure', 'message': str(e)}
+    return {'status': 'success'}
+
 async def handleUdpActionCodeChange(
         msg: dict,
         logger: logging.Logger,
