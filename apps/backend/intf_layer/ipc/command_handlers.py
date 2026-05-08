@@ -90,13 +90,45 @@ async def handleForwardingConfigChange(
         msg: dict,
         logger: logging.Logger,
         telemetry_handler: F1TelemetryHandler) -> dict:
-    """Handle forwarding-config-change command — update targets without restarting the backend."""
+    """Handle forwarding-config-change command: update targets without restarting the backend."""
 
-    targets = [tuple(t) for t in msg.get('targets', [])]
+    raw_targets = msg.get('targets', [])
+    if not isinstance(raw_targets, list):
+        return {'status': 'failure', 'message': 'Invalid targets payload: expected a list'}
+
+    targets = []
+    for idx, target in enumerate(raw_targets):
+        if not isinstance(target, (list, tuple)) or len(target) != 2:
+            return {
+                'status': 'failure',
+                'message': f'Invalid target at index {idx}: expected [host, port]'
+            }
+
+        host, port = target
+        if not isinstance(host, str) or not host.strip():
+            return {
+                'status': 'failure',
+                'message': f'Invalid host at index {idx}: expected non-empty string'
+            }
+
+        if not isinstance(port, int) or isinstance(port, bool):
+            return {
+                'status': 'failure',
+                'message': f'Invalid port at index {idx}: expected integer'
+            }
+
+        if port < 1 or port > 65535:
+            return {
+                'status': 'failure',
+                'message': f'Invalid port at index {idx}: expected 1-65535'
+            }
+
+        targets.append((host, port))
+
     logger.info("Received forwarding config change. Targets: %s", targets)
     try:
         telemetry_handler.update_forwarding_targets(targets)
-    except OSError as e:
+    except (OSError, TypeError, ValueError) as e:
         logger.error("Failed to update forwarding targets: %s", e)
         return {'status': 'failure', 'message': str(e)}
     return {'status': 'success'}

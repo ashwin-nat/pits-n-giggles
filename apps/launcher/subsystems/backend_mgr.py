@@ -253,7 +253,7 @@ class BackendAppMgr(PngAppMgrBase):
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to update forwarding config: {rsp}")
         else:
-            self.debug_log(f"Change UDP action code response: {rsp}")
+            self.debug_log(f"Forwarding config change response: {rsp}")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""

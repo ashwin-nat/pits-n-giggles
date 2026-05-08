@@ -25,7 +25,7 @@
 import asyncio
 import logging
 import socket
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -33,19 +33,17 @@ from typing import Dict, List, Set, Tuple
 
 class AsyncUDPTransport:
     """Abstraction layer for UDP transport management."""
-    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: logging.Logger = None):
+
+    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: logging.Logger):
         """
         Initialize transports for known destinations synchronously.
 
         :param forward_addresses: List of (IP, Port) tuples to initialize transports for
-        :param logger: Logger
+        :param logger: Logger (must be provided by caller)
         """
+        assert logger is not None, "Logger must be provided to AsyncUDPTransport"
         self.m_transports: Dict[Tuple[str, int], asyncio.DatagramTransport] = {}
         self.m_sockets: Dict[Tuple[str, int], socket.socket] = {}
-        if logger is None:
-            logger = logging.getLogger(__name__)
-            logger.addHandler(logging.NullHandler())
-            logger.propagate = False
         self.m_logger = logger
 
         for destination in forward_addresses:
@@ -84,11 +82,6 @@ class AsyncUDPTransport:
     def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
         """Update forwarding destinations without restarting the task.
 
-        This method is intentionally synchronous — no await means asyncio's cooperative
-        scheduler cannot interleave it with concurrent send() calls, so no lock is needed.
-        Any in-flight sock_sendall on a removed socket will raise OSError, which
-        _send_to_destination already catches and logs.
-
         :param new_targets: The complete new list of (host, port) destinations.
         """
         new_set: Set[Tuple[str, int]] = set(new_targets)
@@ -107,11 +100,15 @@ class AsyncUDPTransport:
         :param data: Bytes to send
         :param destination: Destination (IP, Port)
         """
+        sock = self.m_sockets.get(destination)
+        if sock is None:
+            raise ValueError(f"Destination socket not configured: {destination}")
+
         loop = asyncio.get_running_loop()
-        await loop.sock_sendall(self.m_sockets[destination], data)
+        await loop.sock_sendall(sock, data)
 
 class AsyncUDPForwarder:
-    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: logging.Logger = None):
+    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Optional[logging.Logger] = None):
         """
         Initializes the AsyncUDPForwarder with forwarding destinations.
 
@@ -122,8 +119,6 @@ class AsyncUDPForwarder:
         self.m_forward_addresses = forward_addresses
         if logger is None:
             logger = logging.getLogger(__name__)
-            logger.addHandler(logging.NullHandler())
-            logger.propagate = False
         self.m_transport = AsyncUDPTransport(forward_addresses, logger)
         self.m_logger = logger
 
@@ -143,7 +138,7 @@ class AsyncUDPForwarder:
 
     async def _send_to_destination(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
-        Send data to a single destination and handle potential OS-level errors.
+        Send data to a single destination and handle potential errors.
 
         :param data: The data to send
         :param destination: The destination (IP, Port)
@@ -152,6 +147,8 @@ class AsyncUDPForwarder:
             await self.m_transport.send(data, destination)
         except OSError as e:
             self.m_logger.error("Error forwarding packet to %s: %s", destination, e)
+        except ValueError as e:
+            self.m_logger.warning("Skipping forward to %s: %s", destination, e)
 
     def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
         """Update forwarding destinations at runtime without restarting.
