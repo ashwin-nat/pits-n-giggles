@@ -73,10 +73,11 @@ def initTelemetryLayer(
             raise PngTelemetryPortInUseError() from e
         raise  # Re-raise if it's a different OSError
 
-    setupForwarder(
+    udp_forwarder = setupForwarder(
         forwarding_targets=settings.Forwarding.forwarding_targets,
         tasks=tasks,
         shutdown_event=shutdown_event,
         logger=logger
     )
+    handler.set_udp_forwarder(udp_forwarder)
     return handler

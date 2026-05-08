@@ -27,7 +27,7 @@ SOFTWARE.
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
@@ -47,6 +47,7 @@ from lib.inter_task_communicator import (
     HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
     TyreDeltaNotificationMessageCollection)
 from lib.logger import PngLogger
+from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
 from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
 from lib.wdt import WatchDogTimerAsync
@@ -181,6 +182,7 @@ class F1TelemetryHandler:
         self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
+        self.m_udp_forwarder: Optional[AsyncUDPForwarder] = None
         self.m_version: str = ver_str
         self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
@@ -239,6 +241,25 @@ class F1TelemetryHandler:
         """
         self.m_udp_action_codes.update(key, val)
         self.m_logger.debug("Updated UDP action code %s to %s", key, val)
+
+    def set_udp_forwarder(self, forwarder: AsyncUDPForwarder) -> None:
+        """Wire the forwarder instance created by setupForwarder into this handler.
+
+        Args:
+            forwarder (AsyncUDPForwarder): Forwarder to use for hot-reload target updates
+        """
+        self.m_udp_forwarder = forwarder
+
+    def update_forwarding_targets(self, targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations at runtime without restarting the backend.
+
+        Args:
+            targets (List[Tuple[str, int]]): Complete new list of (host, port) destinations
+        """
+        self.m_should_forward = bool(targets)
+        if self.m_udp_forwarder:
+            self.m_udp_forwarder.update_targets(targets)
+        self.m_logger.info("Updated forwarding targets: %s", targets)
 
     async def run(self):
         """

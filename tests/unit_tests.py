@@ -84,7 +84,7 @@ from tests_tyre_wear_extrapolator import (
     TestTyreWearExtrapolatorWithMissingLaps,
     TestTyreWearExtrapolatorWithNonRacingLaps,
     TestTyreWearExtrapolatorWithSCGaps)
-from tests_udp_forwarder import TestAsyncUDPForwarder
+from tests_udp_forwarder import TestAsyncUDPForwarder, TestAsyncUDPForwarderUpdateTargets
 from tests_version import TestGetVersion, TestIsUpdateAvailable
 
 from tests.ipc import (TestIpcParentChild, TestIpcPubSub, TestIpcPubSubAsync,
