@@ -125,3 +125,97 @@ class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
                 mock_send.assert_any_call(self.test_data, self.forward_addresses[1])
 
         asyncio.run(async_test())
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestAsyncUDPForwarderUpdateTargets(F1TelemetryUnitTestsBase):
+    """Tests for runtime target updates via update_targets()."""
+
+    def setUp(self):
+        self.addr_a = ('127.0.0.1', 21212)
+        self.addr_b = ('127.0.0.1', 21213)
+        self.addr_c = ('127.0.0.1', 21214)
+        self.test_data = bytes(range(64))
+
+    def test_update_targets_add_to_empty(self):
+        """Forwarder starts empty; adding a target makes it forward."""
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([])
+                await forwarder.forward(self.test_data)
+                mock_send.assert_not_called()
+
+                forwarder.update_targets([self.addr_a])
+                await forwarder.forward(self.test_data)
+                mock_send.assert_called_once_with(self.test_data, self.addr_a)
+
+        asyncio.run(async_test())
+
+    def test_update_targets_add_to_existing(self):
+        """Adding a second target results in both being forwarded to."""
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([self.addr_a])
+                forwarder.update_targets([self.addr_a, self.addr_b])
+                await forwarder.forward(self.test_data)
+                self.assertEqual(mock_send.call_count, 2)
+                mock_send.assert_any_call(self.test_data, self.addr_a)
+                mock_send.assert_any_call(self.test_data, self.addr_b)
+
+        asyncio.run(async_test())
+
+    def test_update_targets_remove_target(self):
+        """Removing a target stops forwarding to it."""
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([self.addr_a, self.addr_b])
+                forwarder.update_targets([self.addr_a])
+                await forwarder.forward(self.test_data)
+                mock_send.assert_called_once_with(self.test_data, self.addr_a)
+
+        asyncio.run(async_test())
+
+    def test_update_targets_replace_all(self):
+        """Replacing all targets forwards only to the new set."""
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([self.addr_a])
+                forwarder.update_targets([self.addr_b, self.addr_c])
+                await forwarder.forward(self.test_data)
+                self.assertEqual(mock_send.call_count, 2)
+                mock_send.assert_any_call(self.test_data, self.addr_b)
+                mock_send.assert_any_call(self.test_data, self.addr_c)
+
+        asyncio.run(async_test())
+
+    def test_update_targets_empty_list_disables_forwarding(self):
+        """Setting an empty target list stops all forwarding."""
+        async def async_test():
+            with patch("lib.packet_forwarder.AsyncUDPTransport.send", new_callable=AsyncMock) as mock_send:
+                forwarder = AsyncUDPForwarder([self.addr_a])
+                forwarder.update_targets([])
+                await forwarder.forward(self.test_data)
+                mock_send.assert_not_called()
+
+        asyncio.run(async_test())
+
+    def test_update_targets_unchanged_targets_reuse_socket(self):
+        """Targets that remain across an update keep their socket object."""
+        async def async_test():
+            with patch("lib.packet_forwarder.socket.socket") as mock_sock_cls:
+                mock_sock = MagicMock()
+                mock_sock.connect = MagicMock()
+                mock_sock.setblocking = MagicMock()
+                mock_sock_cls.return_value = mock_sock
+
+                forwarder = AsyncUDPForwarder([self.addr_a])
+                socket_after_init = forwarder.m_transport.m_sockets[self.addr_a]
+
+                # Update: keep addr_a, add addr_b
+                forwarder.update_targets([self.addr_a, self.addr_b])
+                socket_after_update = forwarder.m_transport.m_sockets[self.addr_a]
+
+                self.assertIs(socket_after_init, socket_after_update,
+                              "Unchanged target should reuse its existing socket")
+
+        asyncio.run(async_test())

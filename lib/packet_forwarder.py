@@ -25,8 +25,7 @@
 import asyncio
 import socket
 from logging import Logger
-from types import MappingProxyType
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -45,40 +44,58 @@ class AsyncUDPTransport:
         self.m_sockets: Dict[Tuple[str, int], socket.socket] = {}
         self.m_logger = logger
 
-        # Only attempt to create sockets if addresses are provided
-        if forward_addresses:
-            for destination in forward_addresses:
-                try:
-                    # Create UDP socket
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.setblocking(False)  # Non-blocking socket
-
-                    # Connect the socket to the destination (doesn't send data)
-                    sock.connect(destination)
-
-                    # Store socket
-                    self.m_sockets[destination] = sock
-                except OSError as e:
-                    if self.m_logger:
-                        self.m_logger.error("Error creating socket to %s: %s", destination, e)
-                    # Clean up any sockets created so far
-                    self.close()
-                    raise
-
-        # Freeze the dictionaries after initialization
-        self.m_sockets = MappingProxyType(self.m_sockets)
+        for destination in forward_addresses:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setblocking(False)
+                sock.connect(destination)
+                self.m_sockets[destination] = sock
+            except OSError as e:
+                if self.m_logger:
+                    self.m_logger.error("Error creating socket to %s: %s", destination, e)
+                self.close()
+                raise
 
     def close(self) -> None:
-        """
-        Safely close all sockets.
-        """
-        for destination, sock in self.m_sockets.items():
+        """Safely close all sockets."""
+        for destination, sock in list(self.m_sockets.items()):
             try:
                 sock.close()
             except OSError as e:
                 if self.m_logger:
                     self.m_logger.error("Error closing socket to %s: %s", destination, e)
+
+    def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations without restarting the task.
+
+        This method is intentionally synchronous — no await means asyncio's cooperative
+        scheduler cannot interleave it with concurrent send() calls, so no lock is needed.
+        Any in-flight sock_sendall on a removed socket will raise OSError, which
+        _send_to_destination already catches and logs.
+
+        :param new_targets: The complete new list of (host, port) destinations.
+        """
+        new_set: Set[Tuple[str, int]] = set(new_targets)
+        old_set: Set[Tuple[str, int]] = set(self.m_sockets.keys())
+
+        for dest in new_set - old_set:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setblocking(False)
+                sock.connect(dest)
+                self.m_sockets[dest] = sock
+            except OSError as e:
+                if self.m_logger:
+                    self.m_logger.error("Error creating socket to %s: %s", dest, e)
                 raise
+
+        for dest in old_set - new_set:
+            old_sock = self.m_sockets.pop(dest)
+            try:
+                old_sock.close()
+            except OSError as e:
+                if self.m_logger:
+                    self.m_logger.error("Error closing socket to %s: %s", dest, e)
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
@@ -87,12 +104,12 @@ class AsyncUDPTransport:
         :param data: Bytes to send
         :param destination: Destination (IP, Port)
         """
-        if destination not in self.m_sockets:
-            raise ValueError(f"No pre-initialized socket for destination {destination}")
+        sock: Optional[socket.socket] = self.m_sockets.get(destination)
+        if sock is None:
+            return
 
-        # Send asynchronously using the socket
         loop = asyncio.get_running_loop()
-        await loop.sock_sendall(self.m_sockets[destination], data)
+        await loop.sock_sendall(sock, data)
 
 class AsyncUDPForwarder:
     def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
@@ -133,6 +150,14 @@ class AsyncUDPForwarder:
         except OSError as e:
             if self.m_logger:
                 self.m_logger.error("Error forwarding packet to %s: %s", destination, e)
+
+    def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations at runtime without restarting.
+
+        :param new_targets: The complete new list of (host, port) destinations.
+        """
+        self.m_forward_addresses = new_targets
+        self.m_transport.update_targets(new_targets)
 
     def close(self) -> None:
         """Safely close the transport."""
