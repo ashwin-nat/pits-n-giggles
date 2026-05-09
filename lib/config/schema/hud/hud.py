@@ -313,7 +313,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
 
     # ============== CIRCUIT INFO OVERLAY ==============
-    show_circuit_info: bool = overlay_enable_field(description="Enable circuit info overlay", group="Circuit Info")
+    show_circuit_info: bool = overlay_enable_field(
+        description="Enable circuit info overlay",
+        group="Circuit Info",
+        ext_info=[
+            "The circuit info overlay is a progress bar that is divided into 3 sectors and \n"
+            "shows the driver's current position on the track, as well as turn numbers and names. \n"
+            "The sectors are also colour coded based on lap times (purple, green, yellow, red)"
+        ])
     circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
     circuit_info_length: int = Field(
