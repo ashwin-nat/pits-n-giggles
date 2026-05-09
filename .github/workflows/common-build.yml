@@ -46,26 +46,28 @@ jobs:
           poetry run python scripts/build.py
         shell: bash
 
-      - name: Set artifact name
-        id: get-artifact-name
+      - name: Prepare artifact
+        id: prep-artifact
         run: |
           if [[ "${{ runner.os }}" == "macOS" ]]; then
-            FILE=$(find dist -name "*.app" | head -n 1)
+            APP=$(find dist -name "*.app" | head -n 1)
+            BASENAME=$(basename "$APP" .app)
+            ZIP_NAME="${BASENAME}-mac.zip"
+            cd dist && zip -r "$ZIP_NAME" "$(basename "$APP")"
+            echo "artifact_path=dist/${ZIP_NAME}" >> $GITHUB_OUTPUT
+            echo "artifact_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
           else
-            FILE=$(find dist -name "*.exe" | head -n 1)
+            EXE=$(find dist -name "*.exe" | head -n 1)
+            echo "artifact_path=${EXE}" >> $GITHUB_OUTPUT
+            echo "artifact_name=$(basename "${EXE}")" >> $GITHUB_OUTPUT
           fi
-          NAME=$(basename "$FILE")
-          NAME_NO_EXT="${NAME%.*}"
-          echo "artifact_name=$NAME_NO_EXT" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ steps.get-artifact-name.outputs.artifact_name }}-${{ matrix.os }}
-          path: |
-            dist/*.app
-            dist/*.exe
+          name: ${{ steps.prep-artifact.outputs.artifact_name }}
+          path: ${{ steps.prep-artifact.outputs.artifact_path }}
       - name: Run Smoke Test
         run: |
           if [[ "${{ runner.os }}" == "macOS" ]]; then
