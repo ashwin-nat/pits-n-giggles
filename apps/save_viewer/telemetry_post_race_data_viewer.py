@@ -26,6 +26,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from pathlib import Path
 from typing import List
 
 from apps.save_viewer.save_viewer_ipc import init_ipc_task
@@ -34,6 +35,7 @@ from apps.save_viewer.save_web_server import init_server_task
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
+from lib.file_path import get_app_base_dir
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -57,7 +59,7 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str) -> None:
+async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str, session_dir: Path) -> None:
     """Main function
 
     Args:
@@ -65,10 +67,11 @@ async def main(logger: logging.Logger, server_port: int, version: str, bind_addr
         server_port (int): Server port
         version (str): Version
         bind_address (str): Bind address for the web server
+        session_dir (Path): Directory to scan for saved session JSON files
     """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger)
-    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks, bind_address=bind_address)
+    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks, bind_address=bind_address, session_dir=session_dir)
     init_ipc_task(logger=logger, server=web_server, tasks=tasks)
 
     try:
@@ -91,6 +94,9 @@ def entry_point():
     png_logger = get_logger("save_viewer", args.debug, jsonl=True)
     version = get_version()
     configs = load_config_from_json(args.config_file, png_logger)
+    p = configs.Capture.session_dir_path
+    session_dir = p if p.is_absolute() else (get_app_base_dir() / p).resolve()
+    png_logger.info("Session directory: %s", session_dir)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
@@ -98,7 +104,8 @@ def entry_point():
             logger=png_logger,
             server_port=configs.Network.save_viewer_port,
             version=version,
-            bind_address=configs.Network.bind_address))
+            bind_address=configs.Network.bind_address,
+            session_dir=session_dir))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:

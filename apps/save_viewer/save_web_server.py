@@ -25,9 +25,13 @@
 import asyncio
 import logging
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from quart import send_file
+
 import apps.save_viewer.save_viewer_state as SaveViewerState
+from apps.save_viewer.session_discovery import build_session_list
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.web_server import BaseWebServer, ClientType
 
@@ -46,6 +50,7 @@ class SaveViewerWebServer(BaseWebServer):
                  ver_str: str,
                  logger: logging.Logger,
                  bind_address: str,
+                 session_dir: Path,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
                  debug_mode: bool = False):
@@ -56,10 +61,14 @@ class SaveViewerWebServer(BaseWebServer):
             port (int): The port number to run the server on.
             ver_str (str): The version string.
             logger (logging.Logger): The logger instance.
+            bind_address (str): IP address to bind the server to.
+            session_dir (Path): Directory to scan for saved session JSON files.
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
+        self.m_session_dir: Path = session_dir
+        self.m_slug_map: Dict[str, str] = {}
         super().__init__(port, ver_str, logger, bind_address=bind_address, cert_path=cert_path, key_path=key_path, debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
@@ -98,6 +107,24 @@ class SaveViewerWebServer(BaseWebServer):
         Sets up endpoints for fetching race info, telemetry info,
         driver info, and stream overlay info.
         """
+        @self.http_route('/api/sessions')
+        async def apiSessions():
+            sessions, self.m_slug_map = build_session_list(self.m_session_dir)
+            return self.jsonify(sessions), HTTPStatus.OK
+
+        @self.http_route('/api/sessions/<slug>')
+        async def apiSession(slug: str):
+            relative = self.m_slug_map.get(slug)
+            if not relative:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            root = self.m_session_dir.resolve()
+            full = (root / relative).resolve()
+            if not full.is_relative_to(root):
+                return {'error': 'Forbidden'}, HTTPStatus.FORBIDDEN
+            if not full.exists():
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return await send_file(full, mimetype='application/json')
+
         @self.http_route('/telemetry-info')
         async def telemetryInfoHTTP() -> Tuple[str, int]:
             """
@@ -198,7 +225,7 @@ class SaveViewerWebServer(BaseWebServer):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task], bind_address: str) -> SaveViewerWebServer:
+def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task], bind_address: str, session_dir: Path) -> SaveViewerWebServer:
     """Initialize the web server and return the server object for proper cleanup
 
     Args:
@@ -207,10 +234,11 @@ def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: Lis
         logger (logging.Logger): Logger
         tasks (List[asyncio.Task]): List of tasks to be executed
         bind_address (str): IP address to bind the server to
+        session_dir (Path): Directory to scan for saved session JSON files
 
     Returns:
         SaveViewerWebServer: Web server
     """
-    _server = SaveViewerWebServer(port, ver_str, logger, bind_address=bind_address)
+    _server = SaveViewerWebServer(port, ver_str, logger, bind_address=bind_address, session_dir=session_dir)
     tasks.append(asyncio.create_task(_server.run(), name="Web Server Task"))
     return _server

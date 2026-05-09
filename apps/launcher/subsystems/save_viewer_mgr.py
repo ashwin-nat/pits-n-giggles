@@ -140,6 +140,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
                 "save_viewer_port",
                 "bind_address",
             ],
+            "Capture": [
+                "session_dir",
+            ],
         })
         self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
