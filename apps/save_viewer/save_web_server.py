@@ -24,14 +24,16 @@
 
 import asyncio
 import logging
+import time
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from quart import send_file
+from watchfiles import awatch
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
-from apps.save_viewer.session_discovery import build_session_list
+from apps.save_viewer.session_discovery import CACHE_FILE, build_session_list
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.web_server import BaseWebServer, ClientType
 
@@ -68,7 +70,10 @@ class SaveViewerWebServer(BaseWebServer):
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
         self.m_session_dir: Path = session_dir
+        self.m_sessions_cache: List[Dict[str, Any]] = []
         self.m_slug_map: Dict[str, str] = {}
+        self._m_cache_ready = asyncio.Event()
+        self._m_watch_stop = asyncio.Event()
         super().__init__(port, ver_str, logger, bind_address=bind_address, cert_path=cert_path, key_path=key_path, debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
@@ -109,8 +114,10 @@ class SaveViewerWebServer(BaseWebServer):
         """
         @self.http_route('/api/sessions')
         async def apiSessions():
-            sessions, self.m_slug_map = build_session_list(self.m_session_dir)
-            return self.jsonify(sessions), HTTPStatus.OK
+            self.m_logger.info("Received request for session list")
+            await self._m_cache_ready.wait()
+            self.m_logger.info("GET /api/sessions → %d sessions", len(self.m_sessions_cache))
+            return self.jsonify(self.m_sessions_cache), HTTPStatus.OK
 
         @self.http_route('/api/sessions/<slug>')
         async def apiSession(slug: str):
@@ -123,71 +130,76 @@ class SaveViewerWebServer(BaseWebServer):
                 return {'error': 'Forbidden'}, HTTPStatus.FORBIDDEN
             if not full.exists():
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            self.m_logger.info("GET /api/sessions/%s → %s", slug, full)
             return await send_file(full, mimetype='application/json')
 
         @self.http_route('/telemetry-info')
-        async def telemetryInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide telemetry information via HTTP.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
+        async def telemetryInfoHTTP():
             return SaveViewerState.getTelemetryInfo()
 
         @self.http_route('/race-info')
-        async def raceInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide overall race statistics via HTTP.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
+        async def raceInfoHTTP():
             return SaveViewerState.getRaceInfo()
 
         @self.http_route('/driver-info')
-        async def driverInfoHTTP() -> Tuple[str, int]:
-            """
-            Provide driver information based on the index parameter.
-
-            Returns:
-                Tuple[str, int]: JSON response and HTTP status code.
-            """
-
+        async def driverInfoHTTP():
             index: str = self.request.args.get('index')
 
-            # Check if only one parameter is provided
             if not index:
-                error_response = {
-                    'error': 'Invalid parameters',
-                    'message': 'Provide "index" parameter'
-                }
-                return error_response, HTTPStatus.BAD_REQUEST
+                return {'error': 'Invalid parameters', 'message': 'Provide "index" parameter'}, HTTPStatus.BAD_REQUEST
 
-            # Check if the provided value for index is numeric
             if not index.isdigit():
-                error_response = {
-                    'error': 'Invalid parameter value',
-                    'message': '"index" parameter must be numeric'
-                }
-                return error_response, HTTPStatus.BAD_REQUEST
+                return {'error': 'Invalid parameter value', 'message': '"index" parameter must be numeric'}, HTTPStatus.BAD_REQUEST
 
-            # Process parameters and generate response
             index_int = int(index)
-
             if driver_info := SaveViewerState.getDriverInfo(index_int):
                 return driver_info, HTTPStatus.OK
-            error_response = {
-                'error' : 'Invalid parameter value',
-                'message' : 'Invalid index'
-            }
-            return error_response, HTTPStatus.NOT_FOUND
+            return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
+
+    async def _rebuild_cache(self) -> None:
+        """Rebuild session cache from disk, publishing partial results after each batch."""
+        try:
+            self.m_logger.info("Session cache: scanning %s", self.m_session_dir)
+            if not self.m_session_dir.exists():
+                self.m_logger.warning("Session directory does not exist: %s", self.m_session_dir)
+                return
+            t0 = time.perf_counter()
+            async for sessions, slug_map in build_session_list(self.m_session_dir, self.m_logger):
+                self.m_sessions_cache = sessions
+                self.m_slug_map = slug_map
+                self._m_cache_ready.set()  # unblocks waiting requests after the first batch
+            self.m_logger.info(
+                "Session cache: fully loaded %d sessions in %.2fs (dir: %s)",
+                len(self.m_sessions_cache), time.perf_counter() - t0, self.m_session_dir,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.m_logger.exception("Session cache: error building cache")
+        finally:
+            self._m_cache_ready.set()  # always unblock even if the directory was empty
+
+    async def _sessions_watch_loop(self) -> None:
+        """Background task: rebuild session cache whenever watchfiles detects a change."""
+        if not self.m_session_dir.exists():
+            self.m_logger.warning("Session directory %s does not exist — file watcher not started", self.m_session_dir)
+            return
+        async for _ in awatch(self.m_session_dir, stop_event=self._m_watch_stop,
+                              watch_filter=lambda _, p: not p.endswith(CACHE_FILE)):
+            try:
+                await self._rebuild_cache()
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.m_logger.exception("Error refreshing session cache")
 
     async def _post_start(self) -> None:
-        """
-        Notify the parent process that the web server is initialized.
-        """
+        """Notify the parent process that the web server is initialized and start session watcher."""
         notify_parent_init_complete()
+
+        @self.m_app.after_serving
+        async def _stop_watch_loop() -> None:
+            self._m_watch_stop.set()
+            self.m_logger.info("Session watch loop stop signal sent")
+
+        asyncio.create_task(self._rebuild_cache(), name="Session Initial Scan")
+        asyncio.create_task(self._sessions_watch_loop(), name="Session Watch Loop")
 
     async def _on_client_connect(self, client_type: ClientType, client_id: str) -> None:
         """Send race table to the newly connected client

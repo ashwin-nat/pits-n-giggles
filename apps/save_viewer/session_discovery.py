@@ -22,10 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import asyncio
 import json
-from datetime import datetime, timezone
+import logging
+import time
+
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
+
+import ijson
 
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
@@ -39,16 +44,33 @@ _KNOWN_SESSION_TYPES: List[str] = sorted(
     reverse=True,
 )
 
-# Qualifying session types derived from the same enums.
-_QUALIFYING_SESSION_TYPES: frozenset = frozenset(
-    str(s) for cls in (SessionType23, SessionType24) for s in cls if s.isQualiTypeSession()
-)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
+CACHE_FILE = '.png_session_cache.json'
+_CACHE_FILE = CACHE_FILE
+
+
 def find_json_files(session_dir: Path) -> List[Path]:
     """Recursively find all .json files under session_dir; paths relative to session_dir."""
-    return [p.relative_to(session_dir) for p in session_dir.rglob('*.json')]
+    return [
+        p.relative_to(session_dir)
+        for p in session_dir.rglob('*.json')
+        if not p.name.startswith('.')
+    ]
+
+
+def _load_cache(cache_path: Path) -> Dict[str, Any]:
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _save_cache(cache_path: Path, cache: Dict[str, Any]) -> None:
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(cache, f)
 
 
 def to_slug(relative_path: Path) -> str:
@@ -102,176 +124,167 @@ def resolve_session_meta(relative_path: Path, session_info: Dict[str, Any]) -> D
     return result
 
 
-def _is_qualifying(session_type: str) -> bool:
-    return session_type in _QUALIFYING_SESSION_TYPES
+
+def _parse_session_metadata(path: Path, logger: logging.Logger) -> Dict[str, Any]:
+    """Extract session-info from a session JSON file using ijson streaming."""
+    logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
+    with open(path, 'rb') as fh:
+        for item in ijson.items(fh, 'session-info', use_float=True):
+            # logger.info("_parse_session_metadata: done — %s", path.name)
+            return item
+    logger.warning("_parse_session_metadata: session-info not found in %s", path.name)
+    return {}
 
 
-def build_session_list(session_dir: Path) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
-    """Scan session_dir for sessions and return (sessions, slug_map)."""
-    if not session_dir.exists():
-        return [], {}
+_PARSE_CONCURRENCY = 10
 
-    sessions = []
-    for rel_path in find_json_files(session_dir):
-        full_path = session_dir / rel_path
-        slug = to_slug(rel_path)
+
+async def _parse_one(
+    sem: asyncio.Semaphore,
+    file_idx: int,
+    total: int,
+    rel_path: Path,
+    full_path: Path,
+    logger: logging.Logger,
+    cache: Dict[str, Any],
+) -> Tuple[Path, Any]:
+    """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files."""
+    async with sem:
+        cache_key = str(rel_path)
         try:
-            with open(full_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            mtime = full_path.stat().st_mtime
+        except OSError:
+            mtime = 0.0
 
-            session_info = data.get('session-info', {})
-            meta = resolve_session_meta(rel_path, session_info)
+        cached = cache.get(cache_key)
+        if cached and cached.get('mtime') == mtime:
+            return rel_path, cached['session_info']
 
-            # Focus driver
-            is_spectator = False
-            focus_driver = None
-            classification = data.get('classification-data', [])
-            for driver in classification:
-                if driver.get('is-player'):
-                    focus_driver = driver
-                    break
-            if focus_driver is None:
-                is_spectator = True
-                # Pick driver with most valid laps
-                best_count = -1
-                for driver in classification:
-                    lap_count = sum(
-                        1 for lap in driver.get('lap-history-data', [])
-                        if lap.get('lap-time-in-ms', 0) > 0
-                    )
-                    if lap_count > best_count:
-                        best_count = lap_count
-                        focus_driver = driver
+        # logger.info("[%d/%d] parsing %s", file_idx, total, rel_path)
+        try:
+            session_info = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
+            logger.debug("[%d/%d] done in %.2fs — %s", file_idx, total, time.
+                        perf_counter() - time.perf_counter(), rel_path)
+            cache[cache_key] = {'mtime': mtime, 'session_info': session_info}
+            return rel_path, session_info
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.warning("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
+            return rel_path, exc
 
-            # validLapCount from focus driver
-            valid_lap_count = 0
-            if focus_driver:
-                valid_lap_count = sum(
-                    1 for lap in focus_driver.get('lap-history-data', [])
-                    if lap.get('lap-time-in-ms', 0) > 0
-                )
 
-            session_entry: Dict[str, Any] = {
-                'slug': slug,
-                'sessionType': meta['sessionType'],
-                'track': meta['track'],
-                'date': meta['date'],
-                'validLapCount': valid_lap_count,
-                'isSpectator': is_spectator,
-                'fileSize': full_path.stat().st_size,
-                '_rel_path': str(rel_path),
-            }
-            if 'formula' in meta:
-                session_entry['formula'] = meta['formula']
-
-            network_game = session_info.get('network-game', 0)
-            session_entry['aiDifficulty'] = 0 if network_game == 1 else session_info.get('ai-difficulty', 0)
-
-            if _is_qualifying(meta['sessionType']) and focus_driver:
-                lap_indicators = []
-                best_lap_time_ms = None
-                best_lap_time_str = None
-                lap_history = focus_driver.get('lap-history-data', [])
-                for lap in lap_history:
-                    lap_ms = lap.get('lap-time-in-ms', 0)
-                    valid_bits = lap.get('lap-validity-bit-flags', 0)
-                    if lap_ms <= 0:
-                        lap_indicators.append('invalid')
-                    elif valid_bits & 0x01:
-                        lap_indicators.append('valid')
-                        if best_lap_time_ms is None or lap_ms < best_lap_time_ms:
-                            best_lap_time_ms = lap_ms
-                    else:
-                        lap_indicators.append('invalid')
-
-                # Mark best
-                if best_lap_time_ms is not None:
-                    for i, lap in enumerate(lap_history):
-                        if lap.get('lap-time-in-ms') == best_lap_time_ms and lap_indicators[i] == 'valid':
-                            lap_indicators[i] = 'best'
-                            break
-                    mins, remainder = divmod(best_lap_time_ms // 1000, 60)
-                    ms = best_lap_time_ms % 1000
-                    best_lap_time_str = f"{mins}:{remainder:02d}.{ms:03d}"
-
-                session_entry['lapIndicators'] = lap_indicators
-                if best_lap_time_ms is not None:
-                    session_entry['bestLapTimeMs'] = best_lap_time_ms
-                    session_entry['bestLapTime'] = best_lap_time_str
-
+def _sort_files_newest_first(json_files: List[Path]) -> List[Path]:
+    """Sort file paths newest-first using the date embedded in each filename (no disk I/O)."""
+    def _date_key(p: Path) -> str:
+        try:
+            return parse_filename(p)['date']
         except Exception:  # pylint: disable=broad-exception-caught
-            filename_meta = parse_filename(rel_path)
-            session_entry = {
-                'slug': slug,
-                'sessionType': filename_meta['sessionType'],
-                'track': filename_meta['track'],
-                'date': filename_meta['date'],
-                'validLapCount': 0,
-                'isSpectator': False,
-                'fileSize': full_path.stat().st_size if full_path.exists() else 0,
-                '_rel_path': str(rel_path),
-                'aiDifficulty': 0,
-            }
+            return ''
+    return sorted(json_files, key=_date_key, reverse=True)
 
-        if session_entry['validLapCount'] > 0:
-            sessions.append(session_entry)
 
-    # Deduplicate: group by formula|sessionType|track|validLapCount within 30-second window
-    sessions = _deduplicate_sessions(sessions)
+def _make_session_entry(
+    rel_path: Path,
+    full_path: Path,
+    outcome: Any,
+) -> Dict[str, Any]:
+    """Build a session entry dict from a parse outcome (session_info dict or Exception)."""
+    slug = to_slug(rel_path)
+    if isinstance(outcome, Exception):
+        filename_meta = parse_filename(rel_path)
+        return {
+            'slug': slug,
+            'sessionType': filename_meta['sessionType'],
+            'track': filename_meta['track'],
+            'date': filename_meta['date'],
+            'validLapCount': 0,
+            'isSpectator': False,
+            'fileSize': full_path.stat().st_size if full_path.exists() else 0,
+            '_rel_path': str(rel_path),
+            'aiDifficulty': 0,
+        }
 
-    # Sort newest-first
-    sessions.sort(key=lambda s: s['date'], reverse=True)
+    session_info = outcome
+    meta = resolve_session_meta(rel_path, session_info)
+    network_game = session_info.get('network-game', 0)
+    entry: Dict[str, Any] = {
+        'slug': slug,
+        'sessionType': meta['sessionType'],
+        'track': meta['track'],
+        'date': meta['date'],
+        'validLapCount': session_info.get('total-laps', 0),
+        'isSpectator': session_info.get('is-spectating', False),
+        'fileSize': full_path.stat().st_size,
+        '_rel_path': str(rel_path),
+        'aiDifficulty': 0 if network_game == 1 else session_info.get('ai-difficulty', 0),
+    }
+    if 'formula' in meta:
+        entry['formula'] = meta['formula']
+    return entry
 
-    # Build slug_map from surviving sessions
-    slug_map = {s['slug']: s.pop('_rel_path') for s in sessions}
-    # Clean internal fields
-    for s in sessions:
-        s.pop('_rel_path', None)
+
+def _snapshot(all_raw: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+    """Sort + build slug_map from the running raw list. Non-destructive."""
+    candidates = [dict(e) for e in all_raw]
+    candidates.sort(key=lambda s: s['date'], reverse=True)
+    slug_map = {s['slug']: s.pop('_rel_path') for s in candidates}
+    for s in candidates:
         s.pop('fileSize', None)
+    return candidates, slug_map
 
-    return sessions, slug_map
 
+async def build_session_list(
+    session_dir: Path,
+    logger: logging.Logger,
+) -> AsyncIterator[Tuple[List[Dict[str, Any]], Dict[str, str]]]:
+    """Async generator: yields (sessions, slug_map) after each batch of _PARSE_CONCURRENCY files.
 
-def _deduplicate_sessions(sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Group by formula|sessionType|track|validLapCount; within 30-second window keep larger file."""
-    def parse_date(date_str: str) -> Optional[datetime]:
-        try:
-            return datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
-        except ValueError:
-            return None
+    Files are processed newest-first so the most recent sessions are available
+    after the very first yield. Metadata is cached on disk keyed by file mtime,
+    so only new or modified files are parsed on subsequent runs.
+    """
+    if not session_dir.exists():
+        return
 
-    # Sort by date for windowed grouping
-    sessions_with_dt = [(s, parse_date(s['date'])) for s in sessions]
-    sessions_with_dt.sort(key=lambda x: (x[1] or datetime.min.replace(tzinfo=timezone.utc)))
+    json_files = find_json_files(session_dir)
+    logger.info("build_session_list: found %d JSON files in %s", len(json_files), session_dir)
 
-    survivors: List[Dict[str, Any]] = []
+    json_files = _sort_files_newest_first(json_files)
+    total = len(json_files)
 
-    for session, dt in sessions_with_dt:
-        formula = session.get('formula', '')
-        key = f"{formula}|{session['sessionType']}|{session['track']}|{session['validLapCount']}"
-        matched = False
-        for survivor in survivors:
-            s_formula = survivor.get('formula', '')
-            s_key = f"{s_formula}|{survivor['sessionType']}|{survivor['track']}|{survivor['validLapCount']}"
-            if s_key != key:
-                continue
-            s_dt = parse_date(survivor['date'])
-            if dt and s_dt and abs((dt - s_dt).total_seconds()) <= 30:
-                # Keep larger file
-                if session.get('fileSize', 0) > survivor.get('fileSize', 0):
-                    # Replace survivor
-                    idx = survivors.index(survivor)
-                    duplicate_count = survivor.get('duplicateCount', 0) + 1
-                    session['duplicateCount'] = duplicate_count
-                    survivors[idx] = session
-                else:
-                    survivor['duplicateCount'] = survivor.get('duplicateCount', 0) + 1
-                matched = True
-                break
-        if not matched:
-            survivors.append(session)
+    cache_path = session_dir / _CACHE_FILE
+    cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path)
+    cache_hits = sum(1 for r in json_files if str(r) in cache)
+    logger.debug("build_session_list: cache loaded — %d/%d files already cached", cache_hits, total)
 
-    return survivors
+    sem = asyncio.Semaphore(_PARSE_CONCURRENCY)
+    all_raw: List[Dict[str, Any]] = []
+
+    for batch_start in range(0, total, _PARSE_CONCURRENCY):
+        batch = json_files[batch_start:batch_start + _PARSE_CONCURRENCY]
+        results = await asyncio.gather(
+            *[
+                _parse_one(sem, batch_start + i + 1, total, rel, session_dir / rel, logger, cache)
+                for i, rel in enumerate(batch)
+            ]
+        )
+
+        for rel_path, outcome in results:
+            all_raw.append(_make_session_entry(rel_path, session_dir / rel_path, outcome))
+
+        sessions, slug_map = _snapshot(all_raw)
+        batch_end = min(batch_start + _PARSE_CONCURRENCY, total)
+        logger.debug(
+            "build_session_list: files %d-%d/%d done — %d sessions so far",
+            batch_start + 1, batch_end, total, len(sessions),
+        )
+        yield sessions, slug_map
+
+    # Prune deleted files and persist the updated cache
+    live_keys = {str(r) for r in json_files}
+    pruned_cache = {k: v for k, v in cache.items() if k in live_keys}
+    await asyncio.to_thread(_save_cache, cache_path, pruned_cache)
+    # logger.info("build_session_list: cache saved (%d entries)", len(pruned_cache))
+
 
 
 def load_session_json(
