@@ -720,11 +720,6 @@ class PngLauncherWindow(QMainWindow):
         """Run the application"""
         self.auto_start_subsystems()
         self.show()
-        if getattr(sys, 'frozen', False):
-            # pyi_splash is injected by the PyInstaller bootloader when a Splash is configured;
-            # closing it here dismisses the splash as soon as the main window is ready to display.
-            import pyi_splash  # type: ignore # pylint: disable=import-outside-toplevel
-            pyi_splash.close()
         sys.exit(self.app.exec())
 
     def process_events(self):

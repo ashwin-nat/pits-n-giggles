@@ -34,7 +34,7 @@ import platform
 import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
-from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE, Splash
+from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
 
 # --------------------------------------------------------------------------------------------------
@@ -47,7 +47,6 @@ ICON_PATH_MAC = "../assets/logo.icns"
 APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
 COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
 PROJECT_ROOT = os.path.abspath(".")
-SPLASH_IMAGE_PATH = os.path.join(PROJECT_ROOT, "assets", "logo.png")
 
 # --------------------------------------------------------------------------------------------------
 # Runtime hook: inject PNG_VERSION env var before app starts
@@ -164,22 +163,9 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
-splash = Splash(
-    SPLASH_IMAGE_PATH,
-    binaries=a.binaries,
-    datas=a.datas,
-    text_pos=None,
-    text_size=12,
-    text_color='black',
-    always_on_top=True,
-    max_img_size=(300, 300),
-)
-
 exe = EXE(
     pyz,
     a.scripts,
-    splash,
-    splash.binaries,
     a.binaries,
     a.zipfiles,
     a.datas,
