@@ -93,10 +93,7 @@ jobs:
       # Safety guard: code version must match the release tag.
       - name: Verify meta/meta.py version matches tag
         run: |
-          META_VER=$(python -c "import re, sys; \
-            m = re.search(r'APP_VERSION\s*=\s*[\"\']([\d.]+)[\"\']', \
-            open('meta/meta.py').read()); \
-            print(m.group(1))")
+          META_VER=$(python -c "import sys; sys.path.insert(0, '.'); from meta.meta import APP_VERSION; print(APP_VERSION)")
           TAG_VER="${{ needs.find-release.outputs.tag }}"
           TAG_VER="${TAG_VER#v}"   # strip leading 'v'
           if [[ "$META_VER" != "$TAG_VER" ]]; then
