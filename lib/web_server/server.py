@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import os
 from functools import wraps
 from pathlib import Path
@@ -42,6 +41,7 @@ from quart import url_for
 
 from lib.error_status import PngHttpPortInUseError
 from lib.event_counter import EventCounter
+from lib.logger import PngLogger
 
 from .client_types import ClientType
 from .socket import get_socket_for_uvicorn
@@ -53,7 +53,7 @@ class BaseWebServer:
     def __init__(self,
                  port: int,
                  ver_str: str,
-                 logger: logging.Logger,
+                 logger: PngLogger,
                  bind_address: str,
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
@@ -65,13 +65,13 @@ class BaseWebServer:
         Args:
             port (int): The port number to run the server on.
             ver_str (str): The version string.
-            logger (logging.Logger): The logger instance.
+            logger (PngLogger): The logger instance.
             client_event_mappings (Dict[ClientType, str], optional): A dictionary mapping client types to event names.
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
             key_path (Optional[str], optional): Path to the key file. Defaults to None.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
-        self.m_logger: logging.Logger = logger
+        self.m_logger: PngLogger = logger
         self.m_port: int = port
         self.m_bind_address: str = bind_address
         self.m_ver_str = ver_str

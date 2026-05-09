@@ -24,7 +24,6 @@
 
 import asyncio
 import json
-import logging
 import time
 
 from pathlib import Path
@@ -35,6 +34,7 @@ import ijson
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
 from lib.f1_types import F1Utils, SessionType23, SessionType24
+from lib.logger import PngLogger
 
 # Known session type strings derived from the authoritative enums, sorted longest-first
 # so greedy prefix matching always picks the most specific match.
@@ -125,7 +125,7 @@ def resolve_session_meta(relative_path: Path, session_info: Dict[str, Any]) -> D
 
 
 
-def _parse_session_metadata(path: Path, logger: logging.Logger) -> Dict[str, Any]:
+def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
     """Extract session-info from a session JSON file using ijson streaming."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
     with open(path, 'rb') as fh:
@@ -145,7 +145,7 @@ async def _parse_one(
     total: int,
     rel_path: Path,
     full_path: Path,
-    logger: logging.Logger,
+    logger: PngLogger,
     cache: Dict[str, Any],
 ) -> Tuple[Path, Any]:
     """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files."""
@@ -168,7 +168,7 @@ async def _parse_one(
             cache[cache_key] = {'mtime': mtime, 'session_info': session_info}
             return rel_path, session_info
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.warning("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
+            logger.silent("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
             return rel_path, exc
 
 
@@ -234,7 +234,7 @@ def _snapshot(all_raw: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict
 
 async def build_session_list(
     session_dir: Path,
-    logger: logging.Logger,
+    logger: PngLogger,
 ) -> AsyncIterator[Tuple[List[Dict[str, Any]], Dict[str, str]]]:
     """Async generator: yields (sessions, slug_map) after each batch of _PARSE_CONCURRENCY files.
 

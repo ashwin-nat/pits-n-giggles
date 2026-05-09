@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
 import time
 from http import HTTPStatus
 from pathlib import Path
@@ -35,6 +34,7 @@ from watchfiles import awatch
 import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.session_discovery import CACHE_FILE, build_session_list
 from lib.child_proc_mgmt import notify_parent_init_complete
+from lib.logger import PngLogger
 from lib.web_server import BaseWebServer, ClientType
 
 # -------------------------------------- CLASSES ----------------------------------------------------------------
@@ -50,7 +50,7 @@ class SaveViewerWebServer(BaseWebServer):
     def __init__(self,
                  port: int,
                  ver_str: str,
-                 logger: logging.Logger,
+                 logger: PngLogger,
                  bind_address: str,
                  session_dir: Path,
                  cert_path: Optional[str] = None,
@@ -62,7 +62,7 @@ class SaveViewerWebServer(BaseWebServer):
         Args:
             port (int): The port number to run the server on.
             ver_str (str): The version string.
-            logger (logging.Logger): The logger instance.
+            logger (PngLogger): The logger instance.
             bind_address (str): IP address to bind the server to.
             session_dir (Path): Directory to scan for saved session JSON files.
             cert_path (Optional[str], optional): Path to the certificate file. Defaults to None.
@@ -74,7 +74,11 @@ class SaveViewerWebServer(BaseWebServer):
         self.m_slug_map: Dict[str, str] = {}
         self._m_cache_ready = asyncio.Event()
         self._m_watch_stop = asyncio.Event()
-        super().__init__(port, ver_str, logger, bind_address=bind_address, cert_path=cert_path, key_path=key_path, debug_mode=debug_mode)
+        super().__init__(port, ver_str, logger,
+                         bind_address=bind_address,
+                         cert_path=cert_path,
+                         key_path=key_path,
+                         debug_mode=debug_mode)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.register_on_client_register_callback(self._on_client_connect)
@@ -237,13 +241,19 @@ class SaveViewerWebServer(BaseWebServer):
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def init_server_task(port: int, ver_str: str, logger: logging.Logger, tasks: List[asyncio.Task], bind_address: str, session_dir: Path) -> SaveViewerWebServer:
+def init_server_task(
+    port: int,
+    ver_str: str,
+    logger: PngLogger,
+    tasks: List[asyncio.Task],
+    bind_address: str,
+    session_dir: Path) -> SaveViewerWebServer:
     """Initialize the web server and return the server object for proper cleanup
 
     Args:
         port (int): Port number
         ver_str (str): Version string
-        logger (logging.Logger): Logger
+        logger (PngLogger): Logger
         tasks (List[asyncio.Task]): List of tasks to be executed
         bind_address (str): IP address to bind the server to
         session_dir (Path): Directory to scan for saved session JSON files
