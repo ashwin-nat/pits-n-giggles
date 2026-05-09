@@ -1,0 +1,235 @@
+# Release Pipeline — Pits n' Giggles
+#
+# USAGE
+# -----
+# 1. Create a draft GitHub Release with the correct tag and release notes.
+# 2. Run this workflow manually from the Actions tab (no inputs required).
+#
+# The workflow will:
+#   - Auto-detect the single existing draft release (fails loudly if 0 or >1).
+#   - Check out the exact tagged commit.
+#   - Verify meta/meta.py version matches the release tag (safety guard).
+#   - Build Windows (.exe) and macOS (.zip of .app) artifacts in parallel.
+#   - Run smoke tests on both platforms.
+#   - Generate SHA256 checksums for all artifacts.
+#   - Wipe any existing assets from the draft release (idempotent re-runs).
+#   - Upload all artifacts + checksums.txt to the draft release.
+#   - Never touch the release notes.
+#
+# PERMISSIONS REQUIRED
+# --------------------
+# Requires "Read and write permissions" for the built-in GITHUB_TOKEN:
+#   Settings → Actions → General → Workflow permissions → Read and write permissions
+
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 1. Locate the single existing draft release — no version input needed.
+  # ───────────────────────────────────────────────────────────────────────────
+  find-release:
+    name: Find draft release
+    runs-on: ubuntu-latest
+    outputs:
+      tag:        ${{ steps.draft.outputs.tag }}
+      release_id: ${{ steps.draft.outputs.release_id }}
+
+    steps:
+      - name: Locate draft release via GitHub API
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASES=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            --jq '[.[] | select(.draft == true)]')
+
+          COUNT=$(echo "$RELEASES" | jq 'length')
+
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "::error::No draft release found. Create one in GitHub first."
+            exit 1
+          elif [[ "$COUNT" -gt 1 ]]; then
+            echo "::error::$COUNT draft releases found. Delete or publish the extras before running."
+            echo "$RELEASES" | jq -r '.[].tag_name' | while read -r t; do echo "  - $t"; done
+            exit 1
+          fi
+
+          TAG=$(echo "$RELEASES" | jq -r '.[0].tag_name')
+          ID=$(echo  "$RELEASES" | jq -r '.[0].id')
+
+          echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
+          echo "release_id=$ID"  >> "$GITHUB_OUTPUT"
+          echo "Targeting draft release: $TAG (id=$ID)"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 2. Build on Windows and macOS in parallel.
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.os }})
+    needs: find-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      POETRY_VERSION: 2.2.1
+
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.find-release.outputs.tag }}
+
+      # Safety guard: code version must match the release tag.
+      - name: Verify meta/meta.py version matches tag
+        run: |
+          META_VER=$(python -c "import sys; sys.path.insert(0, '.'); from meta.meta import APP_VERSION; print(APP_VERSION)")
+          TAG_VER="${{ needs.find-release.outputs.tag }}"
+          TAG_VER="${TAG_VER#v}"   # strip leading 'v'
+          if [[ "$META_VER" != "$TAG_VER" ]]; then
+            echo "::error::meta/meta.py has version $META_VER but release tag is ${{ needs.find-release.outputs.tag }}"
+            echo "::error::Update meta/meta.py before creating the draft release."
+            exit 1
+          fi
+          echo "Version check passed: $META_VER == $TAG_VER"
+        shell: bash
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          curl -sSL https://install.python-poetry.org | python -
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
+          else
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          fi
+        shell: bash
+
+      - name: Install dependencies
+        run: poetry install --no-root --without dev
+        shell: bash
+
+      - name: Build with PyInstaller
+        run: poetry run python scripts/build.py
+        shell: bash
+
+      - name: Smoke test
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            APP_PATH=$(find dist -name "*.app" | head -n 1)
+            TEST_FILE="$HOME/Library/Application Support/pits_n_giggles/png_smoke_test.txt"
+            open -W "$APP_PATH" --args --smoke-test "hello-smoke"
+            if [ ! -f "$TEST_FILE" ]; then
+              echo "Smoke test failed: $TEST_FILE not found"
+              exit 1
+            fi
+          else
+            EXE_PATH=$(find dist -name "*.exe" | head -n 1)
+            TEST_FILE="./png_smoke_test.txt"
+            "$EXE_PATH" --smoke-test "hello-smoke"
+            TIMEOUT=10; ELAPSED=0; INTERVAL=0.5
+            while [ ! -f "$TEST_FILE" ] && (( $(echo "$ELAPSED < $TIMEOUT" | bc -l) )); do
+              sleep $INTERVAL
+              ELAPSED=$(echo "$ELAPSED + $INTERVAL" | bc)
+            done
+            if [ ! -f "$TEST_FILE" ]; then
+              echo "Smoke test failed: $TEST_FILE not found after ${TIMEOUT}s"
+              exit 1
+            fi
+          fi
+          echo "Smoke test passed!"
+        shell: bash
+
+      - name: Prepare artifact
+        id: prep
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            APP=$(find dist -name "*.app" | head -n 1)
+            BASENAME=$(basename "$APP" .app)
+            ZIP_NAME="${BASENAME}-mac.zip"
+            (cd dist && zip -r "$ZIP_NAME" "$(basename "$APP")")
+            echo "path=dist/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+            echo "name=${ZIP_NAME}"      >> "$GITHUB_OUTPUT"
+          else
+            EXE=$(find dist -name "*.exe" | head -n 1)
+            echo "path=${EXE}"                  >> "$GITHUB_OUTPUT"
+            echo "name=$(basename "${EXE}")" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prep.outputs.name }}
+          path: ${{ steps.prep.outputs.path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 3. Collect artifacts, checksum, wipe old assets, publish to draft release.
+  # ───────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to draft release
+    needs: [find-release, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
+      RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true   # flattens subdirs → single directory
+
+      - name: List downloaded files
+        run: ls -lh release-assets/
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd release-assets
+          find . -maxdepth 1 -type f | sort | xargs sha256sum \
+            | sed 's|\./||' > checksums.txt
+          echo "=== checksums.txt ==="
+          cat checksums.txt
+
+      # Delete every existing asset on the draft release so re-runs are clean.
+      - name: Wipe existing release assets
+        run: |
+          ASSET_IDS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq '.[].id')
+          if [[ -z "$ASSET_IDS" ]]; then
+            echo "No existing assets to delete."
+          else
+            for ASSET_ID in $ASSET_IDS; do
+              echo "Deleting asset id=$ASSET_ID"
+              gh api "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID" -X DELETE
+            done
+          fi
+
+      - name: Upload artifacts to draft release
+        run: |
+          cd release-assets
+          for FILE in $(find . -maxdepth 1 -type f | sort); do
+            echo "Uploading: $(basename "$FILE")"
+            gh release upload "$RELEASE_TAG" "$FILE" \
+              --repo "$GITHUB_REPOSITORY"
+          done
+          echo "All files uploaded to draft release $RELEASE_TAG"
