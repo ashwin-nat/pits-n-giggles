@@ -36,6 +36,10 @@ import lib.race_analyzer as RaceAnalyzer
 from lib.f1_types import F1Utils, SessionType23, SessionType24
 from lib.logger import PngLogger
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+CACHE_FILE = '.png_session_cache.json'
+
 # Known session type strings derived from the authoritative enums, sorted longest-first
 # so greedy prefix matching always picks the most specific match.
 _KNOWN_SESSION_TYPES: List[str] = sorted(
@@ -43,13 +47,9 @@ _KNOWN_SESSION_TYPES: List[str] = sorted(
     key=lambda t: len(t.split()),
     reverse=True,
 )
-
+_PARSE_CONCURRENCY = 50
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-CACHE_FILE = '.png_session_cache.json'
-_CACHE_FILE = CACHE_FILE
-
 
 def find_json_files(session_dir: Path) -> List[Path]:
     """Recursively find all .json files under session_dir; paths relative to session_dir."""
@@ -134,10 +134,6 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
             return item
     logger.warning("_parse_session_metadata: session-info not found in %s", path.name)
     return {}
-
-
-_PARSE_CONCURRENCY = 10
-
 
 async def _parse_one(
     sem: asyncio.Semaphore,
@@ -251,7 +247,7 @@ async def build_session_list(
     json_files = _sort_files_newest_first(json_files)
     total = len(json_files)
 
-    cache_path = session_dir / _CACHE_FILE
+    cache_path = session_dir / CACHE_FILE
     cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path)
     cache_hits = sum(1 for r in json_files if str(r) in cache)
     logger.debug("build_session_list: cache loaded — %d/%d files already cached", cache_hits, total)
