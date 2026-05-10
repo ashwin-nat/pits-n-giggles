@@ -45,23 +45,9 @@ def main():
     remove_dir_if_exists("build")
     remove_dir_if_exists("dist")
 
-    # 1. Run PyInstaller
     start_time = time.time()
-    subprocess.run(
-        [
-            sys.executable,
-            "-m", "PyInstaller",
-            "--clean",
-            "--noconfirm",
-            spec_path,
-        ],
-        check=True,
-    )
 
-    # 2. Cleanup the custom COLLECT dir
-    remove_dir_if_exists(collect_dir)
-
-    # 3. Build f1-telemetry-viewer React app
+    # 1. Build f1-telemetry-viewer React app (must precede PyInstaller so dist/ is bundled)
     viewer_source = Path("apps/external/f1-save-viewer")
     if not (viewer_source / "package.json").exists():
         raise RuntimeError(
@@ -81,6 +67,21 @@ def main():
         check=True,
         shell=True,
     )
+
+    # 2. Run PyInstaller
+    subprocess.run(
+        [
+            sys.executable,
+            "-m", "PyInstaller",
+            "--clean",
+            "--noconfirm",
+            spec_path,
+        ],
+        check=True,
+    )
+
+    # 3. Cleanup the custom COLLECT dir
+    remove_dir_if_exists(collect_dir)
 
     end_time = time.time()
     elapsed = end_time - start_time
