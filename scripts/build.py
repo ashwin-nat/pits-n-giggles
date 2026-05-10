@@ -27,6 +27,7 @@ import sys
 import os
 import shutil
 import time
+from pathlib import Path
 
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
@@ -59,6 +60,25 @@ def main():
 
     # 2. Cleanup the custom COLLECT dir
     remove_dir_if_exists(collect_dir)
+
+    # 3. Build f1-telemetry-viewer React app
+    viewer_source = Path("apps/external/f1-save-viewer")
+    if not (viewer_source / "package.json").exists():
+        raise RuntimeError(
+            "Viewer submodule not initialized. Run: git submodule update --init"
+        )
+    subprocess.run(["pnpm", "install"], cwd=viewer_source, check=True, shell=True)
+    subprocess.run(
+        ["pnpm", "build", "--base=/viewer/", "--mode", "production"],
+        cwd=viewer_source,
+        env={
+            **os.environ,
+            "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
+            "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
+        },
+        check=True,
+        shell=True,
+    )
 
     end_time = time.time()
     elapsed = end_time - start_time
