@@ -663,11 +663,11 @@
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
     <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialCardDragDrop.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
       const currVer = "{{ version }}";
       console.info("Running version", currVer);
       window.SESSION_SLUG = {% if session_slug %}"{{ session_slug }}"{% else %}null{% endif %};
     </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>

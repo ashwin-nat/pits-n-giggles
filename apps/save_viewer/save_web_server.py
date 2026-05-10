@@ -87,7 +87,8 @@ class SaveViewerWebServer(BaseWebServer):
                          bind_address=bind_address,
                          cert_path=cert_path,
                          key_path=key_path,
-                         debug_mode=debug_mode)
+                         debug_mode=debug_mode,
+                         enable_socketio=False)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
         self.register_on_client_register_callback(self._on_client_connect)
@@ -187,6 +188,12 @@ class SaveViewerWebServer(BaseWebServer):
 
         @self.http_route('/telemetry-info')
         async def telemetryInfoHTTP():
+            slug = self.request.args.get('slug')
+            if slug:
+                data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+                if data is None:
+                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+                return SaveViewerState.getTelemetryInfoFrom(data), HTTPStatus.OK
             return SaveViewerState.getTelemetryInfo()
 
         @self.http_route('/race-info')

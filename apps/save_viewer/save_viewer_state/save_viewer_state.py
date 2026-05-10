@@ -72,6 +72,17 @@ def getDriverInfo(index: int) -> Dict[str, Any]:
     global _json_data
     return _getDriverInfo(_json_data, index)
 
+def getTelemetryInfoFrom(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Get telemetry info from an explicit JSON payload (slug-based path).
+
+    Args:
+        data: Session JSON dict.
+
+    Returns:
+        Dict[str, Any]: Telemetry info (same shape as getTelemetryInfo).
+    """
+    return _getTelemetryInfo(data)
+
 def getRaceInfoFrom(data: Dict[str, Any]) -> Dict[str, Any]:
     """Get race info from an explicit JSON payload (slug-based path).
 

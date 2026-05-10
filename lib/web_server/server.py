@@ -58,7 +58,8 @@ class BaseWebServer:
                  client_event_mappings: Dict[ClientType, List[str]] = None,
                  cert_path: Optional[str] = None,
                  key_path: Optional[str] = None,
-                 debug_mode: bool = False):
+                 debug_mode: bool = False,
+                 enable_socketio: bool = True):
         """
         Initialize the BaseWebServer.
 
@@ -101,16 +102,19 @@ class BaseWebServer:
         )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
 
-        self.m_sio = socketio.AsyncServer(
-            async_mode='asgi',
-            cors_allowed_origins="*",
-            logger=False,
-            engineio_logger=False
-        )
-        self.m_sio_app: socketio.ASGIApp = socketio.ASGIApp(self.m_sio, self.m_app)
+        if enable_socketio:
+            self.m_sio = socketio.AsyncServer(
+                async_mode='asgi',
+                cors_allowed_origins="*",
+                logger=False,
+                engineio_logger=False
+            )
+            self.m_sio_app = socketio.ASGIApp(self.m_sio, self.m_app)
+            self._register_base_socketio_events()
+        else:
+            self.m_sio = None
+            self.m_sio_app = self.m_app
         self._server: Optional[uvicorn.Server] = None
-
-        self._register_base_socketio_events()
         self._define_static_file_routes()
 
         # Automatically append version string to all static URL's
@@ -179,6 +183,7 @@ class BaseWebServer:
                     self.m_stats.track_event("__SOCKET_IN_EXCEPTION__", event)
                     raise
 
+            assert self.m_sio is not None, "socketio_event registered but Socket.IO is disabled"
             self.m_sio.on(event)(wrapped)
             return func
         return decorator
@@ -264,6 +269,7 @@ class BaseWebServer:
             data (Dict[str, Any]): The data to send with the event.
             client_type (ClientType): The client type to send the event to.
         """
+        assert self.m_sio is not None, "send_to_clients_of_type called but Socket.IO is disabled"
         packed = msgpack.packb(data, use_bin_type=True)
         self._track_socket_emit_mcast(packed, room=str(client_type))
         await self.m_sio.emit(event, packed, room=str(client_type))
@@ -276,6 +282,7 @@ class BaseWebServer:
             event (str): The event name to send.
             data (Dict[str, Any]): The data to send with the event.
         """
+        assert self.m_sio is not None, "send_to_clients_interested_in_event called but Socket.IO is disabled"
         packed = msgpack.packb(data, use_bin_type=True)
         self._track_socket_emit_mcast(packed, room=event)
         await self.m_sio.emit(event, packed, room=event)
@@ -289,6 +296,7 @@ class BaseWebServer:
             data (Dict[str, Any]): The data to send with the event.
             client_id (str): The client ID to send the event to.
         """
+        assert self.m_sio is not None, "send_to_client called but Socket.IO is disabled"
         packed = msgpack.packb(data, use_bin_type=True)
         self.m_stats.track_packet("__SOCKET_OUT__", "__UNICAST__", len(packed))
         await self.m_sio.emit(event, packed, to=client_id)

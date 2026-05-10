@@ -14,38 +14,49 @@ let socketio;
 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-socketio = initializeSocketIO('race-table', 'driver-view');
+if (window.SESSION_SLUG) {
+    // Legacy / save-file view: session is static, no live Socket.IO needed.
+    // Fetch the race table via HTTP using the slug.
+    fetch(`/telemetry-info?slug=${window.SESSION_SLUG}`)
+        .then(r => {
+            if (!r.ok) throw new Error(`telemetry-info returned ${r.status}`);
+            return r.json();
+        })
+        .then(data => telemetryRenderer.updateDashboard(data))
+        .catch(err => console.error('Failed to load telemetry info:', err));
+} else {
+    socketio = initializeSocketIO('race-table', 'driver-view');
 
-// Receive details from server
-socketio.on('race-table-update', function (binaryData) {
-    try {
+    socketio.on('race-table-update', function (binaryData) {
+        try {
+            const data = window.msgpack.decode(new Uint8Array(binaryData));
+            telemetryRenderer.updateDashboard(data);
+        } catch (err) {
+            console.error('Failed to decode race-table-update:', err);
+        }
+    });
+
+    socketio.on('frontend-update', function (binaryData) {
         const data = window.msgpack.decode(new Uint8Array(binaryData));
-        telemetryRenderer.updateDashboard(data);
-    } catch (err) {
-        console.error('Failed to decode race-table-update:', err);
-    }
-});
-
-socketio.on('frontend-update', function (binaryData) {
-    const data = window.msgpack.decode(new Uint8Array(binaryData));
-    console.log("frontend-update", data);
-    switch (data['message-type']) {
-        case 'custom-marker':
-            processCustomMarkerMessage(data['message']);
-            break;
-        case 'tyre-delta':
-            processTyreDeltaMessage(data['message']);
-            break;
-        case 'tyre-delta-v2':
-            processTyreDeltaMessageV2(data['message'], iconCache);
-            break;
-        case 'final-classification-notification':
-            processFinalClassificationNotification(data['message']);
-            break;
-        default:
-            console.error("received unsupported message type in frontend-update");
-    }
-});
+        console.log("frontend-update", data);
+        switch (data['message-type']) {
+            case 'custom-marker':
+                processCustomMarkerMessage(data['message']);
+                break;
+            case 'tyre-delta':
+                processTyreDeltaMessage(data['message']);
+                break;
+            case 'tyre-delta-v2':
+                processTyreDeltaMessageV2(data['message'], iconCache);
+                break;
+            case 'final-classification-notification':
+                processFinalClassificationNotification(data['message']);
+                break;
+            default:
+                console.error("received unsupported message type in frontend-update");
+        }
+    });
+}
 
 document.getElementById("best-lap-th").addEventListener("click", function () {
     g_pref_bestLapAbsoluteFormat = !g_pref_bestLapAbsoluteFormat;
