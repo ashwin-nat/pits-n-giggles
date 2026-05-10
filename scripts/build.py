@@ -72,13 +72,10 @@ def main():
         "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",
-        # Prevent Git Bash / MSYS2 from converting /viewer/ to a Windows path
-        "MSYS_NO_PATHCONV": "1",
-        "MSYS2_ARG_CONV_EXCL": "*",
     }
     subprocess.run(["pnpm", "install"], cwd=viewer_source, check=True, shell=True)
     subprocess.run(
-        ["pnpm", "build", "--base", "/viewer/", "--mode", "production"],
+        ["pnpm", "build", "--mode", "production"],
         cwd=viewer_source,
         env=build_env,
         check=True,

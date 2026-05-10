@@ -6,7 +6,7 @@ External submodules bundled into Pits n' Giggles.
 
 A React app for browsing and analysing saved session JSON files.
 Submodule source: `apps/external/f1-save-viewer`
-Built output (`dist/`) is served by `apps/save_viewer/save_web_server.py` under `/viewer/`.
+Built output (`dist/`) is served by `apps/save_viewer/save_web_server.py` at `/`.
 
 ### First-time setup
 
@@ -25,8 +25,7 @@ cd apps/external/f1-save-viewer
 VITE_EXTERNAL_LINK_TEMPLATE="/legacy/{slug}" \
 VITE_EXTERNAL_LINK_LABEL="Legacy View" \
 VITE_DISABLE_ANALYTICS="true" \
-MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" \
-pnpm build --base /viewer/ --mode production
+pnpm build --mode production
 ```
 
 On Windows (PowerShell), set the env vars before the command:
@@ -35,9 +34,7 @@ On Windows (PowerShell), set the env vars before the command:
 $env:VITE_EXTERNAL_LINK_TEMPLATE = "/legacy/{slug}"
 $env:VITE_EXTERNAL_LINK_LABEL    = "Legacy View"
 $env:VITE_DISABLE_ANALYTICS      = "true"
-$env:MSYS_NO_PATHCONV            = "1"
-$env:MSYS2_ARG_CONV_EXCL         = "*"
-pnpm build --base /viewer/ --mode production
+pnpm build --mode production
 ```
 
 > **Note:** The page title version (`Pits n' Giggles - Save v...`) is injected at serve time by
@@ -53,4 +50,3 @@ The full `scripts/build.py` run does this automatically as part of the PyInstall
 | `VITE_EXTERNAL_LINK_TEMPLATE` | `/legacy/{slug}` | URL pattern for the "Legacy View" link in `SessionHeader`; `{slug}` is replaced with the session slug |
 | `VITE_EXTERNAL_LINK_LABEL` | `Legacy View` | Label text for that link |
 | `VITE_DISABLE_ANALYTICS` | `true` | Disables Vercel Analytics (enabled on the public Vercel deployment) |
-| `MSYS_NO_PATHCONV` / `MSYS2_ARG_CONV_EXCL` | `1` / `*` | Prevents Git Bash / MSYS2 from mangling the `/viewer/` base path into a Windows absolute path |

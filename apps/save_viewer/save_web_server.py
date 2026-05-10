@@ -28,7 +28,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from quart import redirect, send_file
+from quart import send_file
 from watchfiles import awatch
 
 import apps.save_viewer.save_viewer_state as SaveViewerState
@@ -110,10 +110,6 @@ class SaveViewerWebServer(BaseWebServer):
         Sets up routes for the main index page and stream overlay page.
         """
         @self.http_route('/')
-        async def index():
-            return redirect('/viewer/')
-
-        @self.http_route('/viewer/')
         async def viewerIndex():
             index_path = self.m_viewer_dir / 'index.html'
             html = index_path.read_text(encoding='utf-8')
@@ -121,7 +117,7 @@ class SaveViewerWebServer(BaseWebServer):
             html = html.replace('</head>', f'{injection}</head>', 1)
             return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
 
-        @self.http_route('/viewer/<path:path>')
+        @self.http_route('/<path:path>')
         async def viewerStatic(path: str):
             return await self.send_from_directory(self.m_viewer_dir, path)
 
