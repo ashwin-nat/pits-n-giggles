@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import json
+import orjson
 import time
 
 from pathlib import Path
@@ -70,15 +70,15 @@ def find_json_files(session_dir: Path) -> List[Path]:
 
 def _load_cache(cache_path: Path) -> Dict[str, Any]:
     try:
-        with open(cache_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+        with open(cache_path, 'rb') as f:
+            return orjson.loads(f.read())
+    except (FileNotFoundError, orjson.JSONDecodeError):
         return {}
 
 
 def _save_cache(cache_path: Path, cache: Dict[str, Any]) -> None:
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        json.dump(cache, f)
+    with open(cache_path, 'wb') as f:
+        f.write(orjson.dumps(cache))
 
 
 def to_slug(relative_path: Path) -> str:
@@ -183,8 +183,8 @@ def _get_clean_race_laps(player: Dict[str, Any]) -> List[Dict[str, Any]]:
 def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
     """Load a session JSON and extract session-info plus player lap stats."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
-    with open(path, 'r', encoding='utf-8') as fh:
-        data = json.load(fh)
+    with open(path, 'rb') as fh:
+        data = orjson.loads(fh.read())
 
     session_info = data.get('session-info', {})
     classification = data.get('classification-data', [])
@@ -417,8 +417,8 @@ def load_session_json(
         return None
 
     try:
-        with open(full, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        with open(full, 'rb') as f:
+            data = orjson.loads(f.read())
         check_recompute_json(data)
         return data
     except Exception:  # pylint: disable=broad-exception-caught
@@ -443,9 +443,9 @@ def _is_valid_json(data: Any) -> bool:
     if isinstance(data, dict):
         return True
     try:
-        json.loads(data)
+        orjson.loads(data)
         return True
-    except json.JSONDecodeError:
+    except orjson.JSONDecodeError:
         return False
 
 
