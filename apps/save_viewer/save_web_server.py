@@ -115,7 +115,11 @@ class SaveViewerWebServer(BaseWebServer):
 
         @self.http_route('/viewer/')
         async def viewerIndex():
-            return await self.send_from_directory(self.m_viewer_dir, 'index.html')
+            index_path = self.m_viewer_dir / 'index.html'
+            html = index_path.read_text(encoding='utf-8')
+            injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
+            html = html.replace('</head>', f'{injection}</head>', 1)
+            return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
 
         @self.http_route('/viewer/<path:path>')
         async def viewerStatic(path: str):

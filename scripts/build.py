@@ -28,7 +28,6 @@ import os
 import shutil
 import time
 from pathlib import Path
-from lib.version import get_version
 
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
@@ -73,7 +72,6 @@ def main():
         "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",
-        "VITE_APP_VERSION": get_version(),
         # Prevent Git Bash / MSYS2 from converting /viewer/ to a Windows path
         "MSYS_NO_PATHCONV": "1",
         "MSYS2_ARG_CONV_EXCL": "*",
