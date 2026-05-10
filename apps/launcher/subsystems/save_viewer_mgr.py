@@ -30,7 +30,6 @@ from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
-from lib.ipc import IpcClientSync
 
 from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
@@ -83,49 +82,17 @@ class SaveViewerAppMgr(PngAppMgrBase):
         """
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.open_file_button = self.build_button(self.get_icon("open-file"), self.open_file, "Open File")
         self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
                                                        "Open Dashboard")
-        self.open_third_party_dashboard_button = self.build_button(self.get_icon("tp-dashboard"),
-                                                                   self.open_third_party_dashboard,
-                                                       "Third Party Dashboard - built by Fabrizio Rinaldi "
-                                                       "from the community")
 
         return [
             self.start_stop_button,
-            self.open_file_button,
             self.open_dashboard_button,
-            self.open_third_party_dashboard_button
         ]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port}', new=2)
-
-    def open_third_party_dashboard(self):
-        """Open the dashboard made by Fabrizio in a web browser."""
-        # Analytics tool built by Fabrizio Rinaldi from the community
-        # https://github.com/linuz90/f1-telemetry-viewer
-        webbrowser.open('https://telemetry.fabrizio.so', new=2)
-
-    def open_file(self):
-        """Open a file dialog and send the selected file path to the backend process."""
-        file_path = self.select_file(title="Select File", file_filter="JSON files (*.json);;All Files (*.*)")
-
-        if file_path:
-            self.debug_log(f"Selected file: {file_path}")
-
-            if self.process:
-                ipc_client = IpcClientSync(self.ipc_port)
-                rsp = ipc_client.request("open-file", {"file-path": file_path})
-
-                if rsp["status"] != "error":
-                    self.info_log("File path sent successfully.")
-                else:
-                    self.info_log(f"Error sending file path: {rsp['message']}")
-                    self.show_error("File open error", "\n".join([rsp["message"]]))
-            else:
-                self.info_log("No process running to send the file path to.")
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -155,26 +122,20 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_file_button, True)
         self.set_button_state(self.open_dashboard_button, True)
-        self.set_button_state(self.open_third_party_dashboard_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_file_button, False)
         self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_third_party_dashboard_button, False)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.open_file_button, False)
         self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_third_party_dashboard_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")

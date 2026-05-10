@@ -91,7 +91,6 @@ class SaveViewerWebServer(BaseWebServer):
                          enable_socketio=False)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
-        self.register_on_client_register_callback(self._on_client_connect)
 
     def define_routes(self) -> None:
         """
@@ -189,22 +188,22 @@ class SaveViewerWebServer(BaseWebServer):
         @self.http_route('/telemetry-info')
         async def telemetryInfoHTTP():
             slug = self.request.args.get('slug')
-            if slug:
-                data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
-                if data is None:
-                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
-                return SaveViewerState.getTelemetryInfoFrom(data), HTTPStatus.OK
-            return SaveViewerState.getTelemetryInfo()
+            if not slug:
+                return {'error': 'Missing "slug" parameter'}, HTTPStatus.BAD_REQUEST
+            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            if data is None:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return SaveViewerState.getTelemetryInfoFrom(data), HTTPStatus.OK
 
         @self.http_route('/race-info')
         async def raceInfoHTTP():
             slug = self.request.args.get('slug')
-            if slug:
-                data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
-                if data is None:
-                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
-                return SaveViewerState.getRaceInfoFrom(data), HTTPStatus.OK
-            return SaveViewerState.getRaceInfo()
+            if not slug:
+                return {'error': 'Missing "slug" parameter'}, HTTPStatus.BAD_REQUEST
+            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            if data is None:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return SaveViewerState.getRaceInfoFrom(data), HTTPStatus.OK
 
         @self.http_route('/driver-info')
         async def driverInfoHTTP():
@@ -213,19 +212,16 @@ class SaveViewerWebServer(BaseWebServer):
 
             if not index:
                 return {'error': 'Invalid parameters', 'message': 'Provide "index" parameter'}, HTTPStatus.BAD_REQUEST
-
+            if not slug:
+                return {'error': 'Invalid parameters', 'message': 'Provide "slug" parameter'}, HTTPStatus.BAD_REQUEST
             if not index.isdigit():
                 return {'error': 'Invalid parameter value', 'message': '"index" parameter must be numeric'}, HTTPStatus.BAD_REQUEST
 
             index_int = int(index)
-            if slug:
-                data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
-                if data is None:
-                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
-                if driver_info := SaveViewerState.getDriverInfoFrom(data, index_int):
-                    return driver_info, HTTPStatus.OK
-                return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
-            if driver_info := SaveViewerState.getDriverInfo(index_int):
+            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            if data is None:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            if driver_info := SaveViewerState.getDriverInfoFrom(data, index_int):
                 return driver_info, HTTPStatus.OK
             return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
 
@@ -273,27 +269,6 @@ class SaveViewerWebServer(BaseWebServer):
 
         asyncio.create_task(self._rebuild_cache(), name="Session Initial Scan")
         asyncio.create_task(self._sessions_watch_loop(), name="Session Watch Loop")
-
-    async def _on_client_connect(self, client_type: ClientType, client_id: str) -> None:
-        """Send race table to the newly connected client
-
-        Args:
-            client_type (ClientType): Client type
-            client_id (str): Client ID
-        """
-        if client_type == ClientType.RACE_TABLE:
-            await self._send_race_table(client_id)
-
-    async def _send_race_table(self, client_id: str) -> None:
-        """Send race table to all connected clients
-
-        Args:
-            client_id (str): Client ID
-        """
-        await self.send_to_client('race-table-update',
-                                    SaveViewerState.getTelemetryInfo(),
-                                    client_id)
-        self.m_logger.debug("Sending race table update")
 
     async def send_to_clients_of_type(self, event: str, data: Dict[str, Any], client_type: ClientType) -> None:
         await super().send_to_clients_of_type(event, data, client_type)
