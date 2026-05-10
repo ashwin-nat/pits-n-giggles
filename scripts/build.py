@@ -73,9 +73,9 @@ def main():
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",
     }
-    subprocess.run(["pnpm", "install"], cwd=viewer_source, check=True, shell=True)
+    subprocess.run("pnpm install", cwd=viewer_source, check=True, shell=True)
     subprocess.run(
-        ["pnpm", "build", "--mode", "production"],
+        "pnpm build --mode production",
         cwd=viewer_source,
         env=build_env,
         check=True,

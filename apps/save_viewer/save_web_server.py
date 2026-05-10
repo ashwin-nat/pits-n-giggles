@@ -148,6 +148,7 @@ class SaveViewerWebServer(BaseWebServer):
 
         @self.http_route('/api/sessions/<slug>')
         async def apiSession(slug: str):
+            await self._m_cache_ready.wait()
             relative = self.m_slug_map.get(slug)
             if not relative:
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND

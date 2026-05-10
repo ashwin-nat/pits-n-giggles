@@ -23,15 +23,16 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import orjson
 import time
-
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
+import orjson
+
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
-from lib.f1_types import F1Utils, PacketSessionData, SessionType23, SessionType24
+from lib.f1_types import (F1Utils, PacketSessionData, SessionType23,
+                          SessionType24)
 from lib.logger import PngLogger
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -242,7 +243,6 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
     return result
 
 async def _parse_one(
-    sem: asyncio.Semaphore,
     file_idx: int,
     total: int,
     rel_path: Path,
@@ -251,27 +251,25 @@ async def _parse_one(
     cache: Dict[str, Any],
 ) -> Tuple[Path, Any]:
     """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files."""
-    async with sem:
-        cache_key = str(rel_path)
-        try:
-            mtime = full_path.stat().st_mtime
-        except OSError:
-            mtime = 0.0
+    cache_key = str(rel_path)
+    try:
+        mtime = full_path.stat().st_mtime
+    except OSError:
+        mtime = 0.0
 
-        cached = cache.get(cache_key)
-        if cached and cached.get('mtime') == mtime and 'data' in cached:
-            return rel_path, cached['data']
+    cached = cache.get(cache_key)
+    if cached and cached.get('mtime') == mtime and 'data' in cached:
+        return rel_path, cached['data']
 
-        # logger.info("[%d/%d] parsing %s", file_idx, total, rel_path)
-        try:
-            parsed = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
-            logger.debug("[%d/%d] done in %.2fs — %s", file_idx, total, time.
-                        perf_counter() - time.perf_counter(), rel_path)
-            cache[cache_key] = {'mtime': mtime, 'data': parsed}
-            return rel_path, parsed
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.silent("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
-            return rel_path, exc
+    try:
+        start = time.perf_counter()
+        parsed = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
+        logger.debug("[%d/%d] done in %.2fs — %s", file_idx, total, time.perf_counter() - start, rel_path)
+        cache[cache_key] = {'mtime': mtime, 'data': parsed}
+        return rel_path, parsed
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.silent("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
+        return rel_path, exc
 
 
 def _sort_files_newest_first(json_files: List[Path]) -> List[Path]:
@@ -370,14 +368,13 @@ async def build_session_list(
     cache_hits = sum(1 for r in json_files if str(r) in cache)
     logger.debug("build_session_list: cache loaded — %d/%d files already cached", cache_hits, total)
 
-    sem = asyncio.Semaphore(_PARSE_CONCURRENCY)
     all_raw: List[Dict[str, Any]] = []
 
     for batch_start in range(0, total, _PARSE_CONCURRENCY):
         batch = json_files[batch_start:batch_start + _PARSE_CONCURRENCY]
         results = await asyncio.gather(
             *[
-                _parse_one(sem, batch_start + i + 1, total, rel, session_dir / rel, logger, cache)
+                _parse_one(batch_start + i + 1, total, rel, session_dir / rel, logger, cache)
                 for i, rel in enumerate(batch)
             ]
         )
