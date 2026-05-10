@@ -72,6 +72,30 @@ def getDriverInfo(index: int) -> Dict[str, Any]:
     global _json_data
     return _getDriverInfo(_json_data, index)
 
+def getRaceInfoFrom(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Get race info from an explicit JSON payload (slug-based path).
+
+    Args:
+        data: Session JSON dict.
+
+    Returns:
+        Dict[str, Any]: Race info.
+    """
+    global _logger
+    return _getRaceInfo(data, _logger)
+
+def getDriverInfoFrom(data: Dict[str, Any], index: int) -> Dict[str, Any]:
+    """Get driver info from an explicit JSON payload (slug-based path).
+
+    Args:
+        data: Session JSON dict.
+        index: Driver index.
+
+    Returns:
+        Dict[str, Any]: Driver info.
+    """
+    return _getDriverInfo(data, index)
+
 async def open_file_helper(file_path):
     """Validate, load the JSON file and parse it and update the module global."""
 

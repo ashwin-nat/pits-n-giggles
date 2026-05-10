@@ -59,7 +59,8 @@ def parseArgs() -> argparse.Namespace:
     # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str, session_dir: Path) -> None:
+async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str,
+               session_dir: Path, viewer_dir: Path) -> None:
     """Main function
 
     Args:
@@ -68,10 +69,12 @@ async def main(logger: logging.Logger, server_port: int, version: str, bind_addr
         version (str): Version
         bind_address (str): Bind address for the web server
         session_dir (Path): Directory to scan for saved session JSON files
+        viewer_dir (Path): Directory containing the built f1-save-viewer React app
     """
     tasks: List[asyncio.Task] = []
     init_state(logger=logger)
-    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks, bind_address=bind_address, session_dir=session_dir)
+    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks,
+                                  bind_address=bind_address, session_dir=session_dir, viewer_dir=viewer_dir)
     init_ipc_task(logger=logger, server=web_server, tasks=tasks)
 
     try:
@@ -97,6 +100,8 @@ def entry_point():
     p = configs.Capture.session_dir_path
     session_dir = p if p.is_absolute() else (get_app_base_dir() / p).resolve()
     png_logger.info("Session directory: %s", session_dir)
+    viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
+    png_logger.info("Viewer directory: %s", viewer_dir)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
@@ -105,7 +110,8 @@ def entry_point():
             server_port=configs.Network.save_viewer_port,
             version=version,
             bind_address=configs.Network.bind_address,
-            session_dir=session_dir))
+            session_dir=session_dir,
+            viewer_dir=viewer_dir))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:

@@ -667,6 +667,7 @@
     <script>
       const currVer = "{{ version }}";
       console.info("Running version", currVer);
+      window.SESSION_SLUG = {% if session_slug %}"{{ session_slug }}"{% else %}null{% endif %};
     </script>
   </body>
 </html>

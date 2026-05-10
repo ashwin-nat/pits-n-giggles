@@ -29,11 +29,9 @@ import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
-import ijson
-
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
-from lib.f1_types import F1Utils, SessionType23, SessionType24
+from lib.f1_types import F1Utils, PacketSessionData, SessionType23, SessionType24
 from lib.logger import PngLogger
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -46,6 +44,16 @@ _KNOWN_SESSION_TYPES: List[str] = sorted(
     {str(s) for cls in (SessionType23, SessionType24) for s in cls if s.name != 'UNKNOWN'},
     key=lambda t: len(t.split()),
     reverse=True,
+)
+
+_QUALIFYING_SESSION_TYPES: frozenset = frozenset(
+    str(s) for cls in (SessionType23, SessionType24) for s in cls if s.isQualiTypeSession()
+)
+_RACE_SESSION_TYPES: frozenset = frozenset(
+    str(s) for cls in (SessionType23, SessionType24) for s in cls if s.isRaceTypeSession()
+)
+_F1_FORMULA_STRINGS: frozenset = frozenset(
+    str(f) for f in PacketSessionData.FormulaType if f.is_f1()
 )
 _PARSE_CONCURRENCY = 50
 
@@ -125,15 +133,113 @@ def resolve_session_meta(relative_path: Path, session_info: Dict[str, Any]) -> D
 
 
 
+def _is_qualifying_session(session_type: str) -> bool:
+    return session_type in _QUALIFYING_SESSION_TYPES
+
+
+def _is_race_session(session_type: str) -> bool:
+    return session_type in _RACE_SESSION_TYPES
+
+
+def formula_group_key(formula: str) -> str:
+    """Map a formula string to its comparison group key.
+    All F1 variants (F1 Modern, F1 Classic, etc.) collapse to 'f1'."""
+    return 'f1' if formula in _F1_FORMULA_STRINGS else formula
+
+
+def _get_clean_race_laps(player: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Port of getCleanRaceLaps from stats.ts: filters out lap 1, SC laps, pit laps, and outliers."""
+    sh = player.get('session-history', {})
+    laps = sh.get('lap-history-data', [])
+    per_lap_info = player.get('per-lap-info', [])
+    tyre_set_history = player.get('tyre-set-history', [])
+
+    pit_laps: set = set()
+    for stint in tyre_set_history[:-1]:
+        end_lap = stint.get('end-lap', 0)
+        pit_laps.add(end_lap)
+        pit_laps.add(end_lap + 1)
+
+    sc_by_lap = {p['lap-number']: p.get('max-safety-car-status', 'NO_SAFETY_CAR') for p in per_lap_info}
+
+    clean = []
+    for i, lap in enumerate(laps[1:], start=2):  # skip lap 1; lap numbers are 1-indexed
+        if lap.get('lap-valid-bit-flags') != 15 or lap.get('lap-time-in-ms', 0) <= 0:
+            continue
+        if sc_by_lap.get(i, 'NO_SAFETY_CAR') != 'NO_SAFETY_CAR':
+            continue
+        if i in pit_laps:
+            continue
+        clean.append(lap)
+
+    if len(clean) < 3:
+        return clean
+
+    times = sorted(l['lap-time-in-ms'] for l in clean)
+    median = times[len(times) // 2]
+    return [l for l in clean if l['lap-time-in-ms'] <= median * 1.2]
+
+
 def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
-    """Extract session-info from a session JSON file using ijson streaming."""
+    """Load a session JSON and extract session-info plus player lap stats."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
-    with open(path, 'rb') as fh:
-        for item in ijson.items(fh, 'session-info', use_float=True):
-            # logger.info("_parse_session_metadata: done — %s", path.name)
-            return item
-    logger.warning("_parse_session_metadata: session-info not found in %s", path.name)
-    return {}
+    with open(path, 'r', encoding='utf-8') as fh:
+        data = json.load(fh)
+
+    session_info = data.get('session-info', {})
+    classification = data.get('classification-data', [])
+
+    player = next((d for d in classification if d.get('is-player')), None)
+    is_spectator = player is None
+    if is_spectator:
+        player = max(
+            classification,
+            key=lambda d: sum(
+                1 for l in d.get('session-history', {}).get('lap-history-data', [])
+                if l.get('lap-time-in-ms', 0) > 0
+            ),
+            default=None,
+        )
+
+    result: Dict[str, Any] = {'session_info': session_info, 'is_spectator': is_spectator}
+
+    if player:
+        sh = player.get('session-history', {})
+        laps = sh.get('lap-history-data', [])
+        driven = [l for l in laps if l.get('lap-time-in-ms', 0) > 0]
+        result['valid_lap_count'] = len(driven)
+
+        session_type = session_info.get('session-type', '')
+        if _is_qualifying_session(session_type):
+            best_lap_num = sh.get('best-lap-time-lap-num', -1)
+            result['lap_indicators'] = [
+                'best' if (i + 1) == best_lap_num
+                else ('valid' if l.get('lap-valid-bit-flags') == 15 else 'invalid')
+                for i, l in enumerate(driven)
+            ]
+            if 0 < best_lap_num <= len(laps):
+                best = laps[best_lap_num - 1]
+                if best.get('lap-time-in-ms'):
+                    result['best_lap_time_ms'] = best['lap-time-in-ms']
+                    result['best_lap_time_str'] = best.get('lap-time-str')
+
+            valid = [l for l in laps if l.get('lap-valid-bit-flags') == 15 and l.get('lap-time-in-ms', 0) > 0]
+            for idx, sector_key in enumerate(('sector-1-time-in-ms', 'sector-2-time-in-ms', 'sector-3-time-in-ms'), 1):
+                times = [l[sector_key] for l in valid if l.get(sector_key, 0) > 0]
+                if times:
+                    result[f'best_s{idx}_ms'] = min(times)
+
+        elif _is_race_session(session_type):
+            valid = [l for l in laps if l.get('lap-valid-bit-flags') == 15 and l.get('lap-time-in-ms', 0) > 0]
+            if valid:
+                result['best_race_lap_ms'] = min(l['lap-time-in-ms'] for l in valid)
+            clean = _get_clean_race_laps(player)
+            if clean:
+                result['best_race_pace_ms'] = sum(l['lap-time-in-ms'] for l in clean) / len(clean)
+    else:
+        result['valid_lap_count'] = 0
+
+    return result
 
 async def _parse_one(
     sem: asyncio.Semaphore,
@@ -153,16 +259,16 @@ async def _parse_one(
             mtime = 0.0
 
         cached = cache.get(cache_key)
-        if cached and cached.get('mtime') == mtime:
-            return rel_path, cached['session_info']
+        if cached and cached.get('mtime') == mtime and 'data' in cached:
+            return rel_path, cached['data']
 
         # logger.info("[%d/%d] parsing %s", file_idx, total, rel_path)
         try:
-            session_info = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
+            parsed = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
             logger.debug("[%d/%d] done in %.2fs — %s", file_idx, total, time.
                         perf_counter() - time.perf_counter(), rel_path)
-            cache[cache_key] = {'mtime': mtime, 'session_info': session_info}
-            return rel_path, session_info
+            cache[cache_key] = {'mtime': mtime, 'data': parsed}
+            return rel_path, parsed
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.silent("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
             return rel_path, exc
@@ -199,7 +305,7 @@ def _make_session_entry(
             'aiDifficulty': 0,
         }
 
-    session_info = outcome
+    session_info = outcome['session_info']
     meta = resolve_session_meta(rel_path, session_info)
     network_game = session_info.get('network-game', 0)
     entry: Dict[str, Any] = {
@@ -207,14 +313,26 @@ def _make_session_entry(
         'sessionType': meta['sessionType'],
         'track': meta['track'],
         'date': meta['date'],
-        'validLapCount': session_info.get('total-laps', 0),
-        'isSpectator': session_info.get('is-spectating', False),
+        'validLapCount': outcome.get('valid_lap_count', 0),
+        'isSpectator': outcome.get('is_spectator', False),
         'fileSize': full_path.stat().st_size,
         '_rel_path': str(rel_path),
         'aiDifficulty': 0 if network_game == 1 else session_info.get('ai-difficulty', 0),
     }
     if 'formula' in meta:
         entry['formula'] = meta['formula']
+    if lap_indicators := outcome.get('lap_indicators'):
+        entry['lapIndicators'] = lap_indicators
+    if best_ms := outcome.get('best_lap_time_ms'):
+        entry['bestLapTimeMs'] = best_ms
+        if best_str := outcome.get('best_lap_time_str'):
+            entry['bestLapTime'] = best_str
+    for src, dst in (
+        ('best_s1_ms', 'bestS1Ms'), ('best_s2_ms', 'bestS2Ms'), ('best_s3_ms', 'bestS3Ms'),
+        ('best_race_lap_ms', 'bestRaceLapMs'), ('best_race_pace_ms', 'bestRacePaceMs'),
+    ):
+        if val := outcome.get(src):
+            entry[dst] = val
     return entry
 
 
