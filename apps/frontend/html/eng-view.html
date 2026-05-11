@@ -109,7 +109,8 @@
                                         data-bs-title="Clear reference driver selection">
                                     <i class="bi bi-star-fill" style="color:#ffd700;"></i>
                                 </button>
-                                <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
+                                <button id="unpin-all-btn" class="btn settings-button unpin-all-btn" data-bs-toggle="tooltip" data-bs-title="Unfreeze all columns" style="display:none"><i class="bi bi-lock-fill" style="color:#60a5fa;"></i></button>
+                <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
                                 {% if port_info %}
                                 <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
                                 {% endif %}

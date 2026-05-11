@@ -621,6 +621,48 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-bottom: 0.5rem;
 }
 
+/* ── Column header freeze pin button ──────────────────────────── */
+
+.col-header-with-pin {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+.col-header-with-pin .ag-header-cell-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.col-pin-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    color: var(--f1-text-secondary);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.ag-header-cell:hover .col-pin-btn,
+.ag-header-group-cell:hover .col-pin-btn {
+    opacity: 0.55;
+}
+
+.col-pin-btn:hover {
+    opacity: 1 !important;
+    color: #60a5fa;
+}
+
+.col-pin-btn.active {
+    opacity: 1;
+    color: #60a5fa;
+}
+
 .ag-overlay-no-rows-center {
     display: flex;
     align-items: center;
