@@ -280,6 +280,13 @@ class PngAppMgrBase(QObject):
                 self.is_running = True
                 self.child_pid = self.process.pid
 
+                # Fresh heartbeat lifecycle for every start — must be set before
+                # _monitor_exit is spawned, so that its captured stop_heartbeat ref
+                # matches the one the heartbeat thread will wait on.
+                self._stop_heartbeat = threading.Event()
+                self._heartbeat_gen_num += 1
+                hb_gen = self._heartbeat_gen_num
+
                 # Start monitoring threads
                 threading.Thread(
                     target=self._capture_output,
@@ -293,10 +300,6 @@ class PngAppMgrBase(QObject):
                     name=f"{self.DISPLAY_NAME}-monitor"
                 ).start()
 
-                # Fresh heartbeat lifecycle for every start
-                self._stop_heartbeat = threading.Event()
-                self._heartbeat_gen_num += 1
-                hb_gen = self._heartbeat_gen_num
                 threading.Thread(
                     target=self._send_heartbeat,
                     args=(hb_gen,),
