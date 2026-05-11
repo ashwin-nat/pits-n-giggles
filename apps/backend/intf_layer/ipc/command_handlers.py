@@ -92,7 +92,7 @@ async def handleForwardingConfigChange(
         telemetry_handler: F1TelemetryHandler) -> dict:
     """Handle forwarding-config-change command: update targets without restarting the backend."""
 
-    targets = [(host, port) for host, port in msg.get('targets', [])]
+    targets = [(t['host'], t['port']) for t in msg.get('targets', [])]
     logger.info("Received forwarding config change. Targets: %s", targets)
     try:
         telemetry_handler.update_forwarding_targets(targets)

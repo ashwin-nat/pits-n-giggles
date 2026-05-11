@@ -25,7 +25,7 @@
 import json
 import webbrowser
 from dataclasses import replace
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
@@ -245,11 +245,11 @@ class BackendAppMgr(PngAppMgrBase):
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to change UDP action code: {rsp}")
 
-    def send_forwarding_config_change(self, targets):
+    def send_forwarding_config_change(self, targets: List[Tuple[str, int]]):
         """Send updated forwarding targets to the backend without restarting it."""
         self.debug_log(f"Sending forwarding config change to backend. Targets: {targets}")
         ipc_client = IpcClientSync(self.ipc_port)
-        rsp = ipc_client.request("forwarding-config-change", {"targets": [list(t) for t in targets]})
+        rsp = ipc_client.request("forwarding-config-change", {"targets": [{"host": h, "port": p} for h, p in targets]})
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to update forwarding config: {rsp}")
         else:
