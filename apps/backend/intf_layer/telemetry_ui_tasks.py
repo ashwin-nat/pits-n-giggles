@@ -29,12 +29,12 @@ from typing import Any, Awaitable, Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
+                                                RaceInfoData,
                                                 StreamOverlayData)
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
-from lib.web_server import ClientType
 
 from .ipc import registerIpcTask
 from .request_handlers import handleDriverInfoRequest
@@ -60,6 +60,11 @@ def _initDealer(
         if result.ok:
             return {"ok": True, "data": result.data}
         return {"ok": False, "error": result.detail, "data": None}
+
+    @dealer.route("race-info-request")
+    async def _handle_race_info_request(data: dict, sender: str) -> dict:
+        logger.debug("Received race info request via router from %s", sender)
+        return {"ok": True, "data": RaceInfoData(session_state).toJSON()}
 
     return dealer
 
@@ -135,7 +140,7 @@ def initUiIntfLayer(
             ipc_pub), name="High Frequency Local Update Task"))
 
     # Interrupt/event driven tasks
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(frontEndMessageTask(ipc_pub, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
@@ -194,23 +199,18 @@ async def webClientUpdateTask(
         )
 
 async def frontEndMessageTask(
-    server: TelemetryWebServer,
+    ipc_pub: IpcPublisherAsync,
     shutdown_event: asyncio.Event) -> None:
-    """Task to update clients with telemetry data
+    """Task to forward frontend-update messages to the broker.
 
     Args:
-        server (TelemetryWebServer): The telemetry web server
+        ipc_pub (IpcPublisherAsync): The IPC publisher (broker)
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await server.send_to_clients_of_type(
-                event='frontend-update',
-                data=message.toJSON(),
-                client_type=ClientType.RACE_TABLE)
-
-    server.m_logger.debug("Shutting down front end message task")
+            await ipc_pub.publish("frontend-update", message.toJSON())
 
 async def hudInteractionTask(
     dealer: IpcDealerAsync,
