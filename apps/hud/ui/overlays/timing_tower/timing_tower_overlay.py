@@ -33,7 +33,7 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, OverlayPosition, PngSettings, TimingTowerColOptions
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -61,6 +61,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         show_ers_drs_info: bool,
         show_pens: bool,
         show_tl_warns: bool,
+        tt_col_options: TimingTowerColOptions # TODO: Migrate other knobs to this dataclass as well for cleaner code
     ):
         """Initialize timing tower overlay.
 
@@ -78,6 +79,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             show_ers_drs_info (bool): Show ERS/DRS info
             show_pens (bool): Show penalties
             show_tl_warns (bool): Show Track Limit warnings
+            tt_col_options (TimingTowerColOptions): Timing tower column options
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
@@ -88,6 +90,13 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.show_ers_drs_info = show_ers_drs_info
         self.show_pens = show_pens
         self.show_tl_warns = show_tl_warns
+
+        self.show_best_lap = tt_col_options.show_best_lap
+        self.show_last_lap = tt_col_options.show_last_lap
+        self.show_wing_dmg = tt_col_options.show_wing_dmg
+        self.show_speed_trap = tt_col_options.show_speed_trap
+        self.show_fuel = tt_col_options.show_fuel
+        self.show_driver_status = tt_col_options.show_driver_status
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}

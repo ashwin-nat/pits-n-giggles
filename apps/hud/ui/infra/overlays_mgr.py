@@ -97,6 +97,7 @@ class OverlaysMgr:
             show_ers_drs_info=settings.HUD.timing_tower_col_options.show_ers_drs_info,
             show_pens=settings.HUD.timing_tower_col_options.show_pens,
             show_tl_warns=settings.HUD.timing_tower_col_options.show_tl_warns,
+            tt_col_options=settings.HUD.timing_tower_col_options,
         )
 
         self._register_overlay_if_enabled(
