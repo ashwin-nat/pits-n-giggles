@@ -1,4 +1,4 @@
-# 🚀 Running pits-n-giggles (Manually)
+﻿# 🚀 Running pits-n-giggles (Manually)
 
 This project uses Python 3.12 or 3.13 and is structured as a suite of apps under the `apps/` directory. Each sub-app can be run independently using Python's `-m` module mode.
 
@@ -36,7 +36,7 @@ All commands below must be run **from the project root directory** (i.e., the fo
 ### 🧠 Backend App
 
 ```bash
-poetry run python -m apps.backend --replay-server
+poetry run python -m apps.core --replay-server
 ```
 
 Note:
@@ -46,7 +46,7 @@ Without this flag, the server will run in normal mode. For example, to run
 in default mode, use:
 
 ```bash
-poetry run python -m apps.backend
+poetry run python -m apps.core
 ```
 
 ### 🛠 Dev Tools (e.g., telemetry replayer)

@@ -31,6 +31,7 @@ class PngAppId(Enum):
     BACKEND = "backend"
     HUD = "hud"
     MCP = "mcp"
+    HTTP_SERVER = "http_server"
 
     def __str__(self):
         return self.value

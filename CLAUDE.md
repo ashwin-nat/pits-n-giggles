@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -31,7 +31,7 @@ Each app is a Python module; the launcher starts all others as subprocesses:
 
 ```bash
 poetry run python -m apps.launcher          # Main GUI launcher
-poetry run python -m apps.backend           # Telemetry server
+poetry run python -m apps.core           # Telemetry server
 poetry run python -m apps.hud               # In-game overlay
 poetry run python -m apps.broker            # ZeroMQ message broker
 poetry run python -m apps.save_viewer       # Post-race session viewer
@@ -46,7 +46,7 @@ poetry run python -m apps.dev_tools.telemetry_replayer --file-name example.f1pca
 
 ```
 apps/launcher/     — Qt (PySide6) GUI; spawns and monitors all other processes via IPC
-apps/backend/      — Core server: receives UDP/TCP from F1 game, runs analysis, serves WebSocket+REST
+apps/core/      — Core server: receives UDP/TCP from F1 game, runs analysis, serves WebSocket+REST
 apps/hud/          — Always-on-top Qt overlay windows for in-game display
 apps/broker/       — ZeroMQ pub/sub broker for multi-client telemetry forwarding
 apps/save_viewer/  — Quart web server for analyzing saved session JSON files
@@ -54,7 +54,7 @@ apps/frontend/     — Vanilla JS/HTML/CSS browser UI (served by backend)
 apps/dev_tools/    — Telemetry replayer and packet capture utilities
 ```
 
-### Backend Layers (`apps/backend/`)
+### Backend Layers (`apps/core/`)
 
 The backend is structured in three layers:
 

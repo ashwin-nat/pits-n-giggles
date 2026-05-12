@@ -1,4 +1,4 @@
-# Testing
+﻿# Testing
 
 This document outlines the different types of tests used in this project and how to run them.
 
@@ -23,7 +23,7 @@ The coverage scripts generate an HTML report in the `htmlcov/` directory. Open
 
 ## 2. Integration Tests
 
-Integration tests cover the main application code, specifically `apps/backend` and `lib/`.
+Integration tests cover the main application code, specifically `apps/core` and `lib/`.
 
 To run integration tests:
 ```bash

@@ -1,4 +1,4 @@
-# MIT License
+﻿# MIT License
 #
 # Copyright (c) [2025] [Ashwin Natarajan]
 #
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 class BackendAppMgr(PngAppMgrBase):
     """Implementation of PngApp for backend services"""
 
-    MODULE_PATH = "apps.backend"
+    MODULE_PATH = "apps.core"
     DISPLAY_NAME = "Core"
     SHORT_NAME = "CORE"
 

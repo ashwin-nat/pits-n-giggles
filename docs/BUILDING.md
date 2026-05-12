@@ -1,4 +1,4 @@
-# 🛠 Building Pits n' Giggles with PyInstaller
+﻿# 🛠 Building Pits n' Giggles with PyInstaller
 
 This document outlines how to build the `Pits n' Giggles` app into a standalone executable using PyInstaller.
 
@@ -85,7 +85,7 @@ To add a new subsystem to the suite:
    ```python
    hiddenimports = (
        collect_submodules("apps.launcher") +
-       collect_submodules("apps.backend") +
+       collect_submodules("apps.core") +
        collect_submodules("apps.save_viewer") +
        collect_submodules("apps.your_subsystem")  # 👈 Add this line
    )
@@ -152,7 +152,7 @@ dist/pits_n_giggles_2.8.0.exe
 To run subsystems directly (for debugging):
 
 ```bash
-dist/pits_n_giggles_2.8.0.exe --module apps.backend
+dist/pits_n_giggles_2.8.0.exe --module apps.core
 dist/pits_n_giggles_2.8.0.exe --module apps.save_viewer
 dist/pits_n_giggles_2.8.0.exe --module apps.your_subsystem
 ```

@@ -1,9 +1,9 @@
----
+﻿---
 description: Scaffold a new HUD overlay widget in apps/hud/ui/overlays/ with full wiring
 allowed-tools: Read, Glob, Grep, Edit, Write
 ---
 
-Scaffold a new HUD overlay and wire it end-to-end: config knobs, UDP action codes, backend dispatch, HUD socketio handlers, and the overlay class itself.
+Scaffold a new HUD overlay and wire it end-to-end: config knobs, UDP action codes, backend dispatch, HUD dealer route handlers, and the overlay class itself.
 
 ## Input
 
@@ -68,7 +68,7 @@ Read `on_settings_change`. In the `udp_action_codes_diff` block under `"HUD"`, a
 ```
 Plus any additional interaction action codes defined in step 1c.
 
-### 5. Register UDP action codes in the backend — `apps/backend/telemetry_layer/telemetry_handler.py`
+### 5. Register UDP action codes in the backend — `apps/core/telemetry_layer/telemetry_handler.py`
 
 Read the file. Three edits:
 
@@ -115,21 +115,19 @@ class Hud<Action>Notification:
 HUD_<ACTION>_NOTIFICATION = "hud-<action>-notification"
 ```
 
-### 7. Backend emits new socketio events — `apps/backend/intf_layer/telemetry_web_server.py`
+### 7. Verify ITC routing (no edit needed)
 
-Read the file. In the `client_event_mappings` for `ClientType.HUD`, add the new socketio event name(s) from step 6b so the backend forwards them to HUD clients:
+`hudNotifierTask` in `apps/core/intf_layer/telemetry_ui_tasks.py` automatically routes every ITC message from `"hud-notifier"` to the HUD via `dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())`. No changes needed here — just confirm the `ITCMessage.MessageType.HUD_<ACTION>_NOTIFICATION` enum value string equals `"hud-<action>-notification"` so it matches the route registered in step 8.
+
+(Skip steps 7 and 8 entirely if there are no extra interactions — the toggle reuses the existing `hud-toggle-notification` route via `_processToggleHud`.)
+
+### 8. HUD dealer route — `apps/hud/listener/task.py`
+
+Read `_run_dealer_thread`. For each extra interaction, register a new `@dealer_client.route(...)` handler following the pattern of the existing cycle/prev-page/mfd-interact handlers:
 ```python
-'hud-<action>-notification',
-```
-(Skip this step if there are no extra interactions — the toggle reuses the existing `hud-toggle-notification` event via `_processToggleHud`.)
-
-### 8. HUD socketio handlers — `apps/hud/listener/client.py`
-
-Read the file. For each extra interaction (not toggle — that's already handled generically by `toggle_overlays_visibility`), register a new `@self.on(...)` handler following the pattern of `handle_hud_cycle_mfd_notification`:
-```python
-@self.on('hud-<action>-notification')
-def handle_hud_<action>_notification(data):
-    self.m_overlays_mgr.<action>(<overlay_name>)
+@dealer_client.route('hud-<action>-notification')
+def _(_data, _sender):
+    overlays_mgr.<action>()
 ```
 
 ### 9. Overlay class — `apps/hud/ui/overlays/<overlay_name>/`

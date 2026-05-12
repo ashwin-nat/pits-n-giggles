@@ -1,4 +1,4 @@
-# MIT License
+﻿# MIT License
 #
 # Copyright (c) [2024] [Ashwin Natarajan]
 #
@@ -26,7 +26,7 @@ import logging
 import random
 from unittest.mock import MagicMock
 
-from apps.backend.state_mgmt_layer.data_per_driver import (
+from apps.core.state_mgmt_layer.data_per_driver import (
     TyreSetHistoryEntry, TyreSetHistoryManager, TyreSetInfo)
 from lib.f1_types import ActualTyreCompound, VisualTyreCompound
 from lib.tyre_wear_extrapolator import TyreWearPerLap

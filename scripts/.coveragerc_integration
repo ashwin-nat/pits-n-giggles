@@ -1,4 +1,4 @@
-[run]
+﻿[run]
 branch = True
 parallel = True
 concurrency =
@@ -7,7 +7,7 @@ concurrency =
 omit =
     */__init__.py
     */tests/*
-    apps/backend/state_mgmt_layer/intf/writers/manual_save.py
+    apps/core/state_mgmt_layer/intf/writers/manual_save.py
     apps/launcher/gui/changelog_window.py
     lib/button_debouncer.py
     lib/config/io/*
@@ -19,7 +19,7 @@ omit =
 
 source =
     lib
-    apps/backend
+    apps/core
     apps/hud
     apps/broker
 

@@ -1,4 +1,4 @@
-# MIT License
+﻿# MIT License
 #
 # Copyright (c) [2025] [Ashwin Natarajan]
 #
@@ -91,7 +91,7 @@ def collect_directory(src_dir, dest_dir):
 
 hiddenimports = (
     collect_submodules("apps.launcher") +
-    collect_submodules("apps.backend") +
+    collect_submodules("apps.core") +
     collect_submodules("apps.save_viewer") +
     collect_submodules("apps.hud") +
     collect_submodules("apps.broker") +

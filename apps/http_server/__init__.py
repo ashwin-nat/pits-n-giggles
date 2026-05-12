@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,23 +19,3 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
-
-from enum import Enum
-
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-class ClientType(Enum):
-    PLAYER_STREAM_OVERLAY = 'player-stream-overlay'
-    RACE_TABLE = 'race-table'
-
-    @classmethod
-    def is_valid(cls, value: str) -> bool:
-        return any(ct.value == value for ct in cls)
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return self.value
