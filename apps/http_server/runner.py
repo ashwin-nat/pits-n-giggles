@@ -34,11 +34,12 @@ from lib.child_proc_mgmt import notify_parent_init_complete, report_pid_from_chi
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcDealerAsync, IpcSubscriberAsync, PngAppId
+
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
 
+from .dealer import initDealer
 from .ipc import registerIpcTask
 from .telemetry_web_server import TelemetryWebServer
 from .ui_tasks import initSubscriberTasks
@@ -59,22 +60,17 @@ class HttpServerRunner:
         self.m_version: str = get_version()
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
 
-        self.m_dealer = IpcDealerAsync(
-            host="127.0.0.1",
-            port=self.m_config.Network.broker_router_port,
-            identity=str(PngAppId.HTTP_SERVER),
-            logger=logger,
-        )
-        self.m_tasks.append(asyncio.create_task(self.m_dealer.start(), name="Backend Dealer Recv"))
-
         self.m_web_server = TelemetryWebServer(
             settings=self.m_config,
             ver_str=self.m_version,
             logger=self.m_logger,
-            dealer=self.m_dealer,
             debug_mode=debug_mode,
         )
         self.m_tasks.append(asyncio.create_task(self.m_web_server.run(), name="Web Server Task"))
+
+        self.m_dealer = initDealer(self.m_config, logger, self.m_web_server)
+        self.m_web_server.bind_dealer(self.m_dealer)
+        self.m_tasks.append(asyncio.create_task(self.m_dealer.start(), name="Backend Dealer Recv"))
 
         self.m_subscriber = initSubscriberTasks(
             settings=self.m_config,

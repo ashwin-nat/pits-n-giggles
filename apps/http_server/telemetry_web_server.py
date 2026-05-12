@@ -43,7 +43,6 @@ class TelemetryWebServer(BaseWebServer):
                  settings: PngSettings,
                  ver_str: str,
                  logger: logging.Logger,
-                 dealer: IpcDealerAsync,
                  debug_mode: bool = False):
         super().__init__(
             port=settings.Network.server_port,
@@ -58,13 +57,17 @@ class TelemetryWebServer(BaseWebServer):
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)
 
-        self.m_dealer: IpcDealerAsync = dealer
+        self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_disable_browser_autoload: bool = settings.Display.disable_browser_autoload
         self.m_last_race_table: Optional[Dict] = None
         self.m_last_stream_overlay: Optional[Dict] = None
 
         self.define_routes()
         self.register_post_start_callback(self._post_start)
+
+    def bind_dealer(self, dealer: IpcDealerAsync) -> None:
+        """Inject the ZeroMQ dealer after construction (breaks the circular dep with dealer.py)."""
+        self.m_dealer = dealer
 
     def define_routes(self) -> None:
         self._defineTemplateFileRoutes()

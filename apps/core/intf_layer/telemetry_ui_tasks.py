@@ -114,7 +114,7 @@ def initUiIntfLayer(
             session_state,
             ipc_pub), name="High Frequency Local Update Task"))
 
-    tasks.append(asyncio.create_task(frontEndMessageTask(ipc_pub, shutdown_event),
+    tasks.append(asyncio.create_task(frontEndMessageTask(dealer, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
@@ -149,18 +149,18 @@ async def highFreqLocalUpdateTask(
     await ipc_pub.publish("stream-overlay-update", data)
 
 async def frontEndMessageTask(
-    ipc_pub: IpcPublisherAsync,
+    dealer: IpcDealerAsync,
     shutdown_event: asyncio.Event) -> None:
-    """Task to forward frontend-update messages to the broker.
+    """Task to forward frontend-update messages to the HTTP server via router-dealer.
 
     Args:
-        ipc_pub (IpcPublisherAsync): The IPC publisher (broker)
+        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await ipc_pub.publish("frontend-update", message.toJSON())
+            await dealer.fire(str(PngAppId.HTTP_SERVER), "frontend-update", message.toJSON())
 
 async def hudInteractionTask(
     dealer: IpcDealerAsync,

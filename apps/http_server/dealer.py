@@ -22,49 +22,45 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
-from typing import List
 
 from lib.config import PngSettings
-from lib.ipc import IpcSubscriberAsync
+from lib.ipc import IpcDealerAsync, PngAppId
 
 from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initSubscriberTasks(
-    settings: PngSettings,
-    logger: logging.Logger,
-    server: TelemetryWebServer,
-    tasks: List[asyncio.Task],
-) -> IpcSubscriberAsync:
-    """Create and wire the broker subscriber, register topic handlers, append task.
+def initDealer(
+        settings: PngSettings,
+        logger: logging.Logger,
+        server: TelemetryWebServer) -> IpcDealerAsync:
+    """Create and configure the ZeroMQ DEALER for the HTTP server.
 
     Args:
-        settings (PngSettings): App settings (provides broker XPUB port).
+        settings (PngSettings): App settings (provides broker router port).
         logger (logging.Logger): Logger.
-        server (TelemetryWebServer): Web server to receive and fan out payloads.
-        tasks (List[asyncio.Task]): Task list to append the subscriber run task to.
+        server (TelemetryWebServer): Web server instance for inbound route handlers.
 
     Returns:
-        IpcSubscriberAsync: The configured subscriber instance.
+        IpcDealerAsync: Configured dealer (not yet started).
     """
 
-    subscriber = IpcSubscriberAsync(
+    dealer = IpcDealerAsync(
         host="127.0.0.1",
-        port=settings.Network.broker_xpub_port,
+        port=settings.Network.broker_router_port,
+        identity=str(PngAppId.HTTP_SERVER),
         logger=logger,
     )
 
-    @subscriber.route("race-table-update")
-    async def _on_race_table(data: dict) -> None:
-        await server.update_race_table(data)
+    @dealer.route("frontend-update")
+    async def _on_frontend_update(data: dict, _sender: str) -> None:
+        await server.push_frontend_update(data)
 
-    @subscriber.route("stream-overlay-update")
-    async def _on_stream_overlay(data: dict) -> None:
-        await server.update_stream_overlay(data)
+    return dealer
 
-    tasks.append(asyncio.create_task(subscriber.run(), name="Broker Subscriber"))
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-    return subscriber
+__all__ = [
+    "initDealer",
+]
