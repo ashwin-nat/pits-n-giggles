@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import os
 from time import perf_counter_ns
 from typing import Any, Callable, Dict, Optional
@@ -34,6 +33,7 @@ from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ class WindowManager(QObject):
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
     mgmt_high_freq_signal = Signal(object) # HighFreqBase
 
-    def __init__(self, logger: logging.Logger, post_init_cb: Optional[Callable[[], None]] = None):
+    def __init__(self, logger: PngLogger, post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
 
         Args:
@@ -54,7 +54,7 @@ class WindowManager(QObject):
         self.app = QApplication()
         super().__init__()
         self.logger = logger
-        self.logger.info("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
+        self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
 
         qInstallMessageHandler(self._qt_message_handler)

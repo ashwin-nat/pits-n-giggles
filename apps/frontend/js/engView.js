@@ -38,13 +38,18 @@ function getShortERSMode(mode) {
     return 'N/A';
 }
 
-// Class to manage the race table
 class CustomHeader {
-    init(agGridParams) {
-        this.agGridParams = agGridParams;
+    init(params) {
+        this.params = params;
+        this.raceTable = params.raceTable;
+        this.colId = params.column.getColId();
+        this.isTopLevel = this.raceTable?.isTopLevelLeafCol(this.colId) ?? false;
+
         this.eGui = document.createElement('div');
-        const colDef = agGridParams.column.getColDef();
-        const tooltipName = colDef.context.displayName;
+        this.eGui.className = 'col-header-with-pin';
+
+        const colDef = params.column.getColDef();
+        const tooltipName = colDef.context?.displayName ?? colDef.headerName ?? '';
         const headerName = colDef.headerName;
 
         const headerLabelDiv = document.createElement('div');
@@ -59,8 +64,41 @@ class CustomHeader {
         headerLabelDiv.appendChild(headerTextSpan);
         this.eGui.appendChild(headerLabelDiv);
 
-        // Initialize Bootstrap tooltip for this specific header
+        if (this.isTopLevel) {
+            this.pinBtn = document.createElement('button');
+            this.pinBtn.className = 'col-pin-btn';
+            this.pinBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.raceTable?.handlePinClick(this.colId);
+            });
+            this.eGui.appendChild(this.pinBtn);
+            this._updatePinButton();
+        }
+
         this.tooltipInstance = new bootstrap.Tooltip(headerLabelDiv);
+    }
+
+    _updatePinButton() {
+        if (!this.raceTable || !this.pinBtn) return;
+        const state = this.raceTable.getFrozenState();
+        if (!state.isFrozen) {
+            this.pinBtn.style.display = '';
+            this.pinBtn.innerHTML = '<i class="bi bi-lock"></i>';
+            this.pinBtn.title = 'Freeze columns up to here';
+            this.pinBtn.classList.remove('active');
+        } else if (state.boundaryId === this.colId) {
+            this.pinBtn.style.display = '';
+            this.pinBtn.innerHTML = '<i class="bi bi-lock-fill"></i>';
+            this.pinBtn.title = 'Unfreeze columns';
+            this.pinBtn.classList.add('active');
+        } else {
+            this.pinBtn.style.display = 'none';
+        }
+    }
+
+    refresh(params) {
+        this._updatePinButton();
+        return true;
     }
 
     getGui() {
@@ -68,11 +106,62 @@ class CustomHeader {
     }
 
     destroy() {
-        // Dispose the tooltip when the header component is destroyed
         if (this.tooltipInstance) {
             this.tooltipInstance.dispose();
         }
     }
+}
+
+class CustomGroupHeader {
+    init(params) {
+        this.params = params;
+        this.raceTable = params.raceTable;
+        const colGroupDef = params.columnGroup.getColGroupDef();
+        this.groupId = colGroupDef?.colId ?? colGroupDef?.groupId ?? params.columnGroup.getGroupId();
+
+        this.eGui = document.createElement('div');
+        this.eGui.className = 'ag-header-group-cell-label col-header-with-pin';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'ag-header-group-text';
+        textSpan.textContent = params.displayName;
+        this.eGui.appendChild(textSpan);
+
+        this.pinBtn = document.createElement('button');
+        this.pinBtn.className = 'col-pin-btn';
+        this.pinBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.raceTable?.handlePinClick(this.groupId);
+        });
+        this.eGui.appendChild(this.pinBtn);
+        this._updatePinButton();
+    }
+
+    _updatePinButton() {
+        if (!this.raceTable || !this.pinBtn) return;
+        const state = this.raceTable.getFrozenState();
+        if (!state.isFrozen) {
+            this.pinBtn.style.display = '';
+            this.pinBtn.innerHTML = '<i class="bi bi-lock"></i>';
+            this.pinBtn.title = 'Freeze columns up to here';
+            this.pinBtn.classList.remove('active');
+        } else if (state.boundaryId === this.groupId) {
+            this.pinBtn.style.display = '';
+            this.pinBtn.innerHTML = '<i class="bi bi-lock-fill"></i>';
+            this.pinBtn.title = 'Unfreeze columns';
+            this.pinBtn.classList.add('active');
+        } else {
+            this.pinBtn.style.display = 'none';
+        }
+    }
+
+    refresh(params) {
+        this._updatePinButton();
+        return true;
+    }
+
+    getGui() { return this.eGui; }
+    destroy() {}
 }
 
 class CustomNoRowsOverlay {
@@ -106,6 +195,9 @@ class EngViewRaceTable {
         this.COLUMN_STATE_LS_KEY = 'eng-view-table-column-state-ag';
         this.COLUMN_PROFILES_LS_KEY = 'eng-view-table-column-profiles';
         this.COLUMN_ACTIVE_PROFILE_LS_KEY = 'eng-view-table-active-profile';
+        this.FREEZE_STATE_LS_KEY = 'eng-view-freeze-boundary';
+        this._freezeBoundaryId = null;
+        this._topLevelLeafColIds = null;
         this.FULL_PRESET_ID = '__full__';
         this.MINIMAL_PRESET_ID = '__minimal__';
         this.DEFAULT_PROFILE_ID = this.FULL_PRESET_ID; // kept for any residual references
@@ -129,9 +221,12 @@ class EngViewRaceTable {
         this.newProfileBtn = document.getElementById('new-profile-btn');
         this.deleteProfileBtn = document.getElementById('delete-profile-btn');
 
+        this.unpinAllButton = document.getElementById('unpin-all-btn');
+
         this.initGrid();
         this.setupSettingsEventListeners();
         document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
+        this.unpinAllButton?.addEventListener('click', () => this.unpinAll());
     }
 
     saveColumnState() {
@@ -245,6 +340,15 @@ class EngViewRaceTable {
         }
 
         this.populateColumnVisibilityToggles();
+
+        // Clear freeze state when switching profiles (profiles don't own freeze state)
+        if (this._topLevelLeafColIds) {
+            this._freezeBoundaryId = null;
+            this.saveFreezeState();
+            this.updateColumnMovability(false);
+            this.updateTopLevelUnpinButton();
+            if (this.gridApi) this.gridApi.refreshHeader();
+        }
     }
 
 
@@ -336,7 +440,12 @@ class EngViewRaceTable {
                 sortable: true,
                 filter: false,
                 headerClass: "eng-view-table-main-header",
-                headerComponent: CustomHeader, // Use our custom header component
+                headerComponent: CustomHeader,
+                headerComponentParams: { raceTable: this },
+            },
+            defaultColGroupDef: {
+                headerGroupComponent: CustomGroupHeader,
+                headerGroupComponentParams: { raceTable: this },
             },
             noRowsOverlayComponent: CustomNoRowsOverlay,
             noRowsOverlayComponentParams: {
@@ -345,6 +454,8 @@ class EngViewRaceTable {
             onGridReady: (params) => {
                 this.gridApi = params.api;
                 console.debug("AG Grid ready.");
+
+                this.buildTopLevelLeafColIds();
 
                 // Apply saved column state or builtin preset
                 const activeProfile = this.getActiveProfileId();
@@ -360,11 +471,17 @@ class EngViewRaceTable {
                     }
                 }
 
+                // Restore freeze state from localStorage
+                this._freezeBoundaryId = this.loadFreezeState();
+                this.updateColumnMovability(this._freezeBoundaryId !== null);
+                this.updateTopLevelUnpinButton();
+                this.gridApi.refreshHeader();
+
                 // Add event listeners for column state changes
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
-                this.gridApi.addEventListener('columnPinned', this.debounceSaveColumnState.bind(this)); // Add this for pinned columns
+                this.gridApi.addEventListener('columnPinned', this.debounceSaveColumnState.bind(this));
 
                 const columns = this.fetchGridColumns();
             },
@@ -413,6 +530,135 @@ class EngViewRaceTable {
         this.columnStateSaveTimeout = setTimeout(() => {
             this.saveColumnState();
         }, 500);
+    }
+
+    // --- Column freeze (pin) management ---
+
+    buildTopLevelLeafColIds() {
+        this._topLevelLeafColIds = new Set();
+        for (const colDef of this.columnDefs) {
+            if (!colDef.children && colDef.colId) {
+                this._topLevelLeafColIds.add(colDef.colId);
+            }
+        }
+    }
+
+    isTopLevelLeafCol(colId) {
+        return this._topLevelLeafColIds?.has(colId) ?? false;
+    }
+
+    _getLeafColIds(colDef) {
+        if (!colDef.children) return colDef.colId ? [colDef.colId] : [];
+        return colDef.children.flatMap(child => this._getLeafColIds(child));
+    }
+
+    // Returns top-level colIds (leaf or group) in current display order
+    getTopLevelColIdsInOrder() {
+        const leafToTopLevel = new Map();
+        for (const colDef of this.columnDefs) {
+            if (!colDef.colId) continue;
+            for (const leafId of this._getLeafColIds(colDef)) {
+                leafToTopLevel.set(leafId, colDef.colId);
+            }
+        }
+        const columnState = this.gridApi.getColumnState();
+        const seen = new Set();
+        const order = [];
+        for (const colState of columnState) {
+            const topId = leafToTopLevel.get(colState.colId);
+            if (topId && !seen.has(topId)) {
+                seen.add(topId);
+                order.push(topId);
+            }
+        }
+        return order;
+    }
+
+    getFrozenState() {
+        return { isFrozen: this._freezeBoundaryId !== null, boundaryId: this._freezeBoundaryId };
+    }
+
+    handlePinClick(topLevelColId) {
+        const state = this.getFrozenState();
+        if (state.isFrozen && state.boundaryId === topLevelColId) {
+            this.unpinAll();
+        } else if (!state.isFrozen) {
+            this.pinUpToColumn(topLevelColId);
+        }
+    }
+
+    pinUpToColumn(topLevelColId) {
+        if (!this.gridApi) return;
+        const topLevelOrder = this.getTopLevelColIdsInOrder();
+        const boundaryIndex = topLevelOrder.indexOf(topLevelColId);
+        if (boundaryIndex < 0) return;
+
+        this._freezeBoundaryId = topLevelColId;
+
+        const stateChanges = [];
+        for (let i = 0; i < topLevelOrder.length; i++) {
+            const colDef = this.columnDefs.find(d => d.colId === topLevelOrder[i]);
+            const leafIds = colDef ? this._getLeafColIds(colDef) : [topLevelOrder[i]];
+            const pinned = i <= boundaryIndex ? 'left' : null;
+            for (const leafId of leafIds) {
+                stateChanges.push({ colId: leafId, pinned });
+            }
+        }
+        this.gridApi.applyColumnState({ state: stateChanges });
+        this.updateColumnMovability(true);
+        this.saveFreezeState();
+        this.saveColumnState();
+        this.gridApi.refreshHeader();
+        this.updateTopLevelUnpinButton();
+    }
+
+    unpinAll() {
+        if (!this.gridApi) return;
+        this._freezeBoundaryId = null;
+        const stateChanges = this.gridApi.getColumnState().map(s => ({ colId: s.colId, pinned: null }));
+        this.gridApi.applyColumnState({ state: stateChanges });
+        this.updateColumnMovability(false);
+        this.saveFreezeState();
+        this.saveColumnState();
+        this.gridApi.refreshHeader();
+        this.updateTopLevelUnpinButton();
+    }
+
+    updateColumnMovability(isFrozen) {
+        if (!this.gridApi || this._updatingMovability) return;
+        this._updatingMovability = true;
+        try {
+            const currentState = this.gridApi.getColumnState();
+            const mutateDefs = (defs) => {
+                for (const def of defs) {
+                    if (def.children) mutateDefs(def.children);
+                    else if (def.colId) def.suppressMovable = isFrozen;
+                }
+            };
+            mutateDefs(this.columnDefs);
+            this.gridApi.setGridOption('columnDefs', this.columnDefs);
+            this.gridApi.applyColumnState({ state: currentState, applyOrder: true });
+        } finally {
+            this._updatingMovability = false;
+        }
+    }
+
+    saveFreezeState() {
+        if (this._freezeBoundaryId) {
+            localStorage.setItem(this.FREEZE_STATE_LS_KEY, this._freezeBoundaryId);
+        } else {
+            localStorage.removeItem(this.FREEZE_STATE_LS_KEY);
+        }
+    }
+
+    loadFreezeState() {
+        return localStorage.getItem(this.FREEZE_STATE_LS_KEY) || null;
+    }
+
+    updateTopLevelUnpinButton() {
+        if (this.unpinAllButton) {
+            this.unpinAllButton.style.display = this._freezeBoundaryId ? '' : 'none';
+        }
     }
 
     createSectorCellRenderer(sectorKey, timeKey, playerTimeKey, isLastLap) {
@@ -1819,6 +2065,14 @@ class EngViewRaceTable {
 
     resetColumnLayout() {
         if (this.gridApi) {
+            // Clear freeze first so resetColumnState works cleanly
+            if (this._freezeBoundaryId) {
+                this._freezeBoundaryId = null;
+                this.saveFreezeState();
+                this.updateColumnMovability(false);
+                this.updateTopLevelUnpinButton();
+            }
+
             // Capture current visibility before resetting
             const visibilityState = this.gridApi.getColumnState().reduce((acc, col) => {
                 acc[col.colId] = col.hide;
@@ -1847,6 +2101,8 @@ class EngViewRaceTable {
                     this.saveProfiles(profiles);
                 }
             }
+
+            this.gridApi.refreshHeader();
         }
     }
 
