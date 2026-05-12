@@ -34,11 +34,11 @@ from typing import List, Optional, Set, Tuple
 import psutil
 from wsproto.connection import LocalProtocolError
 
-from apps.core.intf_layer import TelemetryWebServer, initUiIntfLayer
+from apps.core.intf_layer import initUiIntfLayer
 from apps.core.state_mgmt_layer import (SessionState,
                                            initStateManagementLayer)
 from apps.core.telemetry_layer import initTelemetryLayer
-from lib.child_proc_mgmt import report_pid_from_child
+from lib.child_proc_mgmt import notify_parent_init_complete, report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
@@ -52,12 +52,11 @@ from meta.meta import APP_NAME
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class PngRunner:
-    """Pits n' Giggles Backend Runner"""
+    """Pits n' Giggles Core Runner"""
     def __init__(self,
                  logger: logging.Logger,
                  config_file: str,
                  replay_server: bool,
-                 debug_mode: bool,
                  run_ipc_server: bool = False) -> None:
         """Init the runner. Register necessary tasks
 
@@ -65,7 +64,6 @@ class PngRunner:
             logger (logging.Logger): Logger object
             config_file (str): Path to the config file
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
-            debug_mode (bool): If true, runs in debug mode
             run_ipc_server (bool): If true, runs the IPC server
         """
         self.m_logger: logging.Logger = logger
@@ -92,10 +90,7 @@ class PngRunner:
             session_state=self.m_session_state,
             tasks=self.m_tasks
         )
-        self.m_web_server, self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer(
-            run_ipc_server=run_ipc_server,
-            debug_mode=debug_mode
-        )
+        self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer(run_ipc_server=run_ipc_server)
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
         # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
@@ -104,6 +99,7 @@ class PngRunner:
 
     async def run(self) -> None:
         """Main entry point to run the application."""
+        notify_parent_init_complete()
         try:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
@@ -112,34 +108,20 @@ class PngRunner:
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self,
-        run_ipc_server: Optional[bool] = False,
-        debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]:
-        """Entry point to start the HTTP server.
+        run_ipc_server: Optional[bool] = False) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
+        """Initialize the IPC publisher, broker dealer, and periodic update tasks.
 
         Args:
             run_ipc_server (bool, optional): Whether to run the IPC server. Defaults to False.
-            debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
-            Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]: Web server, IPC publisher, and IPC dealer instances
+            Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and dealer instances
         """
-
-        log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
-        ip_addresses = self._getLocalIpAddresses()
-        for ip_addr in ip_addresses:
-            # pylint: disable=no-member
-            log_str += f"    {self.m_config.HTTPS.proto}://{ip_addr}:{self.m_config.Network.server_port}\n"
-        log_str += "NOTE: The tables will be empty until the red lights appear on the screen before the race start\n"
-        log_str += "That is when the game starts sending telemetry data"
-        self.m_logger.info(log_str)
-
         return initUiIntfLayer(
             settings=self.m_config,
             logger=self.m_logger,
             session_state=self.m_session_state,
-            debug_mode=debug_mode,
             tasks=self.m_tasks,
-            ver_str=self.m_version,
             run_ipc_server=run_ipc_server,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
@@ -183,8 +165,6 @@ class PngRunner:
         self.m_shutdown_event.set()
         await AsyncInterTaskCommunicator().unblock_receivers()
 
-        # Explicitly stop the tasks
-        await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
         await self.m_ipc_pub.close()
         await self.m_ipc_dealer.close()
@@ -244,7 +224,6 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
             logger=logger,
             config_file=args.config_file,
             replay_server=args.replay_server,
-            debug_mode=args.debug,
             run_ipc_server=args.run_ipc_server,
         )
     except PngError as e:

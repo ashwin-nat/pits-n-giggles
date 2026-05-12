@@ -32,7 +32,6 @@ from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 
 from lib.ipc import IpcPublisherAsync
-from ..telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -63,16 +62,14 @@ async def handleGetStats(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
         ipc_dealer: AsyncInterTaskCommunicator,
-        web_server: TelemetryWebServer,
         ) -> dict:
     """Handle get-stats command."""
     return {
         "status": "success",
         "stats": {
-            "ingress" : telemetry_handler.getStats(),
-            "egress" : {
-                "ipc_pub" : ipc_pub.get_stats(),
-                "web_server" : web_server.get_stats(),
+            "ingress": telemetry_handler.getStats(),
+            "egress": {
+                "ipc_pub": ipc_pub.get_stats(),
                 "dealer": ipc_dealer.get_stats(),
             }
         },
