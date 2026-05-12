@@ -30,7 +30,7 @@ from typing import List
 
 from wsproto.connection import LocalProtocolError
 
-from lib.child_proc_mgmt import report_pid_from_child
+from lib.child_proc_mgmt import notify_parent_init_complete, report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
@@ -97,6 +97,7 @@ class HttpServerRunner:
 
     async def run(self) -> None:
         """Main entry point to run the application."""
+        notify_parent_init_complete()
         try:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:

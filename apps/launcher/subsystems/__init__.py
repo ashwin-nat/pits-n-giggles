@@ -25,6 +25,7 @@
 from .backend_mgr import BackendAppMgr
 from .base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .broker_mgr import BrokerAppMgr
+from .http_server_mgr import HttpServerAppMgr
 from .hud_mgr import HudAppMgr
 from .mcp_mgr import McpAppMgr
 from .save_viewer_mgr import SaveViewerAppMgr
@@ -34,6 +35,7 @@ from .save_viewer_mgr import SaveViewerAppMgr
 __all__ = [
     "BackendAppMgr",
     "BrokerAppMgr",
+    "HttpServerAppMgr",
     "HudAppMgr",
     "PngAppMgrBase",
     "PngAppMgrConfig",

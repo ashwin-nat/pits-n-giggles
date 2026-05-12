@@ -95,7 +95,8 @@ hiddenimports = (
     collect_submodules("apps.save_viewer") +
     collect_submodules("apps.hud") +
     collect_submodules("apps.broker") +
-    collect_submodules("apps.mcp_server")
+    collect_submodules("apps.mcp_server") +
+    collect_submodules("apps.http_server")
 )
 
 # Automatically collect all assets and frontend files
