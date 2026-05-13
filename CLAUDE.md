@@ -70,14 +70,16 @@ Reusable modules consumed by multiple apps:
 - **`telemetry_manager/`** — Async UDP/TCP receiver manager and packet parser factory
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
 - **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
-- **`ipc/`** — Custom IPC: parent↔child process messaging, pub/sub patterns (used by launcher↔subprocesses)
-- **`race_analyzer/`** — Lap time analysis
+- **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngAppId` for app identity
+- **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers
 - **`tyre_wear_extrapolator/`** — Linear regression tyre wear prediction
-- **`overtake_analyzer/`** — Overtake event detection and classification
-- **`collisions_analyzer/`** — Collision detection and recording
 - **`delta/`** — Lap delta calculations
 - **`openf1/`** — Integration with the external OpenF1 API
-- **`wdt/`** — Watchdog timer for async task health monitoring
+- **`wdt/`** — Watchdog timer for async task health monitoring (sync and async variants)
+- **`web_server/`** — Shared async web server base (`BaseWebServer`) and uvicorn socket helper used by backend and save_viewer
+- **`assets_loader/`** — Loads fonts and icons (team logos, tyre compounds) for Qt HUD
+- **`event_counter/`** — Rate/count statistics tracking for telemetry performance metrics
+- **`track_segment_info/`** — Track segment metadata and per-circuit sector boundary database
 
 ### Data Flow
 
@@ -109,4 +111,10 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 
 ### IPC Pattern
 
-The launcher communicates with child processes through `lib/ipc/`. Child processes receive IPC parent handles and publish state/status back. The broker (`apps/broker/`) uses ZeroMQ for external multi-client forwarding independent of the launcher IPC.
+`lib/ipc/` provides three ZeroMQ-backed communication patterns:
+
+- **Pub/Sub** — `IpcPublisherAsync` broadcasts; `IpcSubscriberAsync`/`IpcSubscriberSync` consume. The launcher uses `IpcPubSubBroker` to fan out state updates to all child processes.
+- **Req/Rep** — `IpcClientSync` sends requests; `IpcServerSync`/`IpcServerAsync` handle them. Used for synchronous control commands (e.g. launcher → child process).
+- **Router/Dealer** — `IpcRouter` (server-side) paired with `IpcDealerClient`/`IpcDealerAsync` (client-side) for async many-to-one messaging.
+
+`PngAppId` enumerates all app identities; `get_free_tcp_port` allocates ports at runtime. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
