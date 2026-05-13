@@ -361,15 +361,26 @@ Window {
                                 spacing: 0
 
                                 // Position
-                                Text {
+                                Item {
                                     width: cols.pos
                                     height: parent.height
-                                    text: modelData.position < 10 ? modelData.position + " " : modelData.position
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: "#ddd"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: 1
+                                        color: modelData.isSb ? "#4a1d7a" : "transparent"
+                                        radius: 2
+                                    }
+
+                                    Text {
+                                        anchors.fill: parent
+                                        text: modelData.position < 10 ? modelData.position + " " : modelData.position
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#ddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
 
                                 // Team icon
@@ -530,7 +541,7 @@ Window {
                                     text: modelData.bestLap
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: "#dddddd"
+                                    color: modelData.isSb ? "#c084fc" : "#dddddd"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     visible: showBestLap
@@ -543,7 +554,10 @@ Window {
                                     text: modelData.lastLap
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: "#dddddd"
+                                    color: {
+                                        if (!modelData.isPb) return "#dddddd";
+                                        return modelData.isSb ? "#c084fc" : "#44dd88";
+                                    }
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     visible: showLastLap

@@ -172,6 +172,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             return
 
         ref_index = ref_row["driver-info"]["index"]
+        fastest_index = data["fastest-lap-overall-driver-index"]
         relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
         if is_race_type_session(session_type):
@@ -180,7 +181,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
 
         # Update QML with data
-        self._update_table_data(relevant_rows, ref_index, session_type)
+        self._update_table_data(relevant_rows, ref_index, session_type, fastest_index)
 
         # Update session info
         if session_type == 'None':
@@ -223,29 +224,39 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("errorMessage", message)
         self.set_qml_property("tableData", [])
 
-    def _update_table_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int, session_type: str):
+    def _update_table_data(self,
+                           relevant_rows: List[Dict[str, Any]],
+                           ref_index: int,
+                           session_type: str,
+                           fastest_index: Optional[int]) -> None:
         """Update the timing table data in QML.
 
         Args:
             relevant_rows (List[Dict[str, Any]]): List of row data
             ref_index (int): Index of reference driver
             session_type (str): Type of the current session
+            fastest_index (Optional[int]): Index of the fastest driver
         """
 
         # Hide error message
         self.set_qml_property("showError", False)
         self.set_qml_property("tableData", [
-            self._create_driver_row(row_data, ref_index, session_type)
+            self._create_driver_row(row_data, ref_index, session_type, fastest_index)
             for row_data in relevant_rows
         ])
 
-    def _create_driver_row(self, row_data: Dict[str, Any], ref_index: int, session_type: str) -> dict:
+    def _create_driver_row(self,
+                           row_data: Dict[str, Any],
+                           ref_index: int,
+                           session_type: str,
+                           fastest_index: Optional[int]) -> dict:
         """Create a single driver row for QML display.
 
         Args:
             row_data: Dictionary containing driver data
             ref_index: Index of reference driver
             session_type: Type of the current session
+            fastest_index: Index of the fastest driver
 
         Returns:
             Dictionary with formatted driver data for QML
@@ -266,6 +277,11 @@ class TimingTowerOverlay(BaseOverlayQML):
         driver_idx = driver_info.get("index", -1)
         telemetry_public = driver_info.get("telemetry-setting") == "Public"
 
+        is_sb = driver_idx == fastest_index
+        last_lap_ms = last_lap_info.get("lap-time-ms")
+        best_lap_ms = best_lap_info.get("lap-time-ms")
+        is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
+
         return {
             "position": driver_info.get("position", 0),
             "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
@@ -279,12 +295,14 @@ class TimingTowerOverlay(BaseOverlayQML):
             "penalties": self._format_penalties(warns_pens_info),
             "isReference": driver_idx == ref_index,
 
-            "bestLap": self._format_lap_time(best_lap_info),
-            "lastLap": self._format_lap_time(last_lap_info),
+            "bestLap": self._format_lap_time(best_lap_ms),
+            "lastLap": self._format_lap_time(last_lap_ms),
             "wingDmg": self._format_wing_dmg(dmg_info, telemetry_public),
             "speedTrap": self._format_speed_trap(lap_info),
             "fuel": self._format_fuel(fuel_info, telemetry_public, session_type),
-            "driverStatus": curr_lap_info.get("driver-status", "N/A")
+            "driverStatus": curr_lap_info.get("driver-status", "N/A"),
+            "isSb": is_sb,
+            "isPb": is_pb,
         }
 
     def _format_delta(
@@ -377,17 +395,16 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         return ""
 
-    def _format_lap_time(self, lap_info: Dict[str, Any]) -> str:
+    def _format_lap_time(self, lap_time: Optional[int]) -> str:
         """Format lap time display.
 
         Args:
-            lap_info: Lap information container
+            lap_time: Lap time in milliseconds
 
         Returns:
             Formatted lap time string
         """
 
-        lap_time = lap_info.get("lap-time-ms")
         if not lap_time:
             return "---"
 
