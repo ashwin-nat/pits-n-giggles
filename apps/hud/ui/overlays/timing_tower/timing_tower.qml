@@ -50,7 +50,8 @@ Window {
         return width + 10; // Add padding
     }
 
-    readonly property int baseHeight: headerHeight + (showColHeader ? colHeaderHeight : 0) + (rowHeight * numRows) + margins
+    readonly property int effectiveRows: Math.min(numRows, tableData.length)
+    readonly property int baseHeight: headerHeight + (showColHeader ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
 
     width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
     height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor

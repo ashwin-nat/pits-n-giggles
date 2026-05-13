@@ -469,7 +469,7 @@ class TimingTowerOverlay(BaseOverlayQML):
 
     def clear(self):
         """Clear all timing data."""
-        self.set_qml_property("sessionInfo", "-- / --")
+        self.set_qml_property("sessionInfo", "TIMING TOWER")
         self.set_qml_property("tableData", [])
         self.set_qml_property("showError", False)
         self._set_race_mode()
