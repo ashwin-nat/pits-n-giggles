@@ -145,3 +145,20 @@ class TestCaptureSettings(TestF1ConfigBase):
     def test_invalid_just_in_case_autosave_raises(self):
         with self.assertRaises(ValidationError):
             CaptureSettings(just_in_case_autosave="notaboolean")
+
+    def test_default_session_dir(self):
+        self.assertEqual(CaptureSettings().session_dir, "data")
+
+    def test_session_dir_absolute_path(self):
+        self.assertEqual(CaptureSettings(session_dir="/my/sessions").session_dir, "/my/sessions")
+
+    def test_session_dir_relative_path(self):
+        self.assertEqual(CaptureSettings(session_dir="custom/relative").session_dir, "custom/relative")
+
+    def test_session_dir_empty_raises(self):
+        with self.assertRaises(ValidationError):
+            CaptureSettings(session_dir="")
+
+    def test_session_dir_whitespace_only_raises(self):
+        with self.assertRaises(ValidationError):
+            CaptureSettings(session_dir="   ")
