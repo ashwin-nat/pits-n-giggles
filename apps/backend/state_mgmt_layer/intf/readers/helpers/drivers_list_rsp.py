@@ -61,7 +61,7 @@ class DriversListRsp(BaseAPI):
         self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
-        self.m_fastest_lap_driver_index: Optional[str] = None
+        self.m_fastest_lap_driver_index: Optional[int] = None
         self.m_fastest_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_next_pit_stop_window: Optional[int] = None
         self.m_fastest_s1_ms: Optional[int] = None

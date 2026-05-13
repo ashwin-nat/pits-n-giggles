@@ -300,7 +300,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "wingDmg": self._format_wing_dmg(dmg_info, telemetry_public),
             "speedTrap": self._format_speed_trap(lap_info),
             "fuel": self._format_fuel(fuel_info, telemetry_public, session_type),
-            "driverStatus": curr_lap_info.get("driver-status", "N/A"),
+            "driverStatus": self._format_driver_status(curr_lap_info.get("driver-status")),
             "isSb": is_sb,
             "isPb": is_pb,
         }
@@ -423,7 +423,14 @@ class TimingTowerOverlay(BaseOverlayQML):
         if not telemetry_public:
             return "N/A"
 
-        return f"{dmg_info['fl-wing-damage']}-{dmg_info['fr-wing-damage']}"
+        fl = dmg_info.get('fl-wing-damage', '---')
+        fr = dmg_info.get('fr-wing-damage', '---')
+        return f"{fl}-{fr}"
+
+    def _format_driver_status(self, status: Optional[str]) -> str:
+        if not status:
+            return "N/A"
+        return status.replace("_", " ").title()
 
     def _format_speed_trap(self, lap_info: Dict[str, Any]) -> str:
         """Format speed trap display.

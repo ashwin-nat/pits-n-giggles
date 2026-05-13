@@ -51,7 +51,8 @@ Window {
     }
 
     readonly property int effectiveRows: Math.min(numRows, tableData.length)
-    readonly property int baseHeight: headerHeight + (showColHeader ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
+    readonly property bool colHeaderVisible: showColHeader && !showError && mode === "race"
+    readonly property int baseHeight: headerHeight + (colHeaderVisible ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
 
     width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
     height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
@@ -160,7 +161,7 @@ Window {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.margins: 2
-                        height: (showColHeader && !showError && mode === "race") ? colHeaderHeight : 0
+                        height: colHeaderVisible ? colHeaderHeight : 0
                         clip: true
 
                         Row {
