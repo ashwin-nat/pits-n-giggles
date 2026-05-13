@@ -85,9 +85,9 @@ class McpSubscriber:
         """
         set_state_data("connected", active)
         if active:
-            self.m_ipc_sub.logger.info("Connected to data stream", active)
+            self.m_ipc_sub.logger.info("Connected to data stream")
         else:
-            self.m_ipc_sub.logger.warning("Disconnected from data stream", active)
+            self.m_ipc_sub.logger.warning("Disconnected from data stream")
 
     def get_stats(self) -> dict:
         """Get stats for the subscriber.
