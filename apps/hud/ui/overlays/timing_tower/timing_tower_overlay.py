@@ -72,6 +72,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
+        self.show_col_header = tt_col_options.show_col_header
+
         self.show_team_logos = tt_col_options.show_team_logos
         self.show_tyre_info = tt_col_options.show_tyre_info
         self.show_deltas = tt_col_options.show_deltas
@@ -118,6 +120,15 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("showDeltas", self.show_deltas)
         self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
         self.set_qml_property("showPens", self.show_pens)
+
+        self.set_qml_property("showBestLap", self.show_best_lap)
+        self.set_qml_property("showLastLap", self.show_last_lap)
+        self.set_qml_property("showWingDmg", self.show_wing_dmg)
+        self.set_qml_property("showSpeedTrap", self.show_speed_trap)
+        self.set_qml_property("showFuel", self.show_fuel)
+        self.set_qml_property("showDriverStatus", self.show_driver_status)
+        self.set_qml_property("showColHeader", self.show_col_header)
+
         self._set_race_mode()
 
     def _init_event_handlers(self):

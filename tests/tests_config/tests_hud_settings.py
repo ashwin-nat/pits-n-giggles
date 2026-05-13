@@ -54,6 +54,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.lap_timer_toggle_udp_action_code, None)
         self.assertEqual(settings.timing_tower_max_rows, 5)
         self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
+        self.assertTrue(settings.timing_tower_col_options.show_col_header)
         self.assertTrue(settings.timing_tower_col_options.show_deltas)
         self.assertTrue(settings.timing_tower_col_options.show_tyre_info)
         self.assertTrue(settings.timing_tower_col_options.show_team_logos)

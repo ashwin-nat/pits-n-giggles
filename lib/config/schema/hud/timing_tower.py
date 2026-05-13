@@ -29,6 +29,13 @@ from ..diff import ConfigDiffMixin
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
+
+    show_col_header: bool = Field(
+        default=True,
+        description="Show column header",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
     show_team_logos: bool = Field(
         default=True,
         description="Show team logos",
