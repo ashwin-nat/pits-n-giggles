@@ -55,13 +55,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         scale_factor: float,
         num_adjacent_cars: int,
         windowed_overlay: bool,
-        show_team_logos: bool,
-        show_tyre_info: bool,
-        show_deltas: bool,
-        show_ers_drs_info: bool,
-        show_pens: bool,
-        show_tl_warns: bool,
-        tt_col_options: TimingTowerColOptions # TODO: Migrate other knobs to this dataclass as well for cleaner code
+        tt_col_options: TimingTowerColOptions
     ):
         """Initialize timing tower overlay.
 
@@ -73,23 +67,17 @@ class TimingTowerOverlay(BaseOverlayQML):
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
-            show_team_logos (bool): Show team logos
-            show_tyre_info (bool): Show tyre info
-            show_deltas (bool): Show deltas
-            show_ers_drs_info (bool): Show ERS/DRS info
-            show_pens (bool): Show penalties
-            show_tl_warns (bool): Show Track Limit warnings
             tt_col_options (TimingTowerColOptions): Timing tower column options
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
-        self.show_team_logos = show_team_logos
-        self.show_tyre_info = show_tyre_info
-        self.show_deltas = show_deltas
-        self.show_ers_drs_info = show_ers_drs_info
-        self.show_pens = show_pens
-        self.show_tl_warns = show_tl_warns
+        self.show_team_logos = tt_col_options.show_team_logos
+        self.show_tyre_info = tt_col_options.show_tyre_info
+        self.show_deltas = tt_col_options.show_deltas
+        self.show_ers_drs_info = tt_col_options.show_ers_drs_info
+        self.show_pens = tt_col_options.show_pens
+        self.show_tl_warns = tt_col_options.show_tl_warns
 
         self.show_best_lap = tt_col_options.show_best_lap
         self.show_last_lap = tt_col_options.show_last_lap
