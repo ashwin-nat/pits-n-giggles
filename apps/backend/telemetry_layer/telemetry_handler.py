@@ -437,6 +437,8 @@ class F1TelemetryHandler:
                 packet - PacketCarStatusData object
             """
 
+            # After end of session, the game will periodically send FINAL_CLASSIFICATION.
+            # But for the purposes of auto hiding menu, lets not treat it as periodic
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
@@ -483,7 +485,8 @@ class F1TelemetryHandler:
                 packet (PacketSessionHistoryData): The session history update packet
             """
 
-            self._kick_periodic_packet_timer()
+            # After end of session, the game will periodically send SESSION_HISTORY.
+            # But for the purposes of auto hiding menu, lets not treat it as periodic
             self.m_session_state_ref.processSessionHistoryUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 

@@ -33,7 +33,7 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, OverlayPosition, TimingTowerColOptions
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -55,12 +55,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         scale_factor: float,
         num_adjacent_cars: int,
         windowed_overlay: bool,
-        show_team_logos: bool,
-        show_tyre_info: bool,
-        show_deltas: bool,
-        show_ers_drs_info: bool,
-        show_pens: bool,
-        show_tl_warns: bool,
+        tt_col_options: TimingTowerColOptions
     ):
         """Initialize timing tower overlay.
 
@@ -72,22 +67,28 @@ class TimingTowerOverlay(BaseOverlayQML):
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
-            show_team_logos (bool): Show team logos
-            show_tyre_info (bool): Show tyre info
-            show_deltas (bool): Show deltas
-            show_ers_drs_info (bool): Show ERS/DRS info
-            show_pens (bool): Show penalties
-            show_tl_warns (bool): Show Track Limit warnings
+            tt_col_options (TimingTowerColOptions): Timing tower column options
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
-        self.show_team_logos = show_team_logos
-        self.show_tyre_info = show_tyre_info
-        self.show_deltas = show_deltas
-        self.show_ers_drs_info = show_ers_drs_info
-        self.show_pens = show_pens
-        self.show_tl_warns = show_tl_warns
+        self.show_col_header = tt_col_options.show_col_header
+
+        self.show_team_logos = tt_col_options.show_team_logos
+        self.show_tyre_info = tt_col_options.show_tyre_info
+        self.show_deltas = tt_col_options.show_deltas
+        self.show_ers_drs_info = tt_col_options.show_ers_drs_info
+        self.show_pens = tt_col_options.show_pens
+        self.show_tl_warns = tt_col_options.show_tl_warns
+
+        self.show_best_lap = tt_col_options.show_best_lap
+        self.show_last_lap = tt_col_options.show_last_lap
+        self.show_wing_dmg = tt_col_options.show_wing_dmg
+        self.show_speed_trap = tt_col_options.show_speed_trap
+        self.show_fuel = tt_col_options.show_fuel
+        self.show_driver_status = tt_col_options.show_driver_status
+
+        self.fuel_pred_custom = True # TODO: make config driven
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}
@@ -119,6 +120,15 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("showDeltas", self.show_deltas)
         self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
         self.set_qml_property("showPens", self.show_pens)
+
+        self.set_qml_property("showBestLap", self.show_best_lap)
+        self.set_qml_property("showLastLap", self.show_last_lap)
+        self.set_qml_property("showWingDmg", self.show_wing_dmg)
+        self.set_qml_property("showSpeedTrap", self.show_speed_trap)
+        self.set_qml_property("showFuel", self.show_fuel)
+        self.set_qml_property("showDriverStatus", self.show_driver_status)
+        self.set_qml_property("showColHeader", self.show_col_header)
+
         self._set_race_mode()
 
     def _init_event_handlers(self):
@@ -162,6 +172,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             return
 
         ref_index = ref_row["driver-info"]["index"]
+        fastest_index = data["fastest-lap-overall-driver-index"]
         relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
         if is_race_type_session(session_type):
@@ -170,7 +181,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
 
         # Update QML with data
-        self._update_table_data(relevant_rows, ref_index)
+        self._update_table_data(relevant_rows, ref_index, session_type, fastest_index)
 
         # Update session info
         if session_type == 'None':
@@ -213,27 +224,39 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.set_qml_property("errorMessage", message)
         self.set_qml_property("tableData", [])
 
-    def _update_table_data(self, relevant_rows: List[Dict[str, Any]], ref_index: int):
+    def _update_table_data(self,
+                           relevant_rows: List[Dict[str, Any]],
+                           ref_index: int,
+                           session_type: str,
+                           fastest_index: Optional[int]) -> None:
         """Update the timing table data in QML.
 
         Args:
             relevant_rows (List[Dict[str, Any]]): List of row data
             ref_index (int): Index of reference driver
+            session_type (str): Type of the current session
+            fastest_index (Optional[int]): Index of the fastest driver
         """
 
         # Hide error message
         self.set_qml_property("showError", False)
         self.set_qml_property("tableData", [
-            self._create_driver_row(row_data, ref_index)
+            self._create_driver_row(row_data, ref_index, session_type, fastest_index)
             for row_data in relevant_rows
         ])
 
-    def _create_driver_row(self, row_data: Dict[str, Any], ref_index: int) -> dict:
+    def _create_driver_row(self,
+                           row_data: Dict[str, Any],
+                           ref_index: int,
+                           session_type: str,
+                           fastest_index: Optional[int]) -> dict:
         """Create a single driver row for QML display.
 
         Args:
             row_data: Dictionary containing driver data
             ref_index: Index of reference driver
+            session_type: Type of the current session
+            fastest_index: Index of the fastest driver
 
         Returns:
             Dictionary with formatted driver data for QML
@@ -243,9 +266,21 @@ class TimingTowerOverlay(BaseOverlayQML):
         tyre_info: dict = row_data.get("tyre-info", {})
         ers_info: dict = row_data.get("ers-info", {})
         warns_pens_info: dict = row_data.get("warns-pens-info", {})
+        dmg_info: dict = row_data.get("damage-info", {})
+        fuel_info: dict = row_data.get("fuel-info", {})
+
+        lap_info: dict = row_data.get("lap-info", {})
+        last_lap_info: dict = lap_info.get("last-lap", {})
+        best_lap_info: dict = lap_info.get("best-lap", {})
+        curr_lap_info: dict = lap_info.get("curr-lap", {})
 
         driver_idx = driver_info.get("index", -1)
         telemetry_public = driver_info.get("telemetry-setting") == "Public"
+
+        is_sb = driver_idx == fastest_index
+        last_lap_ms = last_lap_info.get("lap-time-ms")
+        best_lap_ms = best_lap_info.get("lap-time-ms")
+        is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
         return {
             "position": driver_info.get("position", 0),
@@ -258,7 +293,16 @@ class TimingTowerOverlay(BaseOverlayQML):
             "ersMode": ers_info.get("ers-mode", "None"),
             "drs": driver_info.get("drs", False),
             "penalties": self._format_penalties(warns_pens_info),
-            "isReference": driver_idx == ref_index
+            "isReference": driver_idx == ref_index,
+
+            "bestLap": self._format_lap_time(best_lap_ms),
+            "lastLap": self._format_lap_time(last_lap_ms),
+            "wingDmg": self._format_wing_dmg(dmg_info, telemetry_public),
+            "speedTrap": self._format_speed_trap(lap_info),
+            "fuel": self._format_fuel(fuel_info, telemetry_public, session_type),
+            "driverStatus": self._format_driver_status(curr_lap_info.get("driver-status")),
+            "isSb": is_sb,
+            "isPb": is_pb,
         }
 
     def _format_delta(
@@ -351,9 +395,88 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         return ""
 
+    def _format_lap_time(self, lap_time: Optional[int]) -> str:
+        """Format lap time display.
+
+        Args:
+            lap_time: Lap time in milliseconds
+
+        Returns:
+            Formatted lap time string
+        """
+
+        if not lap_time:
+            return "---"
+
+        return F1Utils.getLapTimeStr(lap_time)
+
+    def _format_wing_dmg(self, dmg_info: Dict[str, Any], telemetry_public: bool) -> str:
+        """Format wing damage display.
+
+        Args:
+            dmg_info: Damage information dictionary
+            telemetry_public: Whether telemetry is public
+
+        Returns:
+            Formatted wing damage string
+        """
+        if not telemetry_public:
+            return "N/A"
+
+        fl = dmg_info.get('fl-wing-damage', '---')
+        fr = dmg_info.get('fr-wing-damage', '---')
+        return f"{fl}-{fr}"
+
+    def _format_driver_status(self, status: Optional[str]) -> str:
+        if not status:
+            return "N/A"
+        return status.replace("_", " ").title()
+
+    def _format_speed_trap(self, lap_info: Dict[str, Any]) -> str:
+        """Format speed trap display.
+
+        Args:
+            lap_info: Lap information container
+
+        Returns:
+            Formatted speed trap string
+        """
+        speed_trap_speed = lap_info.get("speed-trap-record-kmph")
+        if speed_trap_speed is None:
+            return "---"
+
+        return f"{F1Utils.formatFloat(speed_trap_speed)}"
+
+    def _format_fuel(self, fuel_info: Dict[str, Any], telemetry_public: bool, session_type: str) -> str:
+        """Format fuel display.
+
+        Args:
+            fuel_info: Fuel information dictionary
+            telemetry_public: Whether telemetry is public
+            session_type: Type of the current session
+
+        Returns:
+            Formatted fuel string
+        """
+
+        if not telemetry_public:
+            return "N/A"
+
+        if not is_race_type_session(session_type):
+            # Custom prediction is not available in non race modes
+            fuel_surplus = fuel_info.get("surplus-laps-game")
+            if fuel_surplus is None:
+                return "---"
+        else:
+            fuel_surplus = fuel_info.get("surplus-laps-png")
+            if fuel_surplus is None:
+                return "---"
+
+        return f"{F1Utils.formatFloat(fuel_surplus, precision=2, signed=True)}"
+
     def clear(self):
         """Clear all timing data."""
-        self.set_qml_property("sessionInfo", "-- / --")
+        self.set_qml_property("sessionInfo", "TIMING TOWER")
         self.set_qml_property("tableData", [])
         self.set_qml_property("showError", False)
         self._set_race_mode()
