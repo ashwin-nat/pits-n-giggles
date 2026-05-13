@@ -58,7 +58,7 @@ class RaceTableRowPopulator {
             getTeamName(this.rowData["driver-info"]["team"]),
         ], (e) => {
             e.preventDefault();
-            fetch(`/driver-info?index=${index}`)
+            fetch(window.SESSION_SLUG ? `/driver-info?index=${index}&slug=${window.SESSION_SLUG}` : `/driver-info?index=${index}`)
                 .then(response => {
                     if (!response.ok) throw new Error("Network response was not ok");
                     return response.json(); // or .text() if you expect plain text

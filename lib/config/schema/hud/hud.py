@@ -105,7 +105,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         default=5,
         ge=1,
         le=22,
-        description="Max number of rows to show in timing tower (must be odd number or 22)",
+        description="Max number of rows to show in timing tower (must be odd number or 22 for all cars)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",

@@ -38,7 +38,7 @@ class ModalManager {
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
-        fetch(`/race-info`)
+        fetch(window.SESSION_SLUG ? `/race-info?slug=${window.SESSION_SLUG}` : `/race-info`)
           .then(response => {
               if (!response.ok) throw new Error("Network response was not ok");
               return response.json(); // or .text() if you expect plain text
@@ -135,7 +135,7 @@ class ModalManager {
         "refresh" : true
       }
     };
-    fetch(`/driver-info?index=${data["index"]}`)
+    fetch(window.SESSION_SLUG ? `/driver-info?index=${data["index"]}&slug=${window.SESSION_SLUG}` : `/driver-info?index=${data["index"]}`)
       .then(response => {
           if (!response.ok) throw new Error("Network response was not ok");
           return response.json(); // or .text() if you expect plain text
@@ -389,7 +389,7 @@ class ModalManager {
         "refresh" : true
       }
     };
-    fetch(`/race-info`)
+    fetch(window.SESSION_SLUG ? `/race-info?slug=${window.SESSION_SLUG}` : `/race-info`)
       .then(response => {
           if (!response.ok) throw new Error("Network response was not ok");
           return response.json(); // or .text() if you expect plain text

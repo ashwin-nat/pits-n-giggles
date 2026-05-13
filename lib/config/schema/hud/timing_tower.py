@@ -29,6 +29,13 @@ from ..diff import ConfigDiffMixin
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
 class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
+
+    show_col_header: bool = Field(
+        default=True,
+        description="Show column header",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
     show_team_logos: bool = Field(
         default=True,
         description="Show team logos",
@@ -70,4 +77,40 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
                 ]
             }
         }
+    )
+
+    show_best_lap: bool = Field(
+        default=False,
+        description="Show best lap",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
+    show_last_lap: bool = Field(
+        default=False,
+        description="Show last lap",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
+    show_wing_dmg: bool = Field(
+        default=False,
+        description="Show front wing damage",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
+    show_speed_trap: bool = Field(
+        default=False,
+        description="Show speed trap",
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
+    show_fuel: bool = Field(
+        default=False,
+        description="Show fuel level (surplus laps)", # TODO: add choice for builtin vs custom fuel calculation
+        json_schema_extra={"ui": {"type": "check_box"}}
+    )
+
+    show_driver_status: bool = Field(
+        default=False,
+        description="Show driver status (IN_GARAGE, FLYING_LAP, IN_LAP, OUT_LAP, ON_TRACK)",
+        json_schema_extra={"ui": {"type": "check_box"}}
     )

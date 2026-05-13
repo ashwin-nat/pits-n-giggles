@@ -118,6 +118,8 @@ class PeriodicUpdateData(BaseAPI):
             self.m_driver_list_rsp.m_fastest_lap, default_value=0)
         final_json["fastest-lap-overall-driver"] = self._getValueOrDefaultValue(
             self.m_driver_list_rsp.m_fastest_lap_driver)
+        final_json["fastest-lap-overall-driver-index"] = self._getValueOrDefaultValue(
+            self.m_driver_list_rsp.m_fastest_lap_driver_index)
         final_json["fastest-lap-overall-tyre"] = str(self.m_driver_list_rsp.m_fastest_lap_tyre) \
             if self.m_driver_list_rsp.m_fastest_lap_tyre else None
         return final_json

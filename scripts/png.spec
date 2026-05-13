@@ -113,6 +113,9 @@ datas.extend(collect_directory("apps/frontend/js", "apps/frontend/js"))
 # All assets (icons, images, fonts, etc.)
 datas.extend(collect_directory("assets", "assets"))
 
+# f1-telemetry-viewer React app (built by build.py before PyInstaller runs)
+datas.extend(collect_directory("apps/external/f1-save-viewer/dist", "apps/external/f1-save-viewer/dist"))
+
 # QML files (hardcoded intentionally, since they don't have an explicit assets path)
 def qml_file(path, filename):
     """Helper to add a QML file with less repetition.

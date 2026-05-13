@@ -501,7 +501,7 @@ class EngViewRaceTable {
             onRowClicked: (params) => {
                 if (params.event?.target?.closest('.pin-ref-btn')) return;
                 const data = params.data;
-                fetch(`/driver-info?index=${data.index}`)
+                fetch(window.SESSION_SLUG ? `/driver-info?index=${data.index}&slug=${window.SESSION_SLUG}` : `/driver-info?index=${data.index}`)
                     .then(response => response.json())
                     .then(driverData => {
                         window.modalManager.openDriverModal(driverData, this.iconCache);

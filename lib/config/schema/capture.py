@@ -22,9 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from pathlib import Path
 from typing import Any, ClassVar, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .diff import ConfigDiffMixin
 
@@ -108,3 +109,24 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    session_dir: str = Field(
+        default="data",
+        description="Directory where saved session JSON files are stored",
+        json_schema_extra={
+            "ui": {
+                "type": "text_box",
+                "visible": False,
+            }
+        }
+    )
+
+    @property
+    def session_dir_path(self) -> Path:
+        return Path(self.session_dir)
+
+    @field_validator("session_dir")
+    @classmethod
+    def session_dir_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("session_dir must not be empty")
+        return v

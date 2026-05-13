@@ -10,6 +10,7 @@ Window {
     property int numRows: 5  // Set by Python
     readonly property int rowHeight: 28
     readonly property int headerHeight: 34
+    readonly property int colHeaderHeight: 20
     readonly property int margins: 20
 
     // Column toggle properties - set by Python
@@ -18,6 +19,14 @@ Window {
     property bool showDeltas: true
     property bool showErsDrsInfo: true
     property bool showPens: true
+
+    property bool showBestLap: false
+    property bool showLastLap: false
+    property bool showWingDmg: false
+    property bool showSpeedTrap: false
+    property bool showFuel: false
+    property bool showDriverStatus: false
+    property bool showColHeader: true
 
     // Dynamic width calculation based on enabled columns
     readonly property int baseWidth: {
@@ -32,10 +41,18 @@ Window {
             width += showPens ? cols.ers : cols.ers + 10;
         }
         if (showPens) width += cols.pens;
+        if (showBestLap) width += cols.bestLap;
+        if (showLastLap) width += cols.lastLap;
+        if (showWingDmg) width += cols.wingDmg;
+        if (showSpeedTrap) width += cols.speedTrap;
+        if (showFuel) width += cols.fuel;
+        if (showDriverStatus) width += cols.driverStatus;
         return width + 10; // Add padding
     }
 
-    readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
+    readonly property int effectiveRows: Math.min(numRows, tableData.length)
+    readonly property bool colHeaderVisible: showColHeader && !showError && mode === "race"
+    readonly property int baseHeight: headerHeight + (colHeaderVisible ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
 
     width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
     height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
@@ -129,13 +146,178 @@ Window {
                         readonly property int tyre: 58
                         readonly property int ers: 58
                         readonly property int pens: 56
+                        readonly property int bestLap: 75
+                        readonly property int lastLap: 72
+                        readonly property int wingDmg: 50
+                        readonly property int speedTrap: 55
+                        readonly property int fuel: 55
+                        readonly property int driverStatus: 95
+                    }
+
+                    // Column headers (race mode)
+                    Item {
+                        id: raceColHeader
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: 2
+                        height: colHeaderVisible ? colHeaderHeight : 0
+                        clip: true
+
+                        Row {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height
+
+                            Text {
+                                width: cols.pos
+                                height: parent.height
+                                text: "P"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: showTeamLogos ? cols.team : 0
+                                height: parent.height
+                                text: ""
+                                visible: showTeamLogos
+                            }
+                            Text {
+                                width: cols.name
+                                height: parent.height
+                                text: "DRIVER"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignLeft
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                            Text {
+                                width: showDeltas ? cols.delta : 0
+                                height: parent.height
+                                text: "DELTA"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showDeltas
+                            }
+                            Text {
+                                width: showTyreInfo ? cols.tyre : 0
+                                height: parent.height
+                                text: "TYRE"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showTyreInfo
+                            }
+                            Text {
+                                width: showErsDrsInfo ? cols.ers : 0
+                                height: parent.height
+                                text: "ERS/DRS"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showErsDrsInfo
+                            }
+                            Text {
+                                width: showPens ? cols.pens : 0
+                                height: parent.height
+                                text: "PEN"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignLeft
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showPens
+                            }
+                            Text {
+                                width: showBestLap ? cols.bestLap : 0
+                                height: parent.height
+                                text: "BEST"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showBestLap
+                            }
+                            Text {
+                                width: showLastLap ? cols.lastLap : 0
+                                height: parent.height
+                                text: "LAST"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showLastLap
+                            }
+                            Text {
+                                width: showWingDmg ? cols.wingDmg : 0
+                                height: parent.height
+                                text: "DMG"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showWingDmg
+                            }
+                            Text {
+                                width: showSpeedTrap ? cols.speedTrap : 0
+                                height: parent.height
+                                text: "TRAP"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showSpeedTrap
+                            }
+                            Text {
+                                width: showFuel ? cols.fuel : 0
+                                height: parent.height
+                                text: "FUEL"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showFuel
+                            }
+                            Text {
+                                width: showDriverStatus ? cols.driverStatus : 0
+                                height: parent.height
+                                text: "STATUS"
+                                font.family: "Formula1"
+                                font.pixelSize: 10
+                                color: "#666666"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: showDriverStatus
+                            }
+                        }
                     }
 
                     // Table content (race mode)
                     ListView {
                         id: tableView
-                        anchors.fill: parent
+                        anchors.top: raceColHeader.bottom
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
                         anchors.margins: 2
+                        anchors.topMargin: 0
                         clip: true
                         interactive: false
                         visible: !showError && mode === "race"
@@ -181,15 +363,26 @@ Window {
                                 spacing: 0
 
                                 // Position
-                                Text {
+                                Item {
                                     width: cols.pos
                                     height: parent.height
-                                    text: modelData.position < 10 ? modelData.position + " " : modelData.position
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: "#ddd"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: 1
+                                        color: modelData.isSb ? "#4a1d7a" : "transparent"
+                                        radius: 2
+                                    }
+
+                                    Text {
+                                        anchors.fill: parent
+                                        text: modelData.position < 10 ? modelData.position + " " : modelData.position
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#ddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
 
                                 // Team icon
@@ -341,6 +534,102 @@ Window {
                                         wrapMode: Text.NoWrap
                                         elide: Text.ElideRight
                                     }
+                                }
+
+                                // Best Lap
+                                Text {
+                                    width: showBestLap ? cols.bestLap : 0
+                                    height: parent.height
+                                    text: modelData.bestLap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: modelData.isSb ? "#c084fc" : "#dddddd"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: showBestLap
+                                }
+
+                                // Last Lap
+                                Text {
+                                    width: showLastLap ? cols.lastLap : 0
+                                    height: parent.height
+                                    text: modelData.lastLap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: {
+                                        if (!modelData.isPb) return "#dddddd";
+                                        return modelData.isSb ? "#c084fc" : "#44dd88";
+                                    }
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: showLastLap
+                                }
+
+                                // Wing Damage
+                                Text {
+                                    width: showWingDmg ? cols.wingDmg : 0
+                                    height: parent.height
+                                    text: modelData.wingDmg
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: modelData.wingDmg === "N/A" ? "#666666" : "#ff9944"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: showWingDmg
+                                }
+
+                                // Speed Trap
+                                Text {
+                                    width: showSpeedTrap ? cols.speedTrap : 0
+                                    height: parent.height
+                                    text: modelData.speedTrap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: "#dddddd"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: showSpeedTrap
+                                }
+
+                                // Fuel
+                                Text {
+                                    width: showFuel ? cols.fuel : 0
+                                    height: parent.height
+                                    text: modelData.fuel
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: {
+                                        var f = modelData.fuel;
+                                        if (f === "N/A" || f === "---") return "#666666";
+                                        return f.charAt(0) === "-" ? "#ff4444" : "#44dd88";
+                                    }
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    visible: showFuel
+                                }
+
+                                // Driver Status
+                                Text {
+                                    width: showDriverStatus ? cols.driverStatus : 0
+                                    height: parent.height
+                                    text: modelData.driverStatus
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: {
+                                        switch(modelData.driverStatus) {
+                                            case "Flying Lap": return "#00e676"
+                                            case "On Track": return "#aaaaaa"
+                                            case "Out Lap": return "#e6d800"
+                                            case "In Lap": return "#e6d800"
+                                            case "In Garage": return "#555555"
+                                            case "Retired": return "#ff4444"
+                                            default: return "#666666"
+                                        }
+                                    }
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                    visible: showDriverStatus
                                 }
                             }
                         }

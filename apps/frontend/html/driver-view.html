@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% else %}Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}{% endif %}</title>
+    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% elif live_data_mode %}Pits n' Giggles - Save v{{ version }}{% else %}Pits n' Giggles - Save v{{ version }} (Legacy){% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
@@ -663,10 +663,11 @@
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
     <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialCardDragDrop.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
       const currVer = "{{ version }}";
       console.info("Running version", currVer);
+      window.SESSION_SLUG = {% if session_slug %}"{{ session_slug }}"{% else %}null{% endif %};
     </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>
