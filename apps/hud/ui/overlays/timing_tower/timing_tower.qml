@@ -149,7 +149,7 @@ Window {
                         readonly property int bestLap: 75
                         readonly property int lastLap: 72
                         readonly property int wingDmg: 50
-                        readonly property int speedTrap: 55
+                        readonly property int speedTrap: 75
                         readonly property int fuel: 55
                         readonly property int driverStatus: 95
                     }
