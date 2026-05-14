@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .hud import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+from .hud import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                   HudSettings, MfdTyreWearRateType, WeatherMFDUIType)
 from .layout import OverlayId, OverlayPosition
 from .mfd import MfdPageId, MfdPageSettings, MfdSettings
@@ -32,8 +32,8 @@ from .timing_tower import TimingTowerColOptions
 
 __all__ = [
     'HudSettings',
-    'HudOverlaySpeedUnit',
-    'HudOverlayFuelEstimationMode',
+    'OverlaysSpeedUnit',
+    'OverlaysFuelEstimationMode',
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
     'MfdPageId',

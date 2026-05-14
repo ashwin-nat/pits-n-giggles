@@ -33,7 +33,8 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
-from lib.config import OverlayId, OverlayPosition, TimingTowerColOptions
+from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
+                        OverlaysSpeedUnit, TimingTowerColOptions)
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -55,6 +56,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         scale_factor: float,
         num_adjacent_cars: int,
         windowed_overlay: bool,
+        speed_unit: OverlaysSpeedUnit,
+        fuel_est_mode: OverlaysFuelEstimationMode,
         tt_col_options: TimingTowerColOptions
     ):
         """Initialize timing tower overlay.
@@ -67,12 +70,15 @@ class TimingTowerOverlay(BaseOverlayQML):
             scale_factor (float): UI Scale factor (multiplier)
             num_adjacent_cars (int): Number of adjacent cars
             windowed_overlay (bool): Windowed overlay
+            speed_unit (OverlaysSpeedUnit): Speed unit for display
+            fuel_est_mode (OverlaysFuelEstimationMode): Fuel estimation mode
             tt_col_options (TimingTowerColOptions): Timing tower column options
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
         self.show_col_header = tt_col_options.show_col_header
+        self.speed_unit = speed_unit
 
         self.show_team_logos = tt_col_options.show_team_logos
         self.show_tyre_info = tt_col_options.show_tyre_info
@@ -88,7 +94,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.show_fuel = tt_col_options.show_fuel
         self.show_driver_status = tt_col_options.show_driver_status
 
-        self.fuel_pred_custom = True # TODO: make config driven
+        self.fuel_est_mode = fuel_est_mode
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}
@@ -441,11 +447,14 @@ class TimingTowerOverlay(BaseOverlayQML):
         Returns:
             Formatted speed trap string
         """
-        speed_trap_speed = lap_info.get("speed-trap-record-kmph")
-        if speed_trap_speed is None:
+        speed_trap_speed_kmph = lap_info.get("speed-trap-record-kmph")
+        if speed_trap_speed_kmph is None:
             return "---"
 
-        return f"{F1Utils.formatFloat(speed_trap_speed)}"
+        if self.speed_unit == OverlaysSpeedUnit.MPH:
+            speed_mph = round(speed_trap_speed_kmph * 0.621371)
+            return f"{F1Utils.formatFloat(speed_mph)}"
+        return f"{F1Utils.formatFloat(speed_trap_speed_kmph)}"
 
     def _format_fuel(self, fuel_info: Dict[str, Any], telemetry_public: bool, session_type: str) -> str:
         """Format fuel display.
@@ -468,7 +477,10 @@ class TimingTowerOverlay(BaseOverlayQML):
             if fuel_surplus is None:
                 return "---"
         else:
-            fuel_surplus = fuel_info.get("surplus-laps-png")
+            if self.fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
+                fuel_surplus = fuel_info.get("surplus-laps-png")
+            else:
+                fuel_surplus = fuel_info.get("surplus-laps-game")
             if fuel_surplus is None:
                 return "---"
 

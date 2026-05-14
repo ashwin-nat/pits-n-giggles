@@ -456,6 +456,7 @@ class HudAppMgr(PngAppMgrBase):
         if settings_requiring_restart := self.curr_settings.diff(new_settings, {
             "HUD": [
                 "enabled",
+                "overlays_speed_unit",
                 "auto_hide_in_menu",
                 "show_lap_timer",
                 "lap_timer_minimal",
@@ -472,8 +473,7 @@ class HudAppMgr(PngAppMgrBase):
                 "input_overlay_buffer_duration_sec",
                 "show_input_overlay",
                 "show_hud_overlay",
-                "hud_overlay_speed_unit",
-                "hud_overlay_fuel_estimation_mode",
+                "overlays_fuel_estimation_mode",
                 "show_circuit_info",
             ],
             "Network": [

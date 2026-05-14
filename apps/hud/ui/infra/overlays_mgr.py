@@ -91,6 +91,8 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID].scale_factor,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+            speed_unit=settings.HUD.overlays_speed_unit,
             tt_col_options=settings.HUD.timing_tower_col_options,
         )
 
@@ -137,8 +139,8 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[HudOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
-            speed_unit=settings.HUD.hud_overlay_speed_unit,
-            fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
+            speed_unit=settings.HUD.overlays_speed_unit,
+            fuel_estimation_mode=settings.HUD.overlays_fuel_estimation_mode,
         )
 
         self._register_overlay_if_enabled(

@@ -41,11 +41,11 @@ class WeatherMFDUIType(str, Enum):
     CARDS = "Cards"
     GRAPH = "Graph"
 
-class HudOverlaySpeedUnit(str, Enum):
+class OverlaysSpeedUnit(str, Enum):
     KMPH = "km/h"
     MPH = "mph"
 
-class HudOverlayFuelEstimationMode(str, Enum):
+class OverlaysFuelEstimationMode(str, Enum):
     LINEAR_REGRESSION = "Linear regression"
     GAME_BUILT_IN = "Game built-in"
 
@@ -79,6 +79,35 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "check_box",
                 "visible": True,
+            }
+        }
+    )
+    overlays_speed_unit: OverlaysSpeedUnit = Field(
+        default=OverlaysSpeedUnit.KMPH,
+        description="Speed unit displayed in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in OverlaysSpeedUnit],
+                "visible": True,
+                "group": "HUD Overlay",
+            }
+        }
+    )
+    overlays_fuel_estimation_mode: OverlaysFuelEstimationMode = Field(
+        default=OverlaysFuelEstimationMode.LINEAR_REGRESSION,
+        description="Surplus fuel estimation technique used in the HUD overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in OverlaysFuelEstimationMode],
+                "visible": True,
+                "group": "HUD Overlay",
+                "ext_info": [
+                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
+                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
+                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
+                ]
             }
         }
     )
@@ -261,56 +290,26 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay")
     hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle HUD overlay UDP action code", group="HUD Overlay")
-    hud_overlay_speed_unit: HudOverlaySpeedUnit = Field(
-        default=HudOverlaySpeedUnit.KMPH,
-        description="Speed unit displayed in the HUD overlay",
-        json_schema_extra={
-            "ui": {
-                "type": "radio_buttons",
-                "options": [e.value for e in HudOverlaySpeedUnit],
-                "visible": True,
-                "group": "HUD Overlay",
-            }
-        }
-    )
 
     @property
     def hud_overlay_speed_unit_kmph(self) -> bool:
         """True if the speed unit is km/h"""
-        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.KMPH
+        return self.overlays_speed_unit == OverlaysSpeedUnit.KMPH
 
     @property
     def hud_overlay_speed_unit_mph(self) -> bool:
         """True if the speed unit is mph"""
-        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.MPH
-
-    hud_overlay_fuel_estimation_mode: HudOverlayFuelEstimationMode = Field(
-        default=HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
-        description="Surplus fuel estimation technique used in the HUD overlay",
-        json_schema_extra={
-            "ui": {
-                "type": "radio_buttons",
-                "options": [e.value for e in HudOverlayFuelEstimationMode],
-                "visible": True,
-                "group": "HUD Overlay",
-                "ext_info": [
-                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
-                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
-                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
-                ]
-            }
-        }
-    )
+        return self.overlays_speed_unit == OverlaysSpeedUnit.MPH
 
     @property
     def hud_overlay_fuel_estimation_linear_regression(self) -> bool:
         """True if fuel estimation uses linear regression"""
-        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.LINEAR_REGRESSION
+        return self.overlays_fuel_estimation_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION
 
     @property
     def hud_overlay_fuel_estimation_game_built_in(self) -> bool:
         """True if fuel estimation uses the game built-in value"""
-        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
+        return self.overlays_fuel_estimation_mode == OverlaysFuelEstimationMode.GAME_BUILT_IN
 
     # ============== CIRCUIT INFO OVERLAY ==============
     show_circuit_info: bool = overlay_enable_field(
