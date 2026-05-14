@@ -26,7 +26,7 @@ from .capture import CaptureSettings
 from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
-from .hud import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+from .hud import (HudOverlayFuelEstimationMode, OverlaysSpeedUnit,
                   HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
                   MfdTyreWearRateType, OverlayId, OverlayPosition,
                   TimingTowerColOptions, WeatherMFDUIType)
@@ -63,7 +63,7 @@ __all__ = [
 
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
-    'HudOverlaySpeedUnit',
+    'OverlaysSpeedUnit',
     'HudOverlayFuelEstimationMode',
 
     'OverlayId',

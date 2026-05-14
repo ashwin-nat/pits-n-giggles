@@ -27,7 +27,7 @@ from .io import (load_config_from_ini, load_config_from_json,
                  save_config_to_ini, save_config_to_json)
 from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
                      HttpsSettings, HudOverlayFuelEstimationMode,
-                     HudOverlaySpeedUnit, HudSettings, MfdPageId,
+                     OverlaysSpeedUnit, HudSettings, MfdPageId,
                      MfdPageSettings, MfdSettings, MfdTyreWearRateType,
                      NetworkSettings, OverlayId, OverlayPosition,
                      PitTimeLossF1, PitTimeLossF2, PngSettings,
@@ -58,7 +58,7 @@ __all__ = [
     'TimingTowerColOptions',
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
-    'HudOverlaySpeedUnit',
+    'OverlaysSpeedUnit',
     'HudOverlayFuelEstimationMode',
 
     'FilePathStr',

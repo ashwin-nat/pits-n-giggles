@@ -30,7 +30,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pydantic import ValidationError
 
-from lib.config import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+from lib.config import (HudOverlayFuelEstimationMode, OverlaysSpeedUnit,
                         HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
                         MfdTyreWearRateType, OverlayId, OverlayPosition,
                         TimingTowerColOptions, WeatherMFDUIType)
@@ -83,7 +83,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.track_radar_idle_opacity, 30)
         self.assertEqual(settings.show_hud_overlay, True)
-        self.assertEqual(settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+        self.assertEqual(settings.overlays_speed_unit, OverlaysSpeedUnit.KMPH)
         self.assertTrue(settings.hud_overlay_speed_unit_kmph)
         self.assertFalse(settings.hud_overlay_speed_unit_mph)
         self.assertEqual(settings.hud_overlay_fuel_estimation_mode, HudOverlayFuelEstimationMode.LINEAR_REGRESSION)
@@ -98,23 +98,23 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
         # MFD pages has its own test case because the structure is a bit more complex
 
-    def test_hud_overlay_speed_unit_validation(self):
-        """Test hud_overlay_speed_unit field accepts valid enum values and exposes bool properties"""
-        kmph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.KMPH)
-        self.assertEqual(kmph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.KMPH)
+    def test_overlays_speed_unit_validation(self):
+        """Test overlays_speed_unit field accepts valid enum values and exposes bool properties"""
+        kmph_settings = HudSettings(overlays_speed_unit=OverlaysSpeedUnit.KMPH)
+        self.assertEqual(kmph_settings.overlays_speed_unit, OverlaysSpeedUnit.KMPH)
         self.assertTrue(kmph_settings.hud_overlay_speed_unit_kmph)
         self.assertFalse(kmph_settings.hud_overlay_speed_unit_mph)
 
-        mph_settings = HudSettings(hud_overlay_speed_unit=HudOverlaySpeedUnit.MPH)
-        self.assertEqual(mph_settings.hud_overlay_speed_unit, HudOverlaySpeedUnit.MPH)
+        mph_settings = HudSettings(overlays_speed_unit=OverlaysSpeedUnit.MPH)
+        self.assertEqual(mph_settings.overlays_speed_unit, OverlaysSpeedUnit.MPH)
         self.assertFalse(mph_settings.hud_overlay_speed_unit_kmph)
         self.assertTrue(mph_settings.hud_overlay_speed_unit_mph)
 
         with self.assertRaises(ValidationError):
-            HudSettings(hud_overlay_speed_unit=None)  # type: ignore
+            HudSettings(overlays_speed_unit=None)  # type: ignore
 
         with self.assertRaises(ValidationError):
-            HudSettings(hud_overlay_speed_unit="invalid")  # type: ignore
+            HudSettings(overlays_speed_unit="invalid")  # type: ignore
 
     def test_hud_overlay_fuel_estimation_mode_validation(self):
         """Test hud_overlay_fuel_estimation_mode field accepts valid enum values and exposes bool properties"""
