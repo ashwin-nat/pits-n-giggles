@@ -29,7 +29,7 @@ from typing import Any, Dict, Optional, final
 from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import (HudOverlayFuelEstimationMode, OverlaysSpeedUnit,
+from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                         OverlayId, OverlayPosition)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 
@@ -57,7 +57,7 @@ class HudOverlay(BaseOverlayQML):
         windowed_overlay: bool,
         refresh_interval_ms: Optional[int] = None,
         speed_unit: OverlaysSpeedUnit = OverlaysSpeedUnit.KMPH,
-        fuel_estimation_mode: HudOverlayFuelEstimationMode = HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
+        fuel_estimation_mode: OverlaysFuelEstimationMode = OverlaysFuelEstimationMode.LINEAR_REGRESSION,
     ) -> None:
 
         super().__init__(
@@ -75,8 +75,8 @@ class HudOverlay(BaseOverlayQML):
 
         self._surplus_fuel: Optional[float] = None
         self._surplus_fuel_key: str = {
-            HudOverlayFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
-            HudOverlayFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
+            OverlaysFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
+            OverlaysFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
         }.get(fuel_estimation_mode)
         self._register_event_handlers()
 

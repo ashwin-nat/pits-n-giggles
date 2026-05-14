@@ -26,7 +26,7 @@ from .io import (load_config_from_ini, load_config_from_json,
                  load_config_migrated, maybe_migrate_legacy_hud_layout,
                  save_config_to_ini, save_config_to_json)
 from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, HudOverlayFuelEstimationMode,
+                     HttpsSettings, OverlaysFuelEstimationMode,
                      OverlaysSpeedUnit, HudSettings, MfdPageId,
                      MfdPageSettings, MfdSettings, MfdTyreWearRateType,
                      NetworkSettings, OverlayId, OverlayPosition,
@@ -59,7 +59,7 @@ __all__ = [
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
     'OverlaysSpeedUnit',
-    'HudOverlayFuelEstimationMode',
+    'OverlaysFuelEstimationMode',
 
     'FilePathStr',
 

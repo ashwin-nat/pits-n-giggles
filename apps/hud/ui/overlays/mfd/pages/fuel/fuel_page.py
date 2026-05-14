@@ -30,7 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlaysFuelEstimationMode
 from lib.f1_types import F1Utils
 
 if TYPE_CHECKING:
@@ -44,9 +44,10 @@ class FuelInfoPage(MfdPageBase):
 
     MIN_FUEL = 0.2
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
         super().__init__(overlay, logger)
         self._init_handlers()
+        self._fuel_est_mode = fuel_est_mode
 
     def _init_handlers(self):
         @self.on_event("race_table_update")
@@ -70,7 +71,10 @@ class FuelInfoPage(MfdPageBase):
                 page_item.setProperty("currValue", self._fmt(fuel.get("curr-fuel-rate")))
                 page_item.setProperty("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
                 page_item.setProperty("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
-                surplus = fuel.get("surplus-laps-png")
+                if self._fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
+                    surplus = fuel.get("surplus-laps-png")
+                else:
+                    surplus = fuel.get("surplus-laps-game")
             else:
                 page_item.setProperty("currValue", "---")
                 page_item.setProperty("tgtAvgValue", "---")

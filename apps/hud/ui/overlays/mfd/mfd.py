@@ -117,6 +117,9 @@ class MfdOverlay(BaseOverlayQML):
             },
             WeatherForecastPage.KEY: {"graph_based_ui": (
                 settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
+            FuelInfoPage.KEY: {
+                "fuel_est_mode": settings.HUD.overlays_fuel_estimation_mode,
+            },
         }
 
     def _init_pages_order(self, settings: PngSettings):
