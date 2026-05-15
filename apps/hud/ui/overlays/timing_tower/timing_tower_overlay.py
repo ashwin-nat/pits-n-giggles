@@ -292,7 +292,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "position": driver_info.get("position", 0),
             "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
             "name": driver_info.get("name", "UNKNOWN"),
-            "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index),
+            "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type),
             "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
@@ -316,7 +316,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         driver_info: Dict[str, Any],
         delta_info: Dict[str, Any],
         driver_idx: int,
-        ref_index: int
+        ref_index: int,
+        session_type: str
     ) -> str:
         """Format the delta time display.
 
@@ -325,16 +326,18 @@ class TimingTowerOverlay(BaseOverlayQML):
             delta_info: Delta information dictionary
             driver_idx: Current driver index
             ref_index: Reference driver index
+            session_type: Type of the current session
 
         Returns:
             Formatted delta string
         """
-        if driver_info.get("is-pitting", False):
-            return "PIT"
+        if is_race_type_session(session_type):
+            if driver_info.get("is-pitting", False):
+                return "PIT"
 
-        dnf_status = driver_info.get("dnf-status", "")
-        if dnf_status in {"DNF", "DSQ"}:
-            return dnf_status
+            dnf_status = driver_info.get("dnf-status", "")
+            if dnf_status in {"DNF", "DSQ"}:
+                return dnf_status
 
         delta = delta_info.get("relative-delta", 0)
         if driver_idx == ref_index or not delta:
