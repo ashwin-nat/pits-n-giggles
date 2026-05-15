@@ -787,7 +787,7 @@ class F1TelemetryHandler:
 
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
-            self.m_logger.error("Session type in None. Not saving data.")
+            self.m_logger.warning("Session type is None. Not saving data. Ignore if first session.")
             return False
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
