@@ -97,7 +97,7 @@ class LapHistoryData(F1SubPacketBase):
         self.m_sector2TimeMinutes: int
         self.m_sector3TimeInMS: int
         self.m_sector3TimeMinutes: int
-        self.m_lapValidBitFlag: int
+        self.m_lapValidBitFlags: int
 
         (
             self.m_lapTimeInMS,
