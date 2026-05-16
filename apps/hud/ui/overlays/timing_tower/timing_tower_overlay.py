@@ -34,7 +34,7 @@ from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
 from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
-                        OverlaysSpeedUnit, TimingTowerColId, TimingTowerColOptions)
+                        OverlaysSpeedUnit, TimingTowerColOptions)
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -80,10 +80,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.show_col_header = tt_col_options.show_col_header
         self.speed_unit = speed_unit
 
-        # team_logo is a fixed-position column rendered outside columnOrder
         self.column_order: List[str] = [
             col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
-            if col_id != TimingTowerColId.TEAM_LOGO.value
         ]
         self.fuel_est_mode = fuel_est_mode
 

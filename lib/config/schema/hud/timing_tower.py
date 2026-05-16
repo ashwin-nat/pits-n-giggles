@@ -33,7 +33,6 @@ from ..diff import ConfigDiffMixin
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
 class TimingTowerColId(str, Enum):
-    TEAM_LOGO     = "team_logo"
     DELTA         = "delta"
     TYRE          = "tyre"
     ERS_DRS       = "ers_drs"
@@ -68,30 +67,28 @@ class TimingTowerColSettings(ConfigDiffMixin, BaseModel):
 
 
 DEFAULT_COLS: Dict[TimingTowerColId, "TimingTowerColSettings"] = {
-    TimingTowerColId.TEAM_LOGO: TimingTowerColSettings(
-        enabled=True,  position=1,  description="Team logo"),
     TimingTowerColId.DELTA: TimingTowerColSettings(
-        enabled=True,  position=2,  description="Delta"),
+        enabled=True,  position=1,  description="Delta"),
     TimingTowerColId.TYRE: TimingTowerColSettings(
-        enabled=True,  position=3,  description="Tyre compound and wear"),
+        enabled=True,  position=2,  description="Tyre compound and wear"),
     TimingTowerColId.ERS_DRS: TimingTowerColSettings(
-        enabled=True,  position=4,  description="ERS / DRS"),
+        enabled=True,  position=3,  description="ERS / DRS"),
     TimingTowerColId.PENS: TimingTowerColSettings(
-        enabled=True,  position=5,  description="Penalties"),
+        enabled=True,  position=4,  description="Penalties"),
     TimingTowerColId.TL_WARNS: TimingTowerColSettings(
-        enabled=True,  position=6,  description="Track Limit warnings"),
+        enabled=True,  position=5,  description="Track Limit warnings"),
     TimingTowerColId.BEST_LAP: TimingTowerColSettings(
-        enabled=False, position=7,  description="Best Lap"),
+        enabled=False, position=6,  description="Best Lap"),
     TimingTowerColId.LAST_LAP: TimingTowerColSettings(
-        enabled=False, position=8,  description="Last Lap"),
+        enabled=False, position=7,  description="Last Lap"),
     TimingTowerColId.WING_DMG: TimingTowerColSettings(
-        enabled=False, position=9,  description="Front Wing Damage"),
+        enabled=False, position=8,  description="Front Wing Damage"),
     TimingTowerColId.SPEED_TRAP: TimingTowerColSettings(
-        enabled=False, position=10, description="Speed Trap"),
+        enabled=False, position=9,  description="Speed Trap"),
     TimingTowerColId.FUEL: TimingTowerColSettings(
-        enabled=False, position=11, description="Fuel level (surplus laps)"),
+        enabled=False, position=10, description="Fuel level (surplus laps)"),
     TimingTowerColId.DRIVER_STATUS: TimingTowerColSettings(
-        enabled=False, position=12,
+        enabled=False, position=11,
         description="Driver status (e.g., IN_GARAGE, FLYING_LAP"),
 }
 

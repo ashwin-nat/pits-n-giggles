@@ -58,7 +58,6 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
         self.assertTrue(settings.timing_tower_col_options.show_col_header)
         cols = settings.timing_tower_col_options.cols
-        self.assertTrue(cols[TimingTowerColId.TEAM_LOGO].enabled)
         self.assertTrue(cols[TimingTowerColId.DELTA].enabled)
         self.assertTrue(cols[TimingTowerColId.TYRE].enabled)
         self.assertTrue(cols[TimingTowerColId.ERS_DRS].enabled)
@@ -931,9 +930,9 @@ class TestTimingTowerColConfig(TestF1ConfigBase):
     def test_default_enabled_set(self):
         opts = TimingTowerColOptions()
         enabled_by_default = {
-            TimingTowerColId.TEAM_LOGO, TimingTowerColId.DELTA,
-            TimingTowerColId.TYRE, TimingTowerColId.ERS_DRS,
-            TimingTowerColId.PENS, TimingTowerColId.TL_WARNS,
+            TimingTowerColId.DELTA, TimingTowerColId.TYRE,
+            TimingTowerColId.ERS_DRS, TimingTowerColId.PENS,
+            TimingTowerColId.TL_WARNS,
         }
         disabled_by_default = set(TimingTowerColId) - enabled_by_default
         for col_id in enabled_by_default:
