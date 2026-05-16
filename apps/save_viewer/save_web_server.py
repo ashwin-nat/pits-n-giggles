@@ -141,9 +141,9 @@ class SaveViewerWebServer(BaseWebServer):
         """
         @self.http_route('/api/sessions')
         async def apiSessions():
-            self.m_logger.info("Received request for session list")
+            self.m_logger.debug("Received request for session list")
             await self._m_cache_ready.wait()
-            self.m_logger.info("GET /api/sessions → %d sessions", len(self.m_sessions_cache))
+            self.m_logger.debug("GET /api/sessions → %d sessions", len(self.m_sessions_cache))
             return self.jsonify(self.m_sessions_cache), HTTPStatus.OK
 
         @self.http_route('/api/sessions/<slug>')
@@ -229,7 +229,7 @@ class SaveViewerWebServer(BaseWebServer):
     async def _rebuild_cache(self) -> None:
         """Rebuild session cache from disk, publishing partial results after each batch."""
         try:
-            self.m_logger.info("Session cache: scanning %s", self.m_session_dir)
+            self.m_logger.debug("Session cache: scanning %s", self.m_session_dir)
             if not self.m_session_dir.exists():
                 self.m_logger.warning("Session directory does not exist: %s", self.m_session_dir)
                 return
@@ -238,7 +238,7 @@ class SaveViewerWebServer(BaseWebServer):
                 self.m_sessions_cache = sessions
                 self.m_slug_map = slug_map
                 self._m_cache_ready.set()  # unblocks waiting requests after the first batch
-            self.m_logger.info(
+            self.m_logger.debug(
                 "Session cache: fully loaded %d sessions in %.2fs (dir: %s)",
                 len(self.m_sessions_cache), time.perf_counter() - t0, self.m_session_dir,
             )
