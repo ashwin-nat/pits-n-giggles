@@ -89,7 +89,7 @@ DEFAULT_COLS: Dict[TimingTowerColId, "TimingTowerColSettings"] = {
         enabled=False, position=10, description="Fuel level (surplus laps)"),
     TimingTowerColId.DRIVER_STATUS: TimingTowerColSettings(
         enabled=False, position=11,
-        description="Driver status (e.g., IN_GARAGE, FLYING_LAP"),
+        description="Driver status (e.g., IN_GARAGE, FLYING_LAP, etc.)"),
 }
 
 class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
