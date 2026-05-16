@@ -103,7 +103,7 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box"}}
     )
 
-    cols: Dict[str, TimingTowerColSettings] = Field(
+    cols: Dict[TimingTowerColId, TimingTowerColSettings] = Field(
         default_factory=lambda: copy.deepcopy(DEFAULT_COLS),
         description="Column visibility and order",
         json_schema_extra={
@@ -144,8 +144,7 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
         used_positions = {col.position for col in merged.values()}
 
         for col_id, default_col in DEFAULT_COLS.items():
-            key = col_id.value if isinstance(col_id, TimingTowerColId) else col_id
-            if key not in merged:
+            if col_id not in merged:
                 new_col = default_col.model_copy(deep=True)
                 new_col.enabled = False
                 pos = new_col.position
@@ -153,7 +152,7 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
                     pos += 1
                 new_col.position = pos
                 used_positions.add(pos)
-                merged[key] = new_col
+                merged[col_id] = new_col
 
         self.cols = merged
         return self
@@ -167,12 +166,11 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
         description onto every column so callers can read col.description at runtime.
         """
         for col_id, default_col in DEFAULT_COLS.items():
-            key = col_id.value if isinstance(col_id, TimingTowerColId) else col_id
-            if key in self.cols:
-                self.cols[key].description = default_col.description
+            if col_id in self.cols:
+                self.cols[col_id].description = default_col.description
         return self
 
-    def sorted_enabled_cols(self) -> List[Tuple[str, TimingTowerColSettings]]:
+    def sorted_enabled_cols(self) -> List[Tuple[TimingTowerColId, TimingTowerColSettings]]:
         """Return enabled columns sorted by position, ascending."""
         return sorted(
             [(col_id, col) for col_id, col in self.cols.items() if col.enabled],
