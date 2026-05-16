@@ -79,8 +79,11 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         self.show_col_header = tt_col_options.show_col_header
         self.speed_unit = speed_unit
-        self.column_order: List[TimingTowerColId] = [
+
+        # team_logo is a fixed-position column rendered outside columnOrder
+        self.column_order: List[str] = [
             col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
+            if col_id != TimingTowerColId.TEAM_LOGO.value
         ]
         self.fuel_est_mode = fuel_est_mode
 
@@ -276,6 +279,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "ersMode": ers_info.get("ers-mode", "None"),
             "drs": driver_info.get("drs", False),
             "penalties": self._format_penalties(warns_pens_info),
+            "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
 
             "bestLap": self._format_lap_time(best_lap_ms),
