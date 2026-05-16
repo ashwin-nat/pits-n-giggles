@@ -26,7 +26,8 @@ from .hud import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                   HudSettings, MfdTyreWearRateType, WeatherMFDUIType)
 from .layout import OverlayId, OverlayPosition
 from .mfd import MfdPageId, MfdPageSettings, MfdSettings
-from .timing_tower import TimingTowerColOptions
+from .timing_tower import (TimingTowerColId, TimingTowerColOptions,
+                           TimingTowerColSettings)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -40,7 +41,9 @@ __all__ = [
     'MfdSettings',
     'MfdPageSettings',
     'OverlayPosition',
+    'TimingTowerColId',
     'TimingTowerColOptions',
+    'TimingTowerColSettings',
 
     'OverlayId',
 

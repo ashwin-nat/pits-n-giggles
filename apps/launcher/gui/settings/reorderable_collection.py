@@ -36,6 +36,19 @@ class ReorderableCollection:
         self.is_reorderable = ui_config.get("reorderable_collection", False)
         self.enabled_field = ui_config.get("item_enabled_field", "enabled")
         self.position_field = ui_config.get("item_position_field", "position")
+        self.label_field = ui_config.get("item_label_field", None)
+
+    def get_label(self, item_name: str, item: Any) -> str:
+        """Return the display label for an item.
+
+        Uses the label_field attribute on the item when configured; falls back to
+        converting the dict key from snake_case to Title Case.
+        """
+        if self.label_field:
+            label = getattr(item, self.label_field, None)
+            if label:
+                return label
+        return item_name.replace("_", " ").title()
 
     def get_enabled(self, item: Any) -> bool:
         """Get enabled state from an item"""
