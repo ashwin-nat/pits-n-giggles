@@ -80,20 +80,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         self.show_col_header = tt_col_options.show_col_header
         self.speed_unit = speed_unit
 
-        self.show_team_logos = tt_col_options.show_team_logos
-        self.show_tyre_info = tt_col_options.show_tyre_info
-        self.show_deltas = tt_col_options.show_deltas
-        self.show_ers_drs_info = tt_col_options.show_ers_drs_info
-        self.show_pens = tt_col_options.show_pens
-        self.show_tl_warns = tt_col_options.show_tl_warns
-
-        self.show_best_lap = tt_col_options.show_best_lap
-        self.show_last_lap = tt_col_options.show_last_lap
-        self.show_wing_dmg = tt_col_options.show_wing_dmg
-        self.show_speed_trap = tt_col_options.show_speed_trap
-        self.show_fuel = tt_col_options.show_fuel
-        self.show_driver_status = tt_col_options.show_driver_status
-
+        self.column_order: List[str] = [
+            col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
+        ]
         self.fuel_est_mode = fuel_est_mode
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
@@ -121,18 +110,7 @@ class TimingTowerOverlay(BaseOverlayQML):
     def post_setup(self):
         """Set QML properties after the window is ready."""
         self.set_qml_property("numRows", self.total_rows)
-        self.set_qml_property("showTeamLogos", self.show_team_logos)
-        self.set_qml_property("showTyreInfo", self.show_tyre_info)
-        self.set_qml_property("showDeltas", self.show_deltas)
-        self.set_qml_property("showErsDrsInfo", self.show_ers_drs_info)
-        self.set_qml_property("showPens", self.show_pens)
-
-        self.set_qml_property("showBestLap", self.show_best_lap)
-        self.set_qml_property("showLastLap", self.show_last_lap)
-        self.set_qml_property("showWingDmg", self.show_wing_dmg)
-        self.set_qml_property("showSpeedTrap", self.show_speed_trap)
-        self.set_qml_property("showFuel", self.show_fuel)
-        self.set_qml_property("showDriverStatus", self.show_driver_status)
+        self.set_qml_property("columnOrder", self.column_order)
         self.set_qml_property("showColHeader", self.show_col_header)
 
         self._set_race_mode()
@@ -299,6 +277,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "ersMode": ers_info.get("ers-mode", "None"),
             "drs": driver_info.get("drs", False),
             "penalties": self._format_penalties(warns_pens_info),
+            "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
 
             "bestLap": self._format_lap_time(best_lap_ms),
@@ -397,10 +376,6 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         if pens_sec > 0:
             return f"+{pens_sec}s"
-
-        if self.show_tl_warns:
-            tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
-            return f"TL: {tl_warns}"
 
         return ""
 

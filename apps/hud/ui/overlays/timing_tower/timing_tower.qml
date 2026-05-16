@@ -13,41 +13,56 @@ Window {
     readonly property int colHeaderHeight: 20
     readonly property int margins: 20
 
-    // Column toggle properties - set by Python
-    property bool showTeamLogos: true
-    property bool showTyreInfo: true
-    property bool showDeltas: true
-    property bool showErsDrsInfo: true
-    property bool showPens: true
-
-    property bool showBestLap: false
-    property bool showLastLap: false
-    property bool showWingDmg: false
-    property bool showSpeedTrap: false
-    property bool showFuel: false
-    property bool showDriverStatus: false
     property bool showColHeader: true
 
-    // Dynamic width calculation based on enabled columns
+    // Dynamic column order - set by Python as list of column ID strings
+    // Does not include team_logo (fixed position between pos and name)
+    property var columnOrder: []
+
+    // Column widths keyed by TimingTowerColId enum values
+    QtObject {
+        id: cols
+        readonly property int pos: 30
+        readonly property int team_logo: 25
+        readonly property int name: 120
+        readonly property int delta: 72
+        readonly property int tyre: 58
+        readonly property int ers_drs: 58
+        readonly property int pens: 44
+        readonly property int tl_warns: 32
+        readonly property int best_lap: 75
+        readonly property int last_lap: 72
+        readonly property int wing_dmg: 50
+        readonly property int speed_trap: 75
+        readonly property int fuel: 55
+        readonly property int driver_status: 95
+    }
+
+    // Dynamic width: fixed structural cols + optional team_logo + sum of enabled dynamic cols
     readonly property int baseWidth: {
-        var width = cols.pos + cols.name;
-        if (showTeamLogos) width += cols.team;
-        if (showDeltas) width += cols.delta;
-        if (showTyreInfo) width += cols.tyre;
-        if (showErsDrsInfo) {
-            // DRS bar needs extra space if pens are disabled
-            // In the main layout, it spills into the pens column
-            // this workaround is good enough
-            width += showPens ? cols.ers : cols.ers + 10;
+        var w = cols.pos + cols.name;
+        w += cols.team_logo;
+        for (var i = 0; i < columnOrder.length; ++i) {
+            w += cols[columnOrder[i]];
         }
-        if (showPens) width += cols.pens;
-        if (showBestLap) width += cols.bestLap;
-        if (showLastLap) width += cols.lastLap;
-        if (showWingDmg) width += cols.wingDmg;
-        if (showSpeedTrap) width += cols.speedTrap;
-        if (showFuel) width += cols.fuel;
-        if (showDriverStatus) width += cols.driverStatus;
-        return width + 10; // Add padding
+        return w + 24;
+    }
+
+    function colHeaderLabel(colId) {
+        switch(colId) {
+            case "delta":         return "DELTA"
+            case "tyre":          return "TYRE"
+            case "ers_drs":       return "ERS/DRS"
+            case "pens":          return "PEN"
+            case "tl_warns":      return "TL"
+            case "best_lap":      return "BEST"
+            case "last_lap":      return "LAST"
+            case "wing_dmg":      return "DMG"
+            case "speed_trap":    return "TRAP"
+            case "fuel":          return "FUEL"
+            case "driver_status": return "STATUS"
+            default:              return colId
+        }
     }
 
     readonly property int effectiveRows: Math.min(numRows, tableData.length)
@@ -136,24 +151,6 @@ Window {
                         visible: showError && mode === "race"
                     }
 
-                    // Column widths
-                    QtObject {
-                        id: cols
-                        readonly property int pos: 30
-                        readonly property int team: 25
-                        readonly property int name: 120
-                        readonly property int delta: 72
-                        readonly property int tyre: 58
-                        readonly property int ers: 58
-                        readonly property int pens: 56
-                        readonly property int bestLap: 75
-                        readonly property int lastLap: 72
-                        readonly property int wingDmg: 50
-                        readonly property int speedTrap: 75
-                        readonly property int fuel: 55
-                        readonly property int driverStatus: 95
-                    }
-
                     // Column headers (race mode)
                     Item {
                         id: raceColHeader
@@ -170,141 +167,80 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             height: parent.height
 
-                            Text {
+                            Item {
                                 width: cols.pos
                                 height: parent.height
-                                text: "P"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                                Text {
+                                    anchors.fill: parent
+                                    text: "P"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: "#666666"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
                             }
-                            Text {
-                                width: showTeamLogos ? cols.team : 0
+                            // team_logo header: fixed, empty label
+                            Item {
+                                width: cols.team_logo
                                 height: parent.height
-                                text: ""
-                                visible: showTeamLogos
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
                             }
-                            Text {
+                            Item {
                                 width: cols.name
                                 height: parent.height
-                                text: "DRIVER"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignLeft
-                                verticalAlignment: Text.AlignVCenter
+                                Text {
+                                    anchors.fill: parent
+                                    text: "DRIVER"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: "#666666"
+                                    horizontalAlignment: Text.AlignLeft
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
                             }
-                            Text {
-                                width: showDeltas ? cols.delta : 0
-                                height: parent.height
-                                text: "DELTA"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showDeltas
-                            }
-                            Text {
-                                width: showTyreInfo ? cols.tyre : 0
-                                height: parent.height
-                                text: "TYRE"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showTyreInfo
-                            }
-                            Text {
-                                width: showErsDrsInfo ? cols.ers : 0
-                                height: parent.height
-                                text: "ERS/DRS"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showErsDrsInfo
-                            }
-                            Text {
-                                width: showPens ? cols.pens : 0
-                                height: parent.height
-                                text: "PEN"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignLeft
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showPens
-                            }
-                            Text {
-                                width: showBestLap ? cols.bestLap : 0
-                                height: parent.height
-                                text: "BEST"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showBestLap
-                            }
-                            Text {
-                                width: showLastLap ? cols.lastLap : 0
-                                height: parent.height
-                                text: "LAST"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showLastLap
-                            }
-                            Text {
-                                width: showWingDmg ? cols.wingDmg : 0
-                                height: parent.height
-                                text: "DMG"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showWingDmg
-                            }
-                            Text {
-                                width: showSpeedTrap ? cols.speedTrap : 0
-                                height: parent.height
-                                text: "TRAP"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showSpeedTrap
-                            }
-                            Text {
-                                width: showFuel ? cols.fuel : 0
-                                height: parent.height
-                                text: "FUEL"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showFuel
-                            }
-                            Text {
-                                width: showDriverStatus ? cols.driverStatus : 0
-                                height: parent.height
-                                text: "STATUS"
-                                font.family: "Formula1"
-                                font.pixelSize: 10
-                                color: "#666666"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                visible: showDriverStatus
+                            Repeater {
+                                model: columnOrder
+                                delegate: Item {
+                                    width: cols[modelData]
+                                    height: parent.height
+                                    Text {
+                                        anchors.fill: parent
+                                        text: colHeaderLabel(modelData)
+                                        font.family: "Formula1"
+                                        font.pixelSize: 10
+                                        color: "#666666"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Rectangle {
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 1
+                                        height: parent.height - 4
+                                        color: Qt.rgba(1, 1, 1, 0.15)
+                                    }
+                                }
                             }
                         }
                     }
@@ -325,13 +261,14 @@ Window {
                         model: tableData
 
                         delegate: Item {
+                            property var rowData: modelData
                             width: tableView.width
                             height: 28
 
                             // Row background
                             Rectangle {
                                 anchors.fill: parent
-                                color: modelData.isReference
+                                color: rowData.isReference
                                     ? Qt.rgba(1, 1, 1, 0.07)
                                     : Qt.rgba(0.08, 0.08, 0.10, 0.6)
                                 radius: 3
@@ -351,7 +288,7 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 2
                                 height: parent.height - 6
-                                color: modelData.isReference ? "#ffffff" : "transparent"
+                                color: rowData.isReference ? "#ffffff" : "transparent"
                                 radius: 1
                             }
 
@@ -362,7 +299,7 @@ Window {
                                 height: parent.height
                                 spacing: 0
 
-                                // Position
+                                // Position (fixed)
                                 Item {
                                     width: cols.pos
                                     height: parent.height
@@ -370,13 +307,13 @@ Window {
                                     Rectangle {
                                         anchors.fill: parent
                                         anchors.margins: 1
-                                        color: modelData.isSb ? "#4a1d7a" : "transparent"
+                                        color: rowData.isSb ? "#4a1d7a" : "transparent"
                                         radius: 2
                                     }
 
                                     Text {
                                         anchors.fill: parent
-                                        text: modelData.position < 10 ? modelData.position + " " : modelData.position
+                                        text: rowData.position < 10 ? rowData.position + " " : rowData.position
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#ddd"
@@ -385,11 +322,10 @@ Window {
                                     }
                                 }
 
-                                // Team icon
+                                // Team logo (fixed)
                                 Item {
-                                    width: showTeamLogos ? cols.team : 0
+                                    width: cols.team_logo
                                     height: parent.height
-                                    visible: showTeamLogos
 
                                     Image {
                                         anchors.right: parent.right
@@ -399,7 +335,7 @@ Window {
                                         height: 20
                                         sourceSize.width: width * Screen.devicePixelRatio * 2
                                         sourceSize.height: height * Screen.devicePixelRatio * 2
-                                        source: modelData.teamIcon || ""
+                                        source: rowData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
                                         mipmap: true
@@ -408,11 +344,11 @@ Window {
                                     }
                                 }
 
-                                // Driver name
+                                // Driver name (fixed)
                                 Text {
                                     width: cols.name
                                     height: parent.height
-                                    text: modelData.name
+                                    text: rowData.name
                                     font.family: "Formula1"
                                     font.pixelSize: 13
                                     color: "#ffffff"
@@ -421,215 +357,226 @@ Window {
                                     elide: Text.ElideRight
                                 }
 
-                                // Delta
-                                Text {
-                                    width: showDeltas ? cols.delta : 0
-                                    height: parent.height
-                                    text: modelData.delta
-                                    font.family: "Consolas"
-                                    font.pixelSize: 13
-                                    color: "#ffffff"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showDeltas
-                                }
+                                // Dynamic columns
+                                Repeater {
+                                    model: columnOrder
+                                    delegate: Item {
+                                        property string colId: modelData
+                                        width: cols[colId]
+                                        height: parent.height
 
-                                // Tyre
-                                Item {
-                                    width: showTyreInfo ? cols.tyre : 0
-                                    height: parent.height
-                                    visible: showTyreInfo
-
-                                    Row {
-                                        anchors.centerIn: parent
-                                        spacing: 4
-
-                                        Image {
-                                            width: 20
-                                            height: 20
-                                            sourceSize.width: width * Screen.devicePixelRatio
-                                            sourceSize.height: height * Screen.devicePixelRatio
-                                            source: modelData.tyreIcon || ""
-                                            fillMode: Image.PreserveAspectFit
-                                            smooth: true
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            cache: true
-                                            antialiasing: true
-                                        }
-
+                                        // delta
                                         Text {
-                                            text: modelData.tyreWear
+                                            anchors.fill: parent
+                                            visible: colId === "delta"
+                                            text: rowData.delta
                                             font.family: "Consolas"
                                             font.pixelSize: 13
                                             color: "#ffffff"
-                                            anchors.verticalCenter: parent.verticalCenter
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
                                         }
-                                    }
-                                }
 
-                                // ERS/DRS
-                                Item {
-                                    width: showErsDrsInfo ? cols.ers : 0
-                                    height: parent.height
-                                    visible: showErsDrsInfo
+                                        // tyre
+                                        Item {
+                                            anchors.fill: parent
+                                            visible: colId === "tyre"
 
-                                    // ERS mode strip (left)
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 1
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 6
-                                        height: parent.height - 8
-                                        radius: 2
-                                        color: {
-                                            switch(modelData.ersMode) {
-                                                case "Medium": return "#e6d800"
-                                                case "Hotlap": return "#00e676"
-                                                case "Overtake": return "#ff1744"
-                                                default: return "#444444"
+                                            Row {
+                                                anchors.centerIn: parent
+                                                spacing: 4
+
+                                                Image {
+                                                    width: 20
+                                                    height: 20
+                                                    sourceSize.width: width * Screen.devicePixelRatio
+                                                    sourceSize.height: height * Screen.devicePixelRatio
+                                                    source: rowData.tyreIcon || ""
+                                                    fillMode: Image.PreserveAspectFit
+                                                    smooth: true
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    cache: true
+                                                    antialiasing: true
+                                                }
+
+                                                Text {
+                                                    text: rowData.tyreWear
+                                                    font.family: "Consolas"
+                                                    font.pixelSize: 13
+                                                    color: "#ffffff"
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
                                             }
                                         }
-                                    }
 
-                                    // ERS text (center)
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelData.ers
-                                        font.family: "Consolas"
-                                        font.pixelSize: 13
-                                        color: "#dddddd"
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
+                                        // ers_drs
+                                        Item {
+                                            anchors.fill: parent
+                                            visible: colId === "ers_drs"
 
-                                    // DRS strip (right)
-                                    Rectangle {
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 1
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 6
-                                        height: parent.height - 8
-                                        radius: 2
-                                        color: modelData.drs ? "#00e676" : "#333333"
-                                    }
-                                }
+                                            // ERS mode strip (left)
+                                            Rectangle {
+                                                anchors.left: parent.left
+                                                anchors.leftMargin: 1
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 6
+                                                height: parent.height - 8
+                                                radius: 2
+                                                color: {
+                                                    switch(rowData.ersMode) {
+                                                        case "Medium":   return "#e6d800"
+                                                        case "Hotlap":   return "#00e676"
+                                                        case "Overtake": return "#ff1744"
+                                                        default:         return "#444444"
+                                                    }
+                                                }
+                                            }
 
-                                // Penalties
-                                Rectangle {
-                                    width: showPens ? cols.pens : 0
-                                    height: parent.height
-                                    color: "transparent"
-                                    visible: showPens
+                                            // ERS text (center)
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: rowData.ers
+                                                font.family: "Consolas"
+                                                font.pixelSize: 13
+                                                color: "#dddddd"
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
 
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 4
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.penalties
-                                        font.family: "Formula1"
-                                        font.pixelSize: 11
-                                        color: "white"
-                                        horizontalAlignment: Text.AlignLeft
-                                        verticalAlignment: Text.AlignVCenter
-                                        wrapMode: Text.NoWrap
-                                        elide: Text.ElideRight
-                                    }
-                                }
+                                            // DRS strip (right)
+                                            Rectangle {
+                                                anchors.right: parent.right
+                                                anchors.rightMargin: 1
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 6
+                                                height: parent.height - 8
+                                                radius: 2
+                                                color: rowData.drs ? "#00e676" : "#333333"
+                                            }
+                                        }
 
-                                // Best Lap
-                                Text {
-                                    width: showBestLap ? cols.bestLap : 0
-                                    height: parent.height
-                                    text: modelData.bestLap
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: modelData.isSb ? "#c084fc" : "#dddddd"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showBestLap
-                                }
+                                        // pens
+                                        Item {
+                                            anchors.fill: parent
+                                            visible: colId === "pens"
 
-                                // Last Lap
-                                Text {
-                                    width: showLastLap ? cols.lastLap : 0
-                                    height: parent.height
-                                    text: modelData.lastLap
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: {
-                                        if (!modelData.isPb) return "#dddddd";
-                                        return modelData.isSb ? "#c084fc" : "#44dd88";
-                                    }
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showLastLap
-                                }
+                                            Text {
+                                                anchors.left: parent.left
+                                                anchors.leftMargin: 4
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: rowData.penalties
+                                                font.family: "Formula1"
+                                                font.pixelSize: 11
+                                                color: "white"
+                                                horizontalAlignment: Text.AlignLeft
+                                                verticalAlignment: Text.AlignVCenter
+                                                wrapMode: Text.NoWrap
+                                                elide: Text.ElideRight
+                                            }
+                                        }
 
-                                // Wing Damage
-                                Text {
-                                    width: showWingDmg ? cols.wingDmg : 0
-                                    height: parent.height
-                                    text: modelData.wingDmg
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: modelData.wingDmg === "N/A" ? "#666666" : "#ff9944"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showWingDmg
-                                }
+                                        // tl_warns
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "tl_warns"
+                                            text: rowData.tlWarns !== undefined ? rowData.tlWarns : "---"
+                                            font.family: "Consolas"
+                                            font.pixelSize: 13
+                                            color: "#dddddd"
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
 
-                                // Speed Trap
-                                Text {
-                                    width: showSpeedTrap ? cols.speedTrap : 0
-                                    height: parent.height
-                                    text: modelData.speedTrap
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: "#dddddd"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showSpeedTrap
-                                }
+                                        // best_lap
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "best_lap"
+                                            text: rowData.bestLap
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            color: rowData.isSb ? "#c084fc" : "#dddddd"
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
 
-                                // Fuel
-                                Text {
-                                    width: showFuel ? cols.fuel : 0
-                                    height: parent.height
-                                    text: modelData.fuel
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: {
-                                        var f = modelData.fuel;
-                                        if (f === "N/A" || f === "---") return "#666666";
-                                        return f.charAt(0) === "-" ? "#ff4444" : "#44dd88";
-                                    }
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showFuel
-                                }
+                                        // last_lap
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "last_lap"
+                                            text: rowData.lastLap
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            color: {
+                                                if (!rowData.isPb) return "#dddddd";
+                                                return rowData.isSb ? "#c084fc" : "#44dd88";
+                                            }
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
 
-                                // Driver Status
-                                Text {
-                                    width: showDriverStatus ? cols.driverStatus : 0
-                                    height: parent.height
-                                    text: modelData.driverStatus
-                                    font.family: "Formula1"
-                                    font.pixelSize: 10
-                                    color: {
-                                        switch(modelData.driverStatus) {
-                                            case "Flying Lap": return "#00e676"
-                                            case "On Track": return "#aaaaaa"
-                                            case "Out Lap": return "#e6d800"
-                                            case "In Lap": return "#e6d800"
-                                            case "In Garage": return "#555555"
-                                            case "Retired": return "#ff4444"
-                                            default: return "#666666"
+                                        // wing_dmg
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "wing_dmg"
+                                            text: rowData.wingDmg
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            color: rowData.wingDmg === "N/A" ? "#666666" : "#ff9944"
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+
+                                        // speed_trap
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "speed_trap"
+                                            text: rowData.speedTrap
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            color: "#dddddd"
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+
+                                        // fuel
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "fuel"
+                                            text: rowData.fuel
+                                            font.family: "Consolas"
+                                            font.pixelSize: 12
+                                            color: {
+                                                var f = rowData.fuel;
+                                                if (f === "N/A" || f === "---") return "#666666";
+                                                return f.charAt(0) === "-" ? "#ff4444" : "#44dd88";
+                                            }
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+
+                                        // driver_status
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: colId === "driver_status"
+                                            text: rowData.driverStatus
+                                            font.family: "Formula1"
+                                            font.pixelSize: 10
+                                            color: {
+                                                switch(rowData.driverStatus) {
+                                                    case "Flying Lap": return "#00e676"
+                                                    case "On Track":   return "#aaaaaa"
+                                                    case "Out Lap":    return "#e6d800"
+                                                    case "In Lap":     return "#e6d800"
+                                                    case "In Garage":  return "#555555"
+                                                    case "Retired":    return "#ff4444"
+                                                    default:           return "#666666"
+                                                }
+                                            }
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                            elide: Text.ElideRight
                                         }
                                     }
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
-                                    visible: showDriverStatus
                                 }
                             }
                         }
