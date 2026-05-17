@@ -27,6 +27,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
+_ERS_MODE_COLORS: Dict[str, str] = {
+    "Medium":   "#e6d800",
+    "Hotlap":   "#00e676",
+    "Overtake": "#ff1744",
+}
+
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
@@ -266,6 +272,11 @@ class TimingTowerOverlay(BaseOverlayQML):
         best_lap_ms = best_lap_info.get("lap-time-ms")
         is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
+        ers_mode = ers_info.get("ers-mode", "None")
+        wing_dmg = self._format_wing_dmg(dmg_info, telemetry_public)
+        fuel = self._format_fuel(fuel_info, telemetry_public, session_type)
+        driver_status = self._format_driver_status(curr_lap_info.get("driver-status"))
+
         return {
             "position": driver_info.get("position", 0),
             "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
@@ -274,18 +285,23 @@ class TimingTowerOverlay(BaseOverlayQML):
             "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
-            "ersMode": ers_info.get("ers-mode", "None"),
+            "ersMode": ers_mode,
+            "ersColor": _ERS_MODE_COLORS.get(ers_mode, "#444444"),
             "drs": driver_info.get("drs", False),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
 
             "bestLap": self._format_lap_time(best_lap_ms),
+            "bestLapColor": "#c084fc" if is_sb else "#dddddd",
             "lastLap": self._format_lap_time(last_lap_ms),
-            "wingDmg": self._format_wing_dmg(dmg_info, telemetry_public),
+            "lastLapColor": ("#c084fc" if is_sb else "#44dd88") if is_pb else "#dddddd",
+            "wingDmg": wing_dmg,
+            "wingDmgColor": "#666666" if wing_dmg == "N/A" else "#ff9944",
             "speedTrap": self._format_speed_trap(lap_info),
-            "fuel": self._format_fuel(fuel_info, telemetry_public, session_type),
-            "driverStatus": self._format_driver_status(curr_lap_info.get("driver-status")),
+            "fuel": fuel,
+            "fuelColor": "#666666" if fuel in ("N/A", "---") else ("#ff4444" if fuel.startswith("-") else "#44dd88"),
+            "driverStatus": driver_status,
             "isSb": is_sb,
             "isPb": is_pb,
         }

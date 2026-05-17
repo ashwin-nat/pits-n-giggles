@@ -159,7 +159,8 @@ Window {
                         anchors.right: parent.right
                         anchors.margins: 2
                         height: colHeaderVisible ? colHeaderHeight : 0
-                        clip: true
+                        layer.enabled: true
+                        layer.smooth: true
 
                         Row {
                             anchors.left: parent.left
@@ -347,14 +348,7 @@ Window {
                                         width: 6
                                         height: parent.height - 8
                                         radius: 2
-                                        color: {
-                                            switch(rowData.ersMode) {
-                                                case "Medium":   return "#e6d800"
-                                                case "Hotlap":   return "#00e676"
-                                                case "Overtake": return "#ff1744"
-                                                default:         return "#444444"
-                                            }
-                                        }
+                                        color: rowData.ersColor
                                     }
                                     Text {
                                         anchors.centerIn: parent
@@ -414,7 +408,7 @@ Window {
                                     text: rowData.bestLap
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: rowData.isSb ? "#c084fc" : "#dddddd"
+                                    color: rowData.bestLapColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -426,10 +420,7 @@ Window {
                                     text: rowData.lastLap
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: {
-                                        if (!rowData.isPb) return "#dddddd";
-                                        return rowData.isSb ? "#c084fc" : "#44dd88";
-                                    }
+                                    color: rowData.lastLapColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -441,7 +432,7 @@ Window {
                                     text: rowData.wingDmg
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: rowData.wingDmg === "N/A" ? "#666666" : "#ff9944"
+                                    color: rowData.wingDmgColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -465,11 +456,7 @@ Window {
                                     text: rowData.fuel
                                     font.family: "Consolas"
                                     font.pixelSize: 12
-                                    color: {
-                                        var f = rowData.fuel;
-                                        if (f === "N/A" || f === "---") return "#666666";
-                                        return f.charAt(0) === "-" ? "#ff4444" : "#44dd88";
-                                    }
+                                    color: rowData.fuelColor
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -481,17 +468,7 @@ Window {
                                     text: rowData.driverStatus
                                     font.family: "Formula1"
                                     font.pixelSize: 10
-                                    color: {
-                                        switch(rowData.driverStatus) {
-                                            case "Flying Lap": return "#00e676"
-                                            case "On Track":   return "#aaaaaa"
-                                            case "Out Lap":    return "#e6d800"
-                                            case "In Lap":     return "#e6d800"
-                                            case "In Garage":  return "#555555"
-                                            case "Retired":    return "#ff4444"
-                                            default:           return "#666666"
-                                        }
-                                    }
+                                    color: "#dddddd"
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     elide: Text.ElideRight
