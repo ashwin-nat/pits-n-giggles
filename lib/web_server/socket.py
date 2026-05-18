@@ -28,12 +28,12 @@ from lib.error_status import is_port_in_use_error, PngHttpPortInUseError
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_socket_for_uvicorn(port: int, host: str = "0.0.0.0") -> socket.socket:
+def get_socket_for_uvicorn(port: int, host: str) -> socket.socket:
     """Get a socket for Uvicorn to use. Handles port in use error.
 
     Args:
         port (int): The port to bind to.
-        host (str, optional): The host to bind to. Defaults to "0.0.0.0".
+        host (str, optional): The host to bind to.
 
     Returns:
         socket.socket: The socket object.
