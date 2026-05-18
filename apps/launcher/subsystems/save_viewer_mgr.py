@@ -84,15 +84,21 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
                                                        "Open Dashboard")
+        self.github_button = self.build_button(self.get_icon("github"), self.open_github, "GitHub")
 
         return [
             self.start_stop_button,
             self.open_dashboard_button,
+            self.github_button
         ]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
         webbrowser.open(f'http://localhost:{self.port}', new=2)
+
+    def open_github(self):
+        """Open the GitHub repository in a web browser."""
+        webbrowser.open("https://github.com/linuz90/f1-telemetry-viewer", new=2)
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -123,6 +129,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, True)
+        self.set_button_state(self.github_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
@@ -130,6 +137,7 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, False)
+        self.set_button_state(self.github_button, True)
 
     def start_stop_callback(self):
         """Start or stop the backend application."""
