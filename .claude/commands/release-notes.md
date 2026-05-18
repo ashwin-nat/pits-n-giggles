@@ -49,6 +49,7 @@ Generate user-facing release notes for the next release of Pits n' Giggles.
    - Avoid internal technical terms: no Qt/QML renderer names, no IPC layer names, no "track segments" (say "circuit info overlay" instead)
    - Lead with the most user-visible feature — put it as the first section
    - If a fix addresses a regression from a specific prior version, call that out
+   - **When referencing settings**, always use the UI path the user sees in the settings panel, not raw JSON field names or Pydantic attribute names. The path is built from the `description=` of each level in `lib/config/schema/png.py` (`PngSettings`) down to the field's own `description=`. For example, `HUD` has `description="Overlays"` in `PngSettings`, and `auto_hide_in_menu` has `description="Auto-hide overlays when the game is in a menu"` in `HudSettings`, so the correct reference is **Overlays -> Auto-hide overlays when the game is in a menu**. Read the relevant schema files before writing any settings reference.
 
 5. **Always write the notes to a file** named `release-notes-vX.Y.Z.md` in the repo root. Determine the version from `meta/meta.py` (`APP_VERSION`), not from the last tag. Also print the notes to the terminal.
 

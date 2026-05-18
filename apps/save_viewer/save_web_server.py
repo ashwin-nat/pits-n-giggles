@@ -191,7 +191,7 @@ class SaveViewerWebServer(BaseWebServer):
             slug = self.request.args.get('slug')
             if not slug:
                 return {'error': 'Missing "slug" parameter'}, HTTPStatus.BAD_REQUEST
-            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
             if data is None:
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
             return SaveViewerState.getTelemetryInfoFrom(data), HTTPStatus.OK
@@ -201,7 +201,7 @@ class SaveViewerWebServer(BaseWebServer):
             slug = self.request.args.get('slug')
             if not slug:
                 return {'error': 'Missing "slug" parameter'}, HTTPStatus.BAD_REQUEST
-            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
             if data is None:
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
             return SaveViewerState.getRaceInfoFrom(data), HTTPStatus.OK
@@ -219,7 +219,7 @@ class SaveViewerWebServer(BaseWebServer):
                 return {'error': 'Invalid parameter value', 'message': '"index" parameter must be numeric'}, HTTPStatus.BAD_REQUEST
 
             index_int = int(index)
-            data = load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
             if data is None:
                 return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
             if driver_info := SaveViewerState.getDriverInfoFrom(data, index_int):

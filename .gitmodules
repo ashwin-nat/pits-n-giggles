@@ -1,3 +1,3 @@
 [submodule "apps/external/f1-save-viewer"]
 	path = apps/external/f1-save-viewer
-	url = https://github.com/ashwin-nat/f1-telemetry-viewer
+	url = https://github.com/linuz90/f1-telemetry-viewer
