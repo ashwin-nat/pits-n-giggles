@@ -343,7 +343,6 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type": "check_box",
                 "visible": True,
-                "group": "Auto-hide in Menu",
             }
         }
     )
