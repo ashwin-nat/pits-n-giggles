@@ -27,6 +27,7 @@ dependencies = [
     "orjson (>=3.11.5,<4.0.0)",
     "fastmcp (>=3.2.4,<4.0.0)",
     "watchfiles (>=1.1.1,<2.0.0)",
+    "async-lru (>=2.3.0,<3.0.0)",
 ]
 
 

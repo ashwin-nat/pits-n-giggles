@@ -27,7 +27,9 @@ import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
+import aiofiles
 import orjson
+from async_lru import alru_cache
 
 import lib.overtake_analyzer as OvertakeAnalyzer
 import lib.race_analyzer as RaceAnalyzer
@@ -38,6 +40,7 @@ from lib.logger import PngLogger
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 CACHE_FILE = '.png_session_cache.json'
+_JSON_CACHE_SIZE = 25
 
 # Known session type strings derived from the authoritative enums, sorted longest-first
 # so greedy prefix matching always picks the most specific match.
@@ -398,12 +401,21 @@ async def build_session_list(
 
 
 
-def load_session_json(
+@alru_cache(maxsize=_JSON_CACHE_SIZE)
+async def _cached_load(full_path_str: str) -> Dict[str, Any]:
+    """Read, parse, and recompute a session JSON file. Results are LRU-cached by path."""
+    async with aiofiles.open(full_path_str, 'rb') as f:
+        data = orjson.loads(await f.read())
+    check_recompute_json(data)
+    return data
+
+
+async def load_session_json(
     session_dir: Path,
     slug_map: Dict[str, str],
     slug: str
 ) -> Optional[Dict[str, Any]]:
-    """Resolve slug to file, validate path, load JSON, apply recompute. Returns None on any error."""
+    """Resolve slug to file, validate path, load and cache JSON. Returns None on any error."""
     relative_str = slug_map.get(slug)
     if relative_str is None:
         return None
@@ -414,10 +426,7 @@ def load_session_json(
         return None
 
     try:
-        with open(full, 'rb') as f:
-            data = orjson.loads(f.read())
-        check_recompute_json(data)
-        return data
+        return await _cached_load(str(full))
     except Exception:  # pylint: disable=broad-exception-caught
         return None
 
