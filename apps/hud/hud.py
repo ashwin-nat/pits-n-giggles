@@ -169,7 +169,7 @@ def entry_point():
 #         )
 #     except KeyboardInterrupt:
 #         png_logger.info("Program interrupted by user.")
-#     except Exception as e:  # pylint: disable=broad-except
+#     except Exception as e:
 #         png_logger.exception("Error in main: %s", e)
 #         sys.exit(1)
 #     finally:

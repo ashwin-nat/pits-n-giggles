@@ -300,7 +300,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "wingDmgColor": "#666666" if wing_dmg == "N/A" else "#ff9944",
             "speedTrap": self._format_speed_trap(lap_info),
             "fuel": fuel,
-            "fuelColor": "#666666" if fuel in ("N/A", "---") else ("#ff4444" if fuel.startswith("-") else "#44dd88"),
+            "fuelColor": self._format_fuel_colour(fuel),
             "driverStatus": driver_status,
             "isSb": is_sb,
             "isPb": is_pb,
@@ -479,6 +479,21 @@ class TimingTowerOverlay(BaseOverlayQML):
                 return "---"
 
         return f"{F1Utils.formatFloat(fuel_surplus, precision=2, signed=True)}"
+
+    def _format_fuel_colour(self, fuel_str: str) -> str:
+        """Format fuel colour.
+
+        Args:
+            fuel_str: Fuel string
+
+        Returns:
+            Formatted fuel colour
+        """
+        if fuel_str in {"N/A", "---"}:
+            return "#666666"
+        if fuel_str.startswith("-"):
+            return "#ff4444"
+        return "#44dd88"
 
     def clear(self):
         """Clear all timing data."""
