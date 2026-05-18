@@ -134,6 +134,10 @@ def _entry_point():
         report_pid_from_child()
     else:
         png_logger = get_logger("mcp", args.debug, jsonl=False, file_path=args.log_file)
+
+    logging.getLogger("mcp.server").setLevel(logging.WARNING)
+    logging.getLogger("mcp.client").setLevel(logging.WARNING)
+
     version = get_version()
 
     configs = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
