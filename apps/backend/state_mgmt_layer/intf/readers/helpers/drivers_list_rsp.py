@@ -279,6 +279,7 @@ class DriversListRsp(BaseAPI):
 
         self._calcFastestSectorMs(session_history)
 
+        driver_status = str(player_obj.m_lap_info.m_curr_status) if player_obj.m_lap_info.m_curr_status else None
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
@@ -289,6 +290,7 @@ class DriversListRsp(BaseAPI):
             "current-lap-info" : self._getCurrLapSubsection(player_obj),
             "best-lap-info" : self._getBestLapTT(player_obj),
             "last-lap-info" : self._getLastLapTT(player_obj),
+            "driver-status" : driver_status,
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:
