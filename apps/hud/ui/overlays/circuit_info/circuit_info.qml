@@ -197,8 +197,6 @@ Window {
                 anchors.fill: parent
                 color: Qt.rgba(1, 1, 1, 0.18)
                 radius: 4
-                border.color: "black"
-                border.width: 1
             }
 
             // Sector 1 fill — shown as completed when car is in sector 2 or 3
@@ -238,6 +236,15 @@ Window {
                 radius: 4
                 x: progressBarArea.width * root.activeSectorStartFrac
                 width: Math.max(0, progressBarArea.animatedRightEdge - x)
+            }
+
+            // Border overlay — drawn on top of all fills so the border is visible everywhere
+            Rectangle {
+                anchors.fill: parent
+                color: "transparent"
+                radius: 4
+                border.color: "black"
+                border.width: 1
             }
 
             // Sector boundary dividers (only when sectorsInfo is available)
