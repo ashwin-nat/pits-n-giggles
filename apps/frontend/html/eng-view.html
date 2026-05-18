@@ -20,7 +20,6 @@
     <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10.16.17" integrity="sha384-CBBUDoTz0U0f+d7R/FRzc0MIt80mhxjnk5gmza0mloefItQfW/6xwCXNTZ9z8mb5" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js" integrity="sha384-AZ8EPX4FWLU/SIr5Xfoem6KYnSN7QhmrnEZIzF2NjoDoX9PV9GMuA0XCI3jndPym" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@35.3.0/dist/ag-grid-community.min.js" integrity="sha384-GbvRvkQNhoaZATsk65Au49OqhW8NGyoGqeziEqwOFDjR5WDBwx1w1QwlI/enfu+g" crossorigin="anonymous"></script>
@@ -109,7 +108,8 @@
                                         data-bs-title="Clear reference driver selection">
                                     <i class="bi bi-star-fill" style="color:#ffd700;"></i>
                                 </button>
-                                <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
+                                <button id="unpin-all-btn" class="btn settings-button unpin-all-btn" data-bs-toggle="tooltip" data-bs-title="Unfreeze all columns" style="display:none"><i class="bi bi-lock-fill" style="color:#60a5fa;"></i></button>
+                <button id="settings-btn" class="btn settings-button" data-bs-toggle="tooltip" data-bs-title="Table columns settings"><i class="bi bi-gear-fill"></i></button>
                                 {% if port_info %}
                                 <span class="port-badge" title="Multi-session port identifier">📍 {{ port_info }}</span>
                                 {% endif %}
@@ -149,11 +149,11 @@
                                 <label>Pit Time Loss</label>
                                 <span id="pitTimeLoss"></span>
                             </div>
-                            <div class="eng-view-global-stat border border-secondary rounded p-2">
+                            <div class="eng-view-global-stat">
                                 <label>Prediction Lap</label>
                                 <div class="d-flex align-items-center">
                                     <input type="number" id="predictionLap" class="form-control form-control-sm bg-dark text-light border-secondary" value="1" min="1" max="80">
-                                    <div class="ms-2 d-flex">
+                                    <div class="ms-2 d-flex align-items-center">
                                         <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" data-bs-title="Set prediction to pit lap (if available)">
                                             <button id="predictionPitBtn" class="btn btn-sm btn-secondary me-1">Pit</button>
                                         </span>
@@ -246,7 +246,7 @@
             <div class="pane-profiles-bar">
                 <div class="pane-profiles-row">
                     <select id="column-profile-select" class="form-select form-select-sm profile-select" title="Select a column profile">
-                        <option value="__default__">Default</option>
+                        <option value="__full__">Full</option>
                     </select>
                     <button id="rename-profile-btn" class="btn btn-sm btn-outline-light" data-bs-toggle="tooltip" data-bs-title="Rename this profile">
                         <i class="bi bi-pencil"></i>

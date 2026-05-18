@@ -251,8 +251,14 @@ Window {
                     Behavior on animBrake    { SmoothedAnimation { duration: 70 } }
                     Behavior on animThrottle { SmoothedAnimation { duration: 70 } }
 
-                    onAnimBrakeChanged:    gearCanvas.requestPaint()
-                    onAnimThrottleChanged: gearCanvas.requestPaint()
+                    property real _lastBrake:    -1
+                    property real _lastThrottle: -1
+                    onAnimBrakeChanged: {
+                        if (Math.abs(animBrake - _lastBrake) >= 0.5) { _lastBrake = animBrake; gearCanvas.requestPaint() }
+                    }
+                    onAnimThrottleChanged: {
+                        if (Math.abs(animThrottle - _lastThrottle) >= 0.5) { _lastThrottle = animThrottle; gearCanvas.requestPaint() }
+                    }
 
                     Canvas {
                         id: gearCanvas
@@ -614,9 +620,18 @@ Window {
                     Behavior on animErsHarv   { SmoothedAnimation { duration: 220 } }
                     Behavior on animErsDeploy { SmoothedAnimation { duration: 220 } }
 
-                    onAnimErsRemChanged:    ersCanvas.requestPaint()
-                    onAnimErsHarvChanged:   ersCanvas.requestPaint()
-                    onAnimErsDeployChanged: ersCanvas.requestPaint()
+                    property real _lastErsRem:    -1
+                    property real _lastErsHarv:   -1
+                    property real _lastErsDeploy: -1
+                    onAnimErsRemChanged: {
+                        if (Math.abs(animErsRem - _lastErsRem) >= 0.5) { _lastErsRem = animErsRem; ersCanvas.requestPaint() }
+                    }
+                    onAnimErsHarvChanged: {
+                        if (Math.abs(animErsHarv - _lastErsHarv) >= 0.5) { _lastErsHarv = animErsHarv; ersCanvas.requestPaint() }
+                    }
+                    onAnimErsDeployChanged: {
+                        if (Math.abs(animErsDeploy - _lastErsDeploy) >= 0.5) { _lastErsDeploy = animErsDeploy; ersCanvas.requestPaint() }
+                    }
 
                     Connections {
                         target: root

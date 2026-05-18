@@ -68,6 +68,12 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         port_type=PortType.TCP,
     )
 
+    broker_router_port: int = port_field(
+        "PitWall ROUTER Port",
+        default=53836,
+        port_type=PortType.TCP,
+    )
+
     bind_address: str = Field(
         default="0.0.0.0",
         description="Server Bind Address",

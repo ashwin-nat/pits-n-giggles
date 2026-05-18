@@ -62,6 +62,7 @@ async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
 async def handleGetStats(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
+        ipc_dealer: AsyncInterTaskCommunicator,
         web_server: TelemetryWebServer,
         ) -> dict:
     """Handle get-stats command."""
@@ -72,6 +73,7 @@ async def handleGetStats(
             "egress" : {
                 "ipc_pub" : ipc_pub.get_stats(),
                 "web_server" : web_server.get_stats(),
+                "dealer": ipc_dealer.get_stats(),
             }
         },
     }
@@ -83,6 +85,21 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
     # os._exit required: child process must terminate immediately without
     # running atexit handlers or flushing stdio buffers from parent.
     os._exit(PNG_LOST_CONN_TO_PARENT)
+
+async def handleForwardingConfigChange(
+        msg: dict,
+        logger: logging.Logger,
+        telemetry_handler: F1TelemetryHandler) -> dict:
+    """Handle forwarding-config-change command: update targets without restarting the backend."""
+
+    targets = [(t['host'], t['port']) for t in msg.get('targets', [])]
+    logger.info("Received forwarding config change. Targets: %s", targets)
+    try:
+        telemetry_handler.update_forwarding_targets(targets)
+    except (OSError, TypeError, ValueError) as e:
+        logger.exception("Failed to update forwarding targets: %s", e)
+        return {'status': 'failure', 'message': str(e)}
+    return {'status': 'success'}
 
 async def handleUdpActionCodeChange(
         msg: dict,

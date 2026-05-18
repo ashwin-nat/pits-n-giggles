@@ -35,7 +35,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from .base import TestIPC
 
-from lib.ipc import IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync
+from lib.ipc import IpcContentType, IpcPubSubBroker, IpcPublisherAsync, IpcSubscriberSync, IpcSubscriberAsync
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -302,12 +302,12 @@ class TestIpcPubSub(TestIPC):
             pub = IpcPublisherAsync(port=self.xsub_port)
             await pub.start()
 
-            # Wait until the reconnect task has actually established the connection
-            # before publishing. start() only schedules the task; _connected is set
-            # asynchronously, so publishing immediately would silently drop messages.
-            deadline = asyncio.get_event_loop().time() + 1.0
-            while not pub._connected and asyncio.get_event_loop().time() < deadline:
+            # Ensure reconnect loop has created and marked the PUB socket connected
+            # before we begin the pre-crash publish burst.
+            deadline = time.time() + 1.0
+            while not pub._connected and time.time() < deadline:
                 await asyncio.sleep(0.005)
+            self.assertTrue(pub._connected, "Publisher did not become connected in time")
 
             # Send a few messages, then crash before graceful close
             for _ in range(SEND_REPEATS):
@@ -372,21 +372,6 @@ class TestIpcPubSub(TestIPC):
         # Test passes if we get here
         self.assertTrue(True)
 
-    def test_subscriber_detects_missed_messages_from_message_id_gap(self):
-        sub = IpcSubscriberSync(port=self.xpub_port)
-        try:
-            sub._track_sequence("gap", 1)
-            sub._track_sequence("gap", 4)
-
-            stats = sub.get_stats()
-            self.assertEqual(stats["__TOTAL__"]["__MISSED__"]["count"], 2)
-            self.assertEqual(stats["gap"]["__MISSED__"]["count"], 2)
-        finally:
-            try:
-                sub.socket.close(linger=0)
-            except Exception:
-                pass
-
     # ----------------------------------------------------------
     # Broker lifecycle semantics
 
@@ -403,3 +388,471 @@ class TestIpcPubSub(TestIPC):
         # The background thread should have exited
         if self.broker._thread is not None:
             self.assertFalse(self.broker._thread.is_alive())
+
+    def test_route_raw_end_to_end(self):
+        received = []
+
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route_raw("raw-basic")
+        def handler(data: bytes):
+            received.append(data)
+
+        t = threading.Thread(target=sub.start, daemon=True)
+        t.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def pub_task():
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("raw-basic", b"\x00\x01\x02\x03")
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+        asyncio.run(pub_task())
+        time.sleep(PROPAGATION_DELAY)
+
+        sub.close()
+        time.sleep(0.05)
+        t.join(timeout=0.2)
+
+        self.assertIn(b"\x00\x01\x02\x03", received)
+
+    def test_route_raw_custom_content_type(self):
+        received = []
+
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route_raw("raw-ct", content_type=IpcContentType.BINARY)
+        def handler(data: bytes):
+            received.append(data)
+
+        t = threading.Thread(target=sub.start, daemon=True)
+        t.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def pub_task():
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("raw-ct", b"raw-payload", content_type=IpcContentType.BINARY)
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+        asyncio.run(pub_task())
+        time.sleep(PROPAGATION_DELAY)
+
+        sub.close()
+        time.sleep(0.05)
+        t.join(timeout=0.2)
+
+        self.assertIn(b"raw-payload", received)
+
+    def test_route_raw_and_json_coexist(self):
+        json_received = []
+        raw_received = []
+
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route("coexist-json")
+        def json_handler(data: dict):
+            json_received.append(data)
+
+        @sub.route_raw("coexist-raw")
+        def raw_handler(data: bytes):
+            raw_received.append(data)
+
+        t = threading.Thread(target=sub.start, daemon=True)
+        t.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def pub_task():
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish("coexist-json", {"ok": True})
+                await pub.publish_raw("coexist-raw", b"\xff\xfe")
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+        asyncio.run(pub_task())
+        time.sleep(PROPAGATION_DELAY)
+
+        sub.close()
+        time.sleep(0.05)
+        t.join(timeout=0.2)
+
+        self.assertIn({"ok": True}, json_received)
+        self.assertIn(b"\xff\xfe", raw_received)
+
+    def test_binary_on_json_route_is_dropped_and_tracked(self):
+        received = []
+
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route("json-route-mismatch")
+        def handler(data: dict):
+            received.append(data)
+
+        t = threading.Thread(target=sub.start, daemon=True)
+        t.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def pub_task():
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("json-route-mismatch", b"\xde\xad")
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+        asyncio.run(pub_task())
+        time.sleep(PROPAGATION_DELAY)
+
+        sub.close()
+        time.sleep(0.05)
+        t.join(timeout=0.2)
+
+        self.assertEqual(received, [])
+
+    def test_json_on_raw_route_is_dropped_and_tracked(self):
+        received = []
+
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route_raw("raw-route-mismatch")
+        def handler(data: bytes):
+            received.append(data)
+
+        t = threading.Thread(target=sub.start, daemon=True)
+        t.start()
+        time.sleep(PROPAGATION_DELAY)
+
+        async def pub_task():
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish("raw-route-mismatch", {"oops": True})
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+        asyncio.run(pub_task())
+        time.sleep(PROPAGATION_DELAY)
+
+        sub.close()
+        time.sleep(0.05)
+        t.join(timeout=0.2)
+
+        self.assertEqual(received, [])
+
+    def test_duplicate_route_registration_raises(self):
+        sub = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub.route("dup-topic")
+        def json_handler(data: dict):
+            pass
+
+        with self.assertRaises(ValueError):
+            @sub.route_raw("dup-topic")
+            def raw_handler(data: bytes):
+                pass
+
+        sub2 = IpcSubscriberSync(port=self.xpub_port)
+
+        @sub2.route_raw("dup-topic2")
+        def raw_handler2(data: bytes):
+            pass
+
+        with self.assertRaises(ValueError):
+            @sub2.route("dup-topic2")
+            def json_handler2(data: dict):
+                pass
+
+class TestIpcPubSubAsync(TestIPC):
+    def setUp(self):
+        # Start broker with OS-assigned ports
+        self.broker = IpcPubSubBroker(xsub_port=0, xpub_port=0)
+        self.broker.run_in_thread()
+        time.sleep(0.05)
+
+        self.xsub_port = self.broker.xsub_port
+        self.xpub_port = self.broker.xpub_port
+
+    def tearDown(self):
+        self.broker.close()
+        time.sleep(0.05)
+        if self.broker._thread:
+            self.broker._thread.join(timeout=0.2)
+
+    def test_async_subscriber_receives_message(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-basic")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run(), name="AsyncSub")
+
+            # allow subscription propagation
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-basic", {"v": 1})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertIn({"v": 1}, received)
+
+    def test_async_subscriber_before_publisher(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-early")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-early", {"ok": True})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub.close()
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertIn({"ok": True}, received)
+
+    def test_async_subscriber_does_not_block_event_loop(self):
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-nop")
+            async def handler(_):
+                await asyncio.sleep(0)  # yield control
+
+            sub_task = asyncio.create_task(sub.run())
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            # fire a lot of messages
+            for _ in range(1000):
+                await pub.publish("async-nop", {"x": 1})
+
+            await pub.close()
+
+            # event loop must still be alive
+            await asyncio.sleep(0.05)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        try:
+            asyncio.run(asyncio.wait_for(run_test(), timeout=1.0))
+        except asyncio.TimeoutError:
+            self.fail("Async subscriber blocked the event loop")
+
+    def test_async_subscriber_survives_publisher_restart(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-restart")
+            async def handler(data):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+
+            # ---- allow subscription to propagate fully ----
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            # First publisher instance (post-subscription)
+            pub1 = IpcPublisherAsync(port=self.xsub_port)
+            await pub1.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub1.publish("async-restart", {"n": 1})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub1.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            # Second publisher instance (restart)
+            pub2 = IpcPublisherAsync(port=self.xsub_port)
+            await pub2.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub2.publish("async-restart", {"n": 2})
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub2.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        # Both batches should now be seen
+        self.assertIn({"n": 1}, received)
+        self.assertIn({"n": 2}, received)
+
+    def test_async_route_raw_end_to_end(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route_raw("async-raw")
+            async def handler(data: bytes):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run(), name="AsyncSubRaw")
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("async-raw", b"\xde\xad\xbe\xef")
+                await asyncio.sleep(MESSAGE_DELAY)
+
+            await pub.close()
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertIn(b"\xde\xad\xbe\xef", received)
+
+    def test_async_binary_on_json_route_is_dropped(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route("async-json-route-mismatch")
+            async def handler(data: dict):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish_raw("async-json-route-mismatch", b"\xde\xad")
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertEqual(received, [])
+
+    def test_async_json_on_raw_route_is_dropped(self):
+        received = []
+
+        async def run_test():
+            sub = IpcSubscriberAsync(port=self.xpub_port)
+
+            @sub.route_raw("async-raw-route-mismatch")
+            async def handler(data: bytes):
+                received.append(data)
+
+            sub_task = asyncio.create_task(sub.run())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            pub = IpcPublisherAsync(port=self.xsub_port)
+            await pub.start()
+            for _ in range(SEND_REPEATS):
+                await pub.publish("async-raw-route-mismatch", {"oops": True})
+                await asyncio.sleep(MESSAGE_DELAY)
+            await pub.close()
+
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sub.close()
+            sub_task.cancel()
+            try:
+                await sub_task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_test())
+
+        self.assertEqual(received, [])
+
+    def test_async_duplicate_route_registration_raises(self):
+        async def json_handler(data: dict):
+            pass
+
+        async def raw_handler(data: bytes):
+            pass
+
+        sub = IpcSubscriberAsync(port=self.xpub_port)
+        sub.route("async-dup-topic")(json_handler)
+
+        with self.assertRaises(ValueError):
+            sub.route_raw("async-dup-topic")(raw_handler)

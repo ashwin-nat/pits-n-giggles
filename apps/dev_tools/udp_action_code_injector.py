@@ -41,8 +41,8 @@ def get_button_event_obj(button_code: int) -> PacketEventData:
             packet_type=F1PacketType.EVENT,
             session_uid=1,
             session_time=1.0,
-            frame_identifier=1,
-            overall_frame_identifier=1,
+            frame_identifier=0,
+            overall_frame_identifier=0,
             player_car_index=19,
             secondary_player_car_index=255
         ),

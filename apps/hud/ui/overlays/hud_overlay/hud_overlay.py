@@ -29,7 +29,7 @@ from typing import Any, Dict, Optional, final
 from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                         OverlayId, OverlayPosition)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 
@@ -56,8 +56,8 @@ class HudOverlay(BaseOverlayQML):
         scale_factor: float,
         windowed_overlay: bool,
         refresh_interval_ms: Optional[int] = None,
-        speed_unit: HudOverlaySpeedUnit = HudOverlaySpeedUnit.KMPH,
-        fuel_estimation_mode: HudOverlayFuelEstimationMode = HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
+        speed_unit: OverlaysSpeedUnit = OverlaysSpeedUnit.KMPH,
+        fuel_estimation_mode: OverlaysFuelEstimationMode = OverlaysFuelEstimationMode.LINEAR_REGRESSION,
     ) -> None:
 
         super().__init__(
@@ -75,8 +75,8 @@ class HudOverlay(BaseOverlayQML):
 
         self._surplus_fuel: Optional[float] = None
         self._surplus_fuel_key: str = {
-            HudOverlayFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
-            HudOverlayFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
+            OverlaysFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
+            OverlaysFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
         }.get(fuel_estimation_mode)
         self._register_event_handlers()
 
@@ -101,8 +101,8 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("revLightsPct", data.rev_lights_pct)
         self.set_qml_property("rpm",          data.rpm)
         self.set_qml_property("gear",         data.gear)
-        if self._speed_unit == HudOverlaySpeedUnit.MPH:
-            self.set_qml_property("speedKmph",    round(data.speed_kmph * 0.621371))
+        if self._speed_unit == OverlaysSpeedUnit.MPH:
+            self.set_qml_property("speedKmph",    data.speed_mph)
             self.set_qml_property("speedUnitLabel", "mph")
         else:
             self.set_qml_property("speedKmph",    data.speed_kmph)

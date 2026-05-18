@@ -25,15 +25,12 @@
 import asyncio
 import logging
 import os
-import webbrowser
 from typing import Any, Dict, List
 
-import apps.save_viewer.save_viewer_state as SaveViewerState
 from apps.save_viewer.save_web_server import SaveViewerWebServer
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.child_proc_mgmt import report_ipc_port_from_child
 from lib.ipc import IpcServerAsync
-from lib.web_server import ClientType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,7 +44,6 @@ class SaveViewerIpc:
         """
         self.m_logger = logger
         self.m_server = server
-        self.m_should_open_ui = True
         self.m_ipc_server = IpcServerAsync(name="Save Viewer")
         self._register_routes()
         report_ipc_port_from_child(self.m_ipc_server.port)
@@ -84,32 +80,8 @@ class SaveViewerIpc:
             await self.m_server.stop()
             return {"status": "success"}
 
-        @self.m_ipc_server.on("open-file")
-        async def _handle_open_file(args: dict) -> dict:
-            """Handles the 'open-file' IPC command."""
-            file_path = args.get("file-path")
-
-            result = await SaveViewerState.open_file_helper(file_path)
-            if result.get("status") != "success":
-                return result
-
-            # Open the webpage once
-            if self.m_should_open_ui:
-                self.m_should_open_ui = False
-                webbrowser.open(f'http://localhost:{self.m_server.m_port}', new=2)
-
-            # Update all clients
-            await self.m_server.send_to_clients_of_type(
-                event='race-table-update',
-                data=SaveViewerState.getTelemetryInfo(),
-                client_type=ClientType.RACE_TABLE,
-            )
-
-            return {"status": "success"}
-
-        @self.m_ipc_server.on("get-stats")
+        @self.m_ipc_server.on_get_stats
         async def _handle_get_stats(_args: dict) -> Dict[str, Any]:
-            """Handle the 'get-stats' IPC command."""
             return {
                 "status": "success",
                 "stats": self.m_server.get_stats(),

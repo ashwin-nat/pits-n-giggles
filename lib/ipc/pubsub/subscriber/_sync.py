@@ -26,150 +26,58 @@ import logging
 import time
 from typing import Callable, Dict, Optional, Tuple
 
-import orjson
 import zmq
 
-from lib.event_counter import EventCounter
+from lib.ipc.pubsub.content_types import IpcContentType
+from ._base import _IpcSubscriberBase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class IpcSubscriberSync:
-    """
-    Auto-reconnecting synchronous subscriber.
-    Survivable across broker restarts.
-    """
+class IpcSubscriberSync(
+    _IpcSubscriberBase[
+        Callable[[dict], None],
+        Callable[[bytes], None],
+    ]
+):
+    """Auto-reconnecting synchronous subscriber. Survivable across broker restarts."""
 
     def __init__(
         self,
         host: Optional[str] = "127.0.0.1",
         port: Optional[int] = None,
         logger: Optional[logging.Logger] = None,
-    ):
+    ) -> None:
         if port is None:
             raise ValueError("IpcSubscriberSync requires explicit port")
 
-        self.host = host
-        self.port = port
         if logger is None:
             logger = logging.getLogger(f"{__name__}.IpcSubscriberSync")
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
-        self.logger = logger
 
-        self._context = zmq.Context()
-        self._routes: Dict[str, Callable[[dict], None]] = {}
-        self._last_message_id_by_topic: Dict[str, int] = {}
-        self.stats = EventCounter()
-
-        self._running = False
-        self.socket: Optional[zmq.Socket] = None
-
-        # Create first socket
+        super().__init__(host=host, port=port, logger=logger)
         self._create_and_connect()
 
     # ---------------------------------------------------------
-    # Socket setup
+    # Public overrides with concrete types for static analysis
     # ---------------------------------------------------------
-    def _create_and_connect(self):
-        """Create a new SUB socket and connect to the broker."""
-        if self.socket:
-            try:
-                self.socket.close(linger=0)
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
 
-        self.socket: zmq.Socket = self._context.socket(zmq.SUB)
-        self.socket.setsockopt(zmq.LINGER, 0)
+    def route(self, topic: str) -> Callable[[Callable[[dict], None]], Callable[[dict], None]]:
+        return super().route(topic)
 
-        # Restore all topic subscriptions
-        for topic in self._routes:
-            self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode())
-
-        endpoint = f"tcp://{self.host}:{self.port}"
-        self.socket.connect(endpoint)
-
-        self.logger.debug("IpcSubscriberSync configured endpoint %s", endpoint)
-
-    # ---------------------------------------------------------
-    # Register handler
-    # ---------------------------------------------------------
-    def route(self, topic: str):
-        topic_bytes = topic.encode()
-
-        # Subscribe immediately
-        if self.socket:
-            self.socket.setsockopt(zmq.SUBSCRIBE, topic_bytes)
-
-        def decorator(func):
-            self._routes[topic] = func
-            return func
-
-        return decorator
-
-    # ---------------------------------------------------------
-    # Message envelope helpers
-    # ---------------------------------------------------------
-    def _track_missed_messages(self, topic: str, count: int) -> None:
-        self.stats.track_event("__TOTAL__", "__MISSED__", count=count)
-        self.stats.track_event(topic, "__MISSED__", count=count)
-
-    def _parse_envelope(self, payload: bytes) -> Tuple[dict, int, Optional[int]]:
-        message = orjson.loads(payload)
-        meta = message["__meta__"]
-        send_ts_ns = meta.get("send_ts_ns")
-
-        if not isinstance(send_ts_ns, int):
-            send_ts_ns = None
-
-        return message["__payload__"], meta["message_id"], send_ts_ns
-
-    def _track_latency(
-        self, topic: str, send_ts_ns: Optional[int], recv_ts_ns: Optional[int] = None
-    ) -> None:
-        if send_ts_ns is None:
-            return
-
-        if recv_ts_ns is None:
-            recv_ts_ns = time.time_ns()
-
-        self.stats.track_packet_latency(
-            "__TOTAL__", "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-        self.stats.track_packet_latency(
-            topic, "__LATENCY__", send_ts_ns, recv_ts_ns
-        )
-
-    def _track_sequence(self, topic: str, message_id: int) -> None:
-        last_message_id = self._last_message_id_by_topic.get(topic)
-        if last_message_id is None:
-            self._last_message_id_by_topic[topic] = message_id
-            return
-
-        expected_next = last_message_id + 1
-        if message_id > expected_next:
-            missed = message_id - expected_next
-            self._track_missed_messages(topic, missed)
-            self.logger.debug(
-                "Detected %d missed messages on topic %s (expected %d, got %d)",
-                missed,
-                topic,
-                expected_next,
-                message_id,
-            )
-        elif message_id <= last_message_id:
-            self.stats.track_event("__TOTAL__", "__SEQ_ANOMALY__")
-            self.stats.track_event(topic, "__SEQ_ANOMALY__")
-
-        self._last_message_id_by_topic[topic] = message_id
+    def route_raw(
+        self, topic: str, content_type: IpcContentType = IpcContentType.BINARY
+    ) -> Callable[[Callable[[bytes], None]], Callable[[bytes], None]]:
+        return super().route_raw(topic, content_type)
 
     # ---------------------------------------------------------
     # Main loop with auto-reconnect
     # ---------------------------------------------------------
-    def start(self):
+
+    def start(self) -> None:
         """Blocking loop with reconnection support."""
         self._running = True
         poller = zmq.Poller()
-
         poller.register(self.socket, zmq.POLLIN)
 
         while self._running:
@@ -184,16 +92,14 @@ class IpcSubscriberSync:
                 continue
 
             if self.socket in events:
-                # Drain all queued messages, keeping only the latest per topic.
-                # PUB/SUB semantics: consumers only need the freshest state.
-                latest_per_topic: Dict[str, dict] = {}
+                latest_per_topic: Dict[str, Tuple[IpcContentType, bytes]] = {}
                 recv_failed = False
 
                 while True:
                     try:
                         frames = self.socket.recv_multipart(flags=zmq.DONTWAIT)
                     except zmq.Again:
-                        break  # socket drained
+                        break
                     except zmq.ZMQError:
                         self.stats.track_event("__ERROR__", "recv_failed")
                         self.logger.warning("Receive failed - reconnecting SUB socket")
@@ -203,23 +109,25 @@ class IpcSubscriberSync:
                         recv_failed = True
                         break
 
-                    if len(frames) != 2:
+                    if len(frames) != 3:
                         self.stats.track_event("__DROP__", "invalid_frame_count")
                         continue
 
-                    topic_bytes, payload = frames
+                    topic_bytes, meta_bytes, payload_bytes = frames
                     topic = topic_bytes.decode()
-                    total_size = len(topic_bytes) + len(payload)
+                    total_size = len(topic_bytes) + len(meta_bytes) + len(payload_bytes)
 
                     self.stats.track_packet("__TOTAL__", "__PACKETS__", total_size)
                     self.stats.track_packet(topic, "__PACKETS__", total_size)
 
-                    if topic not in self._routes:
+                    if topic not in self._routes and topic not in self._raw_routes:
                         self.stats.track_event("__DROP__", f"unrouted_topic_{topic}")
                         continue
 
                     try:
-                        data, message_id, send_ts_ns = self._parse_envelope(payload)
+                        content_type, raw_payload, message_id, send_ts_ns = self._parse_envelope(
+                            meta_bytes, payload_bytes
+                        )
                         self._track_sequence(topic, message_id)
                         self._track_latency(topic, send_ts_ns, recv_ts_ns=time.time_ns())
                     except (ValueError, TypeError, KeyError):
@@ -230,17 +138,20 @@ class IpcSubscriberSync:
                         self.stats.track_event("__TOTAL__", "__STALE_DROP__")
                         self.stats.track_event(topic, "__STALE_DROP__")
 
-                    latest_per_topic[topic] = data
+                    latest_per_topic[topic] = (content_type, raw_payload)
 
                 if recv_failed:
                     continue
 
-                for topic, data in latest_per_topic.items():
-                    handler = self._routes.get(topic)
-                    if not handler:
-                        continue
+                for topic, (content_type, raw_payload) in latest_per_topic.items():
                     try:
-                        handler(data)
+                        handler, payload = self._dispatch(topic, content_type, raw_payload)
+                    except ValueError as e:
+                        self.stats.track_event("__DROP__", str(e))
+                        continue
+
+                    try:
+                        handler(payload)
                         self.stats.track_event("__TOTAL__", "__HANDLER_OK__")
                         self.stats.track_event(topic, "__HANDLER_OK__")
                     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -248,7 +159,6 @@ class IpcSubscriberSync:
                         self.stats.track_event(topic, "__HANDLER_ERR__")
                         self.logger.exception("Handler error for %s: %s", topic, e)
 
-        # clean shutdown
         try:
             poller.unregister(self.socket)
         except Exception:  # pylint: disable=broad-exception-caught
@@ -260,13 +170,3 @@ class IpcSubscriberSync:
             pass
 
         self.logger.debug("IpcSubscriberSync stopped")
-
-    def get_stats(self) -> dict:
-        """Get current subscriber stats snapshot."""
-        return self.stats.get_stats()
-
-    # ---------------------------------------------------------
-    # External shutdown
-    # ---------------------------------------------------------
-    def close(self):
-        self._running = False

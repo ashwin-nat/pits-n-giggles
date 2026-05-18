@@ -26,51 +26,73 @@ import logging
 import threading
 from typing import Tuple
 
-from lib.ipc import IpcSubscriberSync
+from lib.ipc import IpcDealerClient, IpcSubscriberSync, PngAppId
 
 from ..ui.infra import OverlaysMgr
-from .client import HudClient
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def run_hud_update_threads(
-        port: int,
+        router_port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr,
         xpub_port: int
-        ) -> Tuple[HudClient, IpcSubscriberSync]:
+        ) -> Tuple[IpcDealerClient, IpcSubscriberSync]:
     """Creates, runs and returns the HUD update thread.
 
     Args:
-        port: Port number of the Socket.IO server.
+        router_port: Port number of the ZeroMQ ROUTER socket on the broker.
         logger: Logger instance.
         overlays_mgr: Overlays manager
         xpub_port: IPC xpub port
 
     Returns:
-        A tuple of the Socket.IO client and the IPC subscriber instances.
+        A tuple of the IPC dealer client and the IPC subscriber instances.
     """
-    return _run_socketio_thread(port, logger, overlays_mgr), \
+    return _run_dealer_thread(router_port, logger, overlays_mgr), \
             _run_ipc_sub_thread(logger, overlays_mgr, xpub_port)
 
-def _run_socketio_thread(
-        port: int,
+def _run_dealer_thread(
+        router_port: int,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr
-        ) -> HudClient:
-    """Thread target to run the Socket.IO listener for HUD updates.
+        ) -> IpcDealerClient:
+    """Start the ZeroMQ DEALER client thread for HUD button-press commands.
 
     Args:
-        port: Port number of the Socket.IO server.
+        router_port: Port of the broker ROUTER socket.
         logger: Logger instance.
         overlays_mgr: Overlays manager
 
     Returns:
-        The Socket.IO client instance.
+        The IpcDealerClient instance.
     """
-    client = HudClient(port, logger, overlays_mgr)
-    threading.Thread(target=client.run, daemon=True, name="Socket.IO listener").start()
-    return client
+    dealer_client = IpcDealerClient(
+        host="127.0.0.1",
+        port=router_port,
+        identity=str(PngAppId.HUD),
+        logger=logger,
+    )
+
+    @dealer_client.route("hud-toggle-notification")
+    def _(data, _sender):
+        oid = data.get("message", {}).get("oid") if isinstance(data, dict) else None
+        overlays_mgr.toggle_overlays_visibility(oid)
+
+    @dealer_client.route("hud-cycle-mfd-notification")
+    def _(_data, _sender):
+        overlays_mgr.next_page()
+
+    @dealer_client.route("hud-prev-page-mfd-notification")
+    def _(_data, _sender):
+        overlays_mgr.prev_page()
+
+    @dealer_client.route("hud-mfd-interaction-notification")
+    def _(_data, _sender):
+        overlays_mgr.mfd_interact()
+
+    threading.Thread(target=dealer_client.start, daemon=True, name="HUD Dealer").start()
+    return dealer_client
 
 def _run_ipc_sub_thread(
         logger: logging.Logger,

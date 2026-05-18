@@ -10,32 +10,64 @@ Window {
     property int numRows: 5  // Set by Python
     readonly property int rowHeight: 28
     readonly property int headerHeight: 34
+    readonly property int colHeaderHeight: 20
     readonly property int margins: 20
 
-    // Column toggle properties - set by Python
-    property bool showTeamLogos: true
-    property bool showTyreInfo: true
-    property bool showDeltas: true
-    property bool showErsDrsInfo: true
-    property bool showPens: true
+    property bool showColHeader: true
 
-    // Dynamic width calculation based on enabled columns
-    readonly property int baseWidth: {
-        var width = cols.pos + cols.name;
-        if (showTeamLogos) width += cols.team;
-        if (showDeltas) width += cols.delta;
-        if (showTyreInfo) width += cols.tyre;
-        if (showErsDrsInfo) {
-            // DRS bar needs extra space if pens are disabled
-            // In the main layout, it spills into the pens column
-            // this workaround is good enough
-            width += showPens ? cols.ers : cols.ers + 10;
-        }
-        if (showPens) width += cols.pens;
-        return width + 10; // Add padding
+    // Dynamic column order - set by Python as list of column ID strings
+    // Does not include team_logo (fixed position between pos and name)
+    property var columnOrder: []
+
+    // Column widths keyed by TimingTowerColId enum values
+    QtObject {
+        id: cols
+        readonly property int pos: 30
+        readonly property int team_logo: 25
+        readonly property int name: 120
+        readonly property int delta: 72
+        readonly property int tyre: 58
+        readonly property int ers_drs: 58
+        readonly property int pens: 44
+        readonly property int tl_warns: 32
+        readonly property int best_lap: 75
+        readonly property int last_lap: 72
+        readonly property int wing_dmg: 50
+        readonly property int speed_trap: 75
+        readonly property int fuel: 55
+        readonly property int driver_status: 95
     }
 
-    readonly property int baseHeight: headerHeight + (rowHeight * numRows) + margins
+    // Dynamic width: fixed structural cols + optional team_logo + sum of enabled dynamic cols
+    readonly property int baseWidth: {
+        var w = cols.pos + cols.name;
+        w += cols.team_logo;
+        for (var i = 0; i < columnOrder.length; ++i) {
+            w += cols[columnOrder[i]];
+        }
+        return w + 24;
+    }
+
+    function colHeaderLabel(colId) {
+        switch(colId) {
+            case "delta":         return "DELTA"
+            case "tyre":          return "TYRE"
+            case "ers_drs":       return "ERS/DRS"
+            case "pens":          return "PEN"
+            case "tl_warns":      return "TL"
+            case "best_lap":      return "BEST"
+            case "last_lap":      return "LAST"
+            case "wing_dmg":      return "DMG"
+            case "speed_trap":    return "TRAP"
+            case "fuel":          return "FUEL"
+            case "driver_status": return "STATUS"
+            default:              return colId
+        }
+    }
+
+    readonly property int effectiveRows: Math.min(numRows, tableData.length)
+    readonly property bool colHeaderVisible: showColHeader && !showError && mode === "race"
+    readonly property int baseHeight: headerHeight + (colHeaderVisible ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
 
     width: (mode === "tt" ? ttBaseWidth : baseWidth) * scaleFactor
     height: (mode === "tt" ? ttBaseHeight : baseHeight) * scaleFactor
@@ -119,37 +151,126 @@ Window {
                         visible: showError && mode === "race"
                     }
 
-                    // Column widths
-                    QtObject {
-                        id: cols
-                        readonly property int pos: 30
-                        readonly property int team: 25
-                        readonly property int name: 120
-                        readonly property int delta: 72
-                        readonly property int tyre: 58
-                        readonly property int ers: 58
-                        readonly property int pens: 56
+                    // Column headers (race mode)
+                    Item {
+                        id: raceColHeader
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: 2
+                        height: colHeaderVisible ? colHeaderHeight : 0
+                        layer.enabled: true
+                        layer.smooth: true
+
+                        Row {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height
+
+                            Item {
+                                width: cols.pos
+                                height: parent.height
+                                Text {
+                                    anchors.fill: parent
+                                    text: "P"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: "#666666"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
+                            }
+                            // team_logo header: fixed, empty label
+                            Item {
+                                width: cols.team_logo
+                                height: parent.height
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
+                            }
+                            Item {
+                                width: cols.name
+                                height: parent.height
+                                Text {
+                                    anchors.fill: parent
+                                    text: "DRIVER"
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: "#666666"
+                                    horizontalAlignment: Text.AlignLeft
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 1
+                                    height: parent.height - 4
+                                    color: Qt.rgba(1, 1, 1, 0.15)
+                                }
+                            }
+                            Repeater {
+                                model: columnOrder
+                                delegate: Item {
+                                    width: cols[modelData]
+                                    height: parent.height
+                                    Text {
+                                        anchors.fill: parent
+                                        text: colHeaderLabel(modelData)
+                                        font.family: "Formula1"
+                                        font.pixelSize: 10
+                                        color: "#666666"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Rectangle {
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 1
+                                        height: parent.height - 4
+                                        color: Qt.rgba(1, 1, 1, 0.15)
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Table content (race mode)
                     ListView {
                         id: tableView
-                        anchors.fill: parent
+                        anchors.top: raceColHeader.bottom
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
                         anchors.margins: 2
+                        anchors.topMargin: 0
                         clip: true
                         interactive: false
+                        reuseItems: true
                         visible: !showError && mode === "race"
 
                         model: tableData
 
                         delegate: Item {
+                            property var rowData: modelData
                             width: tableView.width
                             height: 28
 
                             // Row background
                             Rectangle {
                                 anchors.fill: parent
-                                color: modelData.isReference
+                                color: rowData.isReference
                                     ? Qt.rgba(1, 1, 1, 0.07)
                                     : Qt.rgba(0.08, 0.08, 0.10, 0.6)
                                 radius: 3
@@ -169,8 +290,189 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 2
                                 height: parent.height - 6
-                                color: modelData.isReference ? "#ffffff" : "transparent"
+                                color: rowData.isReference ? "#ffffff" : "transparent"
                                 radius: 1
+                            }
+
+                            // Per-column components — defined here so they close over rowData.
+                            // Loader below instantiates exactly one per slot instead of 11.
+                            Component {
+                                id: deltaColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.delta
+                                    font.family: "Consolas"
+                                    font.pixelSize: 13
+                                    color: "#ffffff"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: tyreColComp
+                                Item {
+                                    anchors.fill: parent
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 4
+                                        Image {
+                                            width: 20
+                                            height: 20
+                                            sourceSize.width: width * Screen.devicePixelRatio
+                                            sourceSize.height: height * Screen.devicePixelRatio
+                                            source: rowData.tyreIcon || ""
+                                            fillMode: Image.PreserveAspectFit
+                                            smooth: true
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            cache: true
+                                            antialiasing: true
+                                        }
+                                        Text {
+                                            text: rowData.tyreWear
+                                            font.family: "Consolas"
+                                            font.pixelSize: 13
+                                            color: "#ffffff"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+                                }
+                            }
+                            Component {
+                                id: ersDrsColComp
+                                Item {
+                                    anchors.fill: parent
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 1
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: rowData.ersColor
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: rowData.ers
+                                        font.family: "Consolas"
+                                        font.pixelSize: 13
+                                        color: "#dddddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    Rectangle {
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 1
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 6
+                                        height: parent.height - 8
+                                        radius: 2
+                                        color: rowData.drs ? "#00e676" : "#333333"
+                                    }
+                                }
+                            }
+                            Component {
+                                id: pensColComp
+                                Item {
+                                    anchors.fill: parent
+                                    Text {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 4
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: rowData.penalties
+                                        font.family: "Formula1"
+                                        font.pixelSize: 11
+                                        color: "white"
+                                        horizontalAlignment: Text.AlignLeft
+                                        verticalAlignment: Text.AlignVCenter
+                                        wrapMode: Text.NoWrap
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                            Component {
+                                id: tlWarnsColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.tlWarns !== undefined ? rowData.tlWarns : "---"
+                                    font.family: "Consolas"
+                                    font.pixelSize: 13
+                                    color: "#dddddd"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: bestLapColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.bestLap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: rowData.bestLapColor
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: lastLapColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.lastLap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: rowData.lastLapColor
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: wingDmgColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.wingDmg
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: rowData.wingDmgColor
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: speedTrapColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.speedTrap
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: "#dddddd"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: fuelColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.fuel
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    color: rowData.fuelColor
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                            Component {
+                                id: driverStatusColComp
+                                Text {
+                                    anchors.fill: parent
+                                    text: rowData.driverStatus
+                                    font.family: "Formula1"
+                                    font.pixelSize: 10
+                                    color: "#dddddd"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
                             }
 
                             Row {
@@ -180,23 +482,33 @@ Window {
                                 height: parent.height
                                 spacing: 0
 
-                                // Position
-                                Text {
+                                // Position (fixed)
+                                Item {
                                     width: cols.pos
                                     height: parent.height
-                                    text: modelData.position < 10 ? modelData.position + " " : modelData.position
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    color: "#ddd"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: 1
+                                        color: rowData.isSb ? "#4a1d7a" : "transparent"
+                                        radius: 2
+                                    }
+
+                                    Text {
+                                        anchors.fill: parent
+                                        text: rowData.position < 10 ? rowData.position + " " : rowData.position
+                                        font.family: "Consolas"
+                                        font.pixelSize: 12
+                                        color: "#ddd"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
                                 }
 
-                                // Team icon
+                                // Team logo (fixed)
                                 Item {
-                                    width: showTeamLogos ? cols.team : 0
+                                    width: cols.team_logo
                                     height: parent.height
-                                    visible: showTeamLogos
 
                                     Image {
                                         anchors.right: parent.right
@@ -206,7 +518,7 @@ Window {
                                         height: 20
                                         sourceSize.width: width * Screen.devicePixelRatio * 2
                                         sourceSize.height: height * Screen.devicePixelRatio * 2
-                                        source: modelData.teamIcon || ""
+                                        source: rowData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
                                         mipmap: true
@@ -215,11 +527,11 @@ Window {
                                     }
                                 }
 
-                                // Driver name
+                                // Driver name (fixed)
                                 Text {
                                     width: cols.name
                                     height: parent.height
-                                    text: modelData.name
+                                    text: rowData.name
                                     font.family: "Formula1"
                                     font.pixelSize: 13
                                     color: "#ffffff"
@@ -228,118 +540,29 @@ Window {
                                     elide: Text.ElideRight
                                 }
 
-                                // Delta
-                                Text {
-                                    width: showDeltas ? cols.delta : 0
-                                    height: parent.height
-                                    text: modelData.delta
-                                    font.family: "Consolas"
-                                    font.pixelSize: 13
-                                    color: "#ffffff"
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    visible: showDeltas
-                                }
-
-                                // Tyre
-                                Item {
-                                    width: showTyreInfo ? cols.tyre : 0
-                                    height: parent.height
-                                    visible: showTyreInfo
-
-                                    Row {
-                                        anchors.centerIn: parent
-                                        spacing: 4
-
-                                        Image {
-                                            width: 20
-                                            height: 20
-                                            sourceSize.width: width * Screen.devicePixelRatio
-                                            sourceSize.height: height * Screen.devicePixelRatio
-                                            source: modelData.tyreIcon || ""
-                                            fillMode: Image.PreserveAspectFit
-                                            smooth: true
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            cache: true
-                                            antialiasing: true
-                                        }
-
-                                        Text {
-                                            text: modelData.tyreWear
-                                            font.family: "Consolas"
-                                            font.pixelSize: 13
-                                            color: "#ffffff"
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-                                    }
-                                }
-
-                                // ERS/DRS
-                                Item {
-                                    width: showErsDrsInfo ? cols.ers : 0
-                                    height: parent.height
-                                    visible: showErsDrsInfo
-
-                                    // ERS mode strip (left)
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 1
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 6
-                                        height: parent.height - 8
-                                        radius: 2
-                                        color: {
-                                            switch(modelData.ersMode) {
-                                                case "Medium": return "#e6d800"
-                                                case "Hotlap": return "#00e676"
-                                                case "Overtake": return "#ff1744"
-                                                default: return "#444444"
+                                // Dynamic columns — Loader instantiates one component per slot
+                                Repeater {
+                                    model: columnOrder
+                                    delegate: Loader {
+                                        property string colId: modelData
+                                        width: cols[colId]
+                                        height: parent.height
+                                        sourceComponent: {
+                                            switch(colId) {
+                                                case "delta":         return deltaColComp
+                                                case "tyre":          return tyreColComp
+                                                case "ers_drs":       return ersDrsColComp
+                                                case "pens":          return pensColComp
+                                                case "tl_warns":      return tlWarnsColComp
+                                                case "best_lap":      return bestLapColComp
+                                                case "last_lap":      return lastLapColComp
+                                                case "wing_dmg":      return wingDmgColComp
+                                                case "speed_trap":    return speedTrapColComp
+                                                case "fuel":          return fuelColComp
+                                                case "driver_status": return driverStatusColComp
+                                                default:              return null
                                             }
                                         }
-                                    }
-
-                                    // ERS text (center)
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelData.ers
-                                        font.family: "Consolas"
-                                        font.pixelSize: 13
-                                        color: "#dddddd"
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-
-                                    // DRS strip (right)
-                                    Rectangle {
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 1
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 6
-                                        height: parent.height - 8
-                                        radius: 2
-                                        color: modelData.drs ? "#00e676" : "#333333"
-                                    }
-                                }
-
-                                // Penalties
-                                Rectangle {
-                                    width: showPens ? cols.pens : 0
-                                    height: parent.height
-                                    color: "transparent"
-                                    visible: showPens
-
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 4
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.penalties
-                                        font.family: "Formula1"
-                                        font.pixelSize: 11
-                                        color: "white"
-                                        horizontalAlignment: Text.AlignLeft
-                                        verticalAlignment: Text.AlignVCenter
-                                        wrapMode: Text.NoWrap
-                                        elide: Text.ElideRight
                                     }
                                 }
                             }

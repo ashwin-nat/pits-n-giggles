@@ -33,6 +33,7 @@ import zmq
 
 RouteCallback = Callable[[dict], dict[str, Any]]
 ShutdownCallback = Callable[[dict], dict[str, Any]]
+GetStatsCallback = Callable[[dict], dict[str, Any]]
 HeartbeatCallback = Callable[[int], None]
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -73,6 +74,7 @@ class IpcServerSync:
         self._thread: Optional[threading.Thread] = None
         self._running = False
         self._shutdown_callback: Optional[ShutdownCallback] = None
+        self._get_stats_callback: Optional[GetStatsCallback] = None
         self._route_handlers: dict[str, RouteCallback] = {}
 
         # Heartbeat parameters
@@ -98,6 +100,13 @@ class IpcServerSync:
         """
         self._shutdown_callback = callback
 
+    def register_get_stats_callback(self, callback: GetStatsCallback) -> None:
+        """
+        Registers a callback to be called on get-stats command.
+        :param callback: Function to call on get-stats command. Receives args dict, returns stats dict.
+        """
+        self._get_stats_callback = callback
+
     def register_heartbeat_missed_callback(self, callback: HeartbeatCallback) -> None:
         """
         Registers a callback to be called when max consecutive heartbeats are missed.
@@ -120,6 +129,10 @@ class IpcServerSync:
 
     def on_shutdown(self, func: ShutdownCallback) -> ShutdownCallback:
         self.register_shutdown_callback(func)
+        return func
+
+    def on_get_stats(self, func: GetStatsCallback) -> GetStatsCallback:
+        self.register_get_stats_callback(func)
         return func
 
     def on_heartbeat_missed(self, func: HeartbeatCallback) -> HeartbeatCallback:
@@ -238,6 +251,13 @@ class IpcServerSync:
                             "message": "default shutdown complete",
                         }
                     self._running = False
+
+                elif cmd == "__get_stats__":
+                    if self._get_stats_callback:
+                        response = self._get_stats_callback(msg.get("args", {}))
+                    else:
+                        response = {"status": "success", "stats": {}}
+
                 else:
                     if handler_fn is not None:
                         response = handler_fn(msg)

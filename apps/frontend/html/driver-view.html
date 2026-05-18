@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% else %}Pits n' Giggles {{ version }} - {{ 'Live' if live_data_mode else 'Save Data' }}{% endif %}</title>
+    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% elif live_data_mode %}Pits n' Giggles - Live v{{ version }}{% else %}Pits n' Giggles - Save v{{ version }}{% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/columnConfig.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/raceStatsModal.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha384-H6KKS1H1WwuERMSm+54dYLzjg0fKqRK5ZRyASdbrI/lwrCc6bXEmtGYr5SwvP1pZ" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10.16.17" integrity="sha384-CBBUDoTz0U0f+d7R/FRzc0MIt80mhxjnk5gmza0mloefItQfW/6xwCXNTZ9z8mb5" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/msgpack-lite@0.1.26/dist/msgpack.min.js" integrity="sha384-MWenGdy0IO91D1IxYZ3jomrUiVLYQO2MbFrzI61UCdaN80K3Ys3u8eLu/ZDlaoIm" crossorigin="anonymous"></script>
@@ -663,10 +662,11 @@
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
     <script src="{{ url_for('static', filename='js/barChart.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialCardDragDrop.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
       const currVer = "{{ version }}";
       console.info("Running version", currVer);
+      window.SESSION_SLUG = {% if session_slug %}"{{ session_slug }}"{% else %}null{% endif %};
     </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>

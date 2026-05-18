@@ -69,7 +69,7 @@
       "type": "complex_corner",
       "start_m": 2450,
       "end_m": 2750,
-      "name": "temp (remove)",
+      "name": "",
       "corner_numbers": [
         9,
         10
@@ -106,7 +106,7 @@
       "type": "complex_corner",
       "start_m": 4550,
       "end_m": 4890,
-      "name": "todo remove",
+      "name": "",
       "corner_numbers": [
         14,
         15

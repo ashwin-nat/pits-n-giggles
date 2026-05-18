@@ -1,28 +1,54 @@
 ---
-description: Generate a performance metrics report by extracting stats from a launcher log file
-allowed-tools: Read, Grep, Bash(python3:*)
+description: Generate a performance metrics report by extracting stats from the perf DB or launcher log file
+allowed-tools: Read, Grep, Glob, Bash(python3:*)
 ---
 
-Generate a full telemetry performance metrics report by extracting stats from the launcher log file.
+Generate a full telemetry performance metrics report by extracting stats from the perf metrics DB (default) or a launcher log file (fallback/explicit).
 
 ## Input
 
-If the user does not provide a log file path, first search the project root for `png.log` using the Glob tool with pattern `png.log`. If found, use it automatically without asking. Only ask the user for a path if `png.log` is not found.
+Resolve the data source in this order:
+
+1. If the user provides a `.db` path → use DB extraction (below).
+2. If the user provides a `.log` path or explicitly says "use log file" → use log extraction (below).
+3. Otherwise, use the Glob tool to search for `png_perf.db` in the project root. If found, use DB extraction.
+4. If not found, search for `png.log` in the project root. If found, use log extraction.
+5. If neither is found, ask the user for a path.
 
 ## Steps
 
-1. **Extract the stats JSON from the log file.**
+1. **Extract the stats JSON.**
 
-   The launcher writes final subsystem stats to the log on shutdown. Search for the marker string `"Final subsystem stats: "` in the log file. The line looks like:
+   **From the DB (default):**
+
+   Use `scripts/perf_extract.py`. It has two modes:
+
+   - **List sessions** — shows all IDs and timestamps so you can identify the right one:
+     ```
+     python scripts/perf_extract.py png_perf.db --list
+     ```
+   - **Fetch latest** — most recent row by `id DESC`, fastest option:
+     ```
+     python scripts/perf_extract.py png_perf.db --latest
+     ```
+   - **Fetch a specific session** — by row ID or closest timestamp:
+     ```
+     python scripts/perf_extract.py png_perf.db --fetch --id 7
+     python scripts/perf_extract.py png_perf.db --fetch --time 17:15
+     ```
+
+   Use `--latest` when the user asks for the latest/most recent session or gives no qualifier. If the user mentions a specific session (e.g. "the run around 17:15" or "session 3"), run `--list` first to confirm, then `--fetch` with the appropriate qualifier.
+
+   **From the log file (fallback/explicit):**
+
+   The launcher writes final subsystem stats to the log on shutdown. Search for the marker string `"Final subsystem stats: "`. The line looks like:
 
    ```
    [2025-01-01 12:00:00.000] [INFO] Pits n' Giggles vX.Y.Z shutdown complete (forced=False). Final subsystem stats: {...json...}
    ```
 
-   Use this Python snippet to extract and parse it:
-
    ```python
-   import json, re, sys
+   import json, sys
 
    log_path = sys.argv[1]
    marker = "Final subsystem stats: "

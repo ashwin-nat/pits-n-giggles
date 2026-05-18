@@ -42,7 +42,7 @@ from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import load_config_from_json
 from lib.error_status import PngError
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcPublisherAsync
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync
 from lib.logger import get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -92,7 +92,7 @@ class PngRunner:
             session_state=self.m_session_state,
             tasks=self.m_tasks
         )
-        self.m_web_server, self.m_ipc_pub = self._setupUiIntfLayer(
+        self.m_web_server, self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer(
             run_ipc_server=run_ipc_server,
             debug_mode=debug_mode
         )
@@ -113,7 +113,7 @@ class PngRunner:
 
     def _setupUiIntfLayer(self,
         run_ipc_server: Optional[bool] = False,
-        debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, IpcPublisherAsync]:
+        debug_mode: Optional[bool] = False) -> Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]:
         """Entry point to start the HTTP server.
 
         Args:
@@ -121,7 +121,7 @@ class PngRunner:
             debug_mode (bool, optional): Debug mode. Defaults to False.
 
         Returns:
-            Tuple[TelemetryWebServer, IpcPublisherAsync]: Web server and IPC publisher instances
+            Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]: Web server, IPC publisher, and IPC dealer instances
         """
 
         log_str = "Starting F1 telemetry server. Open one of the below addresses in your browser\n"
@@ -187,6 +187,7 @@ class PngRunner:
         await self.m_web_server.stop()
         await self.m_telemetry_handler.stop()
         await self.m_ipc_pub.close()
+        await self.m_ipc_dealer.close()
         await asyncio.sleep(1)
 
         self.m_logger.debug("Tasks stopped. Exiting...")

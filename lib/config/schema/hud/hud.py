@@ -41,11 +41,11 @@ class WeatherMFDUIType(str, Enum):
     CARDS = "Cards"
     GRAPH = "Graph"
 
-class HudOverlaySpeedUnit(str, Enum):
+class OverlaysSpeedUnit(str, Enum):
     KMPH = "km/h"
     MPH = "mph"
 
-class HudOverlayFuelEstimationMode(str, Enum):
+class OverlaysFuelEstimationMode(str, Enum):
     LINEAR_REGRESSION = "Linear regression"
     GAME_BUILT_IN = "Game built-in"
 
@@ -59,7 +59,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     }
 
     enabled: bool = Field(
-        default=False,
+        default=True,
         description="Enable Overlays (only on Windows, setting will be ignored on other OS's)",
         json_schema_extra={
             "ui": {
@@ -79,6 +79,33 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "ui": {
                 "type" : "check_box",
                 "visible": True,
+            }
+        }
+    )
+    overlays_speed_unit: OverlaysSpeedUnit = Field(
+        default=OverlaysSpeedUnit.KMPH,
+        description="Speed unit",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in OverlaysSpeedUnit],
+                "visible": True,
+            }
+        }
+    )
+    overlays_fuel_estimation_mode: OverlaysFuelEstimationMode = Field(
+        default=OverlaysFuelEstimationMode.LINEAR_REGRESSION,
+        description="Surplus fuel estimation technique",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in OverlaysFuelEstimationMode],
+                "visible": True,
+                "ext_info": [
+                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
+                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
+                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
+                ]
             }
         }
     )
@@ -105,7 +132,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         default=5,
         ge=1,
         le=22,
-        description="Max number of rows to show in timing tower (must be odd number or 22)",
+        description="Max number of rows to show in timing tower (must be odd number or 22 for all cars)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
@@ -261,59 +288,36 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay")
     hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle HUD overlay UDP action code", group="HUD Overlay")
-    hud_overlay_speed_unit: HudOverlaySpeedUnit = Field(
-        default=HudOverlaySpeedUnit.KMPH,
-        description="Speed unit displayed in the HUD overlay",
-        json_schema_extra={
-            "ui": {
-                "type": "radio_buttons",
-                "options": [e.value for e in HudOverlaySpeedUnit],
-                "visible": True,
-                "group": "HUD Overlay",
-            }
-        }
-    )
 
     @property
     def hud_overlay_speed_unit_kmph(self) -> bool:
         """True if the speed unit is km/h"""
-        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.KMPH
+        return self.overlays_speed_unit == OverlaysSpeedUnit.KMPH
 
     @property
     def hud_overlay_speed_unit_mph(self) -> bool:
         """True if the speed unit is mph"""
-        return self.hud_overlay_speed_unit == HudOverlaySpeedUnit.MPH
-
-    hud_overlay_fuel_estimation_mode: HudOverlayFuelEstimationMode = Field(
-        default=HudOverlayFuelEstimationMode.LINEAR_REGRESSION,
-        description="Surplus fuel estimation technique used in the HUD overlay",
-        json_schema_extra={
-            "ui": {
-                "type": "radio_buttons",
-                "options": [e.value for e in HudOverlayFuelEstimationMode],
-                "visible": True,
-                "group": "HUD Overlay",
-                "ext_info": [
-                    "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
-                    "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "
-                    "\nsuch as safety cars, changing weather conditions, or aggressive vs. conservative driving styles. "
-                ]
-            }
-        }
-    )
+        return self.overlays_speed_unit == OverlaysSpeedUnit.MPH
 
     @property
     def hud_overlay_fuel_estimation_linear_regression(self) -> bool:
         """True if fuel estimation uses linear regression"""
-        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.LINEAR_REGRESSION
+        return self.overlays_fuel_estimation_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION
 
     @property
     def hud_overlay_fuel_estimation_game_built_in(self) -> bool:
         """True if fuel estimation uses the game built-in value"""
-        return self.hud_overlay_fuel_estimation_mode == HudOverlayFuelEstimationMode.GAME_BUILT_IN
+        return self.overlays_fuel_estimation_mode == OverlaysFuelEstimationMode.GAME_BUILT_IN
 
     # ============== CIRCUIT INFO OVERLAY ==============
-    show_circuit_info: bool = overlay_enable_field(description="Enable circuit info overlay", group="Circuit Info")
+    show_circuit_info: bool = overlay_enable_field(
+        description="Enable circuit info overlay",
+        group="Circuit Info",
+        ext_info=[
+            "The circuit info overlay is a progress bar that is divided into 3 sectors and \n"
+            "shows the driver's current position on the track, as well as turn numbers and names. \n"
+            "The sectors are also colour coded based on lap times (purple, green, yellow, red)"
+        ])
     circuit_info_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle circuit info overlay UDP action code", group="Circuit Info")
     circuit_info_length: int = Field(
@@ -327,6 +331,34 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "visible": False,
                 "min": 200,
                 "max": 1500,
+            }
+        }
+    )
+
+    # ============== AUTO-HIDE IN MENU ==============
+    auto_hide_in_menu: bool = Field(
+        default=True,
+        description="Auto-hide overlays when the game is in a menu",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+            }
+        }
+    )
+    menu_silence_threshold_sec: float = Field(
+        default=3.0,
+        ge=1.0,
+        le=30.0,
+        description="Seconds of telemetry silence before overlays are hidden (menu detection threshold)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info": [
+                    "How long (in seconds) the backend must receive no periodic telemetry packets "
+                    "before treating the game as being in a menu and hiding the overlays."
+                ],
             }
         }
     )
@@ -387,9 +419,9 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             )
 
         # ---- Opacity relationship ----
-        if self.track_radar_idle_opacity > self.overlays_opacity:
+        if self.track_radar_idle_opacity >= self.overlays_opacity:
             raise ValueError(
-                "Track radar idle opacity cannot be greater than overlays opacity"
+                "Track radar idle opacity cannot be greater than or equal to overlays opacity"
             )
 
         return self

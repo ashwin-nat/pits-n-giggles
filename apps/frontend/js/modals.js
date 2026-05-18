@@ -38,7 +38,7 @@ class ModalManager {
     }
     if (this.raceStatsModal) {
       document.getElementById('race-stats-btn').addEventListener('click', () => {
-        fetch(`/race-info`)
+        fetch(window.SESSION_SLUG ? `/race-info?slug=${window.SESSION_SLUG}` : `/race-info`)
           .then(response => {
               if (!response.ok) throw new Error("Network response was not ok");
               return response.json(); // or .text() if you expect plain text
@@ -135,7 +135,7 @@ class ModalManager {
         "refresh" : true
       }
     };
-    fetch(`/driver-info?index=${data["index"]}`)
+    fetch(window.SESSION_SLUG ? `/driver-info?index=${data["index"]}&slug=${window.SESSION_SLUG}` : `/driver-info?index=${data["index"]}`)
       .then(response => {
           if (!response.ok) throw new Error("Network response was not ok");
           return response.json(); // or .text() if you expect plain text
@@ -285,7 +285,9 @@ class ModalManager {
     }
 
     // Collect and log the selected settings
-    g_pref_myTeamName = document.getElementById('teamNameInput').value;
+    const rawTeamName = document.getElementById('teamNameInput').value;
+    const normalizedTeamName = rawTeamName.trim();
+    g_pref_myTeamName = normalizedTeamName === "" ? "My Team" : normalizedTeamName;
     g_pref_is24HourFormat = (document.querySelector('input[name="timeFormat"]:checked').value === "24") ? (true) : (false);
     g_pref_lastLapAbsoluteFormat = (document.querySelector('input[name="lastLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
     g_pref_bestLapAbsoluteFormat = (document.querySelector('input[name="bestLapTimeFormat"]:checked').value === "absolute") ? (true) : (false);
@@ -387,7 +389,7 @@ class ModalManager {
         "refresh" : true
       }
     };
-    fetch(`/race-info`)
+    fetch(window.SESSION_SLUG ? `/race-info?slug=${window.SESSION_SLUG}` : `/race-info`)
       .then(response => {
           if (!response.ok) throw new Error("Network response was not ok");
           return response.json(); // or .text() if you expect plain text

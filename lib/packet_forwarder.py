@@ -23,10 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import logging
 import socket
-from logging import Logger
-from types import MappingProxyType
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -34,51 +33,65 @@ from typing import Dict, List, Tuple
 
 class AsyncUDPTransport:
     """Abstraction layer for UDP transport management."""
-    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
+
+    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: logging.Logger):
         """
         Initialize transports for known destinations synchronously.
 
         :param forward_addresses: List of (IP, Port) tuples to initialize transports for
-        :param logger: Logger
+        :param logger: Logger (must be provided by caller)
         """
+        assert logger is not None, "Logger must be provided to AsyncUDPTransport"
         self.m_transports: Dict[Tuple[str, int], asyncio.DatagramTransport] = {}
         self.m_sockets: Dict[Tuple[str, int], socket.socket] = {}
         self.m_logger = logger
 
-        # Only attempt to create sockets if addresses are provided
-        if forward_addresses:
-            for destination in forward_addresses:
-                try:
-                    # Create UDP socket
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.setblocking(False)  # Non-blocking socket
+        for destination in forward_addresses:
+            try:
+                self._open_socket(destination)
+            except OSError:
+                self.close()
+                raise
 
-                    # Connect the socket to the destination (doesn't send data)
-                    sock.connect(destination)
+    def _open_socket(self, destination: Tuple[str, int]) -> None:
+        """Open a non-blocking UDP socket for destination and add it to m_sockets."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setblocking(False)
+            sock.connect(destination)
+            self.m_sockets[destination] = sock
+            self.m_logger.debug("Opened UDP socket to %s", destination)
+        except OSError as e:
+            self.m_logger.error("Error creating socket to %s: %s", destination, e)
+            raise
 
-                    # Store socket
-                    self.m_sockets[destination] = sock
-                except OSError as e:
-                    if self.m_logger:
-                        self.m_logger.error("Error creating socket to %s: %s", destination, e)
-                    # Clean up any sockets created so far
-                    self.close()
-                    raise
-
-        # Freeze the dictionaries after initialization
-        self.m_sockets = MappingProxyType(self.m_sockets)
+    def _close_socket(self, destination: Tuple[str, int]) -> None:
+        """Pop destination from m_sockets and close its socket."""
+        sock = self.m_sockets.pop(destination)
+        try:
+            sock.close()
+            self.m_logger.debug("Closed UDP socket to %s", destination)
+        except OSError as e:
+            self.m_logger.error("Error closing socket to %s: %s", destination, e)
 
     def close(self) -> None:
+        """Safely close all sockets."""
+        for destination in list(self.m_sockets.keys()):
+            self._close_socket(destination)
+
+    def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations without restarting the task.
+
+        :param new_targets: The complete new list of (host, port) destinations.
         """
-        Safely close all sockets.
-        """
-        for destination, sock in self.m_sockets.items():
-            try:
-                sock.close()
-            except OSError as e:
-                if self.m_logger:
-                    self.m_logger.error("Error closing socket to %s: %s", destination, e)
-                raise
+        new_set: Set[Tuple[str, int]] = set(new_targets)
+        old_set: Set[Tuple[str, int]] = set(self.m_sockets.keys())
+
+        for dest in new_set - old_set:
+            self._open_socket(dest)
+
+        for dest in old_set - new_set:
+            self._close_socket(dest)
 
     async def send(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
@@ -87,15 +100,15 @@ class AsyncUDPTransport:
         :param data: Bytes to send
         :param destination: Destination (IP, Port)
         """
-        if destination not in self.m_sockets:
-            raise ValueError(f"No pre-initialized socket for destination {destination}")
+        sock = self.m_sockets.get(destination)
+        if sock is None:
+            raise ValueError(f"Destination socket not configured: {destination}")
 
-        # Send asynchronously using the socket
         loop = asyncio.get_running_loop()
-        await loop.sock_sendall(self.m_sockets[destination], data)
+        await loop.sock_sendall(sock, data)
 
 class AsyncUDPForwarder:
-    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Logger = None):
+    def __init__(self, forward_addresses: List[Tuple[str, int]], logger: Optional[logging.Logger] = None):
         """
         Initializes the AsyncUDPForwarder with forwarding destinations.
 
@@ -104,6 +117,8 @@ class AsyncUDPForwarder:
         :param logger: Logger
         """
         self.m_forward_addresses = forward_addresses
+        if logger is None:
+            logger = logging.getLogger(__name__)
         self.m_transport = AsyncUDPTransport(forward_addresses, logger)
         self.m_logger = logger
 
@@ -123,7 +138,7 @@ class AsyncUDPForwarder:
 
     async def _send_to_destination(self, data: bytes, destination: Tuple[str, int]) -> None:
         """
-        Send data to a single destination and handle potential OS-level errors.
+        Send data to a single destination and handle potential errors.
 
         :param data: The data to send
         :param destination: The destination (IP, Port)
@@ -131,8 +146,17 @@ class AsyncUDPForwarder:
         try:
             await self.m_transport.send(data, destination)
         except OSError as e:
-            if self.m_logger:
-                self.m_logger.error("Error forwarding packet to %s: %s", destination, e)
+            self.m_logger.error("Error forwarding packet to %s: %s", destination, e)
+        except ValueError as e:
+            self.m_logger.warning("Skipping forward to %s: %s", destination, e)
+
+    def update_targets(self, new_targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations at runtime without restarting.
+
+        :param new_targets: The complete new list of (host, port) destinations.
+        """
+        self.m_forward_addresses = new_targets
+        self.m_transport.update_targets(new_targets)
 
     def close(self) -> None:
         """Safely close the transport."""

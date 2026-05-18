@@ -395,7 +395,8 @@ class F1PacketCapture:
             file_name = f"capture_{timestamp_str}.{self.file_extension}"
 
         byte_count = 0
-        total_packet_count = len(self.m_packet_history)
+        packets_snapshot = list(self.m_packet_history)
+        total_packet_count = len(packets_snapshot)
 
         # Construct the header
         header = F1PktCapFileHeader(
@@ -410,7 +411,7 @@ class F1PacketCapture:
             # First, write the header
             file.write(header.to_bytes())
             # Next write all packets
-            for curr_packet_count, entry in enumerate(self.m_packet_history):
+            for curr_packet_count, entry in enumerate(packets_snapshot):
                 data_to_write = entry.to_bytes(self.m_compression_helper)
                 file.write(data_to_write)
                 byte_count += len(data_to_write)

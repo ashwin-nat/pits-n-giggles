@@ -71,9 +71,11 @@ function createFilterModal(allTypes, onChange) {
 function getDriverDetailsStr(driverInfo, brackets=false) {
     if (driverInfo) {
         if (brackets) {
-            return `${driverInfo["name"]} (${driverInfo["team"]} ${driverInfo["driver-number"]})`; // Use 'driver-number'
+          const team = getTeamName(driverInfo["team"]);
+          return `${driverInfo["name"]} (${team} ${driverInfo["driver-number"]})`; // Use 'driver-number'
         }
-        return `${driverInfo["name"]} - ${driverInfo["team"]} #${driverInfo["driver-number"]}`; // Use 'driver-number'
+        const team = getTeamName(driverInfo["team"]);
+        return `${driverInfo["name"]} - ${team} #${driverInfo["driver-number"]}`; // Use 'driver-number'
     } else {
         return "Unknown Driver";
     }

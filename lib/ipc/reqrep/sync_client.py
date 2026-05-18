@@ -92,4 +92,4 @@ class IpcClientSync:
 
     def get_stats(self) -> dict:
         """Requests runtime stats from the child process."""
-        return self.request("get-stats")
+        return self.request("__get_stats__")

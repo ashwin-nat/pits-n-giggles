@@ -5,6 +5,7 @@
         "save_viewer_port": 4769,
         "broker_xpub_port": 53838,
         "broker_xsub_port": 53835,
+        "broker_router_port": 53836,
         "bind_address": "0.0.0.0",
         "udp_tyre_delta_action_code": null,
         "udp_custom_action_code": null,
@@ -18,13 +19,13 @@
         "post_fp_data_autosave": false,
         "post_tt_data_autosave": false,
         "save_race_ctrl_msg": false,
-        "just_in_case_autosave": true
+        "just_in_case_autosave": true,
+        "session_dir": "data"
     },
     "Display": {
         "disable_browser_autoload": true,
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
-        "telemetry_rate": 30,
         "realtime_overlay_fps": 60,
         "use_cpu_acceleration": false,
         "wdt_timeout": 5.0
@@ -50,18 +51,61 @@
         "enabled": true,
         "toggle_overlays_udp_action_code": 10,
         "use_windowed_overlays": false,
+        "overlays_speed_unit": "km/h",
+        "overlays_fuel_estimation_mode": "Linear regression",
         "show_lap_timer": true,
         "lap_timer_minimal": false,
         "lap_timer_toggle_udp_action_code": null,
         "show_timing_tower": true,
         "timing_tower_max_rows": 11,
         "timing_tower_col_options": {
-            "show_team_logos": true,
-            "show_tyre_info": true,
-            "show_deltas": true,
-            "show_ers_drs_info": true,
-            "show_pens": true,
-            "show_tl_warns": true
+            "show_col_header": true,
+            "cols": {
+                "delta": {
+                    "enabled": true,
+                    "position": 1
+                },
+                "tyre": {
+                    "enabled": true,
+                    "position": 2
+                },
+                "ers_drs": {
+                    "enabled": true,
+                    "position": 3
+                },
+                "pens": {
+                    "enabled": true,
+                    "position": 4
+                },
+                "tl_warns": {
+                    "enabled": true,
+                    "position": 5
+                },
+                "best_lap": {
+                    "enabled": false,
+                    "position": 6
+                },
+                "last_lap": {
+                    "enabled": false,
+                    "position": 7
+                },
+                "wing_dmg": {
+                    "enabled": false,
+                    "position": 8
+                },
+                "speed_trap": {
+                    "enabled": false,
+                    "position": 9
+                },
+                "fuel": {
+                    "enabled": false,
+                    "position": 10
+                },
+                "driver_status": {
+                    "enabled": false,
+                    "position": 11
+                }
+            }
         },
         "timing_tower_toggle_udp_action_code": null,
         "show_mfd": true,
@@ -114,11 +158,11 @@
         "track_radar_idle_opacity": 30,
         "show_hud_overlay": true,
         "hud_overlay_toggle_udp_action_code": null,
-        "hud_overlay_speed_unit": "km/h",
-        "hud_overlay_fuel_estimation_mode": "Linear regression",
         "show_circuit_info": true,
         "circuit_info_toggle_udp_action_code": null,
         "circuit_info_length": 918,
+        "auto_hide_in_menu": true,
+        "menu_silence_threshold_sec": 3.0,
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
@@ -223,6 +267,10 @@
     "Prediction": {
         "weather_aware_prediction": true,
         "tyre_wear_window_size": 5
+    },
+    "MCP": {
+        "mcp_http_server_enable": false,
+        "mcp_http_port": 4770
     },
     "SubSysCtrlCfg__": {
         "heartbeat_interval": 5.0,

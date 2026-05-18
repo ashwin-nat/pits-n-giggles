@@ -61,6 +61,7 @@ class DriversListRsp(BaseAPI):
         self.m_json_rsp : Union[List[Dict[str, Any]], Dict[str, Any]] = [] # In TT mode dict, else list
         self.m_fastest_lap : Optional[int] = None
         self.m_fastest_lap_driver: Optional[str] = None
+        self.m_fastest_lap_driver_index: Optional[int] = None
         self.m_fastest_lap_tyre: Optional[VisualTyreCompound] = None
         self.m_next_pit_stop_window: Optional[int] = None
         self.m_fastest_s1_ms: Optional[int] = None
@@ -218,6 +219,7 @@ class DriversListRsp(BaseAPI):
                                         self.m_session_state.m_fastest_index].m_driver_info.name
             self.m_fastest_lap_tyre = self.m_session_state.m_driver_data[
                                         self.m_session_state.m_fastest_index].m_lap_info.m_best_lap_tyre
+            self.m_fastest_lap_driver_index = self.m_session_state.m_fastest_index
 
         self.m_fastest_s1_ms = self.m_session_state.m_fastest_s1_ms
         self.m_fastest_s2_ms = self.m_session_state.m_fastest_s2_ms
@@ -277,6 +279,7 @@ class DriversListRsp(BaseAPI):
 
         self._calcFastestSectorMs(session_history)
 
+        driver_status = str(player_obj.m_lap_info.m_curr_status) if player_obj.m_lap_info.m_curr_status else None
         self.m_json_rsp = {
             "current-lap" : player_obj.m_lap_info.m_current_lap,
             "session-history": session_history,
@@ -287,6 +290,7 @@ class DriversListRsp(BaseAPI):
             "current-lap-info" : self._getCurrLapSubsection(player_obj),
             "best-lap-info" : self._getBestLapTT(player_obj),
             "last-lap-info" : self._getLastLapTT(player_obj),
+            "driver-status" : driver_status,
         }
 
     def _getTTSetupJSON(self) -> Dict[str, Any]:
@@ -483,6 +487,7 @@ class DriversListRsp(BaseAPI):
         s1_time = lap_obj.m_sector1TimeInMS if lap_obj else None
         s2_time = lap_obj.m_sector2TimeInMS if lap_obj else None
         s3_time = lap_obj.m_sector3TimeInMS if lap_obj else None
+        is_valid = lap_obj.isLapValid() if lap_obj else None
 
         return {
             "lap-time-ms": lap_time_ms,
@@ -490,6 +495,7 @@ class DriversListRsp(BaseAPI):
             "s1-time-ms": s1_time,
             "s2-time-ms": s2_time,
             "s3-time-ms": s3_time,
+            "is-valid": is_valid,
         }
 
     def _getCurrLapSubsection(self, driver_data: DataPerDriver) -> Dict[str, Any]:
@@ -500,8 +506,10 @@ class DriversListRsp(BaseAPI):
             delta = None
         if driver_data.m_packet_copies.m_packet_lap_data:
             sc_delta = driver_data.m_packet_copies.m_packet_lap_data.m_safetyCarDelta
+            is_valid = not driver_data.m_packet_copies.m_packet_lap_data.m_currentLapInvalid
         else:
             sc_delta = None
+            is_valid = None
         return {
             "lap-time-ms": driver_data.m_lap_info.m_curr_lap_ms,
             "s1-time-ms": driver_data.m_lap_info.m_curr_lap_s1_ms,
@@ -513,6 +521,7 @@ class DriversListRsp(BaseAPI):
             "lap-num" : driver_data.m_lap_info.m_current_lap,
             "delta-ms" : delta,
             "delta-sc-sec": sc_delta,
+            "is-valid": is_valid,
         }
 
     def _getWarningsPenaltiesJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:

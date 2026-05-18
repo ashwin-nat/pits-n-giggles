@@ -112,3 +112,6 @@ class HudOverlayData(HighFreqBase):
             sector=hud_data["sector"],
         )
 
+    @property
+    def speed_mph(self) -> int:
+        return round(self.speed_kmph * 0.621371)

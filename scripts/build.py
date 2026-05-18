@@ -27,6 +27,7 @@ import sys
 import os
 import shutil
 import time
+from pathlib import Path
 
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
@@ -44,8 +45,31 @@ def main():
     remove_dir_if_exists("build")
     remove_dir_if_exists("dist")
 
-    # 1. Run PyInstaller
     start_time = time.time()
+
+    # 1. Build f1-telemetry-viewer React app (must precede PyInstaller so dist/ is bundled)
+    viewer_source = Path("apps/external/f1-save-viewer")
+    if not (viewer_source / "package.json").exists():
+        raise RuntimeError(
+            "Viewer submodule not initialized. Run: git submodule update --init"
+        )
+    build_env = {
+        **os.environ,
+        "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
+        "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
+        "VITE_DISABLE_ANALYTICS": "true",
+        "VITE_APP_NAME": "Pits n' Giggles",
+    }
+    subprocess.run("pnpm install", cwd=viewer_source, check=True, shell=True)
+    subprocess.run(
+        "pnpm build --mode production",
+        cwd=viewer_source,
+        env=build_env,
+        check=True,
+        shell=True,
+    )
+
+    # 2. Run PyInstaller
     subprocess.run(
         [
             sys.executable,
@@ -57,7 +81,7 @@ def main():
         check=True,
     )
 
-    # 2. Cleanup the custom COLLECT dir
+    # 3. Cleanup the custom COLLECT dir
     remove_dir_if_exists(collect_dir)
 
     end_time = time.time()

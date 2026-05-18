@@ -126,8 +126,10 @@ class BaseOverlay():
         self._hf_last_seq: Dict[str, int] = {}
         self._hf_pending: set[str] = set()
         self._stats = EventCounter()
+        self._user_hidden: bool = False  # True when user explicitly hid this overlay
 
         # Create the actual window backend
+        self.pre_setup()
         self._setup_window()
         self.post_setup()
         self.build_ui()
@@ -155,9 +157,11 @@ class BaseOverlay():
         if self.get_visibility():
             self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
+            self._user_hidden = True
         else:
             self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
             self.set_visibility(True)
+            self._user_hidden = False
 
     def set_telemetry_active(self, active: bool):
         """Common handler for setting telemetry active state."""
@@ -174,13 +178,21 @@ class BaseOverlay():
             return
 
         if active:
-            self.set_visibility(True)
+            if not self._user_hidden:
+                self.set_visibility(True)
         else:
             self.set_visibility(False)
 
     # ----------------------------------------------------------------------
     # Abstract interface - implemented by rendering subclasses
     # ----------------------------------------------------------------------
+    def pre_setup(self):
+        """Hook called before _setup_window(). Override in leaf classes with @final.
+
+        Called from base __init__ before subclass __init__ has run — overrides must not
+        depend on any subclass-initialized state.
+        """
+
     def post_setup(self):
         """Hook called after _setup_window() completes. Override in leaf classes with @final."""
 

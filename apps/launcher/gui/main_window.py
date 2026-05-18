@@ -24,6 +24,7 @@
 
 import json
 import sys
+import time
 import webbrowser
 from datetime import datetime
 from pathlib import Path
@@ -39,14 +40,15 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
-                                      PngAppMgrBase, PngAppMgrConfig,
-                                      SaveViewerAppMgr)
+                                      McpAppMgr, PngAppMgrBase,
+                                      PngAppMgrConfig, SaveViewerAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
 from lib.file_path import get_app_base_dir, resolve_user_file
 from meta.meta import APP_NAME
 
+from ..perf_db import save_session_stats
 from .changelog_window import ChangelogWindow
 from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
@@ -177,6 +179,7 @@ class PngLauncherWindow(QMainWindow):
         self.ver_str = ver_str
         self.debug_mode = debug_mode
         self._last_open_dir: Optional[str] = str(get_app_base_dir())
+        self._start_time = time.time()
 
         self.console = None
 
@@ -230,6 +233,7 @@ class PngLauncherWindow(QMainWindow):
             SaveViewerAppMgr(common_cfg),
             HudAppMgr(common_cfg),
             BrokerAppMgr(common_cfg),
+            McpAppMgr(common_cfg)
         ]
         for subsystem in self.subsystems:
             assert subsystem.SHORT_NAME
@@ -269,7 +273,6 @@ class PngLauncherWindow(QMainWindow):
             "lock" : self._load_icon(icons_path_base / "lock.svg"),
             "mfd-interact": self._load_icon(icons_path_base / "mfd-interact.svg"),
             "next-page" : self._load_icon(icons_path_base / "next-page.svg"),
-            "open-file" : self._load_icon(icons_path_base / "open-file.svg"),
             "prev-page" : self._load_icon(icons_path_base / "prev-page.svg"),
             "reset" : self._load_icon(icons_path_base / "reset.svg"),
             "save" : self._load_icon(icons_path_base / "save.svg"),
@@ -277,7 +280,6 @@ class PngLauncherWindow(QMainWindow):
             "show-hide" : self._load_icon(icons_path_base / "show-hide.svg"),
             "start" : self._load_icon(icons_path_base / "start.svg"),
             "stop" : self._load_icon(icons_path_base / "stop.svg"),
-            "tp-dashboard" : self._load_icon(icons_path_base / "fab-dashboard.png"),
             "twitch" : self._load_icon(icons_path_base / "twitch.svg"),
             "unlock" : self._load_icon(icons_path_base / "unlock.svg"),
             "updates" : self._load_icon(icons_path_base / "updates.svg"),
@@ -426,16 +428,18 @@ class PngLauncherWindow(QMainWindow):
         grid_layout.setContentsMargins(0, 0, 0, 0)
 
         # Number of subsystems per row
-        NUM_SUBSYS_PER_ROW = 3
+        NUM_SUBSYS_PER_ROW = 2
 
         # Add subsystem cards in a grid
-        for idx, subsystem in enumerate(self.subsystems):
+        rendered_subsystems_count = 0
+        for subsystem in self.subsystems:
             if not subsystem.SHOULD_DISPLAY:
                 continue
-            row = idx // NUM_SUBSYS_PER_ROW
-            col = idx % NUM_SUBSYS_PER_ROW
+            row = rendered_subsystems_count // NUM_SUBSYS_PER_ROW
+            col = rendered_subsystems_count % NUM_SUBSYS_PER_ROW
             card = SubsystemCard(subsystem)
             grid_layout.addWidget(card, row, col)
+            rendered_subsystems_count += 1
 
         layout.addLayout(grid_layout)
         layout.addStretch()
@@ -628,7 +632,7 @@ class PngLauncherWindow(QMainWindow):
                     timestamp, console_text, level, src
                 )
 
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, KeyError):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
             # Unknown messages always go everywhere
@@ -699,9 +703,15 @@ class PngLauncherWindow(QMainWindow):
                 forced_shutdown = True
                 break
 
-        stats = {subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems}
-        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}). "
-                      f"Final subsystem stats: {json.dumps(stats, sort_keys=True)}")
+        stats = {
+            **{subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems},
+            "uptime_seconds": round(time.time() - self._start_time, 3),
+        }
+        try:
+            save_session_stats(get_app_base_dir(), stats)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.error_log(f"Failed to save perf stats to DB: {e}")
+        self.info_log(f"{APP_NAME} {self.ver_str} shutdown complete (forced={forced_shutdown}).")
         event.accept()
 
     def run(self):

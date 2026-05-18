@@ -64,7 +64,10 @@ def get_logger(
     Args:
         name (str): The name of the logger.
         debug_mode (bool, optional): Whether to enable debug mode. Defaults to False.
-        jsonl (bool, optional): Whether to use JSONL format. Defaults to False.
+        jsonl (bool, optional): Whether to use JSONL format. Defaults to False. If set to true, logs will be emitted
+            via stdout in JSONL format, and file logging will be disabled. This will be parent process's responsibility
+                to capture and route logs appropriately. If disabled, logs will be emitted
+                    in human-readable format to a file.
         file_path (Optional[str], optional): The path to the log file. Defaults to None.
 
     Returns:
@@ -85,16 +88,16 @@ def get_logger(
         ts_fmt = "%Y-%m-%d %H:%M:%S.%f"
         console_formatter = JsonlFormatter(datefmt=ts_fmt)
         file_formatter = JsonlFormatter(datefmt=ts_fmt)
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
+
     else:
         text_fmt = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
         ts_fmt = "%Y-%m-%d %H:%M:%S"
-        console_formatter = logging.Formatter(text_fmt, ts_fmt)
         file_formatter = logging.Formatter(text_fmt, ts_fmt)
-
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
 
     # Optional file handler
     if file_path:

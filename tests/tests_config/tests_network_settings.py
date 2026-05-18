@@ -52,6 +52,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         self.assertIsNone(settings.udp_tyre_delta_action_code)
         self.assertEqual(settings.broker_xpub_port, 53838)
         self.assertEqual(settings.broker_xsub_port, 53835)
+        self.assertEqual(settings.broker_router_port, 53836)
         self.assertEqual(settings.enable_pkt_ordering, False)
         self.assertEqual(settings.udp_action_button_debounce_ms, 100)
 
@@ -179,6 +180,22 @@ class TestNetworkSettings(TestF1ConfigBase):
         NetworkSettings(broker_xsub_port=1)
         NetworkSettings(broker_xsub_port=65535)
 
+    def test_broker_router_port(self):
+
+        NetworkSettings(broker_router_port=5000)  # Valid
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_router_port=-1)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_router_port=69420)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_router_port=None)
+        with self.assertRaises(ValidationError):
+            NetworkSettings(broker_router_port="cat")
+
+        # Boundary conditions
+        NetworkSettings(broker_router_port=1)
+        NetworkSettings(broker_router_port=65535)
+
     def test_network_settings_port_conflicts(self):
         """
         Rules covered:
@@ -195,6 +212,7 @@ class TestNetworkSettings(TestF1ConfigBase):
             save_viewer_port=4769,     # TCP
             broker_xpub_port=53838,    # TCP
             broker_xsub_port=53835,    # TCP
+            broker_router_port=53836,  # TCP
         )
 
         # ---- 2. TCP–TCP conflict (invalid) ----
@@ -216,6 +234,13 @@ class TestNetworkSettings(TestF1ConfigBase):
                 server_port=7000,
                 save_viewer_port=7000,
                 broker_xpub_port=7000,
+            )
+
+        # ---- 5. broker_router_port conflicts with another TCP port ----
+        with self.assertRaises(ValidationError):
+            NetworkSettings(
+                broker_xsub_port=9000,
+                broker_router_port=9000,
             )
 
     def test_udp_action_button_debounce_ms_default(self):

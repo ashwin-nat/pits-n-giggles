@@ -23,12 +23,16 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .pubsub.broker import IpcPubSubBroker
+from .pubsub.content_types import IpcContentType
 from .pubsub.publisher import IpcPublisherAsync
-from .pubsub.subscriber import IpcSubscriberSync
+from .pubsub.subscriber import IpcSubscriberAsync, IpcSubscriberSync
 from .reqrep.async_server import IpcServerAsync
 from .reqrep.sync_client import IpcClientSync
 from .reqrep.sync_server import IpcServerSync
-from .socketio_client import SocketioClient
+from .router_dealer.router.router import IpcRouter
+from .router_dealer.dealer.client import IpcDealerClient
+from .router_dealer.dealer.async_client import IpcDealerAsync
+from .router_dealer.app_id import PngAppId
 from .utils import get_free_tcp_port
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -37,10 +41,16 @@ __all__ = [
     'IpcClientSync',
     'IpcServerAsync',
     'IpcServerSync',
-    'SocketioClient',
+    'IpcContentType',
     'IpcPublisherAsync',
+    'IpcSubscriberAsync',
     'IpcSubscriberSync',
     'IpcPubSubBroker',
+    'IpcRouter',
+    'IpcDealerClient',
+    'IpcDealerAsync',
+
+    'PngAppId',
 
     'get_free_tcp_port',
 ]

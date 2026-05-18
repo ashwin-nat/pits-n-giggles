@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 # pylint: disable=wrong-import-position
 from lib.f1_types import F1PacketType
 from lib.track_map_generator import TrackMapCollector
-from lib.telemetry_manager import AsyncF1TelemetryManager
+from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
 # pylint: enable=wrong-import-position
 
 
@@ -55,7 +55,8 @@ async def run(port: int, game_year_override: int | None, logger: logging.Logger)
     track_maps_dir = Path(__file__).resolve().parents[2] / "assets" / "track-maps"
     collector = TrackMapCollector(target_dir=track_maps_dir, logger=logger)
 
-    manager = AsyncF1TelemetryManager(port_number=port, logger=logger)
+    transport = telemetry_transport_factory(port, replay_server=False, logger=logger)
+    manager = AsyncF1TelemetryManager(transport=transport, logger=logger)
 
     generated_count = 0
     detected_game_year: int | None = None

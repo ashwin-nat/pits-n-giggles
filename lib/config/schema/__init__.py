@@ -26,10 +26,12 @@ from .capture import CaptureSettings
 from .display import DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
-from .hud import (HudOverlayFuelEstimationMode, HudOverlaySpeedUnit,
+from .hud import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                   HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
                   MfdTyreWearRateType, OverlayId, OverlayPosition,
-                  TimingTowerColOptions, WeatherMFDUIType)
+                  TimingTowerColId, TimingTowerColOptions,
+                  TimingTowerColSettings,
+                  WeatherMFDUIType)
 from .network import NetworkSettings
 from .pit_time_loss_f1 import PitTimeLossF1
 from .pit_time_loss_f2 import PitTimeLossF2
@@ -50,7 +52,9 @@ __all__ = [
     'MfdPageId',
     'MfdSettings',
     'MfdPageSettings',
+    'TimingTowerColId',
     'TimingTowerColOptions',
+    'TimingTowerColSettings',
     'OverlayPosition',
     'NetworkSettings',
     'PitTimeLossF1',
@@ -63,8 +67,8 @@ __all__ = [
 
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
-    'HudOverlaySpeedUnit',
-    'HudOverlayFuelEstimationMode',
+    'OverlaysSpeedUnit',
+    'OverlaysFuelEstimationMode',
 
     'OverlayId',
 ]

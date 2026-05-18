@@ -34,6 +34,7 @@ import logging
 
 RouteCallback = Callable[[dict], Awaitable[dict[str, Any]]]
 ShutdownCallback = Callable[[dict], Awaitable[dict[str, Any]]]
+GetStatsCallback = Callable[[dict], Awaitable[dict[str, Any]]]
 HeartbeatCallback = Callable[[int], Awaitable[None]]
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -77,6 +78,7 @@ class IpcServerAsync:
 
         self._running = False
         self._shutdown_callback: Optional[ShutdownCallback] = None
+        self._get_stats_callback: Optional[GetStatsCallback] = None
         self._route_handlers: dict[str, RouteCallback] = {}
 
         # Heartbeat monitoring (only active if callback is registered)
@@ -100,6 +102,13 @@ class IpcServerAsync:
         """
         self._shutdown_callback = callback
 
+    def register_get_stats_callback(self, callback: GetStatsCallback):
+        """
+        Registers an async callback to be called on get-stats command.
+        Callback receives args dict and must return a stats dict.
+        """
+        self._get_stats_callback = callback
+
     def register_heartbeat_missed_callback(self, callback: HeartbeatCallback):
         """
         Registers an async callback to be called when max consecutive heartbeats are missed.
@@ -122,6 +131,10 @@ class IpcServerAsync:
 
     def on_shutdown(self, func: ShutdownCallback) -> ShutdownCallback:
         self.register_shutdown_callback(func)
+        return func
+
+    def on_get_stats(self, func: GetStatsCallback) -> GetStatsCallback:
+        self.register_get_stats_callback(func)
         return func
 
     def on_heartbeat_missed(self, func: HeartbeatCallback) -> HeartbeatCallback:
@@ -241,6 +254,12 @@ class IpcServerAsync:
                                 "message": "default shutdown complete",
                             }
                         self._running = False
+
+                    elif cmd == "__get_stats__":
+                        if self._get_stats_callback:
+                            response = await self._get_stats_callback(msg.get("args", {}))
+                        else:
+                            response = {"status": "success", "stats": {}}
 
                     else:
                         if handler_fn is not None:

@@ -322,9 +322,25 @@ class LapTimerOverlay(BaseOverlayQML):
                 # ref driver uses estimated lap
                 ranked.append((estimated_ms, True, driver_index))
             elif best_ms:
-                # only include others if they have set a lap
-                has_other_laps = True
-                ranked.append((best_ms, False, driver_index))
+                # Get effective lap time for other drivers
+                driver_lap_ms = best_ms
+
+                # Try to get current lap estimate for any session
+                curr_lap = entry["lap-info"]["curr-lap"]
+                if curr_lap:
+                    on_flying_lap = curr_lap.get("driver-status") in {"FLYING_LAP", "ON_TRACK"}
+                    lap_is_valid = curr_lap.get("is-valid")
+                    delta_ms = curr_lap.get("delta-ms")
+                    if on_flying_lap and lap_is_valid and delta_ms is not None:
+                        # estimated_lap = best_lap + delta
+                        estimated = best_ms + delta_ms
+                        # Use the minimum: stick with best if current is worse
+                        driver_lap_ms = min(estimated, best_ms)
+
+                # only include others if they have a valid lap
+                if driver_lap_ms:
+                    has_other_laps = True
+                    ranked.append((driver_lap_ms, False, driver_index))
 
         # If no one else has set a lap, ref driver is P1 by definition
         if not has_other_laps:

@@ -26,7 +26,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from apps.hud.common import get_ref_row_index
+from apps.hud.common import get_ref_row_index, get_ref_row, is_tt_session
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
@@ -63,7 +63,7 @@ class OverlaysMgr:
         self.running = False
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
         self._local_wdt_ok: bool = False
-        self._core_wdt_ok: bool = False
+        self._auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
             timeout=settings.Display.wdt_timeout,
@@ -91,12 +91,9 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID].scale_factor,
             num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
-            show_team_logos=settings.HUD.timing_tower_col_options.show_team_logos,
-            show_tyre_info=settings.HUD.timing_tower_col_options.show_tyre_info,
-            show_deltas=settings.HUD.timing_tower_col_options.show_deltas,
-            show_ers_drs_info=settings.HUD.timing_tower_col_options.show_ers_drs_info,
-            show_pens=settings.HUD.timing_tower_col_options.show_pens,
-            show_tl_warns=settings.HUD.timing_tower_col_options.show_tl_warns,
+            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+            speed_unit=settings.HUD.overlays_speed_unit,
+            tt_col_options=settings.HUD.timing_tower_col_options,
         )
 
         self._register_overlay_if_enabled(
@@ -142,8 +139,8 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[HudOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
-            speed_unit=settings.HUD.hud_overlay_speed_unit,
-            fuel_estimation_mode=settings.HUD.hud_overlay_fuel_estimation_mode,
+            speed_unit=settings.HUD.overlays_speed_unit,
+            fuel_estimation_mode=settings.HUD.overlays_fuel_estimation_mode,
         )
 
         self._register_overlay_if_enabled(
@@ -208,7 +205,7 @@ class OverlaysMgr:
             self.wdt.kick()
         self._prep_race_table_data(data)
         self.window_manager.broadcast_data('race_table_update', data)
-        self._handle_core_wdt_status(data)
+        self._handle_in_menu_status(data)
 
     def stream_overlays_update(self, data):
         """Handle the stream overlay update event"""
@@ -434,16 +431,37 @@ class OverlaysMgr:
         self._local_wdt_ok = active
         self._update_telemetry_active()
 
-    def _handle_core_wdt_status(self, data: Dict[str, Any]):
-        """Handle core watchdog status (core receiving sim data)."""
-        self._core_wdt_ok = data.get("wdt-status", False)
+    def _handle_in_menu_status(self, data: Dict[str, Any]):
+        """Hide overlays when backend reports in-menu state; restore when session resumes."""
+        if not self._auto_hide_in_menu:
+            return
+        if data.get("in-menu", False):
+            self._set_telemetry_active(False)
+            return
+
+        if not data.get("is-spectating", False):
+            session_type = data["event-type"]
+            driver_status = None
+            if is_tt_session(session_type):
+                driver_status = data.get("tt-data", {}).get("driver-status")
+            else:
+                ref_row = get_ref_row(data)
+                # In FP/Quali the player may be parked in garage and navigating menus
+                # while periodic data keeps arriving — hide overlays in that case
+                if ref_row:
+                    lap_info = ref_row.get("lap-info", {})
+                    curr_lap = lap_info.get("curr-lap", {})
+                    driver_status = curr_lap.get("driver-status")
+
+            if driver_status == "IN_GARAGE":
+                self._set_telemetry_active(False)
+                return
+
         self._update_telemetry_active()
 
     def _update_telemetry_active(self):
-        """Set telemetry active only when both local and core WDT are satisfied."""
-        local_ok = True if self.wdt is None else self._local_wdt_ok
-        combined = local_ok and self._core_wdt_ok
-        self._set_telemetry_active(combined)
+        """Set telemetry active state based on local WDT."""
+        self._set_telemetry_active(True if self.wdt is None else self._local_wdt_ok)
 
     def _prep_race_table_data(self, data: Dict[str, Any]):
         """Prepare race table data for overlays."""

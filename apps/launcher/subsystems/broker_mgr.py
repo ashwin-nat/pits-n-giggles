@@ -28,7 +28,8 @@ from typing import TYPE_CHECKING, List
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_XPUB_PORT_IN_USE,
+from lib.error_status import (PNG_ERROR_CODE_ROUTER_PORT_IN_USE,
+                              PNG_ERROR_CODE_XPUB_PORT_IN_USE,
                               PNG_ERROR_CODE_XSUB_PORT_IN_USE)
 
 from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
@@ -83,6 +84,14 @@ class BrokerAppMgr(PngAppMgrBase):
             can_restart=False,
             settings_field='Network -> "PitWall Upstream Port"'
         ))
+        self.register_exit_reason(PNG_ERROR_CODE_ROUTER_PORT_IN_USE, ExitReason(
+            code=PNG_ERROR_CODE_ROUTER_PORT_IN_USE,
+            status="Pit Wall Port conflict",
+            title="Pit Wall ROUTER Port Conflict",
+            message="This TCP port is already in use by another process. Please close the other process and try again or change the port.",
+            can_restart=False,
+            settings_field='Network -> "PitWall ROUTER Port"'
+        ))
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -107,6 +116,7 @@ class BrokerAppMgr(PngAppMgrBase):
             "Network": [
                 "broker_xpub_port",
                 "broker_xsub_port",
+                "broker_router_port",
             ],
         })
         self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")

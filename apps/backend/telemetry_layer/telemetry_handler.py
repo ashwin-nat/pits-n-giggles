@@ -27,7 +27,7 @@ SOFTWARE.
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
@@ -47,8 +47,9 @@ from lib.inter_task_communicator import (
     HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
     TyreDeltaNotificationMessageCollection)
 from lib.logger import PngLogger
+from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
-from lib.telemetry_manager import AsyncF1TelemetryManager
+from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
 from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
@@ -126,6 +127,7 @@ def setupTelemetryTask(
     )
     tasks.append(telemetry_server.getTask())
     tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
+    tasks.append(asyncio.create_task(telemetry_server.getMenuWatchdogTask(), name="Menu Silence WDT Task"))
 
     return telemetry_server
 
@@ -160,10 +162,12 @@ class F1TelemetryHandler:
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
             - ver_str (str): Version string
         """
+        transport = telemetry_transport_factory(
+            settings.Network.telemetry_port, replay_server, logger
+        )
         self.m_manager = AsyncF1TelemetryManager(
-            port_number=settings.Network.telemetry_port,
+            transport=transport,
             logger=logger,
-            replay_server=replay_server,
             frame_gate_enabled=settings.Network.enable_pkt_ordering
         )
         self.m_logger: PngLogger = logger
@@ -178,10 +182,15 @@ class F1TelemetryHandler:
         self.m_udp_action_stats: EventCounter = EventCounter()
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
+        self.m_udp_forwarder: Optional[AsyncUDPForwarder] = None
         self.m_version: str = ver_str
         self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
+        )
+        self.m_menu_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
+            status_callback=lambda active: self.m_session_state_ref.setInMenu(not active),
+            timeout=float(settings.HUD.menu_silence_threshold_sec),
         )
 
         self.m_udp_action_codes = UdpActionCodes(
@@ -233,6 +242,25 @@ class F1TelemetryHandler:
         self.m_udp_action_codes.update(key, val)
         self.m_logger.debug("Updated UDP action code %s to %s", key, val)
 
+    def set_udp_forwarder(self, forwarder: AsyncUDPForwarder) -> None:
+        """Wire the forwarder instance created by setupForwarder into this handler.
+
+        Args:
+            forwarder (AsyncUDPForwarder): Forwarder to use for hot-reload target updates
+        """
+        self.m_udp_forwarder = forwarder
+
+    def update_forwarding_targets(self, targets: List[Tuple[str, int]]) -> None:
+        """Update forwarding destinations at runtime without restarting the backend.
+
+        Args:
+            targets (List[Tuple[str, int]]): Complete new list of (host, port) destinations
+        """
+        self.m_should_forward = bool(targets)
+        if self.m_udp_forwarder:
+            self.m_udp_forwarder.update_targets(targets)
+        self.m_logger.info("Updated forwarding targets: %s", targets)
+
     async def run(self):
         """
         Run the telemetry handler.
@@ -242,6 +270,10 @@ class F1TelemetryHandler:
         """
         await self.m_manager.run()
 
+    def _kick_periodic_packet_timer(self) -> None:
+        """Kick the menu-detection watchdog. Called on every periodic (non-EVENT) packet."""
+        self.m_menu_wdt.kick()
+
     async def stop(self) -> None:
         """
         Stop the telemetry manager and watchdog timer.
@@ -249,6 +281,7 @@ class F1TelemetryHandler:
         if self.m_manager_task:
             self.m_manager_task.cancel()
         self.m_wdt.stop()
+        self.m_menu_wdt.stop()
         if self.m_save_task:
             self.m_logger.debug("Waiting for save task to complete...")
 
@@ -274,6 +307,14 @@ class F1TelemetryHandler:
         Coroutine: The watchdog task.
         """
         return self.m_wdt.run()
+
+    def getMenuWatchdogTask(self) -> Coroutine:
+        """Get the menu-silence watchdog task.
+
+        Returns:
+            Coroutine: The menu silence watchdog task.
+        """
+        return self.m_menu_wdt.run()
 
     def registerCallbacks(self) -> None:
         """
@@ -301,6 +342,7 @@ class F1TelemetryHandler:
                 packet (PacketSessionData): The session data telemetry packet.
             """
 
+            self._kick_periodic_packet_timer()
             if packet.m_sessionDuration == 0:
                 self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
                                    packet.m_header.m_sessionUID)
@@ -319,6 +361,7 @@ class F1TelemetryHandler:
                 packet (PacketLapData): Lap Data packet
             """
 
+            self._kick_periodic_packet_timer()
             if self.m_session_state_ref.m_session_info.m_total_laps is not None:
                 self.m_session_state_ref.processLapDataUpdate(packet)
                 self.m_session_state_ref.setRaceOngoing()
@@ -357,6 +400,7 @@ class F1TelemetryHandler:
                 packet (PacketParticipantsData): The pariticpants info packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processParticipantsUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY)
@@ -367,6 +411,7 @@ class F1TelemetryHandler:
                 packet (PacketCarTelemetryData): The car telemetry update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarTelemetryUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -378,6 +423,7 @@ class F1TelemetryHandler:
                 packet (PacketCarStatusData): The car status update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarStatusUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -391,6 +437,8 @@ class F1TelemetryHandler:
                 packet - PacketCarStatusData object
             """
 
+            # After end of session, the game will periodically send FINAL_CLASSIFICATION.
+            # But for the purposes of auto hiding menu, lets not treat it as periodic
             if self.m_final_classification_processed:
                 self.m_logger.debug('Session UID %d final classification already processed.', packet.m_header.m_sessionUID)
                 return
@@ -425,6 +473,7 @@ class F1TelemetryHandler:
                 packet (PacketCarDamageData): The car damage update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processCarDamageUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -436,6 +485,8 @@ class F1TelemetryHandler:
                 packet (PacketSessionHistoryData): The session history update packet
             """
 
+            # After end of session, the game will periodically send SESSION_HISTORY.
+            # But for the purposes of auto hiding menu, lets not treat it as periodic
             self.m_session_state_ref.processSessionHistoryUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -447,6 +498,7 @@ class F1TelemetryHandler:
                 packet (PacketTyreSetsData): The tyre history update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processTyreSetsUpdate(packet)
             self.m_session_state_ref.setRaceOngoing()
 
@@ -458,6 +510,7 @@ class F1TelemetryHandler:
                 packet (PacketMotionData): The motion update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processMotionUpdate(packet)
 
         # Register the car setup handler if and only if user has allowed this
@@ -471,6 +524,7 @@ class F1TelemetryHandler:
                     packet (PacketCarSetupData): The car setup update packet
                 """
 
+                self._kick_periodic_packet_timer()
                 self.m_session_state_ref.processCarSetupsUpdate(packet)
         else:
             self.m_logger.debug("Not processing car setups")
@@ -483,6 +537,7 @@ class F1TelemetryHandler:
                 packet (PacketTimeTrialData): The time trial update packet
             """
 
+            self._kick_periodic_packet_timer()
             self.m_session_state_ref.processTimeTrialUpdate(packet)
 
         # We're not using this data, no need to waste CPU cycles processing it.
@@ -718,8 +773,8 @@ class F1TelemetryHandler:
             Dict[str, Any]: The telemetry handler stats.
         """
         return {
-            "__UDP_ACTION_BUTTONS__" : self.m_udp_action_stats.get_stats(),
-            **self.m_manager.getStats()
+            "__UDP_ACTION_BUTTONS__": self.m_udp_action_stats.get_stats(),
+            "manager": self.m_manager.getStats(),
         }
 
     def _shouldSaveData(self) -> bool:
@@ -732,7 +787,7 @@ class F1TelemetryHandler:
 
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
-            self.m_logger.error("Session type in None. Not saving data.")
+            self.m_logger.warning("Session type is None. Not saving data. Ignore if first session.")
             return False
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
@@ -840,7 +895,7 @@ class F1TelemetryHandler:
         """
         if self._isUdpActionButtonPressed(buttons, code):
             self.m_udp_action_stats.track_event('__UDP_ACTIONS__', name)
-            self.m_logger.info('UDP action %d pressed - %s', code, name)
+            self.m_logger.silent('UDP action %d pressed - %s', code, name)
             await coro()
 
     def _handleSuspiciousSessionStart(self, session_uid: int) -> None:

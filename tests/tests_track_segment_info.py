@@ -404,7 +404,7 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
     def test_complex_corner_named_render(self):
         """Named complex corner renders with type=corner, name, and spaced turn numbers."""
         seg = ComplexCornerSegmentInfo(name="Pouhon", start_m=1400, end_m=1800, corner_numbers=(6, 7))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Pouhon", "turns": "T6 / T7"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Pouhon", "turns": "Turns 6-7"})
 
     def test_complex_corner_unnamed_render(self):
         """Unnamed complex corner with >2 turns renders with 'Turns' range format."""
@@ -414,17 +414,17 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
     def test_complex_corner_unnamed_two_turns_render(self):
         """Unnamed complex corner with 2 turns renders with 'Turn' slash format."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turn 3 / Turn 4"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turns 3-4"})
 
     def test_complex_corner_two_turns_render(self):
         """Complex corner with exactly 2 turns renders with slash format."""
         seg = ComplexCornerSegmentInfo(name="Esses", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Esses", "turns": "T3 / T4"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Esses", "turns": "Turns 3-4"})
 
     def test_complex_corner_many_turns_render(self):
         """Complex corner with >2 turns renders with range format."""
         seg = ComplexCornerSegmentInfo(name="Maggotts-Becketts", start_m=0, end_m=800, corner_numbers=(5, 6, 7, 8))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Maggotts-Becketts", "turns": "T5-T8"})
+        self.assertEqual(seg.render(), {"type": "corner", "name": "Maggotts-Becketts", "turns": "Turns 5-8"})
 
     # --- name optionality rules -------------------------------------------------------
 

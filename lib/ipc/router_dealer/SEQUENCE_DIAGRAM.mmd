@@ -1,0 +1,63 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#1e1e2e",
+    "primaryTextColor": "#ffffff",
+    "primaryBorderColor": "#888",
+    "lineColor": "#ffffff",
+    "secondaryColor": "#2a2a40",
+    "tertiaryColor": "#3a3a55",
+    "background": "#0f0f17",
+    "actorBkg": "#1e1e2e",
+    "actorTextColor": "#ffffff",
+    "actorBorder": "#888",
+    "signalColor": "#ffffff",
+    "signalTextColor": "#ffffff",
+    "labelBoxBkgColor": "#222233",
+    "labelTextColor": "#ffffff"
+  }
+}}%%
+
+sequenceDiagram
+    participant CT as Coroutine caller
+    participant DS as DEALER socket
+    participant RL as recv_loop task
+    participant R as IpcRouter
+    participant RD as Remote DEALER
+
+    Note over RL: started via dealer.start or auto spawn
+
+    rect rgb(40, 60, 90)
+        Note over CT,RD: OUTBOUND SEND
+
+        CT->>CT: acquire send_lock and create Future
+        CT->>DS: send_multipart [dest, REPLY_REQUIRED, topic, payload]
+        CT->>CT: await Future with timeout
+
+        DS->>R: forward to destination
+        R->>RD: deliver message
+
+        RD->>RD: handler runs and produces result
+        RD->>R: reply
+        R->>DS: [sender_id, reply_payload]
+
+        RL->>DS: recv_multipart
+        RL->>CT: resolve Future with reply
+
+        CT->>CT: return decoded payload
+        CT->>CT: release send_lock
+    end
+
+    rect rgb(40, 90, 60)
+        Note over RD,CT: INBOUND COMMAND DISPATCH
+
+        RD->>R: [my_id, target_id, reply_flag, topic, payload]
+        R->>DS: [sender_id, reply_flag, topic, payload]
+
+        RL->>DS: recv_multipart
+        RL->>RL: handler processes data
+
+        alt reply_flag == REPLY_REQUIRED
+            RL->>DS: send_multipart [sender_id, reply_payload]
+        end
+    end

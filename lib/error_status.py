@@ -29,6 +29,7 @@ PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE = 102
 PNG_ERROR_CODE_UNSUPPORTED_OS = 103
 PNG_ERROR_CODE_XPUB_PORT_IN_USE = 104
 PNG_ERROR_CODE_XSUB_PORT_IN_USE = 105
+PNG_ERROR_CODE_ROUTER_PORT_IN_USE = 106
 PNG_ERROR_CODE_UNKNOWN = 999
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -54,10 +55,39 @@ class PngXsubPortInUseError(PngError):
     def __init__(self, err_msg: str = "Port already in use"):
         super().__init__(PNG_ERROR_CODE_XSUB_PORT_IN_USE, err_msg)
 
+class PngRouterPortInUseError(PngError):
+    def __init__(self, err_msg: str = "Port already in use"):
+        super().__init__(PNG_ERROR_CODE_ROUTER_PORT_IN_USE, err_msg)
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def is_port_in_use_error(errno: int) -> bool:
-    # errno 48: EADDRINUSE on macOS/BSD
-    # errno 98: EADDRINUSE on Linux
-    # errno 10048: WSAEADDRINUSE on Windows
-    return errno in {48, 98, 10048}
+    """
+    Returns True if the error code indicates that the port is unavailable
+    because it is already in use or cannot be bound.
+
+    Platform-specific notes:
+
+    macOS / BSD:
+        48  -> EADDRINUSE (Address already in use)
+
+    Linux:
+        98  -> EADDRINUSE (Address already in use)
+
+    Windows:
+        10048 -> WSAEADDRINUSE (Address already in use)
+
+        10013 -> WSAEACCES (Permission denied)
+                 ⚠️ Important:
+                 On Windows, this can ALSO occur when another process has bound
+                 the port with exclusive access (e.g., SO_EXCLUSIVEADDRUSE).
+                 In that case, the OS denies access instead of reporting a
+                 typical "address already in use" error.
+
+                 In practice, this often means:
+                 "The port is effectively in use by another application."
+
+    Because of this behavior, we treat 10013 as a "port unavailable" error
+    for better cross-platform consistency and user experience.
+    """
+    return errno in {48, 98, 10048, 10013}

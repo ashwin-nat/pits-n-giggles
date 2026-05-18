@@ -204,7 +204,6 @@ post_race_data_autosave = true
         # Verify missing sections have default values
         self.assertEqual(config.Display.refresh_interval, 200)  # Default
         self.assertEqual(config.Display.local_telemetry_rate, 5)  # Default
-        self.assertEqual(config.Display.telemetry_rate, 30)  # Default
         self.assertEqual(config.Display.realtime_overlay_fps, 60)  # Default
         self.assertFalse(config.Display.disable_browser_autoload)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
