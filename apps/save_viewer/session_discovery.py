@@ -358,7 +358,7 @@ async def build_session_list(
         return
 
     json_files = find_json_files(session_dir)
-    logger.info("build_session_list: found %d JSON files in %s", len(json_files), session_dir)
+    logger.debug("build_session_list: found %d JSON files in %s", len(json_files), session_dir)
 
     json_files = _sort_files_newest_first(json_files)
     total = len(json_files)

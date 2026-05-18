@@ -101,7 +101,7 @@ def entry_point():
     session_dir = p if p.is_absolute() else (get_app_base_dir() / p).resolve()
     png_logger.info("Session directory: %s", session_dir)
     viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
-    png_logger.info("Viewer directory: %s", viewer_dir)
+    png_logger.debug("Viewer directory: %s", viewer_dir)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:

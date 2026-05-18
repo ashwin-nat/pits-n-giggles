@@ -22,11 +22,75 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from pydantic import BaseModel, Field
+import copy
+from enum import Enum
+from typing import Any, ClassVar, Dict, List, Tuple
+
+from pydantic import BaseModel, Field, model_validator
 
 from ..diff import ConfigDiffMixin
 
+# ------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+class TimingTowerColId(str, Enum):
+    DELTA         = "delta"
+    TYRE          = "tyre"
+    ERS_DRS       = "ers_drs"
+    PENS          = "pens"
+    TL_WARNS      = "tl_warns"
+    BEST_LAP      = "best_lap"
+    LAST_LAP      = "last_lap"
+    WING_DMG      = "wing_dmg"
+    SPEED_TRAP    = "speed_trap"
+    FUEL          = "fuel"
+    DRIVER_STATUS = "driver_status"
+
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+class TimingTowerColSettings(ConfigDiffMixin, BaseModel):
+    ui_meta: ClassVar[Dict[str, Any]] = {"visible": True}
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable this column",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True}},
+    )
+
+    position: int = Field(
+        gt=0,
+        description="Ordering index",
+        json_schema_extra={"ui": {"type": "text_box", "visible": True}},
+    )
+
+    # Not stored in JSON — filled at runtime from DEFAULT_COLS by TimingTowerColOptions.fill_col_descriptions.
+    description: str = Field(default="", exclude=True)
+
+
+DEFAULT_COLS: Dict[TimingTowerColId, "TimingTowerColSettings"] = {
+    TimingTowerColId.DELTA: TimingTowerColSettings(
+        enabled=True,  position=1,  description="Delta"),
+    TimingTowerColId.TYRE: TimingTowerColSettings(
+        enabled=True,  position=2,  description="Tyre compound and wear"),
+    TimingTowerColId.ERS_DRS: TimingTowerColSettings(
+        enabled=True,  position=3,  description="ERS / DRS"),
+    TimingTowerColId.PENS: TimingTowerColSettings(
+        enabled=True,  position=4,  description="Penalties"),
+    TimingTowerColId.TL_WARNS: TimingTowerColSettings(
+        enabled=True,  position=5,  description="Track Limit warnings"),
+    TimingTowerColId.BEST_LAP: TimingTowerColSettings(
+        enabled=False, position=6,  description="Best Lap"),
+    TimingTowerColId.LAST_LAP: TimingTowerColSettings(
+        enabled=False, position=7,  description="Last Lap"),
+    TimingTowerColId.WING_DMG: TimingTowerColSettings(
+        enabled=False, position=8,  description="Front Wing Damage"),
+    TimingTowerColId.SPEED_TRAP: TimingTowerColSettings(
+        enabled=False, position=9,  description="Speed Trap"),
+    TimingTowerColId.FUEL: TimingTowerColSettings(
+        enabled=False, position=10, description="Fuel level (surplus laps)"),
+    TimingTowerColId.DRIVER_STATUS: TimingTowerColSettings(
+        enabled=False, position=11,
+        description="Driver status (e.g., IN_GARAGE, FLYING_LAP, etc.)"),
+}
 
 class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
 
@@ -36,81 +100,76 @@ class TimingTowerColOptions(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box"}}
     )
 
-    show_team_logos: bool = Field(
-        default=True,
-        description="Show team logos",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
-
-    show_tyre_info: bool = Field(
-        default=True,
-        description="Show tyre compound and wear information",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
-
-    show_deltas: bool = Field(
-        default=True,
-        description="Show time deltas",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
-
-    show_ers_drs_info: bool = Field(
-        default=True,
-        description="Show ERS / DRS status",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
-
-    show_pens: bool = Field(
-        default=True,
-        description="Show penalties",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
-
-    show_tl_warns: bool = Field(
-        default=True,
-        description="Show Track Limit warnings",
+    cols: Dict[str, TimingTowerColSettings] = Field(
+        default_factory=lambda: copy.deepcopy(DEFAULT_COLS),
+        description="Column visibility and order",
         json_schema_extra={
             "ui": {
-                "type": "check_box",
-                "ext_info": [
-                    'Display track limit warns if the driver has no penalties instead of a blank cell'
-                ]
+                "type": "group_box",
+                "visible": True,
+                "reorderable_collection": True,
+                "item_enabled_field": "enabled",
+                "item_position_field": "position",
+                "item_label_field": "description",
             }
-        }
+        },
     )
 
-    show_best_lap: bool = Field(
-        default=False,
-        description="Show best lap",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+    @model_validator(mode="after")
+    def check_unique_positions(self):
+        pos_map: Dict[int, str] = {}
+        for col_id, col in self.cols.items():
+            if not col.enabled:
+                continue
+            if col.position in pos_map:
+                raise ValueError(
+                    f"Timing tower column '{col_id}' has duplicate position {col.position} "
+                    f"(also used by '{pos_map[col.position]}')"
+                )
+            pos_map[col.position] = col_id
+        return self
 
-    show_last_lap: bool = Field(
-        default=False,
-        description="Show last lap",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+    @model_validator(mode="after")
+    def add_missing_cols(self):
+        """Ensure all DEFAULT_COLS entries are present.
 
-    show_wing_dmg: bool = Field(
-        default=False,
-        description="Show front wing damage",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+        Any column absent from the stored config is added as disabled with a
+        non-conflicting position.  This is the forward-compatibility hook that
+        handles both version upgrades and future new-column additions.
+        """
+        merged = dict(self.cols)
+        used_positions = {col.position for col in merged.values()}
 
-    show_speed_trap: bool = Field(
-        default=False,
-        description="Show speed trap",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+        for col_id, default_col in DEFAULT_COLS.items():
+            if col_id.value not in merged:
+                new_col = default_col.model_copy(deep=True)
+                new_col.enabled = False
+                pos = new_col.position
+                while pos in used_positions:
+                    pos += 1
+                new_col.position = pos
+                used_positions.add(pos)
+                merged[col_id.value] = new_col
 
-    show_fuel: bool = Field(
-        default=False,
-        description="Show fuel level (surplus laps)", # TODO: add choice for builtin vs custom fuel calculation
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+        self.cols = merged
+        return self
 
-    show_driver_status: bool = Field(
-        default=False,
-        description="Show driver status (IN_GARAGE, FLYING_LAP, IN_LAP, OUT_LAP, ON_TRACK)",
-        json_schema_extra={"ui": {"type": "check_box"}}
-    )
+    @model_validator(mode="after")
+    def fill_col_descriptions(self):
+        """Populate the excluded description field on every known column from DEFAULT_COLS.
+
+        Because description is excluded from JSON serialisation, it is always "" after a
+        round-trip through the config file.  This validator re-stamps the canonical
+        description onto every column so callers can read col.description at runtime.
+        """
+        for col_id, default_col in DEFAULT_COLS.items():
+            if col_id.value in self.cols:
+                self.cols[col_id.value].description = default_col.description
+        return self
+
+    def sorted_enabled_cols(self) -> List[Tuple[str, TimingTowerColSettings]]:
+        """Return enabled columns sorted by position, ascending."""
+        return sorted(
+            [(col_id, col) for col_id, col in self.cols.items() if col.enabled],
+            key=lambda p: p[1].position
+        )

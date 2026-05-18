@@ -57,7 +57,8 @@ from tests_config import (TestCaptureSettings, TestConfigDiffMixin,
                           TestPitTimeLossF2, TestPngSettings,
                           TestPngSettingsPrediction, TestPredictionSettings,
                           TestPrivacySettings, TestSampleSettingsFixture,
-                          TestStreamOverlaySettings, TestSubSysCtrl)
+                          TestStreamOverlaySettings, TestSubSysCtrl,
+                          TestTimingTowerColConfig)
 from tests_custom_markers import (TestCustomMarkerEntry,
                                   TestCustomMarkersHistory)
 from tests_data_per_driver import (TestTyreSetHistoryEntry,

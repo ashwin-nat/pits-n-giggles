@@ -326,10 +326,12 @@ class LapTimerOverlay(BaseOverlayQML):
                 driver_lap_ms = best_ms
 
                 # Try to get current lap estimate for any session
-                curr_lap = entry["lap-info"]["current-lap-info"]
+                curr_lap = entry["lap-info"]["curr-lap"]
                 if curr_lap:
+                    on_flying_lap = curr_lap.get("driver-status") in {"FLYING_LAP", "ON_TRACK"}
+                    lap_is_valid = curr_lap.get("is-valid")
                     delta_ms = curr_lap.get("delta-ms")
-                    if delta_ms is not None:
+                    if on_flying_lap and lap_is_valid and delta_ms is not None:
                         # estimated_lap = best_lap + delta
                         estimated = best_ms + delta_ms
                         # Use the minimum: stick with best if current is worse

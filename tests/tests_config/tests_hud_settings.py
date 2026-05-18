@@ -33,8 +33,10 @@ from pydantic import ValidationError
 from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                         HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
                         MfdTyreWearRateType, OverlayId, OverlayPosition,
-                        TimingTowerColOptions, WeatherMFDUIType)
+                        TimingTowerColId, TimingTowerColOptions,
+                        TimingTowerColSettings, WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
+from lib.config.schema.hud.timing_tower import DEFAULT_COLS
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -55,18 +57,18 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.timing_tower_max_rows, 5)
         self.assertEqual(settings.timing_tower_toggle_udp_action_code, None)
         self.assertTrue(settings.timing_tower_col_options.show_col_header)
-        self.assertTrue(settings.timing_tower_col_options.show_deltas)
-        self.assertTrue(settings.timing_tower_col_options.show_tyre_info)
-        self.assertTrue(settings.timing_tower_col_options.show_team_logos)
-        self.assertTrue(settings.timing_tower_col_options.show_ers_drs_info)
-        self.assertTrue(settings.timing_tower_col_options.show_pens)
-        self.assertTrue(settings.timing_tower_col_options.show_tl_warns)
-        self.assertFalse(settings.timing_tower_col_options.show_best_lap)
-        self.assertFalse(settings.timing_tower_col_options.show_last_lap)
-        self.assertFalse(settings.timing_tower_col_options.show_wing_dmg)
-        self.assertFalse(settings.timing_tower_col_options.show_speed_trap)
-        self.assertFalse(settings.timing_tower_col_options.show_fuel)
-        self.assertFalse(settings.timing_tower_col_options.show_driver_status)
+        cols = settings.timing_tower_col_options.cols
+        self.assertTrue(cols[TimingTowerColId.DELTA].enabled)
+        self.assertTrue(cols[TimingTowerColId.TYRE].enabled)
+        self.assertTrue(cols[TimingTowerColId.ERS_DRS].enabled)
+        self.assertTrue(cols[TimingTowerColId.PENS].enabled)
+        self.assertTrue(cols[TimingTowerColId.TL_WARNS].enabled)
+        self.assertFalse(cols[TimingTowerColId.BEST_LAP].enabled)
+        self.assertFalse(cols[TimingTowerColId.LAST_LAP].enabled)
+        self.assertFalse(cols[TimingTowerColId.WING_DMG].enabled)
+        self.assertFalse(cols[TimingTowerColId.SPEED_TRAP].enabled)
+        self.assertFalse(cols[TimingTowerColId.FUEL].enabled)
+        self.assertFalse(cols[TimingTowerColId.DRIVER_STATUS].enabled)
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
@@ -673,39 +675,28 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertFalse(old_settings.has_changed(new_settings))
         self.assertEqual(old_settings.diff(new_settings), {})
 
-        # Diff from parent obj - real diff
+        # Diff from parent obj - real diff (disable a column that is enabled by default)
+        modified_cols = {k: v.model_copy(deep=True) for k, v in DEFAULT_COLS.items()}
+        modified_cols[TimingTowerColId.ERS_DRS] = TimingTowerColSettings(
+            enabled=False, position=DEFAULT_COLS[TimingTowerColId.ERS_DRS].position
+        )
         new_settings = HudSettings(
-            timing_tower_col_options=TimingTowerColOptions(
-                show_ers_drs_info=False,
-            )
+            timing_tower_col_options=TimingTowerColOptions(cols=modified_cols)
         )
         self.assertTrue(old_settings.has_changed(new_settings))
-        self.assertEqual(old_settings.diff(new_settings), {
-            "timing_tower_col_options": {
-                "show_ers_drs_info": {
-                    "old_value": True,
-                    "new_value": False
-                }
-            }
-        })
+        diff = old_settings.diff(new_settings)
+        self.assertIn("timing_tower_col_options", diff)
+        self.assertIn("cols", diff["timing_tower_col_options"])
 
         # Diff from obj directly - no diff
-        old_settings = TimingTowerColOptions()
-        new_settings = TimingTowerColOptions()
-        self.assertFalse(old_settings.has_changed(new_settings))
-        self.assertEqual(old_settings.diff(new_settings), {})
+        old_col_opts = TimingTowerColOptions()
+        new_col_opts = TimingTowerColOptions()
+        self.assertFalse(old_col_opts.has_changed(new_col_opts))
+        self.assertEqual(old_col_opts.diff(new_col_opts), {})
 
-        # Real diff
-        new_settings = TimingTowerColOptions(
-            show_ers_drs_info=False,
-        )
-        self.assertTrue(old_settings.has_changed(new_settings))
-        self.assertEqual(old_settings.diff(new_settings), {
-            "show_ers_drs_info": {
-                "old_value": True,
-                "new_value": False
-            }
-        })
+        # Real diff on obj directly
+        new_col_opts = TimingTowerColOptions(cols=modified_cols)
+        self.assertTrue(old_col_opts.has_changed(new_col_opts))
 
     def test_idle_opacity(self):
 
@@ -904,3 +895,158 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(menu_silence_threshold_sec=None)  # type: ignore
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class TestTimingTowerColConfig(TestF1ConfigBase):
+    """Tests for TimingTowerColId, TimingTowerColSettings, and TimingTowerColOptions."""
+
+    # --- Enum ---
+
+    def test_col_id_values_are_strings(self):
+        for col_id in TimingTowerColId:
+            self.assertIsInstance(col_id.value, str)
+            self.assertIsInstance(col_id, str)  # str, Enum members ARE strings
+
+    def test_col_id_used_as_dict_key(self):
+        opts = TimingTowerColOptions()
+        dumped = opts.model_dump()
+        # After model_dump all keys must be plain strings (JSON-serializable)
+        for key in dumped["cols"].keys():
+            self.assertIsInstance(key, str)
+
+    # --- Defaults ---
+
+    def test_default_cols_all_present(self):
+        opts = TimingTowerColOptions()
+        for col_id in TimingTowerColId:
+            self.assertIn(col_id.value, opts.cols)
+
+    def test_default_positions_unique(self):
+        opts = TimingTowerColOptions()
+        positions = [col.position for col in opts.cols.values()]
+        self.assertEqual(len(positions), len(set(positions)))
+
+    def test_default_enabled_set(self):
+        opts = TimingTowerColOptions()
+        enabled_by_default = {
+            TimingTowerColId.DELTA, TimingTowerColId.TYRE,
+            TimingTowerColId.ERS_DRS, TimingTowerColId.PENS,
+            TimingTowerColId.TL_WARNS,
+        }
+        disabled_by_default = set(TimingTowerColId) - enabled_by_default
+        for col_id in enabled_by_default:
+            self.assertTrue(opts.cols[col_id.value].enabled, f"{col_id} should be enabled by default")
+        for col_id in disabled_by_default:
+            self.assertFalse(opts.cols[col_id.value].enabled, f"{col_id} should be disabled by default")
+
+    # --- sorted_enabled_cols ---
+
+    def test_sorted_enabled_cols_order(self):
+        opts = TimingTowerColOptions()
+        enabled = opts.sorted_enabled_cols()
+        positions = [col.position for _, col in enabled]
+        self.assertEqual(positions, sorted(positions))
+        # All returned cols must be enabled
+        for _, col in enabled:
+            self.assertTrue(col.enabled)
+
+    def test_sorted_enabled_cols_excludes_disabled(self):
+        opts = TimingTowerColOptions()
+        enabled_keys = {key for key, _ in opts.sorted_enabled_cols()}
+        for col_id in TimingTowerColId:
+            col = opts.cols[col_id.value]
+            if not col.enabled:
+                self.assertNotIn(col_id.value, enabled_keys)
+
+    def test_sorted_enabled_cols_empty_when_all_disabled(self):
+        all_disabled = {
+            col_id.value: TimingTowerColSettings(enabled=False, position=i + 1)
+            for i, col_id in enumerate(TimingTowerColId)
+        }
+        opts = TimingTowerColOptions(cols=all_disabled)
+        self.assertEqual(opts.sorted_enabled_cols(), [])
+
+    # --- Validators ---
+
+    def test_duplicate_position_among_enabled_rejected(self):
+        with self.assertRaises(ValidationError):
+            TimingTowerColOptions(cols={
+                TimingTowerColId.DELTA.value:   TimingTowerColSettings(enabled=True, position=1),
+                TimingTowerColId.TYRE.value:    TimingTowerColSettings(enabled=True, position=1),
+            })
+
+    def test_duplicate_position_among_disabled_allowed(self):
+        # Two disabled cols sharing a position must not raise
+        opts = TimingTowerColOptions(cols={
+            TimingTowerColId.DELTA.value:   TimingTowerColSettings(enabled=False, position=1),
+            TimingTowerColId.TYRE.value:    TimingTowerColSettings(enabled=False, position=1),
+        })
+        self.assertIsNotNone(opts)
+
+    def test_missing_col_auto_added_as_disabled(self):
+        # Provide only one column; all others must be auto-inserted as disabled
+        partial = {TimingTowerColId.DELTA.value: TimingTowerColSettings(enabled=True, position=1)}
+        opts = TimingTowerColOptions(cols=partial)
+        for col_id in TimingTowerColId:
+            self.assertIn(col_id.value, opts.cols)
+        # The auto-added ones must be disabled
+        for col_id in TimingTowerColId:
+            if col_id.value != TimingTowerColId.DELTA.value:
+                self.assertFalse(opts.cols[col_id.value].enabled)
+
+    def test_empty_cols_auto_filled_with_defaults(self):
+        opts = TimingTowerColOptions.model_validate({"cols": {}})
+        self.assertEqual(len(opts.cols), len(TimingTowerColId))
+        # All auto-filled must be disabled (missing cols default to disabled)
+        for col in opts.cols.values():
+            self.assertFalse(col.enabled)
+
+    def test_auto_added_positions_are_unique(self):
+        # Even when auto-filled from empty, positions must not collide
+        opts = TimingTowerColOptions.model_validate({"cols": {}})
+        positions = [col.position for col in opts.cols.values()]
+        self.assertEqual(len(positions), len(set(positions)))
+
+    # --- Upgrade compatibility ---
+
+    def test_old_flat_booleans_ignored_gracefully(self):
+        # Old config format: flat show_* booleans under timing_tower_col_options.
+        # With extra="ignore" (Pydantic default), these are silently dropped and
+        # cols falls back to defaults (all missing cols auto-inserted as disabled).
+        old_data = {
+            "show_team_logos": True,
+            "show_deltas": True,
+            "show_tyre_info": True,
+            "show_ers_drs_info": True,
+            "show_pens": True,
+            "show_tl_warns": True,
+            "show_best_lap": False,
+            "show_last_lap": False,
+            "show_wing_dmg": False,
+            "show_speed_trap": False,
+            "show_fuel": False,
+            "show_driver_status": False,
+        }
+        opts = TimingTowerColOptions.model_validate(old_data)
+        # All 12 cols must be present (auto-filled)
+        self.assertEqual(len(opts.cols), len(TimingTowerColId))
+
+    def test_partial_cols_in_stored_config_auto_filled(self):
+        # Simulate a future upgrade where two new columns were added to the enum
+        # but the stored config only has the old columns.
+        stored = {
+            TimingTowerColId.DELTA.value:  {"enabled": True,  "position": 1},
+            TimingTowerColId.TYRE.value:   {"enabled": True,  "position": 2},
+            TimingTowerColId.PENS.value:   {"enabled": False, "position": 3},
+        }
+        opts = TimingTowerColOptions.model_validate({"cols": stored})
+        self.assertEqual(len(opts.cols), len(TimingTowerColId))
+        # Stored values are preserved
+        self.assertTrue(opts.cols[TimingTowerColId.DELTA.value].enabled)
+        self.assertTrue(opts.cols[TimingTowerColId.TYRE.value].enabled)
+        self.assertFalse(opts.cols[TimingTowerColId.PENS.value].enabled)
+        # Missing ones are added as disabled
+        for col_id in TimingTowerColId:
+            if col_id.value not in stored:
+                self.assertFalse(opts.cols[col_id.value].enabled)

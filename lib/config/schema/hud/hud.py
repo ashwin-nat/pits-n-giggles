@@ -84,25 +84,23 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     overlays_speed_unit: OverlaysSpeedUnit = Field(
         default=OverlaysSpeedUnit.KMPH,
-        description="Speed unit displayed in the HUD overlay",
+        description="Speed unit",
         json_schema_extra={
             "ui": {
                 "type": "radio_buttons",
                 "options": [e.value for e in OverlaysSpeedUnit],
                 "visible": True,
-                "group": "HUD Overlay",
             }
         }
     )
     overlays_fuel_estimation_mode: OverlaysFuelEstimationMode = Field(
         default=OverlaysFuelEstimationMode.LINEAR_REGRESSION,
-        description="Surplus fuel estimation technique used in the HUD overlay",
+        description="Surplus fuel estimation technique",
         json_schema_extra={
             "ui": {
                 "type": "radio_buttons",
                 "options": [e.value for e in OverlaysFuelEstimationMode],
                 "visible": True,
-                "group": "HUD Overlay",
                 "ext_info": [
                     "The game's built-in fuel estimation assumes a fixed fuel burn rate, regardless of driving style or track conditions. "
                     "\nLinear regression technique factors in the live fuel burn rate and can adapt to various situations, "

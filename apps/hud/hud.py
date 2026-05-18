@@ -118,42 +118,43 @@ def entry_point():
 
 # def save_pstats_report(html_filename, txt_filename):
 #     stats = pstats.Stats("hud_profile.prof")
-
-#     # Don't strip directories, so full paths are included
-#     # If you want the paths to be fully visible, just skip strip_dirs()
 #     stats.sort_stats("cumulative")
 
-#     # Save as HTML
 #     with open(html_filename, "w") as f:
-#         f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
+#         f.write("<html><head><title>Yappi HUD Profile</title></head><body><pre>")
 #         stats.stream = f
 #         stats.print_stats()
 #         f.write("</pre></body></html>")
 
-#     # Save as TXT
 #     with open(txt_filename, "w") as f:
 #         stats.stream = f
 #         stats.print_stats()
 
 # def save_thread_report(filename):
+#     import threading
+#     thread_name_map = {t.ident: t.name for t in threading.enumerate()}
 #     ts = yappi.get_thread_stats()
 #     with open(filename, "w") as f:
 #         for t in ts:
+#             name = thread_name_map.get(t.id, t.name)
 #             f.write(
-#                 f"Thread {t.name} (id={t.id})\n"
+#                 f"Thread {name} (id={t.id})\n"
 #                 f"  Total time : {t.ttot}\n"
 #                 f"  Scheduled  : {t.sched_count} times\n"
-#                 f"  Avg time   : {t.ttot / max(t.sched_count,1)}\n"
+#                 f"  Avg time   : {t.ttot / max(t.sched_count, 1)}\n"
 #                 "\n"
 #             )
 
 # def entry_point():
-#     """Entry point"""
+#     """Entry point — profiler mode (swap with entry_point above to enable)"""
+#     if sys.platform != 'win32':
+#         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
 
-#     # ---- PROFILING START ----------------------------------------------------
-#     yappi.set_clock_type("wall")     # or "cpu"
+#     winmm = ctypes.windll.winmm
+#     winmm.timeBeginPeriod(1)
+
+#     yappi.set_clock_type("wall")  # or "cpu" for CPU-bound analysis
 #     yappi.start()
-#     # -------------------------------------------------------------------------
 
 #     report_pid_from_child()
 #     args = parseArgs()
@@ -164,8 +165,7 @@ def entry_point():
 #         main(
 #             logger=png_logger,
 #             config=configs,
-#             ipc_port=args.ipc_port,
-#             debug_mode=args.debug
+#             debug_mode=args.debug,
 #         )
 #     except KeyboardInterrupt:
 #         png_logger.info("Program interrupted by user.")
@@ -174,22 +174,14 @@ def entry_point():
 #         sys.exit(1)
 #     finally:
 #         yappi.stop()
+#         winmm.timeEndPeriod(1)
 
-#         # Save global function stats
+#         # Global function stats (snakeviz-compatible)
+#         # Note: per-thread filtering via filter={"thread_id": t.id} produces
+#         # identical files on Windows — use hud_threads.txt for thread breakdown.
 #         yappi.get_func_stats().save("hud_profile.prof", type="pstat")
 
-#         # Save function stats PER THREAD
-#         for t in yappi.get_thread_stats():
-#             yappi.get_func_stats(filter={'thread_id': t.id}).save(
-#                 f"hud_thread_{t.id}.prof",
-#                 type="pstat"
-#             )
-
-#         # Save HTML/TXT summary (your existing code)
 #         save_pstats_report("hud_profile.html", "hud_profile.txt")
-
-#         # Optional thread report
 #         save_thread_report("hud_threads.txt")
-#         # ----------------------------------------------------------------------
 
 #     png_logger.info("HUD application exiting normally.")

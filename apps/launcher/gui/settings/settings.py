@@ -360,6 +360,7 @@ class SettingsWindow(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollBar:vertical { width: 12px; }")
 
         content_widget = QWidget()
         layout = QVBoxLayout()
@@ -950,7 +951,7 @@ class SettingsWindow(QDialog):
         # Enabled checkbox
         item_path = f"{parent_path}.{item_name}"
         enabled_path = f"{item_path}.{collection_meta.enabled_field}"
-        enabled_cb = QCheckBox(item_name.replace("_", " ").title())
+        enabled_cb = QCheckBox(collection_meta.get_label(item_name, item_settings))
         enabled_cb.setFont(QFont("Roboto", 10))
         enabled_cb.setChecked(collection_meta.get_enabled(item_settings))
         enabled_cb.stateChanged.connect(
@@ -1025,7 +1026,7 @@ class SettingsWindow(QDialog):
         # Enabled checkbox
         item_path = f"{parent_path}.{item_name}"
         enabled_path = f"{item_path}.{collection_meta.enabled_field}"
-        enabled_cb = QCheckBox(item_name.replace("_", " ").title())
+        enabled_cb = QCheckBox(collection_meta.get_label(item_name, item_settings))
         enabled_cb.setFont(QFont("Exo 2", 10))
         enabled_cb.setChecked(collection_meta.get_enabled(item_settings))
         enabled_cb.stateChanged.connect(

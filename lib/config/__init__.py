@@ -32,7 +32,8 @@ from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
                      NetworkSettings, OverlayId, OverlayPosition,
                      PitTimeLossF1, PitTimeLossF2, PngSettings,
                      PredictionSettings, PrivacySettings,
-                     StreamOverlaySettings, SubSysCtrl, TimingTowerColOptions,
+                     StreamOverlaySettings, SubSysCtrl, TimingTowerColId,
+                     TimingTowerColOptions, TimingTowerColSettings,
                      WeatherMFDUIType)
 from .types import FilePathStr
 
@@ -55,7 +56,9 @@ __all__ = [
     'MfdPageId',
     'MfdSettings',
     'MfdPageSettings',
+    'TimingTowerColId',
     'TimingTowerColOptions',
+    'TimingTowerColSettings',
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
     'OverlaysSpeedUnit',
