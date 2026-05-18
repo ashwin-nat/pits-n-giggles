@@ -540,7 +540,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         QMetaObject.invokeMethod(
             self._root,
             method,
-            Qt.ConnectionType.QueuedConnection,
+            Qt.ConnectionType.AutoConnection,
             *(Q_ARG("QVariant", a) for a in args),
         )
 
