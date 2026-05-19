@@ -78,7 +78,6 @@ allure serve reports/allure-results
 | `tests_event_counter/` | Event counter and latency stat tests |
 | `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
 | `integration_test/` | Integration runner — starts the full app, not collected by pytest |
-| `unit_tests.py` | Legacy unittest runner — kept for reference, superseded by pytest |
 
 ## Serial vs Parallel
 
