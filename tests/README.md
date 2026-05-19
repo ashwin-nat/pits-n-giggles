@@ -34,6 +34,9 @@ poetry run pytest tests/ -m serial
 
 # Only the parallel-safe suites
 poetry run pytest tests/ -m "not serial"
+
+# Live API tests (OpenF1 schema checks) — requires network, excluded from default run
+poetry run pytest tests/tests_openf1/tests_openf1_integration.py -m openf1 -v -n 0
 ```
 
 ## Coverage Report (local)
@@ -77,6 +80,7 @@ allure serve reports/allure-results
 | `tests_wdt/` | Watchdog timer tests (async + sync) |
 | `tests_event_counter/` | Event counter and latency stat tests |
 | `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
+| `tests_openf1/` | OpenF1 API tests — mock-based flow tests + live schema validation (`-m openf1`) |
 | `integration_test/` | Integration runner — starts the full app, not collected by pytest |
 
 ## Serial vs Parallel
@@ -119,10 +123,7 @@ import pytest
 def test_doubles(input, expected):
     assert double(input) == expected
 
-# Async test (requires pytest-asyncio)
-import pytest
-
-@pytest.mark.asyncio
+# Async test — no decorator needed, asyncio_mode=auto picks it up
 async def test_async_thing():
     result = await my_coroutine()
     assert result == expected
@@ -137,7 +138,6 @@ Existing async tests use `unittest.IsolatedAsyncioTestCase`, which creates a **f
 event loop per test method**. This is correct and safe, but slightly slower than
 `pytest-asyncio`'s configurable loop scoping.
 
-For new async tests, prefer `pytest-asyncio` (`@pytest.mark.asyncio`) — it integrates
-with pytest fixtures, supports shared event loop scopes (`function`/`module`/`session`),
-and requires no base class. Add `pytest-asyncio` to dev deps when you write the first
-native async test.
+For new async tests, use `pytest-asyncio` — `asyncio_mode = "auto"` is set in
+`pyproject.toml` so any `async def test_*` is collected automatically with no decorator
+needed. It integrates with pytest fixtures and requires no base class.

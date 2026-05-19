@@ -42,8 +42,10 @@ addopts = "-n auto --dist=loadgroup"
 python_files = ["tests_*.py"]
 python_classes = ["Test*", "*Test", "*UT"]
 python_functions = ["test_*"]
+asyncio_mode = "auto"
 markers = [
     "serial: tests that use real sockets/ports/processes and must run sequentially",
+    "openf1: tests that make real calls to the OpenF1 API; excluded from default suite (run with -m openf1)",
 ]
 
 [tool.poetry]
@@ -63,5 +65,6 @@ pytest = "^8.3"
 pytest-html = "^4.1"
 pytest-cov = "^6.1"
 pytest-xdist = "^3.6"
+pytest-asyncio = "^0.24"
 allure-pytest = "^2.13"
 
