@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
@@ -55,8 +55,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     Prediction: PredictionSettings = Field(default_factory=PredictionSettings, description="Prediction")
     MCP: McpSettings = Field(default_factory=McpSettings, description="MCP")
     SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl, description="Subsys Control")
-    class Config:
-        str_strip_whitespace = True
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     @model_validator(mode="after")
     def check_udp_action_codes(self) -> "PngSettings":

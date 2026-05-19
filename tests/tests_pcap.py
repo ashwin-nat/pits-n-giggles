@@ -47,7 +47,9 @@ class FullPCapTests(TestF1PacketCapture):
         self.m_created_files = []
 
     def dumpToFileHelper(self, file_name=None, compressed=True):
-        # self.capture = F1PacketCapture(compressed=compressed)
+        if file_name is None:
+            fd, file_name = tempfile.mkstemp(suffix=f".{self.capture.file_extension}")
+            os.close(fd)
         file_name, packets_count, bytes_count = self.capture.dumpToFile(file_name)
 
         # Ensure file_name is not None
@@ -272,15 +274,16 @@ class TestF1PacketCaptureCompression(TestF1PacketCapture):
             uncompressed_capture.add(packet)
 
         # Write uncompressed file
-        temp_dir = tempfile.gettempdir()
-        uncompressed_filename = os.path.join(temp_dir, "uncompressed_test.f1pcap")
+        unc_fd, uncompressed_filename = tempfile.mkstemp(suffix=".f1pcap")
+        os.close(unc_fd)
         uncompressed_capture.dumpToFile(uncompressed_filename)
 
         # Create new capture from the uncompressed file
         loaded_uncompressed = F1PacketCapture(file_name=uncompressed_filename)
 
         # Convert to compressed
-        compressed_filename = os.path.join(temp_dir, "compressed_test.f1pcap")
+        cmp_fd, compressed_filename = tempfile.mkstemp(suffix=".f1pcap")
+        os.close(cmp_fd)
         compressed_capture = F1PacketCapture(compressed=True)
 
         # Copy packets from uncompressed to compressed

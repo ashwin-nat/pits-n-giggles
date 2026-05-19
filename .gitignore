@@ -1,5 +1,6 @@
 launch.json
 *.pyc
+*.pyc.*
 *.log
 *.log*
 *.bin
