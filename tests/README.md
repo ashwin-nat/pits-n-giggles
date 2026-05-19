@@ -86,3 +86,59 @@ Tests marked `@pytest.mark.serial` (via module-level `pytestmark`) bind real soc
 ports, or spawn processes and must not run concurrently. Everything else is parallel-safe.
 
 Current split: ~131 serial / ~710 parallel out of 841 total.
+
+---
+
+## Test Style: Existing vs New
+
+### Why existing tests are in backward-compatibility mode
+
+The existing suite was written against `unittest.TestCase` (and
+`unittest.IsolatedAsyncioTestCase` for async tests). pytest runs these natively with
+zero code changes — `self.assertEqual`, `setUp`/`tearDown`, `subTest`, and async test
+methods all work as-is. The suite was migrated to pytest for parallel execution,
+reporting, and CI integration, not to rewrite working tests. The effort to convert
+~840 existing tests to native pytest style is high with no functional payoff.
+
+### How to write new tests
+
+New test files should use native pytest style — no base class required:
+
+```python
+# Sync test
+def test_something():
+    result = my_function()
+    assert result == expected
+
+# Parametrized
+import pytest
+
+@pytest.mark.parametrize("input,expected", [
+    (1, 2),
+    (2, 4),
+])
+def test_doubles(input, expected):
+    assert double(input) == expected
+
+# Async test (requires pytest-asyncio)
+import pytest
+
+@pytest.mark.asyncio
+async def test_async_thing():
+    result = await my_coroutine()
+    assert result == expected
+```
+
+Use plain `assert` instead of `self.assert*` — pytest rewrites assertions to give
+detailed failure output automatically.
+
+### A note on async tests
+
+Existing async tests use `unittest.IsolatedAsyncioTestCase`, which creates a **fresh
+event loop per test method**. This is correct and safe, but slightly slower than
+`pytest-asyncio`'s configurable loop scoping.
+
+For new async tests, prefer `pytest-asyncio` (`@pytest.mark.asyncio`) — it integrates
+with pytest fixtures, supports shared event loop scopes (`function`/`module`/`session`),
+and requires no base class. Add `pytest-asyncio` to dev deps when you write the first
+native async test.
