@@ -81,12 +81,6 @@ class TelemetryWebServer(BaseWebServer):
             bind_address=settings.Network.bind_address,
             client_event_mappings={
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
-                ClientType.HUD: [
-                    'hud-toggle-notification',
-                    'hud-cycle-mfd-notification',
-                    'hud-prev-page-mfd-notification',
-                    'hud-mfd-interaction-notification',
-                ],
                 ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
             },
             cert_path=settings.HTTPS.cert_path,

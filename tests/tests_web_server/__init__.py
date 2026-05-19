@@ -19,23 +19,4 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
-
-from enum import Enum
-
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
-
-class ClientType(Enum):
-    PLAYER_STREAM_OVERLAY = 'player-stream-overlay'
-    RACE_TABLE = 'race-table'
-
-    @classmethod
-    def is_valid(cls, value: str) -> bool:
-        return any(ct.value == value for ct in cls)
-
-    def __str__(self) -> str:
-        return self.value
-
-    def __repr__(self) -> str:
-        return self.value
+# pylint: skip-file
