@@ -30,6 +30,9 @@ from .base import TestIPC
 from lib.ipc import IpcRouter, IpcDealerClient, IpcDealerAsync
 from lib.error_status import PngRouterPortInUseError
 
+import pytest
+pytestmark = pytest.mark.serial
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

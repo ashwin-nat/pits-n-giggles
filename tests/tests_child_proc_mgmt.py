@@ -15,6 +15,9 @@ from lib.child_proc_mgmt import (extract_ipc_port_from_line,
                                  report_ipc_port_from_child,
                                  report_pid_from_child)
 
+import pytest
+pytestmark = pytest.mark.serial
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestChildProcMgmt(F1TelemetryUnitTestsBase):

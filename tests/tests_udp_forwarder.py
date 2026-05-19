@@ -34,6 +34,9 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.packet_forwarder import AsyncUDPForwarder, AsyncUDPTransport
 
+import pytest
+pytestmark = pytest.mark.serial
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 class TestAsyncUDPForwarder(F1TelemetryUnitTestsBase):
