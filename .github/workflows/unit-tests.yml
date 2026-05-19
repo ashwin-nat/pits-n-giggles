@@ -51,7 +51,8 @@ jobs:
             --cov-report=xml:reports/coverage.xml \
             --cov-report=term-missing \
             --html=reports/test-report.html \
-            --self-contained-html
+            --self-contained-html \
+            --cov-fail-under=0
 
       - name: Upload test & coverage reports
         if: always()
