@@ -8,13 +8,17 @@ on:
   pull_request:
 
 jobs:
-  test-windows:
-    name: Unit Tests (Windows)
-    runs-on: windows-latest
+  test:
+    name: Unit Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
 
     defaults:
       run:
-        shell: bash  # ensures POSIX-style shell
+        shell: bash
 
     steps:
       - name: Checkout repository
@@ -23,55 +27,43 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.13'
 
       - name: Install Poetry
         run: |
-            python -m pip install --upgrade pip
-            curl -sSL https://install.python-poetry.org | python -
-            if [ "$RUNNER_OS" = "Windows" ]; then
+          python -m pip install --upgrade pip
+          curl -sSL https://install.python-poetry.org | python -
+          if [ "$RUNNER_OS" = "Windows" ]; then
             echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
-            else
+          else
             echo "$HOME/.local/bin" >> $GITHUB_PATH
-            fi
-        shell: bash
+          fi
 
       - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Run tests
         run: |
-          poetry install --no-interaction --no-root
-        shell: bash
+          poetry run pytest tests/ \
+            --cov=lib \
+            --cov-config=scripts/.coveragerc_ut \
+            --cov-report=html:reports/coverage \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-report=term-missing \
+            --html=reports/test-report.html \
+            --self-contained-html
 
-      - name: Run unit tests
-        run: poetry run python tests/unit_tests.py
-
-  test-macos:
-    name: Unit Tests (macOS)
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Upload test & coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.11'
+          name: test-reports-${{ matrix.os }}
+          path: reports/
+          retention-days: 30
 
-      - name: Install Poetry
-        run: |
-            python -m pip install --upgrade pip
-            curl -sSL https://install.python-poetry.org | python -
-            if [ "$RUNNER_OS" = "Windows" ]; then
-            echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
-            else
-            echo "$HOME/.local/bin" >> $GITHUB_PATH
-            fi
-        shell: bash
-
-      - name: Install dependencies
-        run: |
-          poetry install --no-root
-        shell: bash
-
-      - name: Run unit tests
-        run: poetry run python tests/unit_tests.py
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: reports/coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
