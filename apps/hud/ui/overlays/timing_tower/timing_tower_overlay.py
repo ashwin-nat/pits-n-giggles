@@ -439,9 +439,9 @@ class TimingTowerOverlay(BaseOverlayQML):
             Signed seconds string (e.g. "+1.234") for others, absolute time for
             the reference driver itself, or "---" when data is unavailable.
         """
-        if is_ref_driver:
+        if is_ref_driver or ref_ms is None:
             return self._format_lap_time(lap_ms)
-        if lap_ms is None or ref_ms is None:
+        if lap_ms is None:
             return "---"
         return F1Utils.formatFloat((ref_ms - lap_ms) / 1000, precision=3, signed=True)
 
