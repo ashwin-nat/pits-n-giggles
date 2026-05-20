@@ -266,6 +266,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             ref_index: Index of reference driver
             session_type: Type of the current session
             fastest_index: Index of the fastest driver
+            ref_best_lap_ms: Reference driver's best lap in ms (for relative display)
+            ref_last_lap_ms: Reference driver's last lap in ms (for relative display)
 
         Returns:
             Dictionary with formatted driver data for QML
@@ -400,7 +402,6 @@ class TimingTowerOverlay(BaseOverlayQML):
 
         Args:
             warns_pens_info: Warnings and penalties information dictionary
-            include_tl_warns: Also fold track-limit warnings into the string
 
         Returns:
             Formatted penalties string
