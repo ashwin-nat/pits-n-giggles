@@ -367,9 +367,19 @@ async def build_session_list(
     total = len(json_files)
 
     cache_path = session_dir / CACHE_FILE
+    cache_file_existed = cache_path.exists()
     cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path)
     cache_hits = sum(1 for r in json_files if str(r) in cache)
-    logger.debug("build_session_list: cache loaded — %d/%d files already cached", cache_hits, total)
+
+    if not cache_file_existed:
+        logger.info("Session cache: no cache file found, parsing all %d files from scratch", total)
+    elif not cache:
+        logger.warning("Session cache: cache file invalid or empty, parsing all %d files from scratch", total)
+    elif cache_hits < total:
+        logger.info("Session cache: %d new/modified files to parse (%d/%d already cached)",
+                    total - cache_hits, cache_hits, total)
+    else:
+        logger.debug("Session cache: all %d files already cached", total)
 
     all_raw: List[Dict[str, Any]] = []
 
