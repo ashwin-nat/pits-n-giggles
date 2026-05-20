@@ -96,6 +96,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.circuit_info_length, 800)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
+        self.assertFalse(settings.timing_tower_relative_best_last_lap)
+        self.assertFalse(settings.timing_tower_combined_tl_pens)
         self.assertTrue(settings.auto_hide_in_menu)
         self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
         # MFD pages has its own test case because the structure is a bit more complex
@@ -863,6 +865,38 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_length=1501)
         HudSettings(circuit_info_length=1500)
+
+    def test_timing_tower_relative_best_last_lap_default(self):
+        """timing_tower_relative_best_last_lap defaults to False"""
+        self.assertFalse(HudSettings().timing_tower_relative_best_last_lap)
+
+    def test_timing_tower_relative_best_last_lap_validation(self):
+        """timing_tower_relative_best_last_lap accepts booleans and rejects invalid types"""
+        self.assertTrue(HudSettings(timing_tower_relative_best_last_lap=True).timing_tower_relative_best_last_lap)
+        self.assertFalse(HudSettings(timing_tower_relative_best_last_lap=False).timing_tower_relative_best_last_lap)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_relative_best_last_lap=None)  # type: ignore
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_relative_best_last_lap="invalid")
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_relative_best_last_lap=420)
+
+    def test_timing_tower_combined_tl_pens_default(self):
+        """timing_tower_combined_tl_pens defaults to False"""
+        self.assertFalse(HudSettings().timing_tower_combined_tl_pens)
+
+    def test_timing_tower_combined_tl_pens_validation(self):
+        """timing_tower_combined_tl_pens accepts booleans and rejects invalid types"""
+        self.assertTrue(HudSettings(timing_tower_combined_tl_pens=True).timing_tower_combined_tl_pens)
+        self.assertFalse(HudSettings(timing_tower_combined_tl_pens=False).timing_tower_combined_tl_pens)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_combined_tl_pens=None)  # type: ignore
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_combined_tl_pens="invalid")
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_combined_tl_pens=420)
 
     def test_auto_hide_in_menu_validation(self):
         """Test auto_hide_in_menu accepts booleans and rejects invalid types"""
