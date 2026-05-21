@@ -147,6 +147,11 @@ class BaseWebServer:
 
             return response
 
+        @self.m_app.errorhandler(404)
+        async def handle_not_found(_e):
+            self.m_logger.warning("404 %s %s — no matching route", quart_request.method, quart_request.path)
+            return {"error": "Not found"}, 404
+
     def http_route(self, path: str, **kwargs) -> Callable:
         """Register a HTTP route."""
         def decorator(func: Callable[..., Coroutine]) -> Callable:

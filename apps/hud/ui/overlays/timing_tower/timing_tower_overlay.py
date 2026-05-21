@@ -64,7 +64,9 @@ class TimingTowerOverlay(BaseOverlayQML):
         windowed_overlay: bool,
         speed_unit: OverlaysSpeedUnit,
         fuel_est_mode: OverlaysFuelEstimationMode,
-        tt_col_options: TimingTowerColOptions
+        tt_col_options: TimingTowerColOptions,
+        relative_best_last_lap: bool = False,
+        combined_tl_pens: bool = False,
     ):
         """Initialize timing tower overlay.
 
@@ -79,12 +81,16 @@ class TimingTowerOverlay(BaseOverlayQML):
             speed_unit (OverlaysSpeedUnit): Speed unit for display
             fuel_est_mode (OverlaysFuelEstimationMode): Fuel estimation mode
             tt_col_options (TimingTowerColOptions): Timing tower column options
+            relative_best_last_lap (bool): Show best/last lap times as deltas vs the reference driver
+            combined_tl_pens (bool): Fold track-limit warnings into the penalties column
         """
         self.num_adjacent_cars = num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
         self.show_col_header = tt_col_options.show_col_header
         self.speed_unit = speed_unit
+        self.relative_best_last_lap = relative_best_last_lap
+        self.combined_tl_pens = combined_tl_pens
 
         self.column_order: List[str] = [
             col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
@@ -170,8 +176,13 @@ class TimingTowerOverlay(BaseOverlayQML):
         elif not is_tt_session(session_type):
             self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
 
+        ref_lap_info = ref_row.get("lap-info", {})
+        ref_best_lap_ms: Optional[int] = ref_lap_info.get("best-lap", {}).get("lap-time-ms")
+        ref_last_lap_ms: Optional[int] = ref_lap_info.get("last-lap", {}).get("lap-time-ms")
+
         # Update QML with data
-        self._update_table_data(relevant_rows, ref_index, session_type, fastest_index)
+        self._update_table_data(relevant_rows, ref_index, session_type, fastest_index,
+                                ref_best_lap_ms, ref_last_lap_ms)
 
         # Update session info
         if session_type == 'None':
@@ -218,7 +229,9 @@ class TimingTowerOverlay(BaseOverlayQML):
                            relevant_rows: List[Dict[str, Any]],
                            ref_index: int,
                            session_type: str,
-                           fastest_index: Optional[int]) -> None:
+                           fastest_index: Optional[int],
+                           ref_best_lap_ms: Optional[int] = None,
+                           ref_last_lap_ms: Optional[int] = None) -> None:
         """Update the timing table data in QML.
 
         Args:
@@ -226,12 +239,16 @@ class TimingTowerOverlay(BaseOverlayQML):
             ref_index (int): Index of reference driver
             session_type (str): Type of the current session
             fastest_index (Optional[int]): Index of the fastest driver
+            ref_best_lap_ms (Optional[int]): Reference driver's best lap in ms (for relative display)
+            ref_last_lap_ms (Optional[int]): Reference driver's last lap in ms (for relative display)
         """
-
         # Hide error message
         self.set_qml_property("showError", False)
         self.set_qml_property("tableData", [
-            self._create_driver_row(row_data, ref_index, session_type, fastest_index)
+            self._create_driver_row(
+                row_data, ref_index, session_type, fastest_index,
+                ref_best_lap_ms, ref_last_lap_ms,
+            )
             for row_data in relevant_rows
         ])
 
@@ -239,7 +256,9 @@ class TimingTowerOverlay(BaseOverlayQML):
                            row_data: Dict[str, Any],
                            ref_index: int,
                            session_type: str,
-                           fastest_index: Optional[int]) -> dict:
+                           fastest_index: Optional[int],
+                           ref_best_lap_ms: Optional[int] = None,
+                           ref_last_lap_ms: Optional[int] = None) -> dict:
         """Create a single driver row for QML display.
 
         Args:
@@ -247,6 +266,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             ref_index: Index of reference driver
             session_type: Type of the current session
             fastest_index: Index of the fastest driver
+            ref_best_lap_ms: Reference driver's best lap in ms (for relative display)
+            ref_last_lap_ms: Reference driver's last lap in ms (for relative display)
 
         Returns:
             Dictionary with formatted driver data for QML
@@ -292,9 +313,11 @@ class TimingTowerOverlay(BaseOverlayQML):
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
 
-            "bestLap": self._format_lap_time(best_lap_ms),
+            "bestLap": self._format_relative_lap_time(best_lap_ms, ref_best_lap_ms, driver_idx == ref_index)
+                       if self.relative_best_last_lap else self._format_lap_time(best_lap_ms),
             "bestLapColor": "#c084fc" if is_sb else "#dddddd",
-            "lastLap": self._format_lap_time(last_lap_ms),
+            "lastLap": self._format_relative_lap_time(last_lap_ms, ref_last_lap_ms, driver_idx == ref_index)
+                       if self.relative_best_last_lap else self._format_lap_time(last_lap_ms),
             "lastLapColor": ("#c084fc" if is_sb else "#44dd88") if is_pb else "#dddddd",
             "wingDmg": wing_dmg,
             "wingDmgColor": "#666666" if wing_dmg == "N/A" else "#ff9944",
@@ -393,7 +416,34 @@ class TimingTowerOverlay(BaseOverlayQML):
         if pens_sec > 0:
             return f"+{pens_sec}s"
 
+        if self.combined_tl_pens:
+            tl_warns = warns_pens_info.get("corner-cutting-warnings", 0)
+            return f"TL: {tl_warns}"
+
         return ""
+
+    def _format_relative_lap_time(
+        self,
+        lap_ms: Optional[int],
+        ref_ms: Optional[int],
+        is_ref_driver: bool,
+    ) -> str:
+        """Format a lap time as a signed delta vs the reference driver.
+
+        Args:
+            lap_ms: Driver's lap time in milliseconds
+            ref_ms: Reference driver's lap time in milliseconds
+            is_ref_driver: True when this row IS the reference driver
+
+        Returns:
+            Signed seconds string (e.g. "+1.234") for others, absolute time for
+            the reference driver itself, or "---" when data is unavailable.
+        """
+        if is_ref_driver or ref_ms is None:
+            return self._format_lap_time(lap_ms)
+        if lap_ms is None:
+            return "---"
+        return F1Utils.formatFloat((ref_ms - lap_ms) / 1000, precision=3, signed=True)
 
     def _format_lap_time(self, lap_time: Optional[int]) -> str:
         """Format lap time display.

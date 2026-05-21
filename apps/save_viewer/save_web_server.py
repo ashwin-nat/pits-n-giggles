@@ -238,9 +238,9 @@ class SaveViewerWebServer(BaseWebServer):
                 self.m_sessions_cache = sessions
                 self.m_slug_map = slug_map
                 self._m_cache_ready.set()  # unblocks waiting requests after the first batch
-            self.m_logger.debug(
-                "Session cache: fully loaded %d sessions in %.2fs (dir: %s)",
-                len(self.m_sessions_cache), time.perf_counter() - t0, self.m_session_dir,
+            self.m_logger.info(
+                "Session cache: loaded %d sessions in %.2fs",
+                len(self.m_sessions_cache), time.perf_counter() - t0,
             )
         except Exception:  # pylint: disable=broad-exception-caught
             self.m_logger.exception("Session cache: error building cache")

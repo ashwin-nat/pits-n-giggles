@@ -37,11 +37,16 @@ class PrivacySettings(ConfigDiffMixin, BaseModel):
 
     process_car_setup: bool = Field(
         default=False,
-        description="Whether to process car setup data",
+        description="Process incoming car setup data",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
-                "visible": True
+                "visible": True,
+                "ext_info": [
+                    "Only the player's and AI's car setup data will be available. \n"
+                    "This will not include data from other players in multiplayer sessions. \n"
+                    "NOTE: Session save files will include the setup used"
+                ]
             }
         }
     )
