@@ -94,6 +94,8 @@ class OverlaysMgr:
             fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
             speed_unit=settings.HUD.overlays_speed_unit,
             tt_col_options=settings.HUD.timing_tower_col_options,
+            relative_best_last_lap=settings.HUD.timing_tower_relative_best_last_lap,
+            combined_tl_pens=settings.HUD.timing_tower_combined_tl_pens,
         )
 
         self._register_overlay_if_enabled(

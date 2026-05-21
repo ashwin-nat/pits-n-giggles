@@ -152,6 +152,28 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    timing_tower_relative_best_last_lap: bool = Field(
+        default=False,
+        description="Show best/last lap times relative to the player or selected reference driver",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Timing Tower",
+            }
+        }
+    )
+    timing_tower_combined_tl_pens: bool = Field(
+        default=False,
+        description="Show track limit warnings and penalties combined in the penalties column",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Timing Tower",
+            }
+        }
+    )
     timing_tower_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle timing tower overlay UDP action code", group="Timing Tower")
 
