@@ -165,11 +165,12 @@
             "name": "Unit Tests",
             "type": "debugpy",
             "request": "launch",
-            "program": "tests/unit_tests.py",
+            "module": "pytest",
             "console": "integratedTerminal",
             "args": [
+                "tests/", "-n", "0"
             ],
-            "cwd" : "${workspaceFolder}"
+            "cwd": "${workspaceFolder}"
         },
         {
             "name": "Replayer (Legacy)",
