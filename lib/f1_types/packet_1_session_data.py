@@ -1115,9 +1115,9 @@ class PacketSessionData(F1PacketBase):
                 self.m_sector3LapDistanceStart,
             ) = unpacked_data
 
-            self.m_weekendStructure = self.m_weekendStructure[:self.m_numSessionsInWeekend]
-            for session_id in self.m_weekendStructure:
-                session_id = SessionType24(session_id)
+            self.m_weekendStructure = [
+                SessionType24(s) for s in self.m_weekendStructure[:self.m_numSessionsInWeekend]
+            ]
         else:
             self.m_equalCarPerformance = 0
             self.m_recoveryMode = 0
@@ -1342,10 +1342,10 @@ class PacketSessionData(F1PacketBase):
         if not self.__eq_f1_23(other):
             return False
 
-        if self.m_header.m_packetFormat == 2024:
+        if self.m_header.m_packetFormat >= 2024:
             return self.__eq_f1_24(other)
 
-        return NotImplemented
+        return True
 
     def __eq_f1_23(self, other: "PacketSessionData") -> bool:
         """
