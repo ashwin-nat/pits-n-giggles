@@ -257,83 +257,93 @@ class LapData(F1SubPacketBase):
         - struct.error: If the binary data does not match the expected format.
         """
 
-        # Assign the members from unpacked_data
         self.m_packetFormat = packet_format
-        if packet_format == 2023:
-            raw_data = data[:self.PACKET_LEN_23]
-            (
-                self.m_lastLapTimeInMS,
-                self.m_currentLapTimeInMS,
-                self.m_sector1TimeInMS,
-                self.m_sector1TimeMinutes,
-                self.m_sector2TimeInMS,
-                self.m_sector2TimeMinutes,
-                self.m_deltaToCarInFrontInMS,
-                self.m_deltaToRaceLeaderInMS,
-                self.m_lapDistance,
-                self.m_totalDistance,
-                self.m_safetyCarDelta,
-                self.m_carPosition,
-                self.m_currentLapNum,
-                self.m_pitStatus,
-                self.m_numPitStops,
-                self.m_sector,
-                self.m_currentLapInvalid,
-                self.m_penalties,
-                self.m_totalWarnings,
-                self.m_cornerCuttingWarnings,
-                self.m_numUnservedDriveThroughPens,
-                self.m_numUnservedStopGoPens,
-                self.m_gridPosition,
-                self.m_driverStatus,
-                self.m_resultStatus,
-                self.m_pitLaneTimerActive,
-                self.m_pitLaneTimeInLaneInMS,
-                self.m_pitStopTimerInMS,
-                self.m_pitStopShouldServePen,
-            ) = self.COMPILED_PACKET_STRUCT_23.unpack(raw_data)
-            self.m_deltaToCarInFrontMinutes: int = 0
-            self.m_deltaToRaceLeaderMinutes: int = 0
-            self.m_speedTrapFastestSpeed: float = 0
-            self.m_speedTrapFastestLap: int = 0
-        else: # 24
-            raw_data = data[0:self.PACKET_LEN_24]
-            (
-                self.m_lastLapTimeInMS,
-                self.m_currentLapTimeInMS,
-                self.m_sector1TimeInMS,
-                self.m_sector1TimeMinutes,
-                self.m_sector2TimeInMS,
-                self.m_sector2TimeMinutes,
-                self.m_deltaToCarInFrontInMS,
-                self.m_deltaToCarInFrontMinutes,
-                self.m_deltaToRaceLeaderInMS,
-                self.m_deltaToRaceLeaderMinutes,
-                self.m_lapDistance,
-                self.m_totalDistance,
-                self.m_safetyCarDelta,
-                self.m_carPosition,
-                self.m_currentLapNum,
-                self.m_pitStatus,
-                self.m_numPitStops,
-                self.m_sector,
-                self.m_currentLapInvalid,
-                self.m_penalties,
-                self.m_totalWarnings,
-                self.m_cornerCuttingWarnings,
-                self.m_numUnservedDriveThroughPens,
-                self.m_numUnservedStopGoPens,
-                self.m_gridPosition,
-                self.m_driverStatus,
-                self.m_resultStatus,
-                self.m_pitLaneTimerActive,
-                self.m_pitLaneTimeInLaneInMS,
-                self.m_pitStopTimerInMS,
-                self.m_pitStopShouldServePen,
-                self.m_speedTrapFastestSpeed,
-                self.m_speedTrapFastestLap
-            ) = self.COMPILED_PACKET_STRUCT_24.unpack(raw_data)
+        self._parse(data, packet_format)
+        self._cast_enums()
 
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Raw byte unpacking only. Dispatches to format-specific helpers."""
+        if packet_format == 2023:
+            self._parse_f23(data)
+        else:  # 24+
+            self._parse_f24(data)
+
+    def _parse_f23(self, data: bytes) -> None:
+        (
+            self.m_lastLapTimeInMS,
+            self.m_currentLapTimeInMS,
+            self.m_sector1TimeInMS,
+            self.m_sector1TimeMinutes,
+            self.m_sector2TimeInMS,
+            self.m_sector2TimeMinutes,
+            self.m_deltaToCarInFrontInMS,
+            self.m_deltaToRaceLeaderInMS,
+            self.m_lapDistance,
+            self.m_totalDistance,
+            self.m_safetyCarDelta,
+            self.m_carPosition,
+            self.m_currentLapNum,
+            self.m_pitStatus,
+            self.m_numPitStops,
+            self.m_sector,
+            self.m_currentLapInvalid,
+            self.m_penalties,
+            self.m_totalWarnings,
+            self.m_cornerCuttingWarnings,
+            self.m_numUnservedDriveThroughPens,
+            self.m_numUnservedStopGoPens,
+            self.m_gridPosition,
+            self.m_driverStatus,
+            self.m_resultStatus,
+            self.m_pitLaneTimerActive,
+            self.m_pitLaneTimeInLaneInMS,
+            self.m_pitStopTimerInMS,
+            self.m_pitStopShouldServePen,
+        ) = self.COMPILED_PACKET_STRUCT_23.unpack(data[:self.PACKET_LEN_23])
+        self.m_deltaToCarInFrontMinutes: int = 0
+        self.m_deltaToRaceLeaderMinutes: int = 0
+        self.m_speedTrapFastestSpeed: float = 0
+        self.m_speedTrapFastestLap: int = 0
+
+    def _parse_f24(self, data: bytes) -> None:
+        (
+            self.m_lastLapTimeInMS,
+            self.m_currentLapTimeInMS,
+            self.m_sector1TimeInMS,
+            self.m_sector1TimeMinutes,
+            self.m_sector2TimeInMS,
+            self.m_sector2TimeMinutes,
+            self.m_deltaToCarInFrontInMS,
+            self.m_deltaToCarInFrontMinutes,
+            self.m_deltaToRaceLeaderInMS,
+            self.m_deltaToRaceLeaderMinutes,
+            self.m_lapDistance,
+            self.m_totalDistance,
+            self.m_safetyCarDelta,
+            self.m_carPosition,
+            self.m_currentLapNum,
+            self.m_pitStatus,
+            self.m_numPitStops,
+            self.m_sector,
+            self.m_currentLapInvalid,
+            self.m_penalties,
+            self.m_totalWarnings,
+            self.m_cornerCuttingWarnings,
+            self.m_numUnservedDriveThroughPens,
+            self.m_numUnservedStopGoPens,
+            self.m_gridPosition,
+            self.m_driverStatus,
+            self.m_resultStatus,
+            self.m_pitLaneTimerActive,
+            self.m_pitLaneTimeInLaneInMS,
+            self.m_pitStopTimerInMS,
+            self.m_pitStopShouldServePen,
+            self.m_speedTrapFastestSpeed,
+            self.m_speedTrapFastestLap
+        ) = self.COMPILED_PACKET_STRUCT_24.unpack(data[0:self.PACKET_LEN_24])
+
+    def _cast_enums(self) -> None:
+        """All safeCast and bool conversions in one place."""
         self.m_driverStatus = LapData.DriverStatus.safeCast(self.m_driverStatus)
         self.m_resultStatus = ResultStatus.safeCast(self.m_resultStatus)
         self.m_pitStatus = LapData.PitStatus.safeCast(self.m_pitStatus)

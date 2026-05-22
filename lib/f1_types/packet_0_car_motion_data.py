@@ -126,13 +126,30 @@ class CarMotionData(F1SubPacketBase):
         self.m_pitch: float
         self.m_roll: float
 
-        # Now, unpack the data and populate the members
-        self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ, \
-            self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ, \
-            self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ, \
-            self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ, \
-            self.m_gForceLateral, self.m_gForceLongitudinal, self.m_gForceVertical, \
-            self.m_yaw, self.m_pitch, self.m_roll = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self._parse(data)
+
+    def _parse(self, data: bytes) -> None:
+        """Raw byte unpacking."""
+        (
+            self.m_worldPositionX,
+            self.m_worldPositionY,
+            self.m_worldPositionZ,
+            self.m_worldVelocityX,
+            self.m_worldVelocityY,
+            self.m_worldVelocityZ,
+            self.m_worldForwardDirX,
+            self.m_worldForwardDirY,
+            self.m_worldForwardDirZ,
+            self.m_worldRightDirX,
+            self.m_worldRightDirY,
+            self.m_worldRightDirZ,
+            self.m_gForceLateral,
+            self.m_gForceLongitudinal,
+            self.m_gForceVertical,
+            self.m_yaw,
+            self.m_pitch,
+            self.m_roll,
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
     def __str__(self) -> str:
         """Return a formatted string representing the CarMotionData object

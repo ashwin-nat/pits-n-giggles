@@ -603,7 +603,10 @@ class PacketEventData(F1PacketBase):
                 self.lapNum,
                 self.placesGained
             ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+            self._cast_enums()
 
+        def _cast_enums(self) -> None:
+            """Cast raw ints to penalty/infringement enums."""
             self.penaltyType = PacketEventData.Penalty.PenaltyType.safeCast(self.penaltyType)
             self.infringementType = PacketEventData.Penalty.InfringementType.safeCast(self.infringementType)
 
@@ -704,6 +707,10 @@ class PacketEventData(F1PacketBase):
                 self.fastestVehicleIdxInSession,
                 self.fastestSpeedInSession
             ) = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+            self._cast_enums()
+
+        def _cast_enums(self) -> None:
+            """Cast raw ints to bools."""
             self.isOverallFastestInSession = bool(self.isOverallFastestInSession)
             self.isDriverFastestInSession = bool(self.isDriverFastestInSession)
 
@@ -1351,6 +1358,10 @@ class PacketEventData(F1PacketBase):
                 struct.error: If the binary data does not match the expected format.
             """
             self.m_safety_car_type, self.m_event_type = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+            self._cast_enums()
+
+        def _cast_enums(self) -> None:
+            """Cast raw ints to safety car type/event enums."""
             self.m_safety_car_type = SafetyCarType.safeCast(self.m_safety_car_type)
             self.m_event_type = SafetyCarEventType.safeCast(self.m_event_type)
 

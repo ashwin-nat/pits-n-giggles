@@ -117,8 +117,11 @@ class TimeTrialDataSet(F1SubPacketBase):
             self.m_customSetup,
             self.m_isValid,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self._cast_enums(packet_format)
 
-        # No ned to check game year, since this packet type is not available in F1 23
+    def _cast_enums(self, packet_format: int) -> None:
+        """All safeCast and bool conversions in one place."""
+        # No need to check game year, since this packet type is not available in F1 23
         if packet_format < 2025:
             self.m_teamId = TeamID24.safeCast(self.m_teamId)
         else:

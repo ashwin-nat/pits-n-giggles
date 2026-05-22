@@ -265,6 +265,11 @@ class CarStatusData(F1SubPacketBase):
             data (bytes): Raw data representing car status.
         """
 
+        self._parse(data)
+        self._cast_enums()
+
+    def _parse(self, data: bytes) -> None:
+        """Unpack raw bytes into fields."""
         (
             self.m_tractionControl,
             self.m_antiLockBrakes,
@@ -290,14 +295,14 @@ class CarStatusData(F1SubPacketBase):
             self.m_ersHarvestedThisLapMGUK,
             self.m_ersHarvestedThisLapMGUH,
             self.m_ersDeployedThisLap,
-            self.m_networkPaused
+            self.m_networkPaused,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
-        # Convert boolean fields using bitwise AND
+    def _cast_enums(self) -> None:
+        """Convert raw ints to bools and enums."""
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
         self.m_networkPaused = bool(self.m_networkPaused)
-
         self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
         self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
         self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags.safeCast(self.m_vehicleFiaFlags)

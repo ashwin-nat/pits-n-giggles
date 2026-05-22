@@ -271,6 +271,7 @@ class TestPacketSessionData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertEqual(parsed_packet, PacketSessionData(random_header, packet))
 
     def test_f1_24(self):
         """
@@ -437,3 +438,4 @@ class TestPacketSessionData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertEqual(parsed_packet, PacketSessionData(random_header, packet))

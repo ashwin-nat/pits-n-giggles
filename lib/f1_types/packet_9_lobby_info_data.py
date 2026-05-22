@@ -121,48 +121,71 @@ class LobbyInfoData(F1SubPacketBase):
         """
 
         self.packet_format = packet_format
+        self._parse(data, packet_format)
+        self._cast_enums(packet_format)
+
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Raw byte unpacking only. Dispatches to format-specific helpers."""
         if packet_format == 2023:
-            (
-                self.m_aiControlled,
-                self.m_teamId,
-                self.m_nationality,
-                self.m_platform,
-                self.m_name,
-                self.m_carNumber,
-                self.m_readyStatus,
-            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
-            self.m_yourTelemetry = TelemetrySetting.PUBLIC
-            self.m_showOnlineNames = True
-            self.m_techLevel = 0
+            self._parse_f23(data)
+        elif packet_format == 2024:
+            self._parse_f24(data)
         else:
-            if packet_format == 2024:
-                _struct = self.COMPILED_PACKET_STRUCT_24
-            else:
-                _struct = self.COMPILED_PACKET_STRUCT_25
-
-            (
-                self.m_aiControlled,
-                self.m_teamId,
-                self.m_nationality,
-                self.m_platform,
-                self.m_name,
-                self.m_carNumber,
-                self.m_yourTelemetry,
-                self.m_showOnlineNames,
-                self.m_techLevel,
-                self.m_readyStatus,
-            ) = _struct.unpack(data)
-            self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
-
+            self._parse_f25(data)
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
-        if self.packet_format == 2023:
-            self.m_teamId = TeamID23.safeCast(self.m_teamId)
-        elif self.packet_format == 2024:
-            self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif self.packet_format == 2025:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+    def _parse_f23(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_teamId,
+            self.m_nationality,
+            self.m_platform,
+            self.m_name,
+            self.m_carNumber,
+            self.m_readyStatus,
+        ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
+        self.m_yourTelemetry = TelemetrySetting.PUBLIC
+        self.m_showOnlineNames = True
+        self.m_techLevel = 0
 
+    def _parse_f24(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_teamId,
+            self.m_nationality,
+            self.m_platform,
+            self.m_name,
+            self.m_carNumber,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_readyStatus,
+        ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
+
+    def _parse_f25(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_teamId,
+            self.m_nationality,
+            self.m_platform,
+            self.m_name,
+            self.m_carNumber,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_readyStatus,
+        ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
+
+    def _cast_enums(self, packet_format: int) -> None:
+        """All safeCast and bool conversions in one place."""
+        if packet_format == 2023:
+            self.m_teamId = TeamID23.safeCast(self.m_teamId)
+        elif packet_format == 2024:
+            self.m_teamId = TeamID24.safeCast(self.m_teamId)
+        elif packet_format >= 2025:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        if packet_format != 2023:
+            self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)
         self.m_platform = Platform.safeCast(self.m_platform)
         self.m_readyStatus = LobbyInfoData.ReadyStatus.safeCast(self.m_readyStatus)
@@ -256,7 +279,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.packet_format == 2025:
+        if self.packet_format >= 2025:
             return self.COMPILED_PACKET_STRUCT_25.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -328,7 +351,7 @@ class LobbyInfoData(F1SubPacketBase):
                 tech_level,
                 ready_status.value,
             ), header.m_packetFormat)
-        if header.m_packetFormat == 2025:
+        if header.m_packetFormat >= 2025:
             return cls(cls.COMPILED_PACKET_STRUCT_25.pack(
                 ai_controlled,
                 team_id.value,

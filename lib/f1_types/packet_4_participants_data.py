@@ -208,63 +208,78 @@ class ParticipantData(F1SubPacketBase):
         self.m_packetFormat = packet_format
         self.m_numColours: int = 0
         self.m_liveryColours: List[LiveryColour]
+        self._parse(data, packet_format)
+        self._cast_enums(packet_format)
+
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Raw byte unpacking only. Dispatches to format-specific helpers."""
         if packet_format == 2023:
-            (
-                self.m_aiControlled,
-                self.m_driverId,
-                self.networkId,
-                self.m_teamId,
-                self.m_myTeam,
-                self.m_raceNumber,
-                self.m_nationality,
-                self.m_name,
-                self.m_yourTelemetry,
-                self.m_showOnlineNames,
-                self.m_platform
-            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
-            self.m_techLevel = 0
+            self._parse_f23(data)
         elif packet_format == 2024:
-            (
-                self.m_aiControlled,
-                self.m_driverId,
-                self.networkId,
-                self.m_teamId,
-                self.m_myTeam,
-                self.m_raceNumber,
-                self.m_nationality,
-                self.m_name,
-                self.m_yourTelemetry,
-                self.m_showOnlineNames,
-                self.m_techLevel,
-                self.m_platform
-            ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
+            self._parse_f24(data)
         else:
-
-            (
-                self.m_aiControlled,
-                self.m_driverId,
-                self.networkId,
-                self.m_teamId,
-                self.m_myTeam,
-                self.m_raceNumber,
-                self.m_nationality,
-                self.m_name,
-                self.m_yourTelemetry,
-                self.m_showOnlineNames,
-                self.m_techLevel,
-                self.m_platform,
-                self.m_numColours
-            ) = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
-
-            self.m_liveryColours, _ = LiveryColour.parse_array(
-                data=data,
-                offset=self.PACKET_LEN_25_BASE,
-                item_len=LiveryColour.PACKET_LEN,
-                count=self.m_numColours,
-                max_count=self.MAX_LIVERY_COLOURS
-            )
-
+            self._parse_f25(data)
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
+
+    def _parse_f23(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality,
+            self.m_name,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_platform
+        ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
+        self.m_techLevel = 0
+
+    def _parse_f24(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality,
+            self.m_name,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_platform
+        ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
+
+    def _parse_f25(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality,
+            self.m_name,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_platform,
+            self.m_numColours
+        ) = self.COMPILED_PACKET_STRUCT_25_BASE.unpack(data[:self.PACKET_LEN_25_BASE])
+
+        self.m_liveryColours, _ = LiveryColour.parse_array(
+            data=data,
+            offset=self.PACKET_LEN_25_BASE,
+            item_len=LiveryColour.PACKET_LEN,
+            count=self.m_numColours,
+            max_count=self.MAX_LIVERY_COLOURS
+        )
+
+    def _cast_enums(self, packet_format: int) -> None:
+        """All safeCast and bool conversions in one place."""
         self.m_platform = Platform.safeCast(self.m_platform)
         if packet_format == 2023:
             self.m_teamId = TeamID23.safeCast(self.m_teamId)

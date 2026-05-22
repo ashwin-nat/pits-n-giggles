@@ -150,58 +150,68 @@ class CarSetupData(F1SubPacketBase):
         """
 
         self.m_packetFormat = packet_format
+        self._parse(data, packet_format)
+
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Raw byte unpacking. Dispatches to format-specific helpers."""
         if packet_format == 2023:
-            (
-                self.m_frontWing,
-                self.m_rearWing,
-                self.m_onThrottle,
-                self.m_offThrottle,
-                self.m_frontCamber,
-                self.m_rearCamber,
-                self.m_frontToe,
-                self.m_rearToe,
-                self.m_frontSuspension,
-                self.m_rearSuspension,
-                self.m_frontAntiRollBar,
-                self.m_rearAntiRollBar,
-                self.m_frontSuspensionHeight,
-                self.m_rearSuspensionHeight,
-                self.m_brakePressure,
-                self.m_brakeBias,
-                self.m_rearLeftTyrePressure,
-                self.m_rearRightTyrePressure,
-                self.m_frontLeftTyrePressure,
-                self.m_frontRightTyrePressure,
-                self.m_ballast,
-                self.m_fuelLoad,
-            ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
-            self.m_engineBraking = 0
+            self._parse_f23(data)
         else:
-            (
-                self.m_frontWing,
-                self.m_rearWing,
-                self.m_onThrottle,
-                self.m_offThrottle,
-                self.m_frontCamber,
-                self.m_rearCamber,
-                self.m_frontToe,
-                self.m_rearToe,
-                self.m_frontSuspension,
-                self.m_rearSuspension,
-                self.m_frontAntiRollBar,
-                self.m_rearAntiRollBar,
-                self.m_frontSuspensionHeight,
-                self.m_rearSuspensionHeight,
-                self.m_brakePressure,
-                self.m_brakeBias,
-                self.m_engineBraking,
-                self.m_rearLeftTyrePressure,
-                self.m_rearRightTyrePressure,
-                self.m_frontLeftTyrePressure,
-                self.m_frontRightTyrePressure,
-                self.m_ballast,
-                self.m_fuelLoad,
-            ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
+            self._parse_f24(data)
+
+    def _parse_f23(self, data: bytes) -> None:
+        (
+            self.m_frontWing,
+            self.m_rearWing,
+            self.m_onThrottle,
+            self.m_offThrottle,
+            self.m_frontCamber,
+            self.m_rearCamber,
+            self.m_frontToe,
+            self.m_rearToe,
+            self.m_frontSuspension,
+            self.m_rearSuspension,
+            self.m_frontAntiRollBar,
+            self.m_rearAntiRollBar,
+            self.m_frontSuspensionHeight,
+            self.m_rearSuspensionHeight,
+            self.m_brakePressure,
+            self.m_brakeBias,
+            self.m_rearLeftTyrePressure,
+            self.m_rearRightTyrePressure,
+            self.m_frontLeftTyrePressure,
+            self.m_frontRightTyrePressure,
+            self.m_ballast,
+            self.m_fuelLoad,
+        ) = self.COMPILED_PACKET_STRUCT_23.unpack(data)
+        self.m_engineBraking = 0
+
+    def _parse_f24(self, data: bytes) -> None:
+        (
+            self.m_frontWing,
+            self.m_rearWing,
+            self.m_onThrottle,
+            self.m_offThrottle,
+            self.m_frontCamber,
+            self.m_rearCamber,
+            self.m_frontToe,
+            self.m_rearToe,
+            self.m_frontSuspension,
+            self.m_rearSuspension,
+            self.m_frontAntiRollBar,
+            self.m_rearAntiRollBar,
+            self.m_frontSuspensionHeight,
+            self.m_rearSuspensionHeight,
+            self.m_brakePressure,
+            self.m_brakeBias,
+            self.m_engineBraking,
+            self.m_rearLeftTyrePressure,
+            self.m_rearRightTyrePressure,
+            self.m_frontLeftTyrePressure,
+            self.m_frontRightTyrePressure,
+            self.m_ballast,
+            self.m_fuelLoad,
+        ) = self.COMPILED_PACKET_STRUCT_24.unpack(data)
 
     def isValid(self) -> bool:
         """
