@@ -182,7 +182,7 @@ class LobbyInfoData(F1SubPacketBase):
             self.m_teamId = TeamID23.safeCast(self.m_teamId)
         elif packet_format == 2024:
             self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format == 2025:
+        elif packet_format >= 2025:
             self.m_teamId = TeamID25.safeCast(self.m_teamId)
         if packet_format != 2023:
             self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
@@ -279,7 +279,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.packet_format == 2025:
+        if self.packet_format >= 2025:
             return self.COMPILED_PACKET_STRUCT_25.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -351,7 +351,7 @@ class LobbyInfoData(F1SubPacketBase):
                 tech_level,
                 ready_status.value,
             ), header.m_packetFormat)
-        if header.m_packetFormat == 2025:
+        if header.m_packetFormat >= 2025:
             return cls(cls.COMPILED_PACKET_STRUCT_25.pack(
                 ai_controlled,
                 team_id.value,
