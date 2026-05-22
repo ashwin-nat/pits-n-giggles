@@ -870,7 +870,6 @@ class PacketSessionData(F1PacketBase):
         INCREASED = 3
 
     def __init__(self, header: PacketHeader, data: bytes) -> None:
-        # sourcery skip: low-code-quality
         """Construct a PacketSessionData object
 
         Args:
@@ -960,14 +959,19 @@ class PacketSessionData(F1PacketBase):
         self.m_sector2LapDistanceStart: float    # // Distance in m around track where sector 2 starts
         self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
 
-        if header.m_packetFormat == 2023:
-            max_weather_forecast_samples = self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES
-        else:
-            max_weather_forecast_samples = self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
+        offset = self._parse_base(data, header.m_packetFormat)
+        self._parse_f24(data, offset, header.m_packetFormat)
+        self._cast_enums(header.m_packetFormat)
+
+    def _parse_base(self, data: bytes, fmt: int) -> int:
+        """Parse fields present in all packet formats. Returns byte offset after consumed data."""
+        max_weather_forecast_samples = (
+            self.F1_23_MAX_NUM_WEATHER_FORECAST_SAMPLES if fmt == 2023
+            else self.F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES
+        )
+
         # First, section 0
-        section_0_raw_data = data[:self.PACKET_LEN_SECTION_0]
         byte_index_so_far = self.PACKET_LEN_SECTION_0
-        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_0.unpack(section_0_raw_data)
         (
             self.m_weather,
             self.m_trackTemperature,
@@ -985,17 +989,7 @@ class PacketSessionData(F1PacketBase):
             self.m_spectatorCarIndex,
             self.m_sliProNativeSupport,
             self.m_numMarshalZones,
-        ) = unpacked_data
-        self.m_isSpectating = bool(self.m_isSpectating)
-        self.m_weather = WeatherForecastSample.WeatherCondition.safeCast(self.m_weather)
-        self.m_trackId = TrackID.safeCast(self.m_trackId)
-
-        if header.m_packetFormat == 2023:
-            self.m_sessionType = SessionType23.safeCast(self.m_sessionType)
-        else:
-            self.m_sessionType = SessionType24.safeCast(self.m_sessionType)
-
-        self.m_formula = PacketSessionData.FormulaType.safeCast(self.m_formula)
+        ) = self.COMPILED_PACKET_STRUCT_SECTION_0.unpack(data[:self.PACKET_LEN_SECTION_0])
 
         # Next section 1, marshalZones
         self.m_marshalZones, byte_index_so_far = MarshalZone.parse_array(
@@ -1007,16 +1001,14 @@ class PacketSessionData(F1PacketBase):
         )
 
         # Section 2, till numWeatherForecastSamples
-        section_2_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
-        byte_index_so_far += self.PACKET_LEN_SECTION_2
-        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_2.unpack(section_2_raw_data)
         (
             self.m_safetyCarStatus, #           // 0 = no safety car, 1 = full 2 = virtual, 3 = formation lap
-            self.m_networkGame, #               // 0 = offline, 1 = online
-            self.m_numWeatherForecastSamples # // Number of weather samples to follow
-        ) = unpacked_data
-        self.m_safetyCarStatus = SafetyCarType.safeCast(self.m_safetyCarStatus)
-        section_2_raw_data = None
+            self.m_networkGame,     #           // 0 = offline, 1 = online
+            self.m_numWeatherForecastSamples,   # // Number of weather samples to follow
+        ) = self.COMPILED_PACKET_STRUCT_SECTION_2.unpack(
+            data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_2]
+        )
+        byte_index_so_far += self.PACKET_LEN_SECTION_2
 
         # Section 3 - weather forecast samples
         self.m_weatherForecastSamples, byte_index_so_far = WeatherForecastSample.parse_array(
@@ -1025,13 +1017,10 @@ class PacketSessionData(F1PacketBase):
             item_len=WeatherForecastSample.PACKET_LEN,
             count=self.m_numWeatherForecastSamples,
             max_count=max_weather_forecast_samples,
-            packet_format=header.m_packetFormat
+            packet_format=fmt,
         )
 
         # Section 4 - rest of the packet
-        section_4_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
-        byte_index_so_far += self.PACKET_LEN_SECTION_4
-        unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_4.unpack(section_4_raw_data)
         (
             self.m_forecastAccuracy,                   # uint8
             self.m_aiDifficulty,                       # uint8
@@ -1061,93 +1050,99 @@ class PacketSessionData(F1PacketBase):
             self.m_numSafetyCarPeriods,              # uint8
             self.m_numVirtualSafetyCarPeriods,       # uint8
             self.m_numRedFlagPeriods,                # uint8
-        ) = unpacked_data
-        section_4_raw_data = None
+        ) = self.COMPILED_PACKET_STRUCT_SECTION_4.unpack(
+            data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_4]
+        )
+        byte_index_so_far += self.PACKET_LEN_SECTION_4
+
+        return byte_index_so_far
+
+    def _parse_f24(self, data: bytes, offset: int, fmt: int) -> int:
+        """Parse F1 24+ fields. Assigns zero defaults for older formats. Returns updated byte offset."""
+        if fmt == 2024:
+            (
+                self.m_equalCarPerformance,         # uint8 - car equal performance. 0 = off, 1 = on
+                self.m_recoveryMode,                # uint8 - 0 = None, 1 = Flashbacks, 2 = Auto-recovery
+                self.m_flashbackLimit,              # uint8 - 0 = Low, 1 = Medium, 2 = High, 3 = Unlimited
+                self.m_surfaceType,                 # uint8 - 0 = Simplified, 1 = Realistic
+                self.m_lowFuelMode,                 # uint8 - 0 = Easy, 1 = Hard
+                self.m_raceStarts,                  # uint8 - 0 = Manual, 1 = Assisted
+                self.m_tyreTemperatureMode,         # uint8 - 0 = Surface only, 1 = Surface & Carcass
+                self.m_pitLaneTyreSim,              # uint8 - 0 = On, 1 = Off
+                self.m_carDamage,                   # uint8 - 0 = Off, 1 = Reduced, 2 = Standard, 3 = Simulation
+                self.m_carDamageRate,               # uint8 - 0 = Reduced, 1 = Standard, 2 = Simulation
+                self.m_collisions,                  # uint8 - 0 = Off, 1 = Player-to-Player Off, 2 = On
+                self.m_collisionsOffForFirstLapOnly, # uint8 - 0 = Disabled, 1 = Enabled
+                self.m_mpUnsafePitRelease,          # uint8 - 0 = On, 1 = Off (Multiplayer)
+                self.m_mpOffForGriefing,            # uint8 - 0 = Disabled, 1 = Enabled (Multiplayer)
+                self.m_cornerCuttingStringency,     # uint8 - 0 = Regular, 1 = Strict
+                self.m_parcFermeRules,              # uint8 - 0 = Off, 1 = On
+                self.m_pitStopExperience,           # uint8 - 0 = Automatic, 1 = Broadcast, 2 = Immersive
+                self.m_safetyCar,                   # uint8 - 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+                self.m_safetyCarExperience,         # uint8 - 0 = Broadcast, 1 = Immersive
+                self.m_formationLap,                # uint8 - 0 = Off, 1 = On
+                self.m_formationLapExperience,      # uint8 - 0 = Broadcast, 1 = Immersive
+                self.m_redFlags,                    # uint8 - 0 = Off, 1 = Reduced, 2 = Standard, 3 = Increased
+                self.m_affectsLicenceLevelSolo,     # uint8 - 0 = Off, 1 = On
+                self.m_affectsLicenceLevelMP,       # uint8 - 0 = Off, 1 = On
+                self.m_numSessionsInWeekend,        # uint8 - Number of session in following array
+                ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7, ws8, ws9, ws10, ws11,  # uint8[12] - weekend structure
+                self.m_sector2LapDistanceStart,     # float - Distance in m around track where sector 2 starts
+                self.m_sector3LapDistanceStart,     # float - Distance in m around track where sector 3 starts
+            ) = self.COMPILED_PACKET_STRUCT_SECTION_5.unpack(
+                data[offset:offset + self.PACKET_LEN_SECTION_5]
+            )
+            self.m_weekendStructure = [
+                SessionType24(s) for s in
+                (ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7, ws8, ws9, ws10, ws11)[:self.m_numSessionsInWeekend]
+            ]
+            return offset + self.PACKET_LEN_SECTION_5
+
+        self.m_equalCarPerformance = 0
+        self.m_recoveryMode = 0
+        self.m_flashbackLimit = 0
+        self.m_surfaceType = 0
+        self.m_lowFuelMode = 0
+        self.m_raceStarts = 0
+        self.m_tyreTemperatureMode = 0
+        self.m_pitLaneTyreSim = 0
+        self.m_carDamage = 0
+        self.m_carDamageRate = 0
+        self.m_collisions = 0
+        self.m_collisionsOffForFirstLapOnly = 0
+        self.m_mpUnsafePitRelease = 0
+        self.m_mpOffForGriefing = 0
+        self.m_cornerCuttingStringency = 0
+        self.m_parcFermeRules = 0
+        self.m_pitStopExperience = 0
+        self.m_safetyCar = 0
+        self.m_safetyCarExperience = 0
+        self.m_formationLap = 0
+        self.m_formationLapExperience = 0
+        self.m_redFlags = 0
+        self.m_affectsLicenceLevelSolo = 0
+        self.m_affectsLicenceLevelMP = 0
+        self.m_numSessionsInWeekend = 0
+        self.m_weekendStructure = [0] * 12
+        self.m_sector2LapDistanceStart = 0.0
+        self.m_sector3LapDistanceStart = 0.0
+        return offset
+
+    def _cast_enums(self, fmt: int) -> None:
+        """Apply enum casts to all parsed fields."""
+        self.m_isSpectating = bool(self.m_isSpectating)
+        self.m_weather = WeatherForecastSample.WeatherCondition.safeCast(self.m_weather)
+        self.m_trackId = TrackID.safeCast(self.m_trackId)
+        if fmt == 2023:
+            self.m_sessionType = SessionType23.safeCast(self.m_sessionType)
+        else:
+            self.m_sessionType = SessionType24.safeCast(self.m_sessionType)
+        self.m_formula = PacketSessionData.FormulaType.safeCast(self.m_formula)
+        self.m_safetyCarStatus = SafetyCarType.safeCast(self.m_safetyCarStatus)
         self.m_gearboxAssist = GearboxAssistMode.safeCast(self.m_gearboxAssist)
         self.m_sessionLength = SessionLength.safeCast(self.m_sessionLength)
         self.m_gameMode = GameMode.safeCast(self.m_gameMode)
         self.m_ruleSet = RuleSet.safeCast(self.m_ruleSet)
-
-        self.m_weekendStructure = [0] * 12
-        # Section 5 - F1 24 specific stuff
-        if header.m_packetFormat == 2024:
-            section_5_raw_data = data[byte_index_so_far:byte_index_so_far + self.PACKET_LEN_SECTION_5]
-            unpacked_data = self.COMPILED_PACKET_STRUCT_SECTION_5.unpack(section_5_raw_data)
-            (
-                self.m_equalCarPerformance,
-                self.m_recoveryMode,
-                self.m_flashbackLimit,
-                self.m_surfaceType,
-                self.m_lowFuelMode,
-                self.m_raceStarts,
-                self.m_tyreTemperatureMode,
-                self.m_pitLaneTyreSim,
-                self.m_carDamage,
-                self.m_carDamageRate,
-                self.m_collisions,
-                self.m_collisionsOffForFirstLapOnly,
-                self.m_mpUnsafePitRelease,
-                self.m_mpOffForGriefing,
-                self.m_cornerCuttingStringency,
-                self.m_parcFermeRules,
-                self.m_pitStopExperience,
-                self.m_safetyCar,
-                self.m_safetyCarExperience,
-                self.m_formationLap,
-                self.m_formationLapExperience,
-                self.m_redFlags,
-                self.m_affectsLicenceLevelSolo,
-                self.m_affectsLicenceLevelMP,
-                self.m_numSessionsInWeekend,
-                self.m_weekendStructure[0],
-                self.m_weekendStructure[1],
-                self.m_weekendStructure[2],
-                self.m_weekendStructure[3],
-                self.m_weekendStructure[4],
-                self.m_weekendStructure[5],
-                self.m_weekendStructure[6],
-                self.m_weekendStructure[7],
-                self.m_weekendStructure[8],
-                self.m_weekendStructure[9],
-                self.m_weekendStructure[10],
-                self.m_weekendStructure[11],
-                self.m_sector2LapDistanceStart,
-                self.m_sector3LapDistanceStart,
-            ) = unpacked_data
-
-            self.m_weekendStructure = [
-                SessionType24(s) for s in self.m_weekendStructure[:self.m_numSessionsInWeekend]
-            ]
-        else:
-            self.m_equalCarPerformance = 0
-            self.m_recoveryMode = 0
-            self.m_flashbackLimit = 0
-            self.m_surfaceType = 0
-            self.m_lowFuelMode = 0
-            self.m_raceStarts = 0
-            self.m_tyreTemperatureMode = 0
-            self.m_pitLaneTyreSim = 0
-            self.m_carDamage = 0
-            self.m_carDamageRate = 0
-            self.m_collisions = 0
-            self.m_collisionsOffForFirstLapOnly = 0
-            self.m_mpUnsafePitRelease = 0
-            self.m_mpOffForGriefing = 0
-            self.m_cornerCuttingStringency = 0
-            self.m_parcFermeRules = 0
-            self.m_pitStopExperience = 0
-            self.m_safetyCar = 0
-            self.m_safetyCarExperience = 0
-            self.m_formationLap = 0
-            self.m_formationLapExperience = 0
-            self.m_redFlags = 0
-            self.m_affectsLicenceLevelSolo = 0
-            self.m_affectsLicenceLevelMP = 0
-            self.m_numSessionsInWeekend = 0
-            self.m_sector2LapDistanceStart = 0.0
-            self.m_sector3LapDistanceStart = 0.0
-
-        # Convert into enum types if supported
         self.m_recoveryMode = PacketSessionData.RecoveryMode.safeCast(self.m_recoveryMode)
         self.m_flashbackLimit = PacketSessionData.FlashbackLimit.safeCast(self.m_flashbackLimit)
         self.m_surfaceType = PacketSessionData.SurfaceType.safeCast(self.m_surfaceType)
@@ -1158,7 +1153,7 @@ class PacketSessionData(F1PacketBase):
         self.m_carDamageRate = PacketSessionData.CarDamageRate.safeCast(self.m_carDamageRate)
         self.m_collisions = PacketSessionData.CollisionsMode.safeCast(self.m_collisions)
         self.m_cornerCuttingStringency = PacketSessionData.CornerCuttingStringency.safeCast(
-                self.m_cornerCuttingStringency)
+            self.m_cornerCuttingStringency)
         self.m_pitStopExperience = PacketSessionData.PitStopExperience.safeCast(self.m_pitStopExperience)
         self.m_safetyCar = PacketSessionData.SafetyCarSetting.safeCast(self.m_safetyCar)
         self.m_safetyCarExperience = PacketSessionData.SafetyCarExperience.safeCast(self.m_safetyCarExperience)
@@ -1238,8 +1233,14 @@ class PacketSessionData(F1PacketBase):
         Returns:
             Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
+        json_data = self._base_json() | self._f24_json()
+        if include_header:
+            json_data["header"] = self.m_header.toJSON()
+        return json_data
 
-        json_data = {
+    def _base_json(self) -> Dict[str, Any]:
+        """Return JSON dict for fields present in all packet formats."""
+        return {
             "weather": str(self.m_weather),
             "track-temperature": self.m_trackTemperature,
             "air-temperature": self.m_airTemperature,
@@ -1289,7 +1290,11 @@ class PacketSessionData(F1PacketBase):
             "num-safety-car-periods": self.m_numSafetyCarPeriods,
             "num-virtual-safety-car-periods": self.m_numVirtualSafetyCarPeriods,
             "num-red-flag-periods": self.m_numRedFlagPeriods,
+        }
 
+    def _f24_json(self) -> Dict[str, Any]:
+        """Return JSON dict for F1 24+ fields."""
+        return {
             "equal-car-performance" : str(self.m_equalCarPerformance),
             "recovery-mode" : str(self.m_recoveryMode),
             "flashback-limit" : str(self.m_flashbackLimit),
@@ -1319,9 +1324,6 @@ class PacketSessionData(F1PacketBase):
             "sector-2-lap-distance-start" : str(self.m_sector2LapDistanceStart),
             "sector-3-lap-distance-start" : str(self.m_sector3LapDistanceStart),
         }
-        if include_header:
-            json_data["header"] = self.m_header.toJSON()
-        return json_data
 
     def __eq__(self, other: "PacketSessionData") -> bool:
         """
@@ -1339,17 +1341,17 @@ class PacketSessionData(F1PacketBase):
         if self.m_header != other.m_header:
             return False
 
-        if not self.__eq_f1_23(other):
+        if not self._eq_base(other):
             return False
 
         if self.m_header.m_packetFormat >= 2024:
-            return self.__eq_f1_24(other)
+            return self._eq_f24(other)
 
         return True
 
-    def __eq_f1_23(self, other: "PacketSessionData") -> bool:
+    def _eq_base(self, other: "PacketSessionData") -> bool:
         """
-        Check the F1 23 specific stuff
+        Check the fields present in all packet formats.
 
         Args:
             other (object): The other object to compare against.
@@ -1357,9 +1359,6 @@ class PacketSessionData(F1PacketBase):
         Returns:
             bool: True if both PacketSessionData objects are equal, False otherwise.
         """
-        if not isinstance(other, PacketSessionData):
-            return NotImplemented
-
         return (
             self.m_weather == other.m_weather and
             self.m_trackTemperature == other.m_trackTemperature and
@@ -1412,9 +1411,9 @@ class PacketSessionData(F1PacketBase):
             self.m_numRedFlagPeriods == other.m_numRedFlagPeriods
         )
 
-    def __eq_f1_24(self, other: "PacketSessionData") -> bool:
+    def _eq_f24(self, other: "PacketSessionData") -> bool:
         """
-        Check the F1 24 specific stuff
+        Check the F1 24+ specific fields.
 
         Args:
             other (object): The other object to compare against.
