@@ -104,6 +104,11 @@ class CarTelemetryData(F1SubPacketBase):
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
+        self._parse(data)
+        self._cast_enums()
+
+    def _parse(self, data: bytes) -> None:
+        """Raw byte unpacking."""
         self.m_brakesTemperature = [0] * 4
         self.m_tyresSurfaceTemperature = [0] * 4
         self.m_tyresInnerTemperature = [0] * 4
@@ -144,6 +149,8 @@ class CarTelemetryData(F1SubPacketBase):
             self.m_surfaceType[3],
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
 
+    def _cast_enums(self) -> None:
+        """All bool conversions in one place."""
         self.m_drs = bool(self.m_drs)
 
     def __str__(self) -> str:
