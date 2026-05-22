@@ -38,7 +38,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-n auto --dist=loadgroup"
+addopts = "-n auto --dist=loadgroup -m 'not openf1'"
 python_files = ["tests_*.py"]
 python_classes = ["Test*", "*Test", "*UT"]
 python_functions = ["test_*"]

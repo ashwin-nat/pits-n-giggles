@@ -155,8 +155,9 @@ async def _make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], 
     base_url = "https://api.openf1.org/v1/"
     url = f"{base_url}{endpoint}"
 
+    timeout = aiohttp.ClientTimeout(total=15)
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url, params=params) as response:
                 response.raise_for_status()
                 return await response.json()

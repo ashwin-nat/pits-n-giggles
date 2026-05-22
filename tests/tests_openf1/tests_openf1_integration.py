@@ -48,10 +48,9 @@ if sys.platform == "win32":
 
 _LOGGER = logging.getLogger("test_openf1_integration")
 
-# Circuits with enough history that a pole lap is virtually guaranteed to exist
+# One stable circuit with enough history to guarantee a pole lap exists.
+# Kept to a single entry to avoid unnecessary load on the free OpenF1 API.
 _WELL_KNOWN_CIRCUITS = [
-    TrackID.Silverstone,
-    TrackID.Spa,
     TrackID.Monza,
 ]
 
