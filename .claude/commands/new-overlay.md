@@ -145,7 +145,7 @@ Create two files:
 - For event-driven: `self._register_event_handlers()` in `__init__`, implement `@self.on_event("<topic>")` handler
 
 **`<overlay_name>.qml`**:
-- Minimal Rectangle root (`id: root`), transparent background, placeholder Text
+- Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
 
 ### 10. Register overlay in OverlaysMgr — `apps/hud/hud.py`
 
