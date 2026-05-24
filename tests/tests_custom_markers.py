@@ -66,7 +66,7 @@ class TestCustomMarkerEntry(CustomMarkersUT):
 
     def test_csv_conversion(self):
         csv_str = self.marker.toCSV()
-        expected = "Monaco, Overtake, 5, SECTOR1, 1:23.456, 45.67"
+        expected = "Monaco, Overtake, 5, S1, 1:23.456, 45.67"
         self.assertEqual(csv_str, expected)
 
     def test_string_representation(self):
