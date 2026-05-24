@@ -119,23 +119,47 @@ Rectangle {
                             Layout.fillHeight: true
                             text: modelData.name
                             font.family: "Formula1"
-                            font.pixelSize: 10
+                            font.pixelSize: 14
                             color: "white"
                             horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
                         }
 
-                        // ERS mode
-                        Text {
+                        // ERS/DRS bar
+                        Item {
                             Layout.preferredWidth: 65
                             Layout.fillHeight: true
-                            text: modelData.ersMode
-                            font.family: "B612 Mono"
-                            font.pixelSize: 9
-                            color: modelData.ersColor
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.leftMargin: 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 6
+                                height: parent.height - 8
+                                radius: 2
+                                color: modelData.ersColor
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.ersPercent
+                                font.family: "B612 Mono"
+                                font.pixelSize: 12
+                                color: "#dddddd"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 6
+                                height: parent.height - 8
+                                radius: 2
+                                color: modelData.drs ? "#00e676" : "#333333"
+                            }
                         }
 
                         // Relative distance
@@ -144,7 +168,7 @@ Rectangle {
                             Layout.fillHeight: true
                             text: modelData.relDist
                             font.family: "B612 Mono"
-                            font.pixelSize: 9
+                            font.pixelSize: 12
                             color: modelData.relDistColor
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignVCenter

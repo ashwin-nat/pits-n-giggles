@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple, final
 
 from PySide6.QtQuick import QQuickItem
 
@@ -164,13 +164,16 @@ class TrafficMonitorPage(MfdPageBase):
                 rel_dist_str = f"{rel_dist_m:+.0f}m"
                 rel_dist_color = "#FF4444" if rel_dist_m < 0 else "#44FF44"
 
-            ers_mode: Optional[str] = ers_info.get("ers-mode") or "None"
+            ers_mode: str = ers_info.get("ers-mode") or "None"
+            ers_perc_float: float = ers_info.get("ers-percent-float", 0.0) or 0.0
+            drs_active: bool = driver_info.get("drs-activated", False) or False
 
             rows_data.append({
                 "team": driver_info.get("team", ""),
                 "name": driver_info.get("name", ""),
-                "ersMode": ers_mode,
                 "ersColor": _ERS_MODE_COLORS.get(ers_mode, _ERS_MODE_COLOR_DEFAULT),
+                "ersPercent": f"{ers_perc_float:.0f}%",
+                "drs": drs_active,
                 "relDist": rel_dist_str,
                 "relDistColor": rel_dist_color,
                 "isRef": is_ref,
