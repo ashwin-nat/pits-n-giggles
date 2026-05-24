@@ -30,6 +30,7 @@ from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import get_adjacent_positions, get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.track_segment_info import TrackSegmentsDatabase
 from lib.config import MfdPageId
 
 if TYPE_CHECKING:
@@ -56,6 +57,9 @@ class TrafficMonitorPage(MfdPageBase):
     NUM_ADJACENT = 2
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
+
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -69,6 +73,7 @@ class TrafficMonitorPage(MfdPageBase):
             page_item = self._page_item
             table_entries = data.get("table-entries")
             circuit_len = data.get("circuit-len")
+            circuit_num = data.get("circuit-enum-value")
 
             if not table_entries or not circuit_len:
                 page_item.showEmptyTable()
@@ -111,7 +116,7 @@ class TrafficMonitorPage(MfdPageBase):
 
             window = self._get_window(sorted_entries, ref_pos_in_sorted)
             ref_total_dist = sorted_entries[ref_pos_in_sorted][0]
-            rows_data = self._build_rows(window, ref_index, ref_total_dist)
+            rows_data = self._build_rows(window, ref_index, ref_total_dist, circuit_num)
             page_item.updateData(rows_data)
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -148,11 +153,14 @@ class TrafficMonitorPage(MfdPageBase):
         window: List[Tuple[float, Dict[str, Any]]],
         ref_index: int,
         ref_total_dist: float,
+        circuit_num: int,
     ) -> List[Dict[str, Any]]:
         rows_data = []
         for total_dist, row in window:
             driver_info: Dict[str, Any] = row.get("driver-info", {})
             ers_info: Dict[str, Any] = row.get("ers-info", {})
+            lap_info: Dict[str, Any] = row.get("lap-info", {})
+            curr_lap_info: Dict[str, Any] = lap_info.get("curr-lap", {})
 
             is_ref = (driver_info.get("index", -1) == ref_index)
 
@@ -168,6 +176,18 @@ class TrafficMonitorPage(MfdPageBase):
             ers_perc_float: float = ers_info.get("ers-percent-float", 0.0) or 0.0
             drs_active: bool = driver_info.get("drs-activated", False) or False
 
+            lap_dist = lap_info.get("lap-distance")
+            assert lap_dist is not None
+            segment_info = self.tracks_db.get_segment_info(circuit_num, lap_dist)
+            location_str = curr_lap_info.get("sector", "---")
+
+            if segment_info:
+                match segment_info.TYPE:
+                    case "corner":
+                        location_str = f"T{segment_info.corner_number}"
+                    case "complex_corner":
+                        location_str = segment_info.render()["turns"]
+
             rows_data.append({
                 "team": driver_info.get("team", ""),
                 "name": driver_info.get("name", ""),
@@ -177,5 +197,6 @@ class TrafficMonitorPage(MfdPageBase):
                 "relDist": rel_dist_str,
                 "relDistColor": rel_dist_color,
                 "isRef": is_ref,
+                "location": location_str,
             })
         return rows_data

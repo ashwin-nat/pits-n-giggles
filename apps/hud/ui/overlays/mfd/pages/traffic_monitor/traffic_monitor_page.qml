@@ -164,12 +164,24 @@ Rectangle {
 
                         // Relative distance
                         Text {
-                            Layout.fillWidth: true
+                            Layout.preferredWidth: 55
                             Layout.fillHeight: true
                             text: modelData.relDist
                             font.family: "B612 Mono"
                             font.pixelSize: 12
                             color: modelData.relDistColor
+                            horizontalAlignment: Text.AlignRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        // Location
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            text: modelData.location
+                            font.family: "B612 Mono"
+                            font.pixelSize: 12
+                            color: "#aaaaaa"
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignVCenter
                         }
