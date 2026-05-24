@@ -22,28 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base_page import MfdPageBase
-from .collapsed import CollapsedPage
-from .fuel import FuelInfoPage
-from .lap_times import LapTimesPage
-from .pit_rejoin import PitRejoinPredictionPage
-from .tyre_sets import TyreSetsPage
-from .tyre_wear import TyreInfoPage
-from .weather import WeatherForecastPage
-from .pace_comp.pace_comp import PaceCompPage
-from .traffic_monitor import TrafficMonitorPage
+from .traffic_monitor_page import TrafficMonitorPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "MfdPageBase",
-    "CollapsedPage",
-    "FuelInfoPage",
-    "LapTimesPage",
-    "PitRejoinPredictionPage",
-    "TyreSetsPage",
-    "TyreInfoPage",
-    "WeatherForecastPage",
-    "PaceCompPage",
     "TrafficMonitorPage",
 ]

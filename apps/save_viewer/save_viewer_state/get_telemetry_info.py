@@ -551,7 +551,6 @@ def _create_driver_entry(
                     for_best_lap=True,
                 ),
             },
-            "lap-progress": None,
             "speed-trap-record-kmph": data_per_driver["lap-data"].get("speed-trap-fastest-speed"),
             "top-speed-kmph": data_per_driver.get("top-speed-kmph", 0.0),
         },
