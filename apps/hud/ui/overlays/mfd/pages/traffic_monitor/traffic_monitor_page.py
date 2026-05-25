@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,16 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, final
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.common import get_adjacent_positions, get_ref_row_index
+from apps.hud.common import get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.track_segment_info import TrackSegmentsDatabase
 from lib.config import MfdPageId
+from lib.track_segment_info import TrackSegmentsDatabase
+
+from .utils import get_traffic_window, resolve_location, sort_by_rel_distance
 
 if TYPE_CHECKING:
     from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
@@ -57,9 +59,7 @@ class TrafficMonitorPage(MfdPageBase):
     NUM_ADJACENT = 2
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
-
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -71,9 +71,9 @@ class TrafficMonitorPage(MfdPageBase):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             page_item = self._page_item
-            table_entries = data.get("table-entries")
-            circuit_len = data.get("circuit-len")
-            circuit_num = data.get("circuit-enum-value")
+            table_entries: Optional[List] = data.get("table-entries")
+            circuit_len: Optional[float] = data.get("circuit-len")
+            circuit_num: Optional[int] = data.get("circuit-enum-value")
 
             if not table_entries or not circuit_len:
                 page_item.showEmptyTable()
@@ -85,129 +85,77 @@ class TrafficMonitorPage(MfdPageBase):
                 return
 
             ref_row = table_entries[ref_arr_index]
-            ref_index = ref_row["driver-info"]["index"]
+            ref_index: Optional[int] = ref_row["driver-info"]["index"]
             assert ref_index is not None
 
-            # Show IN GARAGE state when the ref driver is in the garage
             ref_status = ref_row.get("lap-info", {}).get("curr-lap", {}).get("driver-status")
             if ref_status == _DRIVER_STATUS_IN_GARAGE:
                 page_item.showInGarage()
                 return
 
-            # Filter out IN_GARAGE cars from the field
+            ref_lap_dist: Optional[float] = ref_row.get("lap-info", {}).get("lap-distance")
+            if ref_lap_dist is None:
+                page_item.showEmptyTable()
+                return
+
             active_entries = [
                 e for e in table_entries
                 if e.get("lap-info", {}).get("curr-lap", {}).get("driver-status") != _DRIVER_STATUS_IN_GARAGE
             ]
 
-            ref_lap_dist = ref_row.get("lap-info", {}).get("lap-distance")
-            if ref_lap_dist is None:
-                page_item.showEmptyTable()
-                return
-
-            sorted_entries = self._sort_by_rel_distance(active_entries, ref_lap_dist, circuit_len)
+            sorted_entries = sort_by_rel_distance(active_entries, ref_lap_dist, circuit_len)
             if not sorted_entries:
                 page_item.showEmptyTable()
                 return
 
-            ref_pos_in_sorted = next(
-                (i for i, (_, row) in enumerate(sorted_entries)
-                 if row["driver-info"]["index"] == ref_index),
+            ref_pos = next(
+                (i for i, (_, row) in enumerate(sorted_entries) if row["driver-info"]["index"] == ref_index),
                 None,
             )
-            if ref_pos_in_sorted is None:
+            if ref_pos is None:
                 page_item.showEmptyTable()
                 return
 
-            window = self._get_window(sorted_entries, ref_pos_in_sorted)
-            rows_data = self._build_rows(window, ref_index, circuit_num)
-            page_item.updateData(rows_data)
+            window = get_traffic_window(sorted_entries, ref_pos, self.NUM_ADJACENT)
+            page_item.updateData(self._build_rows(window, ref_index, circuit_num))
 
     # ------------------------------------------------------------------------------------------------------------------
-
-    def _sort_by_rel_distance(
-        self,
-        table_entries: List[Dict[str, Any]],
-        ref_lap_dist: float,
-        circuit_len: float,
-    ) -> List[Tuple[float, Dict[str, Any]]]:
-        """Return (rel_dist, row) sorted ascending: most ahead (negative) → ref (0) → most behind (positive)."""
-        ref_norm = ref_lap_dist % circuit_len
-        half_len = circuit_len / 2
-        result = []
-        for row in table_entries:
-            lap_dist = row.get("lap-info", {}).get("lap-distance")
-            if lap_dist is None:
-                continue
-            rel = ref_norm - (lap_dist % circuit_len)
-            if rel > half_len:
-                rel -= circuit_len
-            elif rel < -half_len:
-                rel += circuit_len
-            result.append((rel, row))
-        result.sort(key=lambda x: x[0])
-        return result
-
-    def _get_window(
-        self,
-        sorted_entries: List[Tuple[float, Dict[str, Any]]],
-        ref_pos: int,
-    ) -> List[Tuple[float, Dict[str, Any]]]:
-        """Return up to NUM_ADJACENT ahead + ref + NUM_ADJACENT behind, clamped to available cars."""
-        total = len(sorted_entries)
-        lower_bound, upper_bound = get_adjacent_positions(ref_pos + 1, total, self.NUM_ADJACENT)
-        if lower_bound is None:
-            return [sorted_entries[ref_pos]]
-        return sorted_entries[lower_bound - 1 : upper_bound]
 
     def _build_rows(
         self,
         window: List[Tuple[float, Dict[str, Any]]],
         ref_index: int,
-        circuit_num: int,
+        circuit_num: Optional[int],
     ) -> List[Dict[str, Any]]:
-        rows_data = []
-        for rel_dist_m, row in window:
-            driver_info: Dict[str, Any] = row.get("driver-info", {})
-            ers_info: Dict[str, Any] = row.get("ers-info", {})
-            lap_info: Dict[str, Any] = row.get("lap-info", {})
-            curr_lap_info: Dict[str, Any] = lap_info.get("curr-lap", {})
+        return [self._build_row(rel_dist_m, row, ref_index, circuit_num) for rel_dist_m, row in window]
 
-            is_ref = (driver_info.get("index", -1) == ref_index)
+    def _build_row(
+        self,
+        rel_dist_m: float,
+        row: Dict[str, Any],
+        ref_index: int,
+        circuit_num: Optional[int],
+    ) -> Dict[str, Any]:
+        driver_info: Dict[str, Any] = row.get("driver-info", {})
+        ers_info: Dict[str, Any] = row.get("ers-info", {})
+        lap_info: Dict[str, Any] = row.get("lap-info", {})
+        curr_lap_info: Dict[str, Any] = lap_info.get("curr-lap", {})
 
-            if is_ref:
-                rel_dist_str = "---"
-                rel_dist_color = "white"
-            else:
-                rel_dist_str = f"{rel_dist_m:+.0f}m"
-                rel_dist_color = "#FF4444" if rel_dist_m < 0 else "#44FF44"
+        is_ref = (driver_info.get("index", -1) == ref_index)
+        ers_mode: str = ers_info.get("ers-mode") or "None"
 
-            ers_mode: str = ers_info.get("ers-mode") or "None"
-            ers_perc_float: float = ers_info.get("ers-percent-float", 0.0) or 0.0
-            drs_active: bool = driver_info.get("drs-activated", False) or False
-
-            lap_dist = lap_info.get("lap-distance")
-            assert lap_dist is not None
-            segment_info = self.tracks_db.get_segment_info(circuit_num, lap_dist)
-            location_str = curr_lap_info.get("sector", "---")
-
-            if segment_info:
-                match segment_info.TYPE:
-                    case "corner":
-                        location_str = f"T{segment_info.corner_number}"
-                    case "complex_corner":
-                        first, last = segment_info.corner_numbers[0], segment_info.corner_numbers[-1]
-                        location_str = f"T{first}-{last}"
-
-            rows_data.append({
-                "team": driver_info.get("team", ""),
-                "name": driver_info.get("name", ""),
-                "ersColor": _ERS_MODE_COLORS.get(ers_mode, _ERS_MODE_COLOR_DEFAULT),
-                "ersPercent": f"{ers_perc_float:.0f}%",
-                "drs": drs_active,
-                "relDist": rel_dist_str,
-                "relDistColor": rel_dist_color,
-                "isRef": is_ref,
-                "location": location_str,
-            })
-        return rows_data
+        return {
+            "team":         driver_info.get("team", ""),
+            "name":         driver_info.get("name", ""),
+            "ersColor":     _ERS_MODE_COLORS.get(ers_mode, _ERS_MODE_COLOR_DEFAULT),
+            "ersPercent":   f"{ers_info.get('ers-percent-float', 0.0) or 0.0:.0f}%",
+            "drs":          driver_info.get("drs-activated", False) or False,
+            "relDist":      "---" if is_ref else f"{rel_dist_m:+.0f}m",
+            "relDistColor": "white" if is_ref else ("#FF4444" if rel_dist_m < 0 else "#44FF44"),
+            "isRef":        is_ref,
+            "location":     resolve_location(
+                                self.tracks_db, circuit_num,
+                                lap_info.get("lap-distance"),
+                                curr_lap_info.get("sector"),
+                            ),
+        }
