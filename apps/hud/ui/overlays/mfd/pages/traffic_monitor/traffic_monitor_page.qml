@@ -201,18 +201,4 @@ Rectangle {
         }
     }
 
-    function updateData(rows) {
-        root.tableData = rows;
-        root.viewState = rows.length > 0 ? "table" : "empty";
-    }
-
-    function showInGarage() {
-        root.tableData = [];
-        root.viewState = "inGarage";
-    }
-
-    function showEmptyTable() {
-        root.tableData = [];
-        root.viewState = "empty";
-    }
 }

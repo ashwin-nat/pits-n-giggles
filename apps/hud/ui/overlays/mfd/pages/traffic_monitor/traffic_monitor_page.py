@@ -63,18 +63,17 @@ class TrafficMonitorPage(MfdPageBase):
     def _init_event_handlers(self):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
-            page_item = self._page_item
             table_entries: Optional[List] = data.get("table-entries")
             circuit_len: Optional[float] = data.get("circuit-len")
             circuit_num: Optional[int] = data.get("circuit-enum-value")
 
             if not table_entries or not circuit_len:
-                page_item.showEmptyTable()
+                self._show_empty()
                 return
 
             ref_arr_index = get_ref_row_index(data)
             if ref_arr_index is None:
-                page_item.showEmptyTable()
+                self._show_empty()
                 return
 
             ref_row = table_entries[ref_arr_index]
@@ -83,12 +82,12 @@ class TrafficMonitorPage(MfdPageBase):
 
             ref_status = ref_row.get("lap-info", {}).get("curr-lap", {}).get("driver-status")
             if ref_status == _DRIVER_STATUS_IN_GARAGE:
-                page_item.showInGarage()
+                self._show_in_garage()
                 return
 
             ref_lap_dist: Optional[float] = ref_row.get("lap-info", {}).get("lap-distance")
             if ref_lap_dist is None:
-                page_item.showEmptyTable()
+                self._show_empty()
                 return
 
             active_entries = [
@@ -98,7 +97,7 @@ class TrafficMonitorPage(MfdPageBase):
 
             sorted_entries = sort_by_rel_distance(active_entries, ref_lap_dist, circuit_len)
             if not sorted_entries:
-                page_item.showEmptyTable()
+                self._show_empty()
                 return
 
             ref_pos = next(
@@ -106,11 +105,20 @@ class TrafficMonitorPage(MfdPageBase):
                 None,
             )
             if ref_pos is None:
-                page_item.showEmptyTable()
+                self._show_empty()
                 return
 
             window = get_traffic_window(sorted_entries, ref_pos, self.NUM_ADJACENT)
-            page_item.updateData(self._build_rows(window, ref_index, circuit_num))
+            self._set_page_property("tableData", self._build_rows(window, ref_index, circuit_num))
+            self._set_page_property("viewState", "table")
+
+    def _show_empty(self) -> None:
+        self._set_page_property("tableData", [])
+        self._set_page_property("viewState", "empty")
+
+    def _show_in_garage(self) -> None:
+        self._set_page_property("tableData", [])
+        self._set_page_property("viewState", "inGarage")
 
     # ------------------------------------------------------------------------------------------------------------------
 
