@@ -29,6 +29,15 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 JSONType = Union[dict, list, str, int, float, bool, None]
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+ERS_MODE_COLORS: Dict[str, str] = {
+    "Medium":   "#e6d800",
+    "Hotlap":   "#00e676",
+    "Overtake": "#ff1744",
+}
+ERS_MODE_COLOR_DEFAULT = "#444444"
+
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 # ------------------------------------------------
