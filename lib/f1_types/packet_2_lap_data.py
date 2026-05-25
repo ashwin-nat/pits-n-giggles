@@ -236,7 +236,7 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
-    class Sector(F1CompareableEnum):
+    class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """
         Enumeration representing the sector of a racing track.
         """
