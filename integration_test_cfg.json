@@ -82,31 +82,33 @@
                     "position": 5
                 },
                 "best_lap": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 6
                 },
                 "last_lap": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 7
                 },
                 "wing_dmg": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 8
                 },
                 "speed_trap": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 9
                 },
                 "fuel": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 10
                 },
                 "driver_status": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 11
                 }
             }
         },
+        "timing_tower_relative_best_last_lap": true,
+        "timing_tower_combined_tl_pens": true,
         "timing_tower_toggle_udp_action_code": null,
         "show_mfd": true,
         "mfd_settings": {
@@ -136,8 +138,12 @@
                     "position": 6
                 },
                 "pace_comp": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 7
+                },
+                "traffic_monitor": {
+                    "enabled": true,
+                    "position": 8
                 }
             }
         },
