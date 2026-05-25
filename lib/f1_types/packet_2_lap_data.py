@@ -250,7 +250,7 @@ class LapData(F1SubPacketBase):
             """Return a string representation of the Sector enumeration member.
 
             Returns:
-                str: A string representing the sector (e.g., "Sector 1", "Sector 2", "Sector 3").
+                str: A string representing the sector (e.g., "S1", "S2", "S3").
             """
             return f"S{self.value + 1}"
 
