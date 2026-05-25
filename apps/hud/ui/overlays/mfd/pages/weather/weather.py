@@ -95,7 +95,7 @@ class WeatherForecastPage(MfdPageBase):
 
     @final
     def on_page_activated(self, item: QQuickItem):
-        item.setProperty("graphBasedUI", self.graph_based_ui)
+        self.set_page_property("graphBasedUI", self.graph_based_ui)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
@@ -160,10 +160,9 @@ class WeatherForecastPage(MfdPageBase):
         """
         assert forecast_data_flat
 
-        page_item = self._page_item
         session_title, session_forecast = self._get_session_info(forecast_data_flat)
 
-        page_item.setProperty("forecastData", session_forecast[: self.MAX_SAMPLES])
-        page_item.setProperty("sessionTitle", session_title or "")
+        self.set_page_property("forecastData", session_forecast[: self.MAX_SAMPLES])
+        self.set_page_property("sessionTitle", session_title or "")
 
         self._last_processed_samples = forecast_data_flat

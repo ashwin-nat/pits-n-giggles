@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.common import get_ref_row, get_relevant_race_table_rows, is_race_type_session, is_tt_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
@@ -55,34 +53,32 @@ class PaceCompPage(MfdPageBase):
     def _init_event_handlers(self):
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
-            page_item = self._page_item
             session_type = data.get("event-type", "")
 
             if is_tt_session(session_type):
-                self._update_table_tt(data, page_item)
+                self._update_table_tt(data)
                 return
 
             table_entries = data.get("table-entries")
             if not table_entries:
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
 
             ref_row = get_ref_row(data)
             if not ref_row:
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
 
             use_best_lap = not is_race_type_session(session_type)
             ref_idx = ref_row["driver-info"]["index"]
             relevant_rows = get_relevant_race_table_rows(table_entries, self.NUM_ADJ_CARS, ref_idx)
-            self._update_table(relevant_rows, ref_row, page_item, use_best_lap)
+            self._update_table(relevant_rows, ref_row, use_best_lap)
 
     # -- Table update ----------------------------------------------------------
 
     def _update_table(self,
                       relevant_rows: List[Dict[str, Any]],
                       ref_row: Dict[str, Any],
-                      page_item: QQuickItem,
                       use_best_lap: bool) -> None:
         ref_idx   = ref_row["driver-info"]["index"]
         lap_key   = "best-lap" if use_best_lap else "last-lap"
@@ -96,7 +92,7 @@ class PaceCompPage(MfdPageBase):
             self._build_row(row, ref_idx, ref_s1_ms, ref_s2_ms, ref_s3_ms, ref_lap_ms, lap_key)
             for row in relevant_rows
         ]
-        self._set_rows(page_item, rows_data)
+        self._set_rows(rows_data)
 
     def _build_row(self,
                    row_data: Dict[str, Any],
@@ -164,11 +160,11 @@ class PaceCompPage(MfdPageBase):
 
     # -- Time trial ------------------------------------------------------------
 
-    def _update_table_tt(self, data: Dict[str, Any], page_item: QQuickItem) -> None:
+    def _update_table_tt(self, data: Dict[str, Any]) -> None:
         tt_data_outer: Dict[str, Any] = data.get("tt-data", {})
         tt_data_inner: Dict[str, Any] = tt_data_outer.get("tt-data", {}) if tt_data_outer else {}
         if not tt_data_outer or not tt_data_inner:
-            self._show_empty_table(page_item)
+            self._show_empty_table()
             return
 
         pb_dataset  = tt_data_inner.get("personal-best-data-set", {})
@@ -184,7 +180,7 @@ class PaceCompPage(MfdPageBase):
             self._build_tt_row("Rival", rv_dataset,  ref_ms=pb_ms),
             self._build_tt_row("Last",  last_lap,    ref_ms=pb_ms, last_lap=True),
         ]
-        self._set_rows(page_item, rows)
+        self._set_rows(rows)
 
     @staticmethod
     def _extract_tt_ms(dataset: Dict[str, Any]) -> Dict[str, Optional[int]]:
@@ -253,10 +249,10 @@ class PaceCompPage(MfdPageBase):
 
     # -- QML helpers -----------------------------------------------------------
 
-    def _show_empty_table(self, page_item: QQuickItem) -> None:
+    def _show_empty_table(self) -> None:
         """Clear the table."""
-        self._set_rows(page_item, [])
+        self._set_rows([])
 
-    def _set_rows(self, page_item: QQuickItem, rows: List[Dict[str, Any]]) -> None:
+    def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
         """Push row data to QML."""
-        page_item.setProperty("rows", rows)
+        self.set_page_property("rows", rows)

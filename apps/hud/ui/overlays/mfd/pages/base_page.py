@@ -104,22 +104,21 @@ class MfdPageBase:
         self._stats.track_event("__EVENTS__", "__TOTAL__")
         self._stats.track_event("__EVENTS__", event_type)
 
-    def _set_page_property(self, name: str, value) -> None:
+    def set_page_property(self, name: str, value) -> None:
         """Set a property on the active page QML item with diff-based caching.
 
         Silently does nothing when the page is not active or the value is
         unchanged since the last push.
         """
         if self._page_item is None:
+            self._stats.track_event("__PROPS_NO_PAGE__", name)
             return
         if self._page_props.get(name, _UNSET) == value:
+            self._stats.track_event("__PROPS_CACHED__", name)
             return
         self._page_props[name] = value
         self._page_item.setProperty(name, value)
-
-    @property
-    def page_item(self):
-        return self.overlay.current_page_item
+        self._stats.track_event("__PROPS__", name)
 
     def _on_page_activated(self, item: QQuickItem):
         """Internal activation — stores item, tracks stats, then calls the public hook."""

@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlaysFuelEstimationMode
@@ -57,46 +55,45 @@ class FuelInfoPage(MfdPageBase):
             if not ref_row:
                 return
 
-            page_item = self._page_item
             if ref_row["driver-info"]["telemetry-setting"] != "Public":
-                self._set_all_dim(page_item)
+                self._set_all_dim()
                 return
 
             session_type = data["event-type"]
             fuel = ref_row["fuel-info"]
 
-            page_item.setProperty("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
+            self.set_page_property("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
 
             if is_race_type_session(session_type):
-                page_item.setProperty("currValue", self._fmt(fuel.get("curr-fuel-rate")))
-                page_item.setProperty("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
-                page_item.setProperty("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
+                self.set_page_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
+                self.set_page_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
+                self.set_page_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
                 if self._fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
                     surplus = fuel.get("surplus-laps-png")
                 else:
                     surplus = fuel.get("surplus-laps-game")
             else:
-                page_item.setProperty("currValue", "---")
-                page_item.setProperty("tgtAvgValue", "---")
-                page_item.setProperty("tgtNextValue", "---")
+                self.set_page_property("currValue", "---")
+                self.set_page_property("tgtAvgValue", "---")
+                self.set_page_property("tgtNextValue", "---")
                 surplus = fuel.get("surplus-laps-game")
 
             if surplus is not None:
-                page_item.setProperty(
+                self.set_page_property(
                     "surplusText",
                     f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps"
                 )
-                page_item.setProperty("surplusValue", surplus)
-                page_item.setProperty("surplusValid", True)
+                self.set_page_property("surplusValue", surplus)
+                self.set_page_property("surplusValid", True)
             else:
-                page_item.setProperty("surplusText", "Surplus: ---")
-                page_item.setProperty("surplusValid", False)
+                self.set_page_property("surplusText", "Surplus: ---")
+                self.set_page_property("surplusValid", False)
 
     def _fmt(self, value):
         return f"{value:.3f}" if value is not None else "---"
 
-    def _set_all_dim(self, page_item: QQuickItem) -> None:
+    def _set_all_dim(self) -> None:
         for prop in ("currValue", "lastValue", "tgtAvgValue", "tgtNextValue"):
-            page_item.setProperty(prop, "---")
-        page_item.setProperty("surplusText", "Surplus: ---")
-        page_item.setProperty("surplusValid", False)
+            self.set_page_property(prop, "---")
+        self.set_page_property("surplusText", "Surplus: ---")
+        self.set_page_property("surplusValid", False)
