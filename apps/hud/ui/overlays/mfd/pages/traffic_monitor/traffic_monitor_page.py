@@ -186,7 +186,8 @@ class TrafficMonitorPage(MfdPageBase):
                     case "corner":
                         location_str = f"T{segment_info.corner_number}"
                     case "complex_corner":
-                        location_str = segment_info.render()["turns"]
+                        first, last = segment_info.corner_numbers[0], segment_info.corner_numbers[-1]
+                        location_str = f"T{first}-{last}"
 
             rows_data.append({
                 "team": driver_info.get("team", ""),
