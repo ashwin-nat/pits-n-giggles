@@ -472,7 +472,7 @@ class VisualTyreCompound(F1BaseEnum):
         """
         return self == VisualTyreCompound.INTER
 
-class SafetyCarType(F1CompareableEnum):
+class SafetyCarType(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
     """
     Enumeration representing different safety car statuses.
 

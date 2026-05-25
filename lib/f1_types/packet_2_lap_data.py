@@ -22,7 +22,7 @@
 
 
 import struct
-from typing import Any, Dict, List
+from typing import Any, Dict, List, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
@@ -236,7 +236,7 @@ class LapData(F1SubPacketBase):
         PITTING = 1
         IN_PIT_AREA = 2
 
-    class Sector(F1CompareableEnum):
+    class Sector(F1CompareableEnum):  # pylint: disable=invalid-enum-extension
         """
         Enumeration representing the sector of a racing track.
         """
@@ -244,6 +244,15 @@ class LapData(F1SubPacketBase):
         SECTOR1 = 0
         SECTOR2 = 1
         SECTOR3 = 2
+
+        @final
+        def __str__(self) -> str:
+            """Return a string representation of the Sector enumeration member.
+
+            Returns:
+                str: A string representing the sector (e.g., "S1", "S2", "S3").
+            """
+            return f"S{self.value + 1}"
 
     def __init__(self, data: bytes, packet_format: int) -> None:
         """
@@ -260,6 +269,7 @@ class LapData(F1SubPacketBase):
         self.m_packetFormat = packet_format
         self._parse(data, packet_format)
         self._cast_enums()
+
 
     def _parse(self, data: bytes, packet_format: int) -> None:
         """Raw byte unpacking only. Dispatches to format-specific helpers."""

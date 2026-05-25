@@ -46,6 +46,7 @@ class SectorBoundaries(BaseModel):
 class BaseSegmentInfo(BaseModel):
     model_config = ConfigDict(frozen=True)
 
+    TYPE: ClassVar[str]
     type: str
     name: str
     start_m: float

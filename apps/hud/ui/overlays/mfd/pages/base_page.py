@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 
 EventCommandHandler = Callable[[Dict[str, Any]], None] # Takes dict arg, returns None
 
+_UNSET = object()  # sentinel for absent page-property cache entries
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdPageBase:
@@ -54,6 +56,7 @@ class MfdPageBase:
         self.logger = logger
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
         self._stats = EventCounter()
+        self._page_props: dict = {}
 
     def on_event(self, event_type: str, requires_page_item: bool = True):
         """Decorator to register an event handler for this page.
@@ -101,6 +104,19 @@ class MfdPageBase:
         self._stats.track_event("__EVENTS__", "__TOTAL__")
         self._stats.track_event("__EVENTS__", event_type)
 
+    def _set_page_property(self, name: str, value) -> None:
+        """Set a property on the active page QML item with diff-based caching.
+
+        Silently does nothing when the page is not active or the value is
+        unchanged since the last push.
+        """
+        if self._page_item is None:
+            return
+        if self._page_props.get(name, _UNSET) == value:
+            return
+        self._page_props[name] = value
+        self._page_item.setProperty(name, value)
+
     @property
     def page_item(self):
         return self.overlay.current_page_item
@@ -108,6 +124,7 @@ class MfdPageBase:
     def _on_page_activated(self, item: QQuickItem):
         """Internal activation — stores item, tracks stats, then calls the public hook."""
         self._page_item = item
+        self._page_props.clear()  # fresh item — invalidate all cached property values
         self._stats.track_event("__LIFECYCLE__", "activated")
         self.logger.debug("%s | Page activated", self.KEY)
         self.on_page_activated(item)

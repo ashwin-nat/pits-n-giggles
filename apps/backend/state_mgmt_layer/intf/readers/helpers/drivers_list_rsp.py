@@ -444,25 +444,25 @@ class DriversListRsp(BaseAPI):
 
     def _getLapInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract lap information section for JSON response."""
-        lap_progress = self._calculateLapProgress(driver_data)
+        lap_dist = self._getLapDistance(driver_data)
 
         return {
             "current-lap": driver_data.m_lap_info.m_current_lap,
             "last-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=False),
             "best-lap": self._getLapDetailsSubsection(driver_data, for_best_lap=True),
             "curr-lap": self._getCurrLapSubsection(driver_data),
-            "lap-progress": lap_progress,
+            "lap-distance": lap_dist,
             "speed-trap-record-kmph": self._getSpeedTrapRecord(driver_data),
             "top-speed-kmph": driver_data.m_lap_info.m_top_speed_kmph_this_lap,
         }
 
-    def _calculateLapProgress(self, driver_data: DataPerDriver) -> Optional[float]:
-        """Calculate lap progress percentage."""
+    def _getLapDistance(self, driver_data: DataPerDriver) -> Optional[float]:
+        """Get lap distance."""
         lap_data = driver_data.m_packet_copies.m_packet_lap_data
         if not lap_data or not self.m_track_length:
             return None
 
-        return (lap_data.m_lapDistance / self.m_track_length) * 100.0
+        return lap_data.m_lapDistance
 
     def _getSpeedTrapRecord(self, driver_data: DataPerDriver) -> Optional[float]:
         """Get speed trap record if available."""

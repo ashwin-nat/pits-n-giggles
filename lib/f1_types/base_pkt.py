@@ -115,6 +115,8 @@ class F1CompareableEnum(F1BaseEnum):
         Only use this class for Enums where ordering of values makes sense.
     """
 
+    __hash__ = F1BaseEnum.__hash__
+
     def __eq__(self, other: Any) -> bool:
         """
         Check equality with another enum of the same type.

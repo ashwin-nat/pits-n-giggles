@@ -382,6 +382,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.PIT_REJOIN,
             MfdPageId.TYRE_SETS,
             MfdPageId.PACE_COMP,
+            MfdPageId.TRAFFIC_MONITOR,
         }
 
         for page in expected_pages:

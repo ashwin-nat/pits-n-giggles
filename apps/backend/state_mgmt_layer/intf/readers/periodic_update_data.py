@@ -72,6 +72,7 @@ class PeriodicUpdateData(BaseAPI):
             "packet-format" : self._getValueOrDefaultValue(self.m_session_info.m_packet_format, None),
             "circuit": str(self.m_session_info.m_track) if self.m_session_info.m_track is not None else "---",
             "circuit-len": self._getValueOrDefaultValue(self.m_track_length, default_value=None),
+            "circuit-enum-value": self.m_session_info.m_track.value if self.m_session_info.m_track is not None else None,
             "formula": str(self.m_session_info.m_formula) if self.m_session_info.m_formula is not None else None,
             "pit-time-loss": self.m_session_info.m_pit_time_loss,
             "track-temperature": self._getValueOrDefaultValue(self.m_session_info.m_track_temp, default_value=0),
