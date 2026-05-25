@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.common import ERS_MODE_COLOR_DEFAULT, ERS_MODE_COLORS, get_ref_row_index
+from apps.hud.common import ERS_MODE_COLORS, get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
 from lib.track_segment_info import TrackSegmentsDatabase
@@ -148,7 +148,7 @@ class TrafficMonitorPage(MfdPageBase):
         return {
             "team":         driver_info.get("team", ""),
             "name":         driver_info.get("name", ""),
-            "ersColor":     ERS_MODE_COLORS.get(ers_mode, ERS_MODE_COLOR_DEFAULT),
+            "ersColor":     ERS_MODE_COLORS[ers_mode],
             "ersPercent":   f"{ers_info.get('ers-percent-float', 0.0) or 0.0:.0f}%",
             "drs":          driver_info.get("drs-activated", False) or False,
             "relDist":      "---" if is_ref else f"{rel_dist_m:+.0f}m",

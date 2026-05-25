@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
@@ -31,12 +32,12 @@ JSONType = Union[dict, list, str, int, float, bool, None]
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-ERS_MODE_COLORS: Dict[str, str] = {
+ERS_MODE_COLOR_DEFAULT = "#444444"
+ERS_MODE_COLORS: defaultdict = defaultdict(lambda: ERS_MODE_COLOR_DEFAULT, {
     "Medium":   "#e6d800",
     "Hotlap":   "#00e676",
     "Overtake": "#ff1744",
-}
-ERS_MODE_COLOR_DEFAULT = "#444444"
+})
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
