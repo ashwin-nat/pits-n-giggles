@@ -100,7 +100,12 @@ class TrafficMonitorPage(MfdPageBase):
                 if e.get("lap-info", {}).get("curr-lap", {}).get("driver-status") != _DRIVER_STATUS_IN_GARAGE
             ]
 
-            sorted_entries = self._sort_by_track_distance(active_entries, circuit_len)
+            ref_lap_dist = ref_row.get("lap-info", {}).get("lap-distance")
+            if ref_lap_dist is None:
+                page_item.showEmptyTable()
+                return
+
+            sorted_entries = self._sort_by_rel_distance(active_entries, ref_lap_dist, circuit_len)
             if not sorted_entries:
                 page_item.showEmptyTable()
                 return
@@ -115,25 +120,32 @@ class TrafficMonitorPage(MfdPageBase):
                 return
 
             window = self._get_window(sorted_entries, ref_pos_in_sorted)
-            ref_total_dist = sorted_entries[ref_pos_in_sorted][0]
-            rows_data = self._build_rows(window, ref_index, ref_total_dist, circuit_num)
+            rows_data = self._build_rows(window, ref_index, circuit_num)
             page_item.updateData(rows_data)
 
     # ------------------------------------------------------------------------------------------------------------------
 
-    def _sort_by_track_distance(
+    def _sort_by_rel_distance(
         self,
         table_entries: List[Dict[str, Any]],
+        ref_lap_dist: float,
         circuit_len: float,
     ) -> List[Tuple[float, Dict[str, Any]]]:
-        """Return (normalised_lap_dist, row) pairs sorted descending — furthest ahead first."""
+        """Return (rel_dist, row) sorted ascending: most ahead (negative) → ref (0) → most behind (positive)."""
+        ref_norm = ref_lap_dist % circuit_len
+        half_len = circuit_len / 2
         result = []
         for row in table_entries:
             lap_dist = row.get("lap-info", {}).get("lap-distance")
             if lap_dist is None:
                 continue
-            result.append((lap_dist % circuit_len, row))
-        result.sort(key=lambda x: x[0], reverse=True)
+            rel = ref_norm - (lap_dist % circuit_len)
+            if rel > half_len:
+                rel -= circuit_len
+            elif rel < -half_len:
+                rel += circuit_len
+            result.append((rel, row))
+        result.sort(key=lambda x: x[0])
         return result
 
     def _get_window(
@@ -152,11 +164,10 @@ class TrafficMonitorPage(MfdPageBase):
         self,
         window: List[Tuple[float, Dict[str, Any]]],
         ref_index: int,
-        ref_total_dist: float,
         circuit_num: int,
     ) -> List[Dict[str, Any]]:
         rows_data = []
-        for total_dist, row in window:
+        for rel_dist_m, row in window:
             driver_info: Dict[str, Any] = row.get("driver-info", {})
             ers_info: Dict[str, Any] = row.get("ers-info", {})
             lap_info: Dict[str, Any] = row.get("lap-info", {})
@@ -164,7 +175,6 @@ class TrafficMonitorPage(MfdPageBase):
 
             is_ref = (driver_info.get("index", -1) == ref_index)
 
-            rel_dist_m = ref_total_dist - total_dist  # negative = other is ahead
             if is_ref:
                 rel_dist_str = "---"
                 rel_dist_color = "white"
