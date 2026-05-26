@@ -54,7 +54,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text: root.title
+                text: "CARS BEHIND"
                 font.family: "Formula1"
                 font.pixelSize: 11
                 font.bold: true

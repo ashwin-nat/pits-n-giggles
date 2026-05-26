@@ -24,7 +24,6 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from apps.hud.common import get_adjacent_positions
 from lib.track_segment_info import TrackSegmentsDatabase
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -58,14 +57,11 @@ def sort_by_rel_distance(
 def get_traffic_window(
     sorted_entries: List[Tuple[float, Dict[str, Any]]],
     ref_pos: int,
-    num_adjacent: int,
+    num_behind: int,
 ) -> List[Tuple[float, Dict[str, Any]]]:
-    """Return up to num_adjacent ahead + ref + num_adjacent behind, clamped to available cars."""
-    total = len(sorted_entries)
-    lower_bound, upper_bound = get_adjacent_positions(ref_pos + 1, total, num_adjacent)
-    if lower_bound is None:
-        return [sorted_entries[ref_pos]]
-    return sorted_entries[lower_bound - 1 : upper_bound]
+    """Return up to num_behind cars behind ref, excluding ref itself."""
+    start = ref_pos + 1
+    return sorted_entries[start : start + num_behind]
 
 
 def resolve_location(

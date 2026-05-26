@@ -45,11 +45,11 @@ _DRIVER_STATUS_IN_GARAGE = "IN_GARAGE"
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TrafficMonitorPage(MfdPageBase):
-    """Traffic Monitor MFD Page — nearest 2 cars ahead/behind sorted by lap distance."""
+    """Traffic Monitor MFD Page — nearest 5 cars behind sorted by lap distance."""
     KEY = MfdPageId.TRAFFIC_MONITOR
     QML_FILE: Path = Path(__file__).parent / "traffic_monitor_page.qml"
 
-    NUM_ADJACENT = 2
+    NUM_BEHIND = 5
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
@@ -108,7 +108,7 @@ class TrafficMonitorPage(MfdPageBase):
                 self._show_empty()
                 return
 
-            window = get_traffic_window(sorted_entries, ref_pos, self.NUM_ADJACENT)
+            window = get_traffic_window(sorted_entries, ref_pos, self.NUM_BEHIND)
             self.set_page_property("tableData", self._build_rows(window, ref_index, circuit_num))
             self.set_page_property("viewState", "table")
 
