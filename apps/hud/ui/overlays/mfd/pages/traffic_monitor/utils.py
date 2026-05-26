@@ -33,21 +33,18 @@ def sort_by_rel_distance(
     ref_lap_dist: float,
     circuit_len: float,
 ) -> List[Tuple[float, Dict[str, Any]]]:
-    """Return (rel_dist, row) sorted ascending: most ahead (negative) → ref (0) → most behind (positive).
+    """Return (rel_dist, row) sorted ascending by distance behind ref: ref (0) → closest behind → furthest behind.
 
-    rel_dist = ref_pos - other_pos, normalized to (-circuit_len/2, +circuit_len/2] to handle lap boundary wrap.
+    All cars are treated as behind the ref on the closed loop: rel_dist in [0, circuit_len).
     """
     ref_norm = ref_lap_dist % circuit_len
-    half_len = circuit_len / 2
     result = []
     for row in table_entries:
         lap_dist = row.get("lap-info", {}).get("lap-distance")
         if lap_dist is None:
             continue
         rel = ref_norm - (lap_dist % circuit_len)
-        if rel > half_len:
-            rel -= circuit_len
-        elif rel < -half_len:
+        if rel < 0:
             rel += circuit_len
         result.append((rel, row))
     result.sort(key=lambda x: x[0])

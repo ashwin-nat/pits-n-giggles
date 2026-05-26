@@ -151,8 +151,8 @@ class TrafficMonitorPage(MfdPageBase):
             "ersColor":     ERS_MODE_COLORS[ers_mode],
             "ersPercent":   f"{ers_info.get('ers-percent-float', 0.0) or 0.0:.0f}%",
             "drs":          driver_info.get("drs-activated", False) or False,
-            "relDist":      "---" if is_ref else f"{rel_dist_m:+.0f}m",
-            "relDistColor": "white" if is_ref else ("#FF4444" if rel_dist_m < 0 else "#44FF44"),
+            "relDist":      f"+{rel_dist_m:.0f}m",
+            "relDistColor": "#44FF44",
             "isRef":        is_ref,
             "location":     resolve_location(
                                 self.tracks_db, circuit_num,
