@@ -126,9 +126,9 @@ class MfdPageBase:
         self._page_props.clear()  # fresh item — invalidate all cached property values
         self._stats.track_event("__LIFECYCLE__", "activated")
         self.logger.debug("%s | Page activated", self.KEY)
-        self.on_page_activated(item)
+        self.on_page_activated()
 
-    def on_page_activated(self, _: QQuickItem):
+    def on_page_activated(self):
         """Called when the page becomes active. Override in subclasses with @final."""
 
     def on_page_deactivated(self):

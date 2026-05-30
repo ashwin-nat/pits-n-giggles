@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.common import ERS_MODE_COLORS, get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
@@ -57,7 +55,7 @@ class TrafficMonitorPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_activated(self, _: QQuickItem):
+    def on_page_activated(self):
         pass
 
     def _init_event_handlers(self):

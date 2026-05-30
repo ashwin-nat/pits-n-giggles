@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtCore import QTimer
-from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
@@ -94,7 +93,7 @@ class WeatherForecastPage(MfdPageBase):
                 self._display_weather_data(last_data)
 
     @final
-    def on_page_activated(self, item: QQuickItem):
+    def on_page_activated(self):
         self.set_page_property("graphBasedUI", self.graph_based_ui)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)

@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, final
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
 
@@ -54,7 +52,7 @@ class LapTimesPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_activated(self, _: QQuickItem):
+    def on_page_activated(self):
         # Invalidate the cache
         self._last_processed_data = []
 
