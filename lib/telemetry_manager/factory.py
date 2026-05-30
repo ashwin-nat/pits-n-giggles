@@ -27,7 +27,8 @@ from typing import Optional, Set, Type
 
 from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
-                          PacketCarStatusData, PacketCarTelemetryData,
+                          PacketCarStatusData, PacketCarTelemetry2Data,
+                          PacketCarTelemetryData,
                           PacketCountValidationError, PacketEventData,
                           PacketFinalClassificationData, PacketHeader,
                           PacketLapData, PacketLapPositionsData,
@@ -62,6 +63,7 @@ class PacketParserFactory:
         F1PacketType.MOTION_EX: PacketMotionExData,
         F1PacketType.TIME_TRIAL: PacketTimeTrialData,
         F1PacketType.LAP_POSITIONS: PacketLapPositionsData,
+        F1PacketType.CAR_TELEMETRY_2: PacketCarTelemetry2Data,
     }
     _MIN_PACKET_FORMAT = 2023
 

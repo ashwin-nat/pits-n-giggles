@@ -23,7 +23,7 @@ Run `grep -r "F126-IMPL" lib/ tests/` to list all implementation sites.
 | 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT0` |
 | 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT1` |
 | 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` |
-| 3 | Event Data (COLL) | 3a, 5b | 🔲 | 🔲 | `F126-IMPL: PKT3` |
+| 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` |
 | 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT4` |
 | 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-IMPL: PKT5` |
 | 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-IMPL: PKT6` |
@@ -36,7 +36,7 @@ Run `grep -r "F126-IMPL" lib/ tests/` to list all implementation sites.
 | 13 | Motion Ex | N/A | — | — | — |
 | 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-IMPL: PKT14` |
 | 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-IMPL: PKT15` |
-| 16 | Car Telemetry 2 | 4 (new file) | 🔲 | 🔲 | `F126-IMPL: PKT16` |
+| 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-IMPL: PKT16` |
 
 ---
 
@@ -50,7 +50,7 @@ Run `grep -r "F126-CAPTURE" tests/` to list all capture stubs still waiting for 
 | 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT0` |
 | 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT1` |
 | 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT2` |
-| 3 | Event Data (COLL) | 3a, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT3` |
+| 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT3` |
 | 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT4` |
 | 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT5` |
 | 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT6` |
@@ -63,7 +63,7 @@ Run `grep -r "F126-CAPTURE" tests/` to list all capture stubs still waiting for 
 | 13 | Motion Ex | N/A | — | — | — |
 | 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT14` |
 | 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-CAPTURE: PKT15` |
-| 16 | Car Telemetry 2 | 4 (new file) | 🔲 | 🔲 | `F126-CAPTURE: PKT16` |
+| 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT16` |
 
 ---
 

@@ -54,6 +54,7 @@ from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
 from .packet_15_lap_positions_data import PacketLapPositionsData
+from .packet_16_car_telemetry2_data import CarTelemetry2Data, PacketCarTelemetry2Data
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -155,4 +156,8 @@ __all__ = [
 
     # Packet 15 - Lap positions
     "PacketLapPositionsData",
+
+    # Packet 16 - Car Telemetry 2 (F1 2026)
+    "PacketCarTelemetry2Data",
+    "CarTelemetry2Data",
 ]
