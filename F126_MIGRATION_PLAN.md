@@ -15,55 +15,28 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 
 ## Progress Tracker
 
-Grep tag format: `F126-IMPL: PKTn` — placed in source and test files at every 2026-specific block.
-Run `grep -r "F126-IMPL" lib/ tests/` to list all implementation sites.
+- `grep -r "F126-IMPL" lib/ tests/` — all 2026-specific implementation blocks
+- `grep -r "F126-CAPTURE" tests/` — capture stubs still awaiting real packet bytes
 
-| Pkt | Name | Phases | Parser | Tests | Grep tag |
-|-----|------|--------|--------|-------|----------|
-| 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT0` |
-| 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT1` |
-| 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` |
-| 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` |
-| 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT4` |
-| 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-IMPL: PKT5` |
-| 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-IMPL: PKT6` |
-| 7 | Car Status | 1, 2c, 5b | 🔲 | 🔲 | `F126-IMPL: PKT7` |
-| 8 | Final Classification | 1 | 🔲 | 🔲 | `F126-IMPL: PKT8` |
-| 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-IMPL: PKT9` |
-| 10 | Car Damage | 1 | 🔲 | 🔲 | `F126-IMPL: PKT10` |
-| 11 | Session History | N/A | — | — | — |
-| 12 | Tyre Sets | N/A | — | — | — |
-| 13 | Motion Ex | N/A | — | — | — |
-| 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-IMPL: PKT14` |
-| 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-IMPL: PKT15` |
-| 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-IMPL: PKT16` |
-
----
-
-## Progress Tracker
-
-Grep tag: `F126-CAPTURE: PKTn` — placed inside every `test_f1_26_actual` stub.
-Run `grep -r "F126-CAPTURE" tests/` to list all capture stubs still waiting for real packet bytes.
-
-| Pkt | Name | Phases | Parser | Tests | Capture tag |
-|-----|------|--------|--------|-------|-------------|
-| 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT0` |
-| 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT1` |
-| 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT2` |
-| 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT3` |
-| 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT4` |
-| 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT5` |
-| 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT6` |
-| 7 | Car Status | 1, 2c, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT7` |
-| 8 | Final Classification | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT8` |
-| 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT9` |
-| 10 | Car Damage | 1 | 🔲 | 🔲 | `F126-CAPTURE: PKT10` |
-| 11 | Session History | N/A | — | — | — |
-| 12 | Tyre Sets | N/A | — | — | — |
-| 13 | Motion Ex | N/A | — | — | — |
-| 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-CAPTURE: PKT14` |
-| 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-CAPTURE: PKT15` |
-| 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-CAPTURE: PKT16` |
+| Pkt | Name | Phases | Parser | Tests | Impl tag | Capture tag |
+|-----|------|--------|--------|-------|----------|-------------|
+| 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT0` | `F126-CAPTURE: PKT0` |
+| 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT1` | `F126-CAPTURE: PKT1` |
+| 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` | `F126-CAPTURE: PKT2` |
+| 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` | `F126-CAPTURE: PKT3` |
+| 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT4` | `F126-CAPTURE: PKT4` |
+| 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-IMPL: PKT5` | `F126-CAPTURE: PKT5` |
+| 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-IMPL: PKT6` | `F126-CAPTURE: PKT6` |
+| 7 | Car Status | 1, 2c, 5b | 🔲 | 🔲 | `F126-IMPL: PKT7` | `F126-CAPTURE: PKT7` |
+| 8 | Final Classification | 1 | 🔲 | 🔲 | `F126-IMPL: PKT8` | `F126-CAPTURE: PKT8` |
+| 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-IMPL: PKT9` | `F126-CAPTURE: PKT9` |
+| 10 | Car Damage | 1 | 🔲 | 🔲 | `F126-IMPL: PKT10` | `F126-CAPTURE: PKT10` |
+| 11 | Session History | N/A | — | — | — | — |
+| 12 | Tyre Sets | N/A | — | — | — | — |
+| 13 | Motion Ex | N/A | — | — | — | — |
+| 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-IMPL: PKT14` | `F126-CAPTURE: PKT14` |
+| 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-IMPL: PKT15` | `F126-CAPTURE: PKT15` |
+| 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-IMPL: PKT16` | `F126-CAPTURE: PKT16` |
 
 ---
 
