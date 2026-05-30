@@ -35,6 +35,15 @@ from typing import Any, Dict, List, Set
 
 from .base_pkt import F1BaseEnum, F1CompareableEnum
 
+# -------------------- CAR COUNT HELPERS -------------------------------------------------------------------------------
+
+MAX_CARS_PRE_2026: int = 22
+MAX_CARS_2026: int = 24
+
+def get_num_cars(packet_format: int) -> int:
+    """Return the number of cars in fixed-array packets for the given packet format."""
+    return MAX_CARS_2026 if packet_format >= 2026 else MAX_CARS_PRE_2026
+
 # -------------------- COMMON CLASSES ----------------------------------------------------------------------------------
 
 class ResultStatus(F1BaseEnum):

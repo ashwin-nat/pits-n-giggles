@@ -26,7 +26,7 @@ from typing import Any, Dict, List, final
 
 from .base_pkt import (F1BaseEnum, F1CompareableEnum, F1PacketBase,
                        F1SubPacketBase)
-from .common import F1Utils, ResultStatus
+from .common import F1Utils, ResultStatus, get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -507,6 +507,106 @@ class LapData(F1SubPacketBase):
         """
         return not self.__eq__(other)
 
+    def to_bytes(self) -> bytes:
+        """Serialize LapData to bytes using the F1 24+ struct (same for F1 25/26).
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+        return self.COMPILED_PACKET_STRUCT_24.pack(
+            self.m_lastLapTimeInMS,
+            self.m_currentLapTimeInMS,
+            self.m_sector1TimeInMS,
+            self.m_sector1TimeMinutes,
+            self.m_sector2TimeInMS,
+            self.m_sector2TimeMinutes,
+            self.m_deltaToCarInFrontInMS,
+            self.m_deltaToCarInFrontMinutes,
+            self.m_deltaToRaceLeaderInMS,
+            self.m_deltaToRaceLeaderMinutes,
+            self.m_lapDistance,
+            self.m_totalDistance,
+            self.m_safetyCarDelta,
+            self.m_carPosition,
+            self.m_currentLapNum,
+            self.m_pitStatus.value,
+            self.m_numPitStops,
+            self.m_sector.value,
+            int(self.m_currentLapInvalid),
+            self.m_penalties,
+            self.m_totalWarnings,
+            self.m_cornerCuttingWarnings,
+            self.m_numUnservedDriveThroughPens,
+            self.m_numUnservedStopGoPens,
+            self.m_gridPosition,
+            self.m_driverStatus.value,
+            self.m_resultStatus.value,
+            int(self.m_pitLaneTimerActive),
+            self.m_pitLaneTimeInLaneInMS,
+            self.m_pitStopTimerInMS,
+            self.m_pitStopShouldServePen,
+            self.m_speedTrapFastestSpeed,
+            self.m_speedTrapFastestLap,
+        )
+
+    @classmethod
+    def from_values(cls,
+                    last_lap_time_ms: int,
+                    current_lap_time_ms: int,
+                    sector1_time_ms: int,
+                    sector1_time_minutes: int,
+                    sector2_time_ms: int,
+                    sector2_time_minutes: int,
+                    delta_to_front_ms: int,
+                    delta_to_front_minutes: int,
+                    delta_to_leader_ms: int,
+                    delta_to_leader_minutes: int,
+                    lap_distance: float,
+                    total_distance: float,
+                    safety_car_delta: float,
+                    car_position: int,
+                    current_lap_num: int,
+                    pit_status: int,
+                    num_pit_stops: int,
+                    sector: int,
+                    current_lap_invalid: int,
+                    penalties: int,
+                    total_warnings: int,
+                    corner_cutting_warnings: int,
+                    num_unserved_drive_through_pens: int,
+                    num_unserved_stop_go_pens: int,
+                    grid_position: int,
+                    driver_status: int,
+                    result_status: int,
+                    pit_lane_timer_active: int,
+                    pit_lane_time_ms: int,
+                    pit_stop_timer_ms: int,
+                    pit_stop_should_serve_pen: int,
+                    speed_trap_fastest_speed: float,
+                    speed_trap_fastest_lap: int,
+                    packet_format: int = 2024) -> 'LapData':
+        """Create a LapData object from individual field values (F1 24+ format).
+
+        Returns:
+            LapData: A LapData object initialized with the provided values.
+        """
+        data = cls.COMPILED_PACKET_STRUCT_24.pack(
+            last_lap_time_ms, current_lap_time_ms,
+            sector1_time_ms, sector1_time_minutes,
+            sector2_time_ms, sector2_time_minutes,
+            delta_to_front_ms, delta_to_front_minutes,
+            delta_to_leader_ms, delta_to_leader_minutes,
+            lap_distance, total_distance, safety_car_delta,
+            car_position, current_lap_num, pit_status, num_pit_stops,
+            sector, current_lap_invalid, penalties, total_warnings,
+            corner_cutting_warnings, num_unserved_drive_through_pens,
+            num_unserved_stop_go_pens, grid_position, driver_status,
+            result_status, pit_lane_timer_active, pit_lane_time_ms,
+            pit_stop_timer_ms, pit_stop_should_serve_pen,
+            speed_trap_fastest_speed, speed_trap_fastest_lap,
+        )
+        return cls(data, packet_format)
+
     @property
     def s1TimeMS(self) -> int:
         """Return the total S1 time in ms."""
@@ -576,6 +676,7 @@ class PacketLapData(F1PacketBase):
     """
 
     MAX_CARS = 22
+    MAX_CARS_2026 = 24
 
     __slots__ = (
         "m_lapData",
@@ -593,20 +694,20 @@ class PacketLapData(F1PacketBase):
         """
         super().__init__(header)
 
-        # Determine LapData size based on game year
-        lap_data_obj_size = LapData.PACKET_LEN_24  # Default to 2024 format
+        # Determine LapData size based on game year (F1 26 uses the same struct as F1 24/25)
+        lap_data_obj_size = LapData.PACKET_LEN_24
         if header.m_packetFormat == 2023:
-            lap_data_obj_size = LapData.PACKET_LEN_23  # Use 2023 format if needed
+            lap_data_obj_size = LapData.PACKET_LEN_23
 
-        # Process each car's lap data individually
-        # Extract chunks of the correct size and create LapData objects
+        num_cars = get_num_cars(header.m_packetFormat)
+
         self.m_lapData: List[LapData]
         self.m_lapData, offset_so_far = LapData.parse_array(
             data=packet,
             offset=0,
             item_len=lap_data_obj_size,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS,
+            count=num_cars,
+            max_count=num_cars,
             packet_format=header.m_packetFormat
         )
 
@@ -637,7 +738,7 @@ class PacketLapData(F1PacketBase):
 
         json_data = {
             "lap-data": [lap_data.toJSON() for lap_data in self.m_lapData],
-            "lap-data-count": self.MAX_CARS,
+            "lap-data-count": len(self.m_lapData),
             "time-trial-pb-car-idx": int(self.m_timeTrialPBCarIdx),
             "time-trial-rival-car-idx": int(self.m_timeTrialRivalCarIdx),
         }
@@ -676,3 +777,36 @@ class PacketLapData(F1PacketBase):
             bool: True if both instances are not equal, False otherwise.
         """
         return not self.__eq__(other)
+
+    def to_bytes(self) -> bytes:
+        """Serialize PacketLapData to bytes.
+
+        Returns:
+            bytes: The serialized bytes.
+        """
+        return (
+            self.m_header.to_bytes() +
+            b''.join(lap.to_bytes() for lap in self.m_lapData) +
+            struct.pack('<bb', self.m_timeTrialPBCarIdx, self.m_timeTrialRivalCarIdx)
+        )
+
+    @classmethod
+    def from_values(cls, header: PacketHeader, lap_data: List[LapData],
+                    time_trial_pb_car_idx: int = -1,
+                    time_trial_rival_car_idx: int = -1) -> 'PacketLapData':
+        """Create a PacketLapData object from a header and list of LapData objects.
+
+        Args:
+            header (PacketHeader): The packet header.
+            lap_data (List[LapData]): List of LapData objects for all cars.
+            time_trial_pb_car_idx (int): Personal best car index (-1 if invalid).
+            time_trial_rival_car_idx (int): Rival car index (-1 if invalid).
+
+        Returns:
+            PacketLapData: A PacketLapData object initialized with the provided values.
+        """
+        payload = (
+            b''.join(lap.to_bytes() for lap in lap_data) +
+            struct.pack('<bb', time_trial_pb_car_idx, time_trial_rival_car_idx)
+        )
+        return cls(header, payload)

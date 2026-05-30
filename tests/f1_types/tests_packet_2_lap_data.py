@@ -22,6 +22,7 @@
 
 import random
 from lib.f1_types import PacketLapData, F1PacketType
+from lib.f1_types.packet_2_lap_data import LapData
 from .tests_parser_base import F1TypesTest
 
 class TestPacketLapData(F1TypesTest):
@@ -33,6 +34,8 @@ class TestPacketLapData(F1TypesTest):
         Set up the test
         """
         self.m_num_players = random.randint(1, 22)
+        self.m_num_players_26 = random.randint(1, 24)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.LAP_DATA, 26, self.m_num_players_26)
 
     def test_f1_23_actual(self):
         """
@@ -1758,3 +1761,126 @@ class TestPacketLapData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+    def _generateRandomLapData(self, packet_format: int = 2026) -> LapData:
+        """Generate a random LapData object for the given packet format."""
+        return LapData.from_values(
+            last_lap_time_ms=random.randint(0, 0xFFFFFFFF),
+            current_lap_time_ms=random.randint(0, 0xFFFFFFFF),
+            sector1_time_ms=random.randint(0, 0xFFFF),
+            sector1_time_minutes=random.randint(0, 0xFF),
+            sector2_time_ms=random.randint(0, 0xFFFF),
+            sector2_time_minutes=random.randint(0, 0xFF),
+            delta_to_front_ms=random.randint(0, 0xFFFF),
+            delta_to_front_minutes=random.randint(0, 0xFF),
+            delta_to_leader_ms=random.randint(0, 0xFFFF),
+            delta_to_leader_minutes=random.randint(0, 0xFF),
+            lap_distance=random.uniform(-1000.0, 10000.0),
+            total_distance=random.uniform(-1000.0, 100000.0),
+            safety_car_delta=random.uniform(0.0, 30.0),
+            car_position=random.randint(0, 24),
+            current_lap_num=random.randint(1, 100),
+            pit_status=random.randint(0, 2),
+            num_pit_stops=random.randint(0, 10),
+            sector=random.randint(0, 2),
+            current_lap_invalid=random.randint(0, 1),
+            penalties=random.randint(0, 30),
+            total_warnings=random.randint(0, 10),
+            corner_cutting_warnings=random.randint(0, 10),
+            num_unserved_drive_through_pens=random.randint(0, 5),
+            num_unserved_stop_go_pens=random.randint(0, 5),
+            grid_position=random.randint(0, 24),
+            driver_status=random.randint(0, 4),
+            result_status=random.randint(0, 7),
+            pit_lane_timer_active=random.randint(0, 1),
+            pit_lane_time_ms=random.randint(0, 0xFFFF),
+            pit_stop_timer_ms=random.randint(0, 0xFFFF),
+            pit_stop_should_serve_pen=random.randint(0, 1),
+            speed_trap_fastest_speed=random.uniform(0.0, 400.0),
+            speed_trap_fastest_lap=random.randint(0, 100),
+            packet_format=packet_format,
+        )
+
+    def test_f1_26_random(self):
+        """Test for F1 2026 with randomly generated data (24 cars, same struct as F1 24/25)."""
+        from lib.f1_types import PacketHeader
+
+        num_cars = PacketLapData.MAX_CARS_2026
+        lap_data_objects = [self._generateRandomLapData(packet_format=2026) for _ in range(num_cars)]
+        generated = PacketLapData.from_values(
+            self.m_header_26,
+            lap_data_objects,
+            time_trial_pb_car_idx=-1,
+            time_trial_rival_car_idx=-1,
+        )
+        serialised = generated.to_bytes()
+
+        header_bytes = serialised[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        payload_bytes = serialised[PacketHeader.PACKET_LEN:]
+        parsed = PacketLapData(parsed_header, payload_bytes)
+
+        self.assertEqual(generated, parsed)
+        self.assertEqual(len(parsed.m_lapData), 24)
+        self.jsonComparisionUtil(generated.toJSON(), parsed.toJSON())
+        self.assertFalse(hasattr(parsed, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """Test for F1 2026 with an actual game packet."""
+        # F126-CAPTURE: PKT2
+        self.skipTest("awaiting 2026 capture")
+        # --- fill in once captured, then remove skipTest above ---
+        # Capture point: lib/telemetry_manager/factory.py — gate on format==2026 and packetId==2
+        # raw_packet contains the payload bytes only (header already stripped)
+        # raw_packet = (
+        #     b"REPLACE_WITH_CAPTURED_BYTES"
+        # )
+        # expected_json = {
+        #     "lap-data": [
+        #         {
+        #             "last-lap-time-in-ms": 0,
+        #             "last-lap-time-str": "00:00.000",
+        #             "current-lap-time-in-ms": 0,
+        #             "current-lap-time-str": "00:00.000",
+        #             "sector-1-time-in-ms": 0,
+        #             "sector-1-time-minutes": 0,
+        #             "sector-1-time-str": "0.000",
+        #             "sector-2-time-in-ms": 0,
+        #             "sector-2-time-minutes": 0,
+        #             "sector-2-time-str": "0.000",
+        #             "delta-to-car-in-front-in-ms": 0,
+        #             "delta-to-race-leader-in-ms": 0,
+        #             "lap-distance": 0.0,
+        #             "total-distance": 0.0,
+        #             "safety-car-delta": 0.0,
+        #             "car-position": 0,
+        #             "current-lap-num": 0,
+        #             "pit-status": "NONE",
+        #             "num-pit-stops": 0,
+        #             "sector": "0",
+        #             "current-lap-invalid": False,
+        #             "penalties": 0,
+        #             "total-warnings": 0,
+        #             "corner-cutting-warnings": 0,
+        #             "num-unserved-drive-through-pens": 0,
+        #             "num-unserved-stop-go-pens": 0,
+        #             "grid-position": 0,
+        #             "driver-status": "ON_TRACK",
+        #             "result-status": "ACTIVE",
+        #             "pit-lane-timer-active": False,
+        #             "pit-lane-time-in-lane-in-ms": 0,
+        #             "pit-stop-timer-in-ms": 0,
+        #             "pit-stop-should-serve-pen": 0,
+        #             "speed-trap-fastest-speed": 0.0,
+        #             "speed-trap-fastest-lap": 0,
+        #         },
+        #         # ... 24 entries total (one per car)
+        #     ],
+        #     "lap-data-count": 24,
+        #     "time-trial-pb-car-idx": -1,
+        #     "time-trial-rival-car-idx": -1,
+        # }
+        # parsed_packet = PacketLapData(self.m_header_26, raw_packet)
+        # parsed_json = parsed_packet.toJSON()
+        # self.jsonComparisionUtil(expected_json, parsed_json)
+        # self.assertFalse(hasattr(parsed_packet, '__dict__'))

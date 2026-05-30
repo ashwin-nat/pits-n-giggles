@@ -25,6 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import get_num_cars
 from .errors import InvalidPacketLengthError
 from .header import PacketHeader
 
@@ -78,7 +79,31 @@ class CarMotionData(F1SubPacketBase):
     )
     PACKET_LEN: int = COMPILED_PACKET_STRUCT.size
 
+    # F1 26: g-force fields change from float to int16 (divide raw value by 1000.0)
+    COMPILED_PACKET_STRUCT_2026 = struct.Struct("<"
+        "f" # float - World space X position - metres
+        "f" # float - World space Y position
+        "f" # float - World space Z position
+        "f" # float - Velocity in world space X – metres/s
+        "f" # float - Velocity in world space Y
+        "f" # float - Velocity in world space Z
+        "h" # int16 - World space forward X direction (normalised)
+        "h" # int16 - World space forward Y direction (normalised)
+        "h" # int16 - World space forward Z direction (normalised)
+        "h" # int16 - World space right X direction (normalised)
+        "h" # int16 - World space right Y direction (normalised)
+        "h" # int16 - World space right Z direction (normalised)
+        "h" # int16 - Lateral G-Force component (÷1000.0)
+        "h" # int16 - Longitudinal G-Force component (÷1000.0)
+        "h" # int16 - Vertical G-Force component (÷1000.0)
+        "f" # float - Yaw angle in radians
+        "f" # float - Pitch angle in radians
+        "f" # float - Roll angle in radians
+    )
+    PACKET_LEN_2026: int = COMPILED_PACKET_STRUCT_2026.size
+
     __slots__ = (
+        "m_packetFormat",
         "m_worldPositionX",
         "m_worldPositionY",
         "m_worldPositionZ",
@@ -99,14 +124,15 @@ class CarMotionData(F1SubPacketBase):
         "m_roll",
     )
 
-    def __init__(self, data: bytes) -> None:
+    def __init__(self, data: bytes, packet_format: int = 0) -> None:
         """A class for parsing the data related to the motion of the F1 car
 
         Args:
-            data (List[bytes]): list containing the raw bytes for this packet
+            data (bytes): raw bytes for this packet
+            packet_format (int): packet format year (e.g. 2026); 0 means pre-2026
         """
 
-        # Declare the data type hints
+        self.m_packetFormat: int = packet_format
         self.m_worldPositionX: float
         self.m_worldPositionY: float
         self.m_worldPositionZ: float
@@ -126,10 +152,13 @@ class CarMotionData(F1SubPacketBase):
         self.m_pitch: float
         self.m_roll: float
 
-        self._parse(data)
+        if packet_format >= 2026:
+            self._parse_2026(data)
+        else:
+            self._parse_pre2026(data)
 
-    def _parse(self, data: bytes) -> None:
-        """Raw byte unpacking."""
+    def _parse_pre2026(self, data: bytes) -> None:
+        """Raw byte unpacking for pre-2026 format (g-forces as float)."""
         (
             self.m_worldPositionX,
             self.m_worldPositionY,
@@ -150,6 +179,35 @@ class CarMotionData(F1SubPacketBase):
             self.m_pitch,
             self.m_roll,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+
+    def _parse_2026(self, data: bytes) -> None:
+        """Raw byte unpacking for F1 26 format (g-forces as int16 ÷ 1000.0)."""
+        lat_raw: int
+        lon_raw: int
+        vert_raw: int
+        (
+            self.m_worldPositionX,
+            self.m_worldPositionY,
+            self.m_worldPositionZ,
+            self.m_worldVelocityX,
+            self.m_worldVelocityY,
+            self.m_worldVelocityZ,
+            self.m_worldForwardDirX,
+            self.m_worldForwardDirY,
+            self.m_worldForwardDirZ,
+            self.m_worldRightDirX,
+            self.m_worldRightDirY,
+            self.m_worldRightDirZ,
+            lat_raw,
+            lon_raw,
+            vert_raw,
+            self.m_yaw,
+            self.m_pitch,
+            self.m_roll,
+        ) = self.COMPILED_PACKET_STRUCT_2026.unpack(data)
+        self.m_gForceLateral = lat_raw / 1000.0
+        self.m_gForceLongitudinal = lon_raw / 1000.0
+        self.m_gForceVertical = vert_raw / 1000.0
 
     def __str__(self) -> str:
         """Return a formatted string representing the CarMotionData object
@@ -254,11 +312,21 @@ class CarMotionData(F1SubPacketBase):
         return not self.__eq__(other)
 
     def to_bytes(self) -> bytes:
-        """Serialize the CarMotionData object to bytes based on PACKET_FORMAT.
+        """Serialize the CarMotionData object to bytes.
 
         Returns:
             bytes: The serialized bytes.
         """
+        if self.m_packetFormat >= 2026:
+            return self.COMPILED_PACKET_STRUCT_2026.pack(
+                self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ,
+                self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ,
+                self.m_worldForwardDirX, self.m_worldForwardDirY, self.m_worldForwardDirZ,
+                self.m_worldRightDirX, self.m_worldRightDirY, self.m_worldRightDirZ,
+                int(round(self.m_gForceLateral * 1000)),
+                int(round(self.m_gForceLongitudinal * 1000)),
+                int(round(self.m_gForceVertical * 1000)),
+                self.m_yaw, self.m_pitch, self.m_roll)
         return self.COMPILED_PACKET_STRUCT.pack(
             self.m_worldPositionX, self.m_worldPositionY, self.m_worldPositionZ,
             self.m_worldVelocityX, self.m_worldVelocityY, self.m_worldVelocityZ,
@@ -273,7 +341,8 @@ class CarMotionData(F1SubPacketBase):
                     world_forward_dir_x: int, world_forward_dir_y: int, world_forward_dir_z: int,
                     world_right_dir_x: int, world_right_dir_y: int, world_right_dir_z: int,
                     g_force_lateral: float, g_force_longitudinal: float, g_force_vertical: float,
-                    yaw: float, pitch: float, roll: float) -> 'CarMotionData':
+                    yaw: float, pitch: float, roll: float,
+                    packet_format: int = 0) -> 'CarMotionData':
         """Create a CarMotionData object from individual values.
 
         Args:
@@ -295,18 +364,30 @@ class CarMotionData(F1SubPacketBase):
             yaw (float): Yaw angle in radians
             pitch (float): Pitch angle in radians
             roll (float): Roll angle in radians
+            packet_format (int): packet format year (0 means pre-2026)
 
         Returns:
             CarMotionData: A CarMotionData object initialized with the provided values.
         """
-        data = cls.COMPILED_PACKET_STRUCT.pack(
-            world_position_x, world_position_y, world_position_z,
-            world_velocity_x, world_velocity_y, world_velocity_z,
-            world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
-            world_right_dir_x, world_right_dir_y, world_right_dir_z,
-            g_force_lateral, g_force_longitudinal, g_force_vertical,
-            yaw, pitch, roll)
-        return cls(data)
+        if packet_format >= 2026:
+            data = cls.COMPILED_PACKET_STRUCT_2026.pack(
+                world_position_x, world_position_y, world_position_z,
+                world_velocity_x, world_velocity_y, world_velocity_z,
+                world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
+                world_right_dir_x, world_right_dir_y, world_right_dir_z,
+                int(round(g_force_lateral * 1000)),
+                int(round(g_force_longitudinal * 1000)),
+                int(round(g_force_vertical * 1000)),
+                yaw, pitch, roll)
+        else:
+            data = cls.COMPILED_PACKET_STRUCT.pack(
+                world_position_x, world_position_y, world_position_z,
+                world_velocity_x, world_velocity_y, world_velocity_z,
+                world_forward_dir_x, world_forward_dir_y, world_forward_dir_z,
+                world_right_dir_x, world_right_dir_y, world_right_dir_z,
+                g_force_lateral, g_force_longitudinal, g_force_vertical,
+                yaw, pitch, roll)
+        return cls(data, packet_format)
 
 class PacketMotionData(F1PacketBase):
     """A class for parsing the Motion Data Packet of a telemetry packet in a racing game.
@@ -324,6 +405,7 @@ class PacketMotionData(F1PacketBase):
     """
 
     MAX_CARS = 22
+    MAX_CARS_2026 = 24
 
     __slots__ = (
         "m_carMotionData",
@@ -342,19 +424,26 @@ class PacketMotionData(F1PacketBase):
 
         super().__init__(header)
 
-        if ((len(packet) % CarMotionData.PACKET_LEN) != 0):
+        item_len = (
+            CarMotionData.PACKET_LEN_2026
+            if header.m_packetFormat >= 2026
+            else CarMotionData.PACKET_LEN
+        )
+        num_cars = get_num_cars(header.m_packetFormat)
+
+        if len(packet) % item_len != 0:
             raise InvalidPacketLengthError(
-                f"Received packet length {len(packet)} is not a multiple of {str(CarMotionData.PACKET_LEN)}"
+                f"Received packet length {len(packet)} is not a multiple of {item_len}"
             )
 
-        # Slice the packet bytes in steps of CarMotionData.PACKET_LEN to create CarMotionData objects.
         self.m_carMotionData: List[CarMotionData]
         self.m_carMotionData, _ = CarMotionData.parse_array(
             data=packet,
             offset=0,
-            item_len=CarMotionData.PACKET_LEN,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS
+            item_len=item_len,
+            count=num_cars,
+            max_count=num_cars,
+            packet_format=header.m_packetFormat,
         )
 
     def __str__(self) -> str:
