@@ -5,6 +5,8 @@ Source: *F1 25 – F1 26 DLC UDP Packages* spec diff.
 ## NOTE: ALWAYS PROPOSE THE CHANGES TO THE USER, ONCE THEY APPROVE, MAKE THE CHANGES.
 NEVER MAKE CHANGES WITHOUT NOTIFYING THE USER!!!!!!!!!!!
 
+Also refer to F1 25 - ``F1 26 DLC UDP Packages.pdf`` for whats changing. If you have any questions, stop and ask
+
 ---
 
 ## Overview
@@ -25,8 +27,8 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 | 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` | `F126-CAPTURE: PKT2` |
 | 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` | `F126-CAPTURE: PKT3` |
 | 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT4` | `F126-CAPTURE: PKT4` |
-| 5 | Car Setups | 1 | 🔲 | 🔲 | `F126-IMPL: PKT5` | `F126-CAPTURE: PKT5` |
-| 6 | Car Telemetry | 1 | 🔲 | 🔲 | `F126-IMPL: PKT6` | `F126-CAPTURE: PKT6` |
+| 5 | Car Setups | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT5` | `F126-CAPTURE: PKT5` |
+| 6 | Car Telemetry | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT6` | `F126-CAPTURE: PKT6` |
 | 7 | Car Status | 1, 2c, 5b | 🔲 | 🔲 | `F126-IMPL: PKT7` | `F126-CAPTURE: PKT7` |
 | 8 | Final Classification | 1 | 🔲 | 🔲 | `F126-IMPL: PKT8` | `F126-CAPTURE: PKT8` |
 | 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-IMPL: PKT9` | `F126-CAPTURE: PKT9` |

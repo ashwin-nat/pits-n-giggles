@@ -25,6 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import MAX_CARS_2026, get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -385,6 +386,7 @@ class PacketCarTelemetryData(F1PacketBase):
     """
 
     MAX_CARS = 22
+    MAX_CARS_2026 = 24
     COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
     PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size
 
@@ -410,12 +412,13 @@ class PacketCarTelemetryData(F1PacketBase):
         super().__init__(header)
         self.m_carTelemetryData: List[CarTelemetryData]
 
+        num_cars = get_num_cars(header.m_packetFormat)
         self.m_carTelemetryData, offset_so_far = CarTelemetryData.parse_array(
             data=packet,
             offset=0,
             item_len=CarTelemetryData.PACKET_LEN,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS
+            count=num_cars,
+            max_count=num_cars
         )
 
         self.m_mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \

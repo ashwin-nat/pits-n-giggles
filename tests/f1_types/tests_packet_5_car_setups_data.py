@@ -36,6 +36,8 @@ class TestPacketCarSetupData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.CAR_SETUPS, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.CAR_SETUPS, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.CAR_SETUPS, 25, self.m_num_players)
+        self.m_num_players_26 = random.randint(1, 24)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.CAR_SETUPS, 26, self.m_num_players_26)
 
     def test_f1_24_random(self):
         """
@@ -1262,6 +1264,34 @@ class TestPacketCarSetupData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet
+        """
+
+        num_cars = PacketCarSetupData.MAX_CARS_2026
+        random_car_setups = [self._getRandomCarSetupData(self.m_header_26) for _ in range(num_cars)]
+
+        generated_test_obj = PacketCarSetupData.from_values(
+            self.m_header_26, random_car_setups, next_front_wing_value=F1TypesTest.getRandomFloat())
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketCarSetupData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_carSetups), num_cars)
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet
+        """
+
+        self.skipTest("awaiting 2026 capture")
 
     def _getRandomCarSetupData(self, header: PacketHeader) -> CarSetupData:
         """
