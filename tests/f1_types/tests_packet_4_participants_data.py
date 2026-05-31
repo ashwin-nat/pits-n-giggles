@@ -27,6 +27,7 @@ from lib.f1_types import (F1PacketType, LiveryColour, Nationality,
                           PacketHeader, PacketParticipantsData,
                           ParticipantData, Platform, TeamID23, TeamID24,
                           TeamID25, TelemetrySetting)
+# F126-CAPTURE: PKT4
 
 from .tests_parser_base import F1TypesTest
 
@@ -44,6 +45,33 @@ class TestPacketParticipantsData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.PARTICIPANTS, 26, random.randint(1, 24))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet (24 cars, uint16 IDs) F126-IMPL: PKT4
+        """
+
+        random_participants = [self._getRandomParticipantData(self.m_header_26) for _ in range(24)]
+
+        generated_test_obj = PacketParticipantsData.from_values(
+            self.m_header_26, self.m_header_26.m_playerCarIndex, random_participants)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketParticipantsData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_participants), 24)
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet F126-IMPL: PKT4
+        """
+        self.skipTest("awaiting 2026 capture")  # F126-CAPTURE: PKT4
 
     def test_f1_25_random(self):
         """
@@ -164,13 +192,15 @@ class TestPacketParticipantsData(F1TypesTest):
             team_id = random.choice(list(TeamID23))
         elif header.m_packetFormat == 2024:
             team_id = random.choice(list(TeamID24))
-        elif header.m_packetFormat == 2025:
+        elif header.m_packetFormat >= 2025:
             team_id = random.choice(list(TeamID25))
+        # For 2026, driver_id and network_id can be full uint16 range
+        id_max = 65535 if header.m_packetFormat >= 2026 else 100
         return ParticipantData.from_values(
             header,
             ai_controlled=F1TypesTest.getRandomBool(),
-            driver_id=random.randint(1,100),
-            network_id=random.randint(1,100),
+            driver_id=random.randint(1, id_max),
+            network_id=random.randint(1, id_max),
             team_id=team_id,
             my_team=F1TypesTest.getRandomBool(),
             race_number=random.randint(1,self.m_num_players),

@@ -26,11 +26,11 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 | 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT1` | `F126-CAPTURE: PKT1` |
 | 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` | `F126-CAPTURE: PKT2` |
 | 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` | `F126-CAPTURE: PKT3` |
-| 4 | Participants Data | 1, 2b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT4` | `F126-CAPTURE: PKT4` |
+| 4 | Participants Data | 1, 2b, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT4` | `F126-CAPTURE: PKT4` |
 | 5 | Car Setups | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT5` | `F126-CAPTURE: PKT5` |
 | 6 | Car Telemetry | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT6` | `F126-CAPTURE: PKT6` |
-| 7 | Car Status | 1, 2c, 5b | 🔲 | 🔲 | `F126-IMPL: PKT7` | `F126-CAPTURE: PKT7` |
-| 8 | Final Classification | 1 | 🔲 | 🔲 | `F126-IMPL: PKT8` | `F126-CAPTURE: PKT8` |
+| 7 | Car Status | 1, 2c, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT7` | `F126-CAPTURE: PKT7` |
+| 8 | Final Classification | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT8` | `F126-CAPTURE: PKT8` |
 | 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-IMPL: PKT9` | `F126-CAPTURE: PKT9` |
 | 10 | Car Damage | 1 | 🔲 | 🔲 | `F126-IMPL: PKT10` | `F126-CAPTURE: PKT10` |
 | 11 | Session History | N/A | — | — | — | — |

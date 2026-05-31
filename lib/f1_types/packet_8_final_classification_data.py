@@ -596,7 +596,7 @@ class PacketFinalClassificationData(F1PacketBase):
         The class is designed to parse and represent the final classification data packet.
     """
 
-    MAX_CARS = 22
+    MAX_CARS = 24
 
     __slots__ = (
         "m_numCars",

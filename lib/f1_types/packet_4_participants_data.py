@@ -25,8 +25,8 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
-from .common import (Nationality, Platform, TeamID, TeamID23, TeamID24,
-                     TeamID25, TelemetrySetting)
+from .common import (MAX_CARS_2026, Nationality, Platform, TeamID, TeamID23,
+                     TeamID24, TeamID25, TelemetrySetting, get_num_cars)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -157,6 +157,24 @@ class ParticipantData(F1SubPacketBase):
     PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     MAX_LIVERY_COLOURS = 4
+    COMPILED_PACKET_STRUCT_26_BASE = struct.Struct("<"
+        "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
+        "H" # uint16     m_driverId;       // Driver id - see appendix, 65535 if network human
+        "H" # uint16     m_networkId;       // Network id – unique identifier for network players
+        "H" # uint16     m_teamId;            // Team id - see appendix (widened from uint8)
+        "B" # uint8      m_myTeam;            // My team flag – 1 = My Team, 0 = otherwise
+        "B" # uint8      m_raceNumber;        // Race number of the car
+        "B" # uint8      m_nationality;       // Nationality of the driver
+        "32s" # char     m_name[32];          // Name of participant in UTF-8 format – null terminated
+        "B" # uint8      m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
+        "B" # uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
+        "H" # uint16     m_techLevel          // F1 World tech level
+        "B" # uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
+        "B" # uint8      m_numColours          // Number of colors in the livery
+    )
+    PACKET_LEN_26_BASE = COMPILED_PACKET_STRUCT_26_BASE.size
+    PACKET_LEN_26 = PACKET_LEN_26_BASE + (LiveryColour.PACKET_LEN * MAX_LIVERY_COLOURS)
+
     COMPILED_PACKET_STRUCT_25_BASE = struct.Struct("<"
         "B" # uint8      m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
         "B" # uint8      m_driverId;       // Driver id - see appendix, 255 if network human
@@ -217,8 +235,10 @@ class ParticipantData(F1SubPacketBase):
             self._parse_f23(data)
         elif packet_format == 2024:
             self._parse_f24(data)
-        else:
+        elif packet_format == 2025:
             self._parse_f25(data)
+        else:  # >= 2026
+            self._parse_f26(data)
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
 
     def _parse_f23(self, data: bytes) -> None:
@@ -278,6 +298,31 @@ class ParticipantData(F1SubPacketBase):
             max_count=self.MAX_LIVERY_COLOURS
         )
 
+    def _parse_f26(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_driverId,
+            self.networkId,
+            self.m_teamId,
+            self.m_myTeam,
+            self.m_raceNumber,
+            self.m_nationality,
+            self.m_name,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_platform,
+            self.m_numColours
+        ) = self.COMPILED_PACKET_STRUCT_26_BASE.unpack(data[:self.PACKET_LEN_26_BASE])
+
+        self.m_liveryColours, _ = LiveryColour.parse_array(
+            data=data,
+            offset=self.PACKET_LEN_26_BASE,
+            item_len=LiveryColour.PACKET_LEN,
+            count=self.m_numColours,
+            max_count=self.MAX_LIVERY_COLOURS
+        )
+
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
         self.m_platform = Platform.safeCast(self.m_platform)
@@ -285,8 +330,8 @@ class ParticipantData(F1SubPacketBase):
             self.m_teamId = TeamID23.safeCast(self.m_teamId)
         elif packet_format == 2024:
             self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format == 2025:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        elif packet_format >= 2025:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId) # TODO: Revisit this when TeamID is updated
         self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)
@@ -389,6 +434,34 @@ class ParticipantData(F1SubPacketBase):
                 self.m_showOnlineNames,
                 self.m_techLevel,
                 self.m_platform.value
+            )
+        if self.m_packetFormat >= 2026:
+            return struct.pack(self.COMPILED_PACKET_STRUCT_26_BASE.format + "BBB" * self.MAX_LIVERY_COLOURS,
+                self.m_aiControlled,
+                self.m_driverId,
+                self.networkId,
+                self.m_teamId.value,
+                self.m_myTeam,
+                self.m_raceNumber,
+                self.m_nationality.value,
+                self.m_name.encode('utf-8'),
+                self.m_yourTelemetry.value,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_platform.value,
+                self.m_numColours,
+                self.m_liveryColours[0].m_red,
+                self.m_liveryColours[0].m_green,
+                self.m_liveryColours[0].m_blue,
+                self.m_liveryColours[1].m_red,
+                self.m_liveryColours[1].m_green,
+                self.m_liveryColours[1].m_blue,
+                self.m_liveryColours[2].m_red,
+                self.m_liveryColours[2].m_green,
+                self.m_liveryColours[2].m_blue,
+                self.m_liveryColours[3].m_red,
+                self.m_liveryColours[3].m_green,
+                self.m_liveryColours[3].m_blue,
             )
         return struct.pack(self.COMPILED_PACKET_STRUCT_25_BASE.format + "BBB" * self.MAX_LIVERY_COLOURS,
             self.m_aiControlled,
@@ -556,6 +629,34 @@ class ParticipantData(F1SubPacketBase):
                 liveries[3].m_green,
                 liveries[3].m_blue
             )
+        elif header.m_packetFormat >= 2026:
+            data = struct.pack(ParticipantData.COMPILED_PACKET_STRUCT_26_BASE.format + "BBB" * 4,
+                ai_controlled,
+                driver_id,
+                network_id,
+                team_id.value,
+                my_team,
+                race_number,
+                nationality.value,
+                name.encode('utf-8'),
+                your_telemetry.value,
+                show_online_names,
+                tech_level,
+                platform.value,
+                num_colours,
+                liveries[0].m_red,
+                liveries[0].m_green,
+                liveries[0].m_blue,
+                liveries[1].m_red,
+                liveries[1].m_green,
+                liveries[1].m_blue,
+                liveries[2].m_red,
+                liveries[2].m_green,
+                liveries[2].m_blue,
+                liveries[3].m_red,
+                liveries[3].m_green,
+                liveries[3].m_blue
+            )
         else:
             raise NotImplementedError(f"Unsupported packet format: {header.m_packetFormat}")
         return cls(data, header.m_packetFormat)
@@ -575,7 +676,7 @@ class PacketParticipantsData(F1PacketBase):
                 The length of m_participants should not exceed max_participants.
     """
 
-    MAX_PARTICIPANTS = 22
+    MAX_PARTICIPANTS = 24
 
     __slots__ = (
         "m_numActiveCars",
@@ -601,16 +702,18 @@ class PacketParticipantsData(F1PacketBase):
                 packet_len = ParticipantData.PACKET_LEN_23
             case 2024:
                 packet_len = ParticipantData.PACKET_LEN_24
-            case _:
+            case 2025:
                 packet_len = ParticipantData.PACKET_LEN_25
+            case _:  # >= 2026
+                packet_len = ParticipantData.PACKET_LEN_26
 
         self.m_participants: List[ParticipantData]
         self.m_participants, _ = ParticipantData.parse_array(
             data=packet,
             offset=1,
             item_len=packet_len,
-            count=self.MAX_PARTICIPANTS,
-            max_count=self.MAX_PARTICIPANTS,
+            count=get_num_cars(header.m_packetFormat),
+            max_count=MAX_CARS_2026,
             packet_format=header.m_packetFormat
         )
 
