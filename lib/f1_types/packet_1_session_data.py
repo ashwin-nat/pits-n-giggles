@@ -464,6 +464,68 @@ class WeatherForecastSample(F1SubPacketBase):
             game_year
         )
 
+class ActiveAeroZone(F1SubPacketBase):
+    """A zone on the track where active aero is available (F1 2026+)."""
+
+    COMPILED_PACKET_STRUCT = struct.Struct("<ff")
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = ("m_zoneStart", "m_zoneEnd")
+
+    def __init__(self, data: bytes) -> None:
+        self.m_zoneStart: float
+        self.m_zoneEnd: float
+        self.m_zoneStart, self.m_zoneEnd = self.COMPILED_PACKET_STRUCT.unpack(data)
+
+    def __str__(self) -> str:
+        return f"ActiveAeroZone(Start: {self.m_zoneStart}, End: {self.m_zoneEnd})"
+
+    def __eq__(self, other: "ActiveAeroZone") -> bool:
+        if not isinstance(other, ActiveAeroZone):
+            return False
+        return self.m_zoneStart == other.m_zoneStart and self.m_zoneEnd == other.m_zoneEnd
+
+    def __ne__(self, other: "ActiveAeroZone") -> bool:
+        return not self.__eq__(other)
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {"zone-start": self.m_zoneStart, "zone-end": self.m_zoneEnd}
+
+    def to_bytes(self) -> bytes:
+        return self.COMPILED_PACKET_STRUCT.pack(self.m_zoneStart, self.m_zoneEnd)
+
+
+class DRSZone(F1SubPacketBase):
+    """A DRS zone on the track (F1 2026+)."""
+
+    COMPILED_PACKET_STRUCT = struct.Struct("<ff")
+    PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+    __slots__ = ("m_zoneStart", "m_zoneEnd")
+
+    def __init__(self, data: bytes) -> None:
+        self.m_zoneStart: float
+        self.m_zoneEnd: float
+        self.m_zoneStart, self.m_zoneEnd = self.COMPILED_PACKET_STRUCT.unpack(data)
+
+    def __str__(self) -> str:
+        return f"DRSZone(Start: {self.m_zoneStart}, End: {self.m_zoneEnd})"
+
+    def __eq__(self, other: "DRSZone") -> bool:
+        if not isinstance(other, DRSZone):
+            return False
+        return self.m_zoneStart == other.m_zoneStart and self.m_zoneEnd == other.m_zoneEnd
+
+    def __ne__(self, other: "DRSZone") -> bool:
+        return not self.__eq__(other)
+
+    def toJSON(self) -> Dict[str, Any]:
+        return {"zone-start": self.m_zoneStart, "zone-end": self.m_zoneEnd}
+
+    def to_bytes(self) -> bytes:
+        return self.COMPILED_PACKET_STRUCT.pack(self.m_zoneStart, self.m_zoneEnd)
+
+
 class PacketSessionData(F1PacketBase):
     """
     Represents an incoming packet containing session data.
@@ -527,6 +589,8 @@ class PacketSessionData(F1PacketBase):
     F1_23_MAX_NUM_MARSHAL_ZONES = 21
     F1_24_MAX_NUM_WEATHER_FORECAST_SAMPLES = 64
     F1_24_MAX_NUM_MARSHAL_ZONES = 21
+    F1_26_MAX_NUM_ACTIVE_AERO_ZONES = 8
+    F1_26_MAX_NUM_DRS_ZONES = 4
 
     COMPILED_PACKET_STRUCT_SECTION_0 = struct.Struct("<"
         "B" # uint8           m_weather;                  // Weather - 0 = clear, 1 = light cloud, 2 = overcast
@@ -626,6 +690,16 @@ class PacketSessionData(F1PacketBase):
     )
     PACKET_LEN_SECTION_5 = COMPILED_PACKET_STRUCT_SECTION_5.size
 
+    # F1 2026 section 6 — interleaved with ActiveAeroZone[8], ActiveAeroZone[8], DRSZone[4] arrays
+    COMPILED_PACKET_STRUCT_SECTION_6_A = struct.Struct("<BB")   # m_activeAeroTrackStatus, m_numActiveAeroZonesFull
+    PACKET_LEN_SECTION_6_A = COMPILED_PACKET_STRUCT_SECTION_6_A.size
+    COMPILED_PACKET_STRUCT_SECTION_6_B = struct.Struct("<B")    # m_numActiveAeroZonesPartial
+    PACKET_LEN_SECTION_6_B = COMPILED_PACKET_STRUCT_SECTION_6_B.size
+    COMPILED_PACKET_STRUCT_SECTION_6_C = struct.Struct("<B")    # m_numDRSZones
+    PACKET_LEN_SECTION_6_C = COMPILED_PACKET_STRUCT_SECTION_6_C.size
+    COMPILED_PACKET_STRUCT_SECTION_6_D = struct.Struct("<fBBBBB")  # m_startReactionTime + 5×uint8
+    PACKET_LEN_SECTION_6_D = COMPILED_PACKET_STRUCT_SECTION_6_D.size
+
     __slots__ = (
         "m_weather",
         "m_trackTemperature",
@@ -704,6 +778,20 @@ class PacketSessionData(F1PacketBase):
         "m_weekendStructure",
         "m_sector2LapDistanceStart",
         "m_sector3LapDistanceStart",
+        # F1 2026 fields
+        "m_activeAeroTrackStatus",
+        "m_numActiveAeroZonesFull",
+        "m_activeAeroZonesFull",
+        "m_numActiveAeroZonesPartial",
+        "m_activeAeroZonesPartial",
+        "m_numDRSZones",
+        "m_drsZones",
+        "m_startReactionTime",
+        "m_antiLockBrakesAssist",
+        "m_tractionControlAssist",
+        "m_dynamicRacingLineHiVis",
+        "m_dynamicRacingLineColourBlind",
+        "m_recurringRewindPrompt",
     )
 
     class FormulaType(F1BaseEnum):
@@ -719,6 +807,7 @@ class PacketSessionData(F1PacketBase):
         F2_2021: int = 7
         F1_WORLD: int = 8
         F1_ELIMINATION: int = 9
+        F1_26: int = 13
 
         def __str__(self) -> str:
             """Return a human-readable string representation of the formula type."""
@@ -733,6 +822,7 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.F2_2021: "F2 2021",
                 PacketSessionData.FormulaType.F1_WORLD: "F1 World",
                 PacketSessionData.FormulaType.F1_ELIMINATION: "F1 Elimination",
+                PacketSessionData.FormulaType.F1_26: "F1 26",
             }[self]
 
         def is_f1(self) -> bool:
@@ -743,6 +833,7 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.F1_GENERIC,
                 PacketSessionData.FormulaType.F1_WORLD,
                 PacketSessionData.FormulaType.F1_ELIMINATION,
+                PacketSessionData.FormulaType.F1_26,
             ]
 
         def is_f2(self) -> bool:
@@ -869,6 +960,24 @@ class PacketSessionData(F1PacketBase):
         STANDARD = 2
         INCREASED = 3
 
+    class ActiveAeroTrackStatus(F1BaseEnum):
+        """Active aero track coverage mode (F1 2026+)."""
+        FULL = 0
+        PARTIAL = 1
+
+    class TractionControlAssistMode(F1BaseEnum):
+        """Traction control assist level (F1 2026+)."""
+        OFF = 0
+        MEDIUM = 1
+        FULL = 2
+
+    class DynamicRacingLineColourBlindMode(F1BaseEnum):
+        """Colour-blind mode for the dynamic racing line (F1 2026+)."""
+        OFF = 0
+        PROTANOPIA = 1
+        DEUTERANOPIA = 2
+        TRITANOPIA = 3
+
     def __init__(self, header: PacketHeader, data: bytes) -> None:
         """Construct a PacketSessionData object
 
@@ -959,8 +1068,24 @@ class PacketSessionData(F1PacketBase):
         self.m_sector2LapDistanceStart: float    # // Distance in m around track where sector 2 starts
         self.m_sector3LapDistanceStart: float    # // Distance in m around track where sector 3
 
+        # F1 2026 fields
+        self.m_activeAeroTrackStatus: PacketSessionData.ActiveAeroTrackStatus
+        self.m_numActiveAeroZonesFull: int
+        self.m_activeAeroZonesFull: List[ActiveAeroZone]
+        self.m_numActiveAeroZonesPartial: int
+        self.m_activeAeroZonesPartial: List[ActiveAeroZone]
+        self.m_numDRSZones: int
+        self.m_drsZones: List[DRSZone]
+        self.m_startReactionTime: float
+        self.m_antiLockBrakesAssist: bool
+        self.m_tractionControlAssist: PacketSessionData.TractionControlAssistMode
+        self.m_dynamicRacingLineHiVis: int
+        self.m_dynamicRacingLineColourBlind: PacketSessionData.DynamicRacingLineColourBlindMode
+        self.m_recurringRewindPrompt: int
+
         offset = self._parse_base(data, header.m_packetFormat)
-        self._parse_f24(data, offset, header.m_packetFormat)
+        offset = self._parse_f24(data, offset, header.m_packetFormat)
+        self._parse_f26(data, offset, header.m_packetFormat)
         self._cast_enums(header.m_packetFormat)
 
     def _parse_base(self, data: bytes, fmt: int) -> int:
@@ -1058,8 +1183,8 @@ class PacketSessionData(F1PacketBase):
         return byte_index_so_far
 
     def _parse_f24(self, data: bytes, offset: int, fmt: int) -> int:
-        """Parse F1 24+ fields. Assigns zero defaults for older formats. Returns updated byte offset."""
-        if fmt == 2024:
+        """Parse F1 24/26 fields (section 5). Assigns zero defaults for other formats. Returns updated offset."""
+        if fmt >= 2024:
             (
                 self.m_equalCarPerformance,         # uint8 - car equal performance. 0 = off, 1 = on
                 self.m_recoveryMode,                # uint8 - 0 = None, 1 = Flashbacks, 2 = Auto-recovery
@@ -1128,6 +1253,78 @@ class PacketSessionData(F1PacketBase):
         self.m_sector3LapDistanceStart = 0.0
         return offset
 
+    def _parse_f26(self, data: bytes, offset: int, fmt: int) -> int:
+        """Parse F1 2026-only fields (section 6). Assigns zero/empty defaults for older formats."""
+        if fmt == 2026:
+            (
+                self.m_activeAeroTrackStatus,
+                self.m_numActiveAeroZonesFull,
+            ) = self.COMPILED_PACKET_STRUCT_SECTION_6_A.unpack(
+                data[offset:offset + self.PACKET_LEN_SECTION_6_A]
+            )
+            offset += self.PACKET_LEN_SECTION_6_A
+
+            self.m_activeAeroZonesFull, offset = ActiveAeroZone.parse_array(
+                data=data,
+                offset=offset,
+                item_len=ActiveAeroZone.PACKET_LEN,
+                count=self.m_numActiveAeroZonesFull,
+                max_count=self.F1_26_MAX_NUM_ACTIVE_AERO_ZONES,
+            )
+
+            (self.m_numActiveAeroZonesPartial,) = self.COMPILED_PACKET_STRUCT_SECTION_6_B.unpack(
+                data[offset:offset + self.PACKET_LEN_SECTION_6_B]
+            )
+            offset += self.PACKET_LEN_SECTION_6_B
+
+            self.m_activeAeroZonesPartial, offset = ActiveAeroZone.parse_array(
+                data=data,
+                offset=offset,
+                item_len=ActiveAeroZone.PACKET_LEN,
+                count=self.m_numActiveAeroZonesPartial,
+                max_count=self.F1_26_MAX_NUM_ACTIVE_AERO_ZONES,
+            )
+
+            (self.m_numDRSZones,) = self.COMPILED_PACKET_STRUCT_SECTION_6_C.unpack(
+                data[offset:offset + self.PACKET_LEN_SECTION_6_C]
+            )
+            offset += self.PACKET_LEN_SECTION_6_C
+
+            self.m_drsZones, offset = DRSZone.parse_array(
+                data=data,
+                offset=offset,
+                item_len=DRSZone.PACKET_LEN,
+                count=self.m_numDRSZones,
+                max_count=self.F1_26_MAX_NUM_DRS_ZONES,
+            )
+
+            (
+                self.m_startReactionTime,
+                self.m_antiLockBrakesAssist,
+                self.m_tractionControlAssist,
+                self.m_dynamicRacingLineHiVis,
+                self.m_dynamicRacingLineColourBlind,
+                self.m_recurringRewindPrompt,
+            ) = self.COMPILED_PACKET_STRUCT_SECTION_6_D.unpack(
+                data[offset:offset + self.PACKET_LEN_SECTION_6_D]
+            )
+            return offset + self.PACKET_LEN_SECTION_6_D
+
+        self.m_activeAeroTrackStatus = 0
+        self.m_numActiveAeroZonesFull = 0
+        self.m_activeAeroZonesFull = []
+        self.m_numActiveAeroZonesPartial = 0
+        self.m_activeAeroZonesPartial = []
+        self.m_numDRSZones = 0
+        self.m_drsZones = []
+        self.m_startReactionTime = 0.0
+        self.m_antiLockBrakesAssist = 0
+        self.m_tractionControlAssist = 0
+        self.m_dynamicRacingLineHiVis = 0
+        self.m_dynamicRacingLineColourBlind = 0
+        self.m_recurringRewindPrompt = 0
+        return offset
+
     def _cast_enums(self, fmt: int) -> None:
         """Apply enum casts to all parsed fields."""
         self.m_isSpectating = bool(self.m_isSpectating)
@@ -1159,6 +1356,14 @@ class PacketSessionData(F1PacketBase):
         self.m_safetyCarExperience = PacketSessionData.SafetyCarExperience.safeCast(self.m_safetyCarExperience)
         self.m_formationLapExperience = PacketSessionData.FormationLapExperience.safeCast(self.m_formationLapExperience)
         self.m_redFlags = PacketSessionData.RedFlagsSetting.safeCast(self.m_redFlags)
+        if fmt == 2026:
+            self.m_activeAeroTrackStatus = PacketSessionData.ActiveAeroTrackStatus.safeCast(
+                self.m_activeAeroTrackStatus)
+            self.m_antiLockBrakesAssist = bool(self.m_antiLockBrakesAssist)
+            self.m_tractionControlAssist = PacketSessionData.TractionControlAssistMode.safeCast(
+                self.m_tractionControlAssist)
+            self.m_dynamicRacingLineColourBlind = PacketSessionData.DynamicRacingLineColourBlindMode.safeCast(
+                self.m_dynamicRacingLineColourBlind)
 
     def __str__(self) -> str:
         """
@@ -1221,7 +1426,20 @@ class PacketSessionData(F1PacketBase):
             f"Temp Units Secondary Player: {self.m_temperatureUnitsSecondaryPlayer}, "
             f"Num Safety Car Periods: {self.m_numSafetyCarPeriods}, "
             f"Num Virtual Safety Car Periods: {self.m_numVirtualSafetyCarPeriods}, "
-            f"Num Red Flag Periods: {self.m_numRedFlagPeriods})"
+            f"Num Red Flag Periods: {self.m_numRedFlagPeriods}, "
+            f"Active Aero Track Status: {self.m_activeAeroTrackStatus}, "
+            f"Num Active Aero Zones Full: {self.m_numActiveAeroZonesFull}, "
+            f"Active Aero Zones Full: {[str(z) for z in self.m_activeAeroZonesFull]}, "
+            f"Num Active Aero Zones Partial: {self.m_numActiveAeroZonesPartial}, "
+            f"Active Aero Zones Partial: {[str(z) for z in self.m_activeAeroZonesPartial]}, "
+            f"Num DRS Zones: {self.m_numDRSZones}, "
+            f"DRS Zones: {[str(z) for z in self.m_drsZones]}, "
+            f"Start Reaction Time: {self.m_startReactionTime}, "
+            f"Anti-Lock Brakes Assist: {self.m_antiLockBrakesAssist}, "
+            f"Traction Control Assist: {self.m_tractionControlAssist}, "
+            f"Dynamic Racing Line Hi-Vis: {self.m_dynamicRacingLineHiVis}, "
+            f"Dynamic Racing Line Colour Blind: {self.m_dynamicRacingLineColourBlind}, "
+            f"Recurring Rewind Prompt: {self.m_recurringRewindPrompt})"
         )
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:
@@ -1233,7 +1451,7 @@ class PacketSessionData(F1PacketBase):
         Returns:
             Dict[str, Any]: A dictionary representing the JSON-compatible data.
         """
-        json_data = self._base_json() | self._f24_json()
+        json_data = self._base_json() | self._f24_json() | self._f26_json()
         if include_header:
             json_data["header"] = self.m_header.toJSON()
         return json_data
@@ -1325,6 +1543,24 @@ class PacketSessionData(F1PacketBase):
             "sector-3-lap-distance-start" : str(self.m_sector3LapDistanceStart),
         }
 
+    def _f26_json(self) -> Dict[str, Any]:
+        """Return JSON dict for F1 2026-only fields."""
+        return {
+            "active-aero-track-status": str(self.m_activeAeroTrackStatus),
+            "num-active-aero-zones-full": self.m_numActiveAeroZonesFull,
+            "active-aero-zones-full": [z.toJSON() for z in self.m_activeAeroZonesFull],
+            "num-active-aero-zones-partial": self.m_numActiveAeroZonesPartial,
+            "active-aero-zones-partial": [z.toJSON() for z in self.m_activeAeroZonesPartial],
+            "num-drs-zones": self.m_numDRSZones,
+            "drs-zones": [z.toJSON() for z in self.m_drsZones],
+            "start-reaction-time": self.m_startReactionTime,
+            "anti-lock-brakes-assist": self.m_antiLockBrakesAssist,
+            "traction-control-assist": str(self.m_tractionControlAssist),
+            "dynamic-racing-line-hi-vis": self.m_dynamicRacingLineHiVis,
+            "dynamic-racing-line-colour-blind": str(self.m_dynamicRacingLineColourBlind),
+            "recurring-rewind-prompt": self.m_recurringRewindPrompt,
+        }
+
     def __eq__(self, other: "PacketSessionData") -> bool:
         """
         Check for equality between two PacketSessionData objects.
@@ -1345,7 +1581,11 @@ class PacketSessionData(F1PacketBase):
             return False
 
         if self.m_header.m_packetFormat >= 2024:
-            return self._eq_f24(other)
+            if not self._eq_f24(other):
+                return False
+
+        if self.m_header.m_packetFormat >= 2026:
+            return self._eq_f26(other)
 
         return True
 
@@ -1451,3 +1691,21 @@ class PacketSessionData(F1PacketBase):
                 self.m_sector2LapDistanceStart == other.m_sector2LapDistanceStart and
                 self.m_sector3LapDistanceStart == other.m_sector3LapDistanceStart
             )
+
+    def _eq_f26(self, other: "PacketSessionData") -> bool:
+        """Check F1 2026-only fields for equality."""
+        return (
+            self.m_activeAeroTrackStatus == other.m_activeAeroTrackStatus and
+            self.m_numActiveAeroZonesFull == other.m_numActiveAeroZonesFull and
+            self.m_activeAeroZonesFull == other.m_activeAeroZonesFull and
+            self.m_numActiveAeroZonesPartial == other.m_numActiveAeroZonesPartial and
+            self.m_activeAeroZonesPartial == other.m_activeAeroZonesPartial and
+            self.m_numDRSZones == other.m_numDRSZones and
+            self.m_drsZones == other.m_drsZones and
+            self.m_startReactionTime == other.m_startReactionTime and
+            self.m_antiLockBrakesAssist == other.m_antiLockBrakesAssist and
+            self.m_tractionControlAssist == other.m_tractionControlAssist and
+            self.m_dynamicRacingLineHiVis == other.m_dynamicRacingLineHiVis and
+            self.m_dynamicRacingLineColourBlind == other.m_dynamicRacingLineColourBlind and
+            self.m_recurringRewindPrompt == other.m_recurringRewindPrompt
+        )

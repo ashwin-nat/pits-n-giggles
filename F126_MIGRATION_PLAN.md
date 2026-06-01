@@ -23,7 +23,7 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 | Pkt | Name | Phases | Parser | Tests | Impl tag | Capture tag |
 |-----|------|--------|--------|-------|----------|-------------|
 | 0 | Car Motion Data | 1, 2a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT0` | `F126-CAPTURE: PKT0` |
-| 1 | Session Data | 3b, 5b | 🔲 | 🔲 | `F126-IMPL: PKT1` | `F126-CAPTURE: PKT1` |
+| 1 | Session Data | 3b, 5b | ✅ | ✅ stub actual | `F126-IMPL: PKT1` | `F126-CAPTURE: PKT1` |
 | 2 | Lap Data | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT2` | `F126-CAPTURE: PKT2` |
 | 3 | Event Data (COLL) | 3a, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT3` | `F126-CAPTURE: PKT3` |
 | 4 | Participants Data | 1, 2b, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT4` | `F126-CAPTURE: PKT4` |
