@@ -22,9 +22,9 @@
 
 
 import struct
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
-from .base_pkt import F1PacketBase, F1SubPacketBase
+from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -34,15 +34,19 @@ class CarTelemetry2Data(F1SubPacketBase):
     Per-car active aero and overtake telemetry, introduced in F1 2026.
 
     Attributes:
-        m_activeAeroMode (int): 0 = Corner mode, 1 = Straight mode.
-        m_activeAeroAvailable (int): 0 = not available, 1 = available.
-        m_activeAeroActivationDistance (int): metres until active aero becomes available (0 = N/A).
-        m_overtakeAvailable (int): 0 = not available, 1 = available.
-        m_overtakeActive (int): 0 = not active, 1 = active.
-        m_overtakeActivationDistance (int): metres until Overtake Mode becomes available (0 = N/A).
-        m_2026Regulations (int): 0 = pre-2026 vehicle, 1 = 2026 regulations applicable.
-        m_drivingWrongWay (int): 0 = correct direction, 1 = wrong way.
+        m_activeAeroMode (ActiveAeroMode): Corner mode or Straight mode.
+        m_activeAeroAvailable (bool): Whether active aero is available.
+        m_activeAeroActivationDistance (int): Metres until active aero becomes available (0 = N/A).
+        m_overtakeAvailable (bool): Whether overtake mode is available.
+        m_overtakeActive (bool): Whether overtake mode is currently active.
+        m_overtakeActivationDistance (int): Metres until Overtake Mode becomes available (0 = N/A).
+        m_2026Regulations (bool): True if 2026 regulations applicable, False for pre-2026 vehicle.
+        m_drivingWrongWay (bool): True if driving in wrong direction.
     """
+
+    class ActiveAeroMode(F1BaseEnum):
+        CORNER_MODE = 0
+        STRAIGHT_MODE = 1
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B"  # uint8  m_activeAeroMode
@@ -68,6 +72,14 @@ class CarTelemetry2Data(F1SubPacketBase):
     )
 
     def __init__(self, data: bytes) -> None:
+        self.m_activeAeroMode: "CarTelemetry2Data.ActiveAeroMode"
+        self.m_activeAeroAvailable: bool
+        self.m_activeAeroActivationDistance: int
+        self.m_overtakeAvailable: bool
+        self.m_overtakeActive: bool
+        self.m_overtakeActivationDistance: int
+        self.m_2026Regulations: bool
+        self.m_drivingWrongWay: bool
         self._parse(data)
 
     def _parse(self, data: bytes) -> None:
@@ -81,6 +93,15 @@ class CarTelemetry2Data(F1SubPacketBase):
             self.m_2026Regulations,
             self.m_drivingWrongWay,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self._cast_enums()
+
+    def _cast_enums(self) -> None:
+        self.m_activeAeroMode = CarTelemetry2Data.ActiveAeroMode.safeCast(self.m_activeAeroMode)
+        self.m_activeAeroAvailable = bool(self.m_activeAeroAvailable)
+        self.m_overtakeAvailable = bool(self.m_overtakeAvailable)
+        self.m_overtakeActive = bool(self.m_overtakeActive)
+        self.m_2026Regulations = bool(self.m_2026Regulations)
+        self.m_drivingWrongWay = bool(self.m_drivingWrongWay)
 
     def __str__(self) -> str:
         return (
@@ -97,7 +118,7 @@ class CarTelemetry2Data(F1SubPacketBase):
 
     def toJSON(self) -> Dict[str, Any]:
         return {
-            "active-aero-mode": self.m_activeAeroMode,
+            "active-aero-mode": str(self.m_activeAeroMode),
             "active-aero-available": self.m_activeAeroAvailable,
             "active-aero-activation-distance": self.m_activeAeroActivationDistance,
             "overtake-available": self.m_overtakeAvailable,
@@ -126,35 +147,36 @@ class CarTelemetry2Data(F1SubPacketBase):
 
     def to_bytes(self) -> bytes:
         return self.COMPILED_PACKET_STRUCT.pack(
-            self.m_activeAeroMode,
-            self.m_activeAeroAvailable,
+            self.m_activeAeroMode.value,
+            int(self.m_activeAeroAvailable),
             self.m_activeAeroActivationDistance,
-            self.m_overtakeAvailable,
-            self.m_overtakeActive,
+            int(self.m_overtakeAvailable),
+            int(self.m_overtakeActive),
             self.m_overtakeActivationDistance,
-            self.m_2026Regulations,
-            self.m_drivingWrongWay,
+            int(self.m_2026Regulations),
+            int(self.m_drivingWrongWay),
         )
 
     @classmethod
     def from_values(cls,
-        active_aero_mode: int,
-        active_aero_available: int,
+        active_aero_mode: Union["CarTelemetry2Data.ActiveAeroMode", int],
+        active_aero_available: bool,
         active_aero_activation_distance: int,
-        overtake_available: int,
-        overtake_active: int,
+        overtake_available: bool,
+        overtake_active: bool,
         overtake_activation_distance: int,
-        regulations_2026: int,
-        driving_wrong_way: int) -> "CarTelemetry2Data":
+        regulations_2026: bool,
+        driving_wrong_way: bool) -> "CarTelemetry2Data":
+        mode_val = active_aero_mode.value if isinstance(active_aero_mode, CarTelemetry2Data.ActiveAeroMode) else active_aero_mode
         return cls(cls.COMPILED_PACKET_STRUCT.pack(
-            active_aero_mode,
-            active_aero_available,
+            mode_val,
+            int(active_aero_available),
             active_aero_activation_distance,
-            overtake_available,
-            overtake_active,
+            int(overtake_available),
+            int(overtake_active),
             overtake_activation_distance,
-            regulations_2026,
-            driving_wrong_way,
+            int(regulations_2026),
+            int(driving_wrong_way),
         ))
 
 
