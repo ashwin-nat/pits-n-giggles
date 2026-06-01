@@ -26,10 +26,10 @@ from .base_pkt import F1PacketBase
 from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
                      Nationality, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
-                     SessionType24, TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
-                     TelemetrySetting, TrackID, TractionControlAssistMode,
-                     VisualTyreCompound)
-from .team_id import get_team_id, get_team_id_class
+                     SessionType24, TelemetrySetting, TrackID,
+                     TractionControlAssistMode, VisualTyreCompound)
+from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
+                      get_team_id, get_team_id_class)
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
                      PacketParsingError)
 from .header import F1PacketType, PacketHeader
