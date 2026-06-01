@@ -25,7 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
-from .common import MAX_CARS_2026, get_num_cars
+from .common import get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -385,8 +385,6 @@ class PacketCarTelemetryData(F1PacketBase):
         m_suggestedGear (int): Suggested gear for the player (1-8), 0 if no gear is suggested.
     """
 
-    MAX_CARS = 22
-    MAX_CARS_2026 = 24
     COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
     PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size
 

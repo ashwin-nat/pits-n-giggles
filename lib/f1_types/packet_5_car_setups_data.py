@@ -25,7 +25,7 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
-from .common import MAX_CARS_2026, get_num_cars
+from .common import get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -533,8 +533,6 @@ class PacketCarSetupData(F1PacketBase):
                 The length of m_carSetups should not exceed the maximum number of participants.
     """
 
-    MAX_CARS = 22
-    MAX_CARS_2026 = 24
     COMPILED_PACKET_STRUCT_EXTRA = struct.Struct("<f")
 
     __slots__ = (

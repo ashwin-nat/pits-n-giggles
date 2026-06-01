@@ -22,6 +22,7 @@
 
 import random
 from lib.f1_types import CarTelemetryData, PacketCarTelemetryData, F1PacketType, PacketHeader
+from lib.f1_types.common import MAX_CARS_2026
 from .tests_parser_base import F1TypesTest
 
 class TestPacketCarTelemetryData(F1TypesTest):
@@ -1987,7 +1988,7 @@ class TestPacketCarTelemetryData(F1TypesTest):
         Test for F1 2026 with a randomly generated packet
         """
 
-        num_cars = PacketCarTelemetryData.MAX_CARS_2026
+        num_cars = MAX_CARS_2026
         generated_test_obj = PacketCarTelemetryData.from_values(
             self.m_header_26,
             [self._generateRandomCarTelemetryData() for _ in range(num_cars)],
