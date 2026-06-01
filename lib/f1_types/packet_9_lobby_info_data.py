@@ -25,8 +25,8 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
-from .common import (Nationality, Platform, TeamID, TeamID23, TeamID24,
-                     TeamID25, TeamID26, TelemetrySetting)
+from .common import (Nationality, Platform, TelemetrySetting)
+from .team_id import TeamID, get_team_id
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -209,14 +209,7 @@ class LobbyInfoData(F1SubPacketBase):
 
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
-        if packet_format == 2023:
-            self.m_teamId = TeamID23.safeCast(self.m_teamId)
-        elif packet_format == 2024:
-            self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format == 2025:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
-        elif packet_format >= 2026:
-            self.m_teamId = TeamID26.safeCast(self.m_teamId)
+        self.m_teamId = get_team_id(self.m_teamId, packet_format)
         if packet_format != 2023:
             self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)

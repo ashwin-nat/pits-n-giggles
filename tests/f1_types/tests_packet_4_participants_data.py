@@ -23,10 +23,9 @@
 import random
 from typing import Optional
 
-from lib.f1_types import (F1PacketType, LiveryColour, Nationality,
+from lib.f1_types import (F1PacketType, LiveryColour, Nationality, get_team_id_class,
                           PacketHeader, PacketParticipantsData,
-                          ParticipantData, Platform, TeamID23, TeamID24,
-                          TeamID25, TeamID26, TelemetrySetting)
+                          ParticipantData, Platform, TelemetrySetting)
 # F126-CAPTURE: PKT4
 
 from .tests_parser_base import F1TypesTest
@@ -188,14 +187,7 @@ class TestPacketParticipantsData(F1TypesTest):
             for _ in range(num_colours)
         ]
 
-        if header.m_packetFormat == 2023:
-            team_id = random.choice(list(TeamID23))
-        elif header.m_packetFormat == 2024:
-            team_id = random.choice(list(TeamID24))
-        elif header.m_packetFormat == 2025:
-            team_id = random.choice(list(TeamID25))
-        elif header.m_packetFormat >= 2026:
-            team_id = random.choice(list(TeamID26))
+        team_id = random.choice(list(get_team_id_class(header.m_packetFormat)))
         # For 2026, driver_id and network_id can be full uint16 range
         id_max = 65535 if header.m_packetFormat >= 2026 else 100
         return ParticipantData.from_values(

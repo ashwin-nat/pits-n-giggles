@@ -22,9 +22,10 @@
 
 
 import struct
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
-from .common import F1Utils, TeamID24, TeamID25, TeamID26, TeamID
+from .common import F1Utils
+from .team_id import TeamID, get_team_id
 from .base_pkt import F1SubPacketBase, F1PacketBase
 from .header import PacketHeader
 
@@ -142,13 +143,7 @@ class TimeTrialDataSet(F1SubPacketBase):
 
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
-        # No need to check game year, since this packet type is not available in F1 23
-        if packet_format < 2025:
-            self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format < 2026:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
-        else:
-            self.m_teamId = TeamID26.safeCast(self.m_teamId)
+        self.m_teamId = get_team_id(self.m_teamId, packet_format)
         self.m_tractionControl = bool(self.m_tractionControl)
         self.m_gearboxAssist = bool(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
@@ -246,7 +241,7 @@ class TimeTrialDataSet(F1SubPacketBase):
     def from_values(cls,
                     game_year: int,
                     car_index: int,
-                    team_id: Union[TeamID24, TeamID25, TeamID26],
+                    team_id: TeamID,
                     lap_time_in_ms: int,
                     sector1_time_in_ms: int,
                     sector2_time_in_ms: int,

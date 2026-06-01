@@ -25,9 +25,10 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
-from .common import (MAX_CARS_2026, Nationality, Platform, TeamID, TeamID23,
-                     TeamID24, TeamID25, TeamID26, TelemetrySetting,
+from .common import (MAX_CARS_2026, Nationality, Platform, TelemetrySetting,
                      get_num_cars)
+from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
+                      get_team_id)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -122,6 +123,8 @@ class ParticipantData(F1SubPacketBase):
         TeamID24.F1_GENERIC,
         TeamID25.F1_CUSTOM_TEAM,
         TeamID25.F1_GENERIC,
+        TeamID26.F1_CUSTOM_TEAM,
+        TeamID26.F1_GENERIC,
     }
 
     COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
@@ -327,14 +330,7 @@ class ParticipantData(F1SubPacketBase):
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
         self.m_platform = Platform.safeCast(self.m_platform)
-        if packet_format == 2023:
-            self.m_teamId = TeamID23.safeCast(self.m_teamId)
-        elif packet_format == 2024:
-            self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format == 2025:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
-        elif packet_format >= 2026:
-            self.m_teamId = TeamID26.safeCast(self.m_teamId)
+        self.m_teamId = get_team_id(self.m_teamId, packet_format)
         self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)

@@ -22,9 +22,8 @@
 
 import random
 
-from lib.f1_types import (F1PacketType, LobbyInfoData, Nationality,
-                          PacketHeader, PacketLobbyInfoData, Platform,
-                          TeamID23, TeamID24, TeamID25, TeamID26, TelemetrySetting)
+from lib.f1_types import (F1PacketType, LobbyInfoData, Nationality, get_team_id_class,
+                          PacketHeader, PacketLobbyInfoData, Platform, TelemetrySetting)
 
 from .tests_parser_base import F1TypesTest
 
@@ -527,11 +526,12 @@ class TestPacketLobbyInfoData(F1TypesTest):
             LobbyInfoData: A random lobby info data object
         """
 
+        team_id = random.choice(list(get_team_id_class(header.m_packetFormat)))
         if header.m_packetFormat == 2023:
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID23)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -541,7 +541,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID24)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -555,7 +555,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID25)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -569,7 +569,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID26)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),

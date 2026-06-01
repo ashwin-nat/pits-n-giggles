@@ -29,6 +29,7 @@ from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
                      SessionType24, TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
                      TelemetrySetting, TrackID, TractionControlAssistMode,
                      VisualTyreCompound)
+from .team_id import get_team_id, get_team_id_class
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
                      PacketParsingError)
 from .header import F1PacketType, PacketHeader
@@ -87,6 +88,8 @@ __all__ = [
     "TeamID24",
     "TeamID25",
     "TeamID26",
+    "get_team_id",
+    "get_team_id_class",
     "F1Utils",
     "TrackID",
     "TractionControlAssistMode",

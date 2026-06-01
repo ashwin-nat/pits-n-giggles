@@ -22,8 +22,8 @@
 
 import random
 
-from lib.f1_types import (F1PacketType, GearboxAssistMode, PacketHeader,
-                          PacketTimeTrialData, TeamID24, TeamID25, TeamID26,
+from lib.f1_types import (F1PacketType, GearboxAssistMode, get_team_id_class,
+                          PacketHeader, PacketTimeTrialData,
                           TimeTrialDataSet, TractionControlAssistMode)
 
 from .tests_parser_base import F1TypesTest
@@ -164,12 +164,7 @@ class TestPacketTimeTrialData(F1TypesTest):
             TimeTrialDataSet: A random TimeTrialDataSet
         """
 
-        if packet_format == 2024:
-            team_id_type = TeamID24
-        elif packet_format >= 2026:
-            team_id_type = TeamID26
-        elif packet_format == 2025:
-            team_id_type = TeamID25
+        team_id_type = get_team_id_class(packet_format)
 
         s1_time_ms = random.randrange(0, 60000)
         s2_time_ms = random.randrange(0, 60000)
