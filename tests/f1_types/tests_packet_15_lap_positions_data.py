@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import random
 from lib.f1_types import PacketLapPositionsData, F1PacketType
 from .tests_parser_base import F1TypesTest
 
@@ -33,6 +34,7 @@ class TestPacketLapPositionsData(F1TypesTest):
         """
         self.m_num_players = 22
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.LAP_POSITIONS, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.LAP_POSITIONS, 26, 24)
 
     def test_f1_25_actual_full(self):
         """
@@ -61,3 +63,41 @@ class TestPacketLapPositionsData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a random game packet (24 cars)
+        """
+
+        num_cars = PacketLapPositionsData.MAX_CARS_2026
+        num_laps = random.randint(1, PacketLapPositionsData.MAX_LAPS)
+        lap_start = random.randint(0, 255)
+        lap_positions = [
+            [random.randint(0, num_cars) for _ in range(num_cars)]
+            for _ in range(num_laps)
+        ]
+
+        generated_test_obj = PacketLapPositionsData.from_values(
+            header=self.m_header_26,
+            num_laps=num_laps,
+            lap_start=lap_start,
+            lap_positions=lap_positions,
+        )
+        serialised = generated_test_obj.to_bytes()
+        from lib.f1_types import PacketHeader
+        parsed_header = PacketHeader(serialised[:PacketHeader.PACKET_LEN])
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketLapPositionsData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_lapPositions[0]), num_cars)
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet
+        """
+
+        # F126-CAPTURE: PKT15
+        self.skipTest("awaiting 2026 capture")

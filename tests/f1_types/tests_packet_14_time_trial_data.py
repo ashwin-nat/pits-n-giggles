@@ -23,7 +23,7 @@
 import random
 
 from lib.f1_types import (F1PacketType, GearboxAssistMode, PacketHeader,
-                          PacketTimeTrialData, TeamID24, TeamID25,
+                          PacketTimeTrialData, TeamID24, TeamID25, TeamID26,
                           TimeTrialDataSet, TractionControlAssistMode)
 
 from .tests_parser_base import F1TypesTest
@@ -40,6 +40,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         self.m_num_players = 22
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 26, self.m_num_players)
 
     def test_f1_24_actual(self):
         """
@@ -165,6 +166,8 @@ class TestPacketTimeTrialData(F1TypesTest):
 
         if packet_format == 2024:
             team_id_type = TeamID24
+        elif packet_format >= 2026:
+            team_id_type = TeamID26
         elif packet_format == 2025:
             team_id_type = TeamID25
 
@@ -204,3 +207,27 @@ class TestPacketTimeTrialData(F1TypesTest):
             personal_best_data_set=self._generateRandomTimeTrialDataSet(1, header.m_packetFormat),
             rival_session_best_data_set=self._generateRandomTimeTrialDataSet(2, header.m_packetFormat),
         )
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a random game packet
+        """
+
+        generated_test_obj = self._generateRandomPacketTimeTrialData(self.m_header_26)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketTimeTrialData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet
+        """
+
+        # F126-CAPTURE: PKT14
+        self.skipTest("awaiting 2026 capture")

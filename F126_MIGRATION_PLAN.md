@@ -36,8 +36,8 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 | 11 | Session History | N/A | — | — | — | — |
 | 12 | Tyre Sets | N/A | — | — | — | — |
 | 13 | Motion Ex | N/A | — | — | — | — |
-| 14 | Time Trial | 2e, 5b | 🔲 | 🔲 | `F126-IMPL: PKT14` | `F126-CAPTURE: PKT14` |
-| 15 | Lap Positions | 1 (dual struct) | 🔲 | 🔲 | `F126-IMPL: PKT15` | `F126-CAPTURE: PKT15` |
+| 14 | Time Trial | 2e, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT14` | `F126-CAPTURE: PKT14` |
+| 15 | Lap Positions | 1 (dual struct) | ✅ | ✅ random · stub actual | `F126-IMPL: PKT15` | `F126-CAPTURE: PKT15` |
 | 16 | Car Telemetry 2 | 4 (new file) | ✅ | ✅ random · stub actual | `F126-IMPL: PKT16` | `F126-CAPTURE: PKT16` |
 
 ---
