@@ -915,6 +915,11 @@ class TeamID25(TeamID):
             return "RB"
         return self.name.replace("_", " ").title().replace("Gp", "GP").replace("24", "'24").replace("25", "'25")
 
+# TODO: Populate TeamID26 with actual 2026 team IDs once the spec is confirmed.
+#       For now it mirrors TeamID25 exactly (Python enums cannot subclass a
+#       non-empty enum, so we use a type alias instead).
+TeamID26 = TeamID25
+
 class TrackID(F1BaseEnum):
     """
     Enum class representing F1 track IDs and their corresponding names.

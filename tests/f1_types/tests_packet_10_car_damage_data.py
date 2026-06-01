@@ -36,6 +36,33 @@ class TestPacketCarDamageData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.CAR_DAMAGE, 26, self.m_num_players)
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet (24 cars) F126-IMPL: PKT10
+        """
+
+        generated_test_obj = PacketCarDamageData.from_values(
+            self.m_header_26,
+            [self._generateRandomCarDamageData(packet_format=2026) for _ in range(24)]
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketCarDamageData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_carDamageData), 24)
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet F126-IMPL: PKT10
+        """
+        self.skipTest("awaiting 2026 capture")  # F126-CAPTURE: PKT10
 
     def test_f1_25_random(self):
         """

@@ -31,8 +31,8 @@ The 2026 Season Pack DLC introduces a new `m_packetFormat = 2026` (game year 26)
 | 6 | Car Telemetry | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT6` | `F126-CAPTURE: PKT6` |
 | 7 | Car Status | 1, 2c, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT7` | `F126-CAPTURE: PKT7` |
 | 8 | Final Classification | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT8` | `F126-CAPTURE: PKT8` |
-| 9 | Lobby Info | 1, 2d, 5b | 🔲 | 🔲 | `F126-IMPL: PKT9` | `F126-CAPTURE: PKT9` |
-| 10 | Car Damage | 1 | 🔲 | 🔲 | `F126-IMPL: PKT10` | `F126-CAPTURE: PKT10` |
+| 9 | Lobby Info | 1, 2d, 5b | ✅ | ✅ random · stub actual | `F126-IMPL: PKT9` | `F126-CAPTURE: PKT9` |
+| 10 | Car Damage | 1 | ✅ | ✅ random · stub actual | `F126-IMPL: PKT10` | `F126-CAPTURE: PKT10` |
 | 11 | Session History | N/A | — | — | — | — |
 | 12 | Tyre Sets | N/A | — | — | — | — |
 | 13 | Motion Ex | N/A | — | — | — | — |

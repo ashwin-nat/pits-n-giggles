@@ -26,7 +26,7 @@ from .base_pkt import F1PacketBase
 from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
                      Nationality, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
-                     SessionType24, TeamID, TeamID23, TeamID24, TeamID25,
+                     SessionType24, TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
                      TelemetrySetting, TrackID, TractionControlAssistMode,
                      VisualTyreCompound)
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
@@ -86,6 +86,7 @@ __all__ = [
     "TeamID23",
     "TeamID24",
     "TeamID25",
+    "TeamID26",
     "F1Utils",
     "TrackID",
     "TractionControlAssistMode",

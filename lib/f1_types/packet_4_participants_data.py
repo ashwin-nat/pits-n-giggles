@@ -26,7 +26,8 @@ from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
 from .common import (MAX_CARS_2026, Nationality, Platform, TeamID, TeamID23,
-                     TeamID24, TeamID25, TelemetrySetting, get_num_cars)
+                     TeamID24, TeamID25, TeamID26, TelemetrySetting,
+                     get_num_cars)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -330,8 +331,10 @@ class ParticipantData(F1SubPacketBase):
             self.m_teamId = TeamID23.safeCast(self.m_teamId)
         elif packet_format == 2024:
             self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format >= 2025:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId) # TODO: Revisit this when TeamID is updated
+        elif packet_format == 2025:
+            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        elif packet_format >= 2026:
+            self.m_teamId = TeamID26.safeCast(self.m_teamId)
         self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)
         self.m_showOnlineNames = bool(self.m_showOnlineNames)

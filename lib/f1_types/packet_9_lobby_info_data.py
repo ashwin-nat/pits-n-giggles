@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (Nationality, Platform, TeamID, TeamID23, TeamID24,
-                     TeamID25, TelemetrySetting)
+                     TeamID25, TeamID26, TelemetrySetting)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -90,6 +90,21 @@ class LobbyInfoData(F1SubPacketBase):
     )
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
+    COMPILED_PACKET_STRUCT_26 = struct.Struct("<"
+        "B" # uint8     m_aiControlled;      // Whether the vehicle is AI (1) or Human (0) controlled
+        "H" # uint16    m_teamId;            // Team id - see appendix (65535 if no team currently selected)
+        "B" # uint8     m_nationality;       // Nationality of the driver
+        "B" # uint8     m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
+        "32s" # char    m_name[32];	         // Name of participant in UTF-8 format – null terminated
+                                    #        // Will be truncated with ... (U+2026) if too long
+        "B" # uint8     m_carNumber;         // Car number of the player
+        "B" # uint8     m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
+        "B" # uint8     m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
+        "H" # uint16    m_techLevel;         // F1 World tech level
+        "B" # uint8     m_readyStatus;       // 0 = not ready, 1 = ready, 2 = spectating
+    )
+    PACKET_LEN_26 = COMPILED_PACKET_STRUCT_26.size
+
     __slots__ = (
         "m_aiControlled",
         "m_teamId",
@@ -130,6 +145,8 @@ class LobbyInfoData(F1SubPacketBase):
             self._parse_f23(data)
         elif packet_format == 2024:
             self._parse_f24(data)
+        elif packet_format >= 2026:
+            self._parse_f26(data)
         else:
             self._parse_f25(data)
         self.m_name = self.m_name.decode('utf-8', errors='replace').rstrip('\x00')
@@ -176,14 +193,30 @@ class LobbyInfoData(F1SubPacketBase):
             self.m_readyStatus,
         ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
 
+    def _parse_f26(self, data: bytes) -> None:
+        (
+            self.m_aiControlled,
+            self.m_teamId,
+            self.m_nationality,
+            self.m_platform,
+            self.m_name,
+            self.m_carNumber,
+            self.m_yourTelemetry,
+            self.m_showOnlineNames,
+            self.m_techLevel,
+            self.m_readyStatus,
+        ) = self.COMPILED_PACKET_STRUCT_26.unpack(data)
+
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
         if packet_format == 2023:
             self.m_teamId = TeamID23.safeCast(self.m_teamId)
         elif packet_format == 2024:
             self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        elif packet_format >= 2025:
+        elif packet_format == 2025:
             self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        elif packet_format >= 2026:
+            self.m_teamId = TeamID26.safeCast(self.m_teamId)
         if packet_format != 2023:
             self.m_yourTelemetry = TelemetrySetting.safeCast(self.m_yourTelemetry)
         self.m_nationality = Nationality.safeCast(self.m_nationality)
@@ -279,8 +312,21 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.packet_format >= 2025:
+        if self.packet_format == 2025:
             return self.COMPILED_PACKET_STRUCT_25.pack(
+                self.m_aiControlled,
+                self.m_teamId.value,
+                self.m_nationality.value,
+                self.m_platform.value,
+                self.m_name.encode('utf-8'),
+                self.m_carNumber,
+                self.m_yourTelemetry.value,
+                self.m_showOnlineNames,
+                self.m_techLevel,
+                self.m_readyStatus.value,
+            )
+        if self.packet_format >= 2026:
+            return self.COMPILED_PACKET_STRUCT_26.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
                 self.m_nationality.value,
@@ -351,8 +397,21 @@ class LobbyInfoData(F1SubPacketBase):
                 tech_level,
                 ready_status.value,
             ), header.m_packetFormat)
-        if header.m_packetFormat >= 2025:
+        if header.m_packetFormat == 2025:
             return cls(cls.COMPILED_PACKET_STRUCT_25.pack(
+                ai_controlled,
+                team_id.value,
+                nationality.value,
+                platform.value,
+                name.encode('utf-8'),
+                car_number,
+                your_telemetry.value,
+                show_online_names,
+                tech_level,
+                ready_status.value,
+            ), header.m_packetFormat)
+        if header.m_packetFormat >= 2026:
+            return cls(cls.COMPILED_PACKET_STRUCT_26.pack(
                 ai_controlled,
                 team_id.value,
                 nationality.value,
@@ -380,7 +439,7 @@ class PacketLobbyInfoData(F1PacketBase):
         The class is designed to parse and represent the lobby information data packet.
     """
 
-    MAX_PLAYERS: int = 22
+    MAX_PLAYERS: int = 24
 
     __slots__ = (
         "m_numPlayers",
@@ -402,6 +461,8 @@ class PacketLobbyInfoData(F1PacketBase):
             packet_len = LobbyInfoData.PACKET_LEN_23
         elif header.m_packetFormat == 2024:
             packet_len = LobbyInfoData.PACKET_LEN_24
+        elif header.m_packetFormat >= 2026:
+            packet_len = LobbyInfoData.PACKET_LEN_26
         else:
             packet_len = LobbyInfoData.PACKET_LEN_25
 
