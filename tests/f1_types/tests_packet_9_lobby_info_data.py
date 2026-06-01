@@ -22,9 +22,8 @@
 
 import random
 
-from lib.f1_types import (F1PacketType, LobbyInfoData, Nationality,
-                          PacketHeader, PacketLobbyInfoData, Platform,
-                          TeamID23, TeamID24, TeamID25, TelemetrySetting)
+from lib.f1_types import (F1PacketType, LobbyInfoData, Nationality, get_team_id_class,
+                          PacketHeader, PacketLobbyInfoData, Platform, TelemetrySetting)
 
 from .tests_parser_base import F1TypesTest
 
@@ -41,6 +40,35 @@ class TestPacketLobbyInfoData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.LOBBY_INFO, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.LOBBY_INFO, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.LOBBY_INFO, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.LOBBY_INFO, 26, random.randint(1, 24))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet (24 players, uint16 teamId) F126-IMPL: PKT9
+        """
+
+        num_players_26 = 24
+        random_participants = [self._generateRandomLobbyInfoData(self.m_header_26) for _ in range(num_players_26)]
+        generated_test_obj = PacketLobbyInfoData.from_values(
+            self.m_header_26,
+            num_players_26,
+            random_participants
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketLobbyInfoData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet F126-IMPL: PKT9
+        """
+        self.skipTest("awaiting 2026 capture")  # F126-CAPTURE: PKT9
 
     def test_f1_25_random(self):
         """
@@ -498,11 +526,12 @@ class TestPacketLobbyInfoData(F1TypesTest):
             LobbyInfoData: A random lobby info data object
         """
 
+        team_id = random.choice(list(get_team_id_class(header.m_packetFormat)))
         if header.m_packetFormat == 2023:
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID23)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -512,7 +541,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID24)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -526,7 +555,7 @@ class TestPacketLobbyInfoData(F1TypesTest):
             return LobbyInfoData.from_values(
                 header=header,
                 ai_controlled=F1TypesTest.getRandomBool(),
-                team_id=random.choice(list(TeamID25)),
+                team_id=team_id,
                 nationality=random.choice(list(Nationality)),
                 platform=random.choice(list(Platform)),
                 name=F1TypesTest.getRandomUserName(),
@@ -534,6 +563,20 @@ class TestPacketLobbyInfoData(F1TypesTest):
                 your_telemetry=random.choice(list(TelemetrySetting)),
                 show_online_names=F1TypesTest.getRandomBool(),
                 tech_level=random.randrange(0,5000),
+                ready_status=random.choice(list(LobbyInfoData.ReadyStatus))
+            )
+        if header.m_packetFormat >= 2026:
+            return LobbyInfoData.from_values(
+                header=header,
+                ai_controlled=F1TypesTest.getRandomBool(),
+                team_id=team_id,
+                nationality=random.choice(list(Nationality)),
+                platform=random.choice(list(Platform)),
+                name=F1TypesTest.getRandomUserName(),
+                car_number=random.randint(1, 99),
+                your_telemetry=random.choice(list(TelemetrySetting)),
+                show_online_names=F1TypesTest.getRandomBool(),
+                tech_level=random.randrange(0, 65535),
                 ready_status=random.choice(list(LobbyInfoData.ReadyStatus))
             )
 

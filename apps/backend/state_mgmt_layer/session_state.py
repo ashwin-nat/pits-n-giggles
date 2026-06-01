@@ -298,7 +298,7 @@ class SessionState:
     offload it to a separate task via the inter task communicator
     """
 
-    MAX_DRIVERS: int = 22
+    MAX_DRIVERS: int = 24
 
     __slots__ = (
         'm_logger',

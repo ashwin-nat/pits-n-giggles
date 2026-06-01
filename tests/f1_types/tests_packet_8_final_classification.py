@@ -42,6 +42,35 @@ class TestPacketFinalClassificationData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.FINAL_CLASSIFICATION, 26, random.randint(1, 24))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet (up to 24 cars) F126-IMPL: PKT8
+        """
+
+        num_cars_26 = random.randint(1, 24)
+        generated_test_obj = PacketFinalClassificationData.from_values(
+            self.m_header_26,
+            num_cars_26,
+            [self._generateRandomFinalClassificationData(packet_format=2026) for _ in range(num_cars_26)]
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketFinalClassificationData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_classificationData), num_cars_26)
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet F126-IMPL: PKT8
+        """
+        self.skipTest("awaiting 2026 capture")  # F126-CAPTURE: PKT8
 
     def test_f1_25_random(self):
         """
@@ -764,7 +793,7 @@ class TestPacketFinalClassificationData(F1TypesTest):
                 tyre_stints_end_laps_6=random.randrange(0,22),
                 tyre_stints_end_laps_7=random.randrange(0,22)
             )
-        if packet_format == 2025:
+        if packet_format >= 2025:
             return FinalClassificationData.from_values(
                 packet_format=packet_format,
                 position=random.randrange(1,22),

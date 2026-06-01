@@ -37,6 +37,33 @@ class TestPacketCarStatusData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.CAR_STATUS, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.CAR_STATUS, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.CAR_STATUS, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.CAR_STATUS, 26, self.m_num_players)
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a randomly generated packet (24 cars, new ERS field) F126-IMPL: PKT7
+        """
+
+        generated_test_obj = PacketCarStatusData.from_values(
+            self.m_header_26,
+            [self._generateRandomCarStatusData(packet_format=2026) for _ in range(24)]
+        )
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketCarStatusData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertEqual(len(parsed_obj.m_carStatusData), 24)
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet F126-IMPL: PKT7
+        """
+        self.skipTest("awaiting 2026 capture")  # F126-CAPTURE: PKT7
 
     def test_f1_24_random(self):
         """
@@ -108,6 +135,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -136,6 +164,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 31397.765625,
                     "ers-harvested-this-lap-mguh": 27938.087890625,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 36894.015625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -164,6 +193,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 27426.068359375,
                     "ers-harvested-this-lap-mguh": 11980.3798828125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 28955.994140625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -192,6 +222,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 34205.13671875,
                     "ers-harvested-this-lap-mguh": 26809.505859375,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 38059.328125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -220,6 +251,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 31340.69140625,
                     "ers-harvested-this-lap-mguh": 26834.3203125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 37382.671875,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -248,6 +280,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 30852.0390625,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 100734.1796875,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -276,6 +309,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 30043.978515625,
                     "ers-harvested-this-lap-mguh": 12939.3017578125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 29397.828125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -304,6 +338,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 29508.755859375,
                     "ers-harvested-this-lap-mguh": 12219.1923828125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 30254.056640625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -332,6 +367,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 28914.25,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 62704.70703125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -360,6 +396,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 29985.78125,
                     "ers-harvested-this-lap-mguh": 20152.880859375,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 34194.6953125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -388,6 +425,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 32685.5078125,
                     "ers-harvested-this-lap-mguh": 21660.494140625,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 42186.078125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -416,6 +454,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 31825.771484375,
                     "ers-harvested-this-lap-mguh": 26700.8671875,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 37501.7890625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -444,6 +483,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 31990.26953125,
                     "ers-harvested-this-lap-mguh": 27518.486328125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 37242.203125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -472,6 +512,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 29411.2890625,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 88017.2265625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -500,6 +541,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 45958.5703125,
                     "ers-harvested-this-lap-mguh": 2880.20556640625,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 65871.0625,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -528,6 +570,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 29761.8359375,
                     "ers-harvested-this-lap-mguh": 24303.736328125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 41038.15234375,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -556,6 +599,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 22654.59375,
                     "ers-harvested-this-lap-mguh": 20450.263671875,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 35721.3984375,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -584,6 +628,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 24493.39453125,
                     "ers-harvested-this-lap-mguh": 24800.845703125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 35712.3203125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -612,6 +657,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 26247.865234375,
                     "ers-harvested-this-lap-mguh": 9701.0986328125,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 19831.455078125,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -640,6 +686,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -668,6 +715,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "None",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -696,6 +744,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "None",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -741,6 +790,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -769,6 +819,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -797,6 +848,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -825,6 +877,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -853,6 +906,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -881,6 +935,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -909,6 +964,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -937,6 +993,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -965,6 +1022,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -993,6 +1051,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1021,6 +1080,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1049,6 +1109,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1077,6 +1138,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1105,6 +1167,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1133,6 +1196,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1161,6 +1225,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1189,6 +1254,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1217,6 +1283,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Medium",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1245,6 +1312,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1273,6 +1341,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "Overtake",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1301,6 +1370,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "None",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1329,6 +1399,7 @@ class TestPacketCarStatusData(F1TypesTest):
                     "ers-deploy-mode": "None",
                     "ers-harvested-this-lap-mguk": 0.0,
                     "ers-harvested-this-lap-mguh": 0.0,
+                    "ers-harvested-limit-per-lap": 0.0,
                     "ers-deployed-this-lap": 0.0,
                     "ers-max-capacity": 4000000.0,
                     "network-paused": False
@@ -1347,14 +1418,14 @@ class TestPacketCarStatusData(F1TypesTest):
         """
 
         raw_packet = b'\x00\x01\x01:\x001p\x95@\x00\x00\xdcB\xb0G>@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\x1b\xa2\x04I\x05O\xb4G\x98\xf9\x90I\x03\x00\xe9\xb6I\xd9N\xa1I\xfa\x92\xf7I\x00\x00\x01\x01:\x00w}\x98@\x00\x00\xdcB\xfc\x10B@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00L\x1b\x05I\x04\x98\xbaGw\x90xI\x03\xee\xd6\xbcI\x00\x0e\xa2IH\x00\xecI\x00\x00\x01\x01:\x00C\xca\x9a@\x00\x00\xdcB\xee|G@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00o\x83\x03I|#]GW\xac\xaaI\x01A\x04\xbfIB\xea\xa1I\x8e\xb0\xf4I\x00\x00\x01\x01:\x00\xc6\x0c\x8b@\x00\x00\xdcBm!>@+3\xa0\x0f\t\x01\x00\x00\x10\x10\x05\x00\xe8\xce\x04I\x00\x00\x00\x00\xf6\xa3uI\x01\x8bXQG\x94\xe0\xceF rEA\x00\x00\x01\x01:\x00\xdb\x90\x9f@\x00\x00\xdcB\xd8\x8eN@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\xb0\xb4\x03I\x9a\xd4ZG\x1a\xc4\xb4I\x01k}\xc6I\xb3,\xa4IV\xe2\xf2I\x00\x00\x01\x01:\x00\x96*\x97@\x00\x00\xdcB<vE@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\\5\x06I\x00\x00\x00\x008\x0f\x96I\x01d\x03\xc0I2\xb7\xb7In\x1e\x05J\x00\x00\x01\x01:\x00\xf0\x8c\x8e@\x00\x00\xdcByH;@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\xb5\xcb\xe4H\x00\x00\x00\x00\xc1=\x19J\x01\xb1\xea\xddI\x8b\xd9\xbeI\xce\\\x01J\x00\x00\x01\x01:\x00\x96a\x85@\x00\x00\xdcB#\xae6@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x05\x00\x8f\xa2\xffH\x00\x00\x00\x00\x13k\x99I\x01\xca\xc8\x8cG;(\x07Gv.+C\x00\x00\x01\x01:\x00\xe5d\x9b@\x00\x00\xdcB\xb18K@+3\xa0\x0f\t\x01\xd8\x00\x10\x10\x04\x00\x07\xe4\x01I\x00\x00\x00\x00l+\xa2I\x01l\xb6\xc6IN\x1f\xb4I\x94m\xf1I\x00\x00\x01\x01:\x00\xf0o\x9c@\x00\x00\xdcBu\x0bK@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00Q\xa6\x03I\xb2\xa7`G\x81\x04~I\x01V\x8a\xc4IkH\xacI=\xb9\xf7I\x00\x00\x01\x01:\x00\x16\x94\x92@\x00\x00\xdcB\xa0@8@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x01\xe7\xe5\x05IrX\xeaG\xb9\x16\xf4I\x03\x8d\xfa\xbeI\xd2\x0c\xacI1\xa3\xc5I\x00\x00\x01\x01:\x00\x12;\x8f@\x00\x00\xdcBa:=@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\xb0D\x04I\xff\x8b\xbbG\x08*\x18J\x03\xb1v\xcdIH\xf5\xbcI\x9dW\x08J\x00\x00\x01\x01:\x00\x19\x01\x97@\x00\x00\xdcB\xb2\r?@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x01\x1f@\x06I\x04B\xd9G.q\xe8I\x03lz\xbcI\xb0f\xb1Iwq\xceI\x00\x00\x01\x01:\x00\x84\x91\x94@\x00\x00\xdcBP.A@+3\xa0\x0f\t\x01\x00\x00\x10\x10\x04\x00\x99J\x06I\x00\x00\x00\x00!\xecgI\x01pi\xbeI\x19\xd8\xb9I_\xc3\xf5I\x00\x00\x01\x01:\x00\xbbV\x89@\x00\x00\xdcB\xa3N:@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x05\x00L\xca\x05I\x8aR\xa2G\xb2\xd2\xbeI\x01\x00\x00\x00\x00\xd1\xffSD;[\rD\x00\x00\x01\x01:\x00/\xdd\x8d@\x00\x00\xdcB\x93\xe24@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\xe1\x9f\x03Iy\x95`G\xf4c\x10J\x013+\xc2I\x05\xb3\xa0I\xaan\xf3I\x00\x00\x01\x01:\x00\x93\x04\x8a@\x00\x00\xdcB\x18!7@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00\x95?\x06IrX\xeaG\xcf\xe6\xa8I\x03\xb3\x00\xd9I\x11{\xc4IE\xcf\x11J\x00\x00\x01\x01:\x00r@\x94@\x00\x00\xdcB\xe92=@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x00 \xf1\x03I\x18\xeb\xa6G\xbf\xae\xc2I\x03\x1ab\xb8I-\x9a\xa8I\x92\xce\xf1I\x00\x00\x01\x01:\x00\xd1i\x9b@\x00\x00\xdcB\xe9\xeeL@+3\xa0\x0f\t\x00p\x00\x10\x10\x04\x00\x99\xa4\x02I\x00\x00\x00\x00\xc8\xa2\xa2I\x01\x1c\xd0\xe0I\x8eS\xa8IUz\x00J\x00\x00\x00\x015\x00B\xe5\x8a@\x00\x00\xdcBE\x10(@+3\xa0\x0f\t\x00\x00\x00\x10\x10\x04\x03v\xa2\xb9G\x00\x00\x00\x00\xcb\xcd$J\x03\xfdn\xa8I\x8d<\xc9I\xbd\x14\x7fI\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x9f\xaf\xbf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        expected_json  = {"car-status-data": [{"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.669945240020752, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.973125457763672, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 543265.6875, "engine-power-mguk": 92318.0390625, "ers-store-energy": 1187635.0, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1498400.0, "ers-harvested-this-lap-mguh": 1321435.125, "ers-deployed-this-lap": 2028127.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.765315532684326, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.0322866439819336, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 545204.75, "engine-power-mguk": 95536.03125, "ers-store-energy": 1018119.4375, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1546973.75, "ers-harvested-this-lap-mguh": 1327552.0, "ers-deployed-this-lap": 1933321.0, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8371901512146, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.117000102996826, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 538678.9375, "engine-power-mguk": 56611.484375, "ers-store-energy": 1398154.875, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1564808.125, "ers-harvested-this-lap-mguh": 1326408.25, "ers-deployed-this-lap": 2004497.75, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.345309257507324, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.970790147781372, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 543982.5, "engine-power-mguk": 0.0, "ers-store-energy": 1006143.375, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 53592.54296875, "ers-harvested-this-lap-mguh": 26480.2890625, "ers-deployed-this-lap": 12.340362548828125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.9864325523376465, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.227468490600586, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539467.0, "engine-power-mguk": 56020.6015625, "ers-store-energy": 1480835.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1626029.375, "ers-harvested-this-lap-mguh": 1344918.375, "ers-deployed-this-lap": 1989706.75, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.7239484786987305, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.085341453552246, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 549717.75, "engine-power-mguk": 0.0, "ers-store-energy": 1229287.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1572972.5, "ers-harvested-this-lap-mguh": 1504998.25, "ers-deployed-this-lap": 2181019.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.454704284667969, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9262983798980713, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 468573.65625, "engine-power-mguk": 0.0, "ers-store-energy": 2510704.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1817942.125, "ers-harvested-this-lap-mguh": 1563441.375, "ers-deployed-this-lap": 2119475.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.1681623458862305, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8543784618377686, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 523540.46875, "engine-power-mguk": 0.0, "ers-store-energy": 1256802.375, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 72081.578125, "ers-harvested-this-lap-mguh": 34600.23046875, "ers-deployed-this-lap": 171.18148803710938, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8560662269592285, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.175335168838501, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 216, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 532032.4375, "engine-power-mguk": 0.0, "ers-store-energy": 1328493.5, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1627853.5, "ers-harvested-this-lap-mguh": 1475561.75, "ers-deployed-this-lap": 1977778.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.888664245605469, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.172574281692505, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539237.0625, "engine-power-mguk": 57511.6953125, "ers-store-energy": 1040456.0625, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1610058.75, "ers-harvested-this-lap-mguh": 1411341.375, "ers-deployed-this-lap": 2029351.625, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.5805768966674805, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8789443969726562, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Green", "engine-power-ice": 548446.4375, "engine-power-mguk": 119984.890625, "ers-store-energy": 1999575.125, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1564497.625, "ers-harvested-this-lap-mguh": 1409434.25, "ers-deployed-this-lap": 1619046.125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.475960731506348, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.956688165664673, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 541771.0, "engine-power-mguk": 96023.9921875, "ers-store-energy": 2493058.0, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1683158.125, "ers-harvested-this-lap-mguh": 1547945.0, "ers-deployed-this-lap": 2233831.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.718883991241455, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.98521089553833, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Green", "engine-power-ice": 549889.9375, "engine-power-mguk": 111236.03125, "ers-store-energy": 1904165.75, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1544013.5, "ers-harvested-this-lap-mguh": 1453270.0, "ers-deployed-this-lap": 1691182.875, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.642763137817383, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.018451690673828, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 550057.5625, "engine-power-mguk": 0.0, "ers-store-energy": 949954.0625, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1559854.0, "ers-harvested-this-lap-mguh": 1522435.125, "ers-deployed-this-lap": 2013291.875, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.291837215423584, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9110496044158936, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 548004.75, "engine-power-mguk": 83109.078125, "ers-store-energy": 1563222.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 847.9971313476562, "ers-deployed-this-lap": 565.4254760742188, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.4332499504089355, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.826328992843628, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539134.0625, "engine-power-mguk": 57493.47265625, "ers-store-energy": 2365693.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1590630.375, "ers-harvested-this-lap-mguh": 1316448.625, "ers-deployed-this-lap": 1994197.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.313058376312256, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8613948822021484, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 549881.3125, "engine-power-mguk": 119984.890625, "ers-store-energy": 1383641.875, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1777686.375, "ers-harvested-this-lap-mguh": 1609570.125, "ers-deployed-this-lap": 2388945.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.632866859436035, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9562323093414307, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 540434.0, "engine-power-mguk": 85462.1875, "ers-store-energy": 1594839.875, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1510467.25, "ers-harvested-this-lap-mguh": 1381189.625, "ers-deployed-this-lap": 1980882.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8566670417785645, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.2020819187164307, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 112, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 535113.5625, "engine-power-mguk": 0.0, "ers-store-energy": 1332313.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1841667.5, "ers-harvested-this-lap-mguh": 1378929.75, "ers-deployed-this-lap": 2104981.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Standard", "front-brake-bias": 53, "pit-limiter-status": False, "fuel-in-tank": 4.340485572814941, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.625993013381958, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Yellow", "engine-power-ice": 95044.921875, "engine-power-mguk": 0.0, "ers-store-energy": 2700146.75, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1379807.625, "ers-harvested-this-lap-mguh": 1648529.625, "ers-deployed-this-lap": 1044811.8125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Lean", "front-brake-bias": 0, "pit-limiter-status": False, "fuel-in-tank": 0.0, "fuel-capacity": 0.0, "fuel-remaining-laps": -1.3720436096191406, "max-rpm": 0, "idle-rpm": 0, "max-gears": 0, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "Unknown", "visual-tyre-compound": "Unknown", "tyres-age-laps": 0, "vehicle-fia-flags": "None", "engine-power-ice": 0.0, "engine-power-mguk": 0.0, "ers-store-energy": 0.0, "ers-deploy-mode": "None", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 0.0, "ers-deployed-this-lap": 0.0, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Lean", "front-brake-bias": 0, "pit-limiter-status": False, "fuel-in-tank": 0.0, "fuel-capacity": 0.0, "fuel-remaining-laps": 0.0, "max-rpm": 0, "idle-rpm": 0, "max-gears": 0, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "Unknown", "visual-tyre-compound": "Unknown", "tyres-age-laps": 0, "vehicle-fia-flags": "None", "engine-power-ice": 0.0, "engine-power-mguk": 0.0, "ers-store-energy": 0.0, "ers-deploy-mode": "None", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 0.0, "ers-deployed-this-lap": 0.0, "ers-max-capacity": 4000000.0, "network-paused": False}]}
+        expected_json  = {"car-status-data": [{"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.669945240020752, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.973125457763672, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 543265.6875, "engine-power-mguk": 92318.0390625, "ers-store-energy": 1187635.0, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1498400.0, "ers-harvested-this-lap-mguh": 1321435.125, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2028127.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.765315532684326, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.0322866439819336, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 545204.75, "engine-power-mguk": 95536.03125, "ers-store-energy": 1018119.4375, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1546973.75, "ers-harvested-this-lap-mguh": 1327552.0, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1933321.0, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8371901512146, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.117000102996826, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 538678.9375, "engine-power-mguk": 56611.484375, "ers-store-energy": 1398154.875, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1564808.125, "ers-harvested-this-lap-mguh": 1326408.25, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2004497.75, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.345309257507324, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.970790147781372, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 543982.5, "engine-power-mguk": 0.0, "ers-store-energy": 1006143.375, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 53592.54296875, "ers-harvested-this-lap-mguh": 26480.2890625, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 12.340362548828125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.9864325523376465, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.227468490600586, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539467.0, "engine-power-mguk": 56020.6015625, "ers-store-energy": 1480835.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1626029.375, "ers-harvested-this-lap-mguh": 1344918.375, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1989706.75, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.7239484786987305, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.085341453552246, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 549717.75, "engine-power-mguk": 0.0, "ers-store-energy": 1229287.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1572972.5, "ers-harvested-this-lap-mguh": 1504998.25, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2181019.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.454704284667969, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9262983798980713, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 468573.65625, "engine-power-mguk": 0.0, "ers-store-energy": 2510704.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1817942.125, "ers-harvested-this-lap-mguh": 1563441.375, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2119475.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.1681623458862305, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8543784618377686, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 523540.46875, "engine-power-mguk": 0.0, "ers-store-energy": 1256802.375, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 72081.578125, "ers-harvested-this-lap-mguh": 34600.23046875, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 171.18148803710938, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8560662269592285, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.175335168838501, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 216, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 532032.4375, "engine-power-mguk": 0.0, "ers-store-energy": 1328493.5, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1627853.5, "ers-harvested-this-lap-mguh": 1475561.75, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1977778.5, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.888664245605469, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.172574281692505, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539237.0625, "engine-power-mguk": 57511.6953125, "ers-store-energy": 1040456.0625, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1610058.75, "ers-harvested-this-lap-mguh": 1411341.375, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2029351.625, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.5805768966674805, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8789443969726562, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Green", "engine-power-ice": 548446.4375, "engine-power-mguk": 119984.890625, "ers-store-energy": 1999575.125, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1564497.625, "ers-harvested-this-lap-mguh": 1409434.25, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1619046.125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.475960731506348, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.956688165664673, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 541771.0, "engine-power-mguk": 96023.9921875, "ers-store-energy": 2493058.0, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1683158.125, "ers-harvested-this-lap-mguh": 1547945.0, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2233831.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.718883991241455, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.98521089553833, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Green", "engine-power-ice": 549889.9375, "engine-power-mguk": 111236.03125, "ers-store-energy": 1904165.75, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1544013.5, "ers-harvested-this-lap-mguh": 1453270.0, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1691182.875, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.642763137817383, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.018451690673828, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 1, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 550057.5625, "engine-power-mguk": 0.0, "ers-store-energy": 949954.0625, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1559854.0, "ers-harvested-this-lap-mguh": 1522435.125, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2013291.875, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.291837215423584, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9110496044158936, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 5, "vehicle-fia-flags": "None", "engine-power-ice": 548004.75, "engine-power-mguk": 83109.078125, "ers-store-energy": 1563222.25, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 847.9971313476562, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 565.4254760742188, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.4332499504089355, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.826328992843628, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 539134.0625, "engine-power-mguk": 57493.47265625, "ers-store-energy": 2365693.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1590630.375, "ers-harvested-this-lap-mguh": 1316448.625, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1994197.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.313058376312256, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.8613948822021484, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 549881.3125, "engine-power-mguk": 119984.890625, "ers-store-energy": 1383641.875, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1777686.375, "ers-harvested-this-lap-mguh": 1609570.125, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2388945.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.632866859436035, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.9562323093414307, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 540434.0, "engine-power-mguk": 85462.1875, "ers-store-energy": 1594839.875, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1510467.25, "ers-harvested-this-lap-mguh": 1381189.625, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1980882.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": True, "fuel-mix": "Standard", "front-brake-bias": 58, "pit-limiter-status": False, "fuel-in-tank": 4.8566670417785645, "fuel-capacity": 110.0, "fuel-remaining-laps": 3.2020819187164307, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 112, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "None", "engine-power-ice": 535113.5625, "engine-power-mguk": 0.0, "ers-store-energy": 1332313.0, "ers-deploy-mode": "Medium", "ers-harvested-this-lap-mguk": 1841667.5, "ers-harvested-this-lap-mguh": 1378929.75, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 2104981.25, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Standard", "front-brake-bias": 53, "pit-limiter-status": False, "fuel-in-tank": 4.340485572814941, "fuel-capacity": 110.0, "fuel-remaining-laps": 2.625993013381958, "max-rpm": 13099, "idle-rpm": 4000, "max-gears": 9, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "tyres-age-laps": 4, "vehicle-fia-flags": "Yellow", "engine-power-ice": 95044.921875, "engine-power-mguk": 0.0, "ers-store-energy": 2700146.75, "ers-deploy-mode": "Overtake", "ers-harvested-this-lap-mguk": 1379807.625, "ers-harvested-this-lap-mguh": 1648529.625, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 1044811.8125, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Lean", "front-brake-bias": 0, "pit-limiter-status": False, "fuel-in-tank": 0.0, "fuel-capacity": 0.0, "fuel-remaining-laps": -1.3720436096191406, "max-rpm": 0, "idle-rpm": 0, "max-gears": 0, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "Unknown", "visual-tyre-compound": "Unknown", "tyres-age-laps": 0, "vehicle-fia-flags": "None", "engine-power-ice": 0.0, "engine-power-mguk": 0.0, "ers-store-energy": 0.0, "ers-deploy-mode": "None", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 0.0, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 0.0, "ers-max-capacity": 4000000.0, "network-paused": False}, {"traction-control": "OFF", "anti-lock-brakes": False, "fuel-mix": "Lean", "front-brake-bias": 0, "pit-limiter-status": False, "fuel-in-tank": 0.0, "fuel-capacity": 0.0, "fuel-remaining-laps": 0.0, "max-rpm": 0, "idle-rpm": 0, "max-gears": 0, "drs-allowed": 0, "drs-activation-distance": 0, "actual-tyre-compound": "Unknown", "visual-tyre-compound": "Unknown", "tyres-age-laps": 0, "vehicle-fia-flags": "None", "engine-power-ice": 0.0, "engine-power-mguk": 0.0, "ers-store-energy": 0.0, "ers-deploy-mode": "None", "ers-harvested-this-lap-mguk": 0.0, "ers-harvested-this-lap-mguh": 0.0, "ers-harvested-limit-per-lap": 0.0, "ers-deployed-this-lap": 0.0, "ers-max-capacity": 4000000.0, "network-paused": False}]}
 
         parsed_packet = PacketCarStatusData(self.m_header_25, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
-    def _generateRandomCarStatusData(self) -> CarStatusData:
+    def _generateRandomCarStatusData(self, packet_format: int = 2025) -> CarStatusData:
         """
         Generate a random car status data object
 
@@ -1387,5 +1458,7 @@ class TestPacketCarStatusData(F1TypesTest):
             ers_harvested_this_lap_mguk=F1TypesTest.getRandomFloat(),
             ers_harvested_this_lap_mguh=F1TypesTest.getRandomFloat(),
             ers_deployed_this_lap=F1TypesTest.getRandomFloat(),
-            network_paused=F1TypesTest.getRandomBool()
+            network_paused=F1TypesTest.getRandomBool(),
+            packet_format=packet_format,
+            ers_harvested_limit_per_lap=F1TypesTest.getRandomFloat() if packet_format >= 2026 else 0.0
         )

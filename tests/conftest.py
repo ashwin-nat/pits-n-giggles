@@ -1,5 +1,13 @@
 import os
+import random
 import pytest
+
+_GLOBAL_SEED = 42
+
+
+@pytest.fixture(autouse=True)
+def _seed_rng():
+    random.seed(_GLOBAL_SEED)
 
 # tests_wdt.py conflicts with the tests_wdt/ package (same base name).
 # The package supersedes the file; exclude the file so pytest doesn't choke.

@@ -33,9 +33,11 @@ class TestPacketCarMotionData(F1TypesTest):
         Set up the test
         """
         self.m_num_players = random.randint(1, 22)
+        self.m_num_players_26 = random.randint(1, 24)
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.MOTION, 26, self.m_num_players_26)
         self.m_packet_23_24_25 = (
             b'\x0c\xb3\x87\xc3\xc8\x98kA\x88\xe74\xc4A\xf7=9\x0e\x89\x82\xba\n\x1f5\xba\xfe\xba\x02\x015\x94\xcck\xc8'
             b'\x00\xff\xbab\x11\xfc6\xa7R!7\x98Zk\xb7\n\x9e$\xc0\x80$\x01\xbc\'D\xc8\xbb\x82k\x93\xc3\xd0\x03}AI\xcaA'
@@ -922,7 +924,7 @@ class TestPacketCarMotionData(F1TypesTest):
             roll=random.uniform(-3.14, 3.14)
         )
 
-    def _generateEmptyCarMotionData(self) -> CarMotionData:
+    def _generateEmptyCarMotionData(self, packet_format: int = 0) -> CarMotionData:
         """Generate a car motion data object with all zeroes
 
         Returns:
@@ -946,5 +948,85 @@ class TestPacketCarMotionData(F1TypesTest):
             g_force_vertical=0.0,
             yaw=0.0,
             pitch=0.0,
-            roll=0.0
+            roll=0.0,
+            packet_format=packet_format,
         )
+
+    def _generateRandomCarMotionData_26(self) -> CarMotionData:
+        """Generate a random CarMotionData object for F1 26 format.
+
+        G-force values are integer/1000.0 to survive the int16 quantization round-trip.
+
+        Returns:
+            CarMotionData: The generated CarMotionData object
+        """
+        return CarMotionData.from_values(
+            world_position_x=random.uniform(-100.0, 100.0),
+            world_position_y=random.uniform(-100.0, 100.0),
+            world_position_z=random.uniform(-100.0, 100.0),
+            world_velocity_x=random.uniform(-50.0, 50.0),
+            world_velocity_y=random.uniform(-50.0, 50.0),
+            world_velocity_z=random.uniform(-50.0, 50.0),
+            world_forward_dir_x=random.randint(-1000, 1000),
+            world_forward_dir_y=random.randint(-1000, 1000),
+            world_forward_dir_z=random.randint(-1000, 1000),
+            world_right_dir_x=random.randint(-1000, 1000),
+            world_right_dir_y=random.randint(-1000, 1000),
+            world_right_dir_z=random.randint(-1000, 1000),
+            g_force_lateral=random.randint(-32767, 32767) / 1000.0,
+            g_force_longitudinal=random.randint(-32767, 32767) / 1000.0,
+            g_force_vertical=random.randint(-32767, 32767) / 1000.0,
+            yaw=random.uniform(-3.14, 3.14),
+            pitch=random.uniform(-3.14, 3.14),
+            roll=random.uniform(-3.14, 3.14),
+            packet_format=2026,
+        )
+
+    def test_f1_26_random(self):
+        """Test for F1 2026 with randomly generated data (24 cars, int16 g-forces)."""
+
+        car_motion_objects = (
+            [self._generateRandomCarMotionData_26() for _ in range(self.m_num_players_26)] +
+            [self._generateEmptyCarMotionData(packet_format=2026)
+             for _ in range(self.m_num_players_26, PacketMotionData.MAX_CARS_2026)]
+        )
+        generated_test_obj = PacketMotionData.from_values(self.m_header_26, car_motion_objects)
+        serialised_test_obj = generated_test_obj.to_bytes()
+
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketMotionData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.assertEqual(len(parsed_obj.m_carMotionData), 24)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(parsed_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """Test for F1 2026 with an actual game packet."""
+        # F126-CAPTURE: PKT0
+        self.skipTest("awaiting 2026 capture")
+        # --- fill in once captured, then remove skipTest above ---
+        # Capture point: lib/telemetry_manager/factory.py — gate on format==2026 and packetId==0
+        # raw_packet contains the payload bytes only (header already stripped)
+        # raw_packet = (
+        #     b"REPLACE_WITH_CAPTURED_BYTES"
+        # )
+        # expected_json = {
+        #     "car-motion-data": [
+        #         {
+        #             "world-position": {"x": 0.0, "y": 0.0, "z": 0.0},
+        #             "world-velocity": {"x": 0.0, "y": 0.0, "z": 0.0},
+        #             "world-forward-dir": {"x": 0, "y": 0, "z": 0},
+        #             "world-right-dir": {"x": 0, "y": 0, "z": 0},
+        #             "g-force": {"lateral": 0.0, "longitudinal": 0.0, "vertical": 0.0},
+        #             "orientation": {"yaw": 0.0, "pitch": 0.0, "roll": 0.0},
+        #         },
+        #         # ... 24 entries total (one per car)
+        #     ]
+        # }
+        # parsed_packet = PacketMotionData(self.m_header_26, raw_packet)
+        # parsed_json = parsed_packet.toJSON()
+        # self.jsonComparisionUtil(expected_json, parsed_json)
+        # self.assertFalse(hasattr(parsed_packet, '__dict__'))

@@ -23,7 +23,7 @@
 
 import struct
 from abc import ABC
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import SafetyCarEventType, SafetyCarType
@@ -1417,82 +1417,115 @@ class PacketEventData(F1PacketBase):
 
     class Collision(EventType):
         """
-        The class representing the COLLISION event. This is sent when one vehicle overtakes another.
+        The class representing the COLLISION event.
 
         Attributes:
-            m_vehicle_1_index (int): The index of the overtaking vehicle.
-            m_vehicle_2_index (int): The index of the vehicle being overtaken.
+            m_vehicle_1_index (int): Vehicle index of the first vehicle involved in the collision.
+            m_vehicle_2_index (int): Vehicle index of the second vehicle involved in the collision.
+            m_severity (Optional[CollisionSeverity]): Severity of the collision.
+                None for packet formats prior to 2026.
         """
 
         COMPILED_PACKET_STRUCT = struct.Struct("<BB")
         PACKET_LEN = COMPILED_PACKET_STRUCT.size
+        COMPILED_PACKET_STRUCT_2026 = struct.Struct("<BBB")
+        PACKET_LEN_2026 = COMPILED_PACKET_STRUCT_2026.size
+
+        class CollisionSeverity(F1BaseEnum):
+            LOW = 0
+            MEDIUM = 1
+            HIGH = 2
+
+            def __str__(self) -> str:
+                return self.name
 
         __slots__ = (
             "m_vehicle_1_index",
             "m_vehicle_2_index",
+            "m_severity",
         )
 
-        def __init__(self, data: bytes, _packet_format: int) -> None:
+        m_vehicle_1_index: int
+        m_vehicle_2_index: int
+        m_severity: Optional[CollisionSeverity]
+
+        def __init__(self, data: bytes, packet_format: int) -> None:
             """
             Initializes a Collision object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
-                _packet_format (int): The packet format
+                packet_format (int): The packet format year (e.g. 2024, 2026).
 
             Raises:
                 struct.error: If the binary data does not match the expected format.
             """
-            self.m_vehicle_1_index, self.m_vehicle_2_index = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+            if packet_format >= 2026:
+                self.m_vehicle_1_index, self.m_vehicle_2_index, raw_severity = \
+                    self.COMPILED_PACKET_STRUCT_2026.unpack(data[:self.PACKET_LEN_2026])
+                self._cast_enums(raw_severity)
+            else:
+                self.m_vehicle_1_index, self.m_vehicle_2_index = \
+                    self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+                self.m_severity = None
+
+        def _cast_enums(self, raw_severity: int) -> None:
+            self.m_severity = PacketEventData.Collision.CollisionSeverity.safeCast(raw_severity)
 
         def __str__(self) -> str:
-            """
-            Returns a string representation of the Collision object.
-
-            Returns:
-                str: String representation of the object.
-            """
-            return f"Collision(m_vehicle_1_index={str(self.m_vehicle_1_index)}, " \
-                f"m_vehicle_2_index={str(self.m_vehicle_2_index)})"
+            return (
+                f"Collision(m_vehicle_1_index={self.m_vehicle_1_index}, "
+                f"m_vehicle_2_index={self.m_vehicle_2_index}, "
+                f"m_severity={self.m_severity})"
+            )
 
         def toJSON(self) -> Dict[str, Any]:
-            """
-            Convert the Collision instance to a JSON-compatible dictionary.
-
-            Returns:
-                Dict[str, Any]: JSON-compatible dictionary representing the Collision instance.
-            """
             return {
                 "vehicle-1-index": self.m_vehicle_1_index,
-                "vehicle-2-index": self.m_vehicle_2_index
+                "vehicle-2-index": self.m_vehicle_2_index,
+                "severity": str(self.m_severity) if self.m_severity is not None else None,
             }
 
         def __eq__(self, other: "PacketEventData.Collision") -> bool:
-            """
-            Check if two Collision objects are equal.
-
-            Args:
-                other (PacketEventData.Collision): The other Collision object to compare with.
-
-            Returns:
-                bool: True if the Collision objects are equal, False otherwise.
-            """
-
-            return self.m_vehicle_1_index == other.m_vehicle_1_index and \
-                self.m_vehicle_2_index == other.m_vehicle_2_index
+            return (
+                self.m_vehicle_1_index == other.m_vehicle_1_index
+                and self.m_vehicle_2_index == other.m_vehicle_2_index
+                and self.m_severity == other.m_severity
+            )
 
         def __ne__(self, other: "PacketEventData.Collision") -> bool:
-            """
-            Check if two Collision objects are not equal.
-
-            Args:
-                other (PacketEventData.Collision): The other Collision object to compare with.
-
-            Returns:
-                bool: True if the Collision objects are not equal, False otherwise.
-            """
-
             return not self.__eq__(other)
+
+        def to_bytes(self, packet_format: int) -> bytes:
+            if packet_format >= 2026:
+                severity_int = (
+                    self.m_severity.value
+                    if isinstance(self.m_severity, PacketEventData.Collision.CollisionSeverity)
+                    else self.m_severity
+                )
+                return self.COMPILED_PACKET_STRUCT_2026.pack(
+                    self.m_vehicle_1_index, self.m_vehicle_2_index, severity_int
+                )
+            return self.COMPILED_PACKET_STRUCT.pack(
+                self.m_vehicle_1_index, self.m_vehicle_2_index
+            )
+
+        @classmethod
+        def from_values(cls,
+            vehicle_1_index: int,
+            vehicle_2_index: int,
+            severity: Optional[Union[int, "PacketEventData.Collision.CollisionSeverity"]] = None,
+            packet_format: int = 2024) -> "PacketEventData.Collision":
+            if packet_format >= 2026:
+                severity_int = severity.value if isinstance(severity, cls.CollisionSeverity) else severity
+                return cls(
+                    cls.COMPILED_PACKET_STRUCT_2026.pack(vehicle_1_index, vehicle_2_index, severity_int),
+                    packet_format
+                )
+            return cls(
+                cls.COMPILED_PACKET_STRUCT.pack(vehicle_1_index, vehicle_2_index),
+                packet_format
+            )
 
     # Mappings between the event type and the type of object to parse into
     event_type_map: Dict[EventPacketType, Optional[EventType]] = {
