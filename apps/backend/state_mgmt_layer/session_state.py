@@ -36,15 +36,15 @@ from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
                           FinalClassificationData, GameMode, LapData,
                           PacketCarDamageData, PacketCarSetupData,
-                          PacketCarStatusData, PacketCarTelemetryData,
-                          PacketEventData, PacketFinalClassificationData,
-                          PacketLapData, PacketLapPositionsData,
-                          PacketMotionData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          ResultReason, ResultStatus, SafetyCarType,
-                          SessionType, TrackID, VisualTyreCompound,
-                          WeatherForecastSample)
+                          PacketCarStatusData, PacketCarTelemetry2Data,
+                          PacketCarTelemetryData, PacketEventData,
+                          PacketFinalClassificationData, PacketLapData,
+                          PacketLapPositionsData, PacketMotionData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData, ResultReason, ResultStatus,
+                          SafetyCarType, SessionType, TrackID,
+                          VisualTyreCompound, WeatherForecastSample)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          SessionChangeNotification,
                                          TyreDeltaMessage)
@@ -712,6 +712,9 @@ class SessionState:
                 car_status_data.m_ersHarvestedThisLapMGUH
             )
 
+            # F1 2026 onwards
+            obj_to_be_updated.m_car_info.m_ers_harv_limit_per_lap_j = car_status_data.m_ersHarvestedLimitPerLap
+
     def processFinalClassificationUpdate(self, packet: PacketFinalClassificationData) -> Dict[str, Any]:
         """
         Updates internal state with data from final classification packet.
@@ -1013,6 +1016,23 @@ class SessionState:
         for index, position_hist in enumerate(position_hist_by_index):
             if obj_to_be_updated := self._getObjectByIndex(index, create=False):
                 obj_to_be_updated.processPositionsHistoryUpdate(packet, position_hist)
+
+    def processCarTelemetry2Update(self, packet: PacketCarTelemetry2Data) -> None:
+        """Process the car telemetry v2 update packet and update the necessary fields
+
+        Args:
+            packet (PacketCarTelemetry2Data): The car telemetry v2 update packet
+        """
+
+        for index, car_telemetry_data in enumerate(packet.m_carTelemetry2Data):
+            obj_to_be_updated = self._getObjectByIndex(index, reason='Car Telemetry v2 update')
+            obj_to_be_updated.m_packet_copies.m_packet_car_telemetry_2 = car_telemetry_data
+
+            obj_to_be_updated.m_car_info.m_active_aero_mode = car_telemetry_data.m_activeAeroMode
+            obj_to_be_updated.m_car_info.m_active_aero_avlb = car_telemetry_data.m_activeAeroAvailable
+            obj_to_be_updated.m_car_info.m_overtake_avlb = car_telemetry_data.m_overtakeAvailable
+            obj_to_be_updated.m_car_info.m_overtake_active = car_telemetry_data.m_overtakeActive
+            obj_to_be_updated.m_car_info.m_2026_regs = car_telemetry_data.m_2026Regulations
 
     def processSessionStarted(self, reason: str) -> None:
         """

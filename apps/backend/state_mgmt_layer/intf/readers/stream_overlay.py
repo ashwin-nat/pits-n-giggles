@@ -86,6 +86,7 @@ class StreamOverlayData(BaseAPI):
         self.__initGForce()
         self.__initPaceComparison(prev_data, next_data)
         self.__initMotion(session_state.m_driver_data)
+        self.__init2026Fields()
 
     def __initCarTelemetry(self) -> None:
         """Prepares the car telemetry data.
@@ -244,6 +245,19 @@ class StreamOverlayData(BaseAPI):
             if driver and driver.is_valid
         ]
 
+    def __init2026Fields(self) -> None:
+        """Prepares the 2026-specific fields (e.g., ERS harvest limit per lap)"""
+        if self.m_ref_obj:
+            self.m_2026_regs_json = self.m_ref_obj.get2026RegsInfoJSON()
+        else:
+            self.m_2026_regs_json = {
+                "2026-regs-enabled": False,
+                "active-aero-mode": False,
+                "active-aero-avlb": False,
+                "overtake-avlb": False,
+                "overtake-active": False,
+            }
+
     def __populatePaceCompDataForDriver(self,
                                         json_dict: Dict[str, any],
                                         driver_obj: Optional[DataPerDriver]) -> None:
@@ -396,6 +410,7 @@ class StreamOverlayData(BaseAPI):
             },
             "pace-comparison" : self.m_pace_comp_json,
             "motion" : self.m_motion_json,
+            "2026-regs-info" : self.m_2026_regs_json,
         }
 
         if self.m_export_hud_data:

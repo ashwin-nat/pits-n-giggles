@@ -28,8 +28,8 @@ from typing import Optional
 from lib.f1_types import (CarDamageData, CarMotionData, CarSetupData,
                           CarStatusData, CarTelemetryData,
                           FinalClassificationData, LapData,
-                          PacketSessionHistoryData, PacketTyreSetsData,
-                          ParticipantData)
+                          PacketCarTelemetry2Data, PacketSessionHistoryData,
+                          PacketTyreSetsData, ParticipantData)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -51,6 +51,7 @@ class PacketCopies:
         m_packet_final_classification (Optional[FinalClassificationData]): Copy of the FinalClassificationData packet.
         m_packet_motion (Optional[CarMotionData]): Copy of the CarMotionData packet.
         m_packet_car_setup (Optional[CarSetupData]): Copy of the CarSetupData packet.
+        m_packet_car_telemetry_2 (Optional[PacketCarTelemetry2Data]): Copy of the PacketCarTelemetry2Data packet.
     """
     m_packet_lap_data: Optional[LapData] = None
     m_packet_particpant_data: Optional[ParticipantData] = None
@@ -62,3 +63,4 @@ class PacketCopies:
     m_packet_final_classification: Optional[FinalClassificationData] = None
     m_packet_motion: Optional[CarMotionData] = None
     m_packet_car_setup: Optional[CarSetupData] = None
+    m_packet_car_telemetry_2: Optional[PacketCarTelemetry2Data] = None

@@ -227,7 +227,7 @@ class DriversListRsp(BaseAPI):
 
         # for each driver:
         for index, driver_data in enumerate(self.m_session_state.m_driver_data):
-            if (index, driver_data) == (None, None):
+            if driver_data is None:
                 return
             if not driver_data.is_valid:
                 continue
@@ -374,6 +374,7 @@ class DriversListRsp(BaseAPI):
             "damage-info": self._getDamageInfoJSON(driver_data),
             "fuel-info": driver_data.getFuelStatsJSON(),
             "pit-info": driver_data.getPitInfoJSON(),
+            "26-regs-info": driver_data.get2026RegsInfoJSON(),
         }
         if self.m_send_position_data:
             motion = driver_data.m_packet_copies.m_packet_motion
