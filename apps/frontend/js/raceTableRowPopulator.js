@@ -89,8 +89,22 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
+        const regs_2026_info = driverInfo['2026-regs-info'];
+        let ersMode;
+
+        if (regs_2026_info['2026-regs-enabled']) {
+            if (regs_2026_info['overtake-active']) {
+                ersMode = "OVERTAKE";
+            } else if (regs_2026_info['overtake-avlb']) {
+                ersMode = ersMode = ersInfo["ers-mode"].toUpperCase() + " [OT AVLB]";
+            } else {
+                ersMode = ersInfo["ers-mode"].toUpperCase();
+            }
+        } else {
+            ersMode = ersInfo["ers-mode"].toUpperCase();
+        }
         const cell = this.createMultiLineCell([
-            `${ersInfo["ers-mode"].toUpperCase()}`,
+            `${ersMode}`,
             `${ersInfo["ers-percent"]}`,
         ]);
         this.addErsBar(cell, ersInfo["ers-percent-float"]);

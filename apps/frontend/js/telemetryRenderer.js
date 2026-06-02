@@ -71,8 +71,16 @@ class TelemetryRenderer {
       classes.push('dnf-row');
     }
 
-    else if (isLiveDataMode && driverInfo['drs']) {
-      classes.push('drs-row');
+    else if (isLiveDataMode) {
+        const regs2026Info = driverInfo['2026-regs-info'];
+
+        if (regs2026Info['2026-regs-enabled']) {
+            if (regs2026Info['active-aero-mode'] === 'STRAIGHT_MODE') {
+                classes.push('drs-row');
+            }
+        } else if (driverInfo['drs']) {
+            classes.push('drs-row');
+        }
     }
 
     return classes;
