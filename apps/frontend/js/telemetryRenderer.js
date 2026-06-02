@@ -45,7 +45,6 @@ class TelemetryRenderer {
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType, driverContext) {
-    const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
@@ -53,14 +52,15 @@ class TelemetryRenderer {
                                      sessionType, driverContext, this.columnConfig).populate();
 
     // Apply CSS classes based on row state
-    const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
+    const cssClasses = this.determineRowClasses(data, isLiveDataMode, spectatorIndex);
     row.classList.add(...cssClasses);
 
     return row;
   }
 
-  determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex) {
+  determineRowClasses(data, isLiveDataMode, spectatorIndex) {
     const classes = [];
+    const driverInfo = data['driver-info'];
 
     if ((spectatorIndex !== null && driverInfo['index'] === spectatorIndex) ||
         (spectatorIndex === null && driverInfo['is-player'])) {
@@ -72,7 +72,7 @@ class TelemetryRenderer {
     }
 
     else if (isLiveDataMode) {
-        const regs2026Info = driverInfo['2026-regs-info'];
+        const regs2026Info = data['26-regs-info'];
 
         if (regs2026Info['2026-regs-enabled']) {
             if (regs2026Info['active-aero-mode'] === 'STRAIGHT_MODE') {

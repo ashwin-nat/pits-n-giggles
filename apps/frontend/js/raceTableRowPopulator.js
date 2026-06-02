@@ -89,7 +89,7 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
-        const regs_2026_info = driverInfo['2026-regs-info'];
+        const regs_2026_info = this.rowData['26-regs-info'];
         let ersMode;
 
         if (regs_2026_info['2026-regs-enabled']) {
