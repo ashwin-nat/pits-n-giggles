@@ -825,6 +825,8 @@ class GameMode(F1BaseEnum):
     CAREER_25_ONLINE = 29
     CHALLENGE_CAREER = 30
     APEX_STORY = 75
+    #TODO: value for MY_TEAM_CAREER_26
+    DRIVER_CAREER_26 = 78
     BENCHMARK = 127
 
     def __str__(self) -> str:
