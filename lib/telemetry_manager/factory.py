@@ -22,16 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import struct
 from logging import Logger
 from typing import Optional, Set, Type
 
 from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
-                          PacketCarTelemetryData,
-                          PacketCountValidationError, PacketEventData,
-                          PacketFinalClassificationData, PacketHeader,
-                          PacketLapData, PacketLapPositionsData,
+                          PacketCarTelemetryData, PacketCountValidationError,
+                          PacketEventData, PacketFinalClassificationData,
+                          PacketHeader, PacketLapData, PacketLapPositionsData,
                           PacketLobbyInfoData, PacketMotionData,
                           PacketMotionExData, PacketParsingError,
                           PacketParticipantsData, PacketSessionData,
@@ -115,7 +115,7 @@ class PacketParserFactory:
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
         try:
             packet = parser_cls(header, payload_raw)
-        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError) as e:
+        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError, struct.error) as e:
             self._last_failure_reason = f"Packet parsing error: {str(e)}"
             self._logger.error("Cannot parse packet of type %s. Error = %s",
                                 str(header.m_packetId), str(e))
