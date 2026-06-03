@@ -303,7 +303,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "ers": self._format_ers(ers_info, telemetry_public),
             "ersMode": ers_mode,
             "ersColor": ERS_MODE_COLORS[ers_mode],
-            "drs": self._get_drs_active_aero(row_data),
+            "overtakeBarColor": self._get_overtake_bar_color(row_data),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
@@ -582,23 +582,37 @@ class TimingTowerOverlay(BaseOverlayQML):
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
 
-    def _get_drs_active_aero(self, data: Dict[str, Any]) -> bool:
-        """Determine DRS/AA status for the driver.
+    def _get_overtake_bar_color(self, data: Dict[str, Any]) -> str:
+        """Return the overtake bar colour for the driver.
+
+        Pre-2026: DRS active → green. Post-2026: overtake available → blue. Inactive → grey.
 
         Args:
-            data (Dict[str, Any]): Driver row data containing "drs-info"
+            data (Dict[str, Any]): Driver row data containing "2026-regs-info"
 
         Returns:
-            bool: True if DRS is active, False otherwise
+            str: Hex colour string
+        """
+        regs_2026_info = data['2026-regs-info']
+        is_active = self._get_overtake_bar_active(data)
+        if not is_active:
+            return "#333333"
+        return "#00b0ff" if regs_2026_info['2026-regs-enabled'] else "#00e676"
+
+    def _get_overtake_bar_active(self, data: Dict[str, Any]) -> bool:
+        """Determine overtake bar active state: DRS (pre-2026) or overtake available (2026+).
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "2026-regs-info" and "driver-info"
+
+        Returns:
+            bool: True if the overtake aid is active/available, False otherwise
         """
         regs_2026_info = data['2026-regs-info']
         if not regs_2026_info['2026-regs-enabled']:
             return data["driver-info"]["drs"]
 
-        aa_mode = regs_2026_info["active-aero-mode"]
-        if aa_mode == "STRAIGHT_MODE":
-            return True
-        return regs_2026_info["active-aero-avlb"]
+        return regs_2026_info["overtake-avlb"]
 
     def _get_ers_mode(self, data: Dict[str, Any]) -> str:
         """Get the ERS mode for the driver.

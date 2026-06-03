@@ -141,7 +141,7 @@ Window {
                 width: 6
                 height: parent.height - 8
                 radius: 2
-                color: (rowData && rowData.drs) ? "#00e676" : "#333333"
+                color: (rowData && rowData.overtakeBarColor) ? rowData.overtakeBarColor : "#333333"
             }
         }
     }
