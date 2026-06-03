@@ -50,7 +50,7 @@ Window {
     property bool   drsAvailable:   false
     property int    drsDistance:    0
 
-    property bool   isF126:         false
+    property bool   isF126:         true
     property bool   otEnabled:      false
     property bool   otAvailable:    false
     property int    otDistance:     0
@@ -89,10 +89,11 @@ Window {
     // Fill colour for the ERS inner circle based on current mode
     function ersInnerColor(mode) {
         let m = mode.toLowerCase()
+        if (root.isF126 && m.indexOf("boost") !== -1)
+            return root.otEnabled ? "#41bff3" : "#ff1744"    // Blue = overtake active, Red = inactive (2026)
         if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
         if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
         if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
-        if (m.indexOf("boost")    !== -1) return "#41bff3"   // Blue
         return "#4a5a6a"                                      // Grey (none/off)
     }
 

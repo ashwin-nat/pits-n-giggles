@@ -27,7 +27,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
-from apps.hud.common import (ERS_MODE_COLORS,
+from apps.hud.common import (get_ers_mode_color,
                              get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
@@ -302,7 +302,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
             "ersMode": ers_mode,
-            "ersColor": ERS_MODE_COLORS[ers_mode],
+            "ersColor": get_ers_mode_color(ers_mode, row_data.get('2026-regs-info', {}).get('2026-regs-enabled', False), row_data.get('2026-regs-info', {}).get('overtake-active', False)),
             "overtakeBarColor": self._get_overtake_bar_color(row_data),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),

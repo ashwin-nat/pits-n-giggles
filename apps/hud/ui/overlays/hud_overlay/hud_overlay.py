@@ -91,8 +91,6 @@ class HudOverlay(BaseOverlayQML):
         if not data:
             return
 
-        # Ignore the rival field in the obj
-
         # Pedals (0.0–1.0 → 0–100)
         self.set_qml_property("throttleValue", data.throttle * 100.0)
         self.set_qml_property("brakeValue",    data.brake    * 100.0)
@@ -112,12 +110,13 @@ class HudOverlay(BaseOverlayQML):
         f26 = data.f1_26_data
         if f26.enabled:
             if f26.active_aero_mode == "STRAIGHT_MODE":
-                drs_text    = "X-MODE"
+                drs_text    = "STRAIGHT"
                 drs_enabled = True
                 drs_dist    = 0
             else:
-                drs_text, drs_enabled = "Z-MODE", False
-                drs_dist = min(f26.active_aero_dist, 250)
+                drs_text    = "CORNER"
+                drs_enabled = False
+                drs_dist    = min(f26.active_aero_dist, 250)
             drs_avlb    = f26.active_aero_avlb
             ot_enabled  = f26.overtake_active
             ot_avlb     = f26.overtake_avlb
