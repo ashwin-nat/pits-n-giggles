@@ -27,7 +27,8 @@ SOFTWARE.
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Tuple
+from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
+                    Tuple)
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
@@ -36,11 +37,12 @@ from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
-                          PacketCarTelemetryData, PacketEventData,
-                          PacketFinalClassificationData, PacketLapData,
-                          PacketMotionData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData)
+                          PacketCarTelemetry2Data, PacketCarTelemetryData,
+                          PacketEventData, PacketFinalClassificationData,
+                          PacketLapData, PacketMotionData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData)
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
     HudCycleMfdNotification, HudMfdInteractionNotification,
@@ -49,7 +51,8 @@ from lib.inter_task_communicator import (
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
-from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
+from lib.telemetry_manager import (AsyncF1TelemetryManager,
+                                   telemetry_transport_factory)
 from lib.wdt import WatchDogTimerAsync
 
 # -------------------------------------- UTIL CLASSES ------------------------------------------------------------------
@@ -551,6 +554,17 @@ class F1TelemetryHandler:
         #     """
 
         #     self.m_session_state_ref.processLapPositionsUpdate(packet)
+
+        @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY_2)
+        async def processCarTelemetry2Update(packet: PacketCarTelemetry2Data) -> None:
+            """Update the data structures with car telemetry 2 information
+
+            Args:
+                packet (PacketCarTelemetry2Data): The car telemetry 2 update packet
+            """
+
+            self._kick_periodic_packet_timer()
+            self.m_session_state_ref.processCarTelemetry2Update(packet)
 
         async def handleSessionStartEvent(packet: PacketEventData) -> None:
             """

@@ -1030,10 +1030,10 @@ class SessionState:
 
             obj_to_be_updated.m_car_info.m_active_aero_mode = car_telemetry_data.m_activeAeroMode
             obj_to_be_updated.m_car_info.m_active_aero_avlb = car_telemetry_data.m_activeAeroAvailable
-            obj_to_be_updated.m_car_info.m_active_aero_dist = car_telemetry_data.m_activeAeroDistance
+            obj_to_be_updated.m_car_info.m_active_aero_dist = car_telemetry_data.m_activeAeroActivationDistance
             obj_to_be_updated.m_car_info.m_overtake_avlb = car_telemetry_data.m_overtakeAvailable
             obj_to_be_updated.m_car_info.m_overtake_active = car_telemetry_data.m_overtakeActive
-            obj_to_be_updated.m_car_info.m_overtake_dist = car_telemetry_data.m_overtakeDistance
+            obj_to_be_updated.m_car_info.m_overtake_dist = car_telemetry_data.m_overtakeActivationDistance
             obj_to_be_updated.m_car_info.m_2026_regs = car_telemetry_data.m_2026Regulations
 
     def processSessionStarted(self, reason: str) -> None:
