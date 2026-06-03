@@ -352,7 +352,6 @@ Window {
                         anchors.right: parent.right
                         anchors.margins: 2
                         height: colHeaderVisible ? colHeaderHeight : 0
-                        layer.enabled: true
 
                         Row {
                             anchors.left: parent.left
