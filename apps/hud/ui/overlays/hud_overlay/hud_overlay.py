@@ -119,7 +119,6 @@ class HudOverlay(BaseOverlayQML):
                 drs_text, drs_enabled = "Z-MODE", False
                 drs_dist = min(f26.active_aero_dist, 250)
             drs_avlb    = f26.active_aero_avlb
-            show_ot_bar = True
             ot_enabled  = f26.overtake_active
             ot_avlb     = f26.overtake_avlb
             ot_dist     = min(f26.overtake_dist, 250)
@@ -127,7 +126,6 @@ class HudOverlay(BaseOverlayQML):
             drs_text, drs_enabled = "DRS", data.drs_enabled
             drs_dist    = min(data.drs_distance, 250)
             drs_avlb    = data.drs_available
-            show_ot_bar = False
             ot_enabled  = False
             ot_avlb     = False
             ot_dist     = 0
@@ -139,10 +137,20 @@ class HudOverlay(BaseOverlayQML):
 
         # ERS — all values as percentages
         _store = CarStatusData.MAX_ERS_STORE_ENERGY
-        _harv  = CarStatusData.MAX_MGUK_HARV_PER_LAP
-        self.set_qml_property("ersRemPct",      round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1))
-        self.set_qml_property("ersHarvPct",     round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1))
-        self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _store * 100.0, 100.0), 1))
+        if f26.enabled:
+            _harv = f26.harv_limit_j
+            ers_rem_pct     = round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1)
+            ers_harv_pct    = round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1)
+            ers_dep_pct     = 100
+        else:
+            _harv  = CarStatusData.MAX_MGUK_HARV_PER_LAP
+            ers_rem_pct     = round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1)
+            ers_harv_pct    = round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1)
+            ers_dep_pct     = round(min(data.ers_deployed_j  / _store * 100.0, 100.0), 1)
+
+        self.set_qml_property("ersRemPct", ers_rem_pct)
+        self.set_qml_property("ersHarvPct", ers_harv_pct)
+        self.set_qml_property("ersDeployedPct", ers_dep_pct)
         self.set_qml_property("ersMode",        data.ers_mode)
         self.set_qml_property("tlWarnings",     data.tl_warnings)
         self.set_qml_property("trackTempC",     data.track_temp)
@@ -151,7 +159,7 @@ class HudOverlay(BaseOverlayQML):
         # Fuel
         self.set_qml_property("surplusFuel", self._surplus_fuel)
 
-        self.set_qml_property("showOtBar",   show_ot_bar)
+        self.set_qml_property("isF126",      f26.enabled)
         self.set_qml_property("otEnabled",   ot_enabled)
         self.set_qml_property("otAvailable", ot_avlb)
         self.set_qml_property("otDistance",  ot_dist)

@@ -1109,6 +1109,7 @@ class DataPerDriver:
             "overtake-avlb": self.m_car_info.m_overtake_avlb,
             "overtake-active": self.m_car_info.m_overtake_active,
             "overtake-dist": self.m_car_info.m_overtake_dist,
+            "harv-limit-j": self.m_car_info.m_ers_harv_limit_per_lap_j,
         }
 
     def updateLapDataPacketCopy(self, lap_data: LapData, full_lap_distance: int) -> None:

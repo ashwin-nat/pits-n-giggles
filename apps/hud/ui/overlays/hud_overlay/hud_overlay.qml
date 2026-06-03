@@ -50,7 +50,7 @@ Window {
     property bool   drsAvailable:   false
     property int    drsDistance:    0
 
-    property bool   showOtBar:      false
+    property bool   isF126:         false
     property bool   otEnabled:      false
     property bool   otAvailable:    false
     property int    otDistance:     0
@@ -642,7 +642,8 @@ Window {
 
                     Connections {
                         target: root
-                        function onErsModeChanged() { ersCanvas.requestPaint() }
+                        function onErsModeChanged()   { ersCanvas.requestPaint() }
+                        function onIsF126Changed()    { ersCanvas.requestPaint() }
                     }
 
                     // Canvas draws: outer split ring (deploy/harvest) + inner fill circle
@@ -670,26 +671,37 @@ Window {
                             ctx.lineWidth   = 5
                             ctx.stroke()
 
-                            // ── harvest arc — left half, red ──
                             let harvestFrac = ersZone.animErsHarv / 100
-                            if (harvestFrac > 0.002) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
-                                ctx.strokeStyle = "#FF1744"
-                                ctx.lineWidth   = 5
-                                ctx.lineCap     = "round"
-                                ctx.stroke()
-                            }
+                            if (root.isF126) {
+                                // 2026 mode: no deploy limit — single full-circle harvest arc
+                                if (harvestFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top - harvestFrac * 2 * Math.PI, true)
+                                    ctx.strokeStyle = "#FF1744"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
+                            } else {
+                                // Standard mode: left half = harvest (red), right half = deploy (green)
+                                if (harvestFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
+                                    ctx.strokeStyle = "#FF1744"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
 
-                            // ── deploy arc — right half, hotlap green ──
-                            let deployFrac = (100 - ersZone.animErsDeploy) / 100
-                            if (deployFrac > 0.002) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
-                                ctx.strokeStyle = "#00e676"
-                                ctx.lineWidth   = 5
-                                ctx.lineCap     = "round"
-                                ctx.stroke()
+                                let deployFrac = (100 - ersZone.animErsDeploy) / 100
+                                if (deployFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
+                                    ctx.strokeStyle = "#00e676"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
                             }
 
                             // ── inner background disk ──
@@ -765,7 +777,7 @@ Window {
         // Styled like the rev-lights tab above the pill, flush against the bottom.
         Rectangle {
             id: otContainerBg
-            visible:             root.showOtBar
+            visible:             root.isF126
             anchors.left:        parent.left
             anchors.right:       parent.right
             anchors.top:         pillBg.bottom
@@ -829,7 +841,7 @@ Window {
 
         // Bridge strip hides sub-pixel seam between pill bottom and OT container.
         Rectangle {
-            visible:       root.showOtBar
+            visible:       root.isF126
             anchors.left:  otContainerBg.left
             anchors.right: otContainerBg.right
             anchors.top:   otContainerBg.top

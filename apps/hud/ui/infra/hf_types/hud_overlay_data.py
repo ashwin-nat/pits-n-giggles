@@ -37,6 +37,7 @@ class HudOverlayData26:
     overtake_avlb: bool
     overtake_active: bool
     overtake_dist: int
+    harv_limit_j: float
 
     @classmethod
     def from_json(cls, json_data: dict) -> "HudOverlayData26":
@@ -48,6 +49,7 @@ class HudOverlayData26:
             overtake_avlb=json_data["overtake-avlb"],
             overtake_active=json_data["overtake-active"],
             overtake_dist=json_data["overtake-dist"],
+            harv_limit_j=json_data["harv-limit-j"],
         )
 
 @dataclass(slots=True, frozen=True)

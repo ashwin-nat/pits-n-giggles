@@ -258,6 +258,7 @@ class StreamOverlayData(BaseAPI):
                 "overtake-avlb": False,
                 "overtake-active": False,
                 "overtake-dist": 0,
+                "harv-limit-j": 0.0,
             }
 
     def __populatePaceCompDataForDriver(self,
