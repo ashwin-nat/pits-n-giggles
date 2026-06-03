@@ -518,6 +518,8 @@ function getAdjacentPositions(position, total_cars, num_adjacent_cars) {
       // upper bound is greater than limit, need to shift the entire window left
       lower_bound -= upper_bound - total_cars;
       upper_bound = max_valid_upper_bound;
+      // re-clamp in case shifting left pushed lower_bound below 1 (small grid edge case)
+      lower_bound = Math.max(min_valid_lower_bound, lower_bound);
     }
 
     return Array.from({ length: upper_bound - lower_bound + 1 }, (_, i) => lower_bound + i);
