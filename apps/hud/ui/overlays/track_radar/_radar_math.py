@@ -40,6 +40,7 @@ _CAR_DIMENSIONS_M: dict[str, _CarDims] = {
     "Esports":        _CarDims(2.00, 5.63),
     "F2":             _CarDims(1.90, 5.285),
     "F2 2021":        _CarDims(1.90, 5.285),
+    "F1 26":          _CarDims(1.90, 5.40), # width confirmed 1900mm per FIA 2026 regs; length is estimated (TODO: verify from FIA tech regs Article 2)
 }
 _DEFAULT_CAR_DIMENSIONS_M = _CarDims(2.00, 5.63)
 

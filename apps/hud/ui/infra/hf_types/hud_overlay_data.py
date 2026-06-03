@@ -28,6 +28,25 @@ from .base import HighFreqBase
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 @dataclass(slots=True, frozen=True)
+class HudOverlayData26:
+
+    enabled: bool
+    active_aero_mode: str
+    active_aero_avlb: bool
+    overtake_avlb: bool
+    overtake_active: bool
+
+    @classmethod
+    def from_json(cls, json_data: dict) -> "HudOverlayData26":
+        return cls(
+            enabled=json_data["enabled"],
+            active_aero_mode=json_data["active-aero-mode"],
+            active_aero_avlb=json_data["active-aero-available"],
+            overtake_avlb=json_data["overtake-available"],
+            overtake_active=json_data["overtake-active"],
+        )
+
+@dataclass(slots=True, frozen=True)
 class HudOverlayData(HighFreqBase):
 
     throttle: float
@@ -54,6 +73,7 @@ class HudOverlayData(HighFreqBase):
     g_force_long: float
     g_force_vert: float
     sector: str
+    f1_26_data: HudOverlayData26
 
     def __bool__(self) -> bool:
         return None not in (
@@ -110,6 +130,7 @@ class HudOverlayData(HighFreqBase):
             track_temp=pens_stats_data["track-temperature"],
             air_temp=pens_stats_data["air-temperature"],
             sector=hud_data["sector"],
+            f1_26_data=HudOverlayData26.from_json(json_data["f1-26-data"]),
         )
 
     @property

@@ -288,7 +288,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         best_lap_ms = best_lap_info.get("lap-time-ms")
         is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
-        ers_mode = ers_info.get("ers-mode", "None")
+        ers_mode = self._get_ers_mode(row_data)
         wing_dmg = self._format_wing_dmg(dmg_info, telemetry_public)
         fuel = self._format_fuel(fuel_info, telemetry_public, session_type)
         driver_status = self._format_driver_status(curr_lap_info.get("driver-status"))
@@ -303,7 +303,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "ers": self._format_ers(ers_info, telemetry_public),
             "ersMode": ers_mode,
             "ersColor": ERS_MODE_COLORS[ers_mode],
-            "drs": driver_info.get("drs", False),
+            "drs": self._get_drs_active_aero(row_data),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
@@ -581,6 +581,36 @@ class TimingTowerOverlay(BaseOverlayQML):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    def _get_drs_active_aero(self, data: Dict[str, Any]) -> bool:
+        """Determine DRS/AA status for the driver.
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "drs-info"
+
+        Returns:
+            bool: True if DRS is active, False otherwise
+        """
+        regs_2026_info = data['2026-regs-info']
+        if not regs_2026_info['2026-regs-enabled']:
+            return data["driver-info"]["drs"]
+
+        aa_mode = regs_2026_info["active-aero-mode"]
+        if aa_mode == "STRAIGHT_MODE":
+            return True
+        return regs_2026_info["active-aero-avlb"]
+
+    def _get_ers_mode(self, data: Dict[str, Any]) -> str:
+        """Get the ERS mode for the driver.
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "ers-info"
+
+        Returns:
+            str: ERS mode string
+        """
+        ers_info = data.get("ers-info", {})
+        return ers_info.get("ers-mode", "Unknown")
 
     def _process_time_trial(self, data: Dict[str, Any]) -> None:
         """Process incoming time trial telemetry data and update the QML overlay.
