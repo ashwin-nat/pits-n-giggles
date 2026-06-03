@@ -136,22 +136,11 @@ class TestPacketEventData(F1TypesTest):
 
     def test_f1_26_collision_actual(self):
         """Test for F1 2026 Collision event with an actual game packet."""
-        # F126-CAPTURE: PKT3
-        self.skipTest("awaiting 2026 capture")
-        # --- fill in once captured, then remove skipTest above ---
-        # Capture point: lib/telemetry_manager/factory.py — gate on format==2026 and packetId==3, event code "COLL"
-        # raw_packet includes the 4-byte "COLL" code followed by the 3-byte payload
-        # raw_packet = b'COLL\xNN\xNN\xNN'
-        # expected_json = {
-        #     "event-string-code": "COLL",
-        #     "event-details": {
-        #         "vehicle-1-index": 0,
-        #         "vehicle-2-index": 0,
-        #         "severity": "LOW",  # LOW / MEDIUM / HIGH
-        #     }
-        # }
-        # random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 26, self.m_num_players)
-        # parsed_packet = PacketEventData(random_header, raw_packet)
-        # parsed_json = parsed_packet.toJSON()
-        # self.jsonComparisionUtil(expected_json, parsed_json)
-        # self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+        raw_packet = b'COLL\x10\x15\x01\x00\x00\x00\x00\x00%\xad\xe3@'
+        expected_json = {'event-string-code': 'COLL', 'event-details': {'vehicle-1-index': 16, 'vehicle-2-index': 21, 'severity': 'MEDIUM'}}
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 26, self.m_num_players)
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
