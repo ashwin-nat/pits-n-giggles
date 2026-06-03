@@ -92,6 +92,7 @@ Window {
         if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
         if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
         if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
+        if (m.indexOf("boost")    !== -1) return "#41bff3"   // Blue
         return "#4a5a6a"                                      // Grey (none/off)
     }
 
