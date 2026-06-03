@@ -72,7 +72,7 @@ class TelemetryRenderer {
     }
 
     else if (isLiveDataMode) {
-        const regs2026Info = data['26-regs-info'];
+        const regs2026Info = data["2026-regs-info"];
 
         if (regs2026Info['2026-regs-enabled']) {
             if (regs2026Info['active-aero-mode'] === 'STRAIGHT_MODE') {

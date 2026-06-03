@@ -949,7 +949,7 @@ class EngViewRaceTable {
                 headerName: "F1 2026",
                 colId: "f1-2026",
                 context: {displayName: "F1 2026", },
-                field: "26-regs-info",
+                field: "2026-regs-info",
                 flex: 4,
                 cellRenderer: this.createF1_2026CellRenderer(),
                 cellClass: 'ag-cell-multiline',
@@ -1694,7 +1694,7 @@ class EngViewRaceTable {
 
     createF1_2026CellRenderer() {
         return (params) => {
-            const regs2026Info = params.data["26-regs-info"];
+            const regs2026Info = params.data["2026-regs-info"];
             if (!regs2026Info["2026-regs-enabled"]) {
                 return this.createMultiLineCell({
                     row1: 'OT',

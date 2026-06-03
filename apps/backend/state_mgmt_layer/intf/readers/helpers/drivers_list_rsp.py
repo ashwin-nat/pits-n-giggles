@@ -374,7 +374,7 @@ class DriversListRsp(BaseAPI):
             "damage-info": self._getDamageInfoJSON(driver_data),
             "fuel-info": driver_data.getFuelStatsJSON(),
             "pit-info": driver_data.getPitInfoJSON(),
-            "26-regs-info": driver_data.get2026RegsInfoJSON(),
+            "2026-regs-info": driver_data.get2026RegsInfoJSON(),
         }
         if self.m_send_position_data:
             motion = driver_data.m_packet_copies.m_packet_motion
