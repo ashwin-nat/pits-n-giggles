@@ -120,14 +120,12 @@ class HudOverlay(BaseOverlayQML):
             drs_avlb    = f26.active_aero_avlb
             ot_enabled  = f26.overtake_active
             ot_avlb     = f26.overtake_avlb
-            ot_dist     = min(f26.overtake_dist, 250)
         else:
             drs_text, drs_enabled = "DRS", data.drs_enabled
             drs_dist    = min(data.drs_distance, 250)
             drs_avlb    = data.drs_available
             ot_enabled  = False
             ot_avlb     = False
-            ot_dist     = 0
 
         self.set_qml_property("drsText",      drs_text)
         self.set_qml_property("drsEnabled",   drs_enabled)
@@ -161,7 +159,6 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("isF126",      f26.enabled)
         self.set_qml_property("otEnabled",   ot_enabled)
         self.set_qml_property("otAvailable", ot_avlb)
-        self.set_qml_property("otDistance",  ot_dist)
 
 
     def _register_event_handlers(self):

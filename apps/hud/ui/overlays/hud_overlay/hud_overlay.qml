@@ -31,7 +31,7 @@ Window {
     property real scaleFactor: 1.0
 
     readonly property int baseWidth: 470
-    readonly property int baseHeight: 140
+    readonly property int baseHeight: 116
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -53,7 +53,6 @@ Window {
     property bool   isF126:         true
     property bool   otEnabled:      false
     property bool   otAvailable:    false
-    property int    otDistance:     0
     property real   ersRemPct:      0
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
@@ -125,12 +124,23 @@ Window {
             anchors.topMargin: 12
             height: 98
             radius:       49
-            border.width: 1
-            border.color: "#2b3946"
+            border.width: 2
+            border.color: root.otAvailable
+                              ? Qt.rgba(0.11, 0.74, 0.90, glowPulse)
+                              : "#2b3946"
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#172130" }
                 GradientStop { position: 0.5; color: "#121b28" }
                 GradientStop { position: 1.0; color: "#0e1620" }
+            }
+
+            property real glowPulse: 0.0
+            SequentialAnimation on glowPulse {
+                running: root.otAvailable
+                loops:   Animation.Infinite
+                NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.5; duration: 1000; easing.type: Easing.InOutSine }
+                onStopped: pillBg.glowPulse = 0.0
             }
         }
 
@@ -773,83 +783,6 @@ Window {
 
             } // RowLayout
         } // hudShell
-
-        // ── Overtake bar container (F1 2026 only) ───────────────────────────
-        // Styled like the rev-lights tab above the pill, flush against the bottom.
-        Rectangle {
-            id: otContainerBg
-            visible:             root.isF126
-            anchors.left:        parent.left
-            anchors.right:       parent.right
-            anchors.top:         pillBg.bottom
-            anchors.leftMargin:  49
-            anchors.rightMargin: 49
-            height: 30
-            radius:       4
-            border.width: 1
-            border.color: "#2b3946"
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#172130" }
-                GradientStop { position: 1.0; color: "#172130" }
-            }
-
-            Rectangle {
-                anchors.centerIn: parent
-                height:       22
-                width:        parent.width - 8
-                radius:       5
-                clip:         true
-                color:        root.otEnabled
-                                  ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
-                                  : (root.otAvailable || root.otDistance > 0)
-                                      ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
-                                      : Qt.rgba(0.16, 0.22, 0.28, 0.50)
-                border.width: 1
-                border.color: root.otEnabled
-                                  ? "#00e676"
-                                  : (root.otAvailable || root.otDistance > 0)
-                                      ? "#ffca52"
-                                      : "#2d3e4d"
-
-                Rectangle {
-                    anchors.left:   parent.left
-                    anchors.top:    parent.top
-                    anchors.bottom: parent.bottom
-                    visible: !root.otEnabled &&
-                             (root.otDistance > 0 ||
-                              (root.otAvailable && root.otDistance === 0))
-                    width: (root.otAvailable && root.otDistance === 0)
-                           ? parent.width
-                           : parent.width * Math.max(0.0, 1.0 - root.otDistance / 250.0)
-                    color: Qt.rgba(1.00, 0.79, 0.32, 0.50)
-                    Behavior on width { SmoothedAnimation { duration: 150 } }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text:            "OT"
-                    font.family:     "Formula1"
-                    font.pixelSize:  8
-                    color: root.otEnabled
-                           ? "#00e676"
-                           : (root.otAvailable || root.otDistance > 0)
-                               ? "#ffca52"
-                               : "#3d4f5e"
-                    z: 1
-                }
-            }
-        } // otContainerBg
-
-        // Bridge strip hides sub-pixel seam between pill bottom and OT container.
-        Rectangle {
-            visible:       root.isF126
-            anchors.left:  otContainerBg.left
-            anchors.right: otContainerBg.right
-            anchors.top:   otContainerBg.top
-            anchors.topMargin: -1
-            height: 2
-            color: "#172130"
-        }
 
     } // scaledRoot
 }
