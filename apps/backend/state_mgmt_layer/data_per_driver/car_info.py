@@ -59,8 +59,10 @@ class CarInfo:
 
     m_active_aero_mode: Optional[CarTelemetry2Data.ActiveAeroMode] = None
     m_active_aero_avlb: Optional[bool] = None
+    m_active_aero_dist: Optional[int] = None
     m_overtake_avlb: Optional[bool] = None
     m_overtake_active: Optional[bool] = None
+    m_overtake_dist: Optional[int] = None
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)

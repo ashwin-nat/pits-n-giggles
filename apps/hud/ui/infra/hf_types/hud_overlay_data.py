@@ -33,17 +33,21 @@ class HudOverlayData26:
     enabled: bool
     active_aero_mode: str
     active_aero_avlb: bool
+    active_aero_dist: int
     overtake_avlb: bool
     overtake_active: bool
+    overtake_dist: int
 
     @classmethod
     def from_json(cls, json_data: dict) -> "HudOverlayData26":
         return cls(
-            enabled=json_data["enabled"],
+            enabled=json_data["2026-regs-enabled"],
             active_aero_mode=json_data["active-aero-mode"],
-            active_aero_avlb=json_data["active-aero-available"],
-            overtake_avlb=json_data["overtake-available"],
+            active_aero_avlb=json_data["active-aero-avlb"],
+            active_aero_dist=json_data["active-aero-dist"],
+            overtake_avlb=json_data["overtake-avlb"],
             overtake_active=json_data["overtake-active"],
+            overtake_dist=json_data["overtake-dist"],
         )
 
 @dataclass(slots=True, frozen=True)
@@ -130,7 +134,7 @@ class HudOverlayData(HighFreqBase):
             track_temp=pens_stats_data["track-temperature"],
             air_temp=pens_stats_data["air-temperature"],
             sector=hud_data["sector"],
-            f1_26_data=HudOverlayData26.from_json(json_data["f1-26-data"]),
+            f1_26_data=HudOverlayData26.from_json(json_data["2026-regs-info"]),
         )
 
     @property

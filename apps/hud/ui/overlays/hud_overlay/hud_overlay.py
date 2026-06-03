@@ -108,10 +108,34 @@ class HudOverlay(BaseOverlayQML):
             self.set_qml_property("speedKmph",    data.speed_kmph)
             self.set_qml_property("speedUnitLabel", "km/h")
 
-        # DRS
-        self.set_qml_property("drsEnabled",   data.drs_enabled)
-        self.set_qml_property("drsAvailable", data.drs_available)
-        self.set_qml_property("drsDistance",  min(data.drs_distance, 250))
+        # DRS / active aero + overtake (2026)
+        f26 = data.f1_26_data
+        if f26.enabled:
+            if f26.active_aero_mode == "STRAIGHT_MODE":
+                drs_text    = "X-MODE"
+                drs_enabled = True
+                drs_dist    = 0
+            else:
+                drs_text, drs_enabled = "Z-MODE", False
+                drs_dist = min(f26.active_aero_dist, 250)
+            drs_avlb    = f26.active_aero_avlb
+            show_ot_bar = True
+            ot_enabled  = f26.overtake_active
+            ot_avlb     = f26.overtake_avlb
+            ot_dist     = min(f26.overtake_dist, 250)
+        else:
+            drs_text, drs_enabled = "DRS", data.drs_enabled
+            drs_dist    = min(data.drs_distance, 250)
+            drs_avlb    = data.drs_available
+            show_ot_bar = False
+            ot_enabled  = False
+            ot_avlb     = False
+            ot_dist     = 0
+
+        self.set_qml_property("drsText",      drs_text)
+        self.set_qml_property("drsEnabled",   drs_enabled)
+        self.set_qml_property("drsAvailable", drs_avlb)
+        self.set_qml_property("drsDistance",  drs_dist)
 
         # ERS — all values as percentages
         _store = CarStatusData.MAX_ERS_STORE_ENERGY
@@ -126,6 +150,12 @@ class HudOverlay(BaseOverlayQML):
 
         # Fuel
         self.set_qml_property("surplusFuel", self._surplus_fuel)
+
+        self.set_qml_property("showOtBar",   show_ot_bar)
+        self.set_qml_property("otEnabled",   ot_enabled)
+        self.set_qml_property("otAvailable", ot_avlb)
+        self.set_qml_property("otDistance",  ot_dist)
+
 
     def _register_event_handlers(self):
         @self.on_event("race_table_update")

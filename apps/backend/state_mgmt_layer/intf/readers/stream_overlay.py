@@ -254,8 +254,10 @@ class StreamOverlayData(BaseAPI):
                 "2026-regs-enabled": False,
                 "active-aero-mode": False,
                 "active-aero-avlb": False,
+                "active-aero-dist": 0,
                 "overtake-avlb": False,
                 "overtake-active": False,
+                "overtake-dist": 0,
             }
 
     def __populatePaceCompDataForDriver(self,
