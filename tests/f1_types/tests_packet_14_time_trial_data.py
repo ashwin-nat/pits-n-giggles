@@ -224,5 +224,10 @@ class TestPacketTimeTrialData(F1TypesTest):
         Test for F1 2026 with an actual game packet
         """
 
-        # F126-CAPTURE: PKT14
-        self.skipTest("awaiting 2026 capture")
+        raw_packet = b'\x00\xdf\x01\xacn\x01\x00\xb7\x85\x00\x00d\xa1\x00\x00\x91G\x00\x00\x00\x00\x00\x01\x00\x01\x02\xdf\x01\xacn\x01\x00\xb7\x85\x00\x00d\xa1\x00\x00\x91G\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {'player-session-best-data-set': {'car-index': 0, 'team': "Williams '26", 'lap-time-ms': 93868, 'lap-time-str': '01:33.868', 'sector-1-time-ms': 34231, 'sector-1-time-str': '34.231', 'sector-2-time-in-ms': 41316, 'sector-2-time-str': '41.316', 'sector3-time-in-ms': 18321, 'sector-3-time-str': '18.321', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': True, 'custom-setup': False, 'is-valid': True}, 'personal-best-data-set': {'car-index': 2, 'team': "Williams '26", 'lap-time-ms': 93868, 'lap-time-str': '01:33.868', 'sector-1-time-ms': 34231, 'sector-1-time-str': '34.231', 'sector-2-time-in-ms': 41316, 'sector-2-time-str': '41.316', 'sector3-time-in-ms': 18321, 'sector-3-time-str': '18.321', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': True, 'custom-setup': False, 'is-valid': False}, 'rival-session-best-data-set': {'car-index': 0, 'team': 'Mercedes', 'lap-time-ms': 0, 'lap-time-str': '00.000', 'sector-1-time-ms': 0, 'sector-1-time-str': '00.000', 'sector-2-time-in-ms': 0, 'sector-2-time-str': '00.000', 'sector3-time-in-ms': 0, 'sector-3-time-str': '00.000', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': False, 'custom-setup': False, 'is-valid': False}}
+        parsed_packet = PacketTimeTrialData(self.m_header_26, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
