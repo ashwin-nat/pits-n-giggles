@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Union
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import (MAX_CARS_2026, ActualTyreCompound, TractionControlAssistMode,
                      VisualTyreCompound, get_num_cars)
+from .ers_deploy_mode import ERSDeployModePre26, ERSDeployMode26, ERSDeployMode
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -157,14 +158,14 @@ class CarStatusData(F1SubPacketBase):
     m_maxGears: int
     m_drsAllowed: int
     m_drsActivationDistance: int
-    m_actualTyreCompound: Union[ActualTyreCompound, int]
-    m_visualTyreCompound: Union[VisualTyreCompound, int]
+    m_actualTyreCompound: ActualTyreCompound
+    m_visualTyreCompound: VisualTyreCompound
     m_tyresAgeLaps: int
-    m_vehicleFiaFlags: Union["CarStatusData.VehicleFIAFlags", int]
+    m_vehicleFiaFlags: "CarStatusData.VehicleFIAFlags"
     m_enginePowerICE: float
     m_enginePowerMGUK: float
     m_ersStoreEnergy: float
-    m_ersDeployMode: Union["CarStatusData.ERSDeployMode", int]
+    m_ersDeployMode: ERSDeployMode
     m_ersHarvestedThisLapMGUK: float
     m_ersHarvestedThisLapMGUH: float
     m_ersDeployedThisLap: float
@@ -236,34 +237,6 @@ class CarStatusData(F1SubPacketBase):
                 CarStatusData.VehicleFIAFlags.BLUE: "Blue",
                 CarStatusData.VehicleFIAFlags.YELLOW: "Yellow",
             }[self]
-
-    class ERSDeployMode(F1BaseEnum):
-        """
-        Enumeration representing different ERS deployment modes.
-
-        Attributes:
-            NONE (int): No ERS deployment (0)
-            MEDIUM (int): Medium ERS deployment (1)
-            HOPLAP (int): Hotlap ERS deployment (2)
-            OVERTAKE (int): Overtake ERS deployment (3)
-
-            Note:
-                Each attribute represents a unique ERS deployment mode identified by an integer value.
-        """
-
-        NONE = 0
-        MEDIUM = 1
-        HOTLAP = 2
-        OVERTAKE = 3
-
-        def __str__(self) -> str:
-            """
-            Returns a human-readable string representation of the ERS deployment mode.
-
-            Returns:
-                str: String representation of the ERS deployment mode.
-            """
-            return self.name.title()
 
     class FuelMix(F1BaseEnum):
         """
@@ -382,7 +355,8 @@ class CarStatusData(F1SubPacketBase):
         self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
         self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
         self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags.safeCast(self.m_vehicleFiaFlags)
-        self.m_ersDeployMode = CarStatusData.ERSDeployMode.safeCast(self.m_ersDeployMode)
+        ers_deploy_cls = ERSDeployMode26 if self.m_packetFormat >= 2026 else ERSDeployModePre26
+        self.m_ersDeployMode = ers_deploy_cls.safeCast(self.m_ersDeployMode)
         self.m_tractionControl = TractionControlAssistMode.safeCast(self.m_tractionControl)
         self.m_fuelMix = CarStatusData.FuelMix.safeCast(self.m_fuelMix)
 
@@ -600,7 +574,7 @@ class CarStatusData(F1SubPacketBase):
         engine_power_ice: float,
         engine_power_mguk: float,
         ers_store_energy: float,
-        ers_deploy_mode: ERSDeployMode,
+        ers_deploy_mode: Union[ERSDeployModePre26, ERSDeployMode26],
         ers_harvested_this_lap_mguk: float,
         ers_harvested_this_lap_mguh: float,
         ers_deployed_this_lap: float,

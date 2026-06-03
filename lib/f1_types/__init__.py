@@ -43,6 +43,7 @@ from .packet_4_participants_data import (LiveryColour, PacketParticipantsData,
 from .packet_5_car_setups_data import CarSetupData, PacketCarSetupData
 from .packet_6_car_telemetry_data import (CarTelemetryData,
                                           PacketCarTelemetryData)
+from .ers_deploy_mode import ERSDeployMode
 from .packet_7_car_status_data import CarStatusData, PacketCarStatusData
 from .packet_8_final_classification_data import (FinalClassificationData,
                                                  PacketFinalClassificationData)
@@ -129,6 +130,7 @@ __all__ = [
     # Packet 7 - Car status
     "PacketCarStatusData",
     "CarStatusData",
+    "ERSDeployMode",
 
     # Packet 8 - Final Classification
     "PacketFinalClassificationData",

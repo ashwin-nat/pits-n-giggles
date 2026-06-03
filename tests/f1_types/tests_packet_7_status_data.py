@@ -23,6 +23,7 @@
 import random
 from lib.f1_types import CarStatusData, PacketCarStatusData, F1PacketType, PacketHeader, \
     TractionControlAssistMode, VisualTyreCompound, ActualTyreCompound
+from lib.f1_types.ers_deploy_mode import ERSDeployModePre26, ERSDeployMode26
 from .tests_parser_base import F1TypesTest
 
 class TestPacketCarStatusData(F1TypesTest):
@@ -1454,7 +1455,7 @@ class TestPacketCarStatusData(F1TypesTest):
             engine_power_ice=F1TypesTest.getRandomFloat(),
             engine_power_mguk=F1TypesTest.getRandomFloat(),
             ers_store_energy=F1TypesTest.getRandomFloat(),
-            ers_deploy_mode=random.choice(list(CarStatusData.ERSDeployMode)),
+            ers_deploy_mode=random.choice(list(ERSDeployMode26 if packet_format >= 2026 else ERSDeployModePre26)),
             ers_harvested_this_lap_mguk=F1TypesTest.getRandomFloat(),
             ers_harvested_this_lap_mguh=F1TypesTest.getRandomFloat(),
             ers_deployed_this_lap=F1TypesTest.getRandomFloat(),
