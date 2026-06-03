@@ -89,19 +89,16 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
-        const regs_2026_info = this.rowData["2026-regs-info"];
-        let ersMode;
+        const regs2026Info = this.rowData["2026-regs-info"];
 
-        if (regs_2026_info['2026-regs-enabled']) {
-            if (regs_2026_info['overtake-active']) {
-                ersMode = "OVERTAKE";
-            } else if (regs_2026_info['overtake-avlb']) {
-                ersMode = ersMode = ersInfo["ers-mode"].toUpperCase() + " [OT AVLB]";
-            } else {
-                ersMode = ersInfo["ers-mode"].toUpperCase();
-            }
-        } else {
-            ersMode = ersInfo["ers-mode"].toUpperCase();
+        let ersMode = ersInfo["ers-mode"].toUpperCase();
+
+        if (
+            regs2026Info["2026-regs-enabled"] &&
+            ersMode === "BOOST" &&
+            regs2026Info["overtake-active"]
+        ) {
+            ersMode += " [OT]";
         }
         const cell = this.createMultiLineCell([
             `${ersMode}`,
