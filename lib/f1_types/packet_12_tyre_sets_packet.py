@@ -105,7 +105,7 @@ class TyreSetData(F1SubPacketBase):
         self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
         if self.m_packetFormat == 2023:
             self.m_recommendedSession = SessionType23.safeCast(self.m_recommendedSession)
-        elif self.m_packetFormat in {2024, 2025}:
+        elif self.m_packetFormat in {2024, 2025, 2026}:
             self.m_recommendedSession = SessionType24.safeCast(self.m_recommendedSession)
         self.m_fitted = bool(self.m_fitted)
 
