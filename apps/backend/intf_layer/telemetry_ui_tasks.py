@@ -166,7 +166,7 @@ async def highFreqLocalUpdateTask(
         ipc_pub (IpcPublisherAsync): The IPC publisher
     """
 
-    data = StreamOverlayData(session_state, export_hud_data=True).toJSON(False)
+    data = StreamOverlayData(session_state, export_hud_data=True, export_pu_data=True).toJSON(False)
     await ipc_pub.publish("stream-overlay-update", data)
 
 async def webClientUpdateTask(

@@ -26,7 +26,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from apps.hud.common import get_ref_row_index, get_ref_row, is_tt_session
+from apps.hud.common import get_ref_row, get_ref_row_index, is_tt_session
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, TimingTowerOverlay,
@@ -37,7 +37,8 @@ from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
+from .hf_types import (HudOverlayData, InputTelemetryData,
+                       LiveSessionMotionInfo, PowerUnitOverlayData)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -214,6 +215,7 @@ class OverlaysMgr:
         self._input_telemetry_update(data)
         self._motion_update(data)
         self._hud_overlay_update(data)
+        self._pu_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
             self.window_manager.broadcast_data('stream_overlay_update', data)
 
@@ -420,6 +422,10 @@ class OverlaysMgr:
     def _hud_overlay_update(self, data: Dict[str, Any]):
         """Send HUD data to HUD overlay."""
         self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
+
+    def _pu_overlay_update(self, data: Dict[str, Any]):
+        """Send power unit data to power unit overlay."""
+        self.window_manager.send_high_freq_data(PowerUnitOverlayData.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
