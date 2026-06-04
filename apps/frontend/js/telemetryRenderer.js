@@ -52,13 +52,13 @@ class TelemetryRenderer {
                                      sessionType, driverContext, this.columnConfig).populate();
 
     // Apply CSS classes based on row state
-    const cssClasses = this.determineRowClasses(data, isLiveDataMode, spectatorIndex);
+    const cssClasses = this.determineRowClasses(data, isLiveDataMode, spectatorIndex, sessionType);
     row.classList.add(...cssClasses);
 
     return row;
   }
 
-  determineRowClasses(data, isLiveDataMode, spectatorIndex) {
+  determineRowClasses(data, isLiveDataMode, spectatorIndex, sessionType) {
     const classes = [];
     const driverInfo = data['driver-info'];
 
@@ -75,8 +75,8 @@ class TelemetryRenderer {
         const regs2026Info = data["2026-regs-info"];
 
         if (regs2026Info['2026-regs-enabled']) {
-            if (regs2026Info['active-aero-mode'] === 'STRAIGHT_MODE') {
-                classes.push('drs-row');
+            if (regs2026Info['overtake-avlb'] && sessionType && sessionType.includes('Race')) {
+                classes.push('ot-row');
             }
         } else if (driverInfo['drs']) {
             classes.push('drs-row');
