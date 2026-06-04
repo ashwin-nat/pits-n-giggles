@@ -825,9 +825,12 @@ class GameMode(F1BaseEnum):
     CAREER_25_ONLINE = 29
     CHALLENGE_CAREER = 30
     APEX_STORY = 75
-    #TODO: value for MY_TEAM_CAREER_26
+    UNDOCUMENTED_MODE_1_26 = 76
+    UNDOCUMENTED_MODE_2_26 = 77
     DRIVER_CAREER_26 = 78
+    MY_TEAM_CAREER_26 = 79
     BENCHMARK = 127
+    UNKNOWN = 255
 
     def __str__(self) -> str:
         """Return a user-friendly string representation of the mode."""
@@ -845,6 +848,10 @@ class GameMode(F1BaseEnum):
             GameMode.CAREER_24_ONLINE,
             GameMode.CAREER_25_ONLINE,
         }
+
+    @classmethod
+    def safeCast(cls, value: int) -> "GameMode":
+        return super().safeCast(value, GameMode.UNKNOWN)
 
 class RuleSet(F1BaseEnum):
     """
