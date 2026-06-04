@@ -26,6 +26,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from apps.hud.common import get_ers_mode_color
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayId, OverlayPosition
 
@@ -64,12 +65,26 @@ class PuOverlay(BaseOverlayQML):
 
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: dict):
-            pu_data     = data.get("power-unit", {})
+            hud_data    = data["hud"]
+            pu_data     = data["power-unit"]
+            f1_26_data  = data["2026-regs-info"]
+
+            # ERS values
+            is_f1_26 = f1_26_data["2026-regs-enabled"]
+            ers_mode  = hud_data["ers-mode"]
+            ot_active = f1_26_data["overtake-active"]
+            ers_color = get_ers_mode_color(ers_mode, is_f1_26, ot_active)
+            ers_mode = ers_mode.upper()
+            if ers_mode and is_f1_26 and (ers_mode == "OVERTAKE"):
+                if ot_active:
+                    ers_mode = "BOOST [OT]"
+                else:
+                    ers_mode = "BOOST"
 
             # Raw power values (watts)
-            ice_w  = float(pu_data.get("ice-power-output-w")  or 0)
-            mguk_w = float(pu_data.get("mguk-power-output-w") or 0)
-            ice_temp_c = int(pu_data.get("ice-temp-c") or 0)
+            ice_w  = pu_data["ice-power-output-w"]
+            mguk_w = pu_data["mguk-power-output-w"]
+            ice_temp_c = pu_data["ice-temp-c"]
 
             # ── Derived values ─────────────────────────────────────────────
             total_w  = ice_w + mguk_w
@@ -78,9 +93,11 @@ class PuOverlay(BaseOverlayQML):
             mguk_frac = mguk_w / total_w if total_w > 0 else 0.0
 
             # ── Push to QML ────────────────────────────────────────────────
-            self.set_qml_property("totalPowerKw",  round(total_kw,       2))
-            self.set_qml_property("icePowerKw",    round(ice_w  / 1000.0, 2))
-            self.set_qml_property("mgukPowerKw",   round(mguk_w / 1000.0, 2))
-            self.set_qml_property("iceFraction",   round(ice_frac,  4))
-            self.set_qml_property("mgukFraction",  round(mguk_frac, 4))
+            self.set_qml_property("totalPowerKw",  round(total_kw,       1))
+            self.set_qml_property("icePowerKw",    round(ice_w  / 1000.0, 1))
+            self.set_qml_property("mgukPowerKw",   round(mguk_w / 1000.0, 1))
+            self.set_qml_property("iceFraction",   round(ice_frac,  2))
+            self.set_qml_property("mgukFraction",  round(mguk_frac, 2))
             self.set_qml_property("iceTempC",      ice_temp_c)
+            self.set_qml_property("ersMode",       ers_mode)
+            self.set_qml_property("ersColor",      ers_color)

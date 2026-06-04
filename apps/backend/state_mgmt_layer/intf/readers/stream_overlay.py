@@ -391,7 +391,7 @@ class StreamOverlayData(BaseAPI):
         return {
             "ice-power-output-w" : car_status.m_enginePowerICE if car_status else 0.0,
             "mguk-power-output-w" : car_status.m_enginePowerMGUK if car_status else 0.0,
-            "ice-temp-c" : car_telemetry.m_engineTemperature if car_telemetry else 0.0,
+            "ice-temp-c" : car_telemetry.m_engineTemperature if car_telemetry else 0, # temp is int
         }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:

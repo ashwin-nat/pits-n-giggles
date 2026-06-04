@@ -27,7 +27,7 @@ import QtQuick.Layouts
 Window {
     id: root
     visible: true
-    color: "transparent"
+    color: "#000000"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     property real scaleFactor: 1.0
@@ -39,27 +39,21 @@ Window {
     property real   iceFraction:   0
     property real   mgukFraction:  0
     property int    iceTempC:      0
+    property string ersMode:       ""
+    property color  ersColor:      "#c4c4d4"
 
     readonly property int baseWidth:  220
-    readonly property int baseHeight: 96
+    readonly property int baseHeight: 126
 
     width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    function tempColor(t) {
-        if (t >= 120) return "#ff1744"
-        if (t >= 110) return "#ffa726"
-        return "#c8d6e5"
-    }
-
-    // ── Design tokens ─────────────────────────────────────────────────────────
-    readonly property color clrBorder:  "#2b3946"
-    readonly property color clrTrack:   "#1e2e3c"
-    readonly property color clrLabel:   "#7a94a8"
-    readonly property color clrValue:   "#c8d6e5"
-    readonly property color clrPrimary: "#edf7ff"
+    // ── Design tokens (aligned with lap_timer palette) ────────────────────────
+    readonly property color clrBorder:  "#26263a"
+    readonly property color clrTrack:   "#14141c"
+    readonly property color clrLabel:   "#55556e"
+    readonly property color clrValue:   "#c4c4d4"
+    readonly property color clrPrimary: "#ffffff"
     readonly property color clrIce:     "#ff1744"
     readonly property color clrMguk:    "#41bff3"
 
@@ -79,7 +73,7 @@ Window {
 
         Rectangle {
             anchors.fill: parent
-            color:        "#de131d2a"
+            color:        "#0c0c10"
             radius:       6
             border.width: 1
             border.color: root.clrBorder
@@ -102,7 +96,7 @@ Window {
 
                     Text {
                         anchors.centerIn: parent
-                        text:           parent.displayKw.toFixed(2) + " kW"
+                        text:           parent.displayKw.toFixed(1) + " kW"
                         font.family:    "Formula1"
                         font.pixelSize: 24
                         font.weight:    Font.Bold
@@ -141,10 +135,10 @@ Window {
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
 
-                // ── ICE / MGU-K breakdown (full-only) ─────────────────────
+                // ── ICE / MGU-K breakdown ─────────────────────────────────
                 RowLayout {
                     Layout.fillWidth:       true
-                    Layout.preferredHeight: 14
+                    Layout.preferredHeight: 18
                     spacing: 0
 
                     // ICE — left side
@@ -155,7 +149,7 @@ Window {
                         Text {
                             text:               "ICE"
                             font.family:        "Formula1"
-                            font.pixelSize:     8
+                            font.pixelSize:     10
                             font.letterSpacing: 0.8
                             color:              root.clrValue
                             Layout.alignment:   Qt.AlignVCenter
@@ -163,7 +157,7 @@ Window {
 
                         Item {
                             Layout.fillWidth: true
-                            height:           14
+                            height:           18
 
                             property real displayKw: root.icePowerKw
                             Behavior on displayKw {
@@ -173,9 +167,9 @@ Window {
                             Text {
                                 anchors.left:           parent.left
                                 anchors.verticalCenter: parent.verticalCenter
-                                text:           parent.displayKw.toFixed(2)
+                                text:           parent.displayKw.toFixed(1)
                                 font.family:    "Formula1"
-                                font.pixelSize: 10
+                                font.pixelSize: 13
                                 font.weight:    Font.Bold
                                 color:          root.clrValue
                             }
@@ -191,7 +185,7 @@ Window {
                         Text {
                             text:               "MGU-K"
                             font.family:        "Formula1"
-                            font.pixelSize:     8
+                            font.pixelSize:     10
                             font.letterSpacing: 0.8
                             color:              root.clrValue
                             Layout.alignment:   Qt.AlignVCenter
@@ -199,7 +193,7 @@ Window {
 
                         Item {
                             Layout.fillWidth: true
-                            height:           14
+                            height:           18
 
                             property real displayKw: root.mgukPowerKw
                             Behavior on displayKw {
@@ -209,9 +203,9 @@ Window {
                             Text {
                                 anchors.right:          parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                text:           parent.displayKw.toFixed(2)
+                                text:           parent.displayKw.toFixed(1)
                                 font.family:    "Formula1"
-                                font.pixelSize: 10
+                                font.pixelSize: 13
                                 font.weight:    Font.Bold
                                 color:          root.clrValue
                             }
@@ -219,44 +213,48 @@ Window {
                     }
                 }
 
-                Item { Layout.fillWidth: true; Layout.preferredHeight: 6 }
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
 
                 // ── Temperature ───────────────────────────────────────────
                 RowLayout {
-                    Layout.fillWidth:       true
-                    Layout.preferredHeight: 12
+                    Layout.fillWidth:       false
+                    Layout.preferredHeight: 16
+                    Layout.alignment:       Qt.AlignHCenter
                     spacing: 5
 
                     Text {
                         text:               "TEMP"
                         font.family:        "Formula1"
-                        font.pixelSize:     8
+                        font.pixelSize:     10
                         font.letterSpacing: 0.8
                         color:              root.clrLabel
                         Layout.alignment:   Qt.AlignVCenter
                     }
 
                     Text {
-                        id:             tempLabelFull
-                        text:           root.iceTempC + "°C"
-                        font.family:    "Formula1"
-                        font.pixelSize: 10
-                        font.weight:    Font.Bold
-                        color:          root.tempColor(root.iceTempC)
+                        text:             root.iceTempC + "°C"
+                        font.family:      "Formula1"
+                        font.pixelSize:   13
+                        font.weight:      Font.Bold
+                        color:            root.clrValue
                         Layout.alignment: Qt.AlignVCenter
-                        Behavior on color { ColorAnimation { duration: 400 } }
-
-                        property real critPulse: 1.0
-                        opacity: critPulse
-
-                        SequentialAnimation on critPulse {
-                            running: root.iceTempC >= 120
-                            loops:   Animation.Infinite
-                            NumberAnimation { to: 0.5; duration: 600; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                            onStopped: tempLabelFull.critPulse = 1.0
-                        }
                     }
+                }
+
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
+
+                // ── ERS mode ──────────────────────────────────────────────
+                Text {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 16
+                    horizontalAlignment:    Text.AlignHCenter
+                    text:           root.ersMode
+                    font.family:    "Formula1"
+                    font.pixelSize: 13
+                    font.weight:    Font.Bold
+                    font.letterSpacing: 1.2
+                    color:          root.ersColor
+                    Behavior on color { ColorAnimation { duration: 300 } }
                 }
             }
         }
