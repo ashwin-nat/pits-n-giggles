@@ -57,6 +57,7 @@ Window {
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
+    property string ersColor:       "#4a5a6a"
     property int    tlWarnings:     0
     property var    surplusFuel:    null
 
@@ -84,18 +85,6 @@ Window {
     function clampPct(v) {
         return Math.max(0, Math.min(100, v))
     }
-
-    // Fill colour for the ERS inner circle based on current mode
-    function ersInnerColor(mode) {
-        let m = mode.toLowerCase()
-        if (root.isF126 && m.indexOf("boost") !== -1)
-            return root.otEnabled ? "#41bff3" : "#ff1744"    // Blue = overtake active, Red = inactive (2026)
-        if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
-        if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
-        if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
-        return "#4a5a6a"                                      // Grey (none/off)
-    }
-
 
 
     // ── Root scaled container ────────────────────────────────────────────────
@@ -653,7 +642,7 @@ Window {
 
                     Connections {
                         target: root
-                        function onErsModeChanged()   { ersCanvas.requestPaint() }
+                        function onErsColorChanged()  { ersCanvas.requestPaint() }
                         function onIsF126Changed()    { ersCanvas.requestPaint() }
                     }
 
@@ -733,7 +722,7 @@ Window {
 
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
-                                ctx.fillStyle = root.ersInnerColor(root.ersMode)
+                                ctx.fillStyle = root.ersColor
                                 ctx.fill()
                                 ctx.restore()
                             }

@@ -26,7 +26,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
+from apps.hud.common import get_ers_mode_color, get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
@@ -149,6 +149,7 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("ersHarvPct", ers_harv_pct)
         self.set_qml_property("ersDeployedPct", ers_dep_pct)
         self.set_qml_property("ersMode",        data.ers_mode)
+        self.set_qml_property("ersColor",       get_ers_mode_color(data.ers_mode, f26.enabled, f26.overtake_active))
         self.set_qml_property("tlWarnings",     data.tl_warnings)
         self.set_qml_property("trackTempC",     data.track_temp)
         self.set_qml_property("airTempC",       data.air_temp)
