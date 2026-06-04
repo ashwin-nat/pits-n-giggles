@@ -499,9 +499,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         if self._root is None:
             return
         if self._qml_props.get(name, _UNSET) == value:
+            self._stats.track_event("__QML_PROPERTY_CACHE_HITS__", name)
             return
         self._qml_props[name] = value
         self._root.setProperty(name, value)
+        self._stats.track_event("__QML_PROPERTIES_PUSHES__", name)
 
     @property
     def root(self) -> Optional[QQuickWindow]:
@@ -537,6 +539,7 @@ class BaseOverlayQML(BaseOverlay, QObject):
         All positional args are forwarded as ``QVariant`` via a queued
         connection, matching the standard pattern used across QML overlays.
         """
+        self._stats.track_event("__QML_METHOD_CALLS__", method)
         QMetaObject.invokeMethod(
             self._root,
             method,
