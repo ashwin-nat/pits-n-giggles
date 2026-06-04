@@ -38,14 +38,7 @@ Window {
     property real   mgukPowerKw:   0
     property real   iceFraction:   0
     property real   mgukFraction:  0
-    property real   ersRemPct:     0
-    property real   deployPct:     0
-    property real   harvestPct:    0
-    property string ersMode:       ""
-    property string ersModeColor:  "#444444"
     property int    iceTempC:      0
-    property bool   f1_26Enabled:  false
-    property bool   otActive:      false
 
     readonly property int baseWidth:  220
     readonly property int baseHeight: 96
