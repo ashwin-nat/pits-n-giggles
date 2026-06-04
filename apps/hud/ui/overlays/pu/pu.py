@@ -47,11 +47,9 @@ class PuOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
-        minimal_view: bool = False,
         refresh_interval_ms: Optional[int] = None,
     ) -> None:
 
-        self.minimal_view = minimal_view
         super().__init__(
             config=config,
             logger=logger,
@@ -62,7 +60,6 @@ class PuOverlay(BaseOverlayQML):
             refresh_interval_ms=refresh_interval_ms,
         )
 
-        self.set_qml_property("minimalView", self.minimal_view)
         self._register_event_handlers()
 
     def _register_event_handlers(self):

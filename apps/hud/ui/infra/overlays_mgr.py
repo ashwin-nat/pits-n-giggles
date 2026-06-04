@@ -163,7 +163,6 @@ class OverlaysMgr:
             overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
-            minimal_view=settings.HUD.pu_minimal_view,
         )
 
         if settings.HUD.show_mfd:
