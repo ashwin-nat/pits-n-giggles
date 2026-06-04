@@ -224,7 +224,6 @@ class OverlaysMgr:
         self._input_telemetry_update(data)
         self._motion_update(data)
         self._hud_overlay_update(data)
-        self._pu_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
             self.window_manager.broadcast_data('stream_overlay_update', data)
 
