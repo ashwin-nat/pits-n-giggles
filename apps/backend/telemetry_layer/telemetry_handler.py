@@ -72,6 +72,7 @@ class UdpActionCodes:
     mfd_interaction: Optional[int] = None
     toggle_hud_overlay: Optional[int] = None
     toggle_circuit_info_overlay: Optional[int] = None
+    toggle_pu_overlay: Optional[int] = None
 
     _MAP = {
         "udp_tyre_delta_action_code": "tyre_delta",
@@ -87,6 +88,7 @@ class UdpActionCodes:
         "mfd_interaction_udp_action_code": "mfd_interaction",
         "hud_overlay_toggle_udp_action_code": "toggle_hud_overlay",
         "circuit_info_toggle_udp_action_code": "toggle_circuit_info_overlay",
+        "pu_toggle_udp_action_code": "toggle_pu_overlay",
     }
 
     def update(self, key: str, value: int):
@@ -210,6 +212,7 @@ class F1TelemetryHandler:
             mfd_interaction=settings.HUD.mfd_interaction_udp_action_code,
             toggle_hud_overlay=settings.HUD.hud_overlay_toggle_udp_action_code,
             toggle_circuit_info_overlay=settings.HUD.circuit_info_toggle_udp_action_code,
+            toggle_pu_overlay=settings.HUD.pu_toggle_udp_action_code,
         )
 
         self.m_manager_task: Optional[asyncio.Task] = None
@@ -651,6 +654,11 @@ class F1TelemetryHandler:
                                     self.m_udp_action_codes.toggle_circuit_info_overlay,
                                     'Toggle circuit info overlay',
                                     lambda: self._processToggleHud(OverlayId.CIRCUIT_INFO))
+
+            await self._handle_udp_action(buttons,
+                                    self.m_udp_action_codes.toggle_pu_overlay,
+                                    'Toggle PU overlay',
+                                    lambda: self._processToggleHud(OverlayId.PU))
 
         async def handleFlashBackEvent(packet: PacketEventData) -> None:
             """

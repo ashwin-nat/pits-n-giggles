@@ -134,6 +134,7 @@ datas.extend([
     qml_file("apps/hud/ui/overlays/timing_tower", "timing_tower.qml"),
     qml_file("apps/hud/ui/overlays/lap_timer", "lap_timer_overlay.qml"),
     qml_file("apps/hud/ui/overlays/circuit_info", "circuit_info.qml"),
+    qml_file("apps/hud/ui/overlays/pu", "pu.qml"),
     qml_file("apps/hud/ui/overlays/hud_overlay", "hud_overlay.qml"),
     qml_file("apps/hud/ui/overlays/mfd", "mfd.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/collapsed", "collapsed_page.qml"),

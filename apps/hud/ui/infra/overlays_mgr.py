@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 from apps.hud.common import get_ref_row, get_ref_row_index, is_tt_session
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
-                                  MfdOverlay, TimingTowerOverlay,
+                                  MfdOverlay, PuOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -37,8 +37,7 @@ from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import (HudOverlayData, InputTelemetryData,
-                       LiveSessionMotionInfo, PowerUnitOverlayData)
+from .hf_types import (HudOverlayData, InputTelemetryData, LiveSessionMotionInfo)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -155,6 +154,16 @@ class OverlaysMgr:
             scale_factor=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID].scale_factor,
             circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pu,
+            overlay_cls=PuOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
+            minimal_view=settings.HUD.pu_minimal_view,
         )
 
         if settings.HUD.show_mfd:
@@ -425,7 +434,7 @@ class OverlaysMgr:
 
     def _pu_overlay_update(self, data: Dict[str, Any]):
         """Send power unit data to power unit overlay."""
-        self.window_manager.send_high_freq_data(PowerUnitOverlayData.from_json(data))
+        self.window_manager.unicast_data(PuOverlay.OVERLAY_ID, 'pu_overlay_update', data)
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)

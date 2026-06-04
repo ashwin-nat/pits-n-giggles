@@ -149,6 +149,7 @@ class BackendAppMgr(PngAppMgrBase):
                 "mfd_interaction_udp_action_code",
                 "hud_overlay_toggle_udp_action_code",
                 "circuit_info_toggle_udp_action_code",
+                "pu_toggle_udp_action_code",
             ],
         }):
             for fields_in_category in udp_action_codes_diff.values():
