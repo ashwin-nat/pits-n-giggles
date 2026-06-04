@@ -26,10 +26,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from apps.hud.common import get_ers_mode_color
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import OverlayId, OverlayPosition
-from lib.f1_types.packet_7_car_status_data import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
