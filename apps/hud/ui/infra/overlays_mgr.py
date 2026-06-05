@@ -430,10 +430,6 @@ class OverlaysMgr:
         """Send HUD data to HUD overlay."""
         self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
 
-    def _pu_overlay_update(self, data: Dict[str, Any]):
-        """Send power unit data to power unit overlay."""
-        self.window_manager.unicast_data(PuOverlay.OVERLAY_ID, 'pu_overlay_update', data)
-
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
 
