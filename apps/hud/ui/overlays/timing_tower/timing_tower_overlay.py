@@ -298,6 +298,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
             "name": driver_info.get("name", "UNKNOWN"),
             "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type),
+            "delta-to-leader": self._format_delta_to_leader(driver_info, delta_info, driver_idx, 0, session_type),
             "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
@@ -330,7 +331,8 @@ class TimingTowerOverlay(BaseOverlayQML):
         delta_info: Dict[str, Any],
         driver_idx: int,
         ref_index: int,
-        session_type: str
+        session_type: str,
+        delta_field: str = "relative-delta",
     ) -> str:
         """Format the delta time display.
 
@@ -340,6 +342,7 @@ class TimingTowerOverlay(BaseOverlayQML):
             driver_idx: Current driver index
             ref_index: Reference driver index
             session_type: Type of the current session
+            delta_field: Field in delta_info to use for the delta value (default: "relative-delta")
 
         Returns:
             Formatted delta string
@@ -357,6 +360,31 @@ class TimingTowerOverlay(BaseOverlayQML):
             return "---"
 
         return F1Utils.formatFloat(delta / 1000, precision=3, signed=True)
+
+    def _format_delta_to_leader(
+        self,
+        driver_info: Dict[str, Any],
+        delta_info: Dict[str, Any],
+        driver_idx: int,
+        ref_index: int,
+        session_type: str
+    ) -> str:
+        """Format the delta time display.
+
+        Args:
+            driver_info: Driver information dictionary
+            delta_info: Delta information dictionary
+            driver_idx: Current driver index
+            ref_index: Reference driver index
+            session_type: Type of the current session
+
+        Returns:
+            Formatted delta string
+        """
+        if is_race_type_session(session_type):
+            return self._format_delta(driver_info, delta_info, driver_idx, ref_index,
+                                      session_type, delta_field="delta-to-leader")
+        return self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type)
 
     def _format_tyre_wear(self, tyre_info: Dict[str, Any], telemetry_public: bool) -> str:
         """Format tyre wear display.

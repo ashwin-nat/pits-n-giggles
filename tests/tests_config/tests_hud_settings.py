@@ -975,6 +975,29 @@ class TestTimingTowerColConfig(TestF1ConfigBase):
         for col_id in disabled_by_default:
             self.assertFalse(opts.cols[col_id.value].enabled, f"{col_id} should be disabled by default")
 
+    def test_delta_to_leader_col_present_and_disabled_by_default(self):
+        opts = TimingTowerColOptions()
+        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, opts.cols)
+        self.assertFalse(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
+
+    def test_delta_to_leader_col_can_be_enabled(self):
+        cols = {
+            col_id.value: TimingTowerColSettings(enabled=True, position=i + 1)
+            for i, col_id in enumerate(TimingTowerColId)
+        }
+        opts = TimingTowerColOptions(cols=cols)
+        self.assertTrue(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
+
+    def test_delta_to_leader_in_sorted_enabled_when_enabled(self):
+        base_cols = {
+            col_id.value: TimingTowerColSettings(enabled=False, position=i + 1)
+            for i, col_id in enumerate(TimingTowerColId)
+        }
+        base_cols[TimingTowerColId.DELTA_TO_LEADER.value] = TimingTowerColSettings(enabled=True, position=1)
+        opts = TimingTowerColOptions(cols=base_cols)
+        enabled_keys = [key for key, _ in opts.sorted_enabled_cols()]
+        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, enabled_keys)
+
     # --- sorted_enabled_cols ---
 
     def test_sorted_enabled_cols_order(self):

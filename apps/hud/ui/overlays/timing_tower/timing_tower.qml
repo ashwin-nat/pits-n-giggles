@@ -26,6 +26,7 @@ Window {
         readonly property int team_logo: 25
         readonly property int name: 120
         readonly property int delta: 72
+        readonly property int delta_to_leader: 72
         readonly property int tyre: 58
         readonly property int ers_drs: 58
         readonly property int pens: 44
@@ -51,6 +52,7 @@ Window {
     function colHeaderLabel(colId) {
         switch(colId) {
             case "delta":         return "DELTA"
+            case "delta_to_leader": return "LEADER"
             case "tyre":          return "TYRE"
             case "ers_drs":       return "ERS/DRS"
             case "pens":          return "PEN"
@@ -74,6 +76,19 @@ Window {
             property var rowData
             anchors.fill: parent
             text: rowData ? rowData.delta : ""
+            font.family: "Consolas"
+            font.pixelSize: 13
+            color: "#ffffff"
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+    Component {
+        id: deltaToLeaderColComp
+        Text {
+            property var rowData
+            anchors.fill: parent
+            text: rowData ? rowData["delta-to-leader"] : ""
             font.family: "Consolas"
             font.pixelSize: 13
             color: "#ffffff"
@@ -563,6 +578,7 @@ Window {
                                         sourceComponent: {
                                             switch(colId) {
                                                 case "delta":         return deltaColComp
+                                                case "delta_to_leader": return deltaToLeaderColComp
                                                 case "tyre":          return tyreColComp
                                                 case "ers_drs":       return ersDrsColComp
                                                 case "pens":          return pensColComp

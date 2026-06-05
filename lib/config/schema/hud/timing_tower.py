@@ -33,17 +33,18 @@ from ..diff import ConfigDiffMixin
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
 class TimingTowerColId(str, Enum):
-    DELTA         = "delta"
-    TYRE          = "tyre"
-    ERS_DRS       = "ers_drs"
-    PENS          = "pens"
-    TL_WARNS      = "tl_warns"
-    BEST_LAP      = "best_lap"
-    LAST_LAP      = "last_lap"
-    WING_DMG      = "wing_dmg"
-    SPEED_TRAP    = "speed_trap"
-    FUEL          = "fuel"
-    DRIVER_STATUS = "driver_status"
+    DELTA           = "delta"
+    DELTA_TO_LEADER = "delta_to_leader"
+    TYRE            = "tyre"
+    ERS_DRS         = "ers_drs"
+    PENS            = "pens"
+    TL_WARNS        = "tl_warns"
+    BEST_LAP        = "best_lap"
+    LAST_LAP        = "last_lap"
+    WING_DMG        = "wing_dmg"
+    SPEED_TRAP      = "speed_trap"
+    FUEL            = "fuel"
+    DRIVER_STATUS   = "driver_status"
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -69,6 +70,8 @@ class TimingTowerColSettings(ConfigDiffMixin, BaseModel):
 DEFAULT_COLS: Dict[TimingTowerColId, "TimingTowerColSettings"] = {
     TimingTowerColId.DELTA: TimingTowerColSettings(
         enabled=True,  position=1,  description="Delta"),
+    TimingTowerColId.DELTA_TO_LEADER: TimingTowerColSettings(
+        enabled=False, position=12, description="Delta to leader"),
     TimingTowerColId.TYRE: TimingTowerColSettings(
         enabled=True,  position=2,  description="Tyre compound and wear"),
     TimingTowerColId.ERS_DRS: TimingTowerColSettings(
