@@ -358,7 +358,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== PU OVERLAY ==============
-    show_pu: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit")
+    show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
     # ============== AUTO-HIDE IN MENU ==============

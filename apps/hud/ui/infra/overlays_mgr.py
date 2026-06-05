@@ -157,7 +157,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_pu,
+            enabled=settings.HUD.show_pu_info,
             overlay_cls=PuOverlay,
             opacity=settings.HUD.overlays_opacity,
             overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],

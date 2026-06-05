@@ -477,7 +477,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_hud_overlay",
                 "overlays_fuel_estimation_mode",
                 "show_circuit_info",
-                "show_pu",
+                "show_pu_info",
             ],
             "Network": [
                 "broker_xpub_port",
