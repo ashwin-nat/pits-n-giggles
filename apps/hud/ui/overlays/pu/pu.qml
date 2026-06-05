@@ -43,7 +43,7 @@ Window {
     property color  ersColor:      "#c4c4d4"
 
     readonly property int baseWidth:  220
-    readonly property int baseHeight: 126
+    readonly property int baseHeight: 106
 
     width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
@@ -215,46 +215,48 @@ Window {
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
 
-                // ── Temperature ───────────────────────────────────────────
+                // ── Temperature + ERS mode ───────────────────────────────
                 RowLayout {
-                    Layout.fillWidth:       false
-                    Layout.preferredHeight: 16
-                    Layout.alignment:       Qt.AlignHCenter
-                    spacing: 5
-
-                    Text {
-                        text:               "TEMP"
-                        font.family:        "Formula1"
-                        font.pixelSize:     10
-                        font.letterSpacing: 0.8
-                        color:              root.clrLabel
-                        Layout.alignment:   Qt.AlignVCenter
-                    }
-
-                    Text {
-                        text:             root.iceTempC + "°C"
-                        font.family:      "Formula1"
-                        font.pixelSize:   13
-                        font.weight:      Font.Bold
-                        color:            root.clrValue
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-                }
-
-                Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
-
-                // ── ERS mode ──────────────────────────────────────────────
-                Text {
                     Layout.fillWidth:       true
                     Layout.preferredHeight: 16
-                    horizontalAlignment:    Text.AlignHCenter
-                    text:           root.ersMode
-                    font.family:    "Formula1"
-                    font.pixelSize: 13
-                    font.weight:    Font.Bold
-                    font.letterSpacing: 1.2
-                    color:          root.ersColor
-                    Behavior on color { ColorAnimation { duration: 300 } }
+                    spacing: 0
+
+                    // TEMP — left
+                    RowLayout {
+                        spacing: 5
+
+                        Text {
+                            text:               "TEMP"
+                            font.family:        "Formula1"
+                            font.pixelSize:     10
+                            font.letterSpacing: 0.8
+                            color:              root.clrLabel
+                            Layout.alignment:   Qt.AlignVCenter
+                        }
+
+                        Text {
+                            text:             root.iceTempC + "°C"
+                            font.family:      "Formula1"
+                            font.pixelSize:   13
+                            font.weight:      Font.Bold
+                            color:            root.clrValue
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // ERS mode — right
+                    Text {
+                        text:               root.ersMode
+                        font.family:        "Formula1"
+                        font.pixelSize:     13
+                        font.weight:        Font.Bold
+                        font.letterSpacing: 1.2
+                        color:              root.ersColor
+                        Layout.alignment:   Qt.AlignVCenter
+                        Behavior on color { ColorAnimation { duration: 300 } }
+                    }
                 }
             }
         }
