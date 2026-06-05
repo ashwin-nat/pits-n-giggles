@@ -22,8 +22,8 @@
 
 import random
 
-from lib.f1_types import (F1PacketType, GearboxAssistMode, PacketHeader,
-                          PacketTimeTrialData, TeamID24, TeamID25,
+from lib.f1_types import (F1PacketType, GearboxAssistMode, get_team_id_class,
+                          PacketHeader, PacketTimeTrialData,
                           TimeTrialDataSet, TractionControlAssistMode)
 
 from .tests_parser_base import F1TypesTest
@@ -40,6 +40,7 @@ class TestPacketTimeTrialData(F1TypesTest):
         self.m_num_players = 22
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.TIME_TRIAL, 26, self.m_num_players)
 
     def test_f1_24_actual(self):
         """
@@ -163,10 +164,7 @@ class TestPacketTimeTrialData(F1TypesTest):
             TimeTrialDataSet: A random TimeTrialDataSet
         """
 
-        if packet_format == 2024:
-            team_id_type = TeamID24
-        elif packet_format == 2025:
-            team_id_type = TeamID25
+        team_id_type = get_team_id_class(packet_format)
 
         s1_time_ms = random.randrange(0, 60000)
         s2_time_ms = random.randrange(0, 60000)
@@ -204,3 +202,32 @@ class TestPacketTimeTrialData(F1TypesTest):
             personal_best_data_set=self._generateRandomTimeTrialDataSet(1, header.m_packetFormat),
             rival_session_best_data_set=self._generateRandomTimeTrialDataSet(2, header.m_packetFormat),
         )
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with a random game packet
+        """
+
+        generated_test_obj = self._generateRandomPacketTimeTrialData(self.m_header_26)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketTimeTrialData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_actual(self):
+        """
+        Test for F1 2026 with an actual game packet
+        """
+
+        raw_packet = b'\x00\xdf\x01\xacn\x01\x00\xb7\x85\x00\x00d\xa1\x00\x00\x91G\x00\x00\x00\x00\x00\x01\x00\x01\x02\xdf\x01\xacn\x01\x00\xb7\x85\x00\x00d\xa1\x00\x00\x91G\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {'player-session-best-data-set': {'car-index': 0, 'team': "Williams '26", 'lap-time-ms': 93868, 'lap-time-str': '01:33.868', 'sector-1-time-ms': 34231, 'sector-1-time-str': '34.231', 'sector-2-time-in-ms': 41316, 'sector-2-time-str': '41.316', 'sector3-time-in-ms': 18321, 'sector-3-time-str': '18.321', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': True, 'custom-setup': False, 'is-valid': True}, 'personal-best-data-set': {'car-index': 2, 'team': "Williams '26", 'lap-time-ms': 93868, 'lap-time-str': '01:33.868', 'sector-1-time-ms': 34231, 'sector-1-time-str': '34.231', 'sector-2-time-in-ms': 41316, 'sector-2-time-str': '41.316', 'sector3-time-in-ms': 18321, 'sector-3-time-str': '18.321', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': True, 'custom-setup': False, 'is-valid': False}, 'rival-session-best-data-set': {'car-index': 0, 'team': 'Mercedes', 'lap-time-ms': 0, 'lap-time-str': '00.000', 'sector-1-time-ms': 0, 'sector-1-time-str': '00.000', 'sector-2-time-in-ms': 0, 'sector-2-time-str': '00.000', 'sector3-time-in-ms': 0, 'sector-3-time-str': '00.000', 'traction-control': False, 'gearbox-assist': False, 'anti-lock-brakes': False, 'equal-car-performance': False, 'custom-setup': False, 'is-valid': False}}
+        parsed_packet = PacketTimeTrialData(self.m_header_26, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+

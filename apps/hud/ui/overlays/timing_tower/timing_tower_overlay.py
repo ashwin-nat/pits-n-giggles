@@ -27,7 +27,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
-from apps.hud.common import (ERS_MODE_COLORS,
+from apps.hud.common import (get_ers_mode_color,
                              get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
@@ -288,7 +288,7 @@ class TimingTowerOverlay(BaseOverlayQML):
         best_lap_ms = best_lap_info.get("lap-time-ms")
         is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
-        ers_mode = ers_info.get("ers-mode", "None")
+        ers_mode = self._get_ers_mode(row_data)
         wing_dmg = self._format_wing_dmg(dmg_info, telemetry_public)
         fuel = self._format_fuel(fuel_info, telemetry_public, session_type)
         driver_status = self._format_driver_status(curr_lap_info.get("driver-status"))
@@ -303,8 +303,8 @@ class TimingTowerOverlay(BaseOverlayQML):
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
             "ersMode": ers_mode,
-            "ersColor": ERS_MODE_COLORS[ers_mode],
-            "drs": driver_info.get("drs", False),
+            "ersColor": get_ers_mode_color(ers_mode, row_data.get('2026-regs-info', {}).get('2026-regs-enabled', False), row_data.get('2026-regs-info', {}).get('overtake-active', False)),
+            "overtakeBarColor": self._get_overtake_bar_color(row_data),
             "penalties": self._format_penalties(warns_pens_info),
             "tlWarns": warns_pens_info.get("corner-cutting-warnings", 0),
             "isReference": driver_idx == ref_index,
@@ -609,6 +609,50 @@ class TimingTowerOverlay(BaseOverlayQML):
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    def _get_overtake_bar_color(self, data: Dict[str, Any]) -> str:
+        """Return the overtake bar colour for the driver.
+
+        Pre-2026: DRS active → green. Post-2026: overtake available → blue. Inactive → grey.
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "2026-regs-info"
+
+        Returns:
+            str: Hex colour string
+        """
+        regs_2026_info = data['2026-regs-info']
+        is_active = self._get_overtake_bar_active(data)
+        if not is_active:
+            return "#333333"
+        return "#00b0ff" if regs_2026_info['2026-regs-enabled'] else "#00e676"
+
+    def _get_overtake_bar_active(self, data: Dict[str, Any]) -> bool:
+        """Determine overtake bar active state: DRS (pre-2026) or overtake available (2026+).
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "2026-regs-info" and "driver-info"
+
+        Returns:
+            bool: True if the overtake aid is active/available, False otherwise
+        """
+        regs_2026_info = data['2026-regs-info']
+        if not regs_2026_info['2026-regs-enabled']:
+            return data["driver-info"]["drs"]
+
+        return regs_2026_info["overtake-avlb"]
+
+    def _get_ers_mode(self, data: Dict[str, Any]) -> str:
+        """Get the ERS mode for the driver.
+
+        Args:
+            data (Dict[str, Any]): Driver row data containing "ers-info"
+
+        Returns:
+            str: ERS mode string
+        """
+        ers_info = data.get("ers-info", {})
+        return ers_info.get("ers-mode", "Unknown")
 
     def _process_time_trial(self, data: Dict[str, Any]) -> None:
         """Process incoming time trial telemetry data and update the QML overlay.

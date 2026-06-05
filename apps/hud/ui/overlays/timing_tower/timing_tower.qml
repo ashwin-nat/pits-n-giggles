@@ -156,7 +156,7 @@ Window {
                 width: 6
                 height: parent.height - 8
                 radius: 2
-                color: (rowData && rowData.drs) ? "#00e676" : "#333333"
+                color: (rowData && rowData.overtakeBarColor) ? rowData.overtakeBarColor : "#333333"
             }
         }
     }
@@ -367,7 +367,6 @@ Window {
                         anchors.right: parent.right
                         anchors.margins: 2
                         height: colHeaderVisible ? colHeaderHeight : 0
-                        layer.enabled: true
 
                         Row {
                             anchors.left: parent.left

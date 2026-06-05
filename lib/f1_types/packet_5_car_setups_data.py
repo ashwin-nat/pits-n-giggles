@@ -25,6 +25,7 @@ import struct
 from typing import Any, Dict, List, Optional
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -399,7 +400,7 @@ class CarSetupData(F1SubPacketBase):
                 self.m_ballast,
                 self.m_fuelLoad
             )
-        if self.m_packetFormat == 2024:
+        if self.m_packetFormat >= 2024:
             return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_frontWing,
                 self.m_rearWing,
@@ -490,7 +491,7 @@ class CarSetupData(F1SubPacketBase):
             )
             return cls(raw_packet, packet_format)
 
-        if packet_format == 2024:
+        if packet_format >= 2024:
             raw_packet = cls.COMPILED_PACKET_STRUCT_24.pack(
                 front_wing,
                 rear_wing,
@@ -532,7 +533,6 @@ class PacketCarSetupData(F1PacketBase):
                 The length of m_carSetups should not exceed the maximum number of participants.
     """
 
-    MAX_CARS = 22
     COMPILED_PACKET_STRUCT_EXTRA = struct.Struct("<f")
 
     __slots__ = (
@@ -556,12 +556,13 @@ class PacketCarSetupData(F1PacketBase):
         self.m_carSetups: List[CarSetupData]
 
         packet_len = CarSetupData.PACKET_LEN_23 if (header.m_packetFormat == 2023) else CarSetupData.PACKET_LEN_24
+        num_cars = get_num_cars(header.m_packetFormat)
         self.m_carSetups, offset_so_far = CarSetupData.parse_array(
             data=packet,
             offset=0,
             item_len=packet_len,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS,
+            count=num_cars,
+            max_count=num_cars,
             packet_format=header.m_packetFormat
         )
 
@@ -665,7 +666,7 @@ class PacketCarSetupData(F1PacketBase):
         if header.m_packetFormat == 2023:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             return cls(header, raw_bytes)
-        if header.m_packetFormat == 2024:
+        if header.m_packetFormat >= 2024:
             raw_bytes = b''.join([setup.to_bytes() for setup in car_setups])
             raw_bytes += struct.pack("<f", next_front_wing_value)
             return cls(header, raw_bytes)

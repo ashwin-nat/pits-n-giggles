@@ -946,6 +946,15 @@ class EngViewRaceTable {
                 cellClass: 'ag-cell-multiline',
             },
             {
+                headerName: "F1 2026",
+                colId: "f1-2026",
+                context: {displayName: "F1 2026", },
+                field: "2026-regs-info",
+                flex: 4,
+                cellRenderer: this.createF1_2026CellRenderer(),
+                cellClass: 'ag-cell-multiline',
+            },
+            {
                 headerName: "Name",
                 colId: "name",
                 context: {displayName: "Driver Name", },
@@ -1679,6 +1688,52 @@ class EngViewRaceTable {
                 row1: position,
                 row2: statusText,
                 row2Class: statusClass
+            });
+        };
+    }
+
+    createF1_2026CellRenderer() {
+        return (params) => {
+            const regs2026Info = params.data["2026-regs-info"];
+            if (!regs2026Info["2026-regs-enabled"]) {
+                return this.createMultiLineCell({
+                    row1: 'OT',
+                    row2: 'XM',
+                    row1Class: 'eng-view-tyre-row-1 f26-disabled',
+                    row2Class: 'eng-view-tyre-row-2 f26-disabled',
+                });
+            }
+
+            const otAvlb = regs2026Info["overtake-avlb"];
+            const otActive = regs2026Info["overtake-active"];
+            let otClass;
+            if (otActive) {
+                otClass = 'drs-active';
+            } else if (otAvlb) {
+                otClass = 'drs-available';
+            } else {
+                otClass = 'f26-inactive';
+            }
+
+            const activeAeroMode = regs2026Info["active-aero-mode"];
+            const activeAeroAvlb = regs2026Info["active-aero-avlb"];
+            let aeroText, aeroClass;
+            if (activeAeroMode === "STRAIGHT_MODE") {
+                aeroText = 'XM';
+                aeroClass = 'drs-active';
+            } else if (activeAeroAvlb) {
+                aeroText = 'ZM';
+                aeroClass = 'drs-available';
+            } else {
+                aeroText = 'ZM';
+                aeroClass = 'f26-inactive';
+            }
+
+            return this.createMultiLineCell({
+                row1: 'OT',
+                row2: aeroText,
+                row1Class: `eng-view-tyre-row-1 ${otClass}`,
+                row2Class: `eng-view-tyre-row-2 ${aeroClass}`,
             });
         };
     }

@@ -22,9 +22,10 @@
 
 
 import struct
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
-from .common import F1Utils, TeamID24, TeamID25
+from .common import F1Utils
+from .team_id import TeamID, get_team_id
 from .base_pkt import F1SubPacketBase, F1PacketBase
 from .header import PacketHeader
 
@@ -35,7 +36,7 @@ class TimeTrialDataSet(F1SubPacketBase):
 
     Attributes:
         m_carIdx (uint8): Index of the car this data relates to
-        m_teamId (TeamID24): Team id - see appendix
+        m_teamId (TeamID): Team id - see appendix
         m_lapTimeInMS (uint32): Lap time in milliseconds
         m_sector1TimeInMS (uint32): Sector 1 time in milliseconds
         m_sector2TimeInMS (uint32): Sector 2 time in milliseconds
@@ -63,8 +64,25 @@ class TimeTrialDataSet(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    # F1 26: m_teamId expands from uint8 -> uint16
+    COMPILED_PACKET_STRUCT_2026 = struct.Struct("<"
+        "B" # uint8     m_carIdx
+        "H" # uint16    m_teamId                   // F1 26: expanded to uint16
+        "I" # uint32    m_lapTimeInMS
+        "I" # uint32    m_sector1TimeInMS
+        "I" # uint32    m_sector2TimeInMS
+        "I" # uint32    m_sector3TimeInMS
+        "B" # uint8     m_tractionControl
+        "B" # uint8     m_gearboxAssist
+        "B" # uint8     m_antiLockBrakes
+        "B" # uint8     m_equalCarPerformance
+        "B" # uint8     m_customSetup
+        "B" # uint8     m_valid
+    )
+    PACKET_LEN_2026 = COMPILED_PACKET_STRUCT_2026.size
+
     m_carIdx: int
-    m_teamId: Union[TeamID24, TeamID25]
+    m_teamId: TeamID
     m_lapTimeInMS: int
     m_sector1TimeInMS: int
     m_sector2TimeInMS: int
@@ -75,6 +93,7 @@ class TimeTrialDataSet(F1SubPacketBase):
     m_equalCarPerformance: bool
     m_customSetup: bool
     m_isValid: bool
+    m_packetFormat: int
 
     __slots__ = (
         "m_carIdx",
@@ -89,6 +108,7 @@ class TimeTrialDataSet(F1SubPacketBase):
         "m_equalCarPerformance",
         "m_customSetup",
         "m_isValid",
+        "m_packetFormat",
     )
 
     def __init__(self, data: bytes, packet_format: int) -> None:
@@ -103,6 +123,8 @@ class TimeTrialDataSet(F1SubPacketBase):
             struct.error: If the binary data does not match the expected format.
         """
 
+        self.m_packetFormat = packet_format
+        pkt_struct = self.COMPILED_PACKET_STRUCT_2026 if packet_format >= 2026 else self.COMPILED_PACKET_STRUCT
         (
             self.m_carIdx,
             self.m_teamId,
@@ -116,16 +138,12 @@ class TimeTrialDataSet(F1SubPacketBase):
             self.m_equalCarPerformance,
             self.m_customSetup,
             self.m_isValid,
-        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        ) = pkt_struct.unpack(data)
         self._cast_enums(packet_format)
 
     def _cast_enums(self, packet_format: int) -> None:
         """All safeCast and bool conversions in one place."""
-        # No need to check game year, since this packet type is not available in F1 23
-        if packet_format < 2025:
-            self.m_teamId = TeamID24.safeCast(self.m_teamId)
-        else:
-            self.m_teamId = TeamID25.safeCast(self.m_teamId)
+        self.m_teamId = get_team_id(self.m_teamId, packet_format)
         self.m_tractionControl = bool(self.m_tractionControl)
         self.m_gearboxAssist = bool(self.m_gearboxAssist)
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
@@ -203,7 +221,8 @@ class TimeTrialDataSet(F1SubPacketBase):
             bytes: The serialized TimeTrialDataSet object
         """
 
-        return self.COMPILED_PACKET_STRUCT.pack(
+        pkt_struct = self.COMPILED_PACKET_STRUCT_2026 if self.m_packetFormat >= 2026 else self.COMPILED_PACKET_STRUCT
+        return pkt_struct.pack(
             self.m_carIdx,
             self.m_teamId.value,
             self.m_lapTimeInMS,
@@ -222,7 +241,7 @@ class TimeTrialDataSet(F1SubPacketBase):
     def from_values(cls,
                     game_year: int,
                     car_index: int,
-                    team_id: Union[TeamID24, TeamID25],
+                    team_id: TeamID,
                     lap_time_in_ms: int,
                     sector1_time_in_ms: int,
                     sector2_time_in_ms: int,
@@ -254,8 +273,9 @@ class TimeTrialDataSet(F1SubPacketBase):
             TimeTrialDataSet: A new TimeTrialDataSet object
         """
 
+        pkt_struct = cls.COMPILED_PACKET_STRUCT_2026 if game_year >= 2026 else cls.COMPILED_PACKET_STRUCT
         return cls(
-            cls.COMPILED_PACKET_STRUCT.pack(
+            pkt_struct.pack(
                 car_index,
                 team_id.value,
                 lap_time_in_ms,
@@ -302,20 +322,22 @@ class PacketTimeTrialData(F1PacketBase):
 
         super().__init__(header)
 
+        ds_len = TimeTrialDataSet.PACKET_LEN_2026 if header.m_packetFormat >= 2026 else TimeTrialDataSet.PACKET_LEN
+
         # First, the Player session best data set
         bytes_so_far = 0
-        raw_data = data[:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
-        bytes_so_far += TimeTrialDataSet.PACKET_LEN
+        raw_data = data[:bytes_so_far + ds_len]
+        bytes_so_far += ds_len
         self.m_playerSessionBestDataSet = TimeTrialDataSet(raw_data, header.m_packetFormat)
 
         # Next, the personal best data set
-        raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
-        bytes_so_far += TimeTrialDataSet.PACKET_LEN
+        raw_data = data[bytes_so_far:bytes_so_far + ds_len]
+        bytes_so_far += ds_len
         self.m_personalBestDataSet = TimeTrialDataSet(raw_data, header.m_packetFormat)
 
         # Finally, the rival data set
-        raw_data = data[bytes_so_far:bytes_so_far + TimeTrialDataSet.PACKET_LEN]
-        bytes_so_far += TimeTrialDataSet.PACKET_LEN
+        raw_data = data[bytes_so_far:bytes_so_far + ds_len]
+        bytes_so_far += ds_len
         self.m_rivalSessionBestDataSet = TimeTrialDataSet(raw_data, header.m_packetFormat)
 
     def toJSON(self, include_header: bool=False) -> Dict[str, Any]:

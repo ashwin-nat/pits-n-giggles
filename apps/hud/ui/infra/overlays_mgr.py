@@ -26,10 +26,10 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from apps.hud.common import get_ref_row_index, get_ref_row, is_tt_session
+from apps.hud.common import get_ref_row, get_ref_row_index, is_tt_session
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
-                                  MfdOverlay, TimingTowerOverlay,
+                                  MfdOverlay, PuOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -37,7 +37,7 @@ from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
+from .hf_types import (HudOverlayData, InputTelemetryData, LiveSessionMotionInfo)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -154,6 +154,15 @@ class OverlaysMgr:
             scale_factor=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID].scale_factor,
             circuit_info_length=settings.HUD.circuit_info_length,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pu_info,
+            overlay_cls=PuOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
         )
 
         if settings.HUD.show_mfd:

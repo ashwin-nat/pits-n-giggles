@@ -26,7 +26,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import get_ref_row, is_race_type_session, is_tt_session
+from apps.hud.common import get_ers_mode_color, get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
@@ -91,8 +91,6 @@ class HudOverlay(BaseOverlayQML):
         if not data:
             return
 
-        # Ignore the rival field in the obj
-
         # Pedals (0.0–1.0 → 0–100)
         self.set_qml_property("throttleValue", data.throttle * 100.0)
         self.set_qml_property("brakeValue",    data.brake    * 100.0)
@@ -108,24 +106,61 @@ class HudOverlay(BaseOverlayQML):
             self.set_qml_property("speedKmph",    data.speed_kmph)
             self.set_qml_property("speedUnitLabel", "km/h")
 
-        # DRS
-        self.set_qml_property("drsEnabled",   data.drs_enabled)
-        self.set_qml_property("drsAvailable", data.drs_available)
-        self.set_qml_property("drsDistance",  min(data.drs_distance, 250))
+        # DRS / active aero + overtake (2026)
+        f26 = data.f1_26_data
+        if f26.enabled:
+            if f26.active_aero_mode == "STRAIGHT_MODE":
+                drs_text    = "STRAIGHT"
+                drs_enabled = True
+                drs_dist    = 0
+            else:
+                drs_text    = "CORNER"
+                drs_enabled = False
+                drs_dist    = min(f26.active_aero_dist, 250)
+            drs_avlb    = f26.active_aero_avlb
+            ot_enabled  = f26.overtake_active
+            ot_avlb     = f26.overtake_avlb
+        else:
+            drs_text, drs_enabled = "DRS", data.drs_enabled
+            drs_dist    = min(data.drs_distance, 250)
+            drs_avlb    = data.drs_available
+            ot_enabled  = False
+            ot_avlb     = False
+
+        self.set_qml_property("drsText",      drs_text)
+        self.set_qml_property("drsEnabled",   drs_enabled)
+        self.set_qml_property("drsAvailable", drs_avlb)
+        self.set_qml_property("drsDistance",  drs_dist)
 
         # ERS — all values as percentages
         _store = CarStatusData.MAX_ERS_STORE_ENERGY
-        _harv  = CarStatusData.MAX_MGUK_HARV_PER_LAP
-        self.set_qml_property("ersRemPct",      round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1))
-        self.set_qml_property("ersHarvPct",     round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1))
-        self.set_qml_property("ersDeployedPct", round(min(data.ers_deployed_j  / _store * 100.0, 100.0), 1))
+        if f26.enabled:
+            _harv = f26.harv_limit_j
+            ers_rem_pct     = round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1)
+            ers_harv_pct    = round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1)
+            ers_dep_pct     = 100
+        else:
+            _harv  = CarStatusData.MAX_MGUK_HARV_PER_LAP
+            ers_rem_pct     = round(min(data.ers_rem_j       / _store * 100.0, 100.0), 1)
+            ers_harv_pct    = round(min(data.ers_harv_mguk_j / _harv  * 100.0, 100.0), 1)
+            ers_dep_pct     = round(min(data.ers_deployed_j  / _store * 100.0, 100.0), 1)
+
+        self.set_qml_property("ersRemPct", ers_rem_pct)
+        self.set_qml_property("ersHarvPct", ers_harv_pct)
+        self.set_qml_property("ersDeployedPct", ers_dep_pct)
         self.set_qml_property("ersMode",        data.ers_mode)
+        self.set_qml_property("ersColor",       get_ers_mode_color(data.ers_mode, f26.enabled, f26.overtake_active))
         self.set_qml_property("tlWarnings",     data.tl_warnings)
         self.set_qml_property("trackTempC",     data.track_temp)
         self.set_qml_property("airTempC",       data.air_temp)
 
         # Fuel
         self.set_qml_property("surplusFuel", self._surplus_fuel)
+
+        self.set_qml_property("isF126",      f26.enabled)
+        self.set_qml_property("otEnabled",   ot_enabled)
+        self.set_qml_property("otAvailable", ot_avlb)
+
 
     def _register_event_handlers(self):
         @self.on_event("race_table_update")

@@ -31,7 +31,7 @@ Window {
     property real scaleFactor: 1.0
 
     readonly property int baseWidth: 470
-    readonly property int baseHeight: 110
+    readonly property int baseHeight: 116
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -45,13 +45,19 @@ Window {
     property int    gear:           0
     property int    speedKmph:      0
     property string speedUnitLabel: "km/h"
+    property string drsText:        "DRS"
     property bool   drsEnabled:     false
     property bool   drsAvailable:   false
     property int    drsDistance:    0
+
+    property bool   isF126:         true
+    property bool   otEnabled:      false
+    property bool   otAvailable:    false
     property real   ersRemPct:      0
     property real   ersHarvPct:     0
     property real   ersDeployedPct: 0
     property string ersMode:        "None"
+    property string ersColor:       "#4a5a6a"
     property int    tlWarnings:     0
     property var    surplusFuel:    null
 
@@ -80,16 +86,6 @@ Window {
         return Math.max(0, Math.min(100, v))
     }
 
-    // Fill colour for the ERS inner circle based on current mode
-    function ersInnerColor(mode) {
-        let m = mode.toLowerCase()
-        if (m.indexOf("overtake") !== -1) return "#ff1744"   // Red
-        if (m.indexOf("hotlap")   !== -1) return "#00e676"   // Green
-        if (m.indexOf("medium")   !== -1) return "#ffd700"   // Yellow
-        return "#4a5a6a"                                      // Grey (none/off)
-    }
-
-
 
     // ── Root scaled container ────────────────────────────────────────────────
 
@@ -117,12 +113,23 @@ Window {
             anchors.topMargin: 12
             height: 98
             radius:       49
-            border.width: 1
-            border.color: "#2b3946"
+            border.width: 2
+            border.color: root.otAvailable
+                              ? Qt.rgba(0.11, 0.74, 0.90, glowPulse)
+                              : "#2b3946"
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#172130" }
                 GradientStop { position: 0.5; color: "#121b28" }
                 GradientStop { position: 1.0; color: "#0e1620" }
+            }
+
+            property real glowPulse: 0.0
+            SequentialAnimation on glowPulse {
+                running: root.otAvailable
+                loops:   Animation.Infinite
+                NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.5; duration: 1000; easing.type: Easing.InOutSine }
+                onStopped: pillBg.glowPulse = 0.0
             }
         }
 
@@ -551,7 +558,7 @@ Window {
                                     Text {
                                         id:              drsLabel
                                         anchors.centerIn: parent
-                                        text:            "DRS"
+                                        text:            root.drsText
                                         font.family:     "Formula1"
                                         font.pixelSize:  8
                                         color: root.drsEnabled
@@ -635,7 +642,8 @@ Window {
 
                     Connections {
                         target: root
-                        function onErsModeChanged() { ersCanvas.requestPaint() }
+                        function onErsColorChanged()  { ersCanvas.requestPaint() }
+                        function onIsF126Changed()    { ersCanvas.requestPaint() }
                     }
 
                     // Canvas draws: outer split ring (deploy/harvest) + inner fill circle
@@ -663,26 +671,37 @@ Window {
                             ctx.lineWidth   = 5
                             ctx.stroke()
 
-                            // ── harvest arc — left half, red ──
                             let harvestFrac = ersZone.animErsHarv / 100
-                            if (harvestFrac > 0.002) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
-                                ctx.strokeStyle = "#FF1744"
-                                ctx.lineWidth   = 5
-                                ctx.lineCap     = "round"
-                                ctx.stroke()
-                            }
+                            if (root.isF126) {
+                                // 2026 mode: no deploy limit — single full-circle harvest arc
+                                if (harvestFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top - harvestFrac * 2 * Math.PI, true)
+                                    ctx.strokeStyle = "#FF1744"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
+                            } else {
+                                // Standard mode: left half = harvest (red), right half = deploy (green)
+                                if (harvestFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top - harvestFrac * Math.PI, true)
+                                    ctx.strokeStyle = "#FF1744"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
 
-                            // ── deploy arc — right half, hotlap green ──
-                            let deployFrac = (100 - ersZone.animErsDeploy) / 100
-                            if (deployFrac > 0.002) {
-                                ctx.beginPath()
-                                ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
-                                ctx.strokeStyle = "#00e676"
-                                ctx.lineWidth   = 5
-                                ctx.lineCap     = "round"
-                                ctx.stroke()
+                                let deployFrac = (100 - ersZone.animErsDeploy) / 100
+                                if (deployFrac > 0.002) {
+                                    ctx.beginPath()
+                                    ctx.arc(cx, cy, outerR, top, top + deployFrac * Math.PI, false)
+                                    ctx.strokeStyle = "#00e676"
+                                    ctx.lineWidth   = 5
+                                    ctx.lineCap     = "round"
+                                    ctx.stroke()
+                                }
                             }
 
                             // ── inner background disk ──
@@ -703,7 +722,7 @@ Window {
 
                                 ctx.beginPath()
                                 ctx.arc(cx, cy, innerR, 0, 2 * Math.PI)
-                                ctx.fillStyle = root.ersInnerColor(root.ersMode)
+                                ctx.fillStyle = root.ersColor
                                 ctx.fill()
                                 ctx.restore()
                             }

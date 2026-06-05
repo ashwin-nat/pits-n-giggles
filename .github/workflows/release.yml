@@ -96,7 +96,8 @@ jobs:
         run: |
           META_VER=$(python -c "import sys; sys.path.insert(0, '.'); from meta.meta import APP_VERSION; print(APP_VERSION)")
           TAG_VER="${{ needs.find-release.outputs.tag }}"
-          TAG_VER="${TAG_VER#v}"   # strip leading 'v'
+          TAG_VER="${TAG_VER#v}"    # strip leading 'v'  (e.g. v4.2.0 → 4.2.0)
+          TAG_VER="${TAG_VER#*/}"  # strip prefix/      (e.g. beta/4.2.0 → 4.2.0)
           if [[ "$META_VER" != "$TAG_VER" ]]; then
             echo "::error::meta/meta.py has version $META_VER but release tag is ${{ needs.find-release.outputs.tag }}"
             echo "::error::Update meta/meta.py before creating the draft release."

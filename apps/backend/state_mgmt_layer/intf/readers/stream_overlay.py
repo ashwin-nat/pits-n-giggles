@@ -38,14 +38,20 @@ class StreamOverlayData(BaseAPI):
     Player telemetry overlay update class.
     """
 
-    def __init__(self, session_state: SessionState, export_hud_data: bool = False) -> None:
+    def __init__(self,
+                 session_state: SessionState,
+                 export_hud_data: bool = False,
+                 export_pu_data: bool = False) -> None:
         """Initialse the member variables by fetching necessary data from the data store
 
         Args:
             session_state (SessionState): Handle to the session state data structure
+            export_hud_data (bool, optional): Whether to include the HUD data in the output JSON. Defaults to False.
+            export_pu_data (bool, optional): Whether to include the power unit data in the
         """
 
         self.m_export_hud_data          = export_hud_data
+        self.m_export_pu_data          = export_pu_data
         self.m_track_temp               = session_state.m_session_info.m_track_temp
         self.m_air_temp                 = session_state.m_session_info.m_air_temp
         self.m_weather_forecast_samples = session_state.m_session_info.m_weather_forecast_samples
@@ -86,6 +92,7 @@ class StreamOverlayData(BaseAPI):
         self.__initGForce()
         self.__initPaceComparison(prev_data, next_data)
         self.__initMotion(session_state.m_driver_data)
+        self.__init2026Fields()
 
     def __initCarTelemetry(self) -> None:
         """Prepares the car telemetry data.
@@ -244,6 +251,22 @@ class StreamOverlayData(BaseAPI):
             if driver and driver.is_valid
         ]
 
+    def __init2026Fields(self) -> None:
+        """Prepares the 2026-specific fields (e.g., ERS harvest limit per lap)"""
+        if self.m_ref_obj:
+            self.m_2026_regs_json = self.m_ref_obj.get2026RegsInfoJSON()
+        else:
+            self.m_2026_regs_json = {
+                "2026-regs-enabled": False,
+                "active-aero-mode": False,
+                "active-aero-avlb": False,
+                "active-aero-dist": 0,
+                "overtake-avlb": False,
+                "overtake-active": False,
+                "overtake-dist": 0,
+                "harv-limit-j": 0.0,
+            }
+
     def __populatePaceCompDataForDriver(self,
                                         json_dict: Dict[str, any],
                                         driver_obj: Optional[DataPerDriver]) -> None:
@@ -276,6 +299,9 @@ class StreamOverlayData(BaseAPI):
         }
 
     def _getHudData(self) -> Dict[str, Any]:
+        """Get HUD data."""
+        if not self.m_export_hud_data:
+            return {}
         dflt_data = {
             "throttle" : None,
             "brake" : None,
@@ -287,6 +313,7 @@ class StreamOverlayData(BaseAPI):
             "drs-available" : None,
             "drs-distance" : None,
             "ers-harv-mguk" : None,
+            "ers-harv-mguh" : None,
             "ers-deployed" : None,
             "ers-remaining" : None,
             "ers-mode" : None,
@@ -340,12 +367,31 @@ class StreamOverlayData(BaseAPI):
             "drs-available" : car_status.m_drsAllowed,
             "drs-distance" : car_status.m_drsActivationDistance,
             "ers-harv-mguk" : car_status.m_ersHarvestedThisLapMGUK,
+            "ers-harv-mguh" : car_status.m_ersHarvestedThisLapMGUH,
             "ers-deployed" : car_status.m_ersDeployedThisLap,
             "ers-remaining" : car_status.m_ersStoreEnergy,
             "ers-mode" : str(car_status.m_ersDeployMode),
             "circuit-position" : dist,
             "sector" : sector,
             "circuit-length" : self.m_circuit_len,
+        }
+
+    def _getPUData(self) -> Dict[str, Any]:
+        """Get power unit data."""
+        if not self.m_export_pu_data:
+            return {}
+
+        if self.m_ref_obj:
+            car_status = self.m_ref_obj.m_packet_copies.m_packet_car_status
+            car_telemetry = self.m_ref_obj.m_packet_copies.m_packet_car_telemetry
+        else:
+            car_status = None
+            car_telemetry = None
+
+        return {
+            "ice-power-output-w" : car_status.m_enginePowerICE if car_status else 0.0,
+            "mguk-power-output-w" : car_status.m_enginePowerMGUK if car_status else 0.0,
+            "ice-temp-c" : car_telemetry.m_engineTemperature if car_telemetry else 0, # temp is int
         }
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
@@ -396,9 +442,11 @@ class StreamOverlayData(BaseAPI):
             },
             "pace-comparison" : self.m_pace_comp_json,
             "motion" : self.m_motion_json,
+            "2026-regs-info" : self.m_2026_regs_json,
         }
 
         if self.m_export_hud_data:
             ret["hud"] = self._getHudData()
-
+        if self.m_export_pu_data:
+            ret["power-unit"] = self._getPUData()
         return ret

@@ -1094,6 +1094,24 @@ class DataPerDriver:
             "tyre-stint-history": self._getTyreSetHistoryJSON(include_wear_history=False),
         }
 
+    def get2026RegsInfoJSON(self) -> Dict[str, Any]:
+        """Get the 2026 regulations info JSON.
+
+        Returns:
+            Dict[str, Any]: 2026 regulations info JSON
+        """
+
+        return {
+            "2026-regs-enabled": bool(self.m_car_info.m_2026_regs),
+            "active-aero-mode": str(self.m_car_info.m_active_aero_mode),
+            "active-aero-avlb": self.m_car_info.m_active_aero_avlb,
+            "active-aero-dist": self.m_car_info.m_active_aero_dist,
+            "overtake-avlb": self.m_car_info.m_overtake_avlb,
+            "overtake-active": self.m_car_info.m_overtake_active,
+            "overtake-dist": self.m_car_info.m_overtake_dist,
+            "harv-limit-j": self.m_car_info.m_ers_harv_limit_per_lap_j,
+        }
+
     def updateLapDataPacketCopy(self, lap_data: LapData, full_lap_distance: int) -> None:
         """Add to the warning/penalty history if required and update the lap data packet copy
 

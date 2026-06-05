@@ -45,7 +45,6 @@ class TelemetryRenderer {
   }
 
   renderTelemetryRow(data, packetFormat, isLiveDataMode, raceEnded, spectatorIndex, sessionType, driverContext) {
-    const { 'driver-info': driverInfo } = data;
     const row = document.createElement('tr');
 
     // Populate row with data
@@ -53,14 +52,15 @@ class TelemetryRenderer {
                                      sessionType, driverContext, this.columnConfig).populate();
 
     // Apply CSS classes based on row state
-    const cssClasses = this.determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex);
+    const cssClasses = this.determineRowClasses(data, isLiveDataMode, spectatorIndex, sessionType);
     row.classList.add(...cssClasses);
 
     return row;
   }
 
-  determineRowClasses(driverInfo, isLiveDataMode, spectatorIndex) {
+  determineRowClasses(data, isLiveDataMode, spectatorIndex, sessionType) {
     const classes = [];
+    const driverInfo = data['driver-info'];
 
     if ((spectatorIndex !== null && driverInfo['index'] === spectatorIndex) ||
         (spectatorIndex === null && driverInfo['is-player'])) {
@@ -71,8 +71,16 @@ class TelemetryRenderer {
       classes.push('dnf-row');
     }
 
-    else if (isLiveDataMode && driverInfo['drs']) {
-      classes.push('drs-row');
+    else if (isLiveDataMode) {
+        const regs2026Info = data["2026-regs-info"];
+
+        if (regs2026Info['2026-regs-enabled']) {
+            if (regs2026Info['overtake-avlb'] && sessionType && sessionType.includes('Race')) {
+                classes.push('ot-row');
+            }
+        } else if (driverInfo['drs']) {
+            classes.push('drs-row');
+        }
     }
 
     return classes;

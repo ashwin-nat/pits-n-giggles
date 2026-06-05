@@ -37,6 +37,5 @@ __all__ = [
     "DriverMotionInfo",
     "HudOverlayData",
 
-
     "DummyHFType",
 ]

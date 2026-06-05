@@ -41,6 +41,7 @@ class OverlayId(str, Enum):
     TRACK_RADAR     = "track_radar"
     HUD             = "hud_overlay"
     CIRCUIT_INFO    = "circuit_info"
+    PU              = "pu"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
@@ -106,6 +107,10 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
     OverlayId.CIRCUIT_INFO: OverlayPosition(
         x=600,
         y=600,
+    ),
+    OverlayId.PU: OverlayPosition(
+        x=600,
+        y=120,
     ),
 }
 

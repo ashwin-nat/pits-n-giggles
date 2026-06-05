@@ -19,30 +19,3 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
-
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
-from .track_radar import TrackRadarOverlay
-from .hud_overlay.hud_overlay import HudOverlay
-from .circuit_info.circuit_info import CircuitInfoOverlay
-from .pu.pu import PuOverlay
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "BaseOverlay",
-    "InputTelemetryOverlay",
-    "LapTimerOverlay",
-    "MfdOverlay",
-    "TimingTowerOverlay",
-    "TrackMapOverlay",
-    "TrackRadarOverlay",
-    "HudOverlay",
-    "CircuitInfoOverlay",
-    "PuOverlay",
-]

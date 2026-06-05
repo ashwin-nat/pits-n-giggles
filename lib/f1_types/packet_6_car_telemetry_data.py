@@ -25,6 +25,7 @@ import struct
 from typing import Any, Dict, List
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
+from .common import get_num_cars
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -75,6 +76,27 @@ class CarTelemetryData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    # F1 2026: m_engineTemperature shrinks from uint16 -> uint8
+    COMPILED_PACKET_STRUCT_2026 = struct.Struct("<"
+        "H" # uint16    m_speed
+        "f" # float     m_throttle
+        "f" # float     m_steer
+        "f" # float     m_brake
+        "B" # uint8     m_clutch
+        "b" # int8      m_gear
+        "H" # uint16    m_engineRPM
+        "B" # uint8     m_drs
+        "B" # uint8     m_revLightsPercent
+        "H" # uint16    m_revLightsBitValue
+        "4H" # uint16   m_brakesTemperature[4]
+        "4B" # uint8    m_tyresSurfaceTemperature[4]
+        "4B" # uint8    m_tyresInnerTemperature[4]
+        "B" # uint8     m_engineTemperature         // F1 26: uint8 (was uint16)
+        "4f" # float    m_tyresPressure[4]
+        "4B" # uint8    m_surfaceType[4]
+    )
+    PACKET_LEN_2026 = COMPILED_PACKET_STRUCT_2026.size
+
     __slots__ = (
         "m_speed",
         "m_throttle",
@@ -92,29 +114,33 @@ class CarTelemetryData(F1SubPacketBase):
         "m_engineTemperature",
         "m_tyresPressure",
         "m_surfaceType",
+        "m_packetFormat",
     )
 
-    def __init__(self, data) -> None:
+    def __init__(self, data: bytes, packet_format: int = 0) -> None:
         """
         Initializes a CarTelemetryData object by unpacking the provided binary data.
 
         Parameters:
             data (bytes): Binary data to be unpacked.
+            packet_format (int): Packet format version (e.g. 2026). Default 0 = pre-2026.
 
         Raises:
             struct.error: If the binary data does not match the expected format.
         """
-        self._parse(data)
+        self._parse(data, packet_format)
         self._cast_enums()
 
-    def _parse(self, data: bytes) -> None:
+    def _parse(self, data: bytes, packet_format: int) -> None:
         """Raw byte unpacking."""
+        self.m_packetFormat = packet_format
         self.m_brakesTemperature = [0] * 4
         self.m_tyresSurfaceTemperature = [0] * 4
         self.m_tyresInnerTemperature = [0] * 4
         self.m_tyresPressure = [0] * 4
         self.m_surfaceType = [0] * 4
 
+        pkt_struct = self.COMPILED_PACKET_STRUCT_2026 if packet_format >= 2026 else self.COMPILED_PACKET_STRUCT
         (
             self.m_speed,
             self.m_throttle,
@@ -147,7 +173,7 @@ class CarTelemetryData(F1SubPacketBase):
             self.m_surfaceType[1],
             self.m_surfaceType[2],
             self.m_surfaceType[3],
-        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        ) = pkt_struct.unpack(data)
 
     def _cast_enums(self) -> None:
         """All bool conversions in one place."""
@@ -255,7 +281,8 @@ class CarTelemetryData(F1SubPacketBase):
         Returns:
             bytes: Bytes representation of the CarTelemetryData object.
         """
-        return self.COMPILED_PACKET_STRUCT.pack(
+        pkt_struct = self.COMPILED_PACKET_STRUCT_2026 if self.m_packetFormat >= 2026 else self.COMPILED_PACKET_STRUCT
+        return pkt_struct.pack(
             self.m_speed,
             self.m_throttle,
             self.m_steer,
@@ -321,7 +348,8 @@ class CarTelemetryData(F1SubPacketBase):
         surface_type_0: int,
         surface_type_1: int,
         surface_type_2: int,
-        surface_type_3: int) -> "CarTelemetryData":
+        surface_type_3: int,
+        packet_format: int = 0) -> "CarTelemetryData":
         """
         Create a new CarTelemetryData object from the provided values.
 
@@ -331,7 +359,8 @@ class CarTelemetryData(F1SubPacketBase):
         Returns:
             CarTelemetryData: A new CarTelemetryData object with the provided values.
         """
-        return cls(cls.COMPILED_PACKET_STRUCT.pack(
+        pkt_struct = cls.COMPILED_PACKET_STRUCT_2026 if packet_format >= 2026 else cls.COMPILED_PACKET_STRUCT
+        return cls(pkt_struct.pack(
             speed,
             throttle,
             steer,
@@ -363,7 +392,7 @@ class CarTelemetryData(F1SubPacketBase):
             surface_type_1,
             surface_type_2,
             surface_type_3
-        ))
+        ), packet_format=packet_format)
 
 class PacketCarTelemetryData(F1PacketBase):
     """
@@ -384,7 +413,6 @@ class PacketCarTelemetryData(F1PacketBase):
         m_suggestedGear (int): Suggested gear for the player (1-8), 0 if no gear is suggested.
     """
 
-    MAX_CARS = 22
     COMPILED_PACKET_FORMAT_EXTRA = struct.Struct("<BBb")
     PACKET_LEN_EXTRA = COMPILED_PACKET_FORMAT_EXTRA.size
 
@@ -410,12 +438,15 @@ class PacketCarTelemetryData(F1PacketBase):
         super().__init__(header)
         self.m_carTelemetryData: List[CarTelemetryData]
 
+        num_cars = get_num_cars(header.m_packetFormat)
+        item_len = CarTelemetryData.PACKET_LEN_2026 if header.m_packetFormat >= 2026 else CarTelemetryData.PACKET_LEN
         self.m_carTelemetryData, offset_so_far = CarTelemetryData.parse_array(
             data=packet,
             offset=0,
-            item_len=CarTelemetryData.PACKET_LEN,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS
+            item_len=item_len,
+            count=num_cars,
+            max_count=num_cars,
+            packet_format=header.m_packetFormat
         )
 
         self.m_mfdPanelIndex, self.m_mfdPanelIndexSecondaryPlayer, self.m_suggestedGear = \

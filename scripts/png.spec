@@ -52,7 +52,8 @@ PROJECT_ROOT = os.path.abspath(".")
 # Runtime hook: inject PNG_VERSION env var before app starts
 # --------------------------------------------------------------------------------------------------
 
-runtime_hook_code = f'import os\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+# TODO: revert debug flag. this is temporarily for beta
+runtime_hook_code = f'import os, sys\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\nsys.argv.append("--debug")\n'
 runtime_hook_path = os.path.join(tempfile.gettempdir(), "png_runtime_hook.py")
 
 with open(runtime_hook_path, "w", encoding="utf-8") as f:
@@ -133,6 +134,7 @@ datas.extend([
     qml_file("apps/hud/ui/overlays/timing_tower", "timing_tower.qml"),
     qml_file("apps/hud/ui/overlays/lap_timer", "lap_timer_overlay.qml"),
     qml_file("apps/hud/ui/overlays/circuit_info", "circuit_info.qml"),
+    qml_file("apps/hud/ui/overlays/pu", "pu.qml"),
     qml_file("apps/hud/ui/overlays/hud_overlay", "hud_overlay.qml"),
     qml_file("apps/hud/ui/overlays/mfd", "mfd.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/collapsed", "collapsed_page.qml"),

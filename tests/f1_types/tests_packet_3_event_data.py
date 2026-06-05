@@ -85,3 +85,62 @@ class TestPacketEventData(F1TypesTest):
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
 
+    def test_f1_24_collision_random(self):
+        """Test for F1 2024 Collision event (no severity field)."""
+
+        from lib.f1_types import PacketHeader
+        v1 = random.randint(0, 21)
+        v2 = random.randint(0, 21)
+        header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 24, self.m_num_players)
+        collision = PacketEventData.Collision.from_values(v1, v2, packet_format=2024)
+        generated = PacketEventData.from_values(header, PacketEventData.EventPacketType.COLLISION, collision)
+        serialised = generated.to_bytes(include_header=True)
+        parsed_header = PacketHeader(serialised[:PacketHeader.PACKET_LEN])
+        parsed = PacketEventData(parsed_header, serialised[PacketHeader.PACKET_LEN:])
+        self.assertEqual(generated, parsed)
+        expected_json = {
+            "event-string-code": "COLL",
+            "event-details": {
+                "vehicle-1-index": v1,
+                "vehicle-2-index": v2,
+                "severity": None,
+            }
+        }
+        self.jsonComparisionUtil(expected_json, parsed.toJSON())
+        self.assertFalse(hasattr(parsed, '__dict__'))
+
+    def test_f1_26_collision_random(self):
+        """Test for F1 2026 Collision event (includes severity field)."""
+
+        from lib.f1_types import PacketHeader
+        v1 = random.randint(0, 23)
+        v2 = random.randint(0, 23)
+        severity = PacketEventData.Collision.CollisionSeverity(random.randint(0, 2))
+        header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 26, self.m_num_players)
+        collision = PacketEventData.Collision.from_values(v1, v2, severity=severity, packet_format=2026)
+        generated = PacketEventData.from_values(header, PacketEventData.EventPacketType.COLLISION, collision)
+        serialised = generated.to_bytes(include_header=True)
+        parsed_header = PacketHeader(serialised[:PacketHeader.PACKET_LEN])
+        parsed = PacketEventData(parsed_header, serialised[PacketHeader.PACKET_LEN:])
+        self.assertEqual(generated, parsed)
+        expected_json = {
+            "event-string-code": "COLL",
+            "event-details": {
+                "vehicle-1-index": v1,
+                "vehicle-2-index": v2,
+                "severity": str(severity),
+            }
+        }
+        self.jsonComparisionUtil(expected_json, parsed.toJSON())
+        self.assertFalse(hasattr(parsed, '__dict__'))
+
+    def test_f1_26_collision_actual(self):
+        """Test for F1 2026 Collision event with an actual game packet."""
+
+        raw_packet = b'COLL\x10\x15\x01\x00\x00\x00\x00\x00%\xad\xe3@'
+        expected_json = {'event-string-code': 'COLL', 'event-details': {'vehicle-1-index': 16, 'vehicle-2-index': 21, 'severity': 'MEDIUM'}}
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 26, self.m_num_players)
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))

@@ -25,7 +25,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from lib.f1_types import CarStatusData, CarDamageData
+from lib.f1_types import CarStatusData, CarDamageData, CarTelemetry2Data
 from lib.fuel_rate_recommender import FuelRateRecommender
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
@@ -53,6 +53,17 @@ class CarInfo:
     m_curr_lap_ers_harv_mguk_j: Optional[float] = None
     m_curr_lap_ers_harv_mguh_j: Optional[float] = None
     m_curr_lap_ers_deployed_j: Optional[float] = None
+
+    # F1 2026 onwards
+    m_ers_harv_limit_per_lap_j: Optional[float] = None
+
+    m_active_aero_mode: Optional[CarTelemetry2Data.ActiveAeroMode] = None
+    m_active_aero_avlb: Optional[bool] = None
+    m_active_aero_dist: Optional[int] = None
+    m_overtake_avlb: Optional[bool] = None
+    m_overtake_active: Optional[bool] = None
+    m_overtake_dist: Optional[int] = None
+    m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
 
