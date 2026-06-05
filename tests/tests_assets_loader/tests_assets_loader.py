@@ -48,16 +48,17 @@ from lib.assets_loader.fonts import _load_font, load_fonts
 _EXPECTED_TYRE_KEYS = {"Soft", "Super Soft", "Medium", "Hard", "Inters", "Wet"}
 
 _EXPECTED_TEAM_KEYS = {
-    "Alpine", "Alpine '24",
-    "Aston Martin", "Aston Martin '24",
-    "Ferrari", "Ferrari '24",
-    "Haas", "Haas '24",
-    "McLaren", "Mclaren", "Mclaren '24",
-    "Mercedes", "Mercedes '24",
-    "RB", "Rb '24", "VCARB", "Alpha Tauri",
-    "Red Bull", "Red Bull Racing", "Red Bull Racing '24",
+    "Alpine", "Alpine '24", "Alpine '26",
+    "Aston Martin", "Aston Martin '24", "Aston Martin '26",
+    "Ferrari", "Ferrari '24", "Ferrari '26",
+    "Haas", "Haas '24", "Haas '26",
+    "McLaren", "Mclaren", "Mclaren '24", "Mclaren '26",
+    "Mercedes", "Mercedes '24", "Mercedes '26",
+    "RB", "Rb '24", "RB '26", "VCARB", "Alpha Tauri",
+    "Red Bull", "Red Bull Racing", "Red Bull Racing '24", "Red Bull Racing '26",
     "Sauber", "Sauber '24", "Alfa Romeo",
-    "Williams", "Williams '24",
+    "Williams", "Williams '24", "Williams '26",
+    "Audi '26", "Cadillac '26",
 }
 
 
