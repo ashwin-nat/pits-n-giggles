@@ -1436,9 +1436,6 @@ class PacketEventData(F1PacketBase):
             MEDIUM = 1
             HIGH = 2
 
-            def __str__(self) -> str:
-                return self.name
-
         __slots__ = (
             "m_vehicle_1_index",
             "m_vehicle_2_index",
