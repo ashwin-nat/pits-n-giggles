@@ -57,7 +57,7 @@
         "lap_timer_minimal": false,
         "lap_timer_toggle_udp_action_code": null,
         "show_timing_tower": true,
-        "timing_tower_max_rows": 11,
+        "timing_tower_max_rows": 22,
         "timing_tower_col_options": {
             "show_col_header": true,
             "cols": {
@@ -104,6 +104,10 @@
                 "driver_status": {
                     "enabled": true,
                     "position": 11
+                },
+                "delta_to_leader": {
+                    "enabled": true,
+                    "position": 12
                 }
             }
         },
@@ -167,7 +171,7 @@
         "show_circuit_info": true,
         "circuit_info_toggle_udp_action_code": null,
         "circuit_info_length": 918,
-        "show_pu": true,
+        "show_pu_info": true,
         "pu_toggle_udp_action_code": null,
         "auto_hide_in_menu": true,
         "menu_silence_threshold_sec": 3.0,
@@ -181,6 +185,11 @@
             "timing_tower": {
                 "x": 2722,
                 "y": 45,
+                "scale_factor": 1.0
+            },
+            "mfd": {
+                "x": 3332,
+                "y": 237,
                 "scale_factor": 1.0
             },
             "input_telemetry": {
@@ -206,11 +215,6 @@
             "pu": {
                 "x": 3840,
                 "y": 374,
-                "scale_factor": 1.0
-            },
-            "mfd": {
-                "x": 3332,
-                "y": 237,
                 "scale_factor": 1.0
             }
         }

@@ -202,7 +202,7 @@ class DataPerDriver:
 
         has_valid_position = (
             self.m_driver_info.position is not None and
-            1 <= self.m_driver_info.position <= 22
+            1 <= self.m_driver_info.position <= 24
         )
 
         # In FP/quali, if someone has finished their laps, retired and disconnected, their participants data will

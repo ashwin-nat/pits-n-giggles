@@ -269,7 +269,7 @@ class TeamID26(TeamID):
     HAAS_24 = 192
     MCLAREN_24 = 193
     SAUBER_24 = 194
-    MY_TEAM = 255
+    MY_TEAM_25 = 255
     ART_GP_25 = 465
     CAMPOS_25 = 466
     RODIN_MOTORSPORT_25 = 467
@@ -292,12 +292,15 @@ class TeamID26(TeamID):
     MCLAREN_26 = 484
     AUDI_26 = 485
     CADILLAC_26 = 486
+    MY_TEAM_26 = 65535
 
     def __str__(self) -> str:
         if self.value == 255:
             return self.name
         if self.value in {6, 482}:
             return "RB"
+        if self.value in {255, 65535}:
+            return "MY_TEAM"
         return (
             self.name.replace("_", " ").title()
             .replace("Gp", "GP")
