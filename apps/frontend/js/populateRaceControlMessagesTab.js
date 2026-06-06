@@ -113,8 +113,8 @@ const detailRenderers = {
       `${getDriverDetailsStr(overtaker ?? null)} overtook ${getDriverDetailsStr(overtaken ?? null)}`,
   SAFETY_CAR: ({ 'sc-type': scType, 'event-type': eventType }) =>
       `${scType} - ${eventType}`,
-  COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2 }) =>
-      `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}`,
+  COLLISION: ({ 'driver-1-info': d1, 'driver-2-info': d2, 'severity': severity }) =>
+      `${getDriverDetailsStr(d1 ?? null)} and ${getDriverDetailsStr(d2 ?? null)}${severity != null ? ` (${severity})` : ''}`,
   PITTING: ({ 'driver-info': d, 'lap-number': lap }) =>
       `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap}`,
   CAR_DAMAGE: ({ 'damaged-part': part, 'old-value': oldValue, 'new-value': newValue, 'driver-info': d }) => {
