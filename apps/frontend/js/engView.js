@@ -2447,6 +2447,21 @@ class EngViewRaceStatus {
         }
     }
 
+    #isRaceTypeSession(data) {
+        return (data["event-type"] ?? "").includes("Race");
+    }
+
+    #getCollapsedBarTimeString(data) {
+        if (this.#isRaceTypeSession(data)) {
+            const currentLap = data['current-lap'];
+            const totalLaps = data['total-laps'];
+            if (!currentLap || currentLap === 0) return '---';
+            const lapStr = totalLaps && totalLaps > 1 ? `${currentLap}/${totalLaps}` : `${currentLap}`;
+            return `Lap ${lapStr}`;
+        }
+        return this.#getSessionTimeString(data);
+    }
+
     update(data) {
 
         let shouldUpdatePred = false;
@@ -2507,7 +2522,7 @@ class EngViewRaceStatus {
             this.collapsedBarCircuit.textContent = this.#getRaceStatusHeaderString(data);
         }
         if (this.collapsedBarTime) {
-            this.collapsedBarTime.textContent = this.#getSessionTimeString(data);
+            this.collapsedBarTime.textContent = this.#getCollapsedBarTimeString(data);
         }
         if (this.collapsedBarTrackTemp) {
             this.collapsedBarTrackTemp.textContent = data['track-temperature'] + ' °C';
