@@ -47,6 +47,7 @@ class F1PacketType(Enum):
     MOTION_EX = 13
     TIME_TRIAL = 14
     LAP_POSITIONS = 15
+    CAR_TELEMETRY_2 = 16
 
     @staticmethod
     def isValid(packet_type) -> bool:

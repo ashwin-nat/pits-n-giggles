@@ -160,6 +160,7 @@ class LapTimerOverlay(BaseOverlayQML):
             self._handle_current_lap_display(curr_lap, session_type, sc_status)
 
         self._calculate_and_update_delta(curr_lap, self._is_safety_car(sc_status))
+        self._update_safety_car_status(sc_status)
 
     def _handle_full_update(
         self,
@@ -182,6 +183,7 @@ class LapTimerOverlay(BaseOverlayQML):
 
         self._handle_current_lap_display(curr_lap, session_type, sc_status)
         self._handle_delta_and_estimated(curr_lap, best_lap, session_type, sc_status, table_entries, ref_driver_index)
+        self._update_safety_car_status(sc_status)
 
     def _handle_current_lap_display(self, curr_lap: Dict[str, Any], session_type: str, sc_status: str) -> None:
         """Handle current lap display.
@@ -379,6 +381,8 @@ class LapTimerOverlay(BaseOverlayQML):
         self.set_qml_property("currentSectorStatus", self.DEFAULT_SECTOR_STATUS)
         self.set_qml_property("lastSectorStatus", self.DEFAULT_SECTOR_STATUS)
         self.set_qml_property("bestSectorStatus", self.DEFAULT_SECTOR_STATUS)
+        self.set_qml_property("isSafetyCar", False)
+        self.set_qml_property("safetyCarText", "")
 
         self.curr_session_uid = None
         self.show_last_lap_sector_bar = False
@@ -490,6 +494,19 @@ class LapTimerOverlay(BaseOverlayQML):
         """Check if the session is in racing or safety car state."""
         return status in {"FULL_SAFETY_CAR", "VIRTUAL_SAFETY_CAR"}
 
+    def _update_safety_car_status(self, sc_status: str) -> None:
+        """Drive the SC border and footer visibility from the current safety-car status string."""
+        is_sc = self._is_safety_car(sc_status)
+        self.set_qml_property("isSafetyCar", is_sc)
+        if is_sc:
+            if self.min_overlay_style:
+                text = "VSC" if sc_status == "VIRTUAL_SAFETY_CAR" else "SC"
+            else:
+                text = "VIRTUAL SAFETY CAR" if sc_status == "VIRTUAL_SAFETY_CAR" else "SAFETY CAR"
+            self.set_qml_property("safetyCarText", text)
+        else:
+            self.set_qml_property("safetyCarText", "")
+
     def _handle_tt_update(self, data: Dict[str, Any]) -> None:
         """Handle updates for time trial sessions."""
         # For time trial sessions, only update the current lap time and sector status
@@ -528,3 +545,5 @@ class LapTimerOverlay(BaseOverlayQML):
         # Delta and estimated lap time are not supported in time trial
         self._clear_delta()
         self._update_estimated(self.DEFAULT_TIME)
+        self.set_qml_property("isSafetyCar", False)
+        self.set_qml_property("safetyCarText", "")

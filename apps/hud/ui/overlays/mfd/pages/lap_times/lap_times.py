@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, final
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
 
@@ -54,7 +52,7 @@ class LapTimesPage(MfdPageBase):
         self._init_event_handlers()
 
     @final
-    def on_page_activated(self, _: QQuickItem):
+    def on_page_activated(self):
         # Invalidate the cache
         self._last_processed_data = []
 
@@ -87,8 +85,6 @@ class LapTimesPage(MfdPageBase):
             glob_best_s1_ms = lap_time_history["global-fastest-s1-ms"]
             glob_best_s2_ms = lap_time_history["global-fastest-s2-ms"]
             glob_best_s3_ms = lap_time_history["global-fastest-s3-ms"]
-
-            page_item = self._page_item
 
             # Build the complete rows array
             all_rows = []
@@ -147,14 +143,7 @@ class LapTimesPage(MfdPageBase):
                     {'text': '---', 'color': '#808080'}
                 ])
 
-            # Set the entire rows property at once
-            page_item.setProperty("rows", all_rows)
-
-            # Force update by incrementing version counter
-            current_version = page_item.property("rowsVersion")
-            if current_version is None:
-                current_version = 0
-            page_item.setProperty("rowsVersion", current_version + 1)
+            self.set_page_property("rows", all_rows)
 
             # Update the cache
             self._last_processed_data = lap_time_history

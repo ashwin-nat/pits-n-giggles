@@ -37,12 +37,16 @@ from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class _HFTypeSignal(QObject):
+    """Per-HF-type signal proxy. One instance per HF type; only subscribed overlays are connected."""
+    signal = Signal(object)
+
+
 class WindowManager(QObject):
 
     generic_cmd_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
-    mgmt_high_freq_signal = Signal(object) # HighFreqBase
 
     def __init__(self, logger: PngLogger, post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
@@ -56,6 +60,7 @@ class WindowManager(QObject):
         self.logger = logger
         self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
+        self._hf_signals: Dict[str, _HFTypeSignal] = {}
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -95,13 +100,19 @@ class WindowManager(QObject):
         self.logger.debug("Registering overlay %s", overlay_id)
         self.overlays[overlay_id] = overlay
 
-        # Connect command and request signals TO the overlay
+        # Connect broadcast command and request signals TO the overlay
         self.generic_cmd_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
-        self.mgmt_high_freq_signal.connect(overlay._handle_high_freq_data)
 
         # Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
+
+        # Connect to per-type HF signal proxies — subscriptions are populated during overlay __init__
+        for hf_type in overlay._hf_subscriptions:
+            if hf_type not in self._hf_signals:
+                self._hf_signals[hf_type] = _HFTypeSignal(self)
+            self._hf_signals[hf_type].signal.connect(overlay._handle_high_freq_data)
+            self.logger.debug("Overlay %s subscribed to HF type '%s'", overlay_id, hf_type)
 
     # pylint: disable=useless-return
     @Slot(str, str, dict)
@@ -174,12 +185,14 @@ class WindowManager(QObject):
         self.generic_cmd_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, data: HighFreqBase):
-        """Send high-frequency data to all subscribed overlays.
+        """Send high-frequency data only to overlays subscribed to its type.
 
         Args:
             data (HighFreqBase): High-frequency data payload
         """
-        self.mgmt_high_freq_signal.emit(data)
+        proxy = self._hf_signals.get(data.__hf_type__)
+        if proxy:
+            proxy.signal.emit(data)
 
     def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add timestamp to payload."""

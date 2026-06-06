@@ -437,6 +437,19 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 4px;
 }
 
+/* F1 2026 regulations column */
+.f26-disabled {
+    display: inline-block;
+    color: #2D2D33;
+}
+
+.f26-inactive {
+    display: inline-block;
+    color: #2D2D33;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+}
+
 /* Tyre temperature — border + font color (same pattern as lap times) */
 .eng-temp-cold {
     display: inline-block;

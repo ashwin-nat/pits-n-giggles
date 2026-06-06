@@ -100,6 +100,8 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertFalse(settings.timing_tower_combined_tl_pens)
         self.assertTrue(settings.auto_hide_in_menu)
         self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
+        self.assertEqual(settings.show_pu_info, True)
+        self.assertEqual(settings.pu_toggle_udp_action_code, None)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_overlays_speed_unit_validation(self):
@@ -168,6 +170,7 @@ class TestHudSettings(TestF1ConfigBase):
             "input_overlay_toggle_udp_action_code",
             "mfd_interaction_udp_action_code",
             "hud_overlay_toggle_udp_action_code",
+            "pu_toggle_udp_action_code",
         ]
         for field in udp_action_code_fields:
             with self.subTest(field=field):
@@ -350,7 +353,8 @@ class TestHudSettings(TestF1ConfigBase):
                         show_input_overlay=False,
                         show_track_radar_overlay=False,
                         show_hud_overlay=False,
-                        show_circuit_info=False)
+                        show_circuit_info=False,
+                        show_pu_info=False)
 
         # Enable atleast one overlay
         settings = HudSettings(enabled=True, show_lap_timer=True, show_timing_tower=False,
@@ -382,6 +386,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.PIT_REJOIN,
             MfdPageId.TYRE_SETS,
             MfdPageId.PACE_COMP,
+            MfdPageId.TRAFFIC_MONITOR,
         }
 
         for page in expected_pages:
@@ -929,6 +934,18 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(menu_silence_threshold_sec=None)  # type: ignore
 
+    def test_show_pu_info_validation(self):
+        """Test show_pu_info accepts booleans and rejects invalid types"""
+        self.assertTrue(HudSettings(show_pu_info=True).show_pu_info)
+        self.assertFalse(HudSettings(show_pu_info=False).show_pu_info)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(show_pu_info=None)  # type: ignore
+        with self.assertRaises(ValidationError):
+            HudSettings(show_pu_info="invalid")
+        with self.assertRaises(ValidationError):
+            HudSettings(show_pu_info=420)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -973,6 +990,29 @@ class TestTimingTowerColConfig(TestF1ConfigBase):
             self.assertTrue(opts.cols[col_id.value].enabled, f"{col_id} should be enabled by default")
         for col_id in disabled_by_default:
             self.assertFalse(opts.cols[col_id.value].enabled, f"{col_id} should be disabled by default")
+
+    def test_delta_to_leader_col_present_and_disabled_by_default(self):
+        opts = TimingTowerColOptions()
+        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, opts.cols)
+        self.assertFalse(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
+
+    def test_delta_to_leader_col_can_be_enabled(self):
+        cols = {
+            col_id.value: TimingTowerColSettings(enabled=True, position=i + 1)
+            for i, col_id in enumerate(TimingTowerColId)
+        }
+        opts = TimingTowerColOptions(cols=cols)
+        self.assertTrue(opts.cols[TimingTowerColId.DELTA_TO_LEADER.value].enabled)
+
+    def test_delta_to_leader_in_sorted_enabled_when_enabled(self):
+        base_cols = {
+            col_id.value: TimingTowerColSettings(enabled=False, position=i + 1)
+            for i, col_id in enumerate(TimingTowerColId)
+        }
+        base_cols[TimingTowerColId.DELTA_TO_LEADER.value] = TimingTowerColSettings(enabled=True, position=1)
+        opts = TimingTowerColOptions(cols=base_cols)
+        enabled_keys = [key for key, _ in opts.sorted_enabled_cols()]
+        self.assertIn(TimingTowerColId.DELTA_TO_LEADER.value, enabled_keys)
 
     # --- sorted_enabled_cols ---
 

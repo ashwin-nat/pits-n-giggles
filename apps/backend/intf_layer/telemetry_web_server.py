@@ -81,12 +81,6 @@ class TelemetryWebServer(BaseWebServer):
             bind_address=settings.Network.bind_address,
             client_event_mappings={
                 ClientType.RACE_TABLE: ['frontend-update', 'race-table-update'],
-                ClientType.HUD: [
-                    'hud-toggle-notification',
-                    'hud-cycle-mfd-notification',
-                    'hud-prev-page-mfd-notification',
-                    'hud-mfd-interaction-notification',
-                ],
                 ClientType.PLAYER_STREAM_OVERLAY: ['stream-overlay-update'],
             },
             cert_path=settings.HTTPS.cert_path,
@@ -207,7 +201,8 @@ class TelemetryWebServer(BaseWebServer):
             Returns:
                 Tuple[str, int]: JSON response and HTTP status code.
             """
-            return StreamOverlayData(self.m_session_state).toJSON(self.m_show_start_sample_data), HTTPStatus.OK
+            return StreamOverlayData(self.m_session_state, export_hud_data=True, export_pu_data=True) \
+                        .toJSON(self.m_show_start_sample_data), HTTPStatus.OK
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""

@@ -256,6 +256,14 @@ body {
   color: #10e71b; /* Set font color to green */
 }
 
+.ot-row td {
+  color: #41bff3;
+}
+
+.player-row.ot-row td {
+  color: #41bff3;
+}
+
 .player-row.dnf-row td {
   color: #e60505; /* Set font color to green */
 }
@@ -283,6 +291,18 @@ body {
 
 .drs-row td {
   color: #10e71b; /* Set font color to green */
+}
+
+.ot-row td:first-child {
+  color: #41bff3;
+}
+
+.ot-row td:last-child {
+  color: #41bff3;
+}
+
+.ot-row td {
+  color: #41bff3;
 }
 
 .driver-name {

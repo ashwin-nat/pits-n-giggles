@@ -129,3 +129,16 @@ class TestF1SubPacketBase(F1TypesTest):
         p2 = OtherPacket(5)
         with self.assertRaises(TypeError):
             p1.diff_fields(p2)
+
+    def test_hashable(self):
+        # Since overriding __eq__ disables the builtin __hash__ method,
+        # this tc ensures that the explict __hash__ definition works and doesn't break
+        mapping = {
+            Severity.LOW: "low",
+            Severity.MEDIUM: "medium",
+            Severity.HIGH: "high",
+        }
+
+        self.assertEqual(mapping[Severity.LOW], "low")
+        self.assertEqual(mapping[Severity.MEDIUM], "medium")
+        self.assertEqual(mapping[Severity.HIGH], "high")

@@ -24,6 +24,7 @@
 import struct
 from typing import Any, Dict, List
 
+from .common import get_num_cars
 from .header import PacketHeader
 
 from .base_pkt import F1PacketBase, F1SubPacketBase
@@ -152,77 +153,92 @@ class CarDamageData(F1SubPacketBase):
         self.m_brakesDamage = [0] * 4
         self.m_tyreBlisters = [0] * 4
         self.m_packetFormat = packet_format
-        if packet_format >= 2025:
-            (
-                self.m_tyresWear[0],
-                self.m_tyresWear[1],
-                self.m_tyresWear[2],
-                self.m_tyresWear[3],
-                self.m_tyresDamage[0],
-                self.m_tyresDamage[1],
-                self.m_tyresDamage[2],
-                self.m_tyresDamage[3],
-                self.m_brakesDamage[0],
-                self.m_brakesDamage[1],
-                self.m_brakesDamage[2],
-                self.m_brakesDamage[3],
-                self.m_tyreBlisters[0],
-                self.m_tyreBlisters[1],
-                self.m_tyreBlisters[2],
-                self.m_tyreBlisters[3],
-                self.m_frontLeftWingDamage,
-                self.m_frontRightWingDamage,
-                self.m_rearWingDamage,
-                self.m_floorDamage,
-                self.m_diffuserDamage,
-                self.m_sidepodDamage,
-                self.m_drsFault,
-                self.m_ersFault,
-                self.m_gearBoxDamage,
-                self.m_engineDamage,
-                self.m_engineMGUHWear,
-                self.m_engineESWear,
-                self.m_engineCEWear,
-                self.m_engineICEWear,
-                self.m_engineMGUKWear,
-                self.m_engineTCWear,
-                self.m_engineBlown,
-                self.m_engineSeized,
-            ) = struct.unpack(self.PACKET_FORMAT_25, data)
-        else:
-            (
-                self.m_tyresWear[0],
-                self.m_tyresWear[1],
-                self.m_tyresWear[2],
-                self.m_tyresWear[3],
-                self.m_tyresDamage[0],
-                self.m_tyresDamage[1],
-                self.m_tyresDamage[2],
-                self.m_tyresDamage[3],
-                self.m_brakesDamage[0],
-                self.m_brakesDamage[1],
-                self.m_brakesDamage[2],
-                self.m_brakesDamage[3],
-                self.m_frontLeftWingDamage,
-                self.m_frontRightWingDamage,
-                self.m_rearWingDamage,
-                self.m_floorDamage,
-                self.m_diffuserDamage,
-                self.m_sidepodDamage,
-                self.m_drsFault,
-                self.m_ersFault,
-                self.m_gearBoxDamage,
-                self.m_engineDamage,
-                self.m_engineMGUHWear,
-                self.m_engineESWear,
-                self.m_engineCEWear,
-                self.m_engineICEWear,
-                self.m_engineMGUKWear,
-                self.m_engineTCWear,
-                self.m_engineBlown,
-                self.m_engineSeized,
-            ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self._parse(data, packet_format)
+        self._cast_enums()
 
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Dispatch to the correct format-specific unpack."""
+        if packet_format >= 2025:
+            self._parse_f25(data)
+        else:
+            self._parse_pre25(data)
+
+    def _parse_f25(self, data: bytes) -> None:
+        """Unpack F1 2025+ binary layout (includes m_tyreBlisters)."""
+        (
+            self.m_tyresWear[0],
+            self.m_tyresWear[1],
+            self.m_tyresWear[2],
+            self.m_tyresWear[3],
+            self.m_tyresDamage[0],
+            self.m_tyresDamage[1],
+            self.m_tyresDamage[2],
+            self.m_tyresDamage[3],
+            self.m_brakesDamage[0],
+            self.m_brakesDamage[1],
+            self.m_brakesDamage[2],
+            self.m_brakesDamage[3],
+            self.m_tyreBlisters[0],
+            self.m_tyreBlisters[1],
+            self.m_tyreBlisters[2],
+            self.m_tyreBlisters[3],
+            self.m_frontLeftWingDamage,
+            self.m_frontRightWingDamage,
+            self.m_rearWingDamage,
+            self.m_floorDamage,
+            self.m_diffuserDamage,
+            self.m_sidepodDamage,
+            self.m_drsFault,
+            self.m_ersFault,
+            self.m_gearBoxDamage,
+            self.m_engineDamage,
+            self.m_engineMGUHWear,
+            self.m_engineESWear,
+            self.m_engineCEWear,
+            self.m_engineICEWear,
+            self.m_engineMGUKWear,
+            self.m_engineTCWear,
+            self.m_engineBlown,
+            self.m_engineSeized,
+        ) = struct.unpack(self.PACKET_FORMAT_25, data)
+
+    def _parse_pre25(self, data: bytes) -> None:
+        """Unpack F1 2023/2024 binary layout."""
+        (
+            self.m_tyresWear[0],
+            self.m_tyresWear[1],
+            self.m_tyresWear[2],
+            self.m_tyresWear[3],
+            self.m_tyresDamage[0],
+            self.m_tyresDamage[1],
+            self.m_tyresDamage[2],
+            self.m_tyresDamage[3],
+            self.m_brakesDamage[0],
+            self.m_brakesDamage[1],
+            self.m_brakesDamage[2],
+            self.m_brakesDamage[3],
+            self.m_frontLeftWingDamage,
+            self.m_frontRightWingDamage,
+            self.m_rearWingDamage,
+            self.m_floorDamage,
+            self.m_diffuserDamage,
+            self.m_sidepodDamage,
+            self.m_drsFault,
+            self.m_ersFault,
+            self.m_gearBoxDamage,
+            self.m_engineDamage,
+            self.m_engineMGUHWear,
+            self.m_engineESWear,
+            self.m_engineCEWear,
+            self.m_engineICEWear,
+            self.m_engineMGUKWear,
+            self.m_engineTCWear,
+            self.m_engineBlown,
+            self.m_engineSeized,
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+
+    def _cast_enums(self) -> None:
+        """Convert raw ints to bools."""
         self.m_drsFault = bool(self.m_drsFault)
         self.m_ersFault = bool(self.m_ersFault)
         self.m_engineBlown = bool(self.m_engineBlown)
@@ -524,7 +540,7 @@ class PacketCarDamageData(F1PacketBase):
         The class is designed to parse and represent the car damage data packet.
     """
 
-    MAX_CARS = 22
+    MAX_CARS = 24
 
     __slots__ = (
         "m_carDamageData",
@@ -552,7 +568,7 @@ class PacketCarDamageData(F1PacketBase):
             data=data,
             offset=0,
             item_len=packet_len,
-            count=self.MAX_CARS,
+            count=get_num_cars(header.m_packetFormat),
             max_count=self.MAX_CARS,
             packet_format=header.m_packetFormat
         )

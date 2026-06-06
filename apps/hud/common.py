@@ -22,12 +22,28 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
 JSONType = Union[dict, list, str, int, float, bool, None]
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+ERS_MODE_COLOR_DEFAULT = "#444444"
+ERS_MODE_COLORS: defaultdict = defaultdict(lambda: ERS_MODE_COLOR_DEFAULT, {
+    "Medium":   "#e6d800",
+    "Hotlap":   "#00e676",
+    "Overtake": "#ff1744",
+})
+
+def get_ers_mode_color(ers_mode: str, is_f126: bool = False, overtake_active: bool = False) -> str:
+    """Return ERS mode colour. In 2026, Overtake colour depends on overtake_active."""
+    if is_f126 and ers_mode == "Overtake":
+        return "#41bff3" if overtake_active else "#ff1744"
+    return ERS_MODE_COLORS[ers_mode]
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

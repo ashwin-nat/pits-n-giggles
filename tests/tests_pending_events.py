@@ -37,7 +37,7 @@ from lib.pending_events import PendingEventsManager, PendingEventType
 
 # -------------------------------------- TEST EVENT TYPES --------------------------------------------------------------
 
-class TestEventType(PendingEventType):
+class MockEventType(PendingEventType):
     """
     Dummy event types for testing purposes.
     """
@@ -77,7 +77,7 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_register_events(self):
         """Test registering events."""
         manager = PendingEventsManager(self._callback)
-        events = [TestEventType.EVENT_A, TestEventType.EVENT_B]
+        events = [MockEventType.EVENT_A, MockEventType.EVENT_B]
         manager.register(events)
         self.assertTrue(manager.areEventsPending())
 
@@ -92,9 +92,9 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_any_order_single_event(self):
         """Test completion with a single event in any order mode."""
         manager = PendingEventsManager(self._callback, in_order=False)
-        manager.register([TestEventType.EVENT_A])
+        manager.register([MockEventType.EVENT_A])
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
 
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
@@ -103,15 +103,15 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_any_order_multiple_events_sequential(self):
         """Test completion with multiple events in sequential order (any order mode)."""
         manager = PendingEventsManager(self._callback, in_order=False)
-        events = [TestEventType.EVENT_A, TestEventType.EVENT_B]
+        events = [MockEventType.EVENT_A, MockEventType.EVENT_B]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -119,15 +119,15 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_any_order_multiple_events_reverse(self):
         """Test completion with multiple events in reverse order (any order mode)."""
         manager = PendingEventsManager(self._callback, in_order=False)
-        events = [TestEventType.EVENT_A, TestEventType.EVENT_B]
+        events = [MockEventType.EVENT_A, MockEventType.EVENT_B]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -136,26 +136,26 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test with duplicate events in the registration list (any order mode)."""
         manager = PendingEventsManager(self._callback, in_order=False)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B
         ]
         manager.register(events)
 
         # First occurrence removes first duplicate
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
         # Second occurrence removes second duplicate
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
         # Final event triggers callback
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -165,9 +165,9 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_in_order_single_event(self):
         """Test completion with a single event in order mode."""
         manager = PendingEventsManager(self._callback, in_order=True)
-        manager.register([TestEventType.EVENT_A])
+        manager.register([MockEventType.EVENT_A])
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
 
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
@@ -176,15 +176,15 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_in_order_correct_sequence(self):
         """Test completion with events in correct order (in order mode)."""
         manager = PendingEventsManager(self._callback, in_order=True)
-        events = [TestEventType.EVENT_A, TestEventType.EVENT_B]
+        events = [MockEventType.EVENT_A, MockEventType.EVENT_B]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -192,23 +192,23 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_in_order_wrong_sequence(self):
         """Test that wrong order doesn't trigger completion (in order mode)."""
         manager = PendingEventsManager(self._callback, in_order=True)
-        events = [TestEventType.EVENT_A, TestEventType.EVENT_B]
+        events = [MockEventType.EVENT_A, MockEventType.EVENT_B]
         manager.register(events)
 
         # Event arrives out of order - should be ignored
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
         # Correct first event
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
         self.assertTrue(manager.areEventsPending())
 
         # Correct second event now triggers
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -217,19 +217,19 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test duplicate events in correct order (in order mode)."""
         manager = PendingEventsManager(self._callback, in_order=True)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B
         ]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -239,10 +239,10 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_unregistered_event(self):
         """Test that unregistered events are ignored."""
         manager = PendingEventsManager(self._callback, in_order=False)
-        manager.register([TestEventType.EVENT_A])
+        manager.register([MockEventType.EVENT_A])
 
         # This event is not in the pending list
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
 
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
@@ -251,14 +251,14 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
     def test_event_after_completion(self):
         """Test that events after completion don't trigger callback again."""
         manager = PendingEventsManager(self._callback, in_order=False)
-        manager.register([TestEventType.EVENT_A])
+        manager.register([MockEventType.EVENT_A])
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
 
         # Send another event after completion
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
 
         # Callback should still only be called once
         self.assertEqual(self.callback_count, 1)
@@ -268,16 +268,16 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         manager = PendingEventsManager(self._callback, in_order=False)
 
         # First registration and completion
-        manager.register([TestEventType.EVENT_A])
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.register([MockEventType.EVENT_A])
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
 
         # Re-register with different events
-        manager.register([TestEventType.EVENT_B])
+        manager.register([MockEventType.EVENT_B])
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
 
         # Callback should be called twice total
         self.assertEqual(self.callback_count, 2)
@@ -296,16 +296,16 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test sending the same event multiple times in any order mode."""
         manager = PendingEventsManager(self._callback, in_order=False)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_A
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_A
         ]
         manager.register(events)
 
         # Send same event twice
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -314,15 +314,15 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test sending the same event multiple times in order mode."""
         manager = PendingEventsManager(self._callback, in_order=True)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_A
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_A
         ]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -331,25 +331,25 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test interleaved correct and incorrect events in order mode."""
         manager = PendingEventsManager(self._callback, in_order=True)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B
         ]
         manager.register(events)
 
         # Wrong event - ignored
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(manager.areEventsPending())
 
         # Wrong event again - still ignored
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(manager.areEventsPending())
 
         # Correct event
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
         # Now correct second event
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -358,14 +358,14 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test that callback is not called before all events occur."""
         manager = PendingEventsManager(self._callback, in_order=False)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B
         ]
         manager.register(events)
 
         # Send multiple unregistered events
         for _ in range(5):
-            manager.onEvent(TestEventType.EVENT_A)
+            manager.onEvent(MockEventType.EVENT_A)
 
         self.assertFalse(self.callback_triggered)
         self.assertEqual(self.callback_count, 0)
@@ -390,16 +390,16 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         manager1 = PendingEventsManager(callback1, in_order=False)
         manager2 = PendingEventsManager(callback2, in_order=False)
 
-        manager1.register([TestEventType.EVENT_A])
-        manager2.register([TestEventType.EVENT_B])
+        manager1.register([MockEventType.EVENT_A])
+        manager2.register([MockEventType.EVENT_B])
 
-        manager1.onEvent(TestEventType.EVENT_A)
+        manager1.onEvent(MockEventType.EVENT_A)
         self.assertTrue(callback1_triggered)
         self.assertEqual(callback1_count, 1)
         self.assertFalse(callback2_triggered)
         self.assertEqual(callback2_count, 0)
 
-        manager2.onEvent(TestEventType.EVENT_B)
+        manager2.onEvent(MockEventType.EVENT_B)
         self.assertEqual(callback1_count, 1)
         self.assertTrue(callback2_triggered)
         self.assertEqual(callback2_count, 1)
@@ -408,28 +408,28 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test with more than 2 events in any order mode."""
         manager = PendingEventsManager(self._callback, in_order=False)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B,
-            TestEventType.EVENT_C,
-            TestEventType.EVENT_D,
-            TestEventType.EVENT_E
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B,
+            MockEventType.EVENT_C,
+            MockEventType.EVENT_D,
+            MockEventType.EVENT_E
         ]
         manager.register(events)
 
         # Send events in random order
-        manager.onEvent(TestEventType.EVENT_C)
+        manager.onEvent(MockEventType.EVENT_C)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_E)
+        manager.onEvent(MockEventType.EVENT_E)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_D)
+        manager.onEvent(MockEventType.EVENT_D)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -438,29 +438,29 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test with more than 2 events in order mode."""
         manager = PendingEventsManager(self._callback, in_order=True)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_B,
-            TestEventType.EVENT_C,
-            TestEventType.EVENT_D
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_B,
+            MockEventType.EVENT_C,
+            MockEventType.EVENT_D
         ]
         manager.register(events)
 
         # Send wrong event - should be ignored
-        manager.onEvent(TestEventType.EVENT_C)
+        manager.onEvent(MockEventType.EVENT_C)
         self.assertFalse(self.callback_triggered)
         self.assertTrue(manager.areEventsPending())
 
         # Send in correct order
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_B)
+        manager.onEvent(MockEventType.EVENT_B)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_C)
+        manager.onEvent(MockEventType.EVENT_C)
         self.assertFalse(self.callback_triggered)
 
-        manager.onEvent(TestEventType.EVENT_D)
+        manager.onEvent(MockEventType.EVENT_D)
         self.assertTrue(self.callback_triggered)
         self.assertEqual(self.callback_count, 1)
         self.assertFalse(manager.areEventsPending())
@@ -469,18 +469,18 @@ class TestPendingEventsManager(F1TelemetryUnitTestsBase):
         """Test with a mix of different event types in any order."""
         manager = PendingEventsManager(self._callback, in_order=False)
         events = [
-            TestEventType.EVENT_A,
-            TestEventType.EVENT_C,
-            TestEventType.EVENT_E,
+            MockEventType.EVENT_A,
+            MockEventType.EVENT_C,
+            MockEventType.EVENT_E,
         ]
         manager.register(events)
 
-        manager.onEvent(TestEventType.EVENT_E)
+        manager.onEvent(MockEventType.EVENT_E)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_A)
+        manager.onEvent(MockEventType.EVENT_A)
         self.assertTrue(manager.areEventsPending())
 
-        manager.onEvent(TestEventType.EVENT_C)
+        manager.onEvent(MockEventType.EVENT_C)
         self.assertTrue(self.callback_triggered)
         self.assertFalse(manager.areEventsPending())

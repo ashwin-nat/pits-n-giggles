@@ -31,6 +31,7 @@ from .tyre_sets import TyreSetsPage
 from .tyre_wear import TyreInfoPage
 from .weather import WeatherForecastPage
 from .pace_comp.pace_comp import PaceCompPage
+from .traffic_monitor import TrafficMonitorPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -44,4 +45,5 @@ __all__ = [
     "TyreInfoPage",
     "WeatherForecastPage",
     "PaceCompPage",
+    "TrafficMonitorPage",
 ]

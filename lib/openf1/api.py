@@ -75,11 +75,15 @@ async def getMostRecentPoleLap(
         logger.info("Unsupported circuit: %s", track_id)
         return None
     years = list(range(current_year, current_year - num_recent_years, -1))
+    logger.debug("Fetching pole lap for %s, trying years %s", circuit_id, years)
 
     for year in years:
+        logger.debug("Trying year %s for circuit %s", year, circuit_id)
         rsp = await _fetchPoleLapByYear(circuit_id, year, logger)
         if not rsp:
+            logger.debug("No pole lap found for %s %s, trying next year", circuit_id, year)
             continue
+        logger.debug("Found pole lap for %s %s", circuit_id, year)
         return MostRecentPoleLap(
             circuit_id=track_id,
             year=year,
@@ -92,6 +96,7 @@ async def getMostRecentPoleLap(
             s3_ms=int(rsp["duration_sector_3"] * 1000),
             speed_trap_kmph=rsp["st_speed"])
 
+    logger.debug("Exhausted all years for circuit %s, returning None", circuit_id)
     return None
 
 async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: logging.Logger) -> Dict[str, Any]:
@@ -130,6 +135,9 @@ async def _fetchPoleLapByYear(circuit_id: OpenF1CircuitID, year: int, logger: lo
         "session_key": quali_session["session_key"],
         "driver_number": pole_driver["driver_number"]
     }, logger=logger)
+    if not laps:
+        logger.debug("Failed to get laps for circuit %s and year %s", circuit_id, year)
+        return None
     fastest_lap = min(
         (lap for lap in laps if lap["lap_duration"] is not None),
         key=lambda lap: lap["lap_duration"],
@@ -147,11 +155,12 @@ async def _make_openf1_request(endpoint: str, params: Optional[Dict[str, Any]], 
     base_url = "https://api.openf1.org/v1/"
     url = f"{base_url}{endpoint}"
 
+    timeout = aiohttp.ClientTimeout(total=15)
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url, params=params) as response:
                 response.raise_for_status()
                 return await response.json()
     except (aiohttp.ClientError, asyncio.TimeoutError, asyncio.CancelledError) as e:
-        logger.warning("Error fetching data from %s: %s", url, e)
+        logger.debug("Error fetching data from %s: %s", url, e)
         return None

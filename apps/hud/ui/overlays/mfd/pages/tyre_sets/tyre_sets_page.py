@@ -26,8 +26,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtQuick import QQuickItem
-
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId
 
@@ -51,22 +49,21 @@ class TyreSetsPage(MfdPageBase):
     def _init_event_handlers(self):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
-            page_item = self._page_item
             tyre_sets_info = data.get("tyre-sets")
             if not tyre_sets_info:
-                self._show_no_data(page_item)
+                self._show_no_data()
                 return
 
             tyre_set_data = tyre_sets_info.get("tyre-set-data", [])
             if not tyre_set_data:
-                self._show_no_data(page_item)
+                self._show_no_data()
                 return
 
             best_sets = self._prepare_best_sets(tyre_set_data)
             compound_mappings = self._prepare_compound_mappings(tyre_set_data)
 
-            page_item.setProperty("bestSets", best_sets)
-            page_item.setProperty("compoundMappings", compound_mappings)
+            self.set_page_property("bestSets", best_sets)
+            self.set_page_property("compoundMappings", compound_mappings)
 
     def _prepare_best_sets(self, tyre_set_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Prepare best available set for each compound type.
@@ -152,7 +149,7 @@ class TyreSetsPage(MfdPageBase):
         )
         return tyre_set.get("actual-tyre-compound") if tyre_set else None
 
-    def _show_no_data(self, page_item: QQuickItem):
+    def _show_no_data(self):
         """Show placeholder state when no data available."""
-        page_item.setProperty("bestSets", [])
-        page_item.setProperty("compoundMappings", [])
+        self.set_page_property("bestSets", [])
+        self.set_page_property("compoundMappings", [])

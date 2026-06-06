@@ -300,7 +300,10 @@ class TyreStintHistoryData(F1SubPacketBase):
             self.m_tyreActualCompound,
             self.m_tyreVisualCompound,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self._cast_enums()
 
+    def _cast_enums(self) -> None:
+        """Cast raw ints to compound enums."""
         self.m_tyreActualCompound = ActualTyreCompound.safeCast(self.m_tyreActualCompound)
         self.m_tyreVisualCompound = VisualTyreCompound.safeCast(self.m_tyreVisualCompound)
 

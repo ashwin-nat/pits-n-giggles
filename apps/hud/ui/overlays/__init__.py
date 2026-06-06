@@ -31,6 +31,7 @@ from .track_map import TrackMapOverlay
 from .track_radar import TrackRadarOverlay
 from .hud_overlay.hud_overlay import HudOverlay
 from .circuit_info.circuit_info import CircuitInfoOverlay
+from .pu.pu import PuOverlay
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "TrackRadarOverlay",
     "HudOverlay",
     "CircuitInfoOverlay",
+    "PuOverlay",
 ]

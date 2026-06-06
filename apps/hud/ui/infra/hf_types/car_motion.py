@@ -121,10 +121,11 @@ class LiveSessionMotionInfo(HighFreqBase):
     @classmethod
     def from_json(cls, json_data: dict) -> "LiveSessionMotionInfo":
         ref_index = json_data["ref-index"]
+        formula_type = json_data["formula-type"]
 
         motion_data = [
             DriverMotionInfo.from_json(driver_json, ref_index)
             for driver_json in json_data["motion"]
         ]
 
-        return cls(motion_data=motion_data)
+        return cls(motion_data=motion_data, formula_type=formula_type)

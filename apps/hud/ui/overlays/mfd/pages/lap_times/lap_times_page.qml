@@ -39,8 +39,6 @@ Item {
         emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()
     ]
 
-    property int rowsVersion: 0  // Version counter to force updates
-
     function emptyRow() {
         return [
             { text: "---", color: colDim },
@@ -50,18 +48,6 @@ Item {
             { text: "---", color: colDim }
         ]
     }
-
-    // Debug: monitor property changes
-    // onRowsChanged: {
-    //     console.log("QML: Rows property changed! Length:", rows.length)
-    //     if (rows.length > 0) {
-    //         console.log("QML: First row:", JSON.stringify(rows[0]))
-    //     }
-    // }
-
-    // onRowsVersionChanged: {
-    //     console.log("QML: rowsVersion changed to:", rowsVersion)
-    // }
 
     /* -----------------------------
      * LAYOUT
@@ -153,14 +139,4 @@ Item {
         }
     }
 
-    /* -----------------------------
-     * HELPER API (KEPT FOR COMPATIBILITY)
-     * ----------------------------- */
-
-    function clearTable() {
-        rows = [
-            emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow()
-        ]
-        rowsVersion++
-    }
 }

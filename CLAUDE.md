@@ -9,10 +9,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 poetry install
 
 # Run tests
-poetry run python tests/unit_tests.py
+poetry run pytest tests/
 
-# Run a single test (by class/method name pattern)
-poetry run python -m pytest tests/unit_tests.py -k "TestName"
+# By name pattern (class, method, or keyword)
+poetry run pytest tests/ -k "TestWatchDogTimerAsync"
+poetry run pytest tests/ -k "test_initial_state_idle"
+
+# Only the serial (IPC/socket/process) suites
+poetry run pytest tests/ -m serial
+
+# Only the parallel-safe suites
+poetry run pytest tests/ -m "not serial"
+
+# Live API tests (OpenF1 schema checks) — requires network, excluded from default run
+poetry run pytest tests/tests_openf1/tests_openf1_integration.py -m openf1 -v -n 0
+
+# Run a single file
+poetry run pytest tests/tests_version.py
 
 # Lint
 poetry run pylint --rcfile scripts/.pylintrc apps lib

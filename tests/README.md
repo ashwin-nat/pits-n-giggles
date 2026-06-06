@@ -2,60 +2,142 @@
 
 Dependencies are managed with Poetry.
 
-## Quick Start
+## Running the Suite
 
 From the repository root:
 
 ```bash
-poetry run python tests/unit_tests.py
+poetry run pytest tests/
 ```
 
-This is the primary test entrypoint and runs the unit test suite with the custom colored test runner.
+Parallel-safe tests run across all CPU cores automatically. Serial tests (IPC, sockets,
+process management) are funnelled to a single worker. No flags needed.
 
-## Run A Single Test Module
-
-The test files import `tests_base` as a local module, so module-level runs are easiest from the `tests/` directory:
+To force single-process (useful when debugging a specific failure):
 
 ```bash
-cd tests
-poetry run python -m unittest tests_event_counter
+poetry run pytest tests/ -n 0
 ```
 
-## Run A Single Test Class
-
-From `tests/`:
+## Running a Subset
 
 ```bash
-poetry run python -m unittest tests_event_counter.TestEventCounter
+# Single file
+poetry run pytest tests/tests_version.py
+
+# By name pattern (class, method, or keyword)
+poetry run pytest tests/ -k "TestWatchDogTimerAsync"
+poetry run pytest tests/ -k "test_initial_state_idle"
+
+# Only the serial (IPC/socket/process) suites
+poetry run pytest tests/ -m serial
+
+# Only the parallel-safe suites
+poetry run pytest tests/ -m "not serial"
+
+# Live API tests (OpenF1 schema checks) — requires network, excluded from default run
+poetry run pytest tests/tests_openf1/tests_openf1_integration.py -m openf1 -v -n 0
 ```
 
-## Run A Single Test Case
-
-From `tests/`:
+## Coverage Report (local)
 
 ```bash
-poetry run python -m unittest tests_event_counter.TestEventCounter.test_one_negative_latency_among_five_packets
+poetry run pytest tests/ --cov=lib --cov-config=scripts/.coveragerc_ut --cov-report=html:reports/coverage
+start reports/coverage/index.html   # Windows
+open reports/coverage/index.html    # macOS
 ```
 
-## Profiling Test Execution
+## Allure Report (local)
 
-`tests/unit_tests.py` supports profiling:
+Requires the Allure CLI installed separately (pick any one):
 
 ```bash
-poetry run python tests/unit_tests.py --profile
+npm install -g allure-commandline   # requires Node.js — works on all platforms
+scoop install allure                # Windows (Scoop)
+brew install allure                 # macOS (Homebrew)
 ```
 
-## Layout Notes
+Then:
 
-- `tests/unit_tests.py`: Central test runner.
-- `tests/tests_base.py`: Shared base class and custom output formatting.
-- `tests/tests_*.py`: Most standalone unit test modules.
-- `tests/tests_config/`, `tests/tests_delta/`, `tests/ipc/`: Grouped domain-specific tests.
-- `tests/integration_test/`: Integration-level test artifacts.
+```bash
+# Run tests and collect results
+poetry run pytest tests/ --alluredir=reports/allure-results
 
-## Common Issues
+# Generate and open the report in a browser
+allure serve reports/allure-results
+```
 
-- `ModuleNotFoundError: tests_base` during module-level runs:
-  - Run from `tests/` as shown above, or use `tests/unit_tests.py` from repo root.
-- Permission errors in temp directories:
-  - Usually environment/sandbox related; rerun in a local unrestricted shell if needed.
+## Layout
+
+| Path | Purpose |
+|------|---------|
+| `tests_base.py` | Shared `F1TelemetryUnitTestsBase` base class |
+| `conftest.py` | pytest config: ignore list, serial→xdist group wiring, VS Code detection |
+| `tests_*.py` | Standalone unit test modules |
+| `tests_config/` | Config validation tests |
+| `tests_delta/` | Lap delta tests |
+| `tests_data_per_driver/` | Per-driver data structure tests |
+| `tests_wdt/` | Watchdog timer tests (async + sync) |
+| `tests_event_counter/` | Event counter and latency stat tests |
+| `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
+| `tests_openf1/` | OpenF1 API tests — mock-based flow tests + live schema validation (`-m openf1`) |
+| `integration_test/` | Integration runner — starts the full app, not collected by pytest |
+
+## Serial vs Parallel
+
+Tests marked `@pytest.mark.serial` (via module-level `pytestmark`) bind real sockets,
+ports, or spawn processes and must not run concurrently. Everything else is parallel-safe.
+
+Current split: ~131 serial / ~710 parallel out of 841 total.
+
+---
+
+## Test Style: Existing vs New
+
+### Why existing tests are in backward-compatibility mode
+
+The existing suite was written against `unittest.TestCase` (and
+`unittest.IsolatedAsyncioTestCase` for async tests). pytest runs these natively with
+zero code changes — `self.assertEqual`, `setUp`/`tearDown`, `subTest`, and async test
+methods all work as-is. The suite was migrated to pytest for parallel execution,
+reporting, and CI integration, not to rewrite working tests. The effort to convert
+~840 existing tests to native pytest style is high with no functional payoff.
+
+### How to write new tests
+
+New test files should use native pytest style — no base class required:
+
+```python
+# Sync test
+def test_something():
+    result = my_function()
+    assert result == expected
+
+# Parametrized
+import pytest
+
+@pytest.mark.parametrize("input,expected", [
+    (1, 2),
+    (2, 4),
+])
+def test_doubles(input, expected):
+    assert double(input) == expected
+
+# Async test — no decorator needed, asyncio_mode=auto picks it up
+async def test_async_thing():
+    result = await my_coroutine()
+    assert result == expected
+```
+
+Use plain `assert` instead of `self.assert*` — pytest rewrites assertions to give
+detailed failure output automatically.
+
+### A note on async tests
+
+Existing async tests use `unittest.IsolatedAsyncioTestCase`, which creates a **fresh
+event loop per test method**. This is correct and safe, but slightly slower than
+`pytest-asyncio`'s configurable loop scoping.
+
+For new async tests, use `pytest-asyncio` — `asyncio_mode = "auto"` is set in
+`pyproject.toml` so any `async def test_*` is collected automatically with no decorator
+needed. It integrates with pytest fixtures and requires no base class.

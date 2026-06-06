@@ -131,99 +131,110 @@ class FinalClassificationData(F1SubPacketBase):
         self.m_tyreStintsEndLaps: List[int] = [0] * 8
         self.m_resultReason: ResultReason = ResultReason.INVALID
         self.m_packetFormat = packet_format
-        if packet_format <= 2024:
-            (
-                self.m_position,
-                self.m_numLaps,
-                self.m_gridPosition,
-                self.m_points,
-                self.m_numPitStops,
-                self.m_resultStatus,
-                self.m_bestLapTimeInMS,
-                self.m_totalRaceTime,
-                self.m_penaltiesTime,
-                self.m_numPenalties,
-                self.m_numTyreStints,
-                # self.m_tyreStintsActual,  # array of 8
-                self.m_tyreStintsActual[0],
-                self.m_tyreStintsActual[1],
-                self.m_tyreStintsActual[2],
-                self.m_tyreStintsActual[3],
-                self.m_tyreStintsActual[4],
-                self.m_tyreStintsActual[5],
-                self.m_tyreStintsActual[6],
-                self.m_tyreStintsActual[7],
-                # self.m_tyreStintsVisual,  # array of 8
-                self.m_tyreStintsVisual[0],
-                self.m_tyreStintsVisual[1],
-                self.m_tyreStintsVisual[2],
-                self.m_tyreStintsVisual[3],
-                self.m_tyreStintsVisual[4],
-                self.m_tyreStintsVisual[5],
-                self.m_tyreStintsVisual[6],
-                self.m_tyreStintsVisual[7],
-                # self.m_tyreStintsEndLaps,  # array of 8
-                self.m_tyreStintsEndLaps[0],
-                self.m_tyreStintsEndLaps[1],
-                self.m_tyreStintsEndLaps[2],
-                self.m_tyreStintsEndLaps[3],
-                self.m_tyreStintsEndLaps[4],
-                self.m_tyreStintsEndLaps[5],
-                self.m_tyreStintsEndLaps[6],
-                self.m_tyreStintsEndLaps[7]
-            ) = self.COMPILED_PACKET_STRUCT.unpack(data)
-        else: # F1 25+
-            (
-                self.m_position,
-                self.m_numLaps,
-                self.m_gridPosition,
-                self.m_points,
-                self.m_numPitStops,
-                self.m_resultStatus,
-                self.m_resultReason,
-                self.m_bestLapTimeInMS,
-                self.m_totalRaceTime,
-                self.m_penaltiesTime,
-                self.m_numPenalties,
-                self.m_numTyreStints,
-                # self.m_tyreStintsActual,  # array of 8
-                self.m_tyreStintsActual[0],
-                self.m_tyreStintsActual[1],
-                self.m_tyreStintsActual[2],
-                self.m_tyreStintsActual[3],
-                self.m_tyreStintsActual[4],
-                self.m_tyreStintsActual[5],
-                self.m_tyreStintsActual[6],
-                self.m_tyreStintsActual[7],
-                # self.m_tyreStintsVisual,  # array of 8
-                self.m_tyreStintsVisual[0],
-                self.m_tyreStintsVisual[1],
-                self.m_tyreStintsVisual[2],
-                self.m_tyreStintsVisual[3],
-                self.m_tyreStintsVisual[4],
-                self.m_tyreStintsVisual[5],
-                self.m_tyreStintsVisual[6],
-                self.m_tyreStintsVisual[7],
-                # self.m_tyreStintsEndLaps,  # array of 8
-                self.m_tyreStintsEndLaps[0],
-                self.m_tyreStintsEndLaps[1],
-                self.m_tyreStintsEndLaps[2],
-                self.m_tyreStintsEndLaps[3],
-                self.m_tyreStintsEndLaps[4],
-                self.m_tyreStintsEndLaps[5],
-                self.m_tyreStintsEndLaps[6],
-                self.m_tyreStintsEndLaps[7]
-            ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
+        self._parse(data, packet_format)
+        self._cast_enums()
 
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Dispatch to the correct format-specific unpack."""
+        if packet_format <= 2024:
+            self._parse_pre25(data)
+        else:
+            self._parse_f25(data)
+
+    def _parse_pre25(self, data: bytes) -> None:
+        """Unpack F1 2023/2024 binary layout."""
+        (
+            self.m_position,
+            self.m_numLaps,
+            self.m_gridPosition,
+            self.m_points,
+            self.m_numPitStops,
+            self.m_resultStatus,
+            self.m_bestLapTimeInMS,
+            self.m_totalRaceTime,
+            self.m_penaltiesTime,
+            self.m_numPenalties,
+            self.m_numTyreStints,
+            # self.m_tyreStintsActual,  # array of 8
+            self.m_tyreStintsActual[0],
+            self.m_tyreStintsActual[1],
+            self.m_tyreStintsActual[2],
+            self.m_tyreStintsActual[3],
+            self.m_tyreStintsActual[4],
+            self.m_tyreStintsActual[5],
+            self.m_tyreStintsActual[6],
+            self.m_tyreStintsActual[7],
+            # self.m_tyreStintsVisual,  # array of 8
+            self.m_tyreStintsVisual[0],
+            self.m_tyreStintsVisual[1],
+            self.m_tyreStintsVisual[2],
+            self.m_tyreStintsVisual[3],
+            self.m_tyreStintsVisual[4],
+            self.m_tyreStintsVisual[5],
+            self.m_tyreStintsVisual[6],
+            self.m_tyreStintsVisual[7],
+            # self.m_tyreStintsEndLaps,  # array of 8
+            self.m_tyreStintsEndLaps[0],
+            self.m_tyreStintsEndLaps[1],
+            self.m_tyreStintsEndLaps[2],
+            self.m_tyreStintsEndLaps[3],
+            self.m_tyreStintsEndLaps[4],
+            self.m_tyreStintsEndLaps[5],
+            self.m_tyreStintsEndLaps[6],
+            self.m_tyreStintsEndLaps[7],
+        ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+
+    def _parse_f25(self, data: bytes) -> None:
+        """Unpack F1 2025+ binary layout (includes m_resultReason)."""
+        (
+            self.m_position,
+            self.m_numLaps,
+            self.m_gridPosition,
+            self.m_points,
+            self.m_numPitStops,
+            self.m_resultStatus,
+            self.m_resultReason,
+            self.m_bestLapTimeInMS,
+            self.m_totalRaceTime,
+            self.m_penaltiesTime,
+            self.m_numPenalties,
+            self.m_numTyreStints,
+            # self.m_tyreStintsActual,  # array of 8
+            self.m_tyreStintsActual[0],
+            self.m_tyreStintsActual[1],
+            self.m_tyreStintsActual[2],
+            self.m_tyreStintsActual[3],
+            self.m_tyreStintsActual[4],
+            self.m_tyreStintsActual[5],
+            self.m_tyreStintsActual[6],
+            self.m_tyreStintsActual[7],
+            # self.m_tyreStintsVisual,  # array of 8
+            self.m_tyreStintsVisual[0],
+            self.m_tyreStintsVisual[1],
+            self.m_tyreStintsVisual[2],
+            self.m_tyreStintsVisual[3],
+            self.m_tyreStintsVisual[4],
+            self.m_tyreStintsVisual[5],
+            self.m_tyreStintsVisual[6],
+            self.m_tyreStintsVisual[7],
+            # self.m_tyreStintsEndLaps,  # array of 8
+            self.m_tyreStintsEndLaps[0],
+            self.m_tyreStintsEndLaps[1],
+            self.m_tyreStintsEndLaps[2],
+            self.m_tyreStintsEndLaps[3],
+            self.m_tyreStintsEndLaps[4],
+            self.m_tyreStintsEndLaps[5],
+            self.m_tyreStintsEndLaps[6],
+            self.m_tyreStintsEndLaps[7],
+        ) = self.COMPILED_PACKET_STRUCT_25.unpack(data)
+
+    def _cast_enums(self) -> None:
+        """Cast raw ints to enums and trim tyre stint arrays."""
         self.m_resultStatus = ResultStatus.safeCast(self.m_resultStatus)
         self.m_resultReason = ResultReason.safeCast(self.m_resultReason)
-
-        # Trim the tyre stints info
-        self.m_tyreStintsActual     = self.m_tyreStintsActual[:self.m_numTyreStints]
-        self.m_tyreStintsVisual     = self.m_tyreStintsVisual[:self.m_numTyreStints]
-        self.m_tyreStintsEndLaps    = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
-
-        # Make tyre stint values as enum
+        self.m_tyreStintsActual = self.m_tyreStintsActual[:self.m_numTyreStints]
+        self.m_tyreStintsVisual = self.m_tyreStintsVisual[:self.m_numTyreStints]
+        self.m_tyreStintsEndLaps = self.m_tyreStintsEndLaps[:self.m_numTyreStints]
         self.m_tyreStintsActual = [ActualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsActual]
         self.m_tyreStintsVisual = [VisualTyreCompound.safeCast(compound) for compound in self.m_tyreStintsVisual]
 
@@ -585,7 +596,7 @@ class PacketFinalClassificationData(F1PacketBase):
         The class is designed to parse and represent the final classification data packet.
     """
 
-    MAX_CARS = 22
+    MAX_CARS = 24
 
     __slots__ = (
         "m_numCars",

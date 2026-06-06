@@ -115,7 +115,8 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
         }
     )
 
-def port_field(description: str, default: int, visible: Optional[bool] = True, port_type: PortType = PortType.TCP):
+def port_field(description: str, default: int, visible: Optional[bool] = True, port_type: PortType = PortType.TCP,
+               ext_info: Optional[List[str]] = None):
     """
     Create a port field with standard bounds and schema extras.
     Only the description varies per leaf.
@@ -128,7 +129,8 @@ def port_field(description: str, default: int, visible: Optional[bool] = True, p
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
-                "visible": visible
+                "visible": visible,
+                "ext_info": ext_info or []
             },
             "port_type": str(port_type)
         }

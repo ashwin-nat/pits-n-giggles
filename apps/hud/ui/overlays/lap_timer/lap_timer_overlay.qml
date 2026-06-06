@@ -7,8 +7,13 @@ Window {
     property real scaleFactor: 1.0
     property bool minOverlayStyle: false
 
+    // Safety car state — set from Python
+    property bool   isSafetyCar:   false
+    property string safetyCarText: ""
+
+    readonly property int scFooterH: 22
     readonly property int baseWidth:  minOverlayStyle ? 145 : 280
-    readonly property int baseHeight: minOverlayStyle ? 76  : 180
+    readonly property int baseHeight: minOverlayStyle ? 76 : (180 + (isSafetyCar ? scFooterH : 0))
 
     width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
@@ -293,6 +298,48 @@ Window {
                         }
                     }
                 }
+
+                // ── Safety car footer ─────────────────────────────────────
+                Rectangle {
+                    id: scFooterFull
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: root.scFooterH
+                    visible: root.isSafetyCar
+                    color: "#FFD700"
+                    clip: true
+
+                    // Sweeping white highlight
+                    Rectangle {
+                        id: sweepBar
+                        y: 0
+                        width: scFooterFull.width * 0.35
+                        height: parent.height
+                        color: "#FFFFFF"
+                        opacity: 0.30
+
+                        SequentialAnimation on x {
+                            running: root.isSafetyCar
+                            loops: Animation.Infinite
+                            NumberAnimation {
+                                from: -sweepBar.width
+                                to:   scFooterFull.width
+                                duration: 1200
+                                easing.type: Easing.InOutQuad
+                            }
+                            PauseAnimation { duration: 700 }
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.safetyCarText
+                        font.family: "Formula1"
+                        font.pixelSize: 10
+                        font.letterSpacing: 2.5
+                        color: "#000000"
+                        font.weight: Font.Bold
+                    }
+                }
             }
         }
 
@@ -345,6 +392,23 @@ Window {
                     Layout.preferredHeight: 9
                     sectorStatus: root.currentSectorStatus
                 }
+            }
+        }
+
+        // ── Safety car animated border ────────────────────────────────────────
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            border.color: "#FFD700"
+            border.width: 2
+            visible: root.isSafetyCar
+            z: 100
+
+            SequentialAnimation on opacity {
+                running: root.isSafetyCar
+                loops: Animation.Infinite
+                NumberAnimation { from: 1.0; to: 0.3; duration: 700; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.3; to: 1.0; duration: 700; easing.type: Easing.InOutSine }
             }
         }
     }

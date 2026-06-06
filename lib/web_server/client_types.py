@@ -29,7 +29,6 @@ from enum import Enum
 class ClientType(Enum):
     PLAYER_STREAM_OVERLAY = 'player-stream-overlay'
     RACE_TABLE = 'race-table'
-    HUD = 'hud'
 
     @classmethod
     def is_valid(cls, value: str) -> bool:

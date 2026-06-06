@@ -25,8 +25,8 @@ import struct
 from typing import Any, Dict, List, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
-from .common import (ActualTyreCompound, TractionControlAssistMode,
-                     VisualTyreCompound)
+from .common import (MAX_CARS_2026, ActualTyreCompound, TractionControlAssistMode,
+                     VisualTyreCompound, get_num_cars)
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -60,6 +60,7 @@ class CarStatusData(F1SubPacketBase):
         - m_ersDeployMode (ERSDeployMode): ERS deployment mode (enum)
         - m_ersHarvestedThisLapMGUK (float): ERS energy harvested this lap by MGU-K
         - m_ersHarvestedThisLapMGUH (float): ERS energy harvested this lap by MGU-H
+        - m_ersHarvestedLimitPerLap (float): ERS energy harvest limit for this lap (F1 2026+, 0.0 otherwise)
         - m_ersDeployedThisLap (float): ERS energy deployed this lap
         - m_networkPaused (uint8): Whether the car is paused in a network game
 
@@ -111,6 +112,37 @@ class CarStatusData(F1SubPacketBase):
     )
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
+    # F1 26 adds m_ersHarvestedLimitPerLap (float) between m_ersHarvestedThisLapMGUH and m_ersDeployedThisLap
+    COMPILED_PACKET_STRUCT_26 = struct.Struct("<"
+        "B" # uint8       m_tractionControl
+        "B" # uint8       m_antiLockBrakes
+        "B" # uint8       m_fuelMix
+        "B" # uint8       m_frontBrakeBias
+        "B" # uint8       m_pitLimiterStatus
+        "f" # float       m_fuelInTank
+        "f" # float       m_fuelCapacity
+        "f" # float       m_fuelRemainingLaps
+        "H" # uint16      m_maxRPM
+        "H" # uint16      m_idleRPM
+        "B" # uint8       m_maxGears
+        "B" # uint8       m_drsAllowed
+        "H" # uint16      m_drsActivationDistance
+        "B" # uint8       m_actualTyreCompound
+        "B" # uint8       m_visualTyreCompound
+        "B" # uint8       m_tyresAgeLaps
+        "b" # int8        m_vehicleFiaFlags
+        "f" # float       m_enginePowerICE
+        "f" # float       m_enginePowerMGUK
+        "f" # float       m_ersStoreEnergy
+        "B" # uint8       m_ersDeployMode
+        "f" # float       m_ersHarvestedThisLapMGUK
+        "f" # float       m_ersHarvestedThisLapMGUH
+        "f" # float       m_ersHarvestedLimitPerLap   // F1 26: ERS harvest limit per lap
+        "f" # float       m_ersDeployedThisLap
+        "B" # uint8       m_networkPaused
+    )
+    PACKET_LEN_26 = COMPILED_PACKET_STRUCT_26.size
+
     # Type hint declarations
     m_tractionControl: Union[TractionControlAssistMode, int]
     m_antiLockBrakes: bool
@@ -136,9 +168,11 @@ class CarStatusData(F1SubPacketBase):
     m_ersHarvestedThisLapMGUK: float
     m_ersHarvestedThisLapMGUH: float
     m_ersDeployedThisLap: float
+    m_ersHarvestedLimitPerLap: float
     m_networkPaused: bool
 
     __slots__ = (
+        "m_packetFormat",
         "m_tractionControl",
         "m_antiLockBrakes",
         "m_fuelMix",
@@ -163,6 +197,7 @@ class CarStatusData(F1SubPacketBase):
         "m_ersHarvestedThisLapMGUK",
         "m_ersHarvestedThisLapMGUH",
         "m_ersDeployedThisLap",
+        "m_ersHarvestedLimitPerLap",
         "m_networkPaused",
     )
 
@@ -257,14 +292,59 @@ class CarStatusData(F1SubPacketBase):
             """
             return self.name.title()
 
-    def __init__(self, data) -> None:
+    def __init__(self, data, packet_format: int = 2025) -> None:
         """
         Initializes CarStatusData with raw data.
 
         Args:
             data (bytes): Raw data representing car status.
+            packet_format (int): The packet format year.
         """
 
+        self.m_packetFormat = packet_format
+        self._parse(data, packet_format)
+        self._cast_enums()
+
+    def _parse(self, data: bytes, packet_format: int) -> None:
+        """Dispatch to format-specific unpack."""
+        if packet_format >= 2026:
+            self._parse_f26(data)
+        else:
+            self._parse_pre26(data)
+
+    def _parse_f26(self, data: bytes) -> None:
+        """Unpack F1 2026 binary layout (includes m_ersHarvestedLimitPerLap)."""
+        (
+            self.m_tractionControl,
+            self.m_antiLockBrakes,
+            self.m_fuelMix,
+            self.m_frontBrakeBias,
+            self.m_pitLimiterStatus,
+            self.m_fuelInTank,
+            self.m_fuelCapacity,
+            self.m_fuelRemainingLaps,
+            self.m_maxRPM,
+            self.m_idleRPM,
+            self.m_maxGears,
+            self.m_drsAllowed,
+            self.m_drsActivationDistance,
+            self.m_actualTyreCompound,
+            self.m_visualTyreCompound,
+            self.m_tyresAgeLaps,
+            self.m_vehicleFiaFlags,
+            self.m_enginePowerICE,
+            self.m_enginePowerMGUK,
+            self.m_ersStoreEnergy,
+            self.m_ersDeployMode,
+            self.m_ersHarvestedThisLapMGUK,
+            self.m_ersHarvestedThisLapMGUH,
+            self.m_ersHarvestedLimitPerLap,
+            self.m_ersDeployedThisLap,
+            self.m_networkPaused,
+        ) = self.COMPILED_PACKET_STRUCT_26.unpack(data)
+
+    def _parse_pre26(self, data: bytes) -> None:
+        """Unpack pre-2026 binary layout."""
         (
             self.m_tractionControl,
             self.m_antiLockBrakes,
@@ -290,14 +370,15 @@ class CarStatusData(F1SubPacketBase):
             self.m_ersHarvestedThisLapMGUK,
             self.m_ersHarvestedThisLapMGUH,
             self.m_ersDeployedThisLap,
-            self.m_networkPaused
+            self.m_networkPaused,
         ) = self.COMPILED_PACKET_STRUCT.unpack(data)
+        self.m_ersHarvestedLimitPerLap = 0.0
 
-        # Convert boolean fields using bitwise AND
+    def _cast_enums(self) -> None:
+        """Convert raw ints to bools and enums."""
         self.m_antiLockBrakes = bool(self.m_antiLockBrakes)
         self.m_pitLimiterStatus = bool(self.m_pitLimiterStatus)
         self.m_networkPaused = bool(self.m_networkPaused)
-
         self.m_actualTyreCompound = ActualTyreCompound.safeCast(self.m_actualTyreCompound)
         self.m_visualTyreCompound = VisualTyreCompound.safeCast(self.m_visualTyreCompound)
         self.m_vehicleFiaFlags = CarStatusData.VehicleFIAFlags.safeCast(self.m_vehicleFiaFlags)
@@ -337,6 +418,7 @@ class CarStatusData(F1SubPacketBase):
             f"m_ersDeployMode={self.m_ersDeployMode}, "
             f"m_ersHarvestedThisLapMGUK={self.m_ersHarvestedThisLapMGUK}, "
             f"m_ersHarvestedThisLapMGUH={self.m_ersHarvestedThisLapMGUH}, "
+            f"m_ersHarvestedLimitPerLap={self.m_ersHarvestedLimitPerLap}, "
             f"m_ersDeployedThisLap={self.m_ersDeployedThisLap}, "
             f"m_networkPaused={self.m_networkPaused})"
         )
@@ -373,6 +455,7 @@ class CarStatusData(F1SubPacketBase):
             "ers-deploy-mode": str(self.m_ersDeployMode),
             "ers-harvested-this-lap-mguk": self.m_ersHarvestedThisLapMGUK,
             "ers-harvested-this-lap-mguh": self.m_ersHarvestedThisLapMGUH,
+            "ers-harvested-limit-per-lap": self.m_ersHarvestedLimitPerLap,
             "ers-deployed-this-lap": self.m_ersDeployedThisLap,
             "ers-max-capacity" : self.MAX_ERS_STORE_ENERGY,
             "network-paused": self.m_networkPaused,
@@ -414,6 +497,7 @@ class CarStatusData(F1SubPacketBase):
             self.m_ersHarvestedThisLapMGUK == other.m_ersHarvestedThisLapMGUK and
             self.m_ersHarvestedThisLapMGUH == other.m_ersHarvestedThisLapMGUH and
             self.m_ersDeployedThisLap == other.m_ersDeployedThisLap and
+            self.m_ersHarvestedLimitPerLap == other.m_ersHarvestedLimitPerLap and
             self.m_networkPaused == other.m_networkPaused
         )
 
@@ -437,6 +521,35 @@ class CarStatusData(F1SubPacketBase):
             bytes: The serialized bytes.
         """
 
+        if self.m_packetFormat >= 2026:
+            return self.COMPILED_PACKET_STRUCT_26.pack(
+                self.m_tractionControl.value,
+                self.m_antiLockBrakes,
+                self.m_fuelMix.value,
+                self.m_frontBrakeBias,
+                self.m_pitLimiterStatus,
+                self.m_fuelInTank,
+                self.m_fuelCapacity,
+                self.m_fuelRemainingLaps,
+                self.m_maxRPM,
+                self.m_idleRPM,
+                self.m_maxGears,
+                self.m_drsAllowed,
+                self.m_drsActivationDistance,
+                self.m_actualTyreCompound.value,
+                self.m_visualTyreCompound.value,
+                self.m_tyresAgeLaps,
+                self.m_vehicleFiaFlags.value,
+                self.m_enginePowerICE,
+                self.m_enginePowerMGUK,
+                self.m_ersStoreEnergy,
+                self.m_ersDeployMode.value,
+                self.m_ersHarvestedThisLapMGUK,
+                self.m_ersHarvestedThisLapMGUH,
+                self.m_ersHarvestedLimitPerLap,
+                self.m_ersDeployedThisLap,
+                self.m_networkPaused
+            )
         return self.COMPILED_PACKET_STRUCT.pack(
             self.m_tractionControl.value,
             self.m_antiLockBrakes,
@@ -454,7 +567,7 @@ class CarStatusData(F1SubPacketBase):
             self.m_actualTyreCompound.value,
             self.m_visualTyreCompound.value,
             self.m_tyresAgeLaps,
-            self. m_vehicleFiaFlags.value,
+            self.m_vehicleFiaFlags.value,
             self.m_enginePowerICE,
             self.m_enginePowerMGUK,
             self.m_ersStoreEnergy,
@@ -491,7 +604,9 @@ class CarStatusData(F1SubPacketBase):
         ers_harvested_this_lap_mguk: float,
         ers_harvested_this_lap_mguh: float,
         ers_deployed_this_lap: float,
-        network_paused) -> "CarStatusData":
+        network_paused,
+        packet_format: int = 2025,
+        ers_harvested_limit_per_lap: float = 0.0) -> "CarStatusData":
         """
         Create a new CarStatusData object from the provided values.
 
@@ -502,6 +617,36 @@ class CarStatusData(F1SubPacketBase):
             CarStatusData: The created CarStatusData object.
         """
 
+        if packet_format >= 2026:
+            return cls(cls.COMPILED_PACKET_STRUCT_26.pack(
+                traction_control.value,
+                anti_lock_brakes,
+                fuel_mix.value,
+                front_brake_bias,
+                pit_limiter_status,
+                fuel_in_tank,
+                fuel_capacity,
+                fuel_remaining_laps,
+                max_rpm,
+                idle_rpm,
+                max_gears,
+                drs_allowed,
+                drs_activation_distance,
+                actual_tyre_compound.value,
+                visual_tyre_compound.value,
+                tyres_age_laps,
+                m_vehicle_fia_flags.value,
+                engine_power_ice,
+                engine_power_mguk,
+                ers_store_energy,
+                ers_deploy_mode.value,
+                ers_harvested_this_lap_mguk,
+                ers_harvested_this_lap_mguh,
+                ers_harvested_limit_per_lap,
+                ers_deployed_this_lap,
+                network_paused),
+                packet_format=packet_format
+            )
         return cls(cls.COMPILED_PACKET_STRUCT.pack(
             traction_control.value,
             anti_lock_brakes,
@@ -527,7 +672,8 @@ class CarStatusData(F1SubPacketBase):
             ers_harvested_this_lap_mguk,
             ers_harvested_this_lap_mguh,
             ers_deployed_this_lap,
-            network_paused)
+            network_paused),
+            packet_format=packet_format
         )
 
 class PacketCarStatusData(F1PacketBase):
@@ -539,7 +685,7 @@ class PacketCarStatusData(F1PacketBase):
         - m_carStatusData(List[CarStatusData]) - List of statuses of every car
     """
 
-    MAX_CARS = 22
+    MAX_CARS = 24
 
     __slots__ = (
         "m_carStatusData",
@@ -555,12 +701,18 @@ class PacketCarStatusData(F1PacketBase):
         super().__init__(header)
         self.m_carStatusData: List[CarStatusData]
 
+        item_len = (
+            CarStatusData.PACKET_LEN_26
+            if header.m_packetFormat >= 2026
+            else CarStatusData.PACKET_LEN
+        )
         self.m_carStatusData, _ = CarStatusData.parse_array(
             data=packet,
             offset=0,
-            item_len=CarStatusData.PACKET_LEN,
-            count=self.MAX_CARS,
-            max_count=self.MAX_CARS
+            item_len=item_len,
+            count=get_num_cars(header.m_packetFormat),
+            max_count=MAX_CARS_2026,
+            packet_format=header.m_packetFormat
         )
 
     def __str__(self) -> str:

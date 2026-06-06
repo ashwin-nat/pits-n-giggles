@@ -26,9 +26,10 @@ from .base_pkt import F1PacketBase
 from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
                      Nationality, Platform, ResultReason, ResultStatus,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
-                     SessionType24, TeamID, TeamID23, TeamID24, TeamID25,
-                     TelemetrySetting, TrackID, TractionControlAssistMode,
-                     VisualTyreCompound)
+                     SessionType24, TelemetrySetting, TrackID,
+                     TractionControlAssistMode, VisualTyreCompound)
+from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
+                      get_team_id, get_team_id_class)
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
                      PacketParsingError)
 from .header import F1PacketType, PacketHeader
@@ -54,6 +55,7 @@ from .packet_12_tyre_sets_packet import PacketTyreSetsData, TyreSetData
 from .packet_13_motion_ex_data import PacketMotionExData
 from .packet_14_time_trial_data import PacketTimeTrialData, TimeTrialDataSet
 from .packet_15_lap_positions_data import PacketLapPositionsData
+from .packet_16_car_telemetry2_data import CarTelemetry2Data, PacketCarTelemetry2Data
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -85,6 +87,9 @@ __all__ = [
     "TeamID23",
     "TeamID24",
     "TeamID25",
+    "TeamID26",
+    "get_team_id",
+    "get_team_id_class",
     "F1Utils",
     "TrackID",
     "TractionControlAssistMode",
@@ -155,4 +160,8 @@ __all__ = [
 
     # Packet 15 - Lap positions
     "PacketLapPositionsData",
+
+    # Packet 16 - Car Telemetry 2 (F1 2026)
+    "PacketCarTelemetry2Data",
+    "CarTelemetry2Data",
 ]

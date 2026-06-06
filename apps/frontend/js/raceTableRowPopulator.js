@@ -89,8 +89,17 @@ class RaceTableRowPopulator {
 
     addErsInfo() {
         const ersInfo = this.rowData["ers-info"];
+        const regs2026Info = this.rowData["2026-regs-info"];
+        let ersMode = ersInfo["ers-mode"].toUpperCase();
+
+        // If 2026 Overtake is not active, ERS mode should be BOOST
+        if (regs2026Info && regs2026Info["2026-regs-enabled"] &&
+            (ersMode === "OVERTAKE") && !regs2026Info["overtake-active"]) {
+            ersMode = "BOOST";
+        }
+
         const cell = this.createMultiLineCell([
-            `${ersInfo["ers-mode"].toUpperCase()}`,
+            `${ersMode}`,
             `${ersInfo["ers-percent"]}`,
         ]);
         this.addErsBar(cell, ersInfo["ers-percent-float"]);

@@ -60,18 +60,30 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         "PitWall Downstream Port",
         default=53838,
         port_type=PortType.TCP,
+        ext_info=[
+            "For internal communication only.",
+            "Subscribers (e.g. HUD, MCP Server) connect here to receive telemetry broadcasts from the core.",
+        ],
     )
 
     broker_xsub_port: int = port_field(
         "PitWall Upstream Port",
         default=53835,
         port_type=PortType.TCP,
+        ext_info=[
+            "For internal communication only.",
+            "Publishers (e.g. core) connect here to send telemetry messages to internal subscribers.",
+        ],
     )
 
     broker_router_port: int = port_field(
         "PitWall ROUTER Port",
         default=53836,
         port_type=PortType.TCP,
+        ext_info=[
+            "For internal communication only.",
+            "Used for request/reply messaging between subsystems.",
+        ],
     )
 
     bind_address: str = Field(

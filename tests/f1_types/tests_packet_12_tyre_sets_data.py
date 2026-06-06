@@ -37,6 +37,7 @@ class TestPacketTyreSetsData(F1TypesTest):
         self.m_header_23 = F1TypesTest.getRandomHeader(F1PacketType.TYRE_SETS, 23, self.m_num_players)
         self.m_header_24 = F1TypesTest.getRandomHeader(F1PacketType.TYRE_SETS, 24, self.m_num_players)
         self.m_header_25 = F1TypesTest.getRandomHeader(F1PacketType.TYRE_SETS, 25, self.m_num_players)
+        self.m_header_26 = F1TypesTest.getRandomHeader(F1PacketType.TYRE_SETS, 26, 24)
 
     def test_f1_23_random(self):
         """
@@ -64,6 +65,38 @@ class TestPacketTyreSetsData(F1TypesTest):
         header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
         parsed_header = PacketHeader(header_bytes)
         self.assertEqual(self.m_header_24, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketTyreSetsData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_25_random(self):
+        """
+        Test for F1 2025 with random data
+        """
+
+        generated_test_obj = self._generateRandomPacketTyreSetsData(self.m_header_25)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_25, parsed_header)
+        payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
+        parsed_obj = PacketTyreSetsData(parsed_header, payload_bytes)
+        self.assertEqual(generated_test_obj, parsed_obj)
+        self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
+        self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def test_f1_26_random(self):
+        """
+        Test for F1 2026 with random data
+        """
+
+        generated_test_obj = self._generateRandomPacketTyreSetsData(self.m_header_26)
+        serialised_test_obj = generated_test_obj.to_bytes()
+        header_bytes = serialised_test_obj[:PacketHeader.PACKET_LEN]
+        parsed_header = PacketHeader(header_bytes)
+        self.assertEqual(self.m_header_26, parsed_header)
         payload_bytes = serialised_test_obj[PacketHeader.PACKET_LEN:]
         parsed_obj = PacketTyreSetsData(parsed_header, payload_bytes)
         self.assertEqual(generated_test_obj, parsed_obj)
@@ -552,6 +585,16 @@ class TestPacketTyreSetsData(F1TypesTest):
         expected_json = {"car-index": 5, "tyre-set-data": [{"actual-tyre-compound": "C4", "visual-tyre-compound": "Medium", "wear": 0, "available": True, "recommended-session": "Race", "life-span": 39, "usable-life": 39, "lap-delta-time": 259, "fitted": False}, {"actual-tyre-compound": "C3", "visual-tyre-compound": "Hard", "wear": 0, "available": True, "recommended-session": "Race", "life-span": 48, "usable-life": 48, "lap-delta-time": 748, "fitted": False}, {"actual-tyre-compound": "Inters", "visual-tyre-compound": "Inters", "wear": 0, "available": True, "recommended-session": "Race", "life-span": 70, "usable-life": 70, "lap-delta-time": 3994, "fitted": False}, {"actual-tyre-compound": "Wet", "visual-tyre-compound": "Wet", "wear": 0, "available": True, "recommended-session": "Race", "life-span": 50, "usable-life": 50, "lap-delta-time": 5794, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": False, "recommended-session": "Practice 1", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": False, "recommended-session": "Practice 2", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": False, "recommended-session": "Practice 3", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": False, "recommended-session": "Practice 3", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 6, "available": True, "recommended-session": "Qualifying 1", "life-span": 23, "usable-life": 26, "lap-delta-time": 0, "fitted": True}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": True, "recommended-session": "Qualifying 1", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": True, "recommended-session": "Qualifying 2", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C5", "visual-tyre-compound": "Soft", "wear": 0, "available": False, "recommended-session": "Qualifying 3", "life-span": 26, "usable-life": 26, "lap-delta-time": -228, "fitted": False}, {"actual-tyre-compound": "C4", "visual-tyre-compound": "Medium", "wear": 0, "available": False, "recommended-session": "Practice 1", "life-span": 39, "usable-life": 39, "lap-delta-time": 259, "fitted": False}, {"actual-tyre-compound": "C4", "visual-tyre-compound": "Medium", "wear": 0, "available": False, "recommended-session": "Practice 2", "life-span": 39, "usable-life": 39, "lap-delta-time": 259, "fitted": False}, {"actual-tyre-compound": "C3", "visual-tyre-compound": "Hard", "wear": 0, "available": True, "recommended-session": "Qualifying 2", "life-span": 48, "usable-life": 48, "lap-delta-time": 748, "fitted": False}, {"actual-tyre-compound": "Inters", "visual-tyre-compound": "Inters", "wear": 0, "available": True, "recommended-session": "Unknown", "life-span": 70, "usable-life": 70, "lap-delta-time": 3994, "fitted": False}, {"actual-tyre-compound": "Inters", "visual-tyre-compound": "Inters", "wear": 0, "available": True, "recommended-session": "Unknown", "life-span": 70, "usable-life": 70, "lap-delta-time": 3994, "fitted": False}, {"actual-tyre-compound": "Inters", "visual-tyre-compound": "Inters", "wear": 0, "available": True, "recommended-session": "Unknown", "life-span": 70, "usable-life": 70, "lap-delta-time": 3994, "fitted": False}, {"actual-tyre-compound": "Wet", "visual-tyre-compound": "Wet", "wear": 0, "available": True, "recommended-session": "Unknown", "life-span": 50, "usable-life": 50, "lap-delta-time": 5794, "fitted": False}, {"actual-tyre-compound": "Wet", "visual-tyre-compound": "Wet", "wear": 0, "available": True, "recommended-session": "Unknown", "life-span": 50, "usable-life": 50, "lap-delta-time": 5794, "fitted": False}], "fitted-index": 8}
 
         parsed_packet = PacketTyreSetsData(self.m_header_25, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+    def test_f1_26_actual(self):
+
+        raw_packet = b'\x11\x11\x10\x00\x01\x01\x17\x17\x00\x00\x01\x13\x12\x00\x01\x01##]\x04\x00\x11\x10\x00\x01\x02\x17\x17\xf9\xff\x00\x12\x11\x00\x01\x02\x1c\x1c8\x02\x00\x11\x10\x00\x01\x03\x17\x17\xf9\xff\x00\x11\x10\x00\x01\x03\x17\x17\xf9\xff\x00\x11\x10\x00\x00\x05\x17\x17\xf9\xff\x00\x11\x10\x00\x00\x05\x17\x17\xf9\xff\x00\x11\x10\x00\x00\x06\x17\x17\xf9\xff\x00\x12\x11\x00\x00\x06\x1c\x1c8\x02\x00\x11\x10\x00\x00\x07\x17\x17\xf9\xff\x00\x12\x11\x00\x00\x0f\x1c\x1c8\x02\x00\x13\x12\x00\x00\x0f##]\x04\x00\x07\x07\x00\x01\x0077$\x16\x00\x07\x07\x00\x01\x0077$\x16\x00\x07\x07\x00\x01\x0077$\x16\x00\x07\x07\x00\x00\x0f77$\x16\x00\x08\x08\x00\x01\x00$$]\x1e\x00\x08\x08\x00\x01\x00$$]\x1e\x00\x08\x08\x00\x00\x0f$$]\x1e\x00\x00'
+        expected_json = {'car-index': 17, 'tyre-set-data': [{'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': True, 'recommended-session': 'Practice 1', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': 0, 'fitted': True}, {'actual-tyre-compound': 'C2', 'visual-tyre-compound': 'Hard', 'wear': 0, 'available': True, 'recommended-session': 'Practice 1', 'life-span': 35, 'usable-life': 35, 'lap-delta-time': 1117, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': True, 'recommended-session': 'Practice 2', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C3', 'visual-tyre-compound': 'Medium', 'wear': 0, 'available': True, 'recommended-session': 'Practice 2', 'life-span': 28, 'usable-life': 28, 'lap-delta-time': 568, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': True, 'recommended-session': 'Practice 3', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': True, 'recommended-session': 'Practice 3', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': False, 'recommended-session': 'Qualifying 1', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': False, 'recommended-session': 'Qualifying 1', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': False, 'recommended-session': 'Qualifying 2', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C3', 'visual-tyre-compound': 'Medium', 'wear': 0, 'available': False, 'recommended-session': 'Qualifying 2', 'life-span': 28, 'usable-life': 28, 'lap-delta-time': 568, 'fitted': False}, {'actual-tyre-compound': 'C4', 'visual-tyre-compound': 'Soft', 'wear': 0, 'available': False, 'recommended-session': 'Qualifying 3', 'life-span': 23, 'usable-life': 23, 'lap-delta-time': -7, 'fitted': False}, {'actual-tyre-compound': 'C3', 'visual-tyre-compound': 'Medium', 'wear': 0, 'available': False, 'recommended-session': 'Race', 'life-span': 28, 'usable-life': 28, 'lap-delta-time': 568, 'fitted': False}, {'actual-tyre-compound': 'C2', 'visual-tyre-compound': 'Hard', 'wear': 0, 'available': False, 'recommended-session': 'Race', 'life-span': 35, 'usable-life': 35, 'lap-delta-time': 1117, 'fitted': False}, {'actual-tyre-compound': 'Inters', 'visual-tyre-compound': 'Inters', 'wear': 0, 'available': True, 'recommended-session': 'Unknown', 'life-span': 55, 'usable-life': 55, 'lap-delta-time': 5668, 'fitted': False}, {'actual-tyre-compound': 'Inters', 'visual-tyre-compound': 'Inters', 'wear': 0, 'available': True, 'recommended-session': 'Unknown', 'life-span': 55, 'usable-life': 55, 'lap-delta-time': 5668, 'fitted': False}, {'actual-tyre-compound': 'Inters', 'visual-tyre-compound': 'Inters', 'wear': 0, 'available': True, 'recommended-session': 'Unknown', 'life-span': 55, 'usable-life': 55, 'lap-delta-time': 5668, 'fitted': False}, {'actual-tyre-compound': 'Inters', 'visual-tyre-compound': 'Inters', 'wear': 0, 'available': False, 'recommended-session': 'Race', 'life-span': 55, 'usable-life': 55, 'lap-delta-time': 5668, 'fitted': False}, {'actual-tyre-compound': 'Wet', 'visual-tyre-compound': 'Wet', 'wear': 0, 'available': True, 'recommended-session': 'Unknown', 'life-span': 36, 'usable-life': 36, 'lap-delta-time': 7773, 'fitted': False}, {'actual-tyre-compound': 'Wet', 'visual-tyre-compound': 'Wet', 'wear': 0, 'available': True, 'recommended-session': 'Unknown', 'life-span': 36, 'usable-life': 36, 'lap-delta-time': 7773, 'fitted': False}, {'actual-tyre-compound': 'Wet', 'visual-tyre-compound': 'Wet', 'wear': 0, 'available': False, 'recommended-session': 'Race', 'life-span': 36, 'usable-life': 36, 'lap-delta-time': 7773, 'fitted': False}], 'fitted-index': 0}
+
+        parsed_packet = PacketTyreSetsData(self.m_header_26, raw_packet)
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))

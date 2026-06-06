@@ -34,6 +34,9 @@ from .base import TestIPC
 
 from lib.ipc import IpcClientSync, IpcServerAsync, IpcServerSync, get_free_tcp_port
 
+import pytest
+pytestmark = pytest.mark.serial
+
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

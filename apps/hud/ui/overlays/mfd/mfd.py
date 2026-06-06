@@ -34,8 +34,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
                                             PitRejoinPredictionPage,
-                                            TyreInfoPage, TyreSetsPage,
-                                            WeatherForecastPage)
+                                            TrafficMonitorPage, TyreInfoPage,
+                                            TyreSetsPage, WeatherForecastPage)
 from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
                         WeatherMFDUIType)
 
@@ -55,6 +55,7 @@ class MfdOverlay(BaseOverlayQML):
         WeatherForecastPage,
         TyreSetsPage,
         PaceCompPage,
+        TrafficMonitorPage,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -93,20 +94,19 @@ class MfdOverlay(BaseOverlayQML):
         for page in self._mfd_pages:
             all_event_types.update(page.get_handled_event_types())
 
-        # Register a handler for each event type that broadcasts to all pages
         for event_type in all_event_types:
             self._register_broadcast_handler(event_type)
 
         self.logger.debug("%s | Registered %d event handlers %s", self.OVERLAY_ID, len(all_event_types), all_event_types)
 
     def _register_broadcast_handler(self, event_type: str):
-        """Register a handler that broadcasts an event to all interested pages."""
+        """Register a handler that forwards an event to the active page."""
         @self.on_event(event_type)
         def _handler(data: Dict[str, Any]):
-            # Broadcast to all pages that handle this event
-            for page in self._mfd_pages:
-                if page.handles_event(event_type):
-                    page.handle_event(event_type, data)
+            if not self._mfd_pages:
+                self.logger.warning("%s | Event '%s' received but no pages are initialised", self.OVERLAY_ID, event_type)
+                return
+            self._mfd_pages[self._current_index].handle_event(event_type, data)
 
     def _get_page_kwargs(self, settings: PngSettings) -> dict:
         """Get initialization kwargs for pages from settings."""
@@ -206,14 +206,6 @@ class MfdOverlay(BaseOverlayQML):
         def _handle_prev_page(_data: Dict[str, Any]):
             self._prev_page()
 
-        @self.on_event("race_table_update")
-        def _handle_race_update(data: Dict[str, Any]):
-            self._handle_event("race_table_update", data)
-
-        @self.on_event("stream_overlay_update")
-        def _handle_stream_overlay_update(data: Dict[str, Any]):
-            self._handle_event("stream_overlay_update", data)
-
     @final
     def set_locked_state(self, locked):
         self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
@@ -237,28 +229,6 @@ class MfdOverlay(BaseOverlayQML):
             **overlay_stats,
             "__PAGES__": page_stats,
         }
-
-    def _handle_event(self, event_type: str, data: Dict[str, Any], dest_index: Optional[int] = None) -> None:
-        """Forward event to page.
-
-        Args:
-            event_type (str): Event type
-            data (Dict[str, Any]): Event data
-            dest_index (Optional[int]): Destination page index. If not specified, the current page is used.
-        """
-        if not self._mfd_pages:
-            return
-
-        if dest_index is None:
-            index = self._current_index
-        else:
-            if dest_index < 0 or dest_index >= len(self._mfd_pages):
-                self.logger.warning("%s | Page index %s out of range", self.OVERLAY_ID, dest_index)
-                return
-            index = dest_index
-
-        page = self._mfd_pages[index]
-        page.handle_event(event_type, data)
 
     def _next_page(self):
         """Go to the next page in MFD overlay"""

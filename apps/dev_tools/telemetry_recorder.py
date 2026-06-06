@@ -22,26 +22,22 @@
 # pylint: skip-file
 
 import asyncio
-import logging
-import sys
 import os
+import sys
 import time
 import tkinter as tk
-from tkinter import messagebox, filedialog
-from typing import List, Tuple
+from threading import Condition, Lock, Thread
+from tkinter import filedialog, messagebox
+from typing import Tuple
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.packet_cap import F1PacketCapture
-from lib.telemetry_manager import AsyncF1TelemetryManager, telemetry_transport_factory
-from threading import Thread, Lock, Condition
-import queue
+from lib.socket_receiver import UdpTransport
 
-# Condition variable for signaling when the port is set
 g_start_condition = Condition()
 g_port_num = None
-g_queue = queue.Queue()
 
 class PacketCaptureTable:
     """Thread safe container for F1PacketCapture instance.
@@ -54,12 +50,12 @@ class PacketCaptureTable:
         self.m_packet_capture = F1PacketCapture(compressed=True)
         self.m_lock = Lock()
 
-    def add(self, packet: List[bytes]) -> None:
+    def add(self, packet: bytes) -> None:
         """
         Add a packet to the packet list while acquiring a lock to ensure thread safety.
 
         Parameters:
-            packet (List[bytes]): The packet to be added to the table.
+            packet (bytes): The raw packet to be added to the table.
         """
         with self.m_lock:
             self.m_packet_capture.add(packet)
@@ -141,10 +137,6 @@ class SimpleApp:
             g_port_num = int(port)
             with g_start_condition:
                 g_start_condition.notify_all()
-
-            # Signal the condition variable
-            with g_start_condition:
-                g_start_condition.notify_all()
         else:
             messagebox.showerror("Error", "Invalid port number. Please enter a valid number.")
 
@@ -169,10 +161,6 @@ class SimpleApp:
 
 async def async_telemetry_main():
     """Main function for async telemetry. This runs its own asyncio event loop"""
-    global g_port_num
-    global g_start_condition
-
-    # Wait until start signal is received
     def wait_for_port():
         with g_start_condition:
             g_start_condition.wait()
@@ -182,20 +170,13 @@ async def async_telemetry_main():
     port = await loop.run_in_executor(None, wait_for_port)
 
     print(f"[async telemetry] Starting server on port {port}")
-    null_logger = logging.getLogger("null")
-    null_logger.addHandler(logging.NullHandler())
-    transport = telemetry_transport_factory(port, replay_server=False, logger=null_logger)
-    telemetry_manager = AsyncF1TelemetryManager(transport=transport, logger=null_logger)
-    @telemetry_manager.on_raw_packet()
-    async def handleRawPacket(packet: List[bytes]) -> None:
-        """
-        Handle raw telemetry packet.
-        Parameters:
-            packet (List[bytes]): The raw telemetry packet.
-        """
-        global g_capture_table
-        g_capture_table.add(packet)
-    await telemetry_manager.run()
+    transport = UdpTransport(port, "0.0.0.0", buffer_size=4096)
+
+    @transport.on_packet
+    async def handle(raw_packet: bytes) -> None:
+        g_capture_table.add(raw_packet)
+
+    await transport.run()
 
 if __name__ == "__main__":
 

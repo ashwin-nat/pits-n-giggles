@@ -706,6 +706,7 @@ class PngLauncherWindow(QMainWindow):
         stats = {
             **{subsystem.DISPLAY_NAME: subsystem.get_stats() for subsystem in self.subsystems},
             "uptime_seconds": round(time.time() - self._start_time, 3),
+            "version": self.ver_str,
         }
         try:
             save_session_stats(get_app_base_dir(), stats)

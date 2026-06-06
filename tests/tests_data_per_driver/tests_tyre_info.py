@@ -194,11 +194,11 @@ class TestTyreSetHistoryManager(TestTyreSets):
         dummy_logger.propagate = False
         self.manager = TyreSetHistoryManager(dummy_logger)
 
-def test_remove_empty_history(self):
-    """Test remove method with empty history."""
-    # Should not raise any exception when history is empty
-    self.manager.remove([1, 2, 3])
-    self.assertEqual(self.manager.length, 0)
+    def test_remove_empty_history(self):
+        """Test remove method with empty history."""
+        # Should not raise any exception when history is empty
+        self.manager.remove([1, 2, 3])
+        self.assertEqual(self.manager.length, 0)
 
     def test_remove_last_tyre_wear_entry(self):
         """Test removing the last tyre wear entry when its lap number is in the removal list."""
