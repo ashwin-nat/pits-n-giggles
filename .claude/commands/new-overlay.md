@@ -147,6 +147,30 @@ Create two files:
 **`<overlay_name>.qml`**:
 - Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
 
+**HF / animation-based overlays only** (i.e. those with a non-`None` `refresh_interval_ms`):
+
+The QML file **must** include a `FrameAnimation` block for render-loop stats. Place it directly inside the root `Window`, alongside the other top-level properties:
+
+```qml
+property real faFps:              0
+property real faFrameTimeMs:      0
+property real faSmoothFrameTimeMs: 0
+property int  faFrameCount:       0
+
+FrameAnimation {
+    id: frameAnim
+    running: true
+    onTriggered: {
+        root.faFrameTimeMs       = (frameAnim.frameTime       || 0) * 1000
+        root.faSmoothFrameTimeMs = (frameAnim.smoothFrameTime || 0) * 1000
+        root.faFps               = frameAnim.frameTime > 0 ? 1.0 / frameAnim.frameTime : 0
+        root.faFrameCount        += 1
+    }
+}
+```
+
+`BaseOverlayQML.get_stats()` automatically detects these properties via `refresh_interval_ms` and includes them in `__FRAME_ANIMATION__` stats — no Python-side flag needed.
+
 ### 10. Register overlay in OverlaysMgr — `apps/hud/hud.py`
 
 Read the file. Import the new class and add it to the overlay instantiation block following the pattern of existing overlays. Gate on `config.HUD.show_<overlay_name>`.
