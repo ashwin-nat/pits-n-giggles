@@ -10,6 +10,22 @@ Window {
     readonly property int baseWidth: 450
     readonly property int baseHeight: 120
 
+    property real faFps:              0
+    property real faFrameTimeMs:      0
+    property real faSmoothFrameTimeMs: 0
+    property int  faFrameCount:       0
+
+    FrameAnimation {
+        id: frameAnim
+        running: true
+        onTriggered: {
+            root.faFrameTimeMs       = (frameAnim.frameTime       || 0) * 1000
+            root.faSmoothFrameTimeMs = (frameAnim.smoothFrameTime || 0) * 1000
+            root.faFps               = frameAnim.frameTime > 0 ? 1.0 / frameAnim.frameTime : 0
+            root.faFrameCount        += 1
+        }
+    }
+
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
     color: "transparent"
@@ -250,7 +266,6 @@ Window {
                             width: parent.width
                             height: (brakeValue / 100) * parent.height
                             color: brakeColor
-                            Behavior on height { SmoothedAnimation { duration: 60 } }
                         }
 
                         Text {
@@ -277,7 +292,6 @@ Window {
                             width: parent.width
                             height: (throttleValue / 100) * parent.height
                             color: throttleColor
-                            Behavior on height { SmoothedAnimation { duration: 60 } }
                         }
 
                         Text {

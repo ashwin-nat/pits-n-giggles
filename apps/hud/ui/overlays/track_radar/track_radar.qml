@@ -10,6 +10,22 @@ Window {
     readonly property int baseWidth: 300
     readonly property int baseHeight: 300
 
+    property real faFps:              0
+    property real faFrameTimeMs:      0
+    property real faSmoothFrameTimeMs: 0
+    property int  faFrameCount:       0
+
+    FrameAnimation {
+        id: frameAnim
+        running: true
+        onTriggered: {
+            root.faFrameTimeMs       = (frameAnim.frameTime       || 0) * 1000
+            root.faSmoothFrameTimeMs = (frameAnim.smoothFrameTime || 0) * 1000
+            root.faFps               = frameAnim.frameTime > 0 ? 1.0 / frameAnim.frameTime : 0
+            root.faFrameCount        += 1
+        }
+    }
+
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
     color: "transparent"
@@ -55,7 +71,6 @@ Window {
 
         clip: true
         opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
-        Behavior on opacity { NumberAnimation { duration: 500 } }
 
         transform: Scale {
             xScale: scaleFactor
@@ -110,13 +125,11 @@ Window {
             anchors.fill: parent
             source: "image://radar/glow-left"
             opacity: root.carOnLeft ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
         }
         Image {
             anchors.fill: parent
             source: "image://radar/glow-right"
             opacity: root.carOnRight ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
         // --- Other cars — fixed 22-slot Rectangle pool (scene graph) ---

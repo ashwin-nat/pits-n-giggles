@@ -457,12 +457,12 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """
         if not self._root:
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_NO_ROOT__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_NO_ROOT__")
             return
 
         if not self.get_visibility():
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_HIDDEN__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_HIDDEN__")
             return
 
         # First frame after becoming visible — reset timing baseline so the
@@ -475,11 +475,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._clear_hf_pending()
         assert self._refresh_interval_ms
         assert self._fps
-        self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+        self._stats.track_frame_render("__FRAMES_PRODUCER__", "__FRAME__", perf_counter_ns(), self._fps)
 
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
-        self._stats.reset_frame_timing("__FRAMES__", "__FRAME__")
+        self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
 
     def invalidate_qml_cache(self, *names: str) -> None:
         """Remove one or more property names from the cache so the next
@@ -546,6 +546,18 @@ class BaseOverlayQML(BaseOverlay, QObject):
             Qt.ConnectionType.AutoConnection,
             *(Q_ARG("QVariant", a) for a in args),
         )
+
+    def get_stats(self) -> dict:
+        stats = super().get_stats()
+        if self._root and self._refresh_interval_ms is not None:
+            stats["__FRAME_RENDERER__"] = {
+                "type": "__FRAME_RENDERER__",
+                "fps":                  self._root.property("faFps"),
+                "frame_time_ms":        self._root.property("faFrameTimeMs"),
+                "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
+                "frame_count":          self._root.property("faFrameCount"),
+            }
+        return stats
 
     def render_frame(self):
         """Derived classes must implement this method."""
