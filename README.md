@@ -65,9 +65,10 @@ Click any driver (preferably not during a fast lap):
 ---
 
 ## Supported Games
-- **F1 2023**
-- **F1 2024**
-- **F1 2025**
+- **F1 23**
+- **F1 24**
+- **F1 25**
+- **F1 25 (2026 Season Pack)**
 
 ---
 
