@@ -755,6 +755,7 @@ class TrackID(F1BaseEnum):
     Silverstone_Reverse = 39
     Austria_Reverse = 40
     Zandvoort_Reverse = 41
+    Madrid = 42
 
     def __str__(self):
         """

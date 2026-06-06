@@ -1,0 +1,147 @@
+{
+  "circuit_name": "Madrid",
+  "circuit_number": 42,
+  "track_length": 5411,
+  "segments": [
+    {
+      "type": "straight",
+      "start_m": 0,
+      "end_m": 344,
+      "name": "Pit Straight"
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 344,
+      "end_m": 530,
+      "corner_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 530,
+      "end_m": 807,
+      "name": "Hortaleza",
+      "corner_number": 3
+    },
+    {
+      "type": "corner",
+      "start_m": 1190,
+      "end_m": 1470,
+      "name": "",
+      "corner_number": 4
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1470,
+      "end_m": 1600,
+      "name": "El Bunker",
+      "corner_numbers": [
+        5,
+        6
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 1680,
+      "end_m": 1800,
+      "name": "",
+      "corner_number": 7
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 1800,
+      "end_m": 2030,
+      "corner_numbers": [
+        8,
+        9
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 2150,
+      "end_m": 2290,
+      "name": "",
+      "corner_number": 10
+    },
+    {
+      "type": "corner",
+      "start_m": 2290,
+      "end_m": 2450,
+      "name": "",
+      "corner_number": 11
+    },
+    {
+      "type": "corner",
+      "start_m": 2470,
+      "end_m": 3090,
+      "name": "La Monumental",
+      "corner_number": 12
+    },
+    {
+      "type": "corner",
+      "start_m": 3200,
+      "end_m": 3355,
+      "name": "",
+      "corner_number": 13
+    },
+    {
+      "type": "complex_corner",
+      "start_m": 3420,
+      "end_m": 4050,
+      "name": "Las Enlazadas de Valdebebas",
+      "corner_numbers": [
+        14,
+        15,
+        16,
+        17
+      ]
+    },
+    {
+      "type": "corner",
+      "start_m": 4150,
+      "end_m": 4300,
+      "name": "",
+      "corner_number": 18
+    },
+    {
+      "type": "corner",
+      "start_m": 4360,
+      "end_m": 4500,
+      "name": "",
+      "corner_number": 19
+    },
+    {
+      "type": "corner",
+      "start_m": 4680,
+      "end_m": 4850,
+      "name": "",
+      "corner_number": 20
+    },
+    {
+      "type": "corner",
+      "start_m": 4850,
+      "end_m": 5000,
+      "name": "",
+      "corner_number": 21
+    },
+    {
+      "type": "corner",
+      "start_m": 5150,
+      "end_m": 5280,
+      "name": "",
+      "corner_number": 22
+    },
+    {
+      "type": "straight",
+      "start_m": 5280,
+      "end_m": 5411,
+      "name": "Pit Straight"
+    }
+  ],
+  "sectors": {
+    "s1": 1805,
+    "s2": 3857
+  }
+}
