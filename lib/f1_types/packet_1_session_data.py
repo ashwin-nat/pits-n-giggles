@@ -1340,6 +1340,7 @@ class PacketSessionData(F1PacketBase):
         self.m_sessionLength = SessionLength.safeCast(self.m_sessionLength)
         self.m_gameMode = GameMode.safeCast(self.m_gameMode)
         self.m_ruleSet = RuleSet.safeCast(self.m_ruleSet)
+        self.m_equalCarPerformance = bool(self.m_equalCarPerformance)
         self.m_recoveryMode = PacketSessionData.RecoveryMode.safeCast(self.m_recoveryMode)
         self.m_flashbackLimit = PacketSessionData.FlashbackLimit.safeCast(self.m_flashbackLimit)
         self.m_surfaceType = PacketSessionData.SurfaceType.safeCast(self.m_surfaceType)
@@ -1513,7 +1514,7 @@ class PacketSessionData(F1PacketBase):
     def _f24_json(self) -> Dict[str, Any]:
         """Return JSON dict for F1 24+ fields."""
         return {
-            "equal-car-performance" : str(self.m_equalCarPerformance),
+            "equal-car-performance" : bool(self.m_equalCarPerformance),
             "recovery-mode" : str(self.m_recoveryMode),
             "flashback-limit" : str(self.m_flashbackLimit),
             "surface-type" : str(self.m_surfaceType),
