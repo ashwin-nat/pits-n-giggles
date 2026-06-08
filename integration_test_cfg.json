@@ -49,7 +49,7 @@
     },
     "HUD": {
         "enabled": true,
-        "toggle_overlays_udp_action_code": 10,
+        "toggle_overlays_udp_action_code": null,
         "use_windowed_overlays": false,
         "overlays_speed_unit": "km/h",
         "overlays_fuel_estimation_mode": "Linear regression",
@@ -57,13 +57,17 @@
         "lap_timer_minimal": false,
         "lap_timer_toggle_udp_action_code": null,
         "show_timing_tower": true,
-        "timing_tower_max_rows": 22,
+        "timing_tower_max_rows": 5,
         "timing_tower_col_options": {
             "show_col_header": true,
             "cols": {
                 "delta": {
                     "enabled": true,
                     "position": 1
+                },
+                "delta_to_leader": {
+                    "enabled": false,
+                    "position": 12
                 },
                 "tyre": {
                     "enabled": true,
@@ -82,60 +86,56 @@
                     "position": 5
                 },
                 "best_lap": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 6
                 },
                 "last_lap": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 7
                 },
                 "wing_dmg": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 8
                 },
                 "speed_trap": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 9
                 },
                 "fuel": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 10
                 },
                 "driver_status": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 11
-                },
-                "delta_to_leader": {
-                    "enabled": true,
-                    "position": 12
                 }
             }
         },
-        "timing_tower_relative_best_last_lap": true,
-        "timing_tower_combined_tl_pens": true,
+        "timing_tower_relative_best_last_lap": false,
+        "timing_tower_combined_tl_pens": false,
         "timing_tower_toggle_udp_action_code": null,
         "show_mfd": true,
         "mfd_settings": {
             "pages": {
                 "lap_times": {
                     "enabled": true,
-                    "position": 2
+                    "position": 1
                 },
                 "weather_forecast": {
                     "enabled": true,
-                    "position": 1
+                    "position": 2
                 },
                 "fuel_info": {
                     "enabled": true,
-                    "position": 4
+                    "position": 3
                 },
                 "tyre_info": {
                     "enabled": true,
-                    "position": 5
+                    "position": 4
                 },
                 "pit_rejoin": {
                     "enabled": true,
-                    "position": 3
+                    "position": 5
                 },
                 "tyre_sets": {
                     "enabled": true,
@@ -146,7 +146,7 @@
                     "position": 7
                 },
                 "traffic_monitor": {
-                    "enabled": true,
+                    "enabled": false,
                     "position": 8
                 }
             }
@@ -156,9 +156,9 @@
         "mfd_weather_page_ui_type": "Cards",
         "mfd_toggle_udp_action_code": null,
         "mfd_interaction_udp_action_code": null,
-        "cycle_mfd_udp_action_code": 9,
+        "cycle_mfd_udp_action_code": null,
         "prev_mfd_page_udp_action_code": null,
-        "show_track_map": true,
+        "show_track_map": false,
         "track_map_toggle_udp_action_code": null,
         "show_input_overlay": true,
         "input_overlay_toggle_udp_action_code": null,
@@ -170,51 +170,99 @@
         "hud_overlay_toggle_udp_action_code": null,
         "show_circuit_info": true,
         "circuit_info_toggle_udp_action_code": null,
-        "circuit_info_length": 918,
+        "circuit_info_length": 800,
         "show_pu_info": true,
         "pu_toggle_udp_action_code": null,
+        "show_fuel_info": true,
+        "show_tyre_info": true,
+        "show_lap_times_standalone": true,
+        "show_weather_standalone": true,
+        "show_pit_rejoin_standalone": true,
+        "show_tyre_sets_standalone": true,
+        "show_pace_comp_standalone": true,
+        "show_traffic_monitor_standalone": true,
         "auto_hide_in_menu": true,
         "menu_silence_threshold_sec": 3.0,
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
-                "x": 3306,
-                "y": 48,
+                "x": 600,
+                "y": 60,
                 "scale_factor": 1.0
             },
             "timing_tower": {
-                "x": 2722,
-                "y": 45,
+                "x": 10,
+                "y": 55,
                 "scale_factor": 1.0
             },
             "mfd": {
-                "x": 3332,
-                "y": 237,
+                "x": 10,
+                "y": 355,
                 "scale_factor": 1.0
             },
             "input_telemetry": {
-                "x": 3446,
-                "y": 569,
+                "x": 10,
+                "y": 600,
                 "scale_factor": 1.0
             },
             "track_radar": {
-                "x": 3392,
-                "y": 648,
+                "x": 40,
+                "y": 600,
                 "scale_factor": 1.0
             },
             "hud_overlay": {
-                "x": 2696,
-                "y": 592,
+                "x": 300,
+                "y": 600,
                 "scale_factor": 1.0
             },
             "circuit_info": {
-                "x": 3517,
-                "y": 71,
+                "x": 600,
+                "y": 600,
                 "scale_factor": 1.0
             },
             "pu": {
-                "x": 3840,
-                "y": 374,
+                "x": 600,
+                "y": 120,
+                "scale_factor": 1.0
+            },
+            "fuel_info": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "tyre_info": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "lap_times_standalone": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "weather_standalone": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "pit_rejoin_standalone": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "tyre_sets_standalone": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "pace_comp_standalone": {
+                "x": 420,
+                "y": 355,
+                "scale_factor": 1.0
+            },
+            "traffic_monitor_standalone": {
+                "x": 420,
+                "y": 355,
                 "scale_factor": 1.0
             }
         }

@@ -75,8 +75,8 @@ class WeatherForecastPage(StandalonePageOverlay):
                 self.session_uid = incoming_session_uid
 
             # Skip if data hasn't changed
-            if forecast_data_flat == self._last_processed_samples:
-                return
+            # if forecast_data_flat == self._last_processed_samples:
+            #     return
 
             self._display_weather_data(forecast_data_flat)
 
@@ -96,7 +96,7 @@ class WeatherForecastPage(StandalonePageOverlay):
 
     @final
     def on_page_activated(self):
-        self.set_page_property("graphBasedUI", self.graph_based_ui)
+        self.set_qml_property("graphBasedUI", self.graph_based_ui)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
@@ -163,7 +163,7 @@ class WeatherForecastPage(StandalonePageOverlay):
 
         session_title, session_forecast = self._get_session_info(forecast_data_flat)
 
-        self.set_page_property("forecastData", session_forecast[: self.MAX_SAMPLES])
-        self.set_page_property("sessionTitle", session_title or "")
+        self.set_qml_property("forecastData", session_forecast[: self.MAX_SAMPLES])
+        self.set_qml_property("sessionTitle", session_title or "")
 
         self._last_processed_samples = forecast_data_flat

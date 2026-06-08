@@ -251,4 +251,4 @@ class PaceCompPage(StandalonePageOverlay):
 
     def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
         """Push row data to QML."""
-        self.set_page_property("rows", rows)
+        self.set_qml_property("rows", rows)

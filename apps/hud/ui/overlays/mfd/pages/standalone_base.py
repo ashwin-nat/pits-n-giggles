@@ -24,6 +24,7 @@
 
 import logging
 from pathlib import Path
+from typing import final
 
 from PySide6.QtCore import QObject, QUrl
 
@@ -53,8 +54,8 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         scale_factor: float,
         windowed_overlay: bool,
     ):
+        self._is_standalone: bool = True
         MfdPageBase.__init__(self, overlay=None, logger=logger)
-        self.setup_overlay()
         BaseOverlayQML.__init__(
             self,
             config=config,
@@ -65,6 +66,15 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
             windowed_overlay=windowed_overlay,
             refresh_interval_ms=None,
         )
+        self.setup_overlay()
+
+    def on_page_event(self, event_type: str, requires_page_item: bool = True):
+        """In standalone mode, register directly via on_event (overlay infra).
+        In MFD-hosted mode, delegate to MfdPageBase (page-item guard, _handlers dict).
+        """
+        if self._is_standalone:
+            return self.on_event(event_type, requires_root=requires_page_item)
+        return MfdPageBase.on_page_event(self, event_type, requires_page_item)
 
     def post_setup(self):
         self.root.setProperty("pageSource", QUrl.fromLocalFile(str(self.PAGE_QML_FILE.resolve())))
@@ -73,12 +83,6 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         page_item = loader.property("item")
         assert page_item is not None, f"{self.KEY} | Loader 'pageContent' item is None — page QML failed to load"
         self._on_page_activated(page_item)
-        self._wire_standalone_handlers()
-
-    def _wire_standalone_handlers(self):
-        """Bridge page handlers into the overlay event system so broadcast events reach this page."""
-        for event_type, handler in self._handlers.items():
-            self.on_event(event_type)(lambda data, _h=handler: _h(data))
 
     @classmethod
     def _create_mfd_object(cls, overlay, logger: logging.Logger):
@@ -89,7 +93,8 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         create_for_mfd before _configure and setup_overlay.
         """
         obj = BaseOverlayQML.__new__(cls)
-        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)  # pylint: disable=unnecessary-dunder-call
+        obj._is_standalone = False
+        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)
         return obj
 
     def _configure(self) -> None:
@@ -111,6 +116,11 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         obj._configure(**kwargs)
         obj.setup_overlay()
         return obj
+
+    @final
+    def set_qml_property(self, name: str, value) -> None:
+        """Always targets the page item — the Loader's item in standalone, the activated item in MFD."""
+        MfdPageBase.set_qml_property(self, name, value)
 
     def render_frame(self):
         pass  # telemetry-driven; no fixed-rate rendering needed

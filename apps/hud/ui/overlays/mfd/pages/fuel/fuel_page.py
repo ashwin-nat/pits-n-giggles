@@ -65,38 +65,38 @@ class FuelInfoPage(StandalonePageOverlay):
             session_type = data["event-type"]
             fuel = ref_row["fuel-info"]
 
-            self.set_page_property("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
+            self.set_qml_property("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
 
             if is_race_type_session(session_type):
-                self.set_page_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
-                self.set_page_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
-                self.set_page_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
+                self.set_qml_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
+                self.set_qml_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
+                self.set_qml_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
                 if self.fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
                     surplus = fuel.get("surplus-laps-png")
                 else:
                     surplus = fuel.get("surplus-laps-game")
             else:
-                self.set_page_property("currValue", "---")
-                self.set_page_property("tgtAvgValue", "---")
-                self.set_page_property("tgtNextValue", "---")
+                self.set_qml_property("currValue", "---")
+                self.set_qml_property("tgtAvgValue", "---")
+                self.set_qml_property("tgtNextValue", "---")
                 surplus = fuel.get("surplus-laps-game")
 
             if surplus is not None:
-                self.set_page_property(
+                self.set_qml_property(
                     "surplusText",
                     f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps"
                 )
-                self.set_page_property("surplusValue", surplus)
-                self.set_page_property("surplusValid", True)
+                self.set_qml_property("surplusValue", surplus)
+                self.set_qml_property("surplusValid", True)
             else:
-                self.set_page_property("surplusText", "Surplus: ---")
-                self.set_page_property("surplusValid", False)
+                self.set_qml_property("surplusText", "Surplus: ---")
+                self.set_qml_property("surplusValid", False)
 
     def _fmt(self, value):
         return f"{value:.3f}" if value is not None else "---"
 
     def _set_all_dim(self) -> None:
         for prop in ("currValue", "lastValue", "tgtAvgValue", "tgtNextValue"):
-            self.set_page_property(prop, "---")
-        self.set_page_property("surplusText", "Surplus: ---")
-        self.set_page_property("surplusValid", False)
+            self.set_qml_property(prop, "---")
+        self.set_qml_property("surplusText", "Surplus: ---")
+        self.set_qml_property("surplusValid", False)

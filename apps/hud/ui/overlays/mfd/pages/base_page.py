@@ -111,7 +111,7 @@ class MfdPageBase:
         self._stats.track_event("__EVENTS__", "__TOTAL__")
         self._stats.track_event("__EVENTS__", event_type)
 
-    def set_page_property(self, name: str, value) -> None:
+    def set_qml_property(self, name: str, value) -> None:
         """Set a property on the active page QML item with diff-based caching.
 
         Silently does nothing when the page is not active or the value is

@@ -138,7 +138,7 @@ class LapTimesPage(StandalonePageOverlay):
                     {'text': '---', 'color': '#808080'}
                 ])
 
-            self.set_page_property("rows", all_rows)
+            self.set_qml_property("rows", all_rows)
 
             # Update the cache
             self._last_processed_data = lap_time_history

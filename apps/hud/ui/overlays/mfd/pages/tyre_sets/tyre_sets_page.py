@@ -57,8 +57,8 @@ class TyreSetsPage(StandalonePageOverlay):
             best_sets = self._prepare_best_sets(tyre_set_data)
             compound_mappings = self._prepare_compound_mappings(tyre_set_data)
 
-            self.set_page_property("bestSets", best_sets)
-            self.set_page_property("compoundMappings", compound_mappings)
+            self.set_qml_property("bestSets", best_sets)
+            self.set_qml_property("compoundMappings", compound_mappings)
 
     def _prepare_best_sets(self, tyre_set_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Prepare best available set for each compound type.
@@ -146,5 +146,5 @@ class TyreSetsPage(StandalonePageOverlay):
 
     def _show_no_data(self):
         """Show placeholder state when no data available."""
-        self.set_page_property("bestSets", [])
-        self.set_page_property("compoundMappings", [])
+        self.set_qml_property("bestSets", [])
+        self.set_qml_property("compoundMappings", [])

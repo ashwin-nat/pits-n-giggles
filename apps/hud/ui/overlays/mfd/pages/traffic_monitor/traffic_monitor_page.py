@@ -103,16 +103,16 @@ class TrafficMonitorPage(StandalonePageOverlay):
                 return
 
             window = get_traffic_window(sorted_entries, ref_pos, self.NUM_BEHIND)
-            self.set_page_property("tableData", self._build_rows(window, ref_index, circuit_num))
-            self.set_page_property("viewState", "table")
+            self.set_qml_property("tableData", self._build_rows(window, ref_index, circuit_num))
+            self.set_qml_property("viewState", "table")
 
     def _show_empty(self) -> None:
-        self.set_page_property("tableData", [])
-        self.set_page_property("viewState", "empty")
+        self.set_qml_property("tableData", [])
+        self.set_qml_property("viewState", "empty")
 
     def _show_in_garage(self) -> None:
-        self.set_page_property("tableData", [])
-        self.set_page_property("viewState", "inGarage")
+        self.set_qml_property("tableData", [])
+        self.set_qml_property("viewState", "inGarage")
 
     # ------------------------------------------------------------------------------------------------------------------
 
