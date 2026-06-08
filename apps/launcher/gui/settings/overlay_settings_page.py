@@ -22,13 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import sys
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, List, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
                                QScrollArea, QVBoxLayout, QWidget)
 
@@ -36,6 +38,27 @@ from .toggle_switch import ToggleSwitchWidget
 
 if TYPE_CHECKING:
     from .settings import SettingsWindow
+
+# -------------------------------------- HELPERS -----------------------------------------------------------------------
+
+def _resolve_asset_path(relative: str) -> Optional[Path]:
+    base = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else Path.cwd()
+    p = base / relative
+    return p if p.exists() else None
+
+
+def _make_preview_icon_label(preview_image: str, icon_pixmap: QPixmap) -> QLabel:
+    """Return a 20×20 icon label whose hover tooltip shows the preview image."""
+    label = QLabel()
+    label.setFixedSize(20, 20)
+    label.setPixmap(icon_pixmap)
+    label.setCursor(Qt.CursorShape.WhatsThisCursor)
+    label.setStyleSheet("background: transparent; border: none;")
+    abs_path = _resolve_asset_path(preview_image)
+    if abs_path is not None:
+        label.setToolTip(f'<img src="{abs_path.as_uri()}" width="320"/>')
+    return label
+
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -145,6 +168,9 @@ class OverlayRowWidget(QWidget):
         header_layout.setContentsMargins(12, 8, 12, 8)
         header_layout.setSpacing(12)
 
+        en_field_name, en_field_value, en_field_info = enable_field
+        en_field_path = f"{category_name}.{en_field_name}"
+
         name_label = QLabel(group_name)
         name_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
         name_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
@@ -152,9 +178,10 @@ class OverlayRowWidget(QWidget):
         header_layout.addWidget(name_label)
         header_layout.addStretch()
 
-        # Toggle switch wired to the enable field
-        en_field_name, en_field_value, en_field_info = enable_field
-        en_field_path = f"{category_name}.{en_field_name}"
+        preview_path = (en_field_info.json_schema_extra or {}).get("ui", {}).get("preview_image")
+        if preview_path:
+            icon_pixmap = settings_window.icons_dict.get("overlay-preview", QIcon()).pixmap(20, 20)
+            header_layout.addWidget(_make_preview_icon_label(preview_path, icon_pixmap))
 
         toggle = ToggleSwitchWidget(checked=bool(en_field_value))
         toggle.toggled.connect(
