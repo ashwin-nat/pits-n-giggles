@@ -98,6 +98,7 @@ def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
 def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True,
                          group: Optional[str] = None, ext_info: Optional[List[str]] = None,
                          preview_image: str):
+    assert preview_image.endswith(".png"), f"preview_image must be a .png path, got: {preview_image!r}"
     """
     Create an overlay enable field with standard schema extras.
     Only the description varies per leaf.

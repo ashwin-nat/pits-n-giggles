@@ -226,6 +226,13 @@ class SettingsWindow(QDialog):
                 background-color: #0e639c;
             }
 
+            QToolTip {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #555555;
+                padding: 4px;
+            }
+
         """)
 
         main_layout = QVBoxLayout()

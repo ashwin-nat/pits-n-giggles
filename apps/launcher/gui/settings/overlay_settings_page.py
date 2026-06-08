@@ -47,20 +47,59 @@ def _resolve_asset_path(relative: str) -> Optional[Path]:
     return p if p.exists() else None
 
 
-def _make_preview_icon_label(preview_image: str, icon_pixmap: QPixmap) -> QLabel:
-    """Return a 20×20 icon label whose hover tooltip shows the preview image."""
-    label = QLabel()
-    label.setFixedSize(20, 20)
-    label.setPixmap(icon_pixmap)
-    label.setCursor(Qt.CursorShape.WhatsThisCursor)
-    label.setStyleSheet("background: transparent; border: none;")
-    abs_path = _resolve_asset_path(preview_image)
-    if abs_path is not None:
-        label.setToolTip(f'<img src="{abs_path.as_uri()}" width="320"/>')
-    return label
-
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class _PreviewPopup(QWidget):
+    """Frameless popup showing a full-size preview image. Dismisses on any click."""
+
+    def __init__(self, abs_path: Path, invoker: QWidget) -> None:
+        super().__init__(invoker.window(), Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("background-color: #1e1e1e; border: 1px solid #555555;")
+
+        pixmap = QPixmap(str(abs_path))
+        if not pixmap.isNull():
+            screen_geo = invoker.screen().availableGeometry()
+            max_w = int(screen_geo.width() * 0.8)
+            max_h = int(screen_geo.height() * 0.8)
+            if pixmap.width() > max_w or pixmap.height() > max_h:
+                pixmap = pixmap.scaled(max_w, max_h,
+                                       Qt.AspectRatioMode.KeepAspectRatio,
+                                       Qt.TransformationMode.SmoothTransformation)
+            img_label = QLabel(self)
+            img_label.setPixmap(pixmap)
+            layout = QVBoxLayout(self)
+            layout.setContentsMargins(4, 4, 4, 4)
+            layout.addWidget(img_label)
+            self.adjustSize()
+            center = screen_geo.center()
+            self.move(center.x() - self.width() // 2, center.y() - self.height() // 2)
+
+    def mousePressEvent(self, event) -> None:
+        self.close()
+        event.accept()
+
+
+class _PreviewIconLabel(QLabel):
+    """20×20 icon label that opens a full-size preview popup on click."""
+
+    def __init__(self, abs_path: Optional[Path], icon_pixmap: QPixmap) -> None:
+        super().__init__()
+        self._abs_path = abs_path
+        self.setFixedSize(20, 20)
+        self.setPixmap(icon_pixmap)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("background: transparent; border: none;")
+        self.setToolTip("Preview")
+
+    def mousePressEvent(self, event) -> None:
+        if self._abs_path is not None:
+            _PreviewPopup(self._abs_path, self).show()
+        event.accept()
+
+
+def _make_preview_icon_label(preview_image: str, icon_pixmap: QPixmap) -> _PreviewIconLabel:
+    return _PreviewIconLabel(_resolve_asset_path(preview_image), icon_pixmap)
+
 
 _HEADER_STYLE = """
     QFrame {
