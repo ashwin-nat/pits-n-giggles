@@ -232,7 +232,7 @@ class OverlaySettingsPage(QScrollArea):
                 else:
                     config_fields.append((fn, fv, fi))
 
-            if enable_field:
+            if enable_field is not None:
                 header_extra = _make_overlay_header_extra(category_name, enable_field, settings_window)
                 group = HeaderCollapsibleGroup(gname, settings_window.icons_dict,
                                                header_extra=header_extra, parent=self)

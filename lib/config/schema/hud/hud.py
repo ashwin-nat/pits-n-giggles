@@ -382,6 +382,70 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                                              preview_image="assets/overlay-previews/power-unit.png")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
+
+    # ============== MFD PAGES (STANDALONE) ==============
+    show_fuel_info: bool = overlay_enable_field(
+        description="Enable fuel info standalone overlay",
+        group="Fuel Info",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/fuel-info.png",
+    )
+    show_tyre_info: bool = overlay_enable_field(
+        description="Enable tyre info standalone overlay",
+        group="Tyre Info",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/tyre-info.png",
+    )
+    show_lap_times_standalone: bool = overlay_enable_field(
+        description="Enable lap times standalone overlay",
+        group="Lap Times",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/lap-times-standalone.png",
+    )
+    show_weather_standalone: bool = overlay_enable_field(
+        description="Enable weather forecast standalone overlay",
+        group="Weather",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/weather-standalone.png",
+        ext_info=[
+            "Use the MFD interact action (mfd_interaction_udp_action_code) to cycle through "
+            "forecast sessions. If both the MFD weather page and this standalone overlay are "
+            "enabled simultaneously, the interact button cycles both."
+        ],
+    )
+    show_pit_rejoin_standalone: bool = overlay_enable_field(
+        description="Enable pit rejoin prediction standalone overlay",
+        group="Pit Rejoin",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/pit-rejoin-standalone.png",
+    )
+    show_tyre_sets_standalone: bool = overlay_enable_field(
+        description="Enable tyre sets standalone overlay",
+        group="Tyre Sets",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/tyre-sets-standalone.png",
+    )
+    show_pace_comp_standalone: bool = overlay_enable_field(
+        description="Enable pace comparison standalone overlay",
+        group="Pace Comparison",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/pace-comp-standalone.png",
+    )
+    show_traffic_monitor_standalone: bool = overlay_enable_field(
+        description="Enable traffic monitor standalone overlay",
+        group="Traffic Monitor",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/traffic-monitor-standalone.png",
+    )
+
     # ============== AUTO-HIDE IN MENU ==============
     auto_hide_in_menu: bool = Field(
         default=True,
