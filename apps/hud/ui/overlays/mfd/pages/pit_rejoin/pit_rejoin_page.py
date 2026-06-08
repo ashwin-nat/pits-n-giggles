@@ -53,7 +53,7 @@ class PitRejoinPredictionPage(MfdPageBase):
         self.total_rows = (self.num_adjacent_cars * 2) + 1
 
     def _init_event_handlers(self):
-        @self.on_event("race_table_update")
+        @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.
 

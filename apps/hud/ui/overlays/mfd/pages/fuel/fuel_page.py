@@ -48,7 +48,7 @@ class FuelInfoPage(MfdPageBase):
         self._fuel_est_mode = fuel_est_mode
 
     def _init_handlers(self):
-        @self.on_event("race_table_update")
+        @self.on_page_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update fuel information display."""
             ref_row = get_ref_row(data)

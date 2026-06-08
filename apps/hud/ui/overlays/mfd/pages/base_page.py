@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from PySide6.QtQuick import QQuickItem
 
@@ -45,11 +45,8 @@ class MfdPageBase:
     KEY: str = ""
     QML_FILE: Path = ""
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+    def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
         assert self.KEY, "KEY must be set in subclass"
-        assert self.QML_FILE, "Derived classes must define QML_FILE"
-        assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
-        assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
 
         self.overlay = overlay
         self._page_item = None
@@ -58,7 +55,7 @@ class MfdPageBase:
         self._stats = EventCounter()
         self._page_props: dict = {}
 
-    def on_event(self, event_type: str, requires_page_item: bool = True):
+    def on_page_event(self, event_type: str, requires_page_item: bool = True):
         """Decorator to register an event handler for this page.
 
         Args:

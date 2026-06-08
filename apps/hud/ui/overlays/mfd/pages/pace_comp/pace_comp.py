@@ -51,7 +51,7 @@ class PaceCompPage(MfdPageBase):
     # -- Event wiring ----------------------------------------------------------
 
     def _init_event_handlers(self):
-        @self.on_event("race_table_update")
+        @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")
 

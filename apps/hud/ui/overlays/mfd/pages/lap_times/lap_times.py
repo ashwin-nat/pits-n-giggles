@@ -58,7 +58,7 @@ class LapTimesPage(MfdPageBase):
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
-        @self.on_event("stream_overlay_update")
+        @self.on_page_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
             lap_time_history = data.get("lap-time-history", {})
