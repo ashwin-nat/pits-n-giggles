@@ -67,6 +67,7 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
             refresh_interval_ms=None,
         )
         self.setup_overlay()
+        self.on_page_activated()
 
     def on_page_event(self, event_type: str, requires_page_item: bool = True):
         """In standalone mode, register directly via on_event (overlay infra).
@@ -82,7 +83,11 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         assert loader is not None, f"{self.KEY} | standalone QML missing Loader with objectName 'pageContent'"
         page_item = loader.property("item")
         assert page_item is not None, f"{self.KEY} | Loader 'pageContent' item is None — page QML failed to load"
-        self._on_page_activated(page_item)
+        # Wire the page item without firing on_page_activated() yet — setup_overlay()
+        # hasn't run, so subclass state is not initialised. on_page_activated() is
+        # called explicitly in __init__ after setup_overlay() completes.
+        self._page_item = page_item
+        self._page_props.clear()
 
     @classmethod
     def _create_mfd_object(cls, overlay, logger: logging.Logger):
