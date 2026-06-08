@@ -55,7 +55,8 @@ class MfdTyreWearRateType(str, Enum):
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
-        "visible" : True,
+        "visible": True,
+        "page_type": "overlay",
     }
 
     enabled: bool = Field(
@@ -131,8 +132,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     timing_tower_max_rows: int = Field(
         default=5,
         ge=1,
-        le=22,
-        description="Max number of rows to show in timing tower (must be odd number or 22 for all cars)",
+        le=24,
+        description="Max timing tower rows (odd number, or 24 for all cars)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
@@ -154,23 +155,29 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     timing_tower_relative_best_last_lap: bool = Field(
         default=False,
-        description="Show best/last lap times relative to the player or selected reference driver",
+        description="Relative best and last lap times",
         json_schema_extra={
             "ui": {
                 "type": "check_box",
                 "visible": True,
                 "group": "Timing Tower",
+                "ext_info": [
+                    "Show best/last lap times relative to the player or selected reference driver"
+                ]
             }
         }
     )
     timing_tower_combined_tl_pens: bool = Field(
         default=False,
-        description="Show track limit warnings and penalties combined in the penalties column",
+        description="Combine track limit & penalties",
         json_schema_extra={
             "ui": {
                 "type": "check_box",
                 "visible": True,
                 "group": "Timing Tower",
+                "ext_info": [
+                    "Combine track limit and penalties into a single column, showing the sum of both values."
+                ]
             }
         }
     )
@@ -461,8 +468,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     @property
     def timing_tower_num_adjacent_cars(self) -> int:
         # Max rows already validated to be odd
-        if self.timing_tower_max_rows == 22:
-            return 11
+        if self.timing_tower_max_rows == 24:
+            return 12
         return (self.timing_tower_max_rows - 1) // 2
 
     @property
