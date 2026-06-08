@@ -22,37 +22,29 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, final
 
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
 from lib.f1_types import F1Utils
 
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
-
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PitRejoinPredictionPage(MfdPageBase):
+class PitRejoinPredictionPage(StandalonePageOverlay):
     """Pit rejoin position prediction page."""
     KEY = MfdPageId.PIT_REJOIN
     PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
+    @final
+    def setup_overlay(self):
         self.num_adjacent_cars = 2
-        self.total_rows = (self.num_adjacent_cars * 2) + 1
 
-    def _init_event_handlers(self):
         @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.

@@ -23,6 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
+from pathlib import Path
+
+from PySide6.QtCore import QObject, QUrl
 
 from apps.hud.ui.overlays.base import BaseOverlayQML
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
@@ -31,6 +34,7 @@ from lib.config import OverlayPosition
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
+    QML_FILE: Path = Path(__file__).parent / "standalone_wrapper.qml"
     """Base for MFD pages that can also run as standalone always-on-top overlay windows.
 
     MRO: StandalonePageOverlay → BaseOverlayQML → BaseOverlay → QObject → MfdPageBase
@@ -48,12 +52,9 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
-        **page_kwargs,
     ):
-        for k, v in page_kwargs.items():
-            setattr(self, k, v)
-        MfdPageBase.__init__(self, overlay=None, logger=logger)  # pylint: disable=unnecessary-dunder-call
-        self._init_event_handlers()
+        MfdPageBase.__init__(self, overlay=None, logger=logger)
+        self.setup_overlay()
         BaseOverlayQML.__init__(
             self,
             config=config,
@@ -66,7 +67,12 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         )
 
     def post_setup(self):
-        self._on_page_activated(self.root)
+        self.root.setProperty("pageSource", QUrl.fromLocalFile(str(self.PAGE_QML_FILE.resolve())))
+        loader = self.root.findChild(QObject, "pageContent")
+        assert loader is not None, f"{self.KEY} | standalone QML missing Loader with objectName 'pageContent'"
+        page_item = loader.property("item")
+        assert page_item is not None, f"{self.KEY} | Loader 'pageContent' item is None — page QML failed to load"
+        self._on_page_activated(page_item)
         self._wire_standalone_handlers()
 
     def _wire_standalone_handlers(self):
@@ -75,19 +81,35 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
             self.on_event(event_type)(lambda data, _h=handler: _h(data))
 
     @classmethod
-    def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> MfdPageBase:
-        """Create a page instance for MFD-hosted use without opening a Qt window.
+    def _create_mfd_object(cls, overlay, logger: logging.Logger):
+        """Allocate and initialise only the MfdPageBase half of this object.
 
-        Uses __new__ + explicit MfdPageBase.__init__ to allocate the object and
-        initialise only the page half of the class, deliberately bypassing
-        StandalonePageOverlay.__init__ (which would call BaseOverlayQML.__init__
-        and open a Qt window).
+        Uses __new__ + explicit MfdPageBase.__init__ to skip StandalonePageOverlay.__init__,
+        which would call BaseOverlayQML.__init__ and open a Qt window. Called by
+        create_for_mfd before _configure and setup_overlay.
         """
         obj = MfdPageBase.__new__(cls)
-        for k, v in kwargs.items():
-            setattr(obj, k, v)
-        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)  # pylint: disable=unnecessary-dunder-call
-        obj._init_event_handlers()
+        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)
+        return obj
+
+    def _configure(self) -> None:
+        """Set page-specific config fields before _setup_page is called.
+
+        Override in subclasses that require config kwargs (e.g. fuel_est_mode).
+        Those subclasses also add the matching typed params to their _configure signature.
+        Base implementation is a no-op for pages with no config kwargs.
+        """
+
+    @classmethod
+    def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> MfdPageBase:
+        """Create an MFD-hosted instance.
+
+        kwargs are forwarded verbatim to _configure so subclasses receive their
+        typed config values without needing to override this classmethod.
+        """
+        obj = cls._create_mfd_object(overlay, logger)
+        obj._configure(**kwargs)
+        obj.setup_overlay()
         return obj
 
     def render_frame(self):

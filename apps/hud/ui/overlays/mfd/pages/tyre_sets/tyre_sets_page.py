@@ -22,19 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, final
 
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TyreSetsPage(MfdPageBase):
+class TyreSetsPage(StandalonePageOverlay):
 
     KEY = MfdPageId.TYRE_SETS
     PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
@@ -42,11 +39,8 @@ class TyreSetsPage(MfdPageBase):
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
-    def _init_event_handlers(self):
+    @final
+    def setup_overlay(self):
         @self.on_page_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             tyre_sets_info = data.get("tyre-sets")

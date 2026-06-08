@@ -22,19 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
+from typing import Any, Dict, List, Optional, Tuple, final
 
 from apps.hud.common import get_ers_mode_color, get_ref_row_index
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
 from lib.track_segment_info import TrackSegmentsDatabase
 
 from .utils import get_traffic_window, resolve_location, sort_by_rel_distance
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -42,23 +39,21 @@ _DRIVER_STATUS_IN_GARAGE = "IN_GARAGE"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TrafficMonitorPage(MfdPageBase):
+class TrafficMonitorPage(StandalonePageOverlay):
     """Traffic Monitor MFD Page — nearest 5 cars behind sorted by lap distance."""
     KEY = MfdPageId.TRAFFIC_MONITOR
     PAGE_QML_FILE: Path = Path(__file__).parent / "traffic_monitor_page.qml"
 
     NUM_BEHIND = 5
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
     @final
     def on_page_activated(self):
         pass
 
-    def _init_event_handlers(self):
+    @final
+    def setup_overlay(self):
+        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
+
         @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             table_entries: Optional[List] = data.get("table-entries")

@@ -22,19 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, final
+from typing import Any, Dict, List, final
 
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class LapTimesPage(MfdPageBase):
+class LapTimesPage(StandalonePageOverlay):
     """Lap Times MFD Page."""
     KEY = MfdPageId.LAP_TIMES
     PAGE_QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
@@ -46,18 +43,15 @@ class LapTimesPage(MfdPageBase):
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        self._last_processed_data: List[Dict[str, Any]] = []
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
     @final
     def on_page_activated(self):
         # Invalidate the cache
         self._last_processed_data = []
 
-    def _init_event_handlers(self):
-        """Initialize event handlers."""
+    @final
+    def setup_overlay(self):
+        self._last_processed_data: List[Dict[str, Any]] = []
+
         @self.on_page_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""

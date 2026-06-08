@@ -22,35 +22,30 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, final
 
-from apps.hud.common import get_ref_row, get_relevant_race_table_rows, is_race_type_session, is_tt_session
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
+                             is_race_type_session, is_tt_session)
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
 from lib.f1_types import F1Utils
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 
-class PaceCompPage(MfdPageBase):
+class PaceCompPage(StandalonePageOverlay):
     """Pace Comparison MFD Page."""
     KEY = MfdPageId.PACE_COMP
     PAGE_QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
 
     NUM_ADJ_CARS = 2
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
     # -- Event wiring ----------------------------------------------------------
 
-    def _init_event_handlers(self):
+    @final
+    def setup_overlay(self):
         @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")

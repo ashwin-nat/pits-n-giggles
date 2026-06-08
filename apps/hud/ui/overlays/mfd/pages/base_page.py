@@ -61,6 +61,10 @@ class MfdPageBase:
         self._stats = EventCounter()
         self._page_props: dict = {}
 
+    def setup_overlay(self) -> None:
+        """Initialise page state and register event handlers. Must be overridden in subclasses."""
+        raise NotImplementedError
+
     def on_page_event(self, event_type: str, requires_page_item: bool = True):
         """Decorator to register an event handler for this page.
 

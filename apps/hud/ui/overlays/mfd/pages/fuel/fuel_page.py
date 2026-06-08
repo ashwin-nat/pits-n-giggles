@@ -22,32 +22,33 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row, is_race_type_session
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId, OverlaysFuelEstimationMode
 from lib.f1_types import F1Utils
 
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class FuelInfoPage(MfdPageBase):
+class FuelInfoPage(StandalonePageOverlay):
     KEY = MfdPageId.FUEL_INFO
     PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
+    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+                 fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
 
-    def _init_event_handlers(self):
+    def _configure(self, fuel_est_mode: OverlaysFuelEstimationMode) -> None:  # pylint: disable=arguments-differ
+        self.fuel_est_mode = fuel_est_mode
+
+    @final
+    def setup_overlay(self):
 
         @self.on_page_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:

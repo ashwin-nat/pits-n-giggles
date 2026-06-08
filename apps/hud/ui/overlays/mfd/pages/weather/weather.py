@@ -22,18 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
+from typing import Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtCore import QTimer
 
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
 from lib.config import MfdPageId
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -42,24 +39,27 @@ class SessionGroup:
     session_type: str
     items: List[Dict[str, Any]] = field(default_factory=list)
 
-class WeatherForecastPage(MfdPageBase):
+class WeatherForecastPage(StandalonePageOverlay):
 
     KEY = MfdPageId.WEATHER_FORECAST
     PAGE_QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, graph_based_ui: bool):
+    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+                 graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+
+    def _configure(self, graph_based_ui: bool) -> None:  # pylint: disable=arguments-differ
+        self.graph_based_ui = graph_based_ui
+
+    @final
+    def setup_overlay(self):
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
-    def _init_event_handlers(self):
-        """Initialize event handlers."""
 
         @self.on_page_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
