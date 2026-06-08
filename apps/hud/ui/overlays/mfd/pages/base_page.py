@@ -45,6 +45,11 @@ class MfdPageBase:
     KEY: str = ""
     PAGE_QML_FILE: Path = ""
 
+    @classmethod
+    def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> "MfdPageBase":
+        """Create a page instance for MFD-hosted use. Override in StandalonePageOverlay."""
+        return cls(overlay, logger, **kwargs)
+
     def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
         assert self.KEY, "KEY must be set in subclass"
         assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"

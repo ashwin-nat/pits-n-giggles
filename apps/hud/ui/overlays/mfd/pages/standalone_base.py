@@ -76,7 +76,13 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
 
     @classmethod
     def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> MfdPageBase:
-        """Create a page instance for MFD-hosted use without opening a Qt window."""
+        """Create a page instance for MFD-hosted use without opening a Qt window.
+
+        Uses __new__ + explicit MfdPageBase.__init__ to allocate the object and
+        initialise only the page half of the class, deliberately bypassing
+        StandalonePageOverlay.__init__ (which would call BaseOverlayQML.__init__
+        and open a Qt window).
+        """
         obj = MfdPageBase.__new__(cls)
         for k, v in kwargs.items():
             setattr(obj, k, v)
