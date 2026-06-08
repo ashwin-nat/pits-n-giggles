@@ -179,7 +179,7 @@ class MfdOverlay(BaseOverlayQML):
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error("%s | Failed to apply current page: %s", self.OVERLAY_ID, e)
             return
-        qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
+        qml_url = QUrl.fromLocalFile(str(page.PAGE_QML_FILE.resolve()))
 
         is_collapsed = (page.KEY == CollapsedPage.KEY)
 

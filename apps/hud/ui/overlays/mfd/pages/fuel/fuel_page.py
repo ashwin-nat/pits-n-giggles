@@ -38,16 +38,17 @@ if TYPE_CHECKING:
 
 class FuelInfoPage(MfdPageBase):
     KEY = MfdPageId.FUEL_INFO
-    QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
-        super().__init__(overlay, logger)
-        self._init_handlers()
         self._fuel_est_mode = fuel_est_mode
+        super().__init__(overlay, logger)
+        self._init_event_handlers()
 
-    def _init_handlers(self):
+    def _init_event_handlers(self):
+
         @self.on_page_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update fuel information display."""

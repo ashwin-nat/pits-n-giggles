@@ -31,7 +31,7 @@ from lib.config import MfdPageId
 
 class CollapsedPage(MfdPageBase):
     KEY = MfdPageId.COLLAPSED
-    QML_FILE: Path = Path(__file__).parent / "collapsed_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "collapsed_page.qml"
 
     def __init__(self, root, logger):
         super().__init__(root, logger)

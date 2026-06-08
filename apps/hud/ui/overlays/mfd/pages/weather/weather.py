@@ -45,21 +45,22 @@ class SessionGroup:
 class WeatherForecastPage(MfdPageBase):
 
     KEY = MfdPageId.WEATHER_FORECAST
-    QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, graph_based_ui: bool):
+        self.graph_based_ui = graph_based_ui
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
-        self.graph_based_ui: bool = graph_based_ui
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
     def _init_event_handlers(self):
         """Initialize event handlers."""
+
         @self.on_page_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
             forecast_data_flat = data.get("weather-forecast-samples", [])

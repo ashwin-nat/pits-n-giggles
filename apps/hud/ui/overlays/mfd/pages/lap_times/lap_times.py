@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 class LapTimesPage(MfdPageBase):
     """Lap Times MFD Page."""
     KEY = MfdPageId.LAP_TIMES
-    QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
 
     NUM_ROWS = 5
 

@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 class TyreSetsPage(MfdPageBase):
 
     KEY = MfdPageId.TYRE_SETS
-    QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
 
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]

@@ -45,7 +45,7 @@ _DRIVER_STATUS_IN_GARAGE = "IN_GARAGE"
 class TrafficMonitorPage(MfdPageBase):
     """Traffic Monitor MFD Page — nearest 5 cars behind sorted by lap distance."""
     KEY = MfdPageId.TRAFFIC_MONITOR
-    QML_FILE: Path = Path(__file__).parent / "traffic_monitor_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "traffic_monitor_page.qml"
 
     NUM_BEHIND = 5
 

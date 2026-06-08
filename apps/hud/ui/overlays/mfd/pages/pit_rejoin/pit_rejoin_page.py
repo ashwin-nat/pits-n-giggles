@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 class PitRejoinPredictionPage(MfdPageBase):
     """Pit rejoin position prediction page."""
     KEY = MfdPageId.PIT_REJOIN
-    QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
         super().__init__(overlay, logger)

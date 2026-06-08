@@ -43,10 +43,11 @@ _UNSET = object()  # sentinel for absent page-property cache entries
 
 class MfdPageBase:
     KEY: str = ""
-    QML_FILE: Path = ""
+    PAGE_QML_FILE: Path = ""
 
     def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
         assert self.KEY, "KEY must be set in subclass"
+        assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"
 
         self.overlay = overlay
         self._page_item = None

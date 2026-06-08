@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 class PaceCompPage(MfdPageBase):
     """Pace Comparison MFD Page."""
     KEY = MfdPageId.PACE_COMP
-    QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
 
     NUM_ADJ_CARS = 2
 

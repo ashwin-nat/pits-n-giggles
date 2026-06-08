@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 class TyreInfoPage(MfdPageBase):
 
     KEY = MfdPageId.TYRE_INFO
-    QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
 
@@ -62,6 +62,7 @@ class TyreInfoPage(MfdPageBase):
 
     def _init_event_handlers(self):
         """Initialise event handlers."""
+
         @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
