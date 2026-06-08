@@ -88,8 +88,8 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         which would call BaseOverlayQML.__init__ and open a Qt window. Called by
         create_for_mfd before _configure and setup_overlay.
         """
-        obj = MfdPageBase.__new__(cls)
-        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)
+        obj = BaseOverlayQML.__new__(cls)
+        MfdPageBase.__init__(obj, overlay=overlay, logger=logger)  # pylint: disable=unnecessary-dunder-call
         return obj
 
     def _configure(self) -> None:
