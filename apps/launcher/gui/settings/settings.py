@@ -41,8 +41,10 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
 from lib.config import PngSettings
 
 from .collapsible_group import CollapsibleGroup
+from .overlay_settings_page import OverlaySettingsPage
 from .reorderable_collection import ReorderableCollection
 from .searchable_widget import SearchableWidget
+from .toggle_switch import ToggleSwitchWidget
 
 if TYPE_CHECKING:
     from ..main_window import PngLauncherWindow
@@ -224,6 +226,13 @@ class SettingsWindow(QDialog):
                 background-color: #0e639c;
             }
 
+            QToolTip {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                border: 1px solid #555555;
+                padding: 4px;
+            }
+
         """)
 
         main_layout = QVBoxLayout()
@@ -357,6 +366,9 @@ class SettingsWindow(QDialog):
     def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
         """Build content for a settings category, grouping fields that carry a 'group' UI key
         into collapsible sections. Fields without a group are rendered at the top level as before."""
+        if getattr(type(category_model), 'ui_meta', {}).get("page_type") == "overlay":
+            return OverlaySettingsPage(category_name, category_model, self)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -1022,25 +1034,22 @@ class SettingsWindow(QDialog):
 
         layout = QHBoxLayout()
         layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
 
-        # Enabled checkbox
+        # Toggle switch (no text — label follows the buttons)
         item_path = f"{parent_path}.{item_name}"
         enabled_path = f"{item_path}.{collection_meta.enabled_field}"
-        enabled_cb = QCheckBox(collection_meta.get_label(item_name, item_settings))
-        enabled_cb.setFont(QFont("Exo 2", 10))
-        enabled_cb.setChecked(collection_meta.get_enabled(item_settings))
-        enabled_cb.stateChanged.connect(
-            lambda state, path=enabled_path: self._on_field_changed(path, state == Qt.CheckState.Checked.value)
+        enabled_cb = ToggleSwitchWidget(checked=collection_meta.get_enabled(item_settings))
+        enabled_cb.toggled.connect(
+            lambda checked, path=enabled_path: self._on_field_changed(path, checked)
         )
         self.field_widgets[enabled_path] = enabled_cb
         layout.addWidget(enabled_cb)
 
-        layout.addStretch()
-
-        # Up/Down buttons
+        # Up/Down buttons immediately after the checkbox
         up_btn = QPushButton()
         up_btn.setIcon(self.icons_dict['arrow-up'])
-        up_btn.setFixedSize(32, 28)
+        up_btn.setFixedSize(28, 24)
         up_btn.clicked.connect(
             lambda: self._move_item_up(item_name, items_dict, items_container, collection_meta)
         )
@@ -1048,11 +1057,19 @@ class SettingsWindow(QDialog):
 
         down_btn = QPushButton()
         down_btn.setIcon(self.icons_dict['arrow-down'])
-        down_btn.setFixedSize(32, 28)
+        down_btn.setFixedSize(28, 24)
         down_btn.clicked.connect(
             lambda: self._move_item_down(item_name, items_dict, items_container, collection_meta)
         )
         layout.addWidget(down_btn)
+
+        # Label to the right of the controls
+        item_label = QLabel(collection_meta.get_label(item_name, item_settings))
+        item_label.setFont(QFont("Exo 2", 10))
+        item_label.setStyleSheet("background-color: transparent;")
+        layout.addWidget(item_label)
+
+        layout.addStretch()
 
         row_widget.setLayout(layout)
         return row_widget
@@ -1440,7 +1457,10 @@ class SettingsWindow(QDialog):
             try:
                 value = self._get_nested_value(self.working_settings, field_path)
 
-                if isinstance(widget, QCheckBox):
+                if isinstance(widget, ToggleSwitchWidget):
+                    widget.setChecked(bool(value))
+
+                elif isinstance(widget, QCheckBox):
                     widget.setChecked(value)
 
                 elif isinstance(widget, QButtonGroup):
