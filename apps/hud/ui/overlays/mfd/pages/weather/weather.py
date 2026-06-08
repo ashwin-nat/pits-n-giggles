@@ -74,10 +74,6 @@ class WeatherForecastPage(StandalonePageOverlay):
                 self._clear()
                 self.session_uid = incoming_session_uid
 
-            # Skip if data hasn't changed
-            # if forecast_data_flat == self._last_processed_samples:
-            #     return
-
             self._display_weather_data(forecast_data_flat)
 
         @self.on_page_event("mfd_interact")

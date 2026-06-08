@@ -120,14 +120,16 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=600,
         y=120,
     ),
-    OverlayId.FUEL_INFO:       OverlayPosition(x=420, y=355),
-    OverlayId.TYRE_INFO:       OverlayPosition(x=420, y=355),
-    OverlayId.LAP_TIMES:       OverlayPosition(x=420, y=355),
-    OverlayId.WEATHER:         OverlayPosition(x=420, y=355),
-    OverlayId.PIT_REJOIN:      OverlayPosition(x=420, y=355),
-    OverlayId.TYRE_SETS:       OverlayPosition(x=420, y=355),
-    OverlayId.PACE_COMP:       OverlayPosition(x=420, y=355),
-    OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=420, y=355),
+    # Standalone MFD pages — spread in two rows of 4 (each 400×220 at scale=1,
+    # assuming 1920×1080; top row y=10, bottom row y=840).
+    OverlayId.FUEL_INFO:       OverlayPosition(x=10,   y=10),
+    OverlayId.TYRE_INFO:       OverlayPosition(x=420,  y=10),
+    OverlayId.LAP_TIMES:       OverlayPosition(x=830,  y=10),
+    OverlayId.WEATHER:         OverlayPosition(x=1240, y=10),
+    OverlayId.PIT_REJOIN:      OverlayPosition(x=10,   y=840),
+    OverlayId.TYRE_SETS:       OverlayPosition(x=420,  y=840),
+    OverlayId.PACE_COMP:       OverlayPosition(x=830,  y=840),
+    OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=1240, y=840),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------
