@@ -29,7 +29,7 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              is_race_type_session, is_tt_session)
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlayId
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -37,6 +37,7 @@ from lib.f1_types import F1Utils
 
 class PaceCompPage(StandalonePageOverlay):
     """Pace Comparison MFD Page."""
+    OVERLAY_ID = OverlayId.PACE_COMP
     KEY = MfdPageId.PACE_COMP
     PAGE_QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
 

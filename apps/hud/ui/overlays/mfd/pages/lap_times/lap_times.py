@@ -27,12 +27,13 @@ from typing import Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class LapTimesPage(StandalonePageOverlay):
     """Lap Times MFD Page."""
+    OVERLAY_ID = OverlayId.LAP_TIMES
     KEY = MfdPageId.LAP_TIMES
     PAGE_QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
 

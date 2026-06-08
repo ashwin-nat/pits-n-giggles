@@ -33,15 +33,23 @@ from ..diff import ConfigDiffMixin
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
 class OverlayId(str, Enum):
-    LAP_TIMER       = "lap_timer"
-    TIMING_TOWER    = "timing_tower"
-    MFD             = "mfd"
-    TRACK_MAP       = "track_map"
-    INPUT_TELEMETRY = "input_telemetry"
-    TRACK_RADAR     = "track_radar"
-    HUD             = "hud_overlay"
-    CIRCUIT_INFO    = "circuit_info"
-    PU              = "pu"
+    LAP_TIMER        = "lap_timer"
+    TIMING_TOWER     = "timing_tower"
+    MFD              = "mfd"
+    TRACK_MAP        = "track_map"
+    INPUT_TELEMETRY  = "input_telemetry"
+    TRACK_RADAR      = "track_radar"
+    HUD              = "hud_overlay"
+    CIRCUIT_INFO     = "circuit_info"
+    PU               = "pu"
+    FUEL_INFO        = "fuel_info"
+    TYRE_INFO        = "tyre_info"
+    LAP_TIMES        = "lap_times_standalone"
+    WEATHER          = "weather_standalone"
+    PIT_REJOIN       = "pit_rejoin_standalone"
+    TYRE_SETS        = "tyre_sets_standalone"
+    PACE_COMP        = "pace_comp_standalone"
+    TRAFFIC_MONITOR  = "traffic_monitor_standalone"
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
@@ -112,6 +120,14 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=600,
         y=120,
     ),
+    OverlayId.FUEL_INFO:       OverlayPosition(x=420, y=355),
+    OverlayId.TYRE_INFO:       OverlayPosition(x=420, y=355),
+    OverlayId.LAP_TIMES:       OverlayPosition(x=420, y=355),
+    OverlayId.WEATHER:         OverlayPosition(x=420, y=355),
+    OverlayId.PIT_REJOIN:      OverlayPosition(x=420, y=355),
+    OverlayId.TYRE_SETS:       OverlayPosition(x=420, y=355),
+    OverlayId.PACE_COMP:       OverlayPosition(x=420, y=355),
+    OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=420, y=355),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------

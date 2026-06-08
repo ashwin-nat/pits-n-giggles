@@ -30,7 +30,7 @@ from PySide6.QtCore import QTimer
 
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -41,6 +41,7 @@ class SessionGroup:
 
 class WeatherForecastPage(StandalonePageOverlay):
 
+    OVERLAY_ID = OverlayId.WEATHER
     KEY = MfdPageId.WEATHER_FORECAST
     PAGE_QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 

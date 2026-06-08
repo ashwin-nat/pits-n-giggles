@@ -31,13 +31,14 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlayId
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PitRejoinPredictionPage(StandalonePageOverlay):
     """Pit rejoin position prediction page."""
+    OVERLAY_ID = OverlayId.PIT_REJOIN
     KEY = MfdPageId.PIT_REJOIN
     PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 

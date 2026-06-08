@@ -28,12 +28,13 @@ from typing import Any, Dict, final
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId, OverlaysFuelEstimationMode
+from lib.config import MfdPageId, OverlayId, OverlaysFuelEstimationMode
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class FuelInfoPage(StandalonePageOverlay):
+    OVERLAY_ID = OverlayId.FUEL_INFO
     KEY = MfdPageId.FUEL_INFO
     PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 

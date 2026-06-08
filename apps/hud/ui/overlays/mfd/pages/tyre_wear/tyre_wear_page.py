@@ -28,12 +28,13 @@ from typing import Any, Dict, List, Optional, final
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId, MfdTyreWearRateType
+from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TyreInfoPage(StandalonePageOverlay):
 
+    OVERLAY_ID = OverlayId.TYRE_INFO
     KEY = MfdPageId.TYRE_INFO
     PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 

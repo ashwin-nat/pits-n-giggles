@@ -27,12 +27,13 @@ from typing import Any, Dict, List, Optional, final
 
 from apps.hud.ui.overlays.mfd.pages.standalone_base import \
     StandalonePageOverlay
-from lib.config import MfdPageId
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TyreSetsPage(StandalonePageOverlay):
 
+    OVERLAY_ID = OverlayId.TYRE_SETS
     KEY = MfdPageId.TYRE_SETS
     PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
 
