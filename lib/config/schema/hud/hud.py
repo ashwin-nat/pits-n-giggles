@@ -55,17 +55,19 @@ class MfdTyreWearRateType(str, Enum):
 
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
-        "visible" : True,
+        "visible": True,
+        "page_type": "overlay",
     }
 
     enabled: bool = Field(
         default=True,
-        description="Enable Overlays (only on Windows, setting will be ignored on other OS's)",
+        description="Enable Overlays",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
                 "visible": True,
                 "ext_info": [
+                    "only on Windows, setting will be ignored on other OS's",
                     'Recommended to also configure "Toggle all overlays UDP action code"'
                 ]
             }
@@ -74,11 +76,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field("Toggle all overlays UDP action code")
     use_windowed_overlays: bool = Field(
         default=False,
-        description="Use Windowed Overlays (Required for OBS window capture)",
+        description="Use Windowed Overlays",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
                 "visible": True,
+                "ext_info": [
+                    "Required for OBS window capture"
+                ]
             }
         }
     )
@@ -111,7 +116,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== LAP TIMER OVERLAY ==============
-    show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer")
+    show_lap_timer: bool = overlay_enable_field(description="Enable lap timer overlay", group="Lap Timer",
+                                               preview_image="assets/overlay-previews/lap-timer.png")
     lap_timer_minimal: bool = Field(
         default=False,
         description="Use minimal lap timer overlay (shows only the current lap time)",
@@ -127,12 +133,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                                                                         group="Lap Timer")
 
     # ============== TIMING TOWER OVERLAY ==============
-    show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay", group="Timing Tower")
+    show_timing_tower: bool = overlay_enable_field(description="Enable timing tower overlay", group="Timing Tower",
+                                                   preview_image="assets/overlay-previews/timing-tower.png")
     timing_tower_max_rows: int = Field(
         default=5,
         ge=1,
-        le=22,
-        description="Max number of rows to show in timing tower (must be odd number or 22 for all cars)",
+        le=24,
+        description="Max timing tower rows (odd number, or 24 for all cars)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
@@ -154,23 +161,29 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     timing_tower_relative_best_last_lap: bool = Field(
         default=False,
-        description="Show best/last lap times relative to the player or selected reference driver",
+        description="Relative best and last lap times",
         json_schema_extra={
             "ui": {
                 "type": "check_box",
                 "visible": True,
                 "group": "Timing Tower",
+                "ext_info": [
+                    "Show best/last lap times relative to the player or selected reference driver"
+                ]
             }
         }
     )
     timing_tower_combined_tl_pens: bool = Field(
         default=False,
-        description="Show track limit warnings and penalties combined in the penalties column",
+        description="Combine track limit & penalties",
         json_schema_extra={
             "ui": {
                 "type": "check_box",
                 "visible": True,
                 "group": "Timing Tower",
+                "ext_info": [
+                    "Combine track limit and penalties into a single column, showing the sum of both values."
+                ]
             }
         }
     )
@@ -178,7 +191,9 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Toggle timing tower overlay UDP action code", group="Timing Tower")
 
     # ============== MFD OVERLAY ==============
-    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD", ext_info=[
+    show_mfd: bool = overlay_enable_field(description="Enable MFD overlay", group="MFD",
+                                         preview_image="assets/overlay-previews/mfd.png",
+                                         ext_info=[
         'Recommended to also configure at least the "Next MFD page UDP action code" or '
         '"Previous MFD page UDP action code"'
     ])
@@ -255,13 +270,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== TRACK MAP OVERLAY ==============
     show_track_map: bool = overlay_enable_field(description="Enable track map overlay",
-                                                default=False, visible=False, group="Track Map")
+                                                default=False, visible=False, group="Track Map",
+                                                preview_image="assets/overlay-previews/track-map.png")
     track_map_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track map overlay UDP action code", visible=False, group="Track Map")
 
     # ============== INPUT TELEMETRY OVERLAY ==============
     show_input_overlay: bool = overlay_enable_field(description="Enable input telemetry overlay",
-                                                    group="Input Telemetry")
+                                                    group="Input Telemetry",
+                                                    preview_image="assets/overlay-previews/input-telemetry.png")
     input_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle input telemetry overlay UDP action code", group="Input Telemetry")
     input_overlay_buffer_duration_sec: float = Field(
@@ -285,7 +302,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== TRACK RADAR OVERLAY ==============
-    show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay", group="Track Radar")
+    show_track_radar_overlay: bool = overlay_enable_field(description="Enable track radar overlay", group="Track Radar",
+                                                          preview_image="assets/overlay-previews/track-radar.png")
     track_radar_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle track radar overlay UDP action code", group="Track Radar")
     track_radar_idle_opacity: int = Field(
@@ -307,7 +325,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== HUD OVERLAY ==============
-    show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay")
+    show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay",
+                                                  preview_image="assets/overlay-previews/hud-overlay.png")
     hud_overlay_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle HUD overlay UDP action code", group="HUD Overlay")
 
@@ -335,6 +354,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     show_circuit_info: bool = overlay_enable_field(
         description="Enable circuit info overlay",
         group="Circuit Info",
+        preview_image="assets/overlay-previews/circuit-info.png",
         ext_info=[
             "The circuit info overlay is a progress bar that is divided into 3 sectors and \n"
             "shows the driver's current position on the track, as well as turn numbers and names. \n"
@@ -358,7 +378,8 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
 
     # ============== PU OVERLAY ==============
-    show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit")
+    show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit",
+                                             preview_image="assets/overlay-previews/power-unit.png")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
     # ============== AUTO-HIDE IN MENU ==============
@@ -376,7 +397,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         default=3.0,
         ge=1.0,
         le=30.0,
-        description="Seconds of telemetry silence before overlays are hidden (menu detection threshold)",
+        description="Menu detection threshold (seconds)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",
@@ -454,15 +475,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     @field_validator("timing_tower_max_rows")
     def must_be_odd(cls, v): # pylint: disable=no-self-argument
-        if (v != 22) and ((v % 2) == 0):
+        if (v != 24) and ((v % 2) == 0):
             raise ValueError("Timing tower max rows must be an odd number")
         return v
 
     @property
     def timing_tower_num_adjacent_cars(self) -> int:
         # Max rows already validated to be odd
-        if self.timing_tower_max_rows == 22:
-            return 11
+        if self.timing_tower_max_rows == 24:
+            return 12
         return (self.timing_tower_max_rows - 1) // 2
 
     @property
