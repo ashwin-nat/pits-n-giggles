@@ -61,12 +61,13 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     enabled: bool = Field(
         default=True,
-        description="Enable Overlays (only on Windows, setting will be ignored on other OS's)",
+        description="Enable Overlays",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
                 "visible": True,
                 "ext_info": [
+                    "only on Windows, setting will be ignored on other OS's",
                     'Recommended to also configure "Toggle all overlays UDP action code"'
                 ]
             }
@@ -75,11 +76,14 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     toggle_overlays_udp_action_code: Optional[int] = udp_action_field("Toggle all overlays UDP action code")
     use_windowed_overlays: bool = Field(
         default=False,
-        description="Use Windowed Overlays (Required for OBS window capture)",
+        description="Use Windowed Overlays",
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
                 "visible": True,
+                "ext_info": [
+                    "Required for OBS window capture"
+                ]
             }
         }
     )
@@ -383,7 +387,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         default=3.0,
         ge=1.0,
         le=30.0,
-        description="Seconds of telemetry silence before overlays are hidden (menu detection threshold)",
+        description="Menu detection threshold (seconds)",
         json_schema_extra={
             "ui": {
                 "type" : "text_box",

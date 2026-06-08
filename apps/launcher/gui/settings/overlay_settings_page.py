@@ -32,13 +32,92 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton,
                                QScrollArea, QVBoxLayout, QWidget)
 
-from .collapsible_group import CollapsibleGroup
 from .toggle_switch import ToggleSwitchWidget
 
 if TYPE_CHECKING:
     from .settings import SettingsWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+_HEADER_STYLE = """
+    QFrame {
+        background-color: #2d2d30;
+        border: 1px solid #4a4a4a;
+        border-radius: 4px;
+    }
+    QFrame:hover {
+        background-color: #37373d;
+        border-color: #555555;
+    }
+"""
+
+_BODY_STYLE = """
+    QWidget#overlayRowBody {
+        background-color: #252526;
+        border: 1px solid #4a4a4a;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+    }
+"""
+
+
+class PlainCollapsibleRow(QWidget):
+    """Collapsible row with the same header chrome as OverlayRowWidget but no toggle switch."""
+
+    def __init__(self, title: str, icons_dict: dict, parent: QWidget = None) -> None:
+        super().__init__(parent)
+        self._icons_dict = icons_dict
+        self._expanded = False
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 2, 0, 2)
+        outer.setSpacing(0)
+
+        self._header = header = QFrame()
+        header.setFrameShape(QFrame.Shape.StyledPanel)
+        header.setStyleSheet(_HEADER_STYLE)
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 8, 12, 8)
+        header_layout.setSpacing(12)
+
+        name_label = QLabel(title)
+        name_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
+        name_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
+        header_layout.addWidget(name_label)
+        header_layout.addStretch()
+
+        self._arrow_btn = QPushButton()
+        self._arrow_btn.setFlat(True)
+        self._arrow_btn.setFixedSize(28, 28)
+        self._arrow_btn.setStyleSheet("QPushButton { background: transparent; border: none; }")
+        self._arrow_btn.clicked.connect(self._toggle_expand)
+        self._update_arrow()
+        header_layout.addWidget(self._arrow_btn)
+
+        outer.addWidget(header)
+
+        self._body = QWidget()
+        self._body.setObjectName("overlayRowBody")
+        self._body.setStyleSheet(_BODY_STYLE)
+        self._body_layout = QVBoxLayout(self._body)
+        self._body_layout.setContentsMargins(16, 10, 20, 10)
+        self._body_layout.setSpacing(8)
+        self._body.setVisible(False)
+        outer.addWidget(self._body)
+
+    @property
+    def content_layout(self) -> QVBoxLayout:
+        return self._body_layout
+
+    def _toggle_expand(self) -> None:
+        self._expanded = not self._expanded
+        self._body.setVisible(self._expanded)
+        self._update_arrow()
+
+    def _update_arrow(self) -> None:
+        key = 'caret-down' if self._expanded else 'caret-right'
+        self._arrow_btn.setIcon(self._icons_dict[key])
+
 
 class OverlayRowWidget(QWidget):
     """A row representing one overlay group: header with toggle + collapsible settings body."""
@@ -61,17 +140,7 @@ class OverlayRowWidget(QWidget):
         # ---- Header ----
         self._header = header = QFrame()
         header.setFrameShape(QFrame.Shape.StyledPanel)
-        header.setStyleSheet("""
-            QFrame {
-                background-color: #2d2d30;
-                border: 1px solid #4a4a4a;
-                border-radius: 4px;
-            }
-            QFrame:hover {
-                background-color: #37373d;
-                border-color: #555555;
-            }
-        """)
+        header.setStyleSheet(_HEADER_STYLE)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(12, 8, 12, 8)
         header_layout.setSpacing(12)
@@ -118,14 +187,7 @@ class OverlayRowWidget(QWidget):
         # ---- Body (config fields) ----
         self._body = QWidget()
         self._body.setObjectName("overlayRowBody")
-        self._body.setStyleSheet("""
-            QWidget#overlayRowBody {
-                background-color: #252526;
-                border: 1px solid #4a4a4a;
-                border-top: none;
-                border-radius: 0 0 4px 4px;
-            }
-        """)
+        self._body.setStyleSheet(_BODY_STYLE)
         body_layout = QVBoxLayout(self._body)
         body_layout.setContentsMargins(16, 10, 20, 10)
         body_layout.setSpacing(8)
@@ -205,8 +267,7 @@ class OverlaySettingsPage(QScrollArea):
 
         # General section (ungrouped fields)
         if ungrouped:
-            general = CollapsibleGroup("General", settings_window.icons_dict, self)
-            general.set_collapsed(True)
+            general = PlainCollapsibleRow("General", settings_window.icons_dict, self)
             for fn, fv, fi in ungrouped:
                 fp = f"{category_name}.{fn}"
                 settings_window._render_field(fn, fv, fp, fi, general.content_layout)
@@ -237,8 +298,7 @@ class OverlaySettingsPage(QScrollArea):
             else:
                 # Group with no enable field — render as a plain collapsible
                 if config_fields:
-                    grp = CollapsibleGroup(gname, settings_window.icons_dict, self)
-                    grp.set_collapsed(True)
+                    grp = PlainCollapsibleRow(gname, settings_window.icons_dict, self)
                     for fn, fv, fi in config_fields:
                         fp = f"{category_name}.{fn}"
                         settings_window._render_field(fn, fv, fp, fi, grp.content_layout)
