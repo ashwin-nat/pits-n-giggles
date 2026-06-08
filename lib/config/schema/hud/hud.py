@@ -475,7 +475,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     @field_validator("timing_tower_max_rows")
     def must_be_odd(cls, v): # pylint: disable=no-self-argument
-        if (v != 22) and ((v % 2) == 0):
+        if (v != 24) and ((v % 2) == 0):
             raise ValueError("Timing tower max rows must be an odd number")
         return v
 

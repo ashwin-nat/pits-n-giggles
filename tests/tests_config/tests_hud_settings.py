@@ -287,13 +287,18 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(hud_settings.timing_tower_max_rows, 1)
         self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 0)
 
-        hud_settings = HudSettings(timing_tower_max_rows=22)
-        self.assertEqual(hud_settings.timing_tower_max_rows, 22)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 10)
+        # Even number that was the old "all cars" value — now invalid
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=22)
 
         hud_settings = HudSettings(timing_tower_max_rows=23)
         self.assertEqual(hud_settings.timing_tower_max_rows, 23)
         self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 11)
+
+        # 24 is the "all cars" special case
+        hud_settings = HudSettings(timing_tower_max_rows=24)
+        self.assertEqual(hud_settings.timing_tower_max_rows, 24)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 12)
 
     def test_overlays_opacity_validation(self):
         """Test valid and invalid overlays_opacity values"""
