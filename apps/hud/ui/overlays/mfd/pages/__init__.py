@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base_page import MfdPageBase
+from .standalone_base import StandalonePageOverlay
 from .collapsed import CollapsedPage
 from .fuel import FuelInfoPage
 from .lap_times import LapTimesPage
@@ -37,6 +38,7 @@ from .traffic_monitor import TrafficMonitorPage
 
 __all__ = [
     "MfdPageBase",
+    "StandalonePageOverlay",
     "CollapsedPage",
     "FuelInfoPage",
     "LapTimesPage",

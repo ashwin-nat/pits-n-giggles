@@ -528,7 +528,7 @@ Also import all 8 page classes at the top of `overlays_mgr.py`.
 - [x] Step 2 — Make `overlay` optional in `MfdPageBase.__init__`
 - [x] Step 3 — Rename `QML_FILE` → `PAGE_QML_FILE`
 - [x] Step 4 — Standardize `_init_event_handlers` + `PAGE_QML_FILE` assertion
-- [ ] Step 5 — Create `StandalonePageOverlay` + `create_for_mfd`
+- [x] Step 5 — Create `StandalonePageOverlay` + `create_for_mfd`
 - [ ] Step 6 — Update `MfdOverlay.post_setup` to use `create_for_mfd`
 - [ ] Step 7 — Convert pages + add standalone QML wrappers
 - [ ] Step 8 — Add `OverlayId` + `DEFAULT_OVERLAY_LAYOUT` entries

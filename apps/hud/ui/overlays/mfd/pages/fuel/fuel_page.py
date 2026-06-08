@@ -43,7 +43,7 @@ class FuelInfoPage(MfdPageBase):
     MIN_FUEL = 0.2
 
     def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
-        self._fuel_est_mode = fuel_est_mode
+        self.fuel_est_mode = fuel_est_mode
         super().__init__(overlay, logger)
         self._init_event_handlers()
 
@@ -69,7 +69,7 @@ class FuelInfoPage(MfdPageBase):
                 self.set_page_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
                 self.set_page_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
                 self.set_page_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
-                if self._fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
+                if self.fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
                     surplus = fuel.get("surplus-laps-png")
                 else:
                     surplus = fuel.get("surplus-laps-game")
