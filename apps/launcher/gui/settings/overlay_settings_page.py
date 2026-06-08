@@ -295,14 +295,13 @@ class OverlaySettingsPage(QScrollArea):
                     settings_window=settings_window,
                 )
                 layout.addWidget(row)
-            else:
-                # Group with no enable field — render as a plain collapsible
-                if config_fields:
-                    grp = PlainCollapsibleRow(gname, settings_window.icons_dict, self)
-                    for fn, fv, fi in config_fields:
-                        fp = f"{category_name}.{fn}"
-                        settings_window._render_field(fn, fv, fp, fi, grp.content_layout)
-                    layout.addWidget(grp)
+            # Group with no enable field — render as a plain collapsible
+            elif config_fields:
+                grp = PlainCollapsibleRow(gname, settings_window.icons_dict, self)
+                for fn, fv, fi in config_fields:
+                    fp = f"{category_name}.{fn}"
+                    settings_window._render_field(fn, fv, fp, fi, grp.content_layout)
+                layout.addWidget(grp)
 
         layout.addStretch()
         self.setWidget(content)
