@@ -285,6 +285,7 @@ class PngLauncherWindow(QMainWindow):
             "updates" : self._load_icon(icons_path_base / "updates.svg"),
             "website" : self._load_icon(icons_path_base / "website.svg"),
             "overlay-preview": self._load_icon(Path("assets") / "overlay-preview-icon.svg"),
+            "close"          : self._load_icon(icons_path_base / "close-icon.svg"),
         }
 
     def get_icon(self, key: str) -> Optional[QIcon]:
