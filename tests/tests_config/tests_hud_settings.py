@@ -276,17 +276,23 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(timing_tower_max_rows=420)
 
+        # Just outside boundary
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=0)
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_max_rows=25)
+
         # Boundary - valid
         hud_settings = HudSettings(timing_tower_max_rows=1)
         self.assertEqual(hud_settings.timing_tower_max_rows, 1)
         self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 0)
 
-        hud_settings = HudSettings(timing_tower_max_rows=21)
-        self.assertEqual(hud_settings.timing_tower_max_rows, 21)
-        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 10)
-
         hud_settings = HudSettings(timing_tower_max_rows=22)
         self.assertEqual(hud_settings.timing_tower_max_rows, 22)
+        self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 10)
+
+        hud_settings = HudSettings(timing_tower_max_rows=23)
+        self.assertEqual(hud_settings.timing_tower_max_rows, 23)
         self.assertEqual(hud_settings.timing_tower_num_adjacent_cars, 11)
 
     def test_overlays_opacity_validation(self):
