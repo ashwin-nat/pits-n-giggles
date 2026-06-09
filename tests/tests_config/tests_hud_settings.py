@@ -103,13 +103,21 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_pu_info, True)
         self.assertEqual(settings.pu_toggle_udp_action_code, None)
         self.assertFalse(settings.show_fuel_info)
+        self.assertTrue(settings.fuel_info_show_title)
         self.assertFalse(settings.show_tyre_info)
+        self.assertTrue(settings.tyre_info_show_title)
         self.assertFalse(settings.show_lap_times_standalone)
+        self.assertTrue(settings.lap_times_standalone_show_title)
         self.assertFalse(settings.show_weather_standalone)
+        self.assertTrue(settings.weather_standalone_show_title)
         self.assertFalse(settings.show_pit_rejoin_standalone)
+        self.assertTrue(settings.pit_rejoin_standalone_show_title)
         self.assertFalse(settings.show_tyre_sets_standalone)
+        self.assertTrue(settings.tyre_sets_standalone_show_title)
         self.assertFalse(settings.show_pace_comp_standalone)
+        self.assertTrue(settings.pace_comp_standalone_show_title)
         self.assertFalse(settings.show_traffic_monitor_standalone)
+        self.assertTrue(settings.traffic_monitor_standalone_show_title)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_overlays_speed_unit_validation(self):
@@ -980,6 +988,31 @@ class TestHudSettings(TestF1ConfigBase):
         for field in fields:
             with self.subTest(field=field):
                 self.assertFalse(getattr(HudSettings(), field))
+                self.assertTrue(getattr(HudSettings(**{field: True}), field))
+                self.assertFalse(getattr(HudSettings(**{field: False}), field))
+
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: None})  # type: ignore
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: "invalid"})
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: 420})
+
+    def test_standalone_page_overlay_show_title_fields(self):
+        """All 8 show_title fields default True, accept booleans, reject invalid types."""
+        fields = [
+            "fuel_info_show_title",
+            "tyre_info_show_title",
+            "lap_times_standalone_show_title",
+            "weather_standalone_show_title",
+            "pit_rejoin_standalone_show_title",
+            "tyre_sets_standalone_show_title",
+            "pace_comp_standalone_show_title",
+            "traffic_monitor_standalone_show_title",
+        ]
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertTrue(getattr(HudSettings(), field))
                 self.assertTrue(getattr(HudSettings(**{field: True}), field))
                 self.assertFalse(getattr(HudSettings(**{field: False}), field))
 

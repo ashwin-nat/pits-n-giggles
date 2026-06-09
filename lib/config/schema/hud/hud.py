@@ -391,6 +391,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         mfd_friendly=True,
         preview_image="assets/overlay-previews/fuel-info.png",
     )
+    fuel_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in fuel info overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Fuel Info"}},
+    )
     show_tyre_info: bool = overlay_enable_field(
         description="Enable tyre info standalone overlay",
         group="Tyre Info",
@@ -398,12 +403,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         mfd_friendly=True,
         preview_image="assets/overlay-previews/tyre-info.png",
     )
+    tyre_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in tyre info overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Info"}},
+    )
     show_lap_times_standalone: bool = overlay_enable_field(
         description="Enable lap times standalone overlay",
         group="Lap Times",
         default=False,
         mfd_friendly=True,
         preview_image="assets/overlay-previews/lap-times-standalone.png",
+    )
+    lap_times_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in lap times overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Lap Times"}},
     )
     show_weather_standalone: bool = overlay_enable_field(
         description="Enable weather forecast standalone overlay",
@@ -417,12 +432,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             "enabled simultaneously, the interact button cycles both."
         ],
     )
+    weather_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in weather forecast overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Weather"}},
+    )
     show_pit_rejoin_standalone: bool = overlay_enable_field(
         description="Enable pit rejoin prediction standalone overlay",
         group="Pit Rejoin",
         default=False,
         mfd_friendly=True,
         preview_image="assets/overlay-previews/pit-rejoin-standalone.png",
+    )
+    pit_rejoin_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in pit rejoin prediction overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pit Rejoin"}},
     )
     show_tyre_sets_standalone: bool = overlay_enable_field(
         description="Enable tyre sets standalone overlay",
@@ -431,6 +456,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         mfd_friendly=True,
         preview_image="assets/overlay-previews/tyre-sets-standalone.png",
     )
+    tyre_sets_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in tyre sets overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Sets"}},
+    )
     show_pace_comp_standalone: bool = overlay_enable_field(
         description="Enable pace comparison standalone overlay",
         group="Pace Comparison",
@@ -438,12 +468,22 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         mfd_friendly=True,
         preview_image="assets/overlay-previews/pace-comp-standalone.png",
     )
+    pace_comp_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in pace comparison overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pace Comparison"}},
+    )
     show_traffic_monitor_standalone: bool = overlay_enable_field(
         description="Enable traffic monitor standalone overlay",
         group="Traffic Monitor",
         default=False,
         mfd_friendly=True,
         preview_image="assets/overlay-previews/traffic-monitor-standalone.png",
+    )
+    traffic_monitor_standalone_show_title: bool = Field(
+        default=True,
+        description="Show title bar in traffic monitor overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Traffic Monitor"}},
     )
 
     # ============== AUTO-HIDE IN MENU ==============
