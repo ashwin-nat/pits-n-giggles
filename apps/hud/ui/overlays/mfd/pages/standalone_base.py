@@ -85,6 +85,8 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         assert loader is not None, f"{self.KEY} | standalone QML missing Loader with objectName 'pageContent'"
         page_item = loader.property("item")
         assert page_item is not None, f"{self.KEY} | Loader 'pageContent' item is None — page QML failed to load"
+        self.root.setProperty("showTitleBar", self._show_title_bar)
+        self.root.setProperty("titleText", page_item.property("title") or "")
         # Wire the page item without firing on_page_activated() yet — setup_overlay()
         # hasn't run, so subclass state is not initialised. on_page_activated() is
         # called explicitly in __init__ after setup_overlay() completes.
