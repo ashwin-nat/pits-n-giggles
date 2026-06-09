@@ -47,10 +47,10 @@ class WeatherForecastPage(StandalonePageOverlay):
 
     MAX_SAMPLES = 5
 
-    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar,
                  graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
 
     def _configure(self, graph_based_ui: bool) -> None:  # pylint: disable=arguments-differ
         self.graph_based_ui = graph_based_ui

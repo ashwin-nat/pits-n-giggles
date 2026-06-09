@@ -41,9 +41,10 @@ class FuelInfoPage(StandalonePageOverlay):
     MIN_FUEL = 0.2
 
     def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+                 show_title_bar,
                  fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
 
     def _configure(self, fuel_est_mode: OverlaysFuelEstimationMode) -> None:  # pylint: disable=arguments-differ
         self.fuel_est_mode = fuel_est_mode

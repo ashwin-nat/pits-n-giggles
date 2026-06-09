@@ -53,8 +53,10 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
+        show_title_bar: bool
     ):
         self._is_standalone: bool = True
+        self._show_title_bar = show_title_bar
         MfdPageBase.__init__(self, overlay=None, logger=logger)
         BaseOverlayQML.__init__(
             self,

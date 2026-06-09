@@ -48,11 +48,12 @@ class TyreInfoPage(StandalonePageOverlay):
     }
 
     def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+                 show_title_bar,
                  tyre_wear_threshold: int,
                  tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX):
         self.tyre_wear_threshold = tyre_wear_threshold
         self.tyre_wear_rate_type = tyre_wear_rate_type
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay)
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
 
     def _configure(self, tyre_wear_threshold: int,  # pylint: disable=arguments-differ
                    tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX) -> None:

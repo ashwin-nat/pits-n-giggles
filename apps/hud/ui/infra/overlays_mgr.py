@@ -178,6 +178,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.FUEL_INFO].scale_factor,
+            show_title_bar=settings.HUD.fuel_info_show_title,
             fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
         )
 
@@ -188,6 +189,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TYRE_INFO].scale_factor,
+            show_title_bar=settings.HUD.tyre_info_show_title,
             tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
             tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
         )
@@ -199,6 +201,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.LAP_TIMES].scale_factor,
+            show_title_bar=settings.HUD.lap_times_show_title,
         )
 
         self._register_overlay_if_enabled(
@@ -209,6 +212,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.WEATHER].scale_factor,
             graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
+            show_title_bar=settings.HUD.weather_show_title,
         )
 
         self._register_overlay_if_enabled(
@@ -218,6 +222,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.PIT_REJOIN].scale_factor,
+            show_title_bar=settings.HUD.pit_rejoin_show_title,
         )
 
         self._register_overlay_if_enabled(
@@ -227,6 +232,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TYRE_SETS].scale_factor,
+            show_title_bar=settings.HUD.tyre_sets_show_title,
         )
 
         self._register_overlay_if_enabled(
@@ -236,6 +242,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.PACE_COMP].scale_factor,
+            show_title_bar=settings.HUD.pace_comp_show_title,
         )
 
         self._register_overlay_if_enabled(
@@ -245,6 +252,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR].scale_factor,
+            show_title_bar=settings.HUD.traffic_monitor_show_title,
         )
 
         if settings.HUD.show_mfd:
