@@ -205,15 +205,4 @@ Rectangle {
         }
     }
 
-    // Python hooks
-    function updateData(pitTimeLoss, rows, refIdx) {
-        root.pitTimeLossText = pitTimeLoss;
-        root.refIndex = refIdx;
-        root.tableData = rows;
-    }
-
-    function showEmptyTable() {
-        root.pitTimeLossText = "Pit Time Loss: --";
-        root.tableData = [];
-    }
 }
