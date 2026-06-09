@@ -106,18 +106,18 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertTrue(settings.fuel_info_show_title)
         self.assertFalse(settings.show_tyre_info)
         self.assertTrue(settings.tyre_info_show_title)
-        self.assertFalse(settings.show_lap_times_standalone)
-        self.assertTrue(settings.lap_times_standalone_show_title)
-        self.assertFalse(settings.show_weather_standalone)
-        self.assertTrue(settings.weather_standalone_show_title)
-        self.assertFalse(settings.show_pit_rejoin_standalone)
-        self.assertTrue(settings.pit_rejoin_standalone_show_title)
-        self.assertFalse(settings.show_tyre_sets_standalone)
-        self.assertTrue(settings.tyre_sets_standalone_show_title)
-        self.assertFalse(settings.show_pace_comp_standalone)
-        self.assertTrue(settings.pace_comp_standalone_show_title)
-        self.assertFalse(settings.show_traffic_monitor_standalone)
-        self.assertTrue(settings.traffic_monitor_standalone_show_title)
+        self.assertFalse(settings.show_lap_times)
+        self.assertTrue(settings.lap_times_show_title)
+        self.assertFalse(settings.show_weather)
+        self.assertTrue(settings.weather_show_title)
+        self.assertFalse(settings.show_pit_rejoin)
+        self.assertTrue(settings.pit_rejoin_show_title)
+        self.assertFalse(settings.show_tyre_sets)
+        self.assertTrue(settings.tyre_sets_show_title)
+        self.assertFalse(settings.show_pace_comp)
+        self.assertTrue(settings.pace_comp_show_title)
+        self.assertFalse(settings.show_traffic_monitor)
+        self.assertTrue(settings.traffic_monitor_show_title)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_overlays_speed_unit_validation(self):
@@ -978,12 +978,12 @@ class TestHudSettings(TestF1ConfigBase):
         fields = [
             "show_fuel_info",
             "show_tyre_info",
-            "show_lap_times_standalone",
-            "show_weather_standalone",
-            "show_pit_rejoin_standalone",
-            "show_tyre_sets_standalone",
-            "show_pace_comp_standalone",
-            "show_traffic_monitor_standalone",
+            "show_lap_times",
+            "show_weather",
+            "show_pit_rejoin",
+            "show_tyre_sets",
+            "show_pace_comp",
+            "show_traffic_monitor",
         ]
         for field in fields:
             with self.subTest(field=field):
@@ -1003,12 +1003,12 @@ class TestHudSettings(TestF1ConfigBase):
         fields = [
             "fuel_info_show_title",
             "tyre_info_show_title",
-            "lap_times_standalone_show_title",
-            "weather_standalone_show_title",
-            "pit_rejoin_standalone_show_title",
-            "tyre_sets_standalone_show_title",
-            "pace_comp_standalone_show_title",
-            "traffic_monitor_standalone_show_title",
+            "lap_times_show_title",
+            "weather_show_title",
+            "pit_rejoin_show_title",
+            "tyre_sets_show_title",
+            "pace_comp_show_title",
+            "traffic_monitor_show_title",
         ]
         for field in fields:
             with self.subTest(field=field):

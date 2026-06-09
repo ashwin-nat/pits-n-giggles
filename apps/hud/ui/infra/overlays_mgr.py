@@ -193,7 +193,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_lap_times_standalone,
+            enabled=settings.HUD.show_lap_times,
             overlay_cls=LapTimesPage,
             overlay_cfg=settings.HUD.layout[OverlayId.LAP_TIMES],
             opacity=settings.HUD.overlays_opacity,
@@ -202,7 +202,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_weather_standalone,
+            enabled=settings.HUD.show_weather,
             overlay_cls=WeatherForecastPage,
             overlay_cfg=settings.HUD.layout[OverlayId.WEATHER],
             opacity=settings.HUD.overlays_opacity,
@@ -212,7 +212,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_pit_rejoin_standalone,
+            enabled=settings.HUD.show_pit_rejoin,
             overlay_cls=PitRejoinPredictionPage,
             overlay_cfg=settings.HUD.layout[OverlayId.PIT_REJOIN],
             opacity=settings.HUD.overlays_opacity,
@@ -221,7 +221,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_tyre_sets_standalone,
+            enabled=settings.HUD.show_tyre_sets,
             overlay_cls=TyreSetsPage,
             overlay_cfg=settings.HUD.layout[OverlayId.TYRE_SETS],
             opacity=settings.HUD.overlays_opacity,
@@ -230,7 +230,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_pace_comp_standalone,
+            enabled=settings.HUD.show_pace_comp,
             overlay_cls=PaceCompPage,
             overlay_cfg=settings.HUD.layout[OverlayId.PACE_COMP],
             opacity=settings.HUD.overlays_opacity,
@@ -239,7 +239,7 @@ class OverlaysMgr:
         )
 
         self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_traffic_monitor_standalone,
+            enabled=settings.HUD.show_traffic_monitor,
             overlay_cls=TrafficMonitorPage,
             overlay_cfg=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR],
             opacity=settings.HUD.overlays_opacity,
