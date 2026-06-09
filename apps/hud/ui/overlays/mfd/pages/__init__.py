@@ -22,17 +22,19 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from apps.hud.ui.overlays.pu.pu import PuOverlay
+
 from .base_page import MfdPageBase
-from .standalone_base import StandalonePageOverlay
 from .collapsed import CollapsedPage
 from .fuel import FuelInfoPage
 from .lap_times import LapTimesPage
+from .pace_comp.pace_comp import PaceCompPage
 from .pit_rejoin import PitRejoinPredictionPage
+from .standalone_base import StandalonePageOverlay
+from .traffic_monitor import TrafficMonitorPage
 from .tyre_sets import TyreSetsPage
 from .tyre_wear import TyreInfoPage
 from .weather import WeatherForecastPage
-from .pace_comp.pace_comp import PaceCompPage
-from .traffic_monitor import TrafficMonitorPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -48,4 +50,5 @@ __all__ = [
     "WeatherForecastPage",
     "PaceCompPage",
     "TrafficMonitorPage",
+    "PuOverlay",
 ]

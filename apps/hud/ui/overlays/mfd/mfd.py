@@ -35,7 +35,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TrafficMonitorPage, TyreInfoPage,
-                                            TyreSetsPage, WeatherForecastPage)
+                                            TyreSetsPage, WeatherForecastPage,
+                                            PuOverlay)
 from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
                         WeatherMFDUIType)
 
@@ -56,6 +57,7 @@ class MfdOverlay(BaseOverlayQML):
         TyreSetsPage,
         PaceCompPage,
         TrafficMonitorPage,
+        PuOverlay,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -125,7 +127,7 @@ class MfdOverlay(BaseOverlayQML):
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
         page_kwargs = self._get_page_kwargs(settings)
-        self.enabled_pages = [
+        self.enabled_pages: List[Dict[str, Any]] = [
             {"key": MfdPageId.COLLAPSED, "cls": CollapsedPage, "position": 0, "kwargs": {}},
             *[
                 {

@@ -161,15 +161,6 @@ class OverlaysMgr:
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
-        self._register_overlay_if_enabled(
-            enabled=settings.HUD.show_pu_info,
-            overlay_cls=PuOverlay,
-            opacity=settings.HUD.overlays_opacity,
-            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
-            windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
-        )
-
         # ---- MFD pages (standalone) ----
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_fuel_info,
@@ -253,6 +244,16 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR].scale_factor,
             show_title_bar=settings.HUD.traffic_monitor_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pu_info,
+            overlay_cls=PuOverlay,
+            overlay_cfg=settings.HUD.layout[OverlayId.PU],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.PU].scale_factor,
+            show_title_bar=settings.HUD.pu_info_show_title,
         )
 
         if settings.HUD.show_mfd:

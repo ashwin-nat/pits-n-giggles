@@ -379,9 +379,15 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== PU OVERLAY ==============
     show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit",
+                                             mfd_friendly=True,
                                              preview_image="assets/overlay-previews/power-unit.png")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
+    pu_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in power unit overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Power Unit"}},
+    )
 
     # ============== MFD PAGES (STANDALONE) ==============
     show_fuel_info: bool = overlay_enable_field(
