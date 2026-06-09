@@ -234,8 +234,10 @@ class OverlaySettingsPage(QScrollArea):
 
             if enable_field is not None:
                 header_extra = _make_overlay_header_extra(category_name, enable_field, settings_window)
+                en_ui_cfg = (enable_field[2].json_schema_extra or {}).get("ui", {})
+                mfd_tag = "MFD" if en_ui_cfg.get("mfd_friendly") else None
                 group = HeaderCollapsibleGroup(gname, settings_window.icons_dict,
-                                               header_extra=header_extra, parent=self)
+                                               header_extra=header_extra, title_tag=mfd_tag, parent=self)
                 group.set_collapsed(True)
                 settings_window._register_searchable(
                     group,

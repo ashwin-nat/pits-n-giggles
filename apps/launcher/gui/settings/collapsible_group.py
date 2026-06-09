@@ -31,12 +31,15 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class CollapsibleGroup(QWidget):
-    def __init__(self, title: str, icon_map: Dict[str, QIcon], parent: Optional[QWidget] = None):
+    def __init__(self, title: str, icon_map: Dict[str, QIcon],
+                 title_tag: Optional[str] = None,
+                 parent: Optional[QWidget] = None):
         """A collapsible group widget for organizing settings in the launcher.
 
         Args:
             title: The title of the group.
             icon_map: A dictionary mapping icon names to icons.
+            title_tag: Optional short tag pill rendered after the title (e.g. "MFD").
             parent: The parent widget.
         """
         super().__init__(parent)
@@ -69,6 +72,20 @@ class CollapsibleGroup(QWidget):
         title_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
         title_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
         header_layout.addWidget(title_label)
+
+        if title_tag:
+            tag_label = QLabel(title_tag)
+            tag_label.setFont(QFont("Roboto", 7, QFont.Weight.Bold))
+            tag_label.setStyleSheet(
+                "QLabel { color: #ffffff; background-color: #0e7490;"
+                " border-radius: 3px; padding: 1px 5px; border: none; }"
+                " QToolTip { background-color: #1e1e1e; color: #d4d4d4;"
+                " border: 1px solid #555555; padding: 4px; border-radius: 0px; }"
+            )
+            tag_label.setFixedHeight(16)
+            tag_label.setToolTip("This overlay can be used as a page within the MFD overlay")
+            header_layout.addWidget(tag_label)
+
         header_layout.addStretch()
 
         self._toggle_label = QLabel()
@@ -130,8 +147,9 @@ class HeaderCollapsibleGroup(CollapsibleGroup):
 
     def __init__(self, title: str, icon_map: Dict[str, QIcon],
                  header_extra: Optional[QWidget] = None,
+                 title_tag: Optional[str] = None,
                  parent: Optional[QWidget] = None):
-        super().__init__(title, icon_map, parent)
+        super().__init__(title, icon_map, title_tag=title_tag, parent=parent)
         if header_extra is not None:
             # Insert before the caret label (last item)
             self._header_layout.insertWidget(self._header_layout.count() - 1, header_extra)
