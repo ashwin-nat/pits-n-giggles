@@ -414,6 +414,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.TYRE_SETS,
             MfdPageId.PACE_COMP,
             MfdPageId.TRAFFIC_MONITOR,
+            MfdPageId.PU_INFO,
         }
 
         for page in expected_pages:
