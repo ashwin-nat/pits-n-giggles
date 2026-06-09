@@ -79,6 +79,7 @@ class HudOverlayData(HighFreqBase):
     g_force_long: float
     g_force_vert: float
     sector: str
+    pit_limiter_enabled: bool
     f1_26_data: HudOverlayData26
 
     def __bool__(self) -> bool:
@@ -136,6 +137,7 @@ class HudOverlayData(HighFreqBase):
             track_temp=pens_stats_data["track-temperature"],
             air_temp=pens_stats_data["air-temperature"],
             sector=hud_data["sector"],
+            pit_limiter_enabled=hud_data["pit-limiter-enabled"],
             f1_26_data=HudOverlayData26.from_json(json_data["2026-regs-info"]),
         )
 

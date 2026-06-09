@@ -302,6 +302,8 @@ class StreamOverlayData(BaseAPI):
         """Get HUD data."""
         if not self.m_export_hud_data:
             return {}
+        car_status = self.m_ref_obj.m_packet_copies.m_packet_car_status if self.m_ref_obj else None
+        pit_limiter = car_status.m_pitLimiterStatus if car_status else False
         dflt_data = {
             "throttle" : None,
             "brake" : None,
@@ -321,6 +323,7 @@ class StreamOverlayData(BaseAPI):
             "circuit-position" : None,
             "sector" : None,
             "circuit-length" : self.m_circuit_len,
+            "pit-limiter-enabled" : pit_limiter,
         }
 
         if not self.m_ref_obj or \
@@ -374,6 +377,7 @@ class StreamOverlayData(BaseAPI):
             "circuit-position" : dist,
             "sector" : sector,
             "circuit-length" : self.m_circuit_len,
+            "pit-limiter-enabled" : pit_limiter,
         }
 
     def _getPUData(self) -> Dict[str, Any]:
