@@ -69,7 +69,9 @@ class CarStatusData(F1SubPacketBase):
     """
 
     MIN_FUEL_KG = 0.2 # Source: Trust me bro
-    MAX_ERS_STORE_ENERGY = 4_000_000.0 # Source: https://www.mercedes-amg-hpp.com/formula-1-engine-facts/#
+    # Source:   https://www.mercedesamgf1.com/f1-w16-2025-technical-specifications
+    #           https://www.mercedesamgf1.com/f1-w17-2026-technical-specifications
+    MAX_ERS_STORE_ENERGY = 4_000_000.0
     MAX_ERS_DEPLOY_PER_LAP = 4_000_000.0
     MAX_MGUK_HARV_PER_LAP = 2_000_000.0
     COMPILED_PACKET_STRUCT = struct.Struct("<"
