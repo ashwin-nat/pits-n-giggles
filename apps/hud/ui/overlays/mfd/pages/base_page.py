@@ -53,6 +53,7 @@ class MfdPageBase:
     def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
         assert self.KEY, "KEY must be set in subclass"
         assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"
+        assert Path(self.PAGE_QML_FILE).exists(), f"PAGE_QML_FILE does not exist: {self.PAGE_QML_FILE}"
 
         self.overlay = overlay
         self._page_item = None

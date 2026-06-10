@@ -42,7 +42,13 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
     - self.on_event       → BaseOverlayQML  (overlay command handlers)
     - self.on_page_event  → MfdPageBase     (page data handlers)
 
-    Concrete subclasses must define: KEY, PAGE_QML_FILE, QML_FILE, OVERLAY_ID.
+    Multiple inheritance over composition: keeping KEY, PAGE_QML_FILE, OVERLAY_ID, and
+    _configure kwargs in a single subclass definition avoids duplicating the page class
+    for standalone vs MFD use. _create_mfd_object / __new__ bypasses __init__ to skip
+    Qt window creation when hosting within the MFD.
+
+    Concrete subclasses must define: KEY, PAGE_QML_FILE, OVERLAY_ID.
+    QML_FILE is fixed to standalone_wrapper.qml in this base and must not be overridden.
     """
 
     def __init__(
