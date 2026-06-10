@@ -97,7 +97,7 @@ def ui_scale_field(description: str, *, default: Optional[float] = 1.0):
 
 def overlay_enable_field(description: str, *, default: Optional[bool] = True, visible: Optional[bool] = True,
                          group: Optional[str] = None, ext_info: Optional[List[str]] = None,
-                         preview_image: str):
+                         preview_image: str, mfd_friendly: bool = False):
     """
     Create an overlay enable field with standard schema extras.
     Only the description varies per leaf.
@@ -111,6 +111,7 @@ def overlay_enable_field(description: str, *, default: Optional[bool] = True, vi
                 "type": "check_box",
                 "visible": visible,
                 "overlay_enable": True,
+                "mfd_friendly": mfd_friendly,
                 "group": group,
                 "ext_info": ext_info or [],
                 "preview_image": preview_image,

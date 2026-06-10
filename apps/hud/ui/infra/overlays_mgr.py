@@ -31,9 +31,14 @@ from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   InputTelemetryOverlay, LapTimerOverlay,
                                   MfdOverlay, PuOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
+from apps.hud.ui.overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
+                                             PaceCompPage,
+                                             PitRejoinPredictionPage,
+                                             TrafficMonitorPage, TyreInfoPage,
+                                             TyreSetsPage, WeatherForecastPage)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import OverlayPosition, PngSettings
+from lib.config import OverlayId, OverlayPosition, PngSettings, WeatherMFDUIType
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
@@ -156,13 +161,99 @@ class OverlaysMgr:
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
         )
 
+        # ---- MFD pages (standalone) ----
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_fuel_info,
+            overlay_cls=FuelInfoPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.FUEL_INFO],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.FUEL_INFO].scale_factor,
+            show_title_bar=settings.HUD.fuel_info_show_title,
+            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_tyre_info,
+            overlay_cls=TyreInfoPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TYRE_INFO],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TYRE_INFO].scale_factor,
+            show_title_bar=settings.HUD.tyre_info_show_title,
+            tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
+            tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_lap_times,
+            overlay_cls=LapTimesPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.LAP_TIMES],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.LAP_TIMES].scale_factor,
+            show_title_bar=settings.HUD.lap_times_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_weather,
+            overlay_cls=WeatherForecastPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.WEATHER],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.WEATHER].scale_factor,
+            graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
+            show_title_bar=settings.HUD.weather_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pit_rejoin,
+            overlay_cls=PitRejoinPredictionPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.PIT_REJOIN],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.PIT_REJOIN].scale_factor,
+            show_title_bar=settings.HUD.pit_rejoin_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_tyre_sets,
+            overlay_cls=TyreSetsPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TYRE_SETS],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TYRE_SETS].scale_factor,
+            show_title_bar=settings.HUD.tyre_sets_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pace_comp,
+            overlay_cls=PaceCompPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.PACE_COMP],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.PACE_COMP].scale_factor,
+            show_title_bar=settings.HUD.pace_comp_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_traffic_monitor,
+            overlay_cls=TrafficMonitorPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR].scale_factor,
+            show_title_bar=settings.HUD.traffic_monitor_show_title,
+        )
+
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_pu_info,
             overlay_cls=PuOverlay,
+            overlay_cfg=settings.HUD.layout[OverlayId.PU],
             opacity=settings.HUD.overlays_opacity,
-            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
+            scale_factor=settings.HUD.layout[OverlayId.PU].scale_factor,
+            show_title_bar=settings.HUD.pu_info_show_title,
         )
 
         if settings.HUD.show_mfd:
@@ -315,7 +406,7 @@ class OverlaysMgr:
 
     def mfd_interact(self):
         """Interact with MFD overlay"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'mfd_interact', {})
+        self.window_manager.broadcast_data('mfd_interact', {})
 
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
         """Apply a full overlays layout snapshot."""

@@ -24,7 +24,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from PySide6.QtQuick import QQuickItem
 
@@ -43,13 +43,17 @@ _UNSET = object()  # sentinel for absent page-property cache entries
 
 class MfdPageBase:
     KEY: str = ""
-    QML_FILE: Path = ""
+    PAGE_QML_FILE: Path = ""
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
+    @classmethod
+    def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> "MfdPageBase":
+        """Create a page instance for MFD-hosted use. Override in StandalonePageOverlay."""
+        return cls(overlay, logger, **kwargs)
+
+    def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
         assert self.KEY, "KEY must be set in subclass"
-        assert self.QML_FILE, "Derived classes must define QML_FILE"
-        assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
-        assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
+        assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"
+        assert Path(self.PAGE_QML_FILE).exists(), f"PAGE_QML_FILE does not exist: {self.PAGE_QML_FILE}"
 
         self.overlay = overlay
         self._page_item = None
@@ -58,7 +62,11 @@ class MfdPageBase:
         self._stats = EventCounter()
         self._page_props: dict = {}
 
-    def on_event(self, event_type: str, requires_page_item: bool = True):
+    def setup_overlay(self) -> None:
+        """Initialise page state and register event handlers. Must be overridden in subclasses."""
+        raise NotImplementedError
+
+    def on_page_event(self, event_type: str, requires_page_item: bool = True):
         """Decorator to register an event handler for this page.
 
         Args:
@@ -104,7 +112,7 @@ class MfdPageBase:
         self._stats.track_event("__EVENTS__", "__TOTAL__")
         self._stats.track_event("__EVENTS__", event_type)
 
-    def set_page_property(self, name: str, value) -> None:
+    def set_qml_property(self, name: str, value) -> None:
         """Set a property on the active page QML item with diff-based caching.
 
         Silently does nothing when the page is not active or the value is

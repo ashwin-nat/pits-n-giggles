@@ -22,33 +22,37 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row, is_race_type_session
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlaysFuelEstimationMode
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
+from lib.config import MfdPageId, OverlayId, OverlaysFuelEstimationMode
 from lib.f1_types import F1Utils
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class FuelInfoPage(MfdPageBase):
+class FuelInfoPage(StandalonePageOverlay):
+    OVERLAY_ID = OverlayId.FUEL_INFO
     KEY = MfdPageId.FUEL_INFO
-    QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
-        super().__init__(overlay, logger)
-        self._init_handlers()
-        self._fuel_est_mode = fuel_est_mode
+    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
+                 show_title_bar,
+                 fuel_est_mode: OverlaysFuelEstimationMode):
+        self.fuel_est_mode = fuel_est_mode
+        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
 
-    def _init_handlers(self):
-        @self.on_event("race_table_update")
+    def _configure(self, fuel_est_mode: OverlaysFuelEstimationMode) -> None:  # pylint: disable=arguments-differ
+        self.fuel_est_mode = fuel_est_mode
+
+    @final
+    def setup_overlay(self):
+
+        @self.on_page_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update fuel information display."""
             ref_row = get_ref_row(data)
@@ -62,38 +66,38 @@ class FuelInfoPage(MfdPageBase):
             session_type = data["event-type"]
             fuel = ref_row["fuel-info"]
 
-            self.set_page_property("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
+            self.set_qml_property("lastValue", self._fmt(fuel.get("last-lap-fuel-used")))
 
             if is_race_type_session(session_type):
-                self.set_page_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
-                self.set_page_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
-                self.set_page_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
-                if self._fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
+                self.set_qml_property("currValue", self._fmt(fuel.get("curr-fuel-rate")))
+                self.set_qml_property("tgtAvgValue", self._fmt(fuel.get("target-fuel-rate-average")))
+                self.set_qml_property("tgtNextValue", self._fmt(fuel.get("target-fuel-rate-next-lap")))
+                if self.fuel_est_mode == OverlaysFuelEstimationMode.LINEAR_REGRESSION:
                     surplus = fuel.get("surplus-laps-png")
                 else:
                     surplus = fuel.get("surplus-laps-game")
             else:
-                self.set_page_property("currValue", "---")
-                self.set_page_property("tgtAvgValue", "---")
-                self.set_page_property("tgtNextValue", "---")
+                self.set_qml_property("currValue", "---")
+                self.set_qml_property("tgtAvgValue", "---")
+                self.set_qml_property("tgtNextValue", "---")
                 surplus = fuel.get("surplus-laps-game")
 
             if surplus is not None:
-                self.set_page_property(
+                self.set_qml_property(
                     "surplusText",
                     f"Surplus: {F1Utils.formatFloat(surplus, precision=3, signed=True)} laps"
                 )
-                self.set_page_property("surplusValue", surplus)
-                self.set_page_property("surplusValid", True)
+                self.set_qml_property("surplusValue", surplus)
+                self.set_qml_property("surplusValid", True)
             else:
-                self.set_page_property("surplusText", "Surplus: ---")
-                self.set_page_property("surplusValid", False)
+                self.set_qml_property("surplusText", "Surplus: ---")
+                self.set_qml_property("surplusValid", False)
 
     def _fmt(self, value):
         return f"{value:.3f}" if value is not None else "---"
 
     def _set_all_dim(self) -> None:
         for prop in ("currValue", "lastValue", "tgtAvgValue", "tgtNextValue"):
-            self.set_page_property(prop, "---")
-        self.set_page_property("surplusText", "Surplus: ---")
-        self.set_page_property("surplusValid", False)
+            self.set_qml_property(prop, "---")
+        self.set_qml_property("surplusText", "Surplus: ---")
+        self.set_qml_property("surplusValid", False)

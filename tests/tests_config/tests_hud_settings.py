@@ -102,6 +102,22 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
         self.assertEqual(settings.show_pu_info, True)
         self.assertEqual(settings.pu_toggle_udp_action_code, None)
+        self.assertFalse(settings.show_fuel_info)
+        self.assertTrue(settings.fuel_info_show_title)
+        self.assertFalse(settings.show_tyre_info)
+        self.assertTrue(settings.tyre_info_show_title)
+        self.assertFalse(settings.show_lap_times)
+        self.assertTrue(settings.lap_times_show_title)
+        self.assertFalse(settings.show_weather)
+        self.assertTrue(settings.weather_show_title)
+        self.assertFalse(settings.show_pit_rejoin)
+        self.assertTrue(settings.pit_rejoin_show_title)
+        self.assertFalse(settings.show_tyre_sets)
+        self.assertTrue(settings.tyre_sets_show_title)
+        self.assertFalse(settings.show_pace_comp)
+        self.assertTrue(settings.pace_comp_show_title)
+        self.assertFalse(settings.show_traffic_monitor)
+        self.assertTrue(settings.traffic_monitor_show_title)
         # MFD pages has its own test case because the structure is a bit more complex
 
     def test_overlays_speed_unit_validation(self):
@@ -398,6 +414,7 @@ class TestHudSettings(TestF1ConfigBase):
             MfdPageId.TYRE_SETS,
             MfdPageId.PACE_COMP,
             MfdPageId.TRAFFIC_MONITOR,
+            MfdPageId.PU_INFO,
         }
 
         for page in expected_pages:
@@ -956,6 +973,74 @@ class TestHudSettings(TestF1ConfigBase):
             HudSettings(show_pu_info="invalid")
         with self.assertRaises(ValidationError):
             HudSettings(show_pu_info=420)
+
+    def test_standalone_page_overlay_show_fields(self):
+        """All 8 standalone page show_* fields accept booleans, reject invalid types, default to False."""
+        fields = [
+            "show_fuel_info",
+            "show_tyre_info",
+            "show_lap_times",
+            "show_weather",
+            "show_pit_rejoin",
+            "show_tyre_sets",
+            "show_pace_comp",
+            "show_traffic_monitor",
+        ]
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertFalse(getattr(HudSettings(), field))
+                self.assertTrue(getattr(HudSettings(**{field: True}), field))
+                self.assertFalse(getattr(HudSettings(**{field: False}), field))
+
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: None})  # type: ignore
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: "invalid"})
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: 420})
+
+    def test_standalone_page_overlay_show_title_fields(self):
+        """All 8 show_title fields default True, accept booleans, reject invalid types."""
+        fields = [
+            "fuel_info_show_title",
+            "tyre_info_show_title",
+            "lap_times_show_title",
+            "weather_show_title",
+            "pit_rejoin_show_title",
+            "tyre_sets_show_title",
+            "pace_comp_show_title",
+            "traffic_monitor_show_title",
+        ]
+        for field in fields:
+            with self.subTest(field=field):
+                self.assertTrue(getattr(HudSettings(), field))
+                self.assertTrue(getattr(HudSettings(**{field: True}), field))
+                self.assertFalse(getattr(HudSettings(**{field: False}), field))
+
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: None})  # type: ignore
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: "invalid"})
+                with self.assertRaises(ValidationError):
+                    HudSettings(**{field: 420})
+
+    def test_standalone_overlay_layout_defaults(self):
+        """All 8 new standalone OverlayId entries must appear in the default layout."""
+        settings = HudSettings()
+        for oid in (
+            OverlayId.FUEL_INFO,
+            OverlayId.TYRE_INFO,
+            OverlayId.LAP_TIMES,
+            OverlayId.WEATHER,
+            OverlayId.PIT_REJOIN,
+            OverlayId.TYRE_SETS,
+            OverlayId.PACE_COMP,
+            OverlayId.TRAFFIC_MONITOR,
+        ):
+            with self.subTest(overlay=oid):
+                self.assertIn(oid, settings.layout)
+                self.assertIsInstance(settings.layout[oid], OverlayPosition)
+                self.assertEqual(settings.layout[oid].scale_factor, 1.0)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

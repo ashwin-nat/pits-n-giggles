@@ -35,7 +35,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TrafficMonitorPage, TyreInfoPage,
-                                            TyreSetsPage, WeatherForecastPage)
+                                            TyreSetsPage, WeatherForecastPage,
+                                            PuOverlay)
 from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
                         WeatherMFDUIType)
 
@@ -56,6 +57,7 @@ class MfdOverlay(BaseOverlayQML):
         TyreSetsPage,
         PaceCompPage,
         TrafficMonitorPage,
+        PuOverlay,
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
@@ -125,7 +127,7 @@ class MfdOverlay(BaseOverlayQML):
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
         page_kwargs = self._get_page_kwargs(settings)
-        self.enabled_pages = [
+        self.enabled_pages: List[Dict[str, Any]] = [
             {"key": MfdPageId.COLLAPSED, "cls": CollapsedPage, "position": 0, "kwargs": {}},
             *[
                 {
@@ -146,7 +148,7 @@ class MfdOverlay(BaseOverlayQML):
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
             kwargs = page_info.get("kwargs", {})
-            self._mfd_pages.append(cls(self, self.logger, **kwargs))
+            self._mfd_pages.append(cls.create_for_mfd(self, self.logger, **kwargs))
         self._current_index = 0
 
         # Set total pages in QML
@@ -179,7 +181,7 @@ class MfdOverlay(BaseOverlayQML):
         except Exception as e: # pylint: disable=broad-exception-caught
             self.logger.error("%s | Failed to apply current page: %s", self.OVERLAY_ID, e)
             return
-        qml_url = QUrl.fromLocalFile(str(page.QML_FILE.resolve()))
+        qml_url = QUrl.fromLocalFile(str(page.PAGE_QML_FILE.resolve()))
 
         is_collapsed = (page.KEY == CollapsedPage.KEY)
 

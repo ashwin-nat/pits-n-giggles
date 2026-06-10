@@ -22,64 +22,54 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING
-
-from PySide6.QtQuick import QQuickItem
+from typing import Any, Dict, List, final
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
-from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId
+from apps.hud.ui.overlays.mfd.pages.standalone_base import \
+    StandalonePageOverlay
+from lib.config import MfdPageId, OverlayId
 from lib.f1_types import F1Utils
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
-
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PitRejoinPredictionPage(MfdPageBase):
+class PitRejoinPredictionPage(StandalonePageOverlay):
     """Pit rejoin position prediction page."""
+    OVERLAY_ID = OverlayId.PIT_REJOIN
     KEY = MfdPageId.PIT_REJOIN
-    QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
+    @final
+    def setup_overlay(self):
         self.num_adjacent_cars = 2
-        self.total_rows = (self.num_adjacent_cars * 2) + 1
 
-    def _init_event_handlers(self):
-        @self.on_event("race_table_update")
+        @self.on_page_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.
 
             Args:
                 data (Dict[str, Any]): The incoming data from the server (top level, including all keys)
             """
-            page_item = self._page_item
             session_type = data["event-type"]
             if not is_race_type_session(session_type):
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
 
             table_entries = data["table-entries"]
             if not table_entries:
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
 
             ref_row = get_ref_row(data)
             if not ref_row:
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
             ref_index = ref_row["driver-info"]["index"]
 
             pit_time_loss = data.get("pit-time-loss")
             if not pit_time_loss:
-                self._show_empty_table(page_item)
+                self._show_empty_table()
                 return
 
             # Compute how much pit time the ref car has already served (0 if not yet in pits).
@@ -101,7 +91,7 @@ class PitRejoinPredictionPage(MfdPageBase):
             insert_relative_deltas_race(relevant_rows, ref_index)
 
             # Update the table
-            self._update_table(pit_time_loss_str, relevant_rows, ref_index, page_item)
+            self._update_table(pit_time_loss_str, relevant_rows, ref_index)
 
     def _get_rival_effective_delta(self, row: Dict[str, Any], pit_time_loss_ms: float) -> float:
         """Return a rival's effective delta-to-leader, adjusted if they are currently in the pit lane.
@@ -243,22 +233,21 @@ class PitRejoinPredictionPage(MfdPageBase):
 
         return table_entries
 
-    def _show_empty_table(self, page_item: QQuickItem):
+    def _show_empty_table(self):
         """Display empty table."""
-        page_item.showEmptyTable()
+        self.set_qml_property("pitTimeLossText", "Pit Time Loss: --")
+        self.set_qml_property("tableData", [])
 
     def _update_table(self,
                       pit_time_loss_str: str,
                       relevant_rows: List[Dict[str, Any]],
-                      ref_index: int,
-                      page_item: QQuickItem):
+                      ref_index: int):
         """Update the table with new data.
 
         Args:
             pit_time_loss_str (str): Formatted pit time loss string
             relevant_rows (List[Dict[str, Any]]): List of row data dictionaries
             ref_index (int): Reference driver index
-            page_item (QQuickItem): Page item
         """
 
         # Convert rows to QML-friendly format
@@ -307,8 +296,9 @@ class PitRejoinPredictionPage(MfdPageBase):
                 "tyreAge": f"{tyre_age}L",
             })
 
-        # Call QML function to update
-        page_item.updateData(pit_time_loss_str, rows_data, ref_index)
+        self.set_qml_property("pitTimeLossText", pit_time_loss_str)
+        self.set_qml_property("refIndex", ref_index)
+        self.set_qml_property("tableData", rows_data)
 
     def _is_active_car(self, row: Dict[str, Any]) -> bool:
         """Check if driver is active car."""
