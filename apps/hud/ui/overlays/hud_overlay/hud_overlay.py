@@ -131,6 +131,7 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("drsEnabled",   drs_enabled)
         self.set_qml_property("drsAvailable", drs_avlb)
         self.set_qml_property("drsDistance",  drs_dist)
+        self.set_qml_property("pitLimiterEnabled", data.pit_limiter_enabled)
 
         # ERS — all values as percentages
         _store = CarStatusData.MAX_ERS_STORE_ENERGY

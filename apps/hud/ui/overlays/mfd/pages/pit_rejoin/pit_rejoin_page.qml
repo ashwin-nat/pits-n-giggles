@@ -84,6 +84,21 @@ Rectangle {
             }
         }
 
+        // Waiting for data
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.tableData.length === 0
+
+            Text {
+                anchors.centerIn: parent
+                text: "WAITING FOR DATA"
+                font.family: "Formula1"
+                font.pixelSize: 11
+                color: "#666666"
+            }
+        }
+
         // Table
         ListView {
             id: tableView
@@ -92,6 +107,7 @@ Rectangle {
             model: root.tableData
             interactive: false
             clip: true
+            visible: root.tableData.length > 0
 
             delegate: Rectangle {
                 width: tableView.width
@@ -205,15 +221,4 @@ Rectangle {
         }
     }
 
-    // Python hooks
-    function updateData(pitTimeLoss, rows, refIdx) {
-        root.pitTimeLossText = pitTimeLoss;
-        root.refIndex = refIdx;
-        root.tableData = rows;
-    }
-
-    function showEmptyTable() {
-        root.pitTimeLossText = "Pit Time Loss: --";
-        root.tableData = [];
-    }
 }

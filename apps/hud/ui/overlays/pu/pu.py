@@ -22,48 +22,26 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Optional
+from typing import final
 
 from apps.hud.common import get_ers_mode_color
-from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import OverlayId, OverlayPosition
+from apps.hud.ui.overlays.mfd.pages.standalone_base import StandalonePageOverlay
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PuOverlay(BaseOverlayQML):
+class PuOverlay(StandalonePageOverlay):
 
     # Remember to add the QML path to scripts/png.spec
-    QML_FILE = Path(__file__).parent / "pu.qml"
     OVERLAY_ID = OverlayId.PU
+    KEY = MfdPageId.PU_INFO
+    PAGE_QML_FILE: Path = Path(__file__).parent / "pu.qml"
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,
-    ) -> None:
+    @final
+    def setup_overlay(self):
 
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
-        )
-
-        self._register_event_handlers()
-
-    def _register_event_handlers(self):
-
-        @self.on_event("stream_overlay_update")
+        @self.on_page_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: dict):
             hud_data    = data["hud"]
             pu_data     = data["power-unit"]

@@ -379,9 +379,119 @@ class HudSettings(ConfigDiffMixin, BaseModel):
 
     # ============== PU OVERLAY ==============
     show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit",
+                                             mfd_friendly=True,
                                              preview_image="assets/overlay-previews/power-unit.png")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
+    pu_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in power unit overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Power Unit"}},
+    )
+
+    # ============== MFD PAGES (STANDALONE) ==============
+    show_fuel_info: bool = overlay_enable_field(
+        description="Enable fuel info standalone overlay",
+        group="Fuel Info",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/fuel-info.png",
+    )
+    fuel_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in fuel info overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Fuel Info"}},
+    )
+    show_tyre_info: bool = overlay_enable_field(
+        description="Enable tyre info standalone overlay",
+        group="Tyre Info",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/tyre-info.png",
+    )
+    tyre_info_show_title: bool = Field(
+        default=True,
+        description="Show title bar in tyre info overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Info"}},
+    )
+    show_lap_times: bool = overlay_enable_field(
+        description="Enable lap times history overlay",
+        group="Lap Times",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/lap-times.png",
+    )
+    lap_times_show_title: bool = Field(
+        default=True,
+        description="Show title bar in lap times overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Lap Times"}},
+    )
+    show_weather: bool = overlay_enable_field(
+        description="Enable weather forecast overlay",
+        group="Weather",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/weather.png",
+        ext_info=[
+            "Use the MFD interact action (mfd_interaction_udp_action_code) to cycle through "
+            "forecast sessions. If both the MFD weather page and this standalone overlay are "
+            "enabled simultaneously, the interact button cycles both."
+        ],
+    )
+    weather_show_title: bool = Field(
+        default=True,
+        description="Show title bar in weather forecast overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Weather"}},
+    )
+    show_pit_rejoin: bool = overlay_enable_field(
+        description="Enable pit rejoin prediction overlay",
+        group="Pit Rejoin",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/pit-rejoin.png",
+    )
+    pit_rejoin_show_title: bool = Field(
+        default=True,
+        description="Show title bar in pit rejoin prediction overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pit Rejoin"}},
+    )
+    show_tyre_sets: bool = overlay_enable_field(
+        description="Enable tyre sets overlay",
+        group="Tyre Sets",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/tyre-sets.png",
+    )
+    tyre_sets_show_title: bool = Field(
+        default=True,
+        description="Show title bar in tyre sets overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Sets"}},
+    )
+    show_pace_comp: bool = overlay_enable_field(
+        description="Enable pace comparison overlay",
+        group="Pace Comparison",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/pace-comp.png",
+    )
+    pace_comp_show_title: bool = Field(
+        default=True,
+        description="Show title bar in pace comparison overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pace Comparison"}},
+    )
+    show_traffic_monitor: bool = overlay_enable_field(
+        description="Enable traffic monitor overlay",
+        group="Traffic Monitor",
+        default=False,
+        mfd_friendly=True,
+        preview_image="assets/overlay-previews/traffic-monitor.png",
+    )
+    traffic_monitor_show_title: bool = Field(
+        default=True,
+        description="Show title bar in traffic monitor overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Traffic Monitor"}},
+    )
+
     # ============== AUTO-HIDE IN MENU ==============
     auto_hide_in_menu: bool = Field(
         default=True,
