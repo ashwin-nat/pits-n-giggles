@@ -24,7 +24,7 @@
 
 import copy
 from enum import Enum
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -61,6 +61,12 @@ class MfdPageSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "text_box", "visible": True}},
     )
 
+    description: Optional[str] = Field(
+        default=None,
+        exclude=True,  # display-only label; never persisted to png_config.json
+        description="Display label for this MFD page in the settings UI",
+        json_schema_extra={"diff_exclude": True, "ui": {"visible": False}},
+    )
 
 DEFAULT_PAGES = {
     MfdPageId.LAP_TIMES:        MfdPageSettings(enabled=True,  position=1, description="Lap Times"),
@@ -87,7 +93,8 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
                 "visible": True,
                 "reorderable_collection": True,
                 "item_enabled_field": "enabled",
-                "item_position_field": "position"
+                "item_position_field": "position",
+                "item_label_field": "description"
             }
         },
     )
@@ -113,13 +120,17 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
         """
         Ensure all DEFAULT_PAGES exist.
         New pages are added as disabled by default, with a non-conflicting position.
+        Descriptions are excluded from serialization, so pages loaded from JSON
+        get theirs backfilled from DEFAULT_PAGES here.
         """
         merged = dict(self.pages)
         used_positions = {page.position for page in merged.values()}
 
         for key, default_page in DEFAULT_PAGES.items():
             str_key = key.value if isinstance(key, MfdPageId) else key
-            if str_key not in merged:
+            if str_key in merged and merged[str_key].description is None:
+                merged[str_key].description = default_page.description
+            else:
                 new_page = default_page.model_copy(deep=True)
                 new_page.enabled = False
                 # Resolve position conflict: find the next free slot
