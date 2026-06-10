@@ -415,11 +415,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Info"}},
     )
     show_lap_times: bool = overlay_enable_field(
-        description="Enable lap times standalone overlay",
+        description="Enable lap times history overlay",
         group="Lap Times",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/lap-times-standalone.png",
+        preview_image="assets/overlay-previews/lap-times.png",
     )
     lap_times_show_title: bool = Field(
         default=True,
@@ -427,11 +427,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Lap Times"}},
     )
     show_weather: bool = overlay_enable_field(
-        description="Enable weather forecast standalone overlay",
+        description="Enable weather forecast overlay",
         group="Weather",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/weather-standalone.png",
+        preview_image="assets/overlay-previews/weather.png",
         ext_info=[
             "Use the MFD interact action (mfd_interaction_udp_action_code) to cycle through "
             "forecast sessions. If both the MFD weather page and this standalone overlay are "
@@ -444,11 +444,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Weather"}},
     )
     show_pit_rejoin: bool = overlay_enable_field(
-        description="Enable pit rejoin prediction standalone overlay",
+        description="Enable pit rejoin prediction overlay",
         group="Pit Rejoin",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/pit-rejoin-standalone.png",
+        preview_image="assets/overlay-previews/pit-rejoin.png",
     )
     pit_rejoin_show_title: bool = Field(
         default=True,
@@ -456,11 +456,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pit Rejoin"}},
     )
     show_tyre_sets: bool = overlay_enable_field(
-        description="Enable tyre sets standalone overlay",
+        description="Enable tyre sets overlay",
         group="Tyre Sets",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/tyre-sets-standalone.png",
+        preview_image="assets/overlay-previews/tyre-sets.png",
     )
     tyre_sets_show_title: bool = Field(
         default=True,
@@ -468,11 +468,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Tyre Sets"}},
     )
     show_pace_comp: bool = overlay_enable_field(
-        description="Enable pace comparison standalone overlay",
+        description="Enable pace comparison overlay",
         group="Pace Comparison",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/pace-comp-standalone.png",
+        preview_image="assets/overlay-previews/pace-comp.png",
     )
     pace_comp_show_title: bool = Field(
         default=True,
@@ -480,11 +480,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Pace Comparison"}},
     )
     show_traffic_monitor: bool = overlay_enable_field(
-        description="Enable traffic monitor standalone overlay",
+        description="Enable traffic monitor overlay",
         group="Traffic Monitor",
         default=False,
         mfd_friendly=True,
-        preview_image="assets/overlay-previews/traffic-monitor-standalone.png",
+        preview_image="assets/overlay-previews/traffic-monitor.png",
     )
     traffic_monitor_show_title: bool = Field(
         default=True,
