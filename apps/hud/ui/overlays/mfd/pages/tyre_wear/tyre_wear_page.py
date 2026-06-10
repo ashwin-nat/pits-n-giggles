@@ -63,7 +63,7 @@ class TyreInfoPage(StandalonePageOverlay):
     @final
     def setup_overlay(self):
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
             ref_row = get_ref_row(data)
@@ -119,7 +119,7 @@ class TyreInfoPage(StandalonePageOverlay):
 
             self._update_wear_table(curr_wear, curr_lap_num, predictions, pit_lap)
 
-        @self.on_page_event("stream_overlay_update")
+        @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
             tyre_sets_info = data["tyre-sets"]

@@ -52,7 +52,7 @@ class FuelInfoPage(StandalonePageOverlay):
     @final
     def setup_overlay(self):
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update fuel information display."""
             ref_row = get_ref_row(data)

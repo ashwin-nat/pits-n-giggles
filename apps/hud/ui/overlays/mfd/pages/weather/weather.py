@@ -62,7 +62,7 @@ class WeatherForecastPage(StandalonePageOverlay):
         self.num_sessions: int = 0
         self.session_uid: int = 0
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
             forecast_data_flat = data.get("weather-forecast-samples", [])
             if not forecast_data_flat:
@@ -76,7 +76,7 @@ class WeatherForecastPage(StandalonePageOverlay):
 
             self._display_weather_data(forecast_data_flat)
 
-        @self.on_page_event("mfd_interact")
+        @self.on_event("mfd_interact")
         def mfd_interact(data: Dict[str, Any]) -> None:
             self.logger.debug("%s | Received mfd_interact command. args: %s", self.KEY, data)
             if not self.num_sessions:

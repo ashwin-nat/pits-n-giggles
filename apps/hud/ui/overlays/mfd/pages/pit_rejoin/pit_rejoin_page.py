@@ -44,7 +44,7 @@ class PitRejoinPredictionPage(StandalonePageOverlay):
     def setup_overlay(self):
         self.num_adjacent_cars = 2
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.
 

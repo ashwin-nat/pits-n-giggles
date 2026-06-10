@@ -66,15 +66,18 @@ class MfdPageBase:
         """Initialise page state and register event handlers. Must be overridden in subclasses."""
         raise NotImplementedError
 
-    def on_page_event(self, event_type: str, requires_page_item: bool = True):
+    def on_event(self, event_type: str, requires_root: bool = True):
         """Decorator to register an event handler for this page.
+
+        Mirrors the BaseOverlayQML.on_event signature so page code is identical
+        to overlay code. Here "root" means the active page QML item.
 
         Args:
             event_type: The event type to handle.
-            requires_page_item: If True (default), the handler is skipped when the page is not active.
+            requires_root: If True (default), the handler is skipped when the page is not active.
         """
         def decorator(fn):
-            if requires_page_item:
+            if requires_root:
                 def wrapper(data, _event_type=event_type):
                     if not self._page_item:
                         self._stats.track_event("__DROPPED_NO_PAGE__", _event_type)

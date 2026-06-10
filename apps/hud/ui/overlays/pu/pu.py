@@ -41,7 +41,7 @@ class PuOverlay(StandalonePageOverlay):
     @final
     def setup_overlay(self):
 
-        @self.on_page_event("stream_overlay_update")
+        @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: dict):
             hud_data    = data["hud"]
             pu_data     = data["power-unit"]

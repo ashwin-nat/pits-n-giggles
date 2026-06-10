@@ -55,7 +55,7 @@ class TrafficMonitorPage(StandalonePageOverlay):
     def setup_overlay(self):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             table_entries: Optional[List] = data.get("table-entries")
             circuit_len: Optional[float] = data.get("circuit-len")

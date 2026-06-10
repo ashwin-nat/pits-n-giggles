@@ -39,8 +39,8 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
     """Base for MFD pages that can also run as standalone always-on-top overlay windows.
 
     MRO: StandalonePageOverlay → BaseOverlayQML → BaseOverlay → QObject → MfdPageBase
-    - self.on_event       → BaseOverlayQML  (overlay command handlers)
-    - self.on_page_event  → MfdPageBase     (page data handlers)
+    - self.on_event → overridden here; dispatches to BaseOverlayQML (standalone)
+      or MfdPageBase (MFD-hosted) based on _is_standalone
 
     Multiple inheritance over composition: keeping KEY, PAGE_QML_FILE, OVERLAY_ID, and
     _configure kwargs in a single subclass definition avoids duplicating the page class
@@ -77,13 +77,15 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         self.setup_overlay()
         self.on_page_activated()
 
-    def on_page_event(self, event_type: str, requires_page_item: bool = True):
-        """In standalone mode, register directly via on_event (overlay infra).
-        In MFD-hosted mode, delegate to MfdPageBase (page-item guard, _handlers dict).
+    def on_event(self, event_type: str, requires_root: bool = True):
+        """In standalone mode, register via the overlay infra (root-window guard,
+        _command_handlers). In MFD-hosted mode, delegate to MfdPageBase (page-item
+        guard, _handlers dict). Same signature either way, so page code is
+        identical to overlay code.
         """
         if self._is_standalone:
-            return self.on_event(event_type, requires_root=requires_page_item)
-        return MfdPageBase.on_page_event(self, event_type, requires_page_item)
+            return BaseOverlayQML.on_event(self, event_type, requires_root=requires_root)
+        return MfdPageBase.on_event(self, event_type, requires_root)
 
     def post_setup(self):
         self.root.setProperty("pageSource", QUrl.fromLocalFile(str(self.PAGE_QML_FILE.resolve())))
@@ -136,6 +138,15 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
     def set_qml_property(self, name: str, value) -> None:
         """Always targets the page item — the Loader's item in standalone, the activated item in MFD."""
         MfdPageBase.set_qml_property(self, name, value)
+
+    def get_stats(self) -> dict:
+        """In standalone mode, full overlay stats (window, frame renderer). In MFD-hosted
+        mode, BaseOverlayQML attributes (_root, _refresh_interval_ms) don't exist because
+        __init__ was bypassed — report page-level stats only.
+        """
+        if self._is_standalone:
+            return BaseOverlayQML.get_stats(self)
+        return MfdPageBase.get_stats(self)
 
     def render_frame(self):
         pass  # telemetry-driven; no fixed-rate rendering needed
