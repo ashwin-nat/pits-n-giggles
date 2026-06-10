@@ -146,8 +146,12 @@
                     "position": 7
                 },
                 "traffic_monitor": {
-                    "enabled": false,
+                    "enabled": true,
                     "position": 8
+                },
+                "pu_info": {
+                    "enabled": true,
+                    "position": 9
                 }
             }
         },
@@ -173,96 +177,105 @@
         "circuit_info_length": 800,
         "show_pu_info": true,
         "pu_toggle_udp_action_code": null,
+        "pu_info_show_title": true,
         "show_fuel_info": true,
+        "fuel_info_show_title": true,
         "show_tyre_info": true,
-        "show_lap_times_standalone": true,
-        "show_weather_standalone": true,
-        "show_pit_rejoin_standalone": true,
-        "show_tyre_sets_standalone": true,
-        "show_pace_comp_standalone": true,
-        "show_traffic_monitor_standalone": true,
+        "tyre_info_show_title": true,
+        "show_lap_times": true,
+        "lap_times_show_title": true,
+        "show_weather": true,
+        "weather_show_title": true,
+        "show_pit_rejoin": true,
+        "pit_rejoin_show_title": true,
+        "show_tyre_sets": true,
+        "tyre_sets_show_title": true,
+        "show_pace_comp": true,
+        "pace_comp_show_title": true,
+        "show_traffic_monitor": true,
+        "traffic_monitor_show_title": true,
         "auto_hide_in_menu": true,
         "menu_silence_threshold_sec": 3.0,
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
-                "x": 600,
-                "y": 60,
+                "x": 3006,
+                "y": -16,
                 "scale_factor": 1.0
             },
             "timing_tower": {
-                "x": 10,
-                "y": 55,
+                "x": 3293,
+                "y": -21,
                 "scale_factor": 1.0
             },
             "mfd": {
-                "x": 10,
-                "y": 355,
+                "x": 2580,
+                "y": 220,
                 "scale_factor": 1.0
             },
             "input_telemetry": {
-                "x": 10,
-                "y": 600,
+                "x": 2576,
+                "y": 531,
                 "scale_factor": 1.0
             },
             "track_radar": {
-                "x": 40,
-                "y": 600,
+                "x": 2616,
+                "y": 670,
                 "scale_factor": 1.0
             },
             "hud_overlay": {
-                "x": 300,
-                "y": 600,
+                "x": 3913,
+                "y": 807,
                 "scale_factor": 1.0
             },
             "circuit_info": {
-                "x": 600,
-                "y": 600,
+                "x": 3099,
+                "y": 885,
                 "scale_factor": 1.0
             },
             "pu": {
-                "x": 600,
-                "y": 120,
+                "x": 2578,
+                "y": -19,
                 "scale_factor": 1.0
             },
             "fuel_info": {
-                "x": 420,
-                "y": 355,
+                "x": 3927,
+                "y": 533,
                 "scale_factor": 1.0
             },
             "tyre_info": {
-                "x": 420,
-                "y": 355,
+                "x": 3957,
+                "y": 265,
                 "scale_factor": 1.0
             },
             "lap_times_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3951,
+                "y": 11,
                 "scale_factor": 1.0
             },
             "weather_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3454,
+                "y": 616,
                 "scale_factor": 1.0
             },
             "pit_rejoin_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3464,
+                "y": 343,
                 "scale_factor": 1.0
             },
             "tyre_sets_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3501,
+                "y": 84,
                 "scale_factor": 1.0
             },
             "pace_comp_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3017,
+                "y": 460,
                 "scale_factor": 1.0
             },
             "traffic_monitor_standalone": {
-                "x": 420,
-                "y": 355,
+                "x": 3030,
+                "y": 183,
                 "scale_factor": 1.0
             }
         }
@@ -334,7 +347,7 @@
         "tyre_wear_window_size": 5
     },
     "MCP": {
-        "mcp_http_server_enable": false,
+        "mcp_http_server_enable": true,
         "mcp_http_port": 4770
     },
     "SubSysCtrlCfg__": {
