@@ -42,7 +42,6 @@ class MfdPageId(str, Enum):
     TYRE_SETS        = "tyre_sets"
     PACE_COMP        = "pace_comp"
     TRAFFIC_MONITOR  = "traffic_monitor"
-    PU_INFO          = "pu_info"
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -77,7 +76,6 @@ DEFAULT_PAGES = {
     MfdPageId.TYRE_SETS:        MfdPageSettings(enabled=True,  position=6, description="Tyre Sets"),
     MfdPageId.PACE_COMP:        MfdPageSettings(enabled=True,  position=7, description="Pace Comparison"),
     MfdPageId.TRAFFIC_MONITOR:  MfdPageSettings(enabled=False, position=8, description="Traffic Monitor"),
-    MfdPageId.PU_INFO:          MfdPageSettings(enabled=True,  position=9, description="Power Unit"),
 }
 
 
@@ -122,8 +120,13 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
         New pages are added as disabled by default, with a non-conflicting position.
         Descriptions are excluded from serialization, so pages loaded from JSON
         get theirs backfilled from DEFAULT_PAGES here.
+        Pages no longer in DEFAULT_PAGES (e.g. removed in an update) are dropped.
         """
-        merged = dict(self.pages)
+        known_keys = {key.value for key in DEFAULT_PAGES}
+        merged = {
+            k: v for k, v in self.pages.items()
+            if (k.value if isinstance(k, MfdPageId) else k) in known_keys
+        }
         used_positions = {page.position for page in merged.values()}
 
         for key, default_page in DEFAULT_PAGES.items():

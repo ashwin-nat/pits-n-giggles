@@ -249,11 +249,10 @@ class OverlaysMgr:
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_pu_info,
             overlay_cls=PuOverlay,
-            overlay_cfg=settings.HUD.layout[OverlayId.PU],
+            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
-            scale_factor=settings.HUD.layout[OverlayId.PU].scale_factor,
-            show_title_bar=settings.HUD.pu_info_show_title,
+            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
         )
 
         if settings.HUD.show_mfd:

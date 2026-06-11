@@ -478,7 +478,6 @@ class HudAppMgr(PngAppMgrBase):
                 "overlays_fuel_estimation_mode",
                 "show_circuit_info",
                 "show_pu_info",
-                "pu_info_show_title",
                 "show_fuel_info",
                 "fuel_info_show_title",
                 "show_tyre_info",

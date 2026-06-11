@@ -22,8 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from apps.hud.ui.overlays.pu.pu import PuOverlay
-
 from .base_page import MfdPageBase
 from .collapsed import CollapsedPage
 from .fuel import FuelInfoPage
@@ -50,5 +48,4 @@ __all__ = [
     "WeatherForecastPage",
     "PaceCompPage",
     "TrafficMonitorPage",
-    "PuOverlay",
 ]
