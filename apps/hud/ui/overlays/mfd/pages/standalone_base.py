@@ -28,18 +28,18 @@ from typing import final
 
 from PySide6.QtCore import QObject, QUrl
 
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
+class StandalonePageOverlay(BaseOverlay, MfdPageBase):
     QML_FILE: Path = Path(__file__).parent / "standalone_wrapper.qml"
     """Base for MFD pages that can also run as standalone always-on-top overlay windows.
 
-    MRO: StandalonePageOverlay → BaseOverlayQML → BaseOverlay → QObject → MfdPageBase
-    - self.on_event → overridden here; dispatches to BaseOverlayQML (standalone)
+    MRO: StandalonePageOverlay → BaseOverlay → QObject → MfdPageBase
+    - self.on_event → overridden here; dispatches to BaseOverlay (standalone)
       or MfdPageBase (MFD-hosted) based on _is_standalone
 
     Multiple inheritance over composition: keeping KEY, PAGE_QML_FILE, OVERLAY_ID, and
@@ -64,7 +64,7 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         self._is_standalone: bool = True
         self._show_title_bar = show_title_bar
         MfdPageBase.__init__(self, overlay=None, logger=logger)
-        BaseOverlayQML.__init__(
+        BaseOverlay.__init__(
             self,
             config=config,
             logger=logger,
@@ -84,7 +84,7 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         identical to overlay code.
         """
         if self._is_standalone:
-            return BaseOverlayQML.on_event(self, event_type, requires_root=requires_root)
+            return BaseOverlay.on_event(self, event_type, requires_root=requires_root)
         return MfdPageBase.on_event(self, event_type, requires_root)
 
     def post_setup(self):
@@ -106,10 +106,10 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
         """Allocate and initialise only the MfdPageBase half of this object.
 
         Uses __new__ + explicit MfdPageBase.__init__ to skip StandalonePageOverlay.__init__,
-        which would call BaseOverlayQML.__init__ and open a Qt window. Called by
+        which would call BaseOverlay.__init__ and open a Qt window. Called by
         create_for_mfd before _configure and setup_overlay.
         """
-        obj = BaseOverlayQML.__new__(cls)
+        obj = BaseOverlay.__new__(cls)
         obj._is_standalone = False
         MfdPageBase.__init__(obj, overlay=overlay, logger=logger)
         return obj
@@ -141,11 +141,11 @@ class StandalonePageOverlay(BaseOverlayQML, MfdPageBase):
 
     def get_stats(self) -> dict:
         """In standalone mode, full overlay stats (window, frame renderer). In MFD-hosted
-        mode, BaseOverlayQML attributes (_root, _refresh_interval_ms) don't exist because
+        mode, BaseOverlay attributes (_root, _refresh_interval_ms) don't exist because
         __init__ was bypassed — report page-level stats only.
         """
         if self._is_standalone:
-            return BaseOverlayQML.get_stats(self)
+            return BaseOverlay.get_stats(self)
         return MfdPageBase.get_stats(self)
 
     def render_frame(self):

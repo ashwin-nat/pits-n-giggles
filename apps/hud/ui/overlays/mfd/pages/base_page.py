@@ -69,7 +69,7 @@ class MfdPageBase:
     def on_event(self, event_type: str, requires_root: bool = True):
         """Decorator to register an event handler for this page.
 
-        Mirrors the BaseOverlayQML.on_event signature so page code is identical
+        Mirrors the BaseOverlay.on_event signature so page code is identical
         to overlay code. Here "root" means the active page QML item.
 
         Args:

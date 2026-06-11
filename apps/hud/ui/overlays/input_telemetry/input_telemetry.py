@@ -28,12 +28,12 @@ from typing import final
 
 
 from apps.hud.ui.infra.hf_types import InputTelemetryData
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class InputTelemetryOverlay(BaseOverlayQML):
+class InputTelemetryOverlay(BaseOverlay):
     """
     Track map overlay that displays an SVG representation of the current circuit.
 

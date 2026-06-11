@@ -28,14 +28,14 @@ from typing import Any, Dict, Optional, final
 
 from apps.hud.common import get_ers_mode_color, get_ref_row, is_race_type_session, is_tt_session
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                         OverlayId, OverlayPosition)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class HudOverlay(BaseOverlayQML):
+class HudOverlay(BaseOverlay):
     """
     Extremely minimal QML overlay template.
 

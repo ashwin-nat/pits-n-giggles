@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, final
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
@@ -41,7 +41,7 @@ from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class MfdOverlay(BaseOverlayQML):
+class MfdOverlay(BaseOverlay):
 
     OVERLAY_ID = OverlayId.MFD
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"

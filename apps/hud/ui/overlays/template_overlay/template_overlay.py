@@ -27,12 +27,12 @@ from pathlib import Path
 from typing import final, Optional
 from apps.hud.ui.infra.hf_types import DummyHFType
 
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TemplateOverlay(BaseOverlayQML):
+class TemplateOverlay(BaseOverlay):
     """
     Extremely minimal QML overlay template.
 
