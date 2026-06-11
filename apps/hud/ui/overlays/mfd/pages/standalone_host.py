@@ -1,0 +1,109 @@
+# MIT License
+#
+# Copyright (c) [2025] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+import logging
+from pathlib import Path
+from typing import final
+
+from PySide6.QtCore import QObject, QUrl
+
+from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
+from lib.config import OverlayPosition
+
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class StandalonePageHost(BaseOverlay):
+    """Shows a single MFD page in its own always-on-top overlay window.
+
+    Composition counterpart of MfdOverlay: where the MFD hosts N pages and cycles
+    through them, this host wraps exactly one fully constructed MfdPageBase
+    instance in standalone_wrapper.qml. Written once, never subclassed — any
+    MFD page works standalone by being handed to this class.
+
+    Responsibilities:
+    - Window chrome: optional title bar (a window concern, not a page concern)
+    - Page lifecycle: activates the page on the wrapper's Loader item
+    - Event bridge: every event type the page handles is registered as an
+      overlay command handler that forwards to the page
+    - Stats: overlay stats plus the page's own stats under "__PAGE__"
+    """
+
+    QML_FILE: Path = Path(__file__).parent / "standalone_wrapper.qml"
+
+    def __init__(
+        self,
+        page: MfdPageBase,
+        config: OverlayPosition,
+        logger: logging.Logger,
+        locked: bool,
+        opacity: int,
+        scale_factor: float,
+        windowed_overlay: bool,
+        show_title_bar: bool,
+    ):
+        self._page = page
+        self._show_title_bar = show_title_bar
+        # Identity comes from the hosted page (instance attribute shadows the
+        # empty class attribute; set before super().__init__ asserts on it).
+        self.OVERLAY_ID = page.OVERLAY_ID
+        super().__init__(
+            config=config,
+            logger=logger,
+            locked=locked,
+            opacity=opacity,
+            scale_factor=scale_factor,
+            windowed_overlay=windowed_overlay,
+            refresh_interval_ms=None,  # pages are event-driven, never frame-driven
+        )
+
+    @final
+    def post_setup(self):
+        """Load the page QML into the wrapper, activate the page, bridge its events."""
+        self.root.setProperty("pageSource", QUrl.fromLocalFile(str(self._page.PAGE_QML_FILE.resolve())))
+        loader = self.root.findChild(QObject, "pageContent")
+        assert loader is not None, f"{self._page.KEY} | standalone QML missing Loader with objectName 'pageContent'"
+        page_item = loader.property("item")
+        assert page_item is not None, f"{self._page.KEY} | Loader 'pageContent' item is None — page QML failed to load"
+        self.root.setProperty("showTitleBar", self._show_title_bar)
+        self.root.setProperty("titleText", page_item.property("title") or "")
+
+        self._page._on_page_activated(page_item)
+
+        for event_type in self._page.get_handled_event_types():
+            self._register_page_event(event_type)
+
+    def _register_page_event(self, event_type: str):
+        """Register an overlay command handler that forwards to the hosted page."""
+        @self.on_event(event_type)
+        def _forward(data: dict, _et=event_type):
+            self._page.handle_event(_et, data)
+
+    @final
+    def get_stats(self) -> dict:
+        """Overlay-level stats plus the hosted page's stats."""
+        return {
+            **super().get_stats(),
+            "__PAGE__": self._page.get_stats(),
+        }

@@ -146,7 +146,7 @@ class MfdOverlay(BaseOverlay):
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
             kwargs = page_info.get("kwargs", {})
-            self._mfd_pages.append(cls.create_for_mfd(self, self.logger, **kwargs))
+            self._mfd_pages.append(cls(self.logger, **kwargs))
         self._current_index = 0
 
         # Set total pages in QML

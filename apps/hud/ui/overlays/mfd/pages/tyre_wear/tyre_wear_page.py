@@ -22,17 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import get_ref_row
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TyreInfoPage(StandalonePageOverlay):
+class TyreInfoPage(MfdPageBase):
 
     OVERLAY_ID = OverlayId.TYRE_INFO
     KEY = MfdPageId.TYRE_INFO
@@ -47,21 +47,15 @@ class TyreInfoPage(StandalonePageOverlay):
         'rear-right':  'RR',
     }
 
-    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
-                 show_title_bar,
+    def __init__(self, logger: logging.Logger,
                  tyre_wear_threshold: int,
                  tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX):
         self.tyre_wear_threshold = tyre_wear_threshold
         self.tyre_wear_rate_type = tyre_wear_rate_type
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
-
-    def _configure(self, tyre_wear_threshold: int,  # pylint: disable=arguments-differ
-                   tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX) -> None:
-        self.tyre_wear_threshold = tyre_wear_threshold
-        self.tyre_wear_rate_type = tyre_wear_rate_type
+        super().__init__(logger)
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
 
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:

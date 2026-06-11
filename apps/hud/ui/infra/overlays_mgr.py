@@ -32,8 +32,9 @@ from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   MfdOverlay, PuOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
 from apps.hud.ui.overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
-                                             PaceCompPage,
+                                             MfdPageBase, PaceCompPage,
                                              PitRejoinPredictionPage,
+                                             StandalonePageHost,
                                              TrafficMonitorPage, TyreInfoPage,
                                              TyreSetsPage, WeatherForecastPage)
 from lib.assets_loader import load_fonts
@@ -162,9 +163,9 @@ class OverlaysMgr:
         )
 
         # ---- MFD pages (standalone) ----
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_fuel_info,
-            overlay_cls=FuelInfoPage,
+            page_cls=FuelInfoPage,
             overlay_cfg=settings.HUD.layout[OverlayId.FUEL_INFO],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -173,9 +174,9 @@ class OverlaysMgr:
             fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_tyre_info,
-            overlay_cls=TyreInfoPage,
+            page_cls=TyreInfoPage,
             overlay_cfg=settings.HUD.layout[OverlayId.TYRE_INFO],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -185,9 +186,9 @@ class OverlaysMgr:
             tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_lap_times,
-            overlay_cls=LapTimesPage,
+            page_cls=LapTimesPage,
             overlay_cfg=settings.HUD.layout[OverlayId.LAP_TIMES],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -195,9 +196,9 @@ class OverlaysMgr:
             show_title_bar=settings.HUD.lap_times_show_title,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_weather,
-            overlay_cls=WeatherForecastPage,
+            page_cls=WeatherForecastPage,
             overlay_cfg=settings.HUD.layout[OverlayId.WEATHER],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -206,9 +207,9 @@ class OverlaysMgr:
             show_title_bar=settings.HUD.weather_show_title,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_pit_rejoin,
-            overlay_cls=PitRejoinPredictionPage,
+            page_cls=PitRejoinPredictionPage,
             overlay_cfg=settings.HUD.layout[OverlayId.PIT_REJOIN],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -216,9 +217,9 @@ class OverlaysMgr:
             show_title_bar=settings.HUD.pit_rejoin_show_title,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_tyre_sets,
-            overlay_cls=TyreSetsPage,
+            page_cls=TyreSetsPage,
             overlay_cfg=settings.HUD.layout[OverlayId.TYRE_SETS],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -226,9 +227,9 @@ class OverlaysMgr:
             show_title_bar=settings.HUD.tyre_sets_show_title,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_pace_comp,
-            overlay_cls=PaceCompPage,
+            page_cls=PaceCompPage,
             overlay_cfg=settings.HUD.layout[OverlayId.PACE_COMP],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -236,9 +237,9 @@ class OverlaysMgr:
             show_title_bar=settings.HUD.pace_comp_show_title,
         )
 
-        self._register_overlay_if_enabled(
+        self._register_page_host_if_enabled(
             enabled=settings.HUD.show_traffic_monitor,
-            overlay_cls=TrafficMonitorPage,
+            page_cls=TrafficMonitorPage,
             overlay_cfg=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR],
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -505,6 +506,38 @@ class OverlaysMgr:
                 opacity=opacity,
                 windowed_overlay=windowed_overlay,
                 **overlay_kwargs
+            )
+        )
+
+    def _register_page_host_if_enabled(
+        self,
+        *,
+        enabled: bool,
+        page_cls: MfdPageBase,
+        overlay_cfg: OverlayPosition,
+        opacity: float,
+        windowed_overlay: bool,
+        scale_factor: float,
+        show_title_bar: bool,
+        **page_kwargs
+    ):
+        """Register an MFD page as a standalone overlay window via StandalonePageHost."""
+        if not enabled:
+            self.logger.debug("%s overlay is disabled", page_cls.OVERLAY_ID)
+            return
+
+        page = page_cls(self.logger, **page_kwargs)
+        self.window_manager.register_overlay(
+            page_cls.OVERLAY_ID,
+            StandalonePageHost(
+                page,
+                overlay_cfg,
+                self.logger,
+                locked=True,
+                opacity=opacity,
+                scale_factor=scale_factor,
+                windowed_overlay=windowed_overlay,
+                show_title_bar=show_title_bar,
             )
         )
 

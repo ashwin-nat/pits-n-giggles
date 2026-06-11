@@ -26,8 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, final
 
 from apps.hud.common import get_ers_mode_color, get_ref_row_index
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 from lib.track_segment_info import TrackSegmentsDatabase
 
@@ -39,7 +38,7 @@ _DRIVER_STATUS_IN_GARAGE = "IN_GARAGE"
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TrafficMonitorPage(StandalonePageOverlay):
+class TrafficMonitorPage(MfdPageBase):
     """Traffic Monitor MFD Page — nearest 5 cars behind sorted by lap distance."""
     OVERLAY_ID = OverlayId.TRAFFIC_MONITOR
     KEY = MfdPageId.TRAFFIC_MONITOR
@@ -52,7 +51,7 @@ class TrafficMonitorPage(StandalonePageOverlay):
         pass
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
 
         @self.on_event("race_table_update")

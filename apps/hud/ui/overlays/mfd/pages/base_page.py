@@ -24,14 +24,11 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 from PySide6.QtQuick import QQuickItem
 
 from lib.event_counter import EventCounter
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd import MfdOverlay
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -42,28 +39,39 @@ _UNSET = object()  # sentinel for absent page-property cache entries
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class MfdPageBase:
+    """Hostable page content: business logic plus a diff-cached bridge to the
+    active page QML item. Pages own no window and no transport — they receive
+    events exclusively from their host (MfdOverlay or StandalonePageHost)
+    calling handle_event.
+
+    Concrete pages subclass this and define KEY, PAGE_QML_FILE, OVERLAY_ID.
+    Per-page config is plain typed __init__ args, set before calling
+    super().__init__ (which runs setup_page).
+    """
+
     KEY: str = ""
     PAGE_QML_FILE: Path = ""
+    OVERLAY_ID: str = ""  # window identity used when hosted by StandalonePageHost
 
-    @classmethod
-    def create_for_mfd(cls, overlay, logger: logging.Logger, **kwargs) -> "MfdPageBase":
-        """Create a page instance for MFD-hosted use. Override in StandalonePageOverlay."""
-        return cls(overlay, logger, **kwargs)
-
-    def __init__(self, overlay: Optional["MfdOverlay"] = None, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger):
         assert self.KEY, "KEY must be set in subclass"
         assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"
         assert Path(self.PAGE_QML_FILE).exists(), f"PAGE_QML_FILE does not exist: {self.PAGE_QML_FILE}"
 
-        self.overlay = overlay
         self._page_item = None
         self.logger = logger
         self._handlers: Dict[str, Callable[[Dict[str, Any]], None]] = {}
         self._stats = EventCounter()
         self._page_props: dict = {}
 
-    def setup_overlay(self) -> None:
-        """Initialise page state and register event handlers. Must be overridden in subclasses."""
+        self.setup_page()
+
+    def setup_page(self) -> None:
+        """Initialise page state and register event handlers. Must be overridden in subclasses.
+
+        Called at the end of __init__ — subclasses must set their config fields
+        before calling super().__init__.
+        """
         raise NotImplementedError
 
     def on_event(self, event_type: str, requires_root: bool = True):
