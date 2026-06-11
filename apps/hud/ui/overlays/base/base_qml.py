@@ -510,11 +510,11 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """The root QML window. Available after _setup_window() completes."""
         return self._root
 
-    def on_event(self, cmd_name: str, requires_root: bool = True):
+    def on_event(self, event_type: str, requires_root: bool = True):
         """Register a command handler, optionally guarded by root availability.
 
         Args:
-            cmd_name: The event/command name to handle.
+            event_type: The event/command name to handle.
             requires_root: When True (default), the handler is silently dropped
                 and counted under ``__DROPPED_NO_ROOT__`` if the QML root window
                 is not yet initialised. Set to False for handlers that must run
@@ -522,14 +522,14 @@ class BaseOverlayQML(BaseOverlay, QObject):
         """
         def decorator(func):
             if requires_root:
-                def wrapper(data, _cmd=cmd_name):
+                def wrapper(data, _cmd=event_type):
                     if not self._root:
                         self._stats.track_event("__DROPPED_NO_ROOT__", _cmd)
                         return None
                     return func(data)
-                self._command_handlers[cmd_name] = wrapper
+                self._command_handlers[event_type] = wrapper
             else:
-                self._command_handlers[cmd_name] = func
+                self._command_handlers[event_type] = func
             return func
         return decorator
 

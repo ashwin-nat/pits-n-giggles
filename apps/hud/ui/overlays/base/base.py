@@ -236,9 +236,9 @@ class BaseOverlay():
     # ----------------------------------------------------------------------
     # Command/Request handler registration
     # ----------------------------------------------------------------------
-    def on_event(self, cmd_name: str):
+    def on_event(self, event_type: str):
         def decorator(func: OverlayCommandHandler):
-            self._command_handlers[cmd_name] = func
+            self._command_handlers[event_type] = func
             return func
         return decorator
 
