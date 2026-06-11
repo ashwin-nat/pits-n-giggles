@@ -106,7 +106,7 @@ class MfdOverlay(BaseOverlay):
             if not self._mfd_pages:
                 self.logger.warning("%s | Event '%s' received but no pages are initialised", self.OVERLAY_ID, event_type)
                 return
-            self._mfd_pages[self._current_index].handle_event(event_type, data)
+            self._mfd_pages[self._current_index].dispatch_event(event_type, data)
 
     def _get_page_kwargs(self, settings: PngSettings) -> dict:
         """Get initialization kwargs for pages from settings."""

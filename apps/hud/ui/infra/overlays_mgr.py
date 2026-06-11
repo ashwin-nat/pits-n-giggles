@@ -32,18 +32,19 @@ from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                                   MfdOverlay, PuOverlay, TimingTowerOverlay,
                                   TrackRadarOverlay)
 from apps.hud.ui.overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
-                                             MfdPageBase, PaceCompPage,
-                                             PitRejoinPredictionPage,
-                                             StandalonePageHost,
-                                             TrafficMonitorPage, TyreInfoPage,
-                                             TyreSetsPage, WeatherForecastPage)
+                                            MfdPageBase, PaceCompPage,
+                                            PitRejoinPredictionPage,
+                                            StandalonePageHost,
+                                            TrafficMonitorPage, TyreInfoPage,
+                                            TyreSetsPage, WeatherForecastPage)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import OverlayId, OverlayPosition, PngSettings, WeatherMFDUIType
+from lib.config import (OverlayId, OverlayPosition, PngSettings,
+                        WeatherMFDUIType)
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import (HudOverlayData, InputTelemetryData, LiveSessionMotionInfo)
+from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------

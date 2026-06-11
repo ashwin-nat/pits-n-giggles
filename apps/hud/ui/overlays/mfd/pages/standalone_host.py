@@ -98,7 +98,7 @@ class StandalonePageHost(BaseOverlay):
         """Register an overlay command handler that forwards to the hosted page."""
         @self.on_event(event_type)
         def _forward(data: dict, _et=event_type):
-            self._page.handle_event(_et, data)
+            self._page.dispatch_event(_et, data)
 
     @final
     def get_stats(self) -> dict:
