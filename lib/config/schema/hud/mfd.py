@@ -128,8 +128,9 @@ class MfdSettings(ConfigDiffMixin, BaseModel):
 
         for key, default_page in DEFAULT_PAGES.items():
             str_key = key.value if isinstance(key, MfdPageId) else key
-            if str_key in merged and merged[str_key].description is None:
-                merged[str_key].description = default_page.description
+            if str_key in merged:
+                if merged[str_key].description is None:
+                    merged[str_key].description = default_page.description
             else:
                 new_page = default_page.model_copy(deep=True)
                 new_page.enabled = False
