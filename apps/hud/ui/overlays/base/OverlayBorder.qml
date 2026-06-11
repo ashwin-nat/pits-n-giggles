@@ -1,4 +1,4 @@
-// Injected at runtime by BaseOverlayQML when the overlay is in unlocked mode.
+// Injected at runtime by BaseOverlay when the overlay is in unlocked mode.
 // Parented to the root window's contentItem.
 // Shows a dashed border + four corner drag handles.
 import QtQuick

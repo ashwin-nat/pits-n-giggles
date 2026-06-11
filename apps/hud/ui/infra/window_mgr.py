@@ -44,7 +44,7 @@ class _HFTypeSignal(QObject):
 
 class WindowManager(QObject):
 
-    generic_cmd_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
+    msg_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
@@ -101,7 +101,7 @@ class WindowManager(QObject):
         self.overlays[overlay_id] = overlay
 
         # Connect broadcast command and request signals TO the overlay
-        self.generic_cmd_signal.connect(overlay._handle_cmd)
+        self.msg_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
 
         # Connect overlay's response signal back to manager
@@ -170,7 +170,7 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
-        self.generic_cmd_signal.emit("", high_prio, cmd, self._marshal_data(data))
+        self.msg_signal.emit("", high_prio, cmd, self._marshal_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
         """Unicast event data to a specific overlay using signal.
@@ -182,7 +182,7 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_id
-        self.generic_cmd_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
+        self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, data: HighFreqBase):
         """Send high-frequency data only to overlays subscribed to its type.
