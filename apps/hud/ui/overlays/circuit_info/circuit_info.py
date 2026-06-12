@@ -28,14 +28,14 @@ from typing import Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 from lib.f1_types import F1Utils
 from lib.track_segment_info.database import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class CircuitInfoOverlay(BaseOverlayQML):
+class CircuitInfoOverlay(BaseOverlay):
     """
     Extremely minimal QML overlay template.
 

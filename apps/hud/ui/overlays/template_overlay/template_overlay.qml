@@ -8,7 +8,7 @@ Window {
     visible: true
     color: "#00000000"   // transparent window
 
-    property real scaleFactor: 1.0   // REQUIRED by BaseOverlayQML
+    property real scaleFactor: 1.0   // REQUIRED by BaseOverlay
 
     Rectangle {
         anchors.fill: parent

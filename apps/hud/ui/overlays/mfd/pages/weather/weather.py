@@ -22,14 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtCore import QTimer
 
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -39,7 +39,7 @@ class SessionGroup:
     session_type: str
     items: List[Dict[str, Any]] = field(default_factory=list)
 
-class WeatherForecastPage(StandalonePageOverlay):
+class WeatherForecastPage(MfdPageBase):
 
     OVERLAY_ID = OverlayId.WEATHER
     KEY = MfdPageId.WEATHER_FORECAST
@@ -47,22 +47,18 @@ class WeatherForecastPage(StandalonePageOverlay):
 
     MAX_SAMPLES = 5
 
-    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar,
-                 graph_based_ui: bool):
+    def __init__(self, logger: logging.Logger, graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
-
-    def _configure(self, graph_based_ui: bool) -> None:  # pylint: disable=arguments-differ
-        self.graph_based_ui = graph_based_ui
+        super().__init__(logger)
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
             forecast_data_flat = data.get("weather-forecast-samples", [])
             if not forecast_data_flat:
@@ -76,7 +72,7 @@ class WeatherForecastPage(StandalonePageOverlay):
 
             self._display_weather_data(forecast_data_flat)
 
-        @self.on_page_event("mfd_interact")
+        @self.on_event("mfd_interact")
         def mfd_interact(data: Dict[str, Any]) -> None:
             self.logger.debug("%s | Received mfd_interact command. args: %s", self.KEY, data)
             if not self.num_sessions:

@@ -22,12 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .base_qml import BaseOverlayQML
+from .base_overlay import BaseOverlay
+from .qml_bridge import QmlBridge
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "BaseOverlay",
-    "BaseOverlayQML",
+    "QmlBridge",
 ]

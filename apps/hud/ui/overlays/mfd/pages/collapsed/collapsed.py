@@ -33,8 +33,5 @@ class CollapsedPage(MfdPageBase):
     KEY = MfdPageId.COLLAPSED
     PAGE_QML_FILE: Path = Path(__file__).parent / "collapsed_page.qml"
 
-    def __init__(self, root, logger):
-        super().__init__(root, logger)
-
-        # static text, set once
-        self.overlay.set_qml_property("collapsedTitle", "Pits n' Giggles MFD")
+    def setup_page(self):
+        pass  # static QML, no events to handle

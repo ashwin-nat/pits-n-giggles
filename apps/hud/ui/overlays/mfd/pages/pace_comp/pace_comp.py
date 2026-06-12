@@ -27,15 +27,14 @@ from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              is_race_type_session, is_tt_session)
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 
-class PaceCompPage(StandalonePageOverlay):
+class PaceCompPage(MfdPageBase):
     """Pace Comparison MFD Page."""
     OVERLAY_ID = OverlayId.PACE_COMP
     KEY = MfdPageId.PACE_COMP
@@ -46,8 +45,8 @@ class PaceCompPage(StandalonePageOverlay):
     # -- Event wiring ----------------------------------------------------------
 
     @final
-    def setup_overlay(self):
-        @self.on_page_event("race_table_update")
+    def setup_page(self):
+        @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")
 

@@ -148,10 +148,6 @@
                 "traffic_monitor": {
                     "enabled": true,
                     "position": 8
-                },
-                "pu_info": {
-                    "enabled": true,
-                    "position": 9
                 }
             }
         },
@@ -177,7 +173,6 @@
         "circuit_info_length": 800,
         "show_pu_info": true,
         "pu_toggle_udp_action_code": null,
-        "pu_info_show_title": true,
         "show_fuel_info": true,
         "fuel_info_show_title": true,
         "show_tyre_info": true,

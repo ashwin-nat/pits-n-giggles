@@ -3,7 +3,7 @@ import QtQuick.Window
 
 Window {
     id: root
-    visible: false          // BaseOverlayQML will turn it visible
+    visible: false          // BaseOverlay will turn it visible
 
     // Base dimensions that will be scaled
     property real baseWidth: 400

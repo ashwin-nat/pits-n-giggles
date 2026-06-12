@@ -9,9 +9,9 @@ Scaffold a new HUD overlay and wire it end-to-end: config knobs, UDP action code
 
 There are two overlay types. Ask the user which they want before proceeding.
 
-**A. MFD page overlay** — a `StandalonePageOverlay` subclass that lives inside `apps/hud/ui/overlays/mfd/pages/`. It appears in the MFD carousel *and* can optionally run as a standalone always-on-top window. Always event-driven (no `render_frame`). Use this for data pages (lap times, fuel, tyre wear, etc.).
+**A. MFD page overlay** — an `MfdPageBase` subclass that lives inside `apps/hud/ui/overlays/mfd/pages/`. It appears in the MFD carousel *and* can optionally run as a standalone always-on-top window (via `StandalonePageHost`). Always event-driven (no `render_frame`). Use this for data pages (lap times, fuel, tyre wear, etc.).
 
-**B. Generic standalone overlay** — a `BaseOverlayQML` subclass in `apps/hud/ui/overlays/<name>/`. Use for everything else (track radar, input telemetry, etc.).
+**B. Generic standalone overlay** — a `BaseOverlay` subclass in `apps/hud/ui/overlays/<name>/`. Use for everything else (track radar, input telemetry, etc.).
 
 ---
 
@@ -118,31 +118,45 @@ Create two files:
 
 **`gap_to_leader_page.py`**:
 - MIT licence header
-- Extends `StandalonePageOverlay`
+- Extends `MfdPageBase`
 - Class attributes:
   ```python
   OVERLAY_ID = OverlayId.GAP_TO_LEADER
   KEY = MfdPageId.GAP_TO_LEADER
   PAGE_QML_FILE: Path = Path(__file__).parent / "gap_to_leader_page.qml"
   ```
-- If config kwargs: override `_configure(self, <kwarg>: <Type>) -> None` and store them as instance attributes. Also add matching params to `__init__` and call `super().__init__(...)` before setting them — do NOT set them before `super().__init__` because `setup_overlay()` which uses them is called inside `super().__init__`.
-- `@final def setup_overlay(self)` — initialise per-instance state (caches, counters) and register all event handlers via `@self.on_page_event("<event_type>")`. Handlers call `self.set_qml_property(name, value)` to push data to QML. Do **not** implement `render_frame` — MFD pages are event-driven only.
-- `@final def on_page_activated(self)` — optional; called after `setup_overlay()` when the page item is live. Use to invalidate caches or push initial QML property values. Only override if needed.
+- If config kwargs: set them as instance attributes **before** calling `super().__init__`,
+  because `super().__init__` calls `setup_page()` which uses them.
+- `@final def setup_page(self)` — initialise per-instance state (caches, counters) and
+  register all event handlers via `@self.on_event("<event_type>")`. Handlers call
+  `self.set_qml_property(name, value)` to push data to QML. Do **not** implement
+  `render_frame` — MFD pages are event-driven only.
+- `@final def on_page_activated(self)` — optional; called after `setup_page()` when the page
+  item is live. Use to invalidate caches or push initial QML property values.
 
 Pattern:
 ```python
-@final
-def setup_overlay(self):
-    self._last_data = None
+class GapToLeaderPage(MfdPageBase):
+    OVERLAY_ID = OverlayId.GAP_TO_LEADER
+    KEY = MfdPageId.GAP_TO_LEADER
+    PAGE_QML_FILE: Path = Path(__file__).parent / "gap_to_leader_page.qml"
 
-    @self.on_page_event("race_table_update")
-    def _handle(data: Dict[str, Any]) -> None:
-        ...
-        self.set_qml_property("someProperty", value)
+    def __init__(self, logger, some_kwarg: SomeType):
+        self._some_kwarg = some_kwarg   # set BEFORE super().__init__
+        super().__init__(logger)
 
-@final
-def on_page_activated(self):
-    self._last_data = None  # invalidate cache so first real event re-renders
+    @final
+    def setup_page(self):
+        self._last_data = None
+
+        @self.on_event("race_table_update")
+        def _handle(data: Dict[str, Any]) -> None:
+            ...
+            self.set_qml_property("someProperty", value)
+
+    @final
+    def on_page_activated(self):
+        self._last_data = None  # invalidate cache so first real event re-renders
 ```
 
 **`gap_to_leader_page.qml`**:
@@ -181,11 +195,11 @@ GapToLeaderPage.KEY: {
 
 #### A10. Register as standalone in `OverlaysMgr` — `apps/hud/ui/infra/overlays_mgr.py`
 
-Import the class and add a `_register_overlay_if_enabled` call in the `# ---- MFD pages (standalone) ----` block:
+Import the class and add a `_register_page_host_if_enabled` call in the `# ---- MFD pages (standalone) ----` block:
 ```python
-self._register_overlay_if_enabled(
+self._register_page_host_if_enabled(
     enabled=settings.HUD.show_gap_to_leader,
-    overlay_cls=GapToLeaderPage,
+    page_cls=GapToLeaderPage,
     overlay_cfg=settings.HUD.layout[OverlayId.GAP_TO_LEADER],
     opacity=settings.HUD.overlays_opacity,
     windowed_overlay=settings.HUD.use_windowed_overlays,
@@ -340,11 +354,12 @@ Create two files:
 
 **`<overlay_name>.py`**:
 - MIT licence header (copy from template)
-- Class extends `BaseOverlayQML`
+- Class extends `BaseOverlay`
 - `QML_FILE = Path(__file__).parent / "<overlay_name>.qml"`
 - `OVERLAY_ID = "<overlay_name>"`
 - For high-frequency: `self.subscribe_hf(<HFType>)` in `__init__`, implement `render_frame()`
-- For event-driven: `self._register_event_handlers()` in `__init__`, implement `@self.on_event("<topic>")` handler
+- For event-driven: register handlers in `__init__` via `@self.on_event("<topic>")`,
+  call `self.set_qml_property(name, value)` in handlers
 
 **`<overlay_name>.qml`**:
 - Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml

@@ -16,9 +16,10 @@
 
 graph TD
 
-subgraph EXT["⚡ External Threads"]
-    IPC["IPC Server Thread"]
-    SUB["IPC Subscriber Client Thread"]
+subgraph EXT["External Threads"]
+    IPC["IPC Server Thread<br/><i>IpcServerSync - launcher control &amp; req/rep</i>"]
+    DEALER["HUD Dealer Thread<br/><i>IpcDealerClient - button-press commands via broker</i>"]
+    SUB["IPC Subscriber Thread<br/><i>IpcSubscriberSync - data updates from backend</i>"]
 end
 
 subgraph OM["L1 · OverlaysManager"]
@@ -32,29 +33,28 @@ subgraph WMALL["L2 · WindowManager"]
     API_UC["unicast_data()"]
     API_HF["send_high_freq_data()"]
     API_REQ["request()"]
-    Sig_CMD["cmd_signal"]
+    Sig_MSG["msg_signal"]
     Sig_HF["mgmt_high_freq_signal"]
     Sig_REQ["request_signal"]
     Sig_RESP["response_signal"]
     RespStore["_response_data"]
 end
 
-subgraph BASE["L3 · BaseOverlay"]
-    BaseOverlay["BaseOverlay<br/><i>Command &amp; Request Registry · IPC dispatch · Lifecycle hooks</i>"]
+subgraph BRIDGE["QmlBridge (pure Python)"]
+    QmlBridge["QmlBridge<br/><i>Stats · diff-cached set_qml_property · on_event registry · dispatch_event</i>"]
 end
 
-subgraph BASEQML["L4 · BaseOverlayQML"]
-    BaseOverlayQML["BaseOverlayQML<br/><i>QML engine · Window management · Resize · Opacity · Visibility</i>"]
+subgraph BASE["L3 · BaseOverlay"]
+    BaseOverlay["BaseOverlay(QmlBridge, QObject)<br/><i>IPC slots · HF channel · frame timer · window · recipient filter</i>"]
     FrameTimer["QTimer · frame_timer<br/><i>periodic render_frame() tick</i>"]
     HFCache["HF data cache<br/><i>_latest_hf · _hf_pending</i>"]
 end
 
-subgraph OVERLAYS["L5 · Overlay Implementations"]
+subgraph OVERLAYS["L4 · Overlay Implementations"]
     subgraph EVTOVERLAYS["Event-driven"]
         TimingTowerOverlay["Timing Tower"]
         LapTimeOverlay["Lap Timer"]
         TrackMapOverlay["Track Map"]
-        MFDCommandRouter["MFD Overlay"]
     end
     subgraph HFOVERLAYS["HF / Animation"]
         InputTelemetryOverlay["Input Telemetry"]
@@ -62,22 +62,30 @@ subgraph OVERLAYS["L5 · Overlay Implementations"]
         TrackRadarOverlay["Track Radar"]
         HudOverlay["HUD Overlay"]
     end
+    subgraph MFDHOSTS["MFD Hosts"]
+        MfdOverlay["MFD Overlay<br/><i>hosts N pages in carousel</i>"]
+        StandalonePageHost["StandalonePageHost<br/><i>one instance per standalone page</i>"]
+    end
 end
 
-subgraph MFD["L5a · MFD Internals"]
-    MFDHandlers["Control Handler"]
-    SwitchPage["_switch_page()"]
-    ForwardData["Forward to Page"]
-    ActivePage["Active Page"]
-end
-
-subgraph PAGES["L6 · MFD Page Events"]
-    PageReg["Event Registry"]
-    UpdateUI["Update UI"]
+subgraph PAGES["L5 · MfdPageBase instances"]
+    subgraph MFDPAGES["Inside MfdOverlay"]
+        FuelPage["Fuel Info"]
+        TyrePage["Tyre Info"]
+        LapTimesPage["Lap Times"]
+        WeatherPage["Weather"]
+        OtherPages["… (5 more pages)"]
+    end
+    subgraph STANDALONEPAGE["Inside StandalonePageHost (×N)"]
+        SFuelPage["Fuel Info (standalone)"]
+        STyrePage["Tyre Info (standalone)"]
+        SOtherPages["… (6 more)"]
+    end
 end
 
 %% ── External → OverlaysManager ──────────────────────────────────────────
 IPC -->|"control cmd"| OM_Cmd
+DEALER -->|"control cmd"| OM_Cmd
 SUB -->|"data update"| OM_Data
 IPC -->|"request"| OM_Req
 
@@ -88,26 +96,27 @@ OM_Data -->|"hf data"| API_HF
 OM_Req --> API_REQ
 
 %% ── WindowManager → Signals ──────────────────────────────────────────────
-API_BC --> Sig_CMD
-API_UC --> Sig_CMD
+API_BC --> Sig_MSG
+API_UC --> Sig_MSG
 API_HF --> Sig_HF
 API_REQ --> Sig_REQ
 
 %% ── Signals → BaseOverlay ────────────────────────────────────────────────
-Sig_CMD --> BaseOverlay
+Sig_MSG --> BaseOverlay
 Sig_REQ --> BaseOverlay
 Sig_HF -->|"_handle_high_freq_data()"| HFCache
 
-%% ── BaseOverlay → BaseOverlayQML ─────────────────────────────────────────
-BaseOverlay --> BaseOverlayQML
-BaseOverlayQML --- FrameTimer
-BaseOverlayQML --- HFCache
+%% ── QmlBridge → BaseOverlay ──────────────────────────────────────────────
+QmlBridge --> BaseOverlay
+BaseOverlay --- FrameTimer
+BaseOverlay --- HFCache
 
 %% ── Event-driven overlays ────────────────────────────────────────────────
-BaseOverlayQML --> TimingTowerOverlay
-BaseOverlayQML --> LapTimeOverlay
-BaseOverlayQML --> TrackMapOverlay
-BaseOverlayQML --> MFDCommandRouter
+BaseOverlay --> TimingTowerOverlay
+BaseOverlay --> LapTimeOverlay
+BaseOverlay --> TrackMapOverlay
+BaseOverlay --> MfdOverlay
+BaseOverlay --> StandalonePageHost
 
 %% ── HF overlays ──────────────────────────────────────────────────────────
 FrameTimer -->|"render_frame()"| InputTelemetryOverlay
@@ -120,18 +129,23 @@ OM_Req -.->|"awaits"| RespStore
 BaseOverlay -.->|"emit response"| Sig_RESP
 Sig_RESP -.-> RespStore
 
-%% ── MFD internals ────────────────────────────────────────────────────────
-MFDCommandRouter -->|"control"| MFDHandlers
-MFDCommandRouter -->|"data"| ForwardData
-MFDHandlers --> SwitchPage
-ForwardData --> ActivePage
-ActivePage --> PageReg
-PageReg --> UpdateUI
+%% ── MFD pages ────────────────────────────────────────────────────────────
+MfdOverlay -->|"dispatch_event"| FuelPage
+MfdOverlay -->|"dispatch_event"| TyrePage
+MfdOverlay -->|"dispatch_event"| LapTimesPage
+MfdOverlay -->|"dispatch_event"| WeatherPage
+MfdOverlay -->|"dispatch_event"| OtherPages
+
+%% ── Standalone page hosts ────────────────────────────────────────────────
+StandalonePageHost -->|"dispatch_event"| SFuelPage
+StandalonePageHost -->|"dispatch_event"| STyrePage
+StandalonePageHost -->|"dispatch_event"| SOtherPages
 
 %% ── Styles ───────────────────────────────────────────────────────────────
 classDef thread    fill:#450a0a,stroke:#ef4444,color:#fca5a5,stroke-width:2px,font-weight:bold
 classDef manager   fill:#172554,stroke:#3b82f6,color:#93c5fd,stroke-width:2px
 classDef signal    fill:#422006,stroke:#f59e0b,color:#fcd34d,stroke-width:2px
+classDef bridge    fill:#1a2e05,stroke:#84cc16,color:#d9f99d,stroke-width:2px,font-weight:bold
 classDef base      fill:#052e16,stroke:#22c55e,color:#86efac,stroke-width:2px,font-weight:bold
 classDef overlay   fill:#0f2722,stroke:#10b981,color:#6ee7b7,stroke-width:2px
 classDef hfoverlay fill:#1e1b4b,stroke:#818cf8,color:#c7d2fe,stroke-width:2px
@@ -139,12 +153,13 @@ classDef timer     fill:#1c1917,stroke:#a8a29e,color:#d6d3d1,stroke-width:2px,st
 classDef special   fill:#2e1065,stroke:#a855f7,color:#d8b4fe,stroke-width:2px
 classDef page      fill:#500724,stroke:#ec4899,color:#f9a8d4,stroke-width:2px
 
-class IPC,SUB thread
+class IPC,DEALER,SUB thread
 class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_HF,API_REQ,RespStore manager
-class Sig_CMD,Sig_HF,Sig_REQ,Sig_RESP signal
-class BaseOverlay,BaseOverlayQML base
+class Sig_MSG,Sig_HF,Sig_REQ,Sig_RESP signal
+class QmlBridge bridge
+class BaseOverlay base
 class HFCache,FrameTimer timer
 class TimingTowerOverlay,LapTimeOverlay,TrackMapOverlay overlay
 class InputTelemetryOverlay,CircuitInfoOverlay,TrackRadarOverlay,HudOverlay hfoverlay
-class MFDCommandRouter,MFDHandlers,SwitchPage,ForwardData,ActivePage special
-class PageReg,UpdateUI page
+class MfdOverlay,StandalonePageHost special
+class FuelPage,TyrePage,LapTimesPage,WeatherPage,OtherPages,SFuelPage,STyrePage,SOtherPages page

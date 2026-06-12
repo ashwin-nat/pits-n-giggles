@@ -27,24 +27,23 @@ from typing import Any, Dict, List, final
 
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PitRejoinPredictionPage(StandalonePageOverlay):
+class PitRejoinPredictionPage(MfdPageBase):
     """Pit rejoin position prediction page."""
     OVERLAY_ID = OverlayId.PIT_REJOIN
     KEY = MfdPageId.PIT_REJOIN
     PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
         self.num_adjacent_cars = 2
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update the page with new data.
 

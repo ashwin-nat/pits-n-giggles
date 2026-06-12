@@ -22,37 +22,32 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row, is_race_type_session
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, OverlaysFuelEstimationMode
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class FuelInfoPage(StandalonePageOverlay):
+class FuelInfoPage(MfdPageBase):
     OVERLAY_ID = OverlayId.FUEL_INFO
     KEY = MfdPageId.FUEL_INFO
     PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
 
-    def __init__(self, config, logger, locked, opacity, scale_factor, windowed_overlay,
-                 show_title_bar,
-                 fuel_est_mode: OverlaysFuelEstimationMode):
+    def __init__(self, logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, show_title_bar)
-
-    def _configure(self, fuel_est_mode: OverlaysFuelEstimationMode) -> None:  # pylint: disable=arguments-differ
-        self.fuel_est_mode = fuel_est_mode
+        super().__init__(logger)
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
 
-        @self.on_page_event("race_table_update")
+        @self.on_event("race_table_update")
         def update(data: Dict[str, Any]) -> None:
             """Update fuel information display."""
             ref_row = get_ref_row(data)

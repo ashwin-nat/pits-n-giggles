@@ -25,13 +25,12 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TyreSetsPage(StandalonePageOverlay):
+class TyreSetsPage(MfdPageBase):
 
     OVERLAY_ID = OverlayId.TYRE_SETS
     KEY = MfdPageId.TYRE_SETS
@@ -41,8 +40,8 @@ class TyreSetsPage(StandalonePageOverlay):
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]
 
     @final
-    def setup_overlay(self):
-        @self.on_page_event("stream_overlay_update")
+    def setup_page(self):
+        @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             tyre_sets_info = data.get("tyre-sets")
             if not tyre_sets_info:
