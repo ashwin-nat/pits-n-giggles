@@ -46,9 +46,10 @@ class PuOverlay(BaseOverlay):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,
+        show_harvest_info: bool,
     ) -> None:
 
+        self._show_harvest_info = show_harvest_info
         super().__init__(
             config=config,
             logger=logger,
@@ -56,7 +57,7 @@ class PuOverlay(BaseOverlay):
             opacity=opacity,
             scale_factor=scale_factor,
             windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
+            refresh_interval_ms=None,
         )
 
         self._register_event_handlers()
@@ -85,13 +86,19 @@ class PuOverlay(BaseOverlay):
             mguk_w = pu_data["mguk-power-output-w"]
             ice_temp_c = pu_data["ice-temp-c"]
 
-            # ── Derived values ─────────────────────────────────────────────
+            # - Derived values ----------------------
             total_w  = ice_w + mguk_w
             total_kw = total_w / 1000.0
             ice_frac  = ice_w  / total_w if total_w > 0 else 0.0
             mguk_frac = mguk_w / total_w if total_w > 0 else 0.0
 
-            # ── Push to QML ────────────────────────────────────────────────
+            # - Harvest info -----------------------
+            harv_pwr_mguk_w = pu_data["mguk-harv-power-w"]
+            harv_pwr_mguh_w = pu_data["mguh-harv-power-w"]
+            harv_nrg_mguk_j = hud_data["ers-harv-mguk"]
+            harv_nrg_mguh_j = hud_data["ers-harv-mguh"]
+
+            # - Push to QML ------------------------
             self.set_qml_property("totalPowerKw",  round(total_kw,       1))
             self.set_qml_property("icePowerKw",    round(ice_w  / 1000.0, 1))
             self.set_qml_property("mgukPowerKw",   round(mguk_w / 1000.0, 1))

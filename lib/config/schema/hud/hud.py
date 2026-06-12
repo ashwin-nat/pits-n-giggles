@@ -382,6 +382,11 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                                              preview_image="assets/overlay-previews/power-unit.png")
     pu_toggle_udp_action_code: Optional[int] = udp_action_field(
         description="Toggle power unit overlay UDP action code", group="Power Unit")
+    pu_display_harvest_info: bool = Field(
+        default=False,
+        description="Display harvest info in power unit overlay",
+        json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Power Unit"}},
+    )
 
     # ============== MFD PAGES (STANDALONE) ==============
     show_fuel_info: bool = overlay_enable_field(
