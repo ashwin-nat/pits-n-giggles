@@ -23,9 +23,9 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 
-from lib.f1_types import CarStatusData, CarDamageData, CarTelemetry2Data
+from lib.f1_types import CarDamageData, CarStatusData, CarTelemetry2Data
 from lib.fuel_rate_recommender import FuelRateRecommender
 from lib.power_estimator import PowerEstimator
 
@@ -109,3 +109,13 @@ class CarInfo:
         """Reset the power estimators"""
         self.m_harv_mguk_power_est.reset()
         self.m_harv_mguh_power_est.reset()
+
+    def getPowerEstimates(self) -> Tuple[float, float]:
+        """Get the power estimates
+
+        Returns:
+            Tuple[float, float]: The power estimates
+        """
+        mguk_harv_power = self.m_harv_mguk_power_est.get_power_w() if self.m_harv_mguk_power_est.is_valid() else 0.0
+        mguh_harv_power = self.m_harv_mguh_power_est.get_power_w() if self.m_harv_mguh_power_est.is_valid() else 0.0
+        return mguk_harv_power, mguh_harv_power
