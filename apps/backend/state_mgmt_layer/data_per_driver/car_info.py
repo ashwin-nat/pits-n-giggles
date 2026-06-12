@@ -27,6 +27,7 @@ from typing import Optional
 
 from lib.f1_types import CarStatusData, CarDamageData, CarTelemetry2Data
 from lib.fuel_rate_recommender import FuelRateRecommender
+from lib.power_estimator import PowerEstimator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -66,6 +67,8 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
+    m_harv_mguk_power_est: PowerEstimator = PowerEstimator()
+    m_harv_mguh_power_est: PowerEstimator = PowerEstimator()
 
     def __post_init__(self):
         self.m_fuel_rate_recommender = FuelRateRecommender(
@@ -92,3 +95,17 @@ class CarInfo:
         self.m_floor_damage = car_damage.m_floorDamage
         self.m_diffuser_damage = car_damage.m_diffuserDamage
         self.m_sidepod_damage = car_damage.m_sidepodDamage
+
+    def updatePowerEstimators(self, lap_time_ms: int) -> None:
+        """Update the power estimators
+
+        Args:
+            lap_time_ms (int): The lap time in milliseconds
+        """
+        self.m_harv_mguk_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguk_j)
+        self.m_harv_mguh_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguh_j)
+
+    def resetPowerEstimators(self) -> None:
+        """Reset the power estimators"""
+        self.m_harv_mguk_power_est.reset()
+        self.m_harv_mguh_power_est.reset()

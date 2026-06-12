@@ -481,6 +481,7 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
+            driver_obj.m_car_info.updatePowerEstimators(lap_data.m_lapTimeInMS)
 
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
@@ -1089,6 +1090,9 @@ class SessionState:
         """Record that a flashback has happened"""
 
         self.m_flashback_occurred = True
+        for driver_obj in self.m_driver_data:
+            if driver_obj:
+                driver_obj.m_car_info.resetPowerEstimators()
 
     def handleEvent(self, packet: PacketEventData):
         """Handle the event packet

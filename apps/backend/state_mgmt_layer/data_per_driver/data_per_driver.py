@@ -581,6 +581,9 @@ class DataPerDriver:
                 to prepare for the next lap.
         """
 
+        # Regardless, always reset the power estimators
+        self.m_car_info.resetPowerEstimators()
+
         # Handle flashbacks/retry practice programmes
         # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
         if is_flashback and session_type and session_type.isRaceTypeSession():
