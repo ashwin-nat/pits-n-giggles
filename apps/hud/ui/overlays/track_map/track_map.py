@@ -29,7 +29,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -37,7 +37,7 @@ from lib.config import OverlayId, OverlayPosition
 # NOTE: All track map SVG's were fetched and constructed from https://api.multiviewer.app/api/v1/circuits/{track_id}/2025
 # To get a list of all track ID's https://api.multiviewer.app/api/v1/circuits
 
-class TrackMapOverlay(BaseOverlayQML):
+class TrackMapOverlay(BaseOverlay):
     """
     Track map overlay that displays an SVG representation of the current circuit.
 

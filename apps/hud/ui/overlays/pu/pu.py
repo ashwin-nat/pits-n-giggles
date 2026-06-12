@@ -27,12 +27,12 @@ from pathlib import Path
 from typing import Optional
 
 from apps.hud.common import get_ers_mode_color
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PuOverlay(BaseOverlayQML):
+class PuOverlay(BaseOverlay):
 
     # Remember to add the QML path to scripts/png.spec
     QML_FILE = Path(__file__).parent / "pu.qml"

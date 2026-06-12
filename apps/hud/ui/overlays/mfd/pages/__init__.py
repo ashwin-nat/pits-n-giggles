@@ -28,7 +28,7 @@ from .fuel import FuelInfoPage
 from .lap_times import LapTimesPage
 from .pace_comp.pace_comp import PaceCompPage
 from .pit_rejoin import PitRejoinPredictionPage
-from .standalone_base import StandalonePageOverlay
+from .standalone_host import StandalonePageHost
 from .traffic_monitor import TrafficMonitorPage
 from .tyre_sets import TyreSetsPage
 from .tyre_wear import TyreInfoPage
@@ -38,7 +38,7 @@ from .weather import WeatherForecastPage
 
 __all__ = [
     "MfdPageBase",
-    "StandalonePageOverlay",
+    "StandalonePageHost",
     "CollapsedPage",
     "FuelInfoPage",
     "LapTimesPage",

@@ -25,13 +25,12 @@
 from pathlib import Path
 from typing import Any, Dict, List, final
 
-from apps.hud.ui.overlays.mfd.pages.standalone_base import \
-    StandalonePageOverlay
+from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class LapTimesPage(StandalonePageOverlay):
+class LapTimesPage(MfdPageBase):
     """Lap Times MFD Page."""
     OVERLAY_ID = OverlayId.LAP_TIMES
     KEY = MfdPageId.LAP_TIMES
@@ -50,7 +49,7 @@ class LapTimesPage(StandalonePageOverlay):
         self._last_processed_data = []
 
     @final
-    def setup_overlay(self):
+    def setup_page(self):
         self._last_processed_data: List[Dict[str, Any]] = []
 
         @self.on_event("stream_overlay_update")

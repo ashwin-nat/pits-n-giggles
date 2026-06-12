@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, final
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
@@ -41,7 +41,7 @@ from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class MfdOverlay(BaseOverlayQML):
+class MfdOverlay(BaseOverlay):
 
     OVERLAY_ID = OverlayId.MFD
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
@@ -106,7 +106,7 @@ class MfdOverlay(BaseOverlayQML):
             if not self._mfd_pages:
                 self.logger.warning("%s | Event '%s' received but no pages are initialised", self.OVERLAY_ID, event_type)
                 return
-            self._mfd_pages[self._current_index].handle_event(event_type, data)
+            self._mfd_pages[self._current_index].dispatch_event(event_type, data)
 
     def _get_page_kwargs(self, settings: PngSettings) -> dict:
         """Get initialization kwargs for pages from settings."""
@@ -146,7 +146,7 @@ class MfdOverlay(BaseOverlayQML):
         for page_info in self.enabled_pages:
             cls = page_info["cls"]
             kwargs = page_info.get("kwargs", {})
-            self._mfd_pages.append(cls.create_for_mfd(self, self.logger, **kwargs))
+            self._mfd_pages.append(cls(self.logger, **kwargs))
         self._current_index = 0
 
         # Set total pages in QML

@@ -1,7 +1,7 @@
 # Overlay Architecture (Top-Down Layered Design)
 
 This document describes the internal architecture for the overlay system. The system is built on top of Qt signals and slots.
-The system follows a strictly **top-down layered architecture**, where all primary flows move from **external inputs → managers → overlays → MFD internals → UI pages**.
+The system follows a strictly **top-down layered architecture**, where all primary flows move from **external inputs → managers → overlays → MFD pages → UI**.
 
 Only **response signals** flow upward, and these paths are shown as **dotted arrows**.
 
@@ -11,15 +11,16 @@ Only **response signals** flow upward, and these paths are shown as **dotted arr
 
 These threads act as the entry point for all data and control events:
 
-- **IPC Server Thread** — receives command and request packets.
-- **Socket.IO Client Thread** — receives real-time telemetry updates.
+- **IPC Server Thread** (`IpcServerSync`) — receives control commands and req/rep requests from the launcher (lock, opacity, layout, heartbeat, shutdown).
+- **HUD Dealer Thread** (`IpcDealerClient`) — receives button-press commands routed from the backend via the ZeroMQ broker (toggle visibility, next/prev MFD page, MFD interact).
+- **IPC Subscriber Thread** (`IpcSubscriberSync`) — receives real-time data updates from the backend (race-table-update, stream-overlay-update).
 
 ---
 
 ## L1 — OverlaysManager
 
 Abstracts the external threads away from Qt related stuff.
-Provides purpose specific convenience methods using the WindowManager API's.
+Provides purpose-specific convenience methods using the WindowManager APIs.
 
 ---
 
@@ -30,55 +31,94 @@ Inits and runs the overlay windows, while providing means of communicating with 
 ### WindowManager API
 - `broadcast_data()` — send data to all overlays
 - `unicast_data()` — send commands to a specific overlay
+- `send_high_freq_data()` — send high-frequency sensor data
 - `request()` — synchronous request/response mechanism
 
 ### WindowManager Signals
-- `cmd_signal`
-- `request_signal`
-- `response_signal`
+- `msg_signal`
+- `mgmt_high_freq_signal`
+- `mgmt_request_signal`
+- `mgmt_response_signal`
 - `_response_data`
 
 ---
 
-## L3 — Overlay Base Layer
+## QmlBridge (pure Python, no QObject)
 
-`BaseOverlay` provides:
+Conceptually pure-Python base shared by both overlays and pages (only references QObject
+for typing convenience):
 
-- Command Registry
-- Request Registry
-- Shared overlay behavior virtual functions
-- Ability to emit responses upward via `response_signal`
-
-This is derived from and the virtual functions are implemented by `BaseOverlayWidget` and `BaseOverlayQML` accordingly
-
----
-
-## L4 — Implementation Layer
-
-Actual overlays:
-
-- Lap Timer Overlay
-- Timing Tower Overlay
-- MFD Overlay (specialized overlay)
-
-### MFD Overlay
-
-This overlay object is responsible for sub "pages". This layer handles controlling/managing the sub pages.
-
-### Control Path
-- Control Handler
-- `_switch_page()`
-
-### Data Path
-- Forward to Page
-- Active Page
+- **Stats** — single `EventCounter` per component; `get_stats()`, `_track_event()`
+- **Diff-cached property writes** — `set_qml_property(name, value)`, `invalidate_qml_cache()`,
+  `_on_target_changed()` (clears cache on target swap)
+- **Event handler registry** — `on_event(name)` decorator (always guarded on `_qml_target is not None`),
+  `dispatch_event(name, data)`, `get_handled_event_types()`
+- **Abstract hook** — `_qml_target` property (private); overlays return the root `QQuickWindow`,
+  pages return the active `QQuickItem`; external code must use `set_qml_property()` and
+  `dispatch_event()` rather than accessing `_qml_target` directly
 
 ---
 
-## L5 — MFD Page Events
+## L3 — BaseOverlay
 
-- Event Registry
-- Update UI (final rendering step)
+`BaseOverlay(QmlBridge, QObject)` owns the window and the process-facing transport:
+
+- IPC slots `_handle_cmd` / `_handle_request` / `_handle_high_freq_data`, `response_signal`
+- Recipient filtering, visibility gating, cmd-pipeline latency tracking
+- HF channel: `subscribe_hf`, `_latest_hf`, seq/loss accounting, `_hf_pending`
+- Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
+  **constructor parameter**, never a base-class choice
+- Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
+- `_qml_target` → `self._root` (the `QQuickWindow`)
+
+Concrete overlays subclass `BaseOverlay` directly (e.g. `TimingTowerOverlay`, `TrackRadarOverlay`,
+`HudOverlay`, `MfdOverlay`, `StandalonePageHost`).
+
+---
+
+## L4 — Overlay Implementations
+
+### Generic standalone overlays (subclass `BaseOverlay` directly)
+
+Use for displays that will never live inside the MFD:
+
+- **Lap Timer Overlay** — event-driven
+- **Timing Tower Overlay** — event-driven
+- **Track Map Overlay** — event-driven
+- **Input Telemetry Overlay** — high-frequency frame-driven
+- **Circuit Info Overlay** — high-frequency frame-driven
+- **Track Radar Overlay** — high-frequency frame-driven
+- **HUD Overlay** — high-frequency frame-driven
+
+### MFD hosts (also subclass `BaseOverlay`)
+
+- **`MfdOverlay`** — the MFD carousel; constructs and hosts N `MfdPageBase` instances, routes
+  events to the active page via `dispatch_event`, composes `__PAGES__` stats
+- **`StandalonePageHost`** — generic host that shows exactly one `MfdPageBase` in its own
+  always-on-top window (`standalone_wrapper.qml`); written once, never subclassed
+
+---
+
+## L5 — MfdPageBase
+
+`MfdPageBase(QmlBridge)` — hostable content with no window and no transport. Pages receive
+events exclusively through their host calling `dispatch_event`.
+
+- `KEY`, `PAGE_QML_FILE`, `OVERLAY_ID` class attributes
+- Page-item lifecycle: `_on_page_activated`, `on_page_deactivated`, `is_active`
+- `_qml_target` → `self._page_item` (the active `QQuickItem`)
+- `setup_page()` — abstract; concrete pages override with `@final`, register `@self.on_event`
+  handlers, initialise business state
+- `on_page_activated()` — optional override; called after the page item is live
+
+### Concrete pages (subclass `MfdPageBase` and nothing else)
+
+`FuelInfoPage`, `TyreInfoPage`, `LapTimesPage`, `WeatherForecastPage`, `TyreSetsPage`,
+`PaceCompPage`, `PitRejoinPredictionPage`, `TrafficMonitorPage`, `CollapsedPage`
+
+**Decision rule**: "Could a user want this inside the MFD?" → subclass `MfdPageBase` (a
+standalone window comes free via `StandalonePageHost`). Otherwise → subclass `BaseOverlay`
+directly.
 
 ---
 
@@ -102,7 +142,9 @@ This is the **only upward flow** in an otherwise top-down architecture.
 
 ## Design Principles
 
-* Strict vertical layering
+* Strict vertical layering — pages never own windows; windows never know about page internals
 * Unidirectional top-down flow
-* Registry-based extensibility
-* MFD logic isolated (L5–L6)
+* Composition over inheritance — `MfdOverlay` and `StandalonePageHost` *contain* pages
+* Registry-based extensibility — event handlers registered via `@self.on_event`
+* `QmlBridge` keeps stats and property caching at the innermost level so both overlays and
+  pages share the same infrastructure without duplication

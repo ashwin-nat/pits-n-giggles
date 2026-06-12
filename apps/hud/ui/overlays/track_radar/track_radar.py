@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, final
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 
 from ._glow_provider import RadarGlowImageProvider
@@ -36,7 +36,7 @@ from ._radar_math import _RADAR_AREA_RATIO, _RADAR_RANGE_M, car_px, to_radar_coo
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TrackRadarOverlay(BaseOverlayQML):
+class TrackRadarOverlay(BaseOverlay):
     """
     Track radar overlay that displays all cars relative to the reference driver.
 
