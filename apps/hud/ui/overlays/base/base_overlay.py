@@ -183,10 +183,10 @@ class BaseOverlay(QmlBridge, QObject):
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
 
     # ------------------------------------------------------------------
-    # QmlBridge: qml_target implementation
+    # QmlBridge: _qml_target implementation
     # ------------------------------------------------------------------
     @property
-    def qml_target(self) -> Optional[QQuickWindow]:
+    def _qml_target(self) -> Optional[QQuickWindow]:
         return self._root
 
     @property

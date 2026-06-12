@@ -58,10 +58,10 @@ class MfdPageBase(QmlBridge):
         self.setup_page()
 
     # ------------------------------------------------------------------
-    # QmlBridge: qml_target implementation
+    # QmlBridge: _qml_target implementation
     # ------------------------------------------------------------------
     @property
-    def qml_target(self):
+    def _qml_target(self):
         return self._page_item
 
     # ------------------------------------------------------------------

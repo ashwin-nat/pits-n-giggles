@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 from PySide6.QtCore import QObject
 
@@ -35,19 +35,22 @@ _UNSET = object()  # sentinel for absent property cache entries
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class QmlBridge:
-    """Pure-Python base shared by BaseOverlay and MfdPageBase.
+    """Conceptually pure-Python base shared by BaseOverlay and MfdPageBase;
+    it only references QObject for typing convenience.
 
-    Provides three things with no Qt dependency (no QObject):
+    Provides three things:
     - Stats: single EventCounter per component; get_stats(), _track_event().
     - Diff-based QML property caching: set_qml_property(), invalidate_qml_cache(),
       _on_target_changed() (clears cache).
     - Event handler registry: on_event() decorator (always guarded on
-      qml_target is not None), dispatch_event(), get_handled_event_types(),
+      _qml_target is not None), dispatch_event(), get_handled_event_types(),
       handles_event().
 
-    Subclasses must define the qml_target property, which returns the live
+    Subclasses must implement the _qml_target property, which returns the live
     QObject to write properties to (QQuickWindow for overlays, QQuickItem
     for pages).  Returning None signals that the target is not yet ready.
+    External callers must use set_qml_property() and dispatch_event() rather
+    than accessing _qml_target directly.
     """
 
     def __init__(self):
@@ -59,8 +62,8 @@ class QmlBridge:
     # Abstract
     # ------------------------------------------------------------------
     @property
-    def qml_target(self) -> QObject:
-        """Return the live QObject target."""
+    def _qml_target(self) -> Optional[QObject]:
+        """Return the live QObject target, or None if not yet ready."""
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -75,7 +78,7 @@ class QmlBridge:
 
         Silently does nothing when qml_target is None or the value is unchanged.
         """
-        target = self.qml_target
+        target = self._qml_target
         if target is None:
             self._stats.track_event("__PROPS_NO_TARGET__", name)
             return
@@ -103,7 +106,7 @@ class QmlBridge:
         """
         def decorator(fn):
             def wrapper(data, _n=event_type):
-                if self.qml_target is None:
+                if self._qml_target is None:
                     self._stats.track_event("__DROPPED_NO_TARGET__", _n)
                     return None
                 return fn(data)

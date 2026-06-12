@@ -45,16 +45,17 @@ Inits and runs the overlay windows, while providing means of communicating with 
 
 ## QmlBridge (pure Python, no QObject)
 
-Innermost shared base for both overlays and pages. Has no Qt dependency so pages are
-testable without a Qt event loop:
+Conceptually pure-Python base shared by both overlays and pages (only references QObject
+for typing convenience):
 
 - **Stats** — single `EventCounter` per component; `get_stats()`, `_track_event()`
 - **Diff-cached property writes** — `set_qml_property(name, value)`, `invalidate_qml_cache()`,
   `_on_target_changed()` (clears cache on target swap)
-- **Event handler registry** — `on_event(name)` decorator (always guarded on `qml_target is not None`),
+- **Event handler registry** — `on_event(name)` decorator (always guarded on `_qml_target is not None`),
   `dispatch_event(name, data)`, `get_handled_event_types()`
-- **Abstract hook** — `qml_target` property; overlays return the root `QQuickWindow`, pages
-  return the active `QQuickItem`
+- **Abstract hook** — `_qml_target` property (private); overlays return the root `QQuickWindow`,
+  pages return the active `QQuickItem`; external code must use `set_qml_property()` and
+  `dispatch_event()` rather than accessing `_qml_target` directly
 
 ---
 
@@ -68,7 +69,7 @@ testable without a Qt event loop:
 - Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
   **constructor parameter**, never a base-class choice
 - Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
-- `qml_target` → `self._root` (the `QQuickWindow`)
+- `_qml_target` → `self._root` (the `QQuickWindow`)
 
 Concrete overlays subclass `BaseOverlay` directly (e.g. `TimingTowerOverlay`, `TrackRadarOverlay`,
 `HudOverlay`, `MfdOverlay`, `StandalonePageHost`).
@@ -105,7 +106,7 @@ events exclusively through their host calling `dispatch_event`.
 
 - `KEY`, `PAGE_QML_FILE`, `OVERLAY_ID` class attributes
 - Page-item lifecycle: `_on_page_activated`, `on_page_deactivated`, `is_active`
-- `qml_target` → `self._page_item` (the active `QQuickItem`)
+- `_qml_target` → `self._page_item` (the active `QQuickItem`)
 - `setup_page()` — abstract; concrete pages override with `@final`, register `@self.on_event`
   handlers, initialise business state
 - `on_page_activated()` — optional override; called after the page item is live

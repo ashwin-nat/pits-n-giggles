@@ -24,7 +24,7 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from apps.hud.common import get_ref_row, get_ref_row_index, is_tt_session
 from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
@@ -514,7 +514,7 @@ class OverlaysMgr:
         self,
         *,
         enabled: bool,
-        page_cls: MfdPageBase,
+        page_cls: Type[MfdPageBase],
         overlay_cfg: OverlayPosition,
         opacity: float,
         windowed_overlay: bool,
