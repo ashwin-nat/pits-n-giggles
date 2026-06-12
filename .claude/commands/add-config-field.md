@@ -1,9 +1,11 @@
 ---
-description: Add a new config field to png_config.json with Pydantic validation, subsystem wiring, and tests
+description: Add a new config field with Pydantic validation, subsystem wiring, and tests
 allowed-tools: Read, Glob, Grep, Edit, Write, TodoWrite
 ---
 
-Add one or more config fields end-to-end: Pydantic schema, JSON defaults, subsystem `on_settings_change` wiring, and unit tests.
+Add one or more config fields end-to-end: Pydantic schema, subsystem `on_settings_change` wiring, and unit tests.
+
+> **Note:** Do NOT edit `png_config.json`. The app detects missing keys on startup and inserts the Pydantic default automatically.
 
 **Present the full group of fields as a single plan for approval before writing any code. Do not implement field by field — batch all fields into one plan, get one approval, then implement all together.**
 
@@ -40,11 +42,7 @@ Add `@field_validator` or `@model_validator` if the field needs intra-section va
 
 If the field requires a cross-section constraint (e.g. uniqueness with another section's field), add a `@model_validator(mode="after")` to `lib/config/schema/png.py`.
 
-### 2b. Add default to `png_config.json`
-
-Read the file. Insert the field under the correct section key with its default value.
-
-### 2c. Wire into subsystem managers
+### 2b. Wire into subsystem managers
 
 For each subsystem in the approved plan, read the file and add the field to the appropriate diff block in `on_settings_change`:
 
