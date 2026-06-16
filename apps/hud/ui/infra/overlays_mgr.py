@@ -138,6 +138,7 @@ class OverlaysMgr:
             scale_factor=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID].scale_factor,
             refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
             idle_opacity=settings.HUD.track_radar_idle_opacity,
+            radar_range_m=settings.HUD.track_radar_range_m,
         )
 
         self._register_overlay_if_enabled(
@@ -453,6 +454,15 @@ class OverlaysMgr:
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
+            high_prio=True,
+        )
+
+    def set_track_radar_range(self, range_m: float):
+        self.logger.debug("Setting track radar range to %sm", range_m)
+        self.window_manager.unicast_data(
+            overlay_id=TrackRadarOverlay.OVERLAY_ID,
+            event='set_track_radar_range',
+            data={'range_m': range_m},
             high_prio=True,
         )
 
