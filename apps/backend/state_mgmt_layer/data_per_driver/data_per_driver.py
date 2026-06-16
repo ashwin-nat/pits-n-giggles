@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.delta import LapDeltaManager
-from lib.f1_types import (CarDamageData, F1Utils, LapData,
+from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SafetyCarType,
                           SessionType, TrackID)
 from lib.pending_events import DriverPendingEvents, PendingEventsManager
@@ -593,6 +593,11 @@ class DataPerDriver:
             return
 
         # Store the snapshot data for the old lap
+        if self.m_car_info.m_2026_regs:
+            mguk_harv_limit = self.m_car_info.m_ers_harv_limit_per_lap_j
+        else:
+            mguk_harv_limit = CarStatusData.MAX_MGUK_HARV_PER_LAP
+
         self.m_per_lap_snapshots[old_lap_number] = PerLapSnapshotEntry(
             car_damage=self.m_packet_copies.m_packet_car_damage,
             car_status=self.m_packet_copies.m_packet_car_status,
@@ -603,6 +608,7 @@ class DataPerDriver:
             ers_deployed_j=self.m_car_info.m_curr_lap_ers_deployed_j,
             ers_harv_mguh_j=self.m_car_info.m_curr_lap_ers_harv_mguh_j,
             ers_harv_mguk_j=self.m_car_info.m_curr_lap_ers_harv_mguk_j,
+            ers_harv_limit_mguk_j=mguk_harv_limit,
         )
 
         # Add the tyre wear data into the tyre stint history
@@ -648,7 +654,7 @@ class DataPerDriver:
         self.m_car_info.onLapChange()
         self.m_logger.debug("Driver %s - lap %d added to per_lap_snapshots", str(self), old_lap_number)
 
-    def shouldCaptureZerothLapSnapshot(self) -> bool:
+    def shouldCaptureZerothLapSnapshot(self, pkt_fmt: int) -> bool:
         """
         Checks if the zeroth lap snapshot should be captured.
 
@@ -658,19 +664,22 @@ class DataPerDriver:
 
         return (
             self.m_lap_info.m_current_lap == 1 and
-            self.isZerothLapSnapshotDataAvailable() and
+            self.isZerothLapSnapshotDataAvailable(pkt_fmt) and
             not self.isZerothLapSnapshotAlreadyCaptured()
         )
 
-    def isZerothLapSnapshotDataAvailable(self) -> bool:
+    def isZerothLapSnapshotDataAvailable(self, pkt_fmt: int) -> bool:
         """
         Checks if zeroth lap snapshot data is available.
+
+        Args:
+            pkt_fmt (int): Packet format
 
         Returns:
             bool - True if zeroth lap snapshot data is available
         """
 
-        return bool(
+        old_status = bool(
             self.m_packet_copies.m_packet_car_damage and
             self.m_packet_copies.m_packet_car_status and
             self.m_packet_copies.m_packet_tyre_sets and
@@ -678,6 +687,10 @@ class DataPerDriver:
             (self.m_lap_info.m_top_speed_kmph_this_lap is not None) and
             (self.m_driver_info.m_curr_lap_max_sc_status is not None)
         )
+        if pkt_fmt < 2026:
+            return old_status
+        # Car Telemetry 2 packet will be sent regardless of formula type
+        return old_status and self.m_packet_copies.m_packet_car_telemetry_2
 
     def isZerothLapSnapshotAlreadyCaptured(self) -> bool:
         """

@@ -325,6 +325,9 @@ class SessionState:
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
+        'm_pkt_fmt',
+        'm_game_major_ver',
+        'm_game_minor_ver',
         'm_connected_to_sim',
         'm_race_ctrl',
         'm_flashback_occurred',
@@ -362,6 +365,9 @@ class SessionState:
         self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
         self.m_version: str = ver_str
+        self.m_pkt_fmt: Optional[int] = None
+        self.m_game_major_ver: Optional[int] = None
+        self.m_game_minor_ver: Optional[int] = None
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
@@ -404,6 +410,9 @@ class SessionState:
         self.m_flashback_occurred = False
 
         self.m_pkt_count = 0
+        self.m_pkt_fmt = None
+        self.m_game_major_ver = None
+        self.m_game_minor_ver = None
 
         # No need to clear config params
 
@@ -418,6 +427,11 @@ class SessionState:
             self.m_num_active_cars and
             any(obj and obj.is_valid for obj in self.m_driver_data)
         )
+
+    @property
+    def game_ver_str(self) -> None:
+        """Returns the game version string"""
+        return f"{self.m_game_major_ver}.{self.m_game_minor_ver}"
 
     def setRaceOngoing(self) -> None:
         """
@@ -510,7 +524,7 @@ class SessionState:
             lap_data: Lap data containing current lap number
         """
         # Capture zeroth lap snapshot if needed
-        if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot():
+        if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot(self.m_pkt_fmt):
             driver_obj.onLapChange(
                 old_lap_number=0,
                 session_type=self.m_session_info.m_session_type
@@ -863,6 +877,7 @@ class SessionState:
         if self.m_save_race_ctrl_msgs:
             final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
+        final_json['game-version'] = self.game_ver_str
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
@@ -1592,6 +1607,7 @@ class SessionState:
         """
 
         session_changed = False
+        self.m_pkt_fmt = packet.m_header.m_packetFormat
         if not self.m_first_session_update_received:
             # This is the first session update for this session. log the session info only once
             self.m_first_session_update_received = True
