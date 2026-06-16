@@ -166,6 +166,7 @@
         "show_track_radar_overlay": true,
         "track_radar_overlay_toggle_udp_action_code": null,
         "track_radar_idle_opacity": 30,
+        "track_radar_range_m": 25,
         "show_hud_overlay": true,
         "hud_overlay_toggle_udp_action_code": null,
         "show_circuit_info": true,
