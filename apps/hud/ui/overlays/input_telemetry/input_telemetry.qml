@@ -41,11 +41,6 @@ Window {
 
     // Telemetry values (0–100)
     //
-    property real throttleValue: 0
-    property real brakeValue:    0
-    property real steeringValue: 0
-    property real revLightsValue: 0
-
     property real throttleSmoothed: 0
     property real brakeSmoothed:    0
     property real steeringSmoothed: 0
@@ -54,12 +49,27 @@ Window {
 
 
     // ----------------------------------------------------------
-    // HISTORY
+    // HISTORY - fixed-size circular buffer (Float32Array x 3)
+    // historyHead is the next write slot and always points at the oldest entry
+    // once full; reading starts at historyHead and wraps via % maxHistoryLength.
     // ----------------------------------------------------------
-    property var throttleHistory: []
-    property var brakeHistory:    []
-    property var steeringHistory: []
+    property var throttleHistory: null
+    property var brakeHistory:    null
+    property var steeringHistory: null
     property int maxHistoryLength: 175
+    property int historyHead:  0
+    property int historyCount: 0
+
+    function _resetHistory() {
+        throttleHistory = new Float32Array(maxHistoryLength)
+        brakeHistory    = new Float32Array(maxHistoryLength)
+        steeringHistory = new Float32Array(maxHistoryLength)
+        historyHead  = 0
+        historyCount = 0
+    }
+
+    Component.onCompleted:     _resetHistory()
+    onMaxHistoryLengthChanged: _resetHistory()
 
     function updateTelemetry(throttle, brake, steering, revPct) {
         throttleSmoothed = throttleSmoothed * smoothingFactor + throttle * (1 - smoothingFactor)
@@ -67,20 +77,11 @@ Window {
         steeringSmoothed = steeringSmoothed * smoothingFactor + steering * (1 - smoothingFactor)
         revLightsSmoothed = revLightsSmoothed * smoothingFactor + revPct * (1 - smoothingFactor)
 
-        throttleValue = throttleSmoothed
-        brakeValue    = brakeSmoothed
-        steeringValue = steeringSmoothed
-        revLightsValue = revLightsSmoothed
-
-        throttleHistory.push(throttleSmoothed)
-        brakeHistory.push(brakeSmoothed)
-        steeringHistory.push(steeringSmoothed)
-
-        if (throttleHistory.length > maxHistoryLength) {
-            throttleHistory.shift()
-            brakeHistory.shift()
-            steeringHistory.shift()
-        }
+        throttleHistory[historyHead] = throttleSmoothed
+        brakeHistory[historyHead]    = brakeSmoothed
+        steeringHistory[historyHead] = steeringSmoothed
+        historyHead = (historyHead + 1) % maxHistoryLength
+        if (historyCount < maxHistoryLength) historyCount++
 
         canvas.requestPaint()
     }
@@ -142,8 +143,8 @@ Window {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 0.3; color: Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, revLightsValue / 100) }
-                            GradientStop { position: 0.7; color: Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, revLightsValue / 100) }
+                            GradientStop { position: 0.3; color: Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, root.revLightsSmoothed / 100) }
+                            GradientStop { position: 0.7; color: Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, root.revLightsSmoothed / 100) }
                             GradientStop { position: 1.0; color: "transparent" }
                         }
                     }
@@ -174,9 +175,11 @@ Window {
                             ctx.lineTo(width, height / 2)
                             ctx.stroke()
 
-                            if (throttleHistory.length < 2)
+                            if (!root.throttleHistory || root.historyCount < 2)
                                 return
 
+                            let len   = root.historyCount
+                            let start = (root.historyHead - len + root.maxHistoryLength) % root.maxHistoryLength
                             let spacing = width / (maxHistoryLength - 1)
 
                             // Throttle tint fill
@@ -186,11 +189,11 @@ Window {
                             ctx.fillStyle = gradT
                             ctx.beginPath()
                             ctx.moveTo(0, height)
-                            for (let t=0; t<throttleHistory.length; t++) {
-                                let yT = height - (throttleHistory[t] / 100) * height
+                            for (let t=0; t<len; t++) {
+                                let yT = height - (root.throttleHistory[(start + t) % root.maxHistoryLength] / 100) * height
                                 ctx.lineTo(t * spacing, yT)
                             }
-                            ctx.lineTo((throttleHistory.length-1)*spacing, height)
+                            ctx.lineTo((len-1)*spacing, height)
                             ctx.closePath()
                             ctx.fill()
 
@@ -201,11 +204,11 @@ Window {
                             ctx.fillStyle = gradB
                             ctx.beginPath()
                             ctx.moveTo(0, height)
-                            for (let b=0; b<brakeHistory.length; b++) {
-                                let yB = height - (brakeHistory[b] / 100) * height
+                            for (let b=0; b<len; b++) {
+                                let yB = height - (root.brakeHistory[(start + b) % root.maxHistoryLength] / 100) * height
                                 ctx.lineTo(b*spacing, yB)
                             }
-                            ctx.lineTo((brakeHistory.length-1)*spacing, height)
+                            ctx.lineTo((len-1)*spacing, height)
                             ctx.closePath()
                             ctx.fill()
 
@@ -213,8 +216,8 @@ Window {
                             ctx.strokeStyle = throttleColor
                             ctx.lineWidth = 2
                             ctx.beginPath()
-                            for (let t2=0; t2<throttleHistory.length; t2++) {
-                                let yT2 = height - (throttleHistory[t2]/100)*height
+                            for (let t2=0; t2<len; t2++) {
+                                let yT2 = height - (root.throttleHistory[(start + t2) % root.maxHistoryLength]/100)*height
                                 if (t2===0) ctx.moveTo(0,yT2)
                                 else ctx.lineTo(t2*spacing, yT2)
                             }
@@ -223,8 +226,8 @@ Window {
                             // --- BRAKE LINE ---
                             ctx.strokeStyle = brakeColor
                             ctx.beginPath()
-                            for (let b2=0; b2<brakeHistory.length; b2++) {
-                                let yB2 = height - (brakeHistory[b2]/100)*height
+                            for (let b2=0; b2<len; b2++) {
+                                let yB2 = height - (root.brakeHistory[(start + b2) % root.maxHistoryLength]/100)*height
                                 if (b2===0) ctx.moveTo(0,yB2)
                                 else ctx.lineTo(b2*spacing, yB2)
                             }
@@ -233,8 +236,8 @@ Window {
                             // --- STEERING LINE ---
                             ctx.strokeStyle = steeringColor
                             ctx.beginPath()
-                            for (let s=0; s<steeringHistory.length; s++) {
-                                let yS = height/2 - (steeringHistory[s]/100)*(height/2)
+                            for (let s=0; s<len; s++) {
+                                let yS = height/2 - (root.steeringHistory[(start + s) % root.maxHistoryLength]/100)*(height/2)
                                 if (s===0) ctx.moveTo(0,yS)
                                 else ctx.lineTo(s*spacing, yS)
                             }
@@ -264,7 +267,7 @@ Window {
                         Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
-                            height: (brakeValue / 100) * parent.height
+                            height: (root.brakeSmoothed / 100) * parent.height
                             color: brakeColor
                         }
 
@@ -272,9 +275,9 @@ Window {
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 2
-                            text: Math.round(brakeValue)
+                            text: Math.round(root.brakeSmoothed)
                             font.pixelSize: 10
-                            color: brakeValue > 10 ? "#000000" : brakeColor
+                            color: root.brakeSmoothed > 10 ? "#000000" : root.brakeColor
                         }
                     }
 
@@ -290,7 +293,7 @@ Window {
                         Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
-                            height: (throttleValue / 100) * parent.height
+                            height: (root.throttleSmoothed / 100) * parent.height
                             color: throttleColor
                         }
 
@@ -298,9 +301,9 @@ Window {
                             anchors.horizontalCenter: parent.horizontalCenter
                             anchors.bottom: parent.bottom
                             anchors.bottomMargin: 2
-                            text: Math.round(throttleValue)
+                            text: Math.round(root.throttleSmoothed)
                             font.pixelSize: 10
-                            color: throttleValue > 10 ? "#000000" : throttleColor
+                            color: root.throttleSmoothed > 10 ? "#000000" : root.throttleColor
                         }
                     }
                 }
