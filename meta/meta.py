@@ -22,6 +22,6 @@
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-APP_VERSION = "4.3.0_mfd" # TODO: Fix this
+APP_VERSION = "4.3.0-beta.1"
 APP_NAME_SNAKE = "pits_n_giggles"
 APP_NAME = "Pits n' Giggles"
