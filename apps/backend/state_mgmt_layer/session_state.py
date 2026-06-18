@@ -481,7 +481,7 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
-            driver_obj.m_car_info.updatePowerEstimators(lap_data.m_lapTimeInMS)
+            driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
 
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
