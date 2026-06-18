@@ -60,6 +60,8 @@ class PuOverlay(BaseOverlay):
             refresh_interval_ms=None,
         )
 
+        self._pu_stats = [] # TODO: remove this temp data dump
+
         self._register_event_handlers()
 
     def _register_event_handlers(self):
@@ -107,3 +109,27 @@ class PuOverlay(BaseOverlay):
             self.set_qml_property("iceTempC",      ice_temp_c)
             self.set_qml_property("ersMode",       ers_mode)
             self.set_qml_property("ersColor",      ers_color)
+
+            # TODO: remove this temp data dump
+            from datetime import datetime
+            self._pu_stats.append({
+                "timestamp"    : datetime.now().isoformat(timespec="milliseconds"),
+                "totalPowerKw" : total_kw,
+                "icePowerKw"   : ice_w  / 1000.0,
+                "mgukPowerKw"  : mguk_w / 1000.0,
+                "iceFraction"  : ice_frac,
+                "mgukFraction" : mguk_frac,
+                "iceTempC"     : ice_temp_c,
+                "ersMode"      : ers_mode,
+                "harvPwrMgukW" : harv_pwr_mguk_w,
+                "harvNrgMgukJ" : harv_nrg_mguk_j,
+                "throttle"     : hud_data["throttle"],
+                "brake"        : hud_data["brake"],
+            })
+
+        # TODO: remove this temp data dump
+        @self.on_request("get_pu_stats")
+        def _handle_get_pu_stats(_data: dict) -> Optional[dict]:
+            return {
+                "stats" : self._pu_stats
+            }
