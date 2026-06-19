@@ -126,6 +126,11 @@ class CarInfo:
         Returns:
             Tuple[float, float]: The power estimates
         """
-        mguk_harv_power = self.m_harv_mguk_power_est.get_power_w() if self.m_harv_mguk_power_est.is_valid() else 0.0
-        mguh_harv_power = self.m_harv_mguh_power_est.get_power_w() if self.m_harv_mguh_power_est.is_valid() else 0.0
+        # Harvest power is physically >= 0; on a flat-energy window the linear slope is zero in
+        # exact arithmetic but leaves sub-microwatt float cancellation residue (e.g. -3.9e-9 W).
+        # Clamp it away. Safe with the order-1 filter, which never produces a real overshoot.
+        mguk_harv_power = max(0.0, self.m_harv_mguk_power_est.get_power_w()) \
+            if self.m_harv_mguk_power_est.is_valid() else 0.0
+        mguh_harv_power = max(0.0, self.m_harv_mguh_power_est.get_power_w()) \
+            if self.m_harv_mguh_power_est.is_valid() else 0.0
         return mguk_harv_power, mguh_harv_power
