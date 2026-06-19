@@ -102,8 +102,11 @@ class CarInfo:
         Args:
             lap_time_ms (int): The lap time in milliseconds, expected to be > 0 (on a running lap)
         """
-        self.m_harv_mguk_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguk_j)
-        self.m_harv_mguh_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguh_j)
+        # Harvest energy is None until the first car-status packet of the lap arrives; skip those
+        # samples rather than feeding None into the filter's arithmetic.
+        if self.m_curr_lap_ers_harv_mguk_j is not None and self.m_curr_lap_ers_harv_mguh_j is not None:
+            self.m_harv_mguk_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguk_j)
+            self.m_harv_mguh_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguh_j)
 
     def resetPowerEstimators(self) -> None:
         """Reset the power estimators"""
