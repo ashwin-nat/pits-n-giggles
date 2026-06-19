@@ -42,8 +42,20 @@ Window {
     property string ersMode:       ""
     property color  ersColor:      "#c4c4d4"
 
+    // Harvest info
+    property bool   showHarvestInfo: false
+    property bool   isF126:          true
+    property real   harvNrgMgukMj:   0
+    property real   harvPwrMgukKw:   0
+    property real   harvNrgMguhMj:   0
+    property real   harvPwrMguhKw:   0
+
     readonly property int baseWidth:  220
-    readonly property int baseHeight: 106
+    readonly property int baseHeight: {
+        if (!showHarvestInfo) return 106
+        if (isF126)           return 131
+        return 151
+    }
 
     width:  baseWidth  * scaleFactor
     height: baseHeight * scaleFactor
@@ -256,6 +268,151 @@ Window {
                         color:              root.ersColor
                         Layout.alignment:   Qt.AlignVCenter
                         Behavior on color { ColorAnimation { duration: 300 } }
+                    }
+                }
+
+                // ── Harvest section (optional) ────────────────────────────
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4; visible: root.showHarvestInfo }
+                Rectangle {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 1
+                    visible:                root.showHarvestInfo
+                    color:                  root.clrBorder
+                }
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4; visible: root.showHarvestInfo }
+
+                // F1 2026: MGU-K energy and power (no MGU-H)
+                RowLayout {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 16
+                    visible:                root.showHarvestInfo && root.isF126
+                    spacing:                0
+
+                    Text {
+                        text:               "HARV-K"
+                        font.family:        "Formula1"
+                        font.pixelSize:     9
+                        font.letterSpacing: 0.8
+                        color:              root.clrLabel
+                        Layout.alignment:   Qt.AlignVCenter
+                    }
+                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.preferredWidth: 120
+                        height: 16
+                        Text {
+                            id:                     f126NrgMguk
+                            anchors.right:          f126PwrMguk.left
+                            anchors.rightMargin:    8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text:           root.harvNrgMgukMj.toFixed(2) + " MJ"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            font.weight:    Font.Bold
+                            color:          root.clrMguk
+                        }
+                        Text {
+                            id:                     f126PwrMguk
+                            anchors.right:          parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width:                  58
+                            horizontalAlignment:    Text.AlignRight
+                            text:           root.harvPwrMgukKw.toFixed(1) + " kW"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            color:          root.clrValue
+                        }
+                    }
+                }
+
+                // Older regs: MGU-K row
+                RowLayout {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 16
+                    visible:                root.showHarvestInfo && !root.isF126
+                    spacing:                0
+
+                    Text {
+                        text:               "HARV-K"
+                        font.family:        "Formula1"
+                        font.pixelSize:     9
+                        font.letterSpacing: 0.8
+                        color:              root.clrLabel
+                        Layout.alignment:   Qt.AlignVCenter
+                    }
+                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.preferredWidth: 120
+                        height: 16
+                        Text {
+                            id:                     oldNrgMguk
+                            anchors.right:          oldPwrMguk.left
+                            anchors.rightMargin:    8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text:           root.harvNrgMgukMj.toFixed(2) + " MJ"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            font.weight:    Font.Bold
+                            color:          root.clrMguk
+                        }
+                        Text {
+                            id:                     oldPwrMguk
+                            anchors.right:          parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width:                  58
+                            horizontalAlignment:    Text.AlignRight
+                            text:           root.harvPwrMgukKw.toFixed(1) + " kW"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            color:          root.clrValue
+                        }
+                    }
+                }
+
+                // Older regs: spacer between MGU-K and MGU-H rows
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4; visible: root.showHarvestInfo && !root.isF126 }
+
+                // Older regs: MGU-H row
+                RowLayout {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 16
+                    visible:                root.showHarvestInfo && !root.isF126
+                    spacing:                0
+
+                    Text {
+                        text:               "HARV-H"
+                        font.family:        "Formula1"
+                        font.pixelSize:     9
+                        font.letterSpacing: 0.8
+                        color:              root.clrLabel
+                        Layout.alignment:   Qt.AlignVCenter
+                    }
+                    Item { Layout.fillWidth: true }
+                    Item {
+                        Layout.preferredWidth: 120
+                        height: 16
+                        Text {
+                            id:                     oldNrgMguh
+                            anchors.right:          oldPwrMguh.left
+                            anchors.rightMargin:    8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text:           root.harvNrgMguhMj.toFixed(2) + " MJ"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            font.weight:    Font.Bold
+                            color:          root.clrMguk
+                        }
+                        Text {
+                            id:                     oldPwrMguh
+                            anchors.right:          parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width:                  58
+                            horizontalAlignment:    Text.AlignRight
+                            text:           root.harvPwrMguhKw.toFixed(1) + " kW"
+                            font.family:    "Formula1"
+                            font.pixelSize: 11
+                            color:          root.clrValue
+                        }
                     }
                 }
             }

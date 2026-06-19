@@ -113,6 +113,19 @@ class PuOverlay(BaseOverlay):
             self.set_qml_property("ersMode",       ers_mode)
             self.set_qml_property("ersColor",      ers_color)
 
+            # - Harvest info push ------------------
+            self.set_qml_property("showHarvestInfo", self._show_harvest_info)
+            if self._show_harvest_info:
+                harv_nrg_mguk_mj = (harv_nrg_mguk_j or 0) / 1_000_000.0
+
+                self.set_qml_property("isF126",          is_f1_26)
+                self.set_qml_property("harvNrgMgukMj",   round(harv_nrg_mguk_mj, 2))
+                self.set_qml_property("harvPwrMgukKw",   round((harv_pwr_mguk_w or 0) / 1_000.0, 1))
+                if not is_f1_26:
+                    harv_nrg_mguh_mj = (harv_nrg_mguh_j or 0) / 1_000_000.0
+                    self.set_qml_property("harvNrgMguhMj", round(harv_nrg_mguh_mj, 2))
+                    self.set_qml_property("harvPwrMguhKw", round((harv_pwr_mguh_w or 0) / 1_000.0, 1))
+
             # TODO: remove this temp data dump
             from datetime import datetime
             self._pu_stats.append({
