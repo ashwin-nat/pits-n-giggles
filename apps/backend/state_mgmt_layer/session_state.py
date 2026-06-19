@@ -495,7 +495,10 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
-            driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
+            # Only feed the power estimators while the car is on a running timed lap; a lap
+            # timer of 0 (stationary/garage/not started) would reset the filter's rolling window.
+            if lap_data.m_currentLapTimeInMS > 0:
+                driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
 
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)

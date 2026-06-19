@@ -67,8 +67,8 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
-    m_harv_mguk_power_est: PowerEstimator = PowerEstimator()
-    m_harv_mguh_power_est: PowerEstimator = PowerEstimator()
+    m_harv_mguk_power_est: PowerEstimator = field(default_factory=PowerEstimator)
+    m_harv_mguh_power_est: PowerEstimator = field(default_factory=PowerEstimator)
 
     def __post_init__(self):
         self.m_fuel_rate_recommender = FuelRateRecommender(
@@ -100,7 +100,7 @@ class CarInfo:
         """Update the power estimators
 
         Args:
-            lap_time_ms (int): The lap time in milliseconds
+            lap_time_ms (int): The lap time in milliseconds, expected to be > 0 (on a running lap)
         """
         self.m_harv_mguk_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguk_j)
         self.m_harv_mguh_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguh_j)
