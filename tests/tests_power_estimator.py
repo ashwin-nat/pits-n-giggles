@@ -140,6 +140,60 @@ class TestSavGolPowerFilterUnsupportedConfig:
             SavGolPowerFilter(7, 2)
 
 
+class TestSavGolOrder1NoOvershoot:
+    """Order-1 (linear) fit must not overshoot on a monotonic signal: no negative output and
+    no output above the input's own peak accumulation rate. Because a least-squares slope can
+    never exceed the steepest rate actually present in the window, the estimate inherits any
+    bound the input already respects (e.g. the game-enforced harvest limit) without that bound
+    being known or hard-coded here. The cubic fit, by contrast, rings at sharp transitions.
+    """
+
+    @staticmethod
+    def _kinked_energy(n: int, dt_ms: int, rate_w: float, plateau_start: int):
+        """Monotonic energy that ramps at ``rate_w`` then plateaus — a sharp kink."""
+        times, energies, e = [], [], 0.0
+        for i in range(n):
+            times.append(i * dt_ms)
+            if i < plateau_start:
+                e += rate_w * dt_ms / 1000.0
+            energies.append(e)
+        return times, energies
+
+    @pytest.mark.parametrize("w", [9, 15, 21])
+    def test_order1_never_negative_or_overshoots(self, w):
+        dt_ms, rate_w, n, plateau_start = 16, 400.0, 60, 30
+        times, energies = self._kinked_energy(n, dt_ms, rate_w, plateau_start)
+
+        filt = SavGolPowerFilter(w, 1)
+        outs = []
+        for t, e in zip(times, energies):
+            filt.update(t, e)
+            if filt.is_valid():
+                outs.append(filt.get_power_w())
+
+        assert outs                       # produced steady-state output
+        assert min(outs) >= -1e-6         # no negative overshoot
+        assert max(outs) <= rate_w + 1e-6  # never exceeds the input's own peak rate (no overshoot)
+
+    def test_order3_overshoots_negative_where_order1_does_not(self):
+        """Contrast: the cubic fit rings below zero on the same signal; the linear fit does not."""
+        dt_ms, rate_w, n, plateau_start = 16, 400.0, 60, 30
+        times, energies = self._kinked_energy(n, dt_ms, rate_w, plateau_start)
+
+        cubic = SavGolPowerFilter(15, 3)
+        linear = SavGolPowerFilter(15, 1)
+        cubic_min = linear_min = float("inf")
+        for t, e in zip(times, energies):
+            cubic.update(t, e)
+            linear.update(t, e)
+            if cubic.is_valid():
+                cubic_min = min(cubic_min, cubic.get_power_w())
+                linear_min = min(linear_min, linear.get_power_w())
+
+        assert cubic_min < -1e-6    # cubic overshoots negative (the artifact being avoided)
+        assert linear_min >= -1e-6  # linear stays non-negative
+
+
 # ---------------------------------------------------------------------------
 # PowerEstimator - manager layer tests
 # ---------------------------------------------------------------------------

@@ -67,8 +67,15 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
-    m_harv_mguk_power_est: PowerEstimator = field(default_factory=PowerEstimator)
-    m_harv_mguh_power_est: PowerEstimator = field(default_factory=PowerEstimator)
+    # Order-1 (linear) fit: cumulative harvest energy is monotonic, so the derived power must
+    # never dip negative nor overshoot above the rate the energy actually climbed at. A linear
+    # least-squares slope can't exceed the steepest rate present in the window, so it inherits
+    # whatever bound the game's energy already respects (no limit value stored here). A cubic
+    # fit rings at braking-zone transitions and can manufacture out-of-range values.
+    m_harv_mguk_power_est: PowerEstimator = field(
+        default_factory=lambda: PowerEstimator(polynomial_order=1))
+    m_harv_mguh_power_est: PowerEstimator = field(
+        default_factory=lambda: PowerEstimator(polynomial_order=1))
 
     def __post_init__(self):
         self.m_fuel_rate_recommender = FuelRateRecommender(
