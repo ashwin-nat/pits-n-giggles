@@ -323,6 +323,23 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    track_radar_range_m: int = Field(
+        default=25,
+        ge=5,
+        le=35,
+        description="Track radar display range in metres (half the radar area)",
+        json_schema_extra={
+            "ui": {
+                "type": "slider",
+                "visible": False,
+                "min": 5,
+                "max": 35,
+                "ext_info": [
+                    "Metres represented by the edge of the radar display"
+                ]
+            }
+        }
+    )
 
     # ============== HUD OVERLAY ==============
     show_hud_overlay: bool = overlay_enable_field(description="Enable HUD overlay", group="HUD Overlay",

@@ -264,7 +264,7 @@ Window {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: -3
                     width: 2
-                    color: Qt.rgba(1, 1, 1, 0.65)
+                    color: "black"
                     radius: 1
                 }
             }

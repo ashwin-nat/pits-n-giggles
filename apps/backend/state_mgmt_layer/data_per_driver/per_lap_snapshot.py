@@ -53,7 +53,8 @@ class PerLapSnapshotEntry:
         top_speed_kmph: int,
         ers_harv_mguh_j: float,
         ers_harv_mguk_j: float,
-        ers_deployed_j: float
+        ers_deployed_j: float,
+        ers_harv_limit_mguk_j: float
         ):
         """Init the snapshot entry object
 
@@ -67,6 +68,9 @@ class PerLapSnapshotEntry:
             ers_harv_mguh_j (float): The lap's total ERS energy harvested by MGU-H in joules
             ers_harv_mguk_j (float): The lap's total ERS energy harvested by MGU-K in joules
             ers_deployed_j (float): The lap's total ERS energy deployed in joules
+            ers_harv_limit_mguk_j (float): The lap's total ERS energy harvested limit by MGU-K in joules
+            ers_harv_limit_mguk_j (float): The lap's total ERS energy harvested limit by MGU-K in joules
+                    May change per lap in 2026 regs, fixed in older regs
         """
 
         self.m_car_damage_packet: CarDamageData = car_damage
@@ -78,6 +82,7 @@ class PerLapSnapshotEntry:
         self.m_ers_harv_mguh_j: float = ers_harv_mguh_j
         self.m_ers_harv_mguk_j: float = ers_harv_mguk_j
         self.m_ers_deployed_j: float = ers_deployed_j
+        self.m_ers_harv_limit_mguk_j: float = ers_harv_limit_mguk_j
 
     def toJSON(self, lap_number : int) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -101,5 +106,6 @@ class PerLapSnapshotEntry:
                 "ers-harv-mguh-j" : self.m_ers_harv_mguh_j,
                 "ers-harv-mguk-j" : self.m_ers_harv_mguk_j,
                 "ers-deployed-j" : self.m_ers_deployed_j,
+                "ers-harv-limit-mguk-j" : self.m_ers_harv_limit_mguk_j,
             },
         }

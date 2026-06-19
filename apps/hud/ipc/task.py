@@ -140,6 +140,16 @@ def _register_routes(
             return {"status": "success", "message": "set-track-radar-idle-opacity handler executed."}
         return {"status": "error", "message": "Missing opacity value in set-track-radar-idle-opacity command."}
 
+    @ipc_server.on("set-track-radar-range")
+    def _set_track_radar_range(args: dict) -> dict:
+        logger.debug("Received set-track-radar-range command. args: %s", args)
+
+        range_m = args.get("range_m")
+        if range_m is not None:
+            overlays_mgr.set_track_radar_range(range_m)
+            return {"status": "success", "message": "set-track-radar-range handler executed."}
+        return {"status": "error", "message": "Missing range_m value in set-track-radar-range command."}
+
     @ipc_server.on("set-circuit-info-length")
     def _set_circuit_info_length(args: dict) -> dict:
         logger.debug("Received set-circuit-info-length command. args: %s", args)

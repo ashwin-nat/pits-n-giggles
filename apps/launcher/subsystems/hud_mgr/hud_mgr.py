@@ -409,6 +409,22 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.debug_log("Set track radar idle opacity command was successful")
 
+    def _send_track_radar_range_change(self, range_m: int) -> None:
+        """Send track radar range change to HUD app
+
+        Args:
+            range_m (int): New track radar range in metres
+        """
+        self.debug_log("Sending set-track-radar-range command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-range", args={
+            "range_m": range_m,
+        })
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to set track radar range: {rsp}")
+        else:
+            self.debug_log("Set track radar range command was successful")
+
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
         self.integration_test_stop_event.clear()
@@ -546,7 +562,17 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
                 value=hud_settings.circuit_info_length,
                 visible=hud_settings.show_circuit_info,
-            )
+            ),
+
+            SliderItem(
+                key="track_radar_range_m",
+                label="Track Radar Range (m)",
+                min=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["max"],
+                value=hud_settings.track_radar_range_m,
+                tooltip=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["ext_info"][0],
+                visible=hud_settings.show_track_radar_overlay,
+            ),
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
@@ -569,6 +595,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
         new_settings.HUD.circuit_info_length = values["circuit_info_length"]
+        new_settings.HUD.track_radar_range_m = values["track_radar_range_m"]
 
         # ---- FORCE VALIDATION (this is the important bit) ----
         try:
@@ -607,6 +634,11 @@ class HudAppMgr(PngAppMgrBase):
             != validated_settings.HUD.circuit_info_length
         )
 
+        track_radar_range_changed = (
+            self.curr_settings.HUD.track_radar_range_m
+            != validated_settings.HUD.track_radar_range_m
+        )
+
         # ---- Apply runtime effects ----
         if global_opacity_changed:
             self._send_overlays_opacity_change(
@@ -623,8 +655,14 @@ class HudAppMgr(PngAppMgrBase):
                 validated_settings.HUD.circuit_info_length
             )
 
+        if track_radar_range_changed:
+            self._send_track_radar_range_change(
+                validated_settings.HUD.track_radar_range_m
+            )
+
         # ---- Persist only VALIDATED settings ----
-        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed:
+        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed \
+                or track_radar_range_changed:
             self.window.update_settings(validated_settings)
             self.window.save_settings_to_disk(validated_settings)
 

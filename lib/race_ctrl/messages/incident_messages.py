@@ -130,24 +130,31 @@ class SgPenServedRaceCtrlMsg(RaceCtrlMsgBase):
         return ret
 
 class CollisionRaceCtrlMsg(RaceCtrlMsgBase):
-    def __init__(self, timestamp: float, involved_drivers: List[int], lap_number: Optional[int] = None) -> None:
+    def __init__(self,
+                 timestamp: float,
+                 involved_drivers: List[int],
+                 severity: str,
+                 lap_number: Optional[int] = None) -> None:
         """Collision message
 
         Args:
             timestamp (float): Time at which the message was issued (seconds).
             involved_drivers (List[int]): List of involved drivers indices.
+            severity (str): Severity of the collision.
         """
         super().__init__(
             timestamp=timestamp,
             message_type=MessageType.COLLISION,
             involved_drivers=involved_drivers,
             lap_number=lap_number)
+        self.severity: str = severity
 
     def toJSON(self, driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
         ret = {
             **super().toJSON(driver_info_dict),
-            "involved-drivers": self.involved_drivers
+            "involved-drivers": self.involved_drivers,
+            "severity": self.severity
         }
 
         if driver_info_dict:

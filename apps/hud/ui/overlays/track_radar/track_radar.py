@@ -32,7 +32,7 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 
 from ._glow_provider import RadarGlowImageProvider
-from ._radar_math import _RADAR_AREA_RATIO, _RADAR_RANGE_M, car_px, to_radar_coords
+from ._radar_math import _RADAR_AREA_RATIO, car_px, to_radar_coords
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -56,10 +56,12 @@ class TrackRadarOverlay(BaseOverlay):
                  scale_factor: float,
                  windowed_overlay: bool,
                  refresh_interval_ms: int,
-                 idle_opacity: int,):
+                 idle_opacity: int,
+                 radar_range_m: int,):
 
         assert refresh_interval_ms
         self.idle_opacity = idle_opacity
+        self.radar_range_m: float = float(radar_range_m)
         super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
         self.subscribe_hf(LiveSessionMotionInfo)
         self._register_handlers()
@@ -67,7 +69,7 @@ class TrackRadarOverlay(BaseOverlay):
     @final
     def pre_setup(self):
         """Register the glow image provider before QML loads."""
-        car_w_px, car_l_px = car_px("F1 Modern")
+        car_w_px, car_l_px = car_px("F1 26", self.radar_range_m)
         self.qml_engine.addImageProvider("radar", RadarGlowImageProvider(car_w_px, car_l_px))
 
     @final
@@ -76,6 +78,7 @@ class TrackRadarOverlay(BaseOverlay):
         self._set_base_opacity_property(self.opacity)
         self._set_idle_opacity_property(self.idle_opacity)
         self.set_qml_property("radarAreaRatio", _RADAR_AREA_RATIO)
+        self._apply_radar_range_to_qml()
 
     @final
     def set_opacity(self, opacity: int):
@@ -100,6 +103,12 @@ class TrackRadarOverlay(BaseOverlay):
             self.idle_opacity = opacity
             self._set_idle_opacity_property(opacity)
 
+        @self.on_event("set_track_radar_range")
+        def _handle_set_track_radar_range(data: Dict[str, Any]):
+            self.logger.info('%s | Received "set_track_radar_range" event. range_m: %s', self.OVERLAY_ID, data)
+            self.radar_range_m = float(data["range_m"])
+            self._apply_radar_range_to_qml()
+
     @final
     def render_frame(self):
         """Render a new frame."""
@@ -111,7 +120,7 @@ class TrackRadarOverlay(BaseOverlay):
         if not ref_driver or not ref_driver.car_motion:
             return
 
-        car_w_px, car_l_px = car_px(data.formula_type)
+        car_w_px, car_l_px = car_px(data.formula_type, self.radar_range_m)
         self.set_qml_property("carWidthPx", car_w_px)
         self.set_qml_property("carLengthPx", car_l_px)
 
@@ -137,17 +146,17 @@ class TrackRadarOverlay(BaseOverlay):
             rel_z = d['relZ']
             dist = math.hypot(rel_x, rel_z)
 
-            if dist <= _RADAR_RANGE_M:
+            if dist <= self.radar_range_m:
                 cars_nearby = True
             if self._is_car_on_left(rel_x, rel_z):
                 car_on_left = True
             if self._is_car_on_right(rel_x, rel_z):
                 car_on_right = True
 
-            radar_x, radar_y = to_radar_coords(rel_x, rel_z)
+            radar_x, radar_y = to_radar_coords(rel_x, rel_z, self.radar_range_m)
             # Preserve pre-rewrite visual heading convention from QML:
             # old delegate used `rotation: -(driver.heading || 0)`.
-            car_data.extend([radar_x, radar_y, -d['heading'], dist <= _RADAR_RANGE_M])
+            car_data.extend([radar_x, radar_y, -d['heading'], dist <= self.radar_range_m])
 
         return cars_nearby, car_on_left, car_on_right, car_data
 
@@ -210,6 +219,11 @@ class TrackRadarOverlay(BaseOverlay):
             })
 
         return driver_list
+
+    def _apply_radar_range_to_qml(self):
+        car_w_px, car_l_px = car_px("F1 26", self.radar_range_m)
+        self.set_qml_property("carWidthPx", car_w_px)
+        self.set_qml_property("carLengthPx", car_l_px)
 
     def _set_base_opacity_property(self, opacity: int):
         self.set_qml_property("baseOpacity", opacity / 100.0)

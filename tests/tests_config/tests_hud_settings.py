@@ -84,6 +84,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_track_radar_overlay, True)
         self.assertEqual(settings.track_radar_overlay_toggle_udp_action_code, None)
         self.assertEqual(settings.track_radar_idle_opacity, 30)
+        self.assertEqual(settings.track_radar_range_m, 25)
         self.assertEqual(settings.show_hud_overlay, True)
         self.assertEqual(settings.overlays_speed_unit, OverlaysSpeedUnit.KMPH)
         self.assertTrue(settings.hud_overlay_speed_unit_kmph)
@@ -898,6 +899,34 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_length=1501)
         HudSettings(circuit_info_length=1500)
+
+    def test_track_radar_range_m_default(self):
+        """track_radar_range_m defaults to 25"""
+        self.assertEqual(HudSettings().track_radar_range_m, 25)
+
+    def test_track_radar_range_m_validation(self):
+        """track_radar_range_m accepts 5–35 and rejects outside that range"""
+        # Valid boundary values
+        HudSettings(track_radar_range_m=5)
+        HudSettings(track_radar_range_m=35)
+
+        # Just outside boundary
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m=4)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m=36)
+
+        # Well outside boundary
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m=0)
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m=100)
+
+        # Invalid types
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m=None)  # type: ignore
+        with self.assertRaises(ValidationError):
+            HudSettings(track_radar_range_m="invalid")
 
     def test_timing_tower_relative_best_last_lap_default(self):
         """timing_tower_relative_best_last_lap defaults to False"""
