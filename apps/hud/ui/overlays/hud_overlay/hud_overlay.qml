@@ -23,6 +23,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
+import "../base"
 
 Window {
     id: root
@@ -33,21 +34,12 @@ Window {
     readonly property int baseWidth: 470
     readonly property int baseHeight: 116
 
-    property real faFps:              0
-    property real faFrameTimeMs:      0
-    property real faSmoothFrameTimeMs: 0
-    property int  faFrameCount:       0
+    property alias faFps:               frameTelemetry.fps
+    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+    property alias faFrameCount:        frameTelemetry.frameCount
 
-    FrameAnimation {
-        id: frameAnim
-        running: true
-        onTriggered: {
-            root.faFrameTimeMs       = (frameAnim.frameTime       || 0) * 1000
-            root.faSmoothFrameTimeMs = (frameAnim.smoothFrameTime || 0) * 1000
-            root.faFps               = frameAnim.frameTime > 0 ? 1.0 / frameAnim.frameTime : 0
-            root.faFrameCount        += 1
-        }
-    }
+    FrameTelemetry { id: frameTelemetry }
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
