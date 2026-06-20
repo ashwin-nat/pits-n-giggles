@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import "../base"
 
 Window {
     id: root
@@ -10,6 +11,13 @@ Window {
     property real scaleFactor: 1.0
     property int barWidth: 1400          // settable: controls overlay width
     readonly property int baseHeight: 80
+
+    property alias faFps:               frameTelemetry.fps
+    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+    property alias faFrameCount:        frameTelemetry.frameCount
+
+    FrameTelemetry { id: frameTelemetry }
 
     width: barWidth * scaleFactor
     height: baseHeight * scaleFactor

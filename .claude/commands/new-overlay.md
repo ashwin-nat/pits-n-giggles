@@ -363,6 +363,18 @@ Create two files:
 
 **`<overlay_name>.qml`**:
 - Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
+- If the overlay animates continuously (drives per-frame rendering via FrameAnimation), add a `FrameTelemetry` component and expose its stats as aliases on the root Window. This enables `get_window_stats()` to include QML-side frame metrics automatically:
+  ```qml
+  import "../base"
+
+  property alias faFps:               frameTelemetry.fps
+  property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+  property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+  property alias faFrameCount:        frameTelemetry.frameCount
+
+  FrameTelemetry { id: frameTelemetry }
+  ```
+  Event-driven overlays (no continuous animation) should omit this.
 
 #### B10. Register overlay in OverlaysMgr — `apps/hud/ui/infra/overlays_mgr.py`
 

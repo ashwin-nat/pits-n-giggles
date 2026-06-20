@@ -87,6 +87,26 @@ class BaseOverlay(QmlBridge, QObject):
     Lifecycle hooks (override in leaf classes):
         - pre_setup()   — before the QML window is created
         - post_setup()  — after the QML window is created
+
+    --------------------------------------------------------------------------
+    OPTIONAL QML FRAME-ANIMATION STATS
+    --------------------------------------------------------------------------
+    Overlays that animate continuously (i.e. use FrameAnimation to drive
+    per-frame rendering) should include a FrameTelemetry component and expose
+    the following property aliases on the root Window:
+
+        import "../base"
+
+        property alias faFps:               frameTelemetry.fps
+        property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+        property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+        property alias faFrameCount:        frameTelemetry.frameCount
+
+        FrameTelemetry { id: frameTelemetry }
+
+    When these properties are present, get_window_stats() automatically reads
+    them from the QML root and includes them under the "frame_animation" key.
+    Overlays that do not define these properties are unaffected.
     """
 
     response_signal = Signal(str, object)   # request_type, response_data
@@ -181,6 +201,10 @@ class BaseOverlay(QmlBridge, QObject):
 
         logger.debug("%s initialized. Path=%s. "
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
+
+    @property
+    def is_animation_overlay(self) -> bool:
+        return self._refresh_interval_ms is not None
 
     # ------------------------------------------------------------------
     # QmlBridge: _qml_target implementation
@@ -540,12 +564,12 @@ class BaseOverlay(QmlBridge, QObject):
         """Fixed-rate render tick. Derived classes implement render_frame()."""
         if not self._root:
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_NO_ROOT__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_NO_ROOT__")
             return
 
         if not self.get_visibility():
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_HIDDEN__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_HIDDEN__")
             return
 
         # First frame after becoming visible — reset timing baseline so the
@@ -558,11 +582,11 @@ class BaseOverlay(QmlBridge, QObject):
         self._clear_hf_pending()
         assert self._refresh_interval_ms
         assert self._fps
-        self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+        self._stats.track_frame_render("__FRAMES_PRODUCER__", "__FRAME__", perf_counter_ns(), self._fps)
 
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
-        self._stats.reset_frame_timing("__FRAMES__", "__FRAME__")
+        self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
 
     def render_frame(self):
         """Derived classes must implement this method if a refresh interval is used."""
@@ -626,7 +650,17 @@ class BaseOverlay(QmlBridge, QObject):
     # ------------------------------------------------------------------
     def get_stats(self) -> dict:
         """Get overlay runtime stats."""
-        return self._stats.get_stats()
+        stats = self._stats.get_stats()
+        if self._root and self.is_animation_overlay:
+            # Animation overlays must define these properties
+            stats["__FRAMES_RENDERED__"] = {
+                "type":               "__FRAMES_RENDERED__",
+                "fps":                self._root.property("faFps"),
+                "frame_time_ms":      self._root.property("faFrameTimeMs"),
+                "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
+                "frame_count":        self._root.property("faFrameCount"),
+            }
+        return stats
 
     # ------------------------------------------------------------------
     # Default handlers
