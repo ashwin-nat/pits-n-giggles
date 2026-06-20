@@ -654,6 +654,7 @@ class BaseOverlay(QmlBridge, QObject):
         if self._root and self.is_animation_overlay:
             # Animation overlays must define these properties
             stats["__FRAMES_RENDERED__"] = {
+                "type":               "__FRAMES_RENDERED__",
                 "fps":                self._root.property("faFps"),
                 "frame_time_ms":      self._root.property("faFrameTimeMs"),
                 "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
