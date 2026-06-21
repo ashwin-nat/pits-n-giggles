@@ -81,6 +81,27 @@ class TestPredictionSettings(TestF1ConfigBase):
         self.assertTrue(s.weather_aware_prediction)
         self.assertEqual(s.tyre_wear_window_size, 8)
 
+    def test_harvest_power_window_size_default(self):
+        """Default harvest power smoothing window is 15."""
+        s = PredictionSettings()
+        self.assertEqual(s.harvest_power_window_size, 15)
+
+    def test_harvest_power_window_size_valid_values(self):
+        """All supported SavGol window sizes are accepted."""
+        for w in (9, 15, 21):
+            s = PredictionSettings(harvest_power_window_size=w)
+            self.assertEqual(s.harvest_power_window_size, w)
+
+    def test_harvest_power_window_size_invalid_value(self):
+        """Values outside the supported set are rejected."""
+        for w in (0, 12, 25):
+            with self.assertRaises(ValidationError):
+                PredictionSettings(harvest_power_window_size=w)
+
+    def test_harvest_power_window_size_invalid_type(self):
+        with self.assertRaises(ValidationError):
+            PredictionSettings(harvest_power_window_size="big")
+
     def test_diff_weather_aware(self):
         s1 = PredictionSettings()
         s2 = PredictionSettings(weather_aware_prediction=True)
@@ -95,6 +116,14 @@ class TestPredictionSettings(TestF1ConfigBase):
         self.assertTrue(s1.has_changed(s2))
         self.assertEqual(s1.diff(s2), {
             "tyre_wear_window_size": {"old_value": None, "new_value": 6}
+        })
+
+    def test_diff_harvest_power_window_size(self):
+        s1 = PredictionSettings()
+        s2 = PredictionSettings(harvest_power_window_size=21)
+        self.assertTrue(s1.has_changed(s2))
+        self.assertEqual(s1.diff(s2), {
+            "harvest_power_window_size": {"old_value": 15, "new_value": 21}
         })
 
     def test_diff_no_change(self):
@@ -148,3 +177,12 @@ class TestPngSettingsPrediction(TestF1ConfigBase):
         s2 = PngSettings()
         d = s1.diff(s2, {"Prediction": []})
         self.assertNotIn("Prediction", d)
+
+    def test_png_settings_harvest_window_covered_by_prediction_diff(self):
+        """Changing harvest_power_window_size is caught by the {"Prediction": []} diff
+        the backend uses to decide on a restart."""
+        s1 = PngSettings()
+        s2 = PngSettings(Prediction=PredictionSettings(harvest_power_window_size=9))
+        d = s1.diff(s2, {"Prediction": []})
+        self.assertIn("Prediction", d)
+        self.assertIn("harvest_power_window_size", d["Prediction"])

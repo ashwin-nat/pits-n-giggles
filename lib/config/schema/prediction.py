@@ -24,11 +24,15 @@
 
 from typing import Any, ClassVar, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
+
+# Supported Savitzky-Golay window sizes for the harvest power estimator. Must stay in sync with the
+# precomputed coefficient table in lib/power_estimator/_coefficients.py (the order-1 configs).
+_HARVEST_POWER_WINDOW_SIZES = (9, 15, 21)
 
 class PredictionSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
@@ -70,3 +74,31 @@ class PredictionSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+
+    harvest_power_window_size: int = Field(
+        default=15,
+        description="Harvest power smoothing window (samples)",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": list(_HARVEST_POWER_WINDOW_SIZES),
+                "visible": True,
+                "ext_info": [
+                    "Smoothing window (in samples) for the harvest power estimate shown in the \n"
+                    "Power Unit overlay. At ~60 Hz: 9 ~ 150 ms (most responsive, noisier), \n"
+                    "15 ~ 250 ms (balanced, default), 21 ~ 350 ms (smoothest, more lag). \n"
+                    "Larger values steady the reading but lag behind sudden changes like \n"
+                    "braking-zone harvesting."
+                ]
+            }
+        }
+    )
+
+    @field_validator("harvest_power_window_size")
+    @classmethod
+    def _validate_harvest_power_window_size(cls, value: int) -> int:
+        if value not in _HARVEST_POWER_WINDOW_SIZES:
+            raise ValueError(
+                f"harvest_power_window_size must be one of {_HARVEST_POWER_WINDOW_SIZES}, got {value}"
+            )
+        return value
