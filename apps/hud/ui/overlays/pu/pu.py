@@ -24,12 +24,10 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from apps.hud.common import get_ers_mode_color
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
-from lib.track_segment_info import TrackSegmentsDatabase
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -60,10 +58,6 @@ class PuOverlay(BaseOverlay):
             windowed_overlay=windowed_overlay,
             refresh_interval_ms=None,
         )
-
-        self._pu_stats = [] # TODO: remove this temp data dump
-        self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
-
         self._register_event_handlers()
 
     def _register_event_handlers(self):
@@ -101,7 +95,6 @@ class PuOverlay(BaseOverlay):
             harv_pwr_mguh_w = pu_data["mguh-harv-power-w"]
             harv_nrg_mguk_j = hud_data["ers-harv-mguk"]
             harv_nrg_mguh_j = hud_data["ers-harv-mguh"]
-            circuit_pos     = self._get_pos_str(hud_data["circuit-position"], data["circuit-enum-value"])
 
             # - Push to QML ------------------------
             self.set_qml_property("totalPowerKw",  round(total_kw,       1))
@@ -125,54 +118,3 @@ class PuOverlay(BaseOverlay):
                     harv_nrg_mguh_mj = (harv_nrg_mguh_j or 0) / 1_000_000.0
                     self.set_qml_property("harvNrgMguhMj", round(harv_nrg_mguh_mj, 2))
                     self.set_qml_property("harvPwrMguhKw", round((harv_pwr_mguh_w or 0) / 1_000.0, 1))
-
-            # TODO: remove this temp data dump
-            from datetime import datetime
-            self._pu_stats.append({
-                "timestamp"    : datetime.now().isoformat(timespec="milliseconds"),
-                "totalPowerKw" : total_kw,
-                "icePowerKw"   : ice_w  / 1000.0,
-                "mgukPowerKw"  : mguk_w / 1000.0,
-                "iceFraction"  : ice_frac,
-                "mgukFraction" : mguk_frac,
-                "iceTempC"     : ice_temp_c,
-                "ersMode"      : ers_mode,
-                "harvPwrMgukW" : harv_pwr_mguk_w,
-                "harvNrgMgukJ" : harv_nrg_mguk_j,
-                "harvPwrMguhW" : harv_pwr_mguh_w,
-                "harvNrgMguhJ" : harv_nrg_mguh_j,
-                "throttle"     : hud_data["throttle"],
-                "brake"        : hud_data["brake"],
-                "lapDistance"  : hud_data["circuit-position"],
-                "circuitPos"   : circuit_pos,
-                "speedKmph"    : hud_data["speed-kmph"],
-            })
-
-        # TODO: remove this temp data dump
-        @self.on_request("get_pu_stats")
-        def _handle_get_pu_stats(_data: dict) -> Optional[dict]:
-            return {
-                "stats" : self._pu_stats
-            }
-
-    def _get_pos_str(self, circuit_pos: Optional[int], circuit_num: Optional[int]) -> str:
-        if circuit_pos is None or circuit_num is None:
-            return "--"
-        segment = self.tracks_db.get_segment_info(circuit_num, circuit_pos)
-        if segment:
-            match segment.TYPE:
-                case "corner":
-                    if segment.name:
-                        return segment.name
-                    return f"T{segment.corner_number}"
-                case "complex_corner":
-                    if segment.name:
-                        return segment.name
-                    first, last = segment.corner_numbers[0], segment.corner_numbers[-1]
-                    return f"T{first}-{last}"
-                case "straight":
-                    return segment.name
-        sector = self.tracks_db.get_sector(circuit_num, circuit_pos)
-        if sector:
-            return str(sector)
-        return "N/A"

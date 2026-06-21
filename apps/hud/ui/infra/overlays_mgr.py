@@ -289,21 +289,6 @@ class OverlaysMgr:
         self.running = False
         if self.wdt:
             self.wdt.stop()
-        # TODO: remove this temp data dump
-        ret = self.window_manager.request(PuOverlay.OVERLAY_ID, "get_pu_stats")
-        if ret:
-            stats_data = ret["stats"]
-            if stats_data:
-                import csv
-                from datetime import datetime
-                out_path = f"pu_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                with open(out_path, "w", newline="", encoding="utf-8") as f:
-                    writer = csv.DictWriter(f, fieldnames=list(stats_data[0].keys()))
-                    writer.writeheader()
-                    writer.writerows(stats_data)
-                self.logger.info("Wrote %d PU stats rows to %s", len(stats_data), out_path)
-        else:
-            self.logger.error("Failed to get PU stats")
         self.window_manager.stop()
 
     def get_stats(self) -> Dict[str, Any]:
