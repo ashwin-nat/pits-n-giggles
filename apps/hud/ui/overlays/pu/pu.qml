@@ -51,6 +51,7 @@ Window {
     property string harvPwrMguhKw:   "0.0 kW"
     property real   mgukHarvFraction: 0
     property bool   isHarvesting:     false
+    property string progBarStr:       ""
 
     readonly property int baseWidth:  220
     readonly property int baseHeight: {
@@ -403,13 +404,15 @@ Window {
 
                     // "HARVESTING" label
                     Text {
-                        visible:            root.isHarvesting
+                        visible:            root.progBarStr !== ""
                         anchors.centerIn:   parent
-                        text:               "HARVESTING"
+                        text:               root.progBarStr
                         font.family:        "Formula1"
                         font.pixelSize:     8
                         font.letterSpacing: 1.2
-                        color:              Qt.rgba(1, 1, 1, 0.8)
+                        color:              "#ffffff"
+                        style:              Text.Outline
+                        styleColor:         "#0a1520"
                     }
                 }
 

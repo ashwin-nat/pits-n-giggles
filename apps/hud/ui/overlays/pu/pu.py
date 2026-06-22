@@ -108,22 +108,28 @@ class PuOverlay(BaseOverlay):
             self.set_qml_property("ersColor",      ers_color)
 
             # - Harvest info push ------------------
-            # Pre-formatted strings: rounding happens exactly once here in Python
             self.set_qml_property("showHarvestInfo", self._show_harvest_info)
             if self._show_harvest_info:
-                harv_nrg_mguk_mj = harv_nrg_mguk_j / 1_000_000.0
-                if is_f1_26:
-                    harv_limit_mguk = f1_26_data["harv-limit-j"]
+                harv_limit_mguk  = f1_26_data["harv-limit-j"] if is_f1_26 else CarStatusData.MAX_MGUK_HARV_PER_LAP
+                mguk_harv_frac   = min(harv_nrg_mguk_j / harv_limit_mguk, 1.0)
+                is_harvesting    = bool(harv_pwr_mguk_w)
+                throttle         = hud_data["throttle"] or 0.0
+
+                if mguk_harv_frac == 0:
+                    prog_bar_str = "LIMIT REACHED"
+                elif is_harvesting and throttle == 1.0 and is_f1_26:
+                    prog_bar_str = "SUPER CLIPPING"
+                elif is_harvesting:
+                    prog_bar_str = "HARVESTING"
                 else:
-                    harv_limit_mguk  = CarStatusData.MAX_MGUK_HARV_PER_LAP
-                mguk_harv_pct = int((harv_nrg_mguk_j / harv_limit_mguk) * 100)
+                    prog_bar_str = ""
 
                 self.set_qml_property("isF126",           is_f1_26)
-                self.set_qml_property("harvNrgMgukMj",    f"{harv_nrg_mguk_mj:.2f} MJ")
+                self.set_qml_property("progBarStr",       prog_bar_str)
+                self.set_qml_property("harvNrgMgukMj",    f"{harv_nrg_mguk_j / 1_000_000.0:.2f} MJ")
                 self.set_qml_property("harvPwrMgukKw",    f"{harv_pwr_mguk_w / 1_000.0:.1f} kW")
-                self.set_qml_property("mgukHarvFraction", min(mguk_harv_pct / 100.0, 1.0))
-                self.set_qml_property("isHarvesting",     bool(harv_pwr_mguk_w))
+                self.set_qml_property("mgukHarvFraction", mguk_harv_frac)
+                self.set_qml_property("isHarvesting",     is_harvesting)
                 if not is_f1_26:
-                    harv_nrg_mguh_mj = harv_nrg_mguh_j / 1_000_000.0
-                    self.set_qml_property("harvNrgMguhMj", f"{harv_nrg_mguh_mj:.2f} MJ")
+                    self.set_qml_property("harvNrgMguhMj", f"{harv_nrg_mguh_j / 1_000_000.0:.2f} MJ")
                     self.set_qml_property("harvPwrMguhKw", f"{harv_pwr_mguh_w / 1_000.0:.1f} kW")
