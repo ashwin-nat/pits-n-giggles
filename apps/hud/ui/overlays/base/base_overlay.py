@@ -300,11 +300,7 @@ class BaseOverlay(QmlBridge, QObject):
 
     def set_telemetry_active(self, active: bool):
         """Common handler for setting telemetry active state."""
-        if self.telemetry_active == active:
-            return
-
-        self.logger.debug("%s set_telemetry_active. current: %s, new: %s",
-                          self.OVERLAY_ID, self.telemetry_active, active)
+        self.logger.debug("%s set_telemetry_active: %s", self.OVERLAY_ID, active)
         self.telemetry_active = active
 
         if not self.locked:
