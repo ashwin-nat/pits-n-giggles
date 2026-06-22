@@ -669,6 +669,8 @@ class SessionState:
                         old_state=old_ai,
                         new_state=new_ai,
                     )
+                    if obj_to_be_updated.m_packet_copies.m_packet_lap_data:
+                        msg.lap_distance = obj_to_be_updated.m_packet_copies.m_packet_lap_data.m_lapDistance
                     obj_to_be_updated.m_race_ctrl.add_message(msg)
 
             # Update pkt copy
@@ -1131,6 +1133,10 @@ class SessionState:
             lap_num = None
 
         if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
+            if msg.involved_drivers:
+                driver_obj = self._getObjectByIndex(msg.involved_drivers[0], create=False)
+                if driver_obj and driver_obj.m_packet_copies.m_packet_lap_data:
+                    msg.lap_distance = driver_obj.m_packet_copies.m_packet_lap_data.m_lapDistance
             self.m_race_ctrl.add_message(msg)
 
     def setChequeredFlagState(self, flag_val: bool) -> None:

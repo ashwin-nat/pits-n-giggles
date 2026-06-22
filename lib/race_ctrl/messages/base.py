@@ -68,11 +68,15 @@ class RaceCtrlMsgBase:
         timestamp (float): Time at which the message was issued (seconds).
         message_type (MessageType): Type of race control message.
         involved_drivers (List[int]): List of driver indices involved in the message.
+        lap_distance (Optional[float]): Lap distance in metres at the time of the event.
+        segment_info (Optional[Dict[str, str]]): Track segment info at the event location.
     """
     timestamp: float
     message_type: MessageType
     involved_drivers: List[int] = field(default_factory=list)
     lap_number: Optional[int] = None
+    lap_distance: Optional[float] = None
+    segment_info: Optional[Dict[str, str]] = None
     _id: Optional[int] = None
 
     def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
@@ -83,4 +87,6 @@ class RaceCtrlMsgBase:
             "timestamp": self.timestamp,
             "message-type": str(self.message_type),
             "involved-drivers": list(self.involved_drivers),
+            "lap-distance": self.lap_distance,
+            "segment-info": self.segment_info,
         }

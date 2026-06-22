@@ -1356,6 +1356,8 @@ class DataPerDriver:
                     old_value=old,
                     new_value=new
                 )
+                if self.m_packet_copies.m_packet_lap_data:
+                    msg.lap_distance = self.m_packet_copies.m_packet_lap_data.m_lapDistance
                 self.m_race_ctrl.add_message(msg)
 
                 self.m_logger.debug(
