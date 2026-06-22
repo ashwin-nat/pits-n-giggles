@@ -27,7 +27,6 @@ from .input_telemetry import InputTelemetryOverlay
 from .lap_timer import LapTimerOverlay
 from .mfd import MfdOverlay
 from .timing_tower import TimingTowerOverlay
-from .track_map import TrackMapOverlay
 from .track_radar import TrackRadarOverlay
 from .hud_overlay.hud_overlay import HudOverlay
 from .circuit_info.circuit_info import CircuitInfoOverlay
@@ -40,7 +39,6 @@ __all__ = [
     "LapTimerOverlay",
     "MfdOverlay",
     "TimingTowerOverlay",
-    "TrackMapOverlay",
     "TrackRadarOverlay",
     "HudOverlay",
     "CircuitInfoOverlay",

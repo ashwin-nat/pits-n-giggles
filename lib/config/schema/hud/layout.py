@@ -36,7 +36,6 @@ class OverlayId(str, Enum):
     LAP_TIMER        = "lap_timer"
     TIMING_TOWER     = "timing_tower"
     MFD              = "mfd"
-    TRACK_MAP        = "track_map"
     INPUT_TELEMETRY  = "input_telemetry"
     TRACK_RADAR      = "track_radar"
     HUD              = "hud_overlay"
@@ -96,10 +95,6 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=10,
         y=355,
     ),
-    # OverlayId.TRACK_MAP: OverlayPosition(
-    #     x=10,
-    #     y=600,
-    # ),
     OverlayId.INPUT_TELEMETRY: OverlayPosition(
         x=10,
         y=600,

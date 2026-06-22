@@ -117,19 +117,6 @@ class OverlaysMgr:
             window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
         )
 
-
-        # if settings.HUD.show_track_map:
-        #     self.window_manager.register_overlay(TrackMapOverlay.OVERLAY_ID, TrackMapOverlay(
-        #         self.config[TrackMapOverlay.OVERLAY_ID],
-        #         self.logger,
-        #         locked=True,
-        #         opacity=settings.HUD.overlays_opacity,
-        #         scale_factor=settings.HUD.track_map_ui_scale,
-        #         windowed_overlay=settings.HUD.use_windowed_overlays
-        #     ))
-        # else:
-        #     self.logger.debug("Track map overlay is disabled")
-
         self._register_overlay_if_enabled(
             enabled=settings.HUD.show_track_radar_overlay,
             overlay_cls=TrackRadarOverlay,
@@ -486,10 +473,6 @@ class OverlaysMgr:
         )
 
     # -------------------------------------- HELPERS -------------------------------------------------------------------
-
-    def _reset_config(self):
-        """"Reset config to default"""
-        pass # TODO
 
     def _get_window_info(self, overlay_id: str, timeout_ms: int = 5000) -> Optional[OverlayPosition]:
         """Thread-safe query for specific window info."""
