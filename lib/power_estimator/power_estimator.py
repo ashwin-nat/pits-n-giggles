@@ -25,7 +25,7 @@
 from typing import Optional
 
 from .linear_slope_filter import LinearSlopePowerFilter
-from .base_filter import BasePowerFilter
+from .proto_filter import PowerFilter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ class PowerEstimator:
                          Larger values increase smoothing at the cost of latency.
                          Must be >= 2. Defaults to 15 — balanced for ~60 Hz input cadence.
         """
-        self._filter: BasePowerFilter = LinearSlopePowerFilter(window_size)
+        self._filter: PowerFilter = LinearSlopePowerFilter(window_size)
         self._last_time_ms: Optional[int] = None
         self._last_lap: Optional[int] = None
 

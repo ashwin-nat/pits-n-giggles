@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from lib.power_estimator import BasePowerFilter, LinearSlopePowerFilter, PowerEstimator
+from lib.power_estimator import PowerFilter, LinearSlopePowerFilter, PowerEstimator
 
 WINDOWS = [7, 11, 15, 21, 27]
 
@@ -12,7 +12,7 @@ WINDOWS = [7, 11, 15, 21, 27]
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _feed(filt: BasePowerFilter, times_ms: list[int], energies_j: list[float]) -> None:
+def _feed(filt: PowerFilter, times_ms: list[int], energies_j: list[float]) -> None:
     for t, e in zip(times_ms, energies_j):
         filt.update(t, e)
 

@@ -24,11 +24,11 @@
 
 from collections import deque
 
-from .base_filter import BasePowerFilter
+from .proto_filter import PowerFilter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class LinearSlopePowerFilter(BasePowerFilter):
+class LinearSlopePowerFilter(PowerFilter):
     """First-derivative power filter using a rolling least-squares linear fit.
 
     Estimates instantaneous power as the slope of a linear regression of energy on time over a

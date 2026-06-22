@@ -22,14 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base_filter import BasePowerFilter
+from .proto_filter import PowerFilter
 from .linear_slope_filter import LinearSlopePowerFilter
 from .power_estimator import PowerEstimator
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "BasePowerFilter",
+    "PowerFilter",
     "LinearSlopePowerFilter",
     "PowerEstimator",
 ]

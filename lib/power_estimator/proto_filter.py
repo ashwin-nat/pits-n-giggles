@@ -26,7 +26,7 @@ from typing import Protocol
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BasePowerFilter(Protocol):
+class PowerFilter(Protocol):
     """Protocol for all power filter implementations."""
 
     # ------------------------------------------------------------------
