@@ -24,6 +24,7 @@
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
@@ -56,6 +57,7 @@ from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
+from lib.track_segment_info import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -333,6 +335,7 @@ class SessionState:
         'm_race_ctrl',
         'm_flashback_occurred',
         'm_in_menu',
+        'm_track_segments_db',
     )
 
     def __init__(self,
@@ -383,6 +386,9 @@ class SessionState:
 
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
         self.m_flashback_occurred: bool = False
+        self.m_track_segments_db = TrackSegmentsDatabase(
+            Path(__file__).parents[3] / "assets/track-segments"
+        )
 
     ####### Control Methods ########
 
@@ -670,7 +676,10 @@ class SessionState:
                         new_state=new_ai,
                     )
                     if obj_to_be_updated.m_packet_copies.m_packet_lap_data:
-                        msg.lap_distance = obj_to_be_updated.m_packet_copies.m_packet_lap_data.m_lapDistance
+                        _lap_data = obj_to_be_updated.m_packet_copies.m_packet_lap_data
+                        msg.lap_distance = _lap_data.m_lapDistance
+                        msg.segment_info = self._lookup_segment_info(msg.lap_distance)
+                        msg.sector = str(_lap_data.m_sector)
                     obj_to_be_updated.m_race_ctrl.add_message(msg)
 
             # Update pkt copy
@@ -1136,7 +1145,10 @@ class SessionState:
             if msg.involved_drivers:
                 driver_obj = self._getObjectByIndex(msg.involved_drivers[0], create=False)
                 if driver_obj and driver_obj.m_packet_copies.m_packet_lap_data:
-                    msg.lap_distance = driver_obj.m_packet_copies.m_packet_lap_data.m_lapDistance
+                    _lap_data = driver_obj.m_packet_copies.m_packet_lap_data
+                    msg.lap_distance = _lap_data.m_lapDistance
+                    msg.segment_info = self._lookup_segment_info(msg.lap_distance)
+                    msg.sector = str(_lap_data.m_sector)
             self.m_race_ctrl.add_message(msg)
 
     def setChequeredFlagState(self, flag_val: bool) -> None:
@@ -1511,6 +1523,13 @@ class SessionState:
         return False
 
     ##### Internal Helpers #####
+
+    def _lookup_segment_info(self, lap_distance: float) -> Optional[Dict[str, str]]:
+        """Return rendered segment info for the current track at lap_distance, or None."""
+        if self.m_session_info.m_track is None:
+            return None
+        seg = self.m_track_segments_db.get_segment_info(self.m_session_info.m_track.value, lap_distance)
+        return seg.render() if seg else None
 
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
         """Get the race control messages helper dictionary. This is a mapping of index against driver info JSON,

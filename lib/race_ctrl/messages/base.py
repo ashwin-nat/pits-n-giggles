@@ -77,6 +77,7 @@ class RaceCtrlMsgBase:
     lap_number: Optional[int] = None
     lap_distance: Optional[float] = None
     segment_info: Optional[Dict[str, str]] = None
+    sector: Optional[str] = None
     _id: Optional[int] = None
 
     def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
@@ -89,4 +90,5 @@ class RaceCtrlMsgBase:
             "involved-drivers": list(self.involved_drivers),
             "lap-distance": self.lap_distance,
             "segment-info": self.segment_info,
+            "sector": self.sector,
         }
