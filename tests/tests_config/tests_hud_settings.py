@@ -103,6 +103,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.menu_silence_threshold_sec, 3.0)
         self.assertEqual(settings.show_pu_info, True)
         self.assertEqual(settings.pu_toggle_udp_action_code, None)
+        self.assertFalse(settings.pu_display_harvest_info)
         self.assertFalse(settings.show_fuel_info)
         self.assertTrue(settings.fuel_info_show_title)
         self.assertFalse(settings.show_tyre_info)
@@ -1001,6 +1002,22 @@ class TestHudSettings(TestF1ConfigBase):
             HudSettings(show_pu_info="invalid")
         with self.assertRaises(ValidationError):
             HudSettings(show_pu_info=420)
+
+    def test_pu_display_harvest_info_default(self):
+        """pu_display_harvest_info defaults to False"""
+        self.assertFalse(HudSettings().pu_display_harvest_info)
+
+    def test_pu_display_harvest_info_validation(self):
+        """pu_display_harvest_info accepts booleans and rejects invalid types"""
+        self.assertTrue(HudSettings(pu_display_harvest_info=True).pu_display_harvest_info)
+        self.assertFalse(HudSettings(pu_display_harvest_info=False).pu_display_harvest_info)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(pu_display_harvest_info=None)  # type: ignore
+        with self.assertRaises(ValidationError):
+            HudSettings(pu_display_harvest_info="invalid")
+        with self.assertRaises(ValidationError):
+            HudSettings(pu_display_harvest_info=420)
 
     def test_standalone_page_overlay_show_fields(self):
         """All 8 standalone page show_* fields accept booleans, reject invalid types, default to False."""

@@ -22,11 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import InitVar, dataclass, field
+from typing import Optional, Tuple
 
-from lib.f1_types import CarStatusData, CarDamageData, CarTelemetry2Data
+from lib.f1_types import CarDamageData, CarStatusData, CarTelemetry2Data
 from lib.fuel_rate_recommender import FuelRateRecommender
+from lib.power_estimator import PowerEstimator
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -38,6 +39,7 @@ class CarInfo:
     Class that models the car-related data for a race driver.
     """
     total_laps: int = field(repr=False)
+    pwr_filter_window_size: InitVar[int]
 
     m_ers_perc: Optional[float] = None
     m_drs_activated: Optional[bool] = None
@@ -66,13 +68,17 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
+    m_harv_mguk_power_est: PowerEstimator = field(init=False)
+    m_harv_mguh_power_est: PowerEstimator = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, pwr_filter_window_size: int):
         self.m_fuel_rate_recommender = FuelRateRecommender(
             [],
             total_laps=self.total_laps,
             min_fuel_kg=CarStatusData.MIN_FUEL_KG
         )
+        self.m_harv_mguk_power_est = PowerEstimator(pwr_filter_window_size)
+        self.m_harv_mguh_power_est = PowerEstimator(pwr_filter_window_size)
 
     def onLapChange(self):
         """Clear the lap-specific data on a lap change"""
@@ -92,3 +98,35 @@ class CarInfo:
         self.m_floor_damage = car_damage.m_floorDamage
         self.m_diffuser_damage = car_damage.m_diffuserDamage
         self.m_sidepod_damage = car_damage.m_sidepodDamage
+
+    def updatePowerEstimators(self, lap_time_ms: int) -> None:
+        """Update the power estimators
+
+        Args:
+            lap_time_ms (int): The lap time in milliseconds, expected to be > 0 (on a running lap)
+        """
+        # Harvest energy is None until the first car-status packet of the lap arrives; skip those
+        # samples rather than feeding None into the filter's arithmetic.
+        if self.m_curr_lap_ers_harv_mguk_j is not None and self.m_curr_lap_ers_harv_mguh_j is not None:
+            self.m_harv_mguk_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguk_j)
+            self.m_harv_mguh_power_est.update(lap_time_ms, self.m_curr_lap_ers_harv_mguh_j)
+
+    def resetPowerEstimators(self) -> None:
+        """Reset the power estimators"""
+        self.m_harv_mguk_power_est.reset()
+        self.m_harv_mguh_power_est.reset()
+
+    def getPowerEstimates(self) -> Tuple[float, float]:
+        """Get the power estimates
+
+        Returns:
+            Tuple[float, float]: The power estimates
+        """
+        # Harvest power is physically >= 0; on a flat-energy window the linear slope is zero in
+        # exact arithmetic but leaves sub-microwatt float cancellation residue (e.g. -3.9e-9 W).
+        # Clamp it away. Safe with the linear fit, which never produces a real overshoot.
+        mguk_harv_power = max(0.0, self.m_harv_mguk_power_est.get_power_w()) \
+            if self.m_harv_mguk_power_est.is_valid() else 0.0
+        mguh_harv_power = max(0.0, self.m_harv_mguh_power_est.get_power_w()) \
+            if self.m_harv_mguh_power_est.is_valid() else 0.0
+        return mguk_harv_power, mguh_harv_power

@@ -322,6 +322,7 @@ class SessionState:
         'm_save_race_ctrl_msgs',
         'm_weather_aware_prediction',
         'm_tyre_wear_window_size',
+        'm_power_filter_window_size',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
@@ -374,6 +375,7 @@ class SessionState:
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
         self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
+        self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -495,6 +497,10 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
+            # Only feed the power estimators while the car is on a running timed lap; a lap
+            # timer of 0 (stationary/garage/not started) would reset the filter's rolling window.
+            if lap_data.m_currentLapTimeInMS > 0:
+                driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
 
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
@@ -1104,6 +1110,9 @@ class SessionState:
         """Record that a flashback has happened"""
 
         self.m_flashback_occurred = True
+        for driver_obj in self.m_driver_data:
+            if driver_obj:
+                driver_obj.m_car_info.resetPowerEstimators()
 
     def handleEvent(self, packet: PacketEventData):
         """Handle the event packet
@@ -1533,7 +1542,8 @@ class SessionState:
                 total_laps=self.m_session_info.m_total_laps,
                 state_ref=self,
                 weather_aware_prediction=self.m_weather_aware_prediction,
-                tyre_wear_window_size=self.m_tyre_wear_window_size)
+                tyre_wear_window_size=self.m_tyre_wear_window_size,
+                harvest_power_window_size=self.m_power_filter_window_size)
             self.m_driver_data[index] = obj
             self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj

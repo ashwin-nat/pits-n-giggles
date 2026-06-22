@@ -173,6 +173,7 @@
         "circuit_info_toggle_udp_action_code": null,
         "circuit_info_length": 800,
         "show_pu_info": true,
+        "pu_display_harvest_info": true,
         "pu_toggle_udp_action_code": null,
         "show_fuel_info": true,
         "fuel_info_show_title": true,
@@ -340,7 +341,8 @@
     },
     "Prediction": {
         "weather_aware_prediction": true,
-        "tyre_wear_window_size": 5
+        "tyre_wear_window_size": 5,
+        "harvest_power_smoothing": "Balanced"
     },
     "MCP": {
         "mcp_http_server_enable": true,

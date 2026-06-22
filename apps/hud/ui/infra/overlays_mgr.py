@@ -257,6 +257,7 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
+            show_harvest_info=settings.HUD.pu_display_harvest_info,
         )
 
         if settings.HUD.show_mfd:
