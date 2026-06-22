@@ -71,6 +71,7 @@ class OverlaysMgr:
         self.rate_limiter = RateLimiter(interval_ms=settings.Display.refresh_interval)
         self._local_wdt_ok: bool = False
         self._auto_hide_in_menu: bool = settings.HUD.auto_hide_in_menu
+        self._telemetry_active: Optional[bool] = None
         self.wdt = WatchDogTimerSync(
             status_callback=self._wdt_status_callback,
             timeout=settings.Display.wdt_timeout,
@@ -290,7 +291,7 @@ class OverlaysMgr:
             self.wdt.stop()
         self.window_manager.stop()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_overlay_stats(self) -> Dict[str, Any]:
         """Get current stats for all overlays
 
         Returns:
@@ -300,6 +301,14 @@ class OverlaysMgr:
             overlay_id: self._get_overlay_stats(overlay_id)
             for overlay_id in self.window_manager.overlays
         }
+
+    def get_window_mgr_stats(self) -> Dict[str, Any]:
+        """Get current stats for all overlays
+
+        Returns:
+            Dict[str, Any]: A dictionary containing stats for each overlay
+        """
+        return self.window_manager.get_stats()
 
     # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
@@ -568,6 +577,9 @@ class OverlaysMgr:
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
 
     def _set_telemetry_active(self, active: bool):
+        if active == self._telemetry_active:
+            return
+        self._telemetry_active = active
         self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
 
     def _wdt_status_callback(self, active: bool):

@@ -165,7 +165,8 @@ def _register_routes(
         return {
             "status": "success",
             "stats": {
-                "overlays": overlays_mgr.get_stats(),
+                "overlays": overlays_mgr.get_overlay_stats(),
+                "window_mgr": overlays_mgr.get_window_mgr_stats(),
                 "ingress" : {
                     "dealer": dealer_client.get_stats(),
                     "subscriber": ipc_sub.get_stats(),
