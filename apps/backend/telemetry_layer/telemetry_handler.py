@@ -682,14 +682,13 @@ class F1TelemetryHandler:
             self.m_logger.debug("Start lights event received. Lights = %s", packet.mEventDetails.numLights)
             if packet.mEventDetails.numLights == 1:
                 session_uid = packet.m_header.m_sessionUID
-                self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
-                                   session_uid)
-
                 if session_uid != self.m_last_session_uid:
                     self.m_last_session_uid = session_uid
                     self.m_data_cleared_this_session = False
 
                 if not self.m_data_cleared_this_session:
+                    self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
+                                   session_uid)
                     self.clearAllDataStructures("Start lights event")
                 else:
                     self.m_logger.debug("Not clearing data structures in start lights event")
