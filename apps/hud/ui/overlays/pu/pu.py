@@ -97,24 +97,25 @@ class PuOverlay(BaseOverlay):
             harv_nrg_mguh_j = hud_data["ers-harv-mguh"]
 
             # - Push to QML ------------------------
-            self.set_qml_property("totalPowerKw",  round(total_kw,       1))
-            self.set_qml_property("icePowerKw",    round(ice_w  / 1000.0, 1))
-            self.set_qml_property("mgukPowerKw",   round(mguk_w / 1000.0, 1))
-            self.set_qml_property("iceFraction",   round(ice_frac,  2))
-            self.set_qml_property("mgukFraction",  round(mguk_frac, 2))
+            self.set_qml_property("totalPowerKw",  f"{total_kw:.1f} kW")
+            self.set_qml_property("icePowerKw",    f"{ice_w  / 1000.0:.1f}")
+            self.set_qml_property("mgukPowerKw",   f"{mguk_w / 1000.0:.1f}")
+            self.set_qml_property("iceFraction",   ice_frac)
+            self.set_qml_property("mgukFraction",  mguk_frac)
             self.set_qml_property("iceTempC",      ice_temp_c)
             self.set_qml_property("ersMode",       ers_mode)
             self.set_qml_property("ersColor",      ers_color)
 
             # - Harvest info push ------------------
+            # Pre-formatted strings: rounding happens exactly once here in Python
             self.set_qml_property("showHarvestInfo", self._show_harvest_info)
             if self._show_harvest_info:
                 harv_nrg_mguk_mj = (harv_nrg_mguk_j or 0) / 1_000_000.0
 
-                self.set_qml_property("isF126",          is_f1_26)
-                self.set_qml_property("harvNrgMgukMj",   round(harv_nrg_mguk_mj, 2))
-                self.set_qml_property("harvPwrMgukKw",   round((harv_pwr_mguk_w or 0) / 1_000.0, 1))
+                self.set_qml_property("isF126",        is_f1_26)
+                self.set_qml_property("harvNrgMgukMj", f"{harv_nrg_mguk_mj:.2f} MJ")
+                self.set_qml_property("harvPwrMgukKw", f"{(harv_pwr_mguk_w or 0) / 1_000.0:.1f} kW")
                 if not is_f1_26:
                     harv_nrg_mguh_mj = (harv_nrg_mguh_j or 0) / 1_000_000.0
-                    self.set_qml_property("harvNrgMguhMj", round(harv_nrg_mguh_mj, 2))
-                    self.set_qml_property("harvPwrMguhKw", round((harv_pwr_mguh_w or 0) / 1_000.0, 1))
+                    self.set_qml_property("harvNrgMguhMj", f"{harv_nrg_mguh_mj:.2f} MJ")
+                    self.set_qml_property("harvPwrMguhKw", f"{(harv_pwr_mguh_w or 0) / 1_000.0:.1f} kW")

@@ -33,9 +33,9 @@ Window {
     property real scaleFactor: 1.0
 
     // Live data — set by Python via set_qml_property
-    property real   totalPowerKw:  0
-    property real   icePowerKw:    0
-    property real   mgukPowerKw:   0
+    property string totalPowerKw:  "0.0 kW"
+    property string icePowerKw:    "0.0"
+    property string mgukPowerKw:   "0.0"
     property real   iceFraction:   0
     property real   mgukFraction:  0
     property int    iceTempC:      0
@@ -45,10 +45,10 @@ Window {
     // Harvest info
     property bool   showHarvestInfo: false
     property bool   isF126:          true
-    property real   harvNrgMgukMj:   0
-    property real   harvPwrMgukKw:   0
-    property real   harvNrgMguhMj:   0
-    property real   harvPwrMguhKw:   0
+    property string harvNrgMgukMj:   "0.00 MJ"
+    property string harvPwrMgukKw:   "0.0 kW"
+    property string harvNrgMguhMj:   "0.00 MJ"
+    property string harvPwrMguhKw:   "0.0 kW"
 
     readonly property int baseWidth:  220
     readonly property int baseHeight: {
@@ -99,21 +99,16 @@ Window {
                 spacing: 0
 
                 // ── Total power ───────────────────────────────────────────
-                Item {
+                Text {
                     Layout.fillWidth:       true
                     Layout.preferredHeight: 28
-
-                    property real displayKw: root.totalPowerKw
-                    Behavior on displayKw { SmoothedAnimation { duration: 150; velocity: -1 } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text:           parent.displayKw.toFixed(1) + " kW"
-                        font.family:    "Formula1"
-                        font.pixelSize: 24
-                        font.weight:    Font.Bold
-                        color:          root.clrPrimary
-                    }
+                    horizontalAlignment:    Text.AlignHCenter
+                    verticalAlignment:      Text.AlignVCenter
+                    text:           root.totalPowerKw
+                    font.family:    "Formula1"
+                    font.pixelSize: 24
+                    font.weight:    Font.Bold
+                    color:          root.clrPrimary
                 }
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
@@ -167,24 +162,14 @@ Window {
                             Layout.alignment:   Qt.AlignVCenter
                         }
 
-                        Item {
-                            Layout.fillWidth: true
-                            height:           18
-
-                            property real displayKw: root.icePowerKw
-                            Behavior on displayKw {
-                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                            }
-
-                            Text {
-                                anchors.left:           parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                text:           parent.displayKw.toFixed(1)
-                                font.family:    "Formula1"
-                                font.pixelSize: 13
-                                font.weight:    Font.Bold
-                                color:          root.clrValue
-                            }
+                        Text {
+                            Layout.fillWidth:   true
+                            Layout.alignment:   Qt.AlignVCenter
+                            text:           root.icePowerKw
+                            font.family:    "Formula1"
+                            font.pixelSize: 13
+                            font.weight:    Font.Bold
+                            color:          root.clrValue
                         }
                     }
 
@@ -203,24 +188,15 @@ Window {
                             Layout.alignment:   Qt.AlignVCenter
                         }
 
-                        Item {
-                            Layout.fillWidth: true
-                            height:           18
-
-                            property real displayKw: root.mgukPowerKw
-                            Behavior on displayKw {
-                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                            }
-
-                            Text {
-                                anchors.right:          parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                text:           parent.displayKw.toFixed(1)
-                                font.family:    "Formula1"
-                                font.pixelSize: 13
-                                font.weight:    Font.Bold
-                                color:          root.clrValue
-                            }
+                        Text {
+                            Layout.fillWidth:       true
+                            Layout.alignment:       Qt.AlignVCenter
+                            horizontalAlignment:    Text.AlignRight
+                            text:           root.mgukPowerKw
+                            font.family:    "Formula1"
+                            font.pixelSize: 13
+                            font.weight:    Font.Bold
+                            color:          root.clrValue
                         }
                     }
                 }
@@ -305,7 +281,7 @@ Window {
                             anchors.right:          f126PwrMguk.left
                             anchors.rightMargin:    8
                             anchors.verticalCenter: parent.verticalCenter
-                            text:           root.harvNrgMgukMj.toFixed(2) + " MJ"
+                            text:           root.harvNrgMgukMj
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             font.weight:    Font.Bold
@@ -317,7 +293,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             width:                  58
                             horizontalAlignment:    Text.AlignRight
-                            text:           root.harvPwrMgukKw.toFixed(1) + " kW"
+                            text:           root.harvPwrMgukKw
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             color:          root.clrValue
@@ -349,7 +325,7 @@ Window {
                             anchors.right:          oldPwrMguk.left
                             anchors.rightMargin:    8
                             anchors.verticalCenter: parent.verticalCenter
-                            text:           root.harvNrgMgukMj.toFixed(2) + " MJ"
+                            text:           root.harvNrgMgukMj
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             font.weight:    Font.Bold
@@ -361,7 +337,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             width:                  58
                             horizontalAlignment:    Text.AlignRight
-                            text:           root.harvPwrMgukKw.toFixed(1) + " kW"
+                            text:           root.harvPwrMgukKw
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             color:          root.clrValue
@@ -396,7 +372,7 @@ Window {
                             anchors.right:          oldPwrMguh.left
                             anchors.rightMargin:    8
                             anchors.verticalCenter: parent.verticalCenter
-                            text:           root.harvNrgMguhMj.toFixed(2) + " MJ"
+                            text:           root.harvNrgMguhMj
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             font.weight:    Font.Bold
@@ -408,7 +384,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             width:                  58
                             horizontalAlignment:    Text.AlignRight
-                            text:           root.harvPwrMguhKw.toFixed(1) + " kW"
+                            text:           root.harvPwrMguhKw
                             font.family:    "Formula1"
                             font.pixelSize: 11
                             color:          root.clrValue
