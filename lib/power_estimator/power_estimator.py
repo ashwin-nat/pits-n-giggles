@@ -24,7 +24,8 @@
 
 from typing import Optional
 
-from .savgol_filter import SavGolPowerFilter
+from .linear_slope_filter import LinearSlopePowerFilter
+from .base_filter import BasePowerFilter
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -38,16 +39,14 @@ class PowerEstimator:
     it via the constructor parameters rather than supplying a filter instance.
     """
 
-    def __init__(self, window_size: int = 15, polynomial_order: int = 3) -> None:
+    def __init__(self, window_size: int = 15) -> None:
         """
         Args:
-            window_size:      Rolling sample window passed to the internal filter.
-                              Larger values increase smoothing at the cost of latency.
-                              Must be one of the supported configurations (9, 15, 21).
-                              Defaults to 15 — balanced for ~60 Hz input cadence.
-            polynomial_order: Polynomial fit order for the internal filter. Defaults to 3.
+            window_size: Rolling sample window passed to the internal filter.
+                         Larger values increase smoothing at the cost of latency.
+                         Must be >= 2. Defaults to 15 — balanced for ~60 Hz input cadence.
         """
-        self._filter = SavGolPowerFilter(window_size, polynomial_order)
+        self._filter: BasePowerFilter = LinearSlopePowerFilter(window_size)
         self._last_time_ms: Optional[int] = None
         self._last_lap: Optional[int] = None
 

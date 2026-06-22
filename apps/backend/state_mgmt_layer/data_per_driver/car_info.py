@@ -67,15 +67,12 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
-    # Order-1 (linear) fit: cumulative harvest energy is monotonic, so the derived power must
-    # never dip negative nor overshoot above the rate the energy actually climbed at. A linear
-    # least-squares slope can't exceed the steepest rate present in the window, so it inherits
-    # whatever bound the game's energy already respects (no limit value stored here). A cubic
-    # fit rings at braking-zone transitions and can manufacture out-of-range values.
-    m_harv_mguk_power_est: PowerEstimator = field(
-        default_factory=lambda: PowerEstimator(polynomial_order=1))
-    m_harv_mguh_power_est: PowerEstimator = field(
-        default_factory=lambda: PowerEstimator(polynomial_order=1))
+    # The estimator fits a linear least-squares slope over cumulative harvest energy. Because the
+    # energy is monotonic, the derived power can't dip negative nor overshoot the rate the energy
+    # actually climbed at, so it inherits whatever bound the game's energy already respects (no
+    # limit value stored here).
+    m_harv_mguk_power_est: PowerEstimator = field(default_factory=PowerEstimator)
+    m_harv_mguh_power_est: PowerEstimator = field(default_factory=PowerEstimator)
 
     def __post_init__(self):
         self.m_fuel_rate_recommender = FuelRateRecommender(
@@ -128,7 +125,7 @@ class CarInfo:
         """
         # Harvest power is physically >= 0; on a flat-energy window the linear slope is zero in
         # exact arithmetic but leaves sub-microwatt float cancellation residue (e.g. -3.9e-9 W).
-        # Clamp it away. Safe with the order-1 filter, which never produces a real overshoot.
+        # Clamp it away. Safe with the linear fit, which never produces a real overshoot.
         mguk_harv_power = max(0.0, self.m_harv_mguk_power_est.get_power_w()) \
             if self.m_harv_mguk_power_est.is_valid() else 0.0
         mguh_harv_power = max(0.0, self.m_harv_mguh_power_est.get_power_w()) \

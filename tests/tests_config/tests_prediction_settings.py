@@ -28,7 +28,7 @@ from pydantic import ValidationError
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.config import PngSettings, PredictionSettings
+from lib.config import HarvestPowerSmoothing, PngSettings, PredictionSettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -81,26 +81,33 @@ class TestPredictionSettings(TestF1ConfigBase):
         self.assertTrue(s.weather_aware_prediction)
         self.assertEqual(s.tyre_wear_window_size, 8)
 
-    def test_harvest_power_window_size_default(self):
-        """Default harvest power smoothing window is 15."""
+    def test_harvest_power_smoothing_default(self):
+        """Default harvest power smoothing profile is Balanced."""
         s = PredictionSettings()
-        self.assertEqual(s.harvest_power_window_size, 15)
+        self.assertEqual(s.harvest_power_smoothing, HarvestPowerSmoothing.BALANCED)
 
-    def test_harvest_power_window_size_valid_values(self):
-        """All supported SavGol window sizes are accepted."""
-        for w in (9, 15, 21):
-            s = PredictionSettings(harvest_power_window_size=w)
-            self.assertEqual(s.harvest_power_window_size, w)
+    def test_harvest_power_smoothing_all_values(self):
+        """Every smoothing profile is accepted."""
+        for profile in HarvestPowerSmoothing:
+            s = PredictionSettings(harvest_power_smoothing=profile)
+            self.assertEqual(s.harvest_power_smoothing, profile)
 
-    def test_harvest_power_window_size_invalid_value(self):
-        """Values outside the supported set are rejected."""
-        for w in (0, 12, 25):
-            with self.assertRaises(ValidationError):
-                PredictionSettings(harvest_power_window_size=w)
-
-    def test_harvest_power_window_size_invalid_type(self):
+    def test_harvest_power_smoothing_invalid_value(self):
         with self.assertRaises(ValidationError):
-            PredictionSettings(harvest_power_window_size="big")
+            PredictionSettings(harvest_power_smoothing="Turbo")
+
+    def test_harvest_power_window_size_property(self):
+        """The smoothing profile maps to the expected filter window size, ascending."""
+        expected = {
+            HarvestPowerSmoothing.VERY_RESPONSIVE: 7,
+            HarvestPowerSmoothing.RESPONSIVE: 11,
+            HarvestPowerSmoothing.BALANCED: 15,
+            HarvestPowerSmoothing.STABLE: 21,
+            HarvestPowerSmoothing.VERY_STABLE: 27,
+        }
+        for profile, window in expected.items():
+            s = PredictionSettings(harvest_power_smoothing=profile)
+            self.assertEqual(s.harvest_power_window_size, window)
 
     def test_diff_weather_aware(self):
         s1 = PredictionSettings()
@@ -118,12 +125,15 @@ class TestPredictionSettings(TestF1ConfigBase):
             "tyre_wear_window_size": {"old_value": None, "new_value": 6}
         })
 
-    def test_diff_harvest_power_window_size(self):
+    def test_diff_harvest_power_smoothing(self):
         s1 = PredictionSettings()
-        s2 = PredictionSettings(harvest_power_window_size=21)
+        s2 = PredictionSettings(harvest_power_smoothing=HarvestPowerSmoothing.STABLE)
         self.assertTrue(s1.has_changed(s2))
         self.assertEqual(s1.diff(s2), {
-            "harvest_power_window_size": {"old_value": 15, "new_value": 21}
+            "harvest_power_smoothing": {
+                "old_value": HarvestPowerSmoothing.BALANCED,
+                "new_value": HarvestPowerSmoothing.STABLE,
+            }
         })
 
     def test_diff_no_change(self):
@@ -178,11 +188,12 @@ class TestPngSettingsPrediction(TestF1ConfigBase):
         d = s1.diff(s2, {"Prediction": []})
         self.assertNotIn("Prediction", d)
 
-    def test_png_settings_harvest_window_covered_by_prediction_diff(self):
-        """Changing harvest_power_window_size is caught by the {"Prediction": []} diff
+    def test_png_settings_harvest_smoothing_covered_by_prediction_diff(self):
+        """Changing harvest_power_smoothing is caught by the {"Prediction": []} diff
         the backend uses to decide on a restart."""
         s1 = PngSettings()
-        s2 = PngSettings(Prediction=PredictionSettings(harvest_power_window_size=9))
+        s2 = PngSettings(Prediction=PredictionSettings(
+            harvest_power_smoothing=HarvestPowerSmoothing.VERY_RESPONSIVE))
         d = s1.diff(s2, {"Prediction": []})
         self.assertIn("Prediction", d)
-        self.assertIn("harvest_power_window_size", d["Prediction"])
+        self.assertIn("harvest_power_smoothing", d["Prediction"])

@@ -2,10 +2,10 @@
 
 import numpy as np
 import pytest
-from scipy.signal import savgol_filter as scipy_savgol_filter
 
-from lib.power_estimator import BasePowerFilter, PowerEstimator, SavGolPowerFilter
-from lib.power_estimator._coefficients import SAVGOL_COEFFS
+from lib.power_estimator import BasePowerFilter, LinearSlopePowerFilter, PowerEstimator
+
+WINDOWS = [7, 11, 15, 21, 27]
 
 
 # ---------------------------------------------------------------------------
@@ -17,21 +17,20 @@ def _feed(filt: BasePowerFilter, times_ms: list[int], energies_j: list[float]) -
         filt.update(t, e)
 
 
-def _make_estimator(window: int = 9, order: int = 3) -> PowerEstimator:
-    return PowerEstimator(window, order)
+def _make_estimator(window: int = 9) -> PowerEstimator:
+    return PowerEstimator(window)
 
 
 # ---------------------------------------------------------------------------
-# SavGolPowerFilter - unit tests
+# LinearSlopePowerFilter - unit tests
 # ---------------------------------------------------------------------------
 
-class TestSavGolPowerFilterConstantEnergy:
-    """Constant energy → zero power."""
+class TestLinearSlopePowerFilterConstantEnergy:
+    """Constant energy -> zero power."""
 
-    @pytest.mark.parametrize("config", list(SAVGOL_COEFFS.keys()))
-    def test_zero_power(self, config):
-        w, p = config
-        filt = SavGolPowerFilter(w, p)
+    @pytest.mark.parametrize("w", WINDOWS)
+    def test_zero_power(self, w):
+        filt = LinearSlopePowerFilter(w)
         dt = 16  # ~60 Hz
         times = [i * dt for i in range(w)]
         energies = [100.0] * w
@@ -40,13 +39,12 @@ class TestSavGolPowerFilterConstantEnergy:
         assert abs(filt.get_power_w()) < 1e-6
 
 
-class TestSavGolPowerFilterLinearEnergy:
-    """Linear energy increase E = power_w * t/1000 → constant power output."""
+class TestLinearSlopePowerFilterLinearEnergy:
+    """Linear energy increase E = power_w * t/1000 -> constant power output."""
 
-    @pytest.mark.parametrize("config", list(SAVGOL_COEFFS.keys()))
-    def test_constant_power(self, config):
-        w, p = config
-        filt = SavGolPowerFilter(w, p)
+    @pytest.mark.parametrize("w", WINDOWS)
+    def test_constant_power(self, w):
+        filt = LinearSlopePowerFilter(w)
         target_w = 500.0          # watts
         dt_ms = 16
         times = [i * dt_ms for i in range(w)]
@@ -54,13 +52,27 @@ class TestSavGolPowerFilterLinearEnergy:
         energies = [target_w * t / 1000.0 for t in times]
         _feed(filt, times, energies)
         assert filt.is_valid()
-        assert abs(filt.get_power_w() - target_w) < 1e-3
+        assert abs(filt.get_power_w() - target_w) < 1e-6
 
 
-class TestSavGolPowerFilterReset:
+class TestLinearSlopePowerFilterNonUniformSpacing:
+    """The regression runs against actual timestamps, so irregular spacing is exact."""
+
+    def test_irregular_timestamps_exact_slope(self):
+        # Perfectly linear energy at 250 W, but with jittered/dropped sample timings.
+        times = [0, 10, 35, 60, 100, 130, 175, 210]
+        power = 250.0
+        energies = [power * t / 1000.0 for t in times]
+        filt = LinearSlopePowerFilter(len(times))
+        _feed(filt, times, energies)
+        assert filt.is_valid()
+        assert abs(filt.get_power_w() - power) < 1e-6
+
+
+class TestLinearSlopePowerFilterReset:
     def test_valid_before_reset_invalid_after(self):
         w = 9
-        filt = SavGolPowerFilter(w)
+        filt = LinearSlopePowerFilter(w)
         dt = 16
         _feed(filt, [i * dt for i in range(w)], [float(i) for i in range(w)])
         assert filt.is_valid()
@@ -69,7 +81,7 @@ class TestSavGolPowerFilterReset:
 
     def test_power_zero_after_reset(self):
         w = 9
-        filt = SavGolPowerFilter(w)
+        filt = LinearSlopePowerFilter(w)
         dt = 16
         _feed(filt, [i * dt for i in range(w)], [float(i * 10) for i in range(w)])
         filt.reset()
@@ -78,7 +90,7 @@ class TestSavGolPowerFilterReset:
     def test_history_cleared_after_reset(self):
         """After reset, previous samples must not affect future output."""
         w = 9
-        filt = SavGolPowerFilter(w)
+        filt = LinearSlopePowerFilter(w)
         dt = 16
         # Feed a high-power signal, reset, feed constant energy
         _feed(filt, [i * dt for i in range(w)], [float(i * 1000) for i in range(w)])
@@ -88,64 +100,58 @@ class TestSavGolPowerFilterReset:
         assert abs(filt.get_power_w()) < 1e-6
 
 
-class TestSavGolPowerFilterInsufficientHistory:
+class TestLinearSlopePowerFilterInsufficientHistory:
     def test_not_valid_with_fewer_than_window_samples(self):
         w = 15
-        filt = SavGolPowerFilter(w)
+        filt = LinearSlopePowerFilter(w)
         for i in range(w - 1):
             filt.update(i * 16, float(i))
             assert not filt.is_valid()
 
     def test_valid_exactly_at_window_size(self):
         w = 15
-        filt = SavGolPowerFilter(w)
+        filt = LinearSlopePowerFilter(w)
         for i in range(w):
             filt.update(i * 16, float(i))
         assert filt.is_valid()
 
 
-class TestSavGolPowerFilterNoisyInput:
-    """Noisy linear ramp: output should be close to the reference scipy derivative."""
+class TestLinearSlopePowerFilterReference:
+    """Output must equal the numpy least-squares slope over the same window."""
 
-    def test_noisy_vs_scipy_reference(self):
+    def test_noisy_vs_polyfit_reference(self):
         rng = np.random.default_rng(42)
-        w, p = 15, 3
-        n = 100
+        w = 15
+        n = 80
         dt_ms = 16
         target_w = 300.0
 
         times = [i * dt_ms for i in range(n)]
         clean = np.array([target_w * t / 1000.0 for t in times])
-        noise = rng.normal(0, 0.5, n)
-        energies = (clean + noise).tolist()
+        energies = (clean + rng.normal(0, 0.5, n)).tolist()
 
-        # Reference: scipy savgol_filter first derivative, centered (default)
-        # We compare at steady-state (after warmup), using edge mode 'nearest'
-        dy_scipy = scipy_savgol_filter(energies, w, p, deriv=1, delta=dt_ms / 1000.0)
-
-        filt = SavGolPowerFilter(w, p)
-        errors = []
+        filt = LinearSlopePowerFilter(w)
         for i, (t, e) in enumerate(zip(times, energies)):
             filt.update(t, e)
             if filt.is_valid():
-                errors.append(abs(filt.get_power_w() - dy_scipy[i]))
+                win_t = np.array(times[i - w + 1:i + 1], dtype=float)
+                win_e = np.array(energies[i - w + 1:i + 1])
+                slope_per_ms = np.polyfit(win_t, win_e, 1)[0]
+                assert abs(filt.get_power_w() - slope_per_ms * 1000.0) < 1e-6
 
-        # Median error vs reference should be small (within 10 W)
-        assert np.median(errors) < 10.0
 
-
-class TestSavGolPowerFilterUnsupportedConfig:
-    def test_raises_on_bad_config(self):
+class TestLinearSlopePowerFilterBadConfig:
+    @pytest.mark.parametrize("w", [1, 0, -3])
+    def test_raises_on_window_below_two(self, w):
         with pytest.raises(ValueError):
-            SavGolPowerFilter(7, 2)
+            LinearSlopePowerFilter(w)
 
 
-class TestSavGolOrder1NoOvershoot:
-    """Order-1 (linear) fit must not overshoot on a monotonic signal: no negative output and
-    no output above the input's own peak accumulation rate. Because a least-squares slope can
-    never exceed the steepest rate actually present in the window, the estimate inherits any
-    bound the input already respects (e.g. the game-enforced harvest limit) without that bound
-    being known or hard-coded here. The cubic fit, by contrast, rings at sharp transitions.
+class TestLinearSlopeNoOvershoot:
+    """A linear fit must not overshoot on a monotonic signal: no negative output and no output
+    above the input's own peak accumulation rate. A least-squares slope over monotonic data lies
+    between the slowest and steepest rate present in the window, so the estimate inherits any bound
+    the input already respects (e.g. the game-enforced harvest limit) without it being hard-coded.
     """
 
     @staticmethod
@@ -159,39 +165,21 @@ class TestSavGolOrder1NoOvershoot:
             energies.append(e)
         return times, energies
 
-    @pytest.mark.parametrize("w", [9, 15, 21])
-    def test_order1_never_negative_or_overshoots(self, w):
-        dt_ms, rate_w, n, plateau_start = 16, 400.0, 60, 30
+    @pytest.mark.parametrize("w", WINDOWS)
+    def test_never_negative_or_overshoots(self, w):
+        dt_ms, rate_w, n, plateau_start = 16, 400.0, 80, 40
         times, energies = self._kinked_energy(n, dt_ms, rate_w, plateau_start)
 
-        filt = SavGolPowerFilter(w, 1)
+        filt = LinearSlopePowerFilter(w)
         outs = []
         for t, e in zip(times, energies):
             filt.update(t, e)
             if filt.is_valid():
                 outs.append(filt.get_power_w())
 
-        assert outs                       # produced steady-state output
-        assert min(outs) >= -1e-6         # no negative overshoot
-        assert max(outs) <= rate_w + 1e-6  # never exceeds the input's own peak rate (no overshoot)
-
-    def test_order3_overshoots_negative_where_order1_does_not(self):
-        """Contrast: the cubic fit rings below zero on the same signal; the linear fit does not."""
-        dt_ms, rate_w, n, plateau_start = 16, 400.0, 60, 30
-        times, energies = self._kinked_energy(n, dt_ms, rate_w, plateau_start)
-
-        cubic = SavGolPowerFilter(15, 3)
-        linear = SavGolPowerFilter(15, 1)
-        cubic_min = linear_min = float("inf")
-        for t, e in zip(times, energies):
-            cubic.update(t, e)
-            linear.update(t, e)
-            if cubic.is_valid():
-                cubic_min = min(cubic_min, cubic.get_power_w())
-                linear_min = min(linear_min, linear.get_power_w())
-
-        assert cubic_min < -1e-6    # cubic overshoots negative (the artifact being avoided)
-        assert linear_min >= -1e-6  # linear stays non-negative
+        assert outs                        # produced steady-state output
+        assert min(outs) >= -1e-6          # no negative overshoot
+        assert max(outs) <= rate_w + 1e-6  # never exceeds the input's own peak rate
 
 
 # ---------------------------------------------------------------------------
