@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from typing import Optional, Tuple
 
 from lib.f1_types import CarDamageData, CarStatusData, CarTelemetry2Data
@@ -39,6 +39,7 @@ class CarInfo:
     Class that models the car-related data for a race driver.
     """
     total_laps: int = field(repr=False)
+    pwr_filter_window_size: InitVar[int]
 
     m_ers_perc: Optional[float] = None
     m_drs_activated: Optional[bool] = None
@@ -67,19 +68,17 @@ class CarInfo:
     m_2026_regs: Optional[bool] = None
 
     m_fuel_rate_recommender: "FuelRateRecommender" = field(init=False)
-    # The estimator fits a linear least-squares slope over cumulative harvest energy. Because the
-    # energy is monotonic, the derived power can't dip negative nor overshoot the rate the energy
-    # actually climbed at, so it inherits whatever bound the game's energy already respects (no
-    # limit value stored here).
-    m_harv_mguk_power_est: PowerEstimator = field(default_factory=PowerEstimator)
-    m_harv_mguh_power_est: PowerEstimator = field(default_factory=PowerEstimator)
+    m_harv_mguk_power_est: PowerEstimator = field(init=False)
+    m_harv_mguh_power_est: PowerEstimator = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, pwr_filter_window_size: int):
         self.m_fuel_rate_recommender = FuelRateRecommender(
             [],
             total_laps=self.total_laps,
             min_fuel_kg=CarStatusData.MIN_FUEL_KG
         )
+        self.m_harv_mguk_power_est = PowerEstimator(pwr_filter_window_size)
+        self.m_harv_mguh_power_est = PowerEstimator(pwr_filter_window_size)
 
     def onLapChange(self):
         """Clear the lap-specific data on a lap change"""

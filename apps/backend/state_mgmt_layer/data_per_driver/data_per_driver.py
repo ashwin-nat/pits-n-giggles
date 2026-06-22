@@ -129,8 +129,9 @@ class DataPerDriver:
                  logger: logging.Logger,
                  total_laps: Optional[int],
                  state_ref: "SessionState",
-                 weather_aware_prediction: bool = False,
-                 tyre_wear_window_size: Optional[int] = None):
+                 weather_aware_prediction: bool,
+                 tyre_wear_window_size: Optional[int],
+                 harvest_power_window_size: int):
         """
         Init the data per driver fields
 
@@ -141,6 +142,7 @@ class DataPerDriver:
             state_ref (SessionState): Reference to the session state
             weather_aware_prediction (bool): Enable weather-aware tyre wear prediction
             tyre_wear_window_size (Optional[int]): Sliding window size for tyre wear regression
+            harvest_power_window_size (int): Sliding window size for power harvest
         """
 
         self.m_index = index
@@ -154,7 +156,7 @@ class DataPerDriver:
             window_size=tyre_wear_window_size,
         )
         self.m_pit_info: PitInfo = PitInfo()
-        self.m_car_info: CarInfo = CarInfo(total_laps)
+        self.m_car_info: CarInfo = CarInfo(total_laps, harvest_power_window_size)
 
         self.m_collision_records: List[CollisionRecord] = []
         self.m_warning_penalty_history: WarningPenaltyHistory = WarningPenaltyHistory()
