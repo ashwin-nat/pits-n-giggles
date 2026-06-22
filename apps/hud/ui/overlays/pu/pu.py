@@ -28,6 +28,7 @@ from pathlib import Path
 from apps.hud.common import get_ers_mode_color
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
+from lib.f1_types import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -93,8 +94,8 @@ class PuOverlay(BaseOverlay):
             # - Harvest info -----------------------
             harv_pwr_mguk_w = pu_data["mguk-harv-power-w"]
             harv_pwr_mguh_w = pu_data["mguh-harv-power-w"]
-            harv_nrg_mguk_j = hud_data["ers-harv-mguk"]
-            harv_nrg_mguh_j = hud_data["ers-harv-mguh"]
+            harv_nrg_mguk_j = hud_data["ers-harv-mguk"] or 0
+            harv_nrg_mguh_j = hud_data["ers-harv-mguh"] or 0
 
             # - Push to QML ------------------------
             self.set_qml_property("totalPowerKw",  f"{total_kw:.1f} kW")
@@ -110,12 +111,19 @@ class PuOverlay(BaseOverlay):
             # Pre-formatted strings: rounding happens exactly once here in Python
             self.set_qml_property("showHarvestInfo", self._show_harvest_info)
             if self._show_harvest_info:
-                harv_nrg_mguk_mj = (harv_nrg_mguk_j or 0) / 1_000_000.0
+                harv_nrg_mguk_mj = harv_nrg_mguk_j / 1_000_000.0
+                if is_f1_26:
+                    harv_limit_mguk = f1_26_data["harv-limit-j"]
+                else:
+                    harv_limit_mguk  = CarStatusData.MAX_MGUK_HARV_PER_LAP
+                mguk_harv_pct = int((harv_nrg_mguk_j / harv_limit_mguk) * 100)
 
-                self.set_qml_property("isF126",        is_f1_26)
-                self.set_qml_property("harvNrgMgukMj", f"{harv_nrg_mguk_mj:.2f} MJ")
-                self.set_qml_property("harvPwrMgukKw", f"{(harv_pwr_mguk_w or 0) / 1_000.0:.1f} kW")
+                self.set_qml_property("isF126",           is_f1_26)
+                self.set_qml_property("harvNrgMgukMj",    f"{harv_nrg_mguk_mj:.2f} MJ")
+                self.set_qml_property("harvPwrMgukKw",    f"{harv_pwr_mguk_w / 1_000.0:.1f} kW")
+                self.set_qml_property("mgukHarvFraction", min(mguk_harv_pct / 100.0, 1.0))
+                self.set_qml_property("isHarvesting",     bool(harv_pwr_mguk_w))
                 if not is_f1_26:
-                    harv_nrg_mguh_mj = (harv_nrg_mguh_j or 0) / 1_000_000.0
+                    harv_nrg_mguh_mj = harv_nrg_mguh_j / 1_000_000.0
                     self.set_qml_property("harvNrgMguhMj", f"{harv_nrg_mguh_mj:.2f} MJ")
-                    self.set_qml_property("harvPwrMguhKw", f"{(harv_pwr_mguh_w or 0) / 1_000.0:.1f} kW")
+                    self.set_qml_property("harvPwrMguhKw", f"{harv_pwr_mguh_w / 1_000.0:.1f} kW")

@@ -27,7 +27,7 @@ import QtQuick.Layouts
 Window {
     id: root
     visible: true
-    color: "#000000"
+    color: "transparent"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     property real scaleFactor: 1.0
@@ -49,12 +49,14 @@ Window {
     property string harvPwrMgukKw:   "0.0 kW"
     property string harvNrgMguhMj:   "0.00 MJ"
     property string harvPwrMguhKw:   "0.0 kW"
+    property real   mgukHarvFraction: 0
+    property bool   isHarvesting:     false
 
     readonly property int baseWidth:  220
     readonly property int baseHeight: {
         if (!showHarvestInfo) return 106
-        if (isF126)           return 131
-        return 151
+        if (isF126)           return 149
+        return 169
     }
 
     width:  baseWidth  * scaleFactor
@@ -345,7 +347,73 @@ Window {
                     }
                 }
 
-                // Older regs: spacer between MGU-K and MGU-H rows
+                // MGU-K harvest limit bar
+                Item { Layout.fillWidth: true; Layout.preferredHeight: 4; visible: root.showHarvestInfo }
+                Rectangle {
+                    Layout.fillWidth:       true
+                    Layout.preferredHeight: 12
+                    visible:                root.showHarvestInfo
+                    color:                  root.clrTrack
+                    radius:                 2
+                    clip:                   true
+
+                    // Fill
+                    Rectangle {
+                        id:   mgukHarvFill
+                        property real animFrac: root.mgukHarvFraction
+                        Behavior on animFrac { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                        anchors.left: parent.left
+                        height:       parent.height
+                        width:        parent.width * animFrac
+                        color:        root.clrMguk
+                        radius:       2
+                        clip:         true
+
+                        // Diagonal stripe animation — clipped to the filled area
+                        Canvas {
+                            id:           mgukHarvStripes
+                            visible:      root.isHarvesting
+                            anchors.fill: parent
+                            property real offset: 0
+
+                            NumberAnimation on offset {
+                                running:  root.isHarvesting
+                                loops:    Animation.Infinite
+                                from:     0
+                                to:       10
+                                duration: 500
+                            }
+                            onOffsetChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.clearRect(0, 0, width, height)
+                                ctx.strokeStyle = Qt.rgba(0, 0, 0, 0.25)
+                                ctx.lineWidth = 4
+                                const period = 10
+                                for (let x = (offset % period) - period; x < width + height; x += period) {
+                                    ctx.beginPath()
+                                    ctx.moveTo(x, 0)
+                                    ctx.lineTo(x + height, height)
+                                    ctx.stroke()
+                                }
+                            }
+                        }
+                    }
+
+                    // "HARVESTING" label
+                    Text {
+                        visible:            root.isHarvesting
+                        anchors.centerIn:   parent
+                        text:               "HARVESTING"
+                        font.family:        "Formula1"
+                        font.pixelSize:     8
+                        font.letterSpacing: 1.2
+                        color:              Qt.rgba(1, 1, 1, 0.8)
+                    }
+                }
+
+                // Older regs: spacer between MGU-K harvest bar and MGU-H row
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 4; visible: root.showHarvestInfo && !root.isF126 }
 
                 // Older regs: MGU-H row
