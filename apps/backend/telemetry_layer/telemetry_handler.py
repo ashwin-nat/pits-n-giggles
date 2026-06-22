@@ -667,8 +667,9 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketEventData): The parsed object containing the flashback packet's contents.
             """
+            flashback_info: PacketEventData.Flashback = packet.mEventDetails
             self.m_logger.info("Flashback event received. Frame ID = %s "
-                               "UID = %s", packet.mEventDetails.flashbackFrameIdentifier, packet.m_header.m_sessionUID)
+                               "UID = %s", flashback_info.flashbackFrameIdentifier, packet.m_header.m_sessionUID)
             self.m_session_state_ref.processFlashbackEvent()
 
         async def handleStartLightsEvent(packet: PacketEventData) -> None:
@@ -679,8 +680,9 @@ class F1TelemetryHandler:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
             # In case session start was missed, clear data structures
-            self.m_logger.debug("Start lights event received. Lights = %s", packet.mEventDetails.numLights)
-            if packet.mEventDetails.numLights == 1:
+            start_lights_info: PacketEventData.StartLights = packet.mEventDetails
+            self.m_logger.debug("Start lights event received. Lights = %s", start_lights_info.numLights)
+            if start_lights_info.numLights == 1:
                 session_uid = packet.m_header.m_sessionUID
                 if session_uid != self.m_last_session_uid:
                     self.m_last_session_uid = session_uid
