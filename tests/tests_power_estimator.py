@@ -140,6 +140,19 @@ class TestLinearSlopePowerFilterReference:
                 assert abs(filt.get_power_w() - slope_per_ms * 1000.0) < 1e-6
 
 
+class TestLinearSlopePowerFilterZeroVariance:
+    """All timestamps identical → var == 0, _power_w must not change."""
+
+    def test_power_unchanged_when_all_timestamps_equal(self):
+        w = 5
+        filt = LinearSlopePowerFilter(w)
+        # Feed w samples all at the same timestamp — var of t will be 0.0
+        for _ in range(w):
+            filt.update(100, 50.0)
+        assert filt.is_valid()
+        assert filt.get_power_w() == 0.0
+
+
 class TestLinearSlopePowerFilterBadConfig:
     @pytest.mark.parametrize("w", [1, 0, -3])
     def test_raises_on_window_below_two(self, w):

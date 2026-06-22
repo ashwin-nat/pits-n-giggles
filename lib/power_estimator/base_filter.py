@@ -22,29 +22,25 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BasePowerFilter(ABC):
-    """Abstract base for all power filter implementations."""
+class BasePowerFilter(Protocol):
+    """Protocol for all power filter implementations."""
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    @abstractmethod
     def update(self, time_ms: int, energy_j: float) -> None:
         """Consume a new (time, energy) sample."""
 
-    @abstractmethod
     def get_power_w(self) -> float:
         """Return the latest estimated power in watts. Does not mutate state."""
 
-    @abstractmethod
     def is_valid(self) -> bool:
         """Return True when the filter has enough history to produce meaningful output."""
 
-    @abstractmethod
     def reset(self) -> None:
         """Clear all internal state. After this, is_valid() must return False."""
