@@ -117,7 +117,7 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
 
     def to_dict(self) -> Dict[str, object]:
         return {
-            "type": "corner",
+            "type": "complex_corner",
             "name": self.name,
             "corner_numbers": list(self.corner_numbers),
         }
