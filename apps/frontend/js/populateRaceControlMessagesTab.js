@@ -152,16 +152,22 @@ function formatRaceCtrlLocation(msg) {
 
     if (!seg) return sectorLabel ?? '---';
 
-    const type  = seg['type']  || '';
-    const name  = seg['name']  || '';
-    const turns = seg['turns'] || '';
+    const type = seg['type'] || '';
+    const name = seg['name'] || '';
 
     if (type === 'straight') {
         return name || sectorLabel || '---';
     }
-    // corner (single or complex)
-    if (name && turns) return `${turns} - ${name}`;
-    return turns || name || sectorLabel || '---';
+    // corner - single vs complex distinguished by key presence
+    let turns;
+    if (seg['corner_number'] != null) {
+        turns = `T${seg['corner_number']}`;
+    } else if (seg['corner_numbers']?.length) {
+        const nums = seg['corner_numbers'];
+        turns = `T${nums[0]}-${nums[nums.length - 1]}`;
+    }
+    if (turns) return name ? `${turns} - ${name}` : turns;
+    return name || sectorLabel || '---';
 }
 
 /**

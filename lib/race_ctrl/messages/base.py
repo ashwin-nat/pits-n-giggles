@@ -82,13 +82,15 @@ class RaceCtrlMsgBase:
 
     def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
         """Export the message as a JSON-ready dict."""
-        return {
+        d: Dict[str, Any] = {
             "id": self._id,
             "lap-number": self.lap_number,
             "timestamp": self.timestamp,
             "message-type": str(self.message_type),
             "involved-drivers": list(self.involved_drivers),
-            "lap-distance": self.lap_distance,
-            "segment-info": self.segment_info,
-            "sector": self.sector,
         }
+        if self.lap_distance is not None or self.sector is not None or self.segment_info is not None:
+            d["lap-distance"] = self.lap_distance
+            d["segment-info"] = self.segment_info
+            d["sector"] = self.sector
+        return d
