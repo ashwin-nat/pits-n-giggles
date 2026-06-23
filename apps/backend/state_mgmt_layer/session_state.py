@@ -1529,7 +1529,7 @@ class SessionState:
         if self.m_session_info.m_track is None:
             return None
         seg = self.m_track_segments_db.get_segment_info(self.m_session_info.m_track.value, lap_distance)
-        return seg.render() if seg else None
+        return seg.to_dict() if seg else None
 
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
         """Get the race control messages helper dictionary. This is a mapping of index against driver info JSON,

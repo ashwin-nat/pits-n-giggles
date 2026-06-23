@@ -24,10 +24,16 @@
 
 from .database import TrackSegmentsDatabase
 from .segments import TrackSegments
+from .types import (ComplexCornerSegmentInfo, CornerSegmentInfo,
+                    StraightSegmentInfo)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "TrackSegments",
     "TrackSegmentsDatabase",
+
+    "ComplexCornerSegmentInfo",
+    "CornerSegmentInfo",
+    "StraightSegmentInfo",
 ]

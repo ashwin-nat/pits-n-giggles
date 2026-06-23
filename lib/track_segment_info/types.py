@@ -22,9 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Annotated, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+from typing import (Annotated, Any, ClassVar, Dict, List, Literal, Optional,
+                    Tuple, Union)
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (BaseModel, ConfigDict, Field, field_validator,
+                      model_validator)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -58,7 +60,7 @@ class BaseSegmentInfo(BaseModel):
             raise ValueError(f"start_m ({self.start_m}) must be less than end_m ({self.end_m})")
         return self
 
-    def render(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Any]:
         raise NotImplementedError
 
 
@@ -73,8 +75,11 @@ class StraightSegmentInfo(BaseSegmentInfo):
             raise ValueError("name is required for straight segments")
         return v
 
-    def render(self) -> Dict[str, str]:
-        return {"type": "straight", "name": self.name, "turns": ""}
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "straight",
+            "name": self.name,
+        }
 
 
 class CornerSegmentInfo(BaseSegmentInfo):
@@ -83,12 +88,12 @@ class CornerSegmentInfo(BaseSegmentInfo):
     name: str = ""
     corner_number: int
 
-    def render(self) -> Dict[str, str]:
-        if self.name:
-            turns = f"T{self.corner_number}"
-        else:
-            turns = f"Turn {self.corner_number}"
-        return {"type": "corner", "name": self.name, "turns": turns}
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "corner",
+            "name": self.name,
+            "corner_number": self.corner_number,
+        }
 
 
 class ComplexCornerSegmentInfo(BaseSegmentInfo):
@@ -110,10 +115,12 @@ class ComplexCornerSegmentInfo(BaseSegmentInfo):
                 )
         return v
 
-    def render(self) -> Dict[str, str]:
-        first, last = self.corner_numbers[0], self.corner_numbers[-1]
-        turns = f"Turns {first}-{last}"
-        return {"type": "corner", "name": self.name, "turns": turns}
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "type": "corner",
+            "name": self.name,
+            "corner_numbers": list(self.corner_numbers),
+        }
 
 
 SegmentInfo = Annotated[
