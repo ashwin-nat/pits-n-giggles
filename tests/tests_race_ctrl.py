@@ -197,3 +197,27 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertEqual(len(self.driver1_mgr.messages), 1)
         self.assertEqual(len(self.session_mgr.messages), 1)
         self.assertEqual(self.driver1_mgr.messages[0], self.session_mgr.messages[0])
+
+    async def test_location_fields_absent_when_not_set(self):
+        msg = DriverPittingRaceCtrlMsg(timestamp=1.0, driver_index=1, lap_number=5)
+        self.session_mgr.add_message(msg)
+        exported = self.session_mgr.toJSON()[0]
+
+        self.assertNotIn("lap-distance", exported)
+        self.assertNotIn("segment-info", exported)
+        self.assertNotIn("sector", exported)
+
+    async def test_location_fields_present_when_lap_distance_set(self):
+        msg = OvertakeRaceCtrlMsg(timestamp=2.0, overtaker_index=1, overtaken_index=2, lap_number=3)
+        msg.lap_distance = 512.5
+        msg.sector = "S2"
+        # segment_info left as None — partial population still triggers the block
+        self.session_mgr.add_message(msg)
+        exported = self.session_mgr.toJSON()[0]
+
+        self.assertIn("lap-distance", exported)
+        self.assertIn("segment-info", exported)
+        self.assertIn("sector", exported)
+        self.assertAlmostEqual(exported["lap-distance"], 512.5)
+        self.assertEqual(exported["sector"], "S2")
+        self.assertIsNone(exported["segment-info"])
