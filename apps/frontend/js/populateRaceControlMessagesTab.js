@@ -231,12 +231,12 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         { headerName: 'Lap Number', field: 'lap-number', sortable: true, filter: false, width: 150 },
         {
             headerName: 'Location',
-            field: 'location',
             sortable: false,
             filter: false,
             width: 200,
-            cellRenderer: params => formatRaceCtrlLocation(params.data),
-            getQuickFilterText: params => formatRaceCtrlLocation(params.data),
+            valueGetter: params => formatRaceCtrlLocation(params.data),
+            cellRenderer: params => params.value,
+            getQuickFilterText: params => params.value,
         },
         {
             headerName: 'Details',

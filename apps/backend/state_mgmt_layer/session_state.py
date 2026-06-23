@@ -1524,7 +1524,7 @@ class SessionState:
 
     ##### Internal Helpers #####
 
-    def _lookup_segment_info(self, lap_distance: float) -> Optional[Dict[str, str]]:
+    def _lookup_segment_info(self, lap_distance: float) -> Optional[Dict[str, Any]]:
         """Return rendered segment info for the current track at lap_distance, or None."""
         if self.m_session_info.m_track is None:
             return None
