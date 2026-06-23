@@ -402,29 +402,29 @@ class TestSegmentDict(F1TelemetryUnitTestsBase):
         self.assertEqual(seg.to_dict(), {"type": "corner", "name": "", "corner_number": 3})
 
     def test_complex_corner_named_dict(self):
-        """Named complex corner dict contains type=corner, name, and corner_numbers list."""
+        """Named complex corner dict contains type=complex_corner, name, and corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Pouhon", start_m=1400, end_m=1800, corner_numbers=(6, 7))
-        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "Pouhon", "corner_numbers": [6, 7]})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Pouhon", "corner_numbers": [6, 7]})
 
     def test_complex_corner_unnamed_dict(self):
-        """Unnamed complex corner dict contains with type=corner, empty name, and corner_numbers list."""
+        """Unnamed complex corner dict contains with type=complex_corner, empty name, and corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(1, 2, 3))
-        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "", "corner_numbers": [1, 2, 3]})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "", "corner_numbers": [1, 2, 3]})
 
     def test_complex_corner_unnamed_two_turns_dict(self):
         """Unnamed complex corner with 2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "", "corner_numbers": [3, 4]})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "", "corner_numbers": [3, 4]})
 
     def test_complex_corner_two_turns_dict(self):
         """Complex corner with exactly 2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Esses", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "Esses", "corner_numbers": [3, 4]})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Esses", "corner_numbers": [3, 4]})
 
     def test_complex_corner_many_turns_dict(self):
         """Complex corner with >2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Maggotts-Becketts", start_m=0, end_m=800, corner_numbers=(5, 6, 7, 8))
-        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "Maggotts-Becketts", "corner_numbers": [5, 6, 7, 8]})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Maggotts-Becketts", "corner_numbers": [5, 6, 7, 8]})
 
     # --- name optionality rules -------------------------------------------------------
 
