@@ -615,6 +615,10 @@ class PngLauncherWindow(QMainWindow):
             text = obj['message']
             stack = obj.get("stack")
 
+            # In debug mode, treat SILENT logs as INFO
+            if level == "SILENT" and self.debug_mode:
+                level = "INFO"
+
             # ---------------- FILE MESSAGE (always written) ----------------
 
             if stack:

@@ -442,7 +442,7 @@ max-statements = 200 # Using a high number because some of the packets have a lo
 max-attributes = 100 # Using a high number because some of the packets have a lot of fields
 
 # Maximum number of statements in a try-block
-max-try-statements = 15
+max-try-statements = 20
 
 [CLASSES]
 
