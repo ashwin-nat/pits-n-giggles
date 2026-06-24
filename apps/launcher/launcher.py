@@ -160,6 +160,19 @@ APP_ICON_PATH = str(resource_path("assets/logo.png"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
+def _hide_file_windows(path: str) -> None:
+    """On Windows, set the hidden attribute on a file so a curious user is less
+    likely to spot it and delete it. No-op on other platforms (a leading-dot name
+    already hides the file there by convention)."""
+    if os.name != "nt":
+        return
+    FILE_ATTRIBUTE_HIDDEN = 0x02
+    try:
+        ctypes.windll.kernel32.SetFileAttributesW(str(path), FILE_ATTRIBUTE_HIDDEN)
+    except Exception:  # pylint: disable=broad-except
+        pass
+
+
 def _acquire_single_instance_lock() -> QLockFile:
     """Acquire the single-instance lock, or show an error and exit if another
     instance already holds it.
@@ -168,7 +181,9 @@ def _acquire_single_instance_lock() -> QLockFile:
         QLockFile: The acquired lock. The caller must keep a reference to it for
             the process lifetime; QLockFile releases the lock on destruction.
     """
-    lock_path = resolve_user_file(f"{APP_NAME_SNAKE}.lock")
+    # Leading dot hides the file on Unix; the Windows hidden attribute is set below
+    # once the lock file actually exists. Either way it stays out of casual sight.
+    lock_path = resolve_user_file(f".{APP_NAME_SNAKE}.lock")
     lock = QLockFile(lock_path)
     lock.setStaleLockTime(0)  # rely on PID liveness check, not a time window
 
@@ -187,6 +202,9 @@ def _acquire_single_instance_lock() -> QLockFile:
         box.setWindowIcon(QIcon(APP_ICON_PATH))
         box.exec()
         sys.exit(1)
+
+    # The lock file now exists (tryLock created it); mark it hidden on Windows.
+    _hide_file_windows(lock_path)
     return lock
 
 
