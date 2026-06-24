@@ -500,6 +500,11 @@ class PngLauncherWindow(QMainWindow):
 
     def auto_start_subsystems(self):
         """Auto-start subsystems marked for auto-start"""
+        # Ensure the shared data directory exists before any subsystem starts. Several
+        # subsystems write here; creating it now avoids coupling/races where the first
+        # producer to run owns creation.
+        Path(resolve_user_file("data")).mkdir(parents=True, exist_ok=True)
+
         for subsystem in self.subsystems:
             if subsystem.get_start_by_default():
                 self.debug_log(f"Auto-starting {subsystem.DISPLAY_NAME}...")
