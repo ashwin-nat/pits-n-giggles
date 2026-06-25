@@ -31,10 +31,9 @@ import zmq
 
 from lib.event_counter import EventCounter
 
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+from ._wire import _NO_REPLY, _REPLY_REQUIRED
 
-_REPLY_REQUIRED = b"\x01"
-_NO_REPLY       = b"\x00"
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Pipe command bytes — sent through the inproc PAIR pipe from caller threads to the loop thread.
 _PIPE_STOP  = b"\xff"

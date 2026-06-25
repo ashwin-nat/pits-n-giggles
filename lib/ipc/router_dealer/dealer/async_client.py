@@ -32,10 +32,7 @@ import zmq.asyncio
 
 from lib.event_counter import EventCounter
 
-# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-_REPLY_REQUIRED = b"\x01"
-_NO_REPLY       = b"\x00"
+from ._wire import _NO_REPLY, _REPLY_REQUIRED
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
