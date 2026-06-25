@@ -35,7 +35,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from apps.launcher.gui import PngLauncherWindow
-from lib.file_path import resolve_user_file
+from lib.file_path import resolve_fixed_file, resolve_user_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
 from meta.meta import APP_NAME, APP_NAME_SNAKE
@@ -183,7 +183,9 @@ def _acquire_single_instance_lock() -> QLockFile:
     """
     # Leading dot hides the file on Unix; the Windows hidden attribute is set below
     # once the lock file actually exists. Either way it stays out of casual sight.
-    lock_path = resolve_user_file(f".{APP_NAME_SNAKE}.lock")
+    # A fixed (cwd-independent) path so two instances launched from different
+    # directories still contend for the same lock and cannot coexist.
+    lock_path = resolve_fixed_file(f".{APP_NAME_SNAKE}.lock")
     lock = QLockFile(lock_path)
     lock.setStaleLockTime(0)  # rely on PID liveness check, not a time window
 
