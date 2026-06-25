@@ -96,7 +96,7 @@ async def fetch_driver_info(
     Centralizes all transport and backend errors.
     """
 
-    reply = await dealer.send(
+    reply = await dealer.request(
         str(PngAppId.BACKEND),
         "driver-info-request",
         {"index": driver_index},

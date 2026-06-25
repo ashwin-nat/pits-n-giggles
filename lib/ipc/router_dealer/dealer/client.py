@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import threading
 from typing import Callable, Dict, Optional
 
@@ -30,11 +29,11 @@ import orjson
 import zmq
 
 from lib.event_counter import EventCounter
+from lib.logger import PngLogger, get_null_logger
+
+from ._wire import _NO_REPLY, _REPLY_REQUIRED, ACK_SENTINEL
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
-
-_REPLY_REQUIRED = b"\x01"
-_NO_REPLY       = b"\x00"
 
 # Pipe command bytes — sent through the inproc PAIR pipe from caller threads to the loop thread.
 _PIPE_STOP  = b"\xff"
@@ -66,10 +65,10 @@ class IpcDealerClient:
 
     **Request-response** (blocks caller thread until reply or timeout)::
 
-        reply = client.send("backend", "get-stats", {}, timeout=2.0)
+        reply = client.request("backend", "get-stats", {}, timeout=2.0)
 
-    ``send()`` is safe to call from any thread *except* the loop thread itself
-    (deadlock). Only one outbound ``send()`` may be in-flight at a time.
+    ``request()`` is safe to call from any thread *except* the loop thread itself
+    (deadlock). Only one outbound ``request()`` may be in-flight at a time.
 
     ZMQ sockets are not thread-safe, so outbound sends are marshalled through
     an inproc PAIR pipe that the loop thread drains alongside the DEALER socket.
@@ -92,7 +91,7 @@ class IpcDealerClient:
 
         threading.Thread(target=client.start, daemon=True).start()
         # ... later:
-        reply = client.send("backend", "query", {})
+        reply = client.request("backend", "query", {})
         client.close()
     """
 
@@ -101,7 +100,7 @@ class IpcDealerClient:
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         identity: str = "",
-        logger: Optional[logging.Logger] = None,
+        logger: Optional[PngLogger] = None,
     ):
         assert port is not None
         assert identity
@@ -110,17 +109,13 @@ class IpcDealerClient:
         self.port = port
         self.identity = identity
 
-        if logger is None:
-            logger = logging.getLogger(f"{__name__}.IpcDealerClient")
-            logger.addHandler(logging.NullHandler())
-            logger.propagate = False
-        self.logger = logger
+        self.logger: PngLogger = logger if logger is not None else get_null_logger()
 
         self._routes: Dict[str, Callable[[dict, str], object]] = {}
         self._running = False
         self.stats = EventCounter()
 
-        # Set when the loop thread starts; used by send() to detect deadlock-prone misuse.
+        # Set when the loop thread starts; used by request() to detect deadlock-prone misuse.
         self._loop_thread_id: Optional[int] = None
 
         self._ctx = zmq.Context()
@@ -139,9 +134,9 @@ class IpcDealerClient:
 
         # Serialises all writes to _pipe_write (ZMQ sockets are not thread-safe).
         self._pipe_lock = threading.Lock()
-        # Serialises concurrent send() callers (only one in-flight at a time).
+        # Serialises concurrent request() callers (only one in-flight at a time).
         self._send_lock = threading.Lock()
-        # Slot for the loop thread to deposit a send() reply.
+        # Slot for the loop thread to deposit a request() reply.
         self._reply_slot: Optional[dict] = None
         self._reply_event = threading.Event()
 
@@ -209,7 +204,7 @@ class IpcDealerClient:
     # ---------------------------------------------------------
     # Outbound: request-response
     # ---------------------------------------------------------
-    def send(
+    def request(
         self,
         dest_identity: str,
         topic: str,
@@ -220,7 +215,7 @@ class IpcDealerClient:
         Send a command and block until a reply arrives or timeout elapses.
 
         Safe to call from any thread *except* the loop thread (deadlock).
-        Only one send() may be in-flight at a time.
+        Only one request() may be in-flight at a time.
 
         Args:
             dest_identity: ZMQ identity of the target DEALER.
@@ -232,9 +227,9 @@ class IpcDealerClient:
             Reply dict from the remote handler, or an error dict on timeout/failure.
         """
         assert self._running, \
-            "IpcDealerClient.start() must be running before send() — run it in a thread first"
+            "IpcDealerClient.start() must be running before request() — run it in a thread first"
         assert threading.get_ident() != self._loop_thread_id, \
-            "IpcDealerClient.send() called from the loop thread — deadlock. Use fire() or a different thread."
+            "IpcDealerClient.request() called from the loop thread — deadlock. Use fire() or a different thread."
 
         payload = orjson.dumps(data)
 
@@ -328,7 +323,14 @@ class IpcDealerClient:
                 awaiting_reply = False
             return awaiting_reply
 
-        # 2-frame reply to a pending send()
+        # 2-frame ack for a prior fire() — disambiguated from a reply by the sentinel byte
+        if len(frames) == 2 and frames[1] == ACK_SENTINEL:
+            sender = frames[0].decode("utf-8", errors="replace")
+            self.stats.track_event("__ACK__", sender)
+            self.logger.silent("IpcDealerClient [%s] fire ack from %r", self.identity, sender)
+            return awaiting_reply
+
+        # 2-frame reply to a pending request()
         if len(frames) == 2 and awaiting_reply:
             try:
                 reply = orjson.loads(frames[-1])
@@ -363,6 +365,11 @@ class IpcDealerClient:
             if wants_reply:
                 self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
             return awaiting_reply
+
+        # Fire-and-forget: confirm receipt with a bare ack before running the handler.
+        # (request() gets its confirmation from the reply, so it is not acked here.)
+        if not wants_reply:
+            self._send_ack(sender_id)
 
         sender_str = sender_id.decode("utf-8", errors="replace")
         try:
@@ -410,6 +417,14 @@ class IpcDealerClient:
         self._loop_thread_id = None
         self._close_sockets(poller)
         self.logger.debug("IpcDealerClient [%s] stopped", self.identity)
+
+    def _send_ack(self, sender_id: bytes) -> None:
+        try:
+            self.socket.send_multipart([sender_id, ACK_SENTINEL], flags=zmq.NOBLOCK)
+            self.stats.track_event("__ACK_SENT__", sender_id.decode("utf-8", errors="replace"))
+        except zmq.ZMQError as e:
+            self.stats.track_event("__ERROR__", "ack_send_failed")
+            self.logger.warning("IpcDealerClient [%s] failed to send ack: %s", self.identity, e)
 
     def _send_reply(self, sender_id: bytes, reply: dict) -> None:
         try:

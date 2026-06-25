@@ -23,12 +23,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
-import logging
 import json
+import logging
+import os
 from datetime import datetime
 from typing import Optional
 
+from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- CUSTOM LOG LEVEL ---------------------------------------------------------------
 
@@ -110,6 +111,20 @@ def get_logger(
 
     return logger
 
+def get_null_logger() -> PngLogger:
+    """Return a no-op :class:`PngLogger` that discards all records.
+
+    Use this as the default when no logger is injected into a component. A bare
+    ``logging.getLogger()`` is not guaranteed to return a ``PngLogger`` (so it
+    may lack ``silent()``); this always does.
+
+    Returns:
+        PngLogger: A logger whose records go nowhere.
+    """
+    logger = PngLogger(f"{APP_NAME_SNAKE}.null")
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+    return logger
 
 def _clearFileIfRequired(file_name: str, max_size: int) -> None:
     if os.path.exists(file_name):
