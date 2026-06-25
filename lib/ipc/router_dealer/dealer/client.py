@@ -30,6 +30,7 @@ import orjson
 import zmq
 
 from lib.event_counter import EventCounter
+from lib.logger import PngLogger
 
 from ._wire import _NO_REPLY, _REPLY_REQUIRED, ACK_SENTINEL
 
@@ -100,7 +101,7 @@ class IpcDealerClient:
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         identity: str = "",
-        logger: Optional[logging.Logger] = None,
+        logger: Optional[PngLogger] = None,
     ):
         assert port is not None
         assert identity
@@ -113,7 +114,7 @@ class IpcDealerClient:
             logger = logging.getLogger(f"{__name__}.IpcDealerClient")
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
-        self.logger = logger
+        self.logger: PngLogger = logger
 
         self._routes: Dict[str, Callable[[dict, str], object]] = {}
         self._running = False
@@ -331,7 +332,7 @@ class IpcDealerClient:
         if len(frames) == 2 and frames[1] == ACK_SENTINEL:
             sender = frames[0].decode("utf-8", errors="replace")
             self.stats.track_event("__ACK__", sender)
-            self.logger.debug("IpcDealerClient [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
+            self.logger.silent("IpcDealerClient [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
             return awaiting_reply
 
         # 2-frame reply to a pending send()

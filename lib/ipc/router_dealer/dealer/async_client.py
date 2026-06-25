@@ -31,6 +31,7 @@ import zmq
 import zmq.asyncio
 
 from lib.event_counter import EventCounter
+from lib.logger import PngLogger
 
 from ._wire import _NO_REPLY, _REPLY_REQUIRED, ACK_SENTINEL
 
@@ -95,7 +96,7 @@ class IpcDealerAsync:
         host: str = "127.0.0.1",
         port: Optional[int] = None,
         identity: str = "",
-        logger: Optional[logging.Logger] = None,
+        logger: Optional[PngLogger] = None,
     ):
         assert port is not None
         assert identity
@@ -108,7 +109,7 @@ class IpcDealerAsync:
             logger = logging.getLogger(f"{__name__}.IpcDealerAsync")
             logger.addHandler(logging.NullHandler())
             logger.propagate = False
-        self.logger = logger
+        self.logger: PngLogger = logger
 
         self._ctx = zmq.asyncio.Context()
         self.socket: Optional[zmq.asyncio.Socket] = None
@@ -180,7 +181,7 @@ class IpcDealerAsync:
                     if frames[1] == ACK_SENTINEL:
                         sender = frames[0].decode("utf-8", errors="replace")
                         self.stats.track_event("__ACK__", sender)
-                        self.logger.debug("IpcDealerAsync [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
+                        self.logger.silent("IpcDealerAsync [%s] fire ack from %r", self.identity, sender)
                         continue
                     pending = self._pending_reply
                     if pending is not None and not pending.done():
