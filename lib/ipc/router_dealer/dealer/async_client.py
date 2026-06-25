@@ -52,7 +52,7 @@ class IpcDealerAsync:
 
     **Request-response** — send and await reply::
 
-        stats = await dealer.send("hud", "get-stats", {})
+        stats = await dealer.request("hud", "get-stats", {})
 
     Inbound (optional): register handlers via ``route(topic)``.
 
@@ -61,11 +61,11 @@ class IpcDealerAsync:
 
         task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
-    ``start()`` must be called (and its task scheduled) before ``send()`` or
+    ``start()`` must be called (and its task scheduled) before ``request()`` or
     any inbound routing will work.
 
     Notes:
-      - Only one outbound ``send()`` may be in-flight at a time (protocol has
+      - Only one outbound ``request()`` may be in-flight at a time (protocol has
         no correlation ID). Enforced by an internal lock.
       - Async handlers should be ``async def``; sync handlers must be fast —
         anything that blocks stalls the recv loop.
@@ -84,7 +84,7 @@ class IpcDealerAsync:
         task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
         await dealer.fire("hud", "hud-toggle-notification", {"oid": "mfd"})
-        stats = await dealer.send("hud", "get-stats", {})
+        stats = await dealer.request("hud", "get-stats", {})
 
         await dealer.close()
     """
@@ -161,10 +161,10 @@ class IpcDealerAsync:
 
             task = asyncio.create_task(dealer.start(), name="Dealer Recv")
 
-        Must be called before ``send()`` or any inbound routing will work.
+        Must be called before ``request()`` or any inbound routing will work.
 
         Single reader for the DEALER socket. Demuxes by frame count:
-          - 2 frames → reply to a pending outbound send()
+          - 2 frames → reply to a pending outbound request()
           - 4 frames → unsolicited inbound command → dispatch to handler
         """
         self._recv_task = asyncio.current_task()
@@ -220,7 +220,7 @@ class IpcDealerAsync:
             return
 
         # Fire-and-forget: confirm receipt with a bare ack before running the handler.
-        # (send() gets its confirmation from the reply, so it is not acked here.)
+        # (request() gets its confirmation from the reply, so it is not acked here.)
         if not wants_reply:
             await self._send_ack(sender_id)
 
@@ -279,7 +279,7 @@ class IpcDealerAsync:
     # ---------------------------------------------------------
     # Request-response (awaits reply)
     # ---------------------------------------------------------
-    async def send(self, dest_identity: str, topic: str, data: dict) -> dict:
+    async def request(self, dest_identity: str, topic: str, data: dict) -> dict:
         """
         Send a command and await a reply from the recipient.
 
@@ -293,7 +293,7 @@ class IpcDealerAsync:
             Returns an error dict without raising on timeout or send failure.
         """
         assert self._recv_task is not None, \
-            "IpcDealerAsync.start() must be running before send() — schedule it as a task first"
+            "IpcDealerAsync.start() must be running before request() — schedule it as a task first"
         payload = orjson.dumps(data)
 
         async with self._send_lock:

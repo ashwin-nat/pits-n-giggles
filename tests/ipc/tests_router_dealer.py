@@ -140,7 +140,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIsInstance(stats, dict)
 
     # ------------------------------------------------------------------
-    # Request-response: send() awaits a reply
+    # Request-response: request() awaits a reply
     # ------------------------------------------------------------------
 
     def test_send_single_message_gets_ok_reply(self):
@@ -155,7 +155,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await dealer.send("hud", "toggle", {"oid": "mfd"})
+            reply = await dealer.request("hud", "toggle", {"oid": "mfd"})
             await dealer.close()
             return reply
 
@@ -178,7 +178,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await dealer.send("hud-rich", "get-stats", {})
+            reply = await dealer.request("hud-rich", "get-stats", {})
             await dealer.close()
             return reply
 
@@ -198,8 +198,8 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            r_a = await dealer.send("hud-multi", "topic-a", {"x": 1})
-            r_b = await dealer.send("hud-multi", "topic-b", {"y": 2})
+            r_a = await dealer.request("hud-multi", "topic-a", {"x": 1})
+            r_b = await dealer.request("hud-multi", "topic-b", {"y": 2})
 
             await dealer.close()
             return r_a, r_b
@@ -220,7 +220,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await dealer.send("hud-unknown", "no-such-topic", {})
+            reply = await dealer.request("hud-unknown", "no-such-topic", {})
             await dealer.close()
             return reply
 
@@ -239,7 +239,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await dealer.send("hud-exc", "crash", {})
+            reply = await dealer.request("hud-exc", "crash", {})
             await dealer.close()
             return reply
 
@@ -263,7 +263,7 @@ class TestIpcRouterDealer(TestIPC):
 
             replies = []
             for i in range(N):
-                r = await dealer.send("hud-rapid", "press", {"seq": i})
+                r = await dealer.request("hud-rapid", "press", {"seq": i})
                 replies.append(r)
 
             await dealer.close()
@@ -290,7 +290,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await dealer.send("ghost-client", "press", {"seq": 0})
+            reply = await dealer.request("ghost-client", "press", {"seq": 0})
             await dealer.close()
             return reply
 
@@ -320,7 +320,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="sender-crash")
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await dealer.send("hud-crash", "ping", {"phase": 1})
+            r = await dealer.request("hud-crash", "ping", {"phase": 1})
             await dealer.close()
             return r
 
@@ -342,7 +342,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer.ACK_TIMEOUT = 0.2
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await dealer.send("hud-crash", "ping", {"phase": 2})
+            r = await dealer.request("hud-crash", "ping", {"phase": 2})
             await dealer.close()
             return r
 
@@ -362,7 +362,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="sender-crash3")
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await dealer.send("hud-crash", "ping", {"phase": 3})
+            r = await dealer.request("hud-crash", "ping", {"phase": 3})
             await dealer.close()
             return r
 
@@ -475,8 +475,8 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            r_a = await dealer.send("hud-a", "msg", {"target": "a"})
-            r_b = await dealer.send("hud-b", "msg", {"target": "b"})
+            r_a = await dealer.request("hud-a", "msg", {"target": "a"})
+            r_b = await dealer.request("hud-b", "msg", {"target": "b"})
 
             await dealer.close()
             return r_a, r_b
@@ -505,7 +505,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="sender-stats")
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            await dealer.send("hud-stats", "ping", {"v": 1})
+            await dealer.request("hud-stats", "ping", {"v": 1})
             await dealer.close()
 
         self._run_async(run())
@@ -522,7 +522,7 @@ class TestIpcRouterDealer(TestIPC):
             dealer = IpcDealerAsync(port=self.port, identity="sender-bstats")
             asyncio.create_task(dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            await dealer.send("hud-bstats", "x", {})
+            await dealer.request("hud-bstats", "x", {})
             await dealer.close()
 
         self._run_async(run())
@@ -563,7 +563,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIn({"btn": "mfd"}, received)
 
     def test_async_dealer_receives_send_and_replies_with_dict(self):
-        """send() to an async dealer receiver gets the handler's dict reply."""
+        """request() to an async dealer receiver gets the handler's dict reply."""
         STATS = {"laps": 7, "tyre": "hard"}
 
         async def run():
@@ -579,7 +579,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await sender.send("async-recv-send", "get-stats", {})
+            reply = await sender.request("async-recv-send", "get-stats", {})
 
             await sender.close()
             await receiver.close()
@@ -603,7 +603,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await sender.send("async-recv-none", "ack", {})
+            reply = await sender.request("async-recv-none", "ack", {})
 
             await sender.close()
             await receiver.close()
@@ -628,7 +628,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await sender.send("async-recv-coro", "slow", {"x": 1})
+            reply = await sender.request("async-recv-coro", "slow", {"x": 1})
 
             await sender.close()
             await receiver.close()
@@ -649,7 +649,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await sender.send("async-recv-unknown", "no-such-topic", {})
+            reply = await sender.request("async-recv-unknown", "no-such-topic", {})
 
             await sender.close()
             await receiver.close()
@@ -674,14 +674,14 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await sender.send("async-recv-exc", "crash", {})
+            reply = await sender.request("async-recv-exc", "crash", {})
 
             # Recv loop should still be alive after an exception — try again.
             @receiver.route("ok")
             def on_ok(_data, _sender):
                 return {"status": "ok", "after": "crash"}
 
-            reply2 = await sender.send("async-recv-exc", "ok", {})
+            reply2 = await sender.request("async-recv-exc", "ok", {})
 
             await sender.close()
             await receiver.close()
@@ -759,9 +759,9 @@ class TestIpcRouterDealer(TestIPC):
 
             # Other sends to bridge while bridge sends to sync — interleaved.
             other_task = asyncio.create_task(
-                other.send("bridge", "from-other", {"n": 1})
+                other.request("bridge", "from-other", {"n": 1})
             )
-            bridge_reply = await bridge.send("sync-peer", "from-bridge", {"n": 2})
+            bridge_reply = await bridge.request("sync-peer", "from-bridge", {"n": 2})
             other_reply = await other_task
 
             await other.close()
@@ -836,7 +836,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(s_stats.get("__ACK__", {}), {})
 
     def test_async_ack_does_not_corrupt_pending_send(self):
-        """An ack arriving from a prior fire() must not be mistaken for a send()'s reply."""
+        """An ack arriving from a prior fire() must not be mistaken for a request()'s reply."""
         async def run():
             receiver = IpcDealerAsync(port=self.port, identity="ack-recv-mix")
 
@@ -856,7 +856,7 @@ class TestIpcRouterDealer(TestIPC):
 
             # Fire (will produce an ack) immediately followed by a send awaiting a reply.
             await sender.fire("ack-recv-mix", "press", {})
-            reply = await sender.send("ack-recv-mix", "query", {"q": "hi"})
+            reply = await sender.request("ack-recv-mix", "query", {"q": "hi"})
 
             await sender.close()
             await receiver.close()
@@ -886,7 +886,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIsNone(dealer._recv_task)
 
     def test_async_dealer_close_while_send_in_flight_unblocks(self):
-        """close() while awaiting a reply must not hang — send() returns error."""
+        """close() while awaiting a reply must not hang — request() returns error."""
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="async-close-inflight")
             dealer.ACK_TIMEOUT = 5.0  # we want close() to be the unblocker, not timeout
@@ -894,7 +894,7 @@ class TestIpcRouterDealer(TestIPC):
             await asyncio.sleep(PROPAGATION_DELAY)
 
             send_task = asyncio.create_task(
-                dealer.send("ghost-no-receiver", "press", {"x": 1})
+                dealer.request("ghost-no-receiver", "press", {"x": 1})
             )
             # Let the send actually post and start awaiting the reply.
             await asyncio.sleep(0.05)
@@ -910,12 +910,12 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(reply.get("status"), "error")
 
     def test_async_dealer_send_requires_start(self):
-        """send() raises AssertionError if start() has not been called."""
+        """request() raises AssertionError if start() has not been called."""
         async def run():
             dealer = IpcDealerAsync(port=self.port, identity="sender-no-start")
             await asyncio.sleep(PROPAGATION_DELAY)
             with self.assertRaises(AssertionError):
-                await dealer.send("ghost", "ping", {"v": 99})
+                await dealer.request("ghost", "ping", {"v": 99})
             await dealer.close()
 
         self._run_async(run())
@@ -931,7 +931,7 @@ class TestIpcRouterDealer(TestIPC):
         self._run_async(run())
 
     # ------------------------------------------------------------------
-    # IpcDealerClient outbound fire() / send()
+    # IpcDealerClient outbound fire() / request()
     # ------------------------------------------------------------------
 
     def test_dealer_client_fire_delivers_to_async_receiver(self):
@@ -975,10 +975,10 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIn({"v": 42}, received)
 
     def test_dealer_client_send_gets_reply_from_async_dealer(self):
-        """IpcDealerClient.send() → IpcDealerAsync handler returns dict → sync caller gets it."""
+        """IpcDealerClient.request() → IpcDealerAsync handler returns dict → sync caller gets it."""
         STATS = {"laps": 5, "tyre": "medium"}
 
-        # Run the async receiver in a background event loop so sync send() can be called
+        # Run the async receiver in a background event loop so sync request() can be called
         # from the test thread without deadlocking the event loop.
         loop = asyncio.new_event_loop()
         stop_event = threading.Event()
@@ -1005,7 +1005,7 @@ class TestIpcRouterDealer(TestIPC):
         client = self._make_dealer_client("sync-send-rpc", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = client.send("async-send-reply", "get-stats", {})
+        reply = client.request("async-send-reply", "get-stats", {})
 
         stop_event.set()
         loop_thread.join(timeout=2.0)
@@ -1014,21 +1014,21 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(reply, STATS)
 
     def test_dealer_client_send_gets_reply_from_sync_receiver(self):
-        """IpcDealerClient.send() → IpcDealerClient handler returns dict → caller gets it."""
+        """IpcDealerClient.request() → IpcDealerClient handler returns dict → caller gets it."""
         receiver = self._make_dealer_client("sync-recv-rpc", {
             "echo": lambda d, _sender: {"echoed": d},
         })
         sender = self._make_dealer_client("sync-send-rpc2", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = sender.send("sync-recv-rpc", "echo", {"x": 7})
+        reply = sender.request("sync-recv-rpc", "echo", {"x": 7})
         self.assertEqual(reply.get("echoed"), {"x": 7})
 
     def test_dealer_client_send_requires_start(self):
-        """IpcDealerClient.send() raises AssertionError if start() has not been called."""
+        """IpcDealerClient.request() raises AssertionError if start() has not been called."""
         client = IpcDealerClient(port=self.port, identity="sync-send-no-start")
         with self.assertRaises(AssertionError):
-            client.send("ghost", "ping", {})
+            client.request("ghost", "ping", {})
         client.close()
 
     def test_dealer_client_fire_requires_start(self):
@@ -1039,11 +1039,11 @@ class TestIpcRouterDealer(TestIPC):
         client.close()
 
     def test_dealer_client_send_timeout_on_no_receiver(self):
-        """IpcDealerClient.send() to a non-existent identity returns error dict, no hang."""
+        """IpcDealerClient.request() to a non-existent identity returns error dict, no hang."""
         sender = self._make_dealer_client("sync-timeout-sender", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = sender.send("ghost-identity", "press", {}, timeout=0.2)
+        reply = sender.request("ghost-identity", "press", {}, timeout=0.2)
         self.assertEqual(reply.get("status"), "error")
         self.assertIn("timeout", reply.get("reason", ""))
 
@@ -1053,13 +1053,13 @@ class TestIpcRouterDealer(TestIPC):
         sender = self._make_dealer_client("sync-send-unknown2", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = sender.send("sync-recv-unknown2", "no-such-topic", {})
+        reply = sender.request("sync-recv-unknown2", "no-such-topic", {})
         self.assertEqual(reply.get("status"), "error")
         self.assertIn("unknown topic", reply.get("reason", ""))
 
     def test_dealer_client_send_does_not_block_inbound_receive(self):
         """
-        While one thread calls send(), the loop must still process inbound commands.
+        While one thread calls request(), the loop must still process inbound commands.
         Verify by having an inbound fire arrive during an outbound send.
         """
         inbound_received = []
@@ -1079,7 +1079,7 @@ class TestIpcRouterDealer(TestIPC):
         time.sleep(0.02)
 
         # Now do a send — the loop must deliver the inbound fire AND the reply.
-        reply = sender.send("sync-bidir-loop", "echo", {"x": 1})
+        reply = sender.request("sync-bidir-loop", "echo", {"x": 1})
         time.sleep(PROPAGATION_DELAY)
 
         self.assertEqual(reply.get("echoed"), {"x": 1})
@@ -1143,7 +1143,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(sender.get_stats().get("__ACK__", {}), {})
 
     def test_sync_fire_ack_does_not_corrupt_following_send(self):
-        """A sync fire() ack arriving before a send()'s reply must not be mistaken for it."""
+        """A sync fire() ack arriving before a request()'s reply must not be mistaken for it."""
         receiver = self._make_dealer_client("sync-ack-mix", {
             "press": lambda d, _sender: None,
             "echo": lambda d, _sender: {"echoed": d},
@@ -1152,7 +1152,7 @@ class TestIpcRouterDealer(TestIPC):
         time.sleep(PROPAGATION_DELAY)
 
         sender.fire("sync-ack-mix", "press", {})
-        reply = sender.send("sync-ack-mix", "echo", {"x": 1})
+        reply = sender.request("sync-ack-mix", "echo", {"x": 1})
         self.assertEqual(reply.get("echoed"), {"x": 1})
 
     def test_sync_fire_acked_by_async_receiver(self):
@@ -1210,7 +1210,7 @@ class TestIpcRouterDealer(TestIPC):
     # ------------------------------------------------------------------
 
     def test_bidir_sync_sends_async_replies(self):
-        """Sync client calls send() → async dealer handles it → reply received."""
+        """Sync client calls request() → async dealer handles it → reply received."""
         loop = asyncio.new_event_loop()
         stop_event = threading.Event()
 
@@ -1233,7 +1233,7 @@ class TestIpcRouterDealer(TestIPC):
         sync_client = self._make_dealer_client("bidir-sync-a", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = sync_client.send("bidir-async-a", "query", {"q": "hello"})
+        reply = sync_client.request("bidir-async-a", "query", {"q": "hello"})
 
         stop_event.set()
         loop_thread.join(timeout=2.0)
@@ -1242,7 +1242,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(reply.get("answer"), "hello-response")
 
     def test_bidir_async_sends_sync_replies(self):
-        """Async dealer calls send() → sync client handles it → reply received."""
+        """Async dealer calls request() → sync client handles it → reply received."""
         sync_client = self._make_dealer_client("bidir-sync-b", {
             "ping": lambda d, _sender: {"pong": d.get("n", 0) * 2},
         })
@@ -1252,7 +1252,7 @@ class TestIpcRouterDealer(TestIPC):
             asyncio.create_task(async_dealer.start())
             await asyncio.sleep(PROPAGATION_DELAY)
 
-            reply = await async_dealer.send("bidir-sync-b", "ping", {"n": 21})
+            reply = await async_dealer.request("bidir-sync-b", "ping", {"n": 21})
             await async_dealer.close()
             return reply
 
@@ -1312,13 +1312,13 @@ class TestIpcRouterDealer(TestIPC):
 
             def do_sync_send():
                 sync_reply_holder.append(
-                    sync_client.send("bidir-sim-async", "async-echo", {"from": "sync"})
+                    sync_client.request("bidir-sim-async", "async-echo", {"from": "sync"})
                 )
 
             t = threading.Thread(target=do_sync_send)
             t.start()
 
-            async_reply = await async_dealer.send("bidir-sim-sync", "sync-echo", {"from": "async"})
+            async_reply = await async_dealer.request("bidir-sim-sync", "sync-echo", {"from": "async"})
             t.join(timeout=5.0)
 
             await async_dealer.close()
@@ -1351,12 +1351,12 @@ class TestIpcRouterDealer(TestIPC):
             results = []
             for i in range(N):
                 # Async → sync
-                r1 = await async_dealer.send("bidir-rapid-sync", "increment", {"n": i})
+                r1 = await async_dealer.request("bidir-rapid-sync", "increment", {"n": i})
                 results.append(("async→sync", i, r1))
                 # Sync → async (from a thread to avoid blocking the event loop)
                 loop = asyncio.get_event_loop()
                 r2 = await loop.run_in_executor(
-                    None, sync_client.send, "bidir-rapid-async", "double", {"n": i}
+                    None, sync_client.request, "bidir-rapid-async", "double", {"n": i}
                 )
                 results.append(("sync→async", i, r2))
 
@@ -1376,7 +1376,7 @@ class TestIpcRouterDealer(TestIPC):
     # ------------------------------------------------------------------
 
     def test_dealer_connects_before_router(self):
-        """Sync client started before router; first send() succeeds once router is up."""
+        """Sync client started before router; first request() succeeds once router is up."""
         # Grab a free port by letting a temporary router bind and immediately close.
         tmp_router = IpcRouter(port=0)
         free_port = tmp_router.port
@@ -1400,7 +1400,7 @@ class TestIpcRouterDealer(TestIPC):
             sender = IpcDealerAsync(port=free_port, identity="late-sender")
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            reply = await sender.send("early-client", "pong", {})
+            reply = await sender.request("early-client", "pong", {})
             await sender.close()
             return reply
 
@@ -1438,7 +1438,7 @@ class TestIpcRouterDealer(TestIPC):
         deadline = time.monotonic() + 5.0
         reply = {"status": "error", "reason": "not started"}
         while time.monotonic() < deadline:
-            reply = client_a.send("pre-b", "hi", {"n": 1}, timeout=0.5)
+            reply = client_a.request("pre-b", "hi", {"n": 1}, timeout=0.5)
             if reply.get("got") is not None:
                 break
             time.sleep(0.1)
@@ -1457,7 +1457,7 @@ class TestIpcRouterDealer(TestIPC):
             sender = IpcDealerAsync(port=self.port, identity="reconnect-sender1")
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await sender.send("reconnect-client", "echo", {"phase": 1})
+            r = await sender.request("reconnect-client", "echo", {"phase": 1})
             await sender.close()
             return r
 
@@ -1476,7 +1476,7 @@ class TestIpcRouterDealer(TestIPC):
             sender = IpcDealerAsync(port=old_port, identity="reconnect-sender2")
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await sender.send("reconnect-client", "echo", {"phase": 2})
+            r = await sender.request("reconnect-client", "echo", {"phase": 2})
             await sender.close()
             return r
 
@@ -1488,7 +1488,7 @@ class TestIpcRouterDealer(TestIPC):
     # ------------------------------------------------------------------
 
     def test_sync_dealer_crash_send_returns_error(self):
-        """Async dealer sends to a crashed sync client → send() times out, no exception."""
+        """Async dealer sends to a crashed sync client → request() times out, no exception."""
         client = IpcDealerClient(port=self.port, identity="crash-sync-client")
         client.route("noop")(lambda d, _sender: None)
         t = threading.Thread(target=client.start, daemon=True)
@@ -1510,7 +1510,7 @@ class TestIpcRouterDealer(TestIPC):
             sender.ACK_TIMEOUT = 0.3
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            reply = await sender.send("crash-sync-client", "noop", {})
+            reply = await sender.request("crash-sync-client", "noop", {})
             await sender.close()
             return reply
 
@@ -1518,7 +1518,7 @@ class TestIpcRouterDealer(TestIPC):
         self.assertEqual(reply.get("status"), "error")
 
     def test_async_dealer_crash_send_returns_error(self):
-        """Sync client sends to a crashed async dealer → send() times out, no exception.
+        """Sync client sends to a crashed async dealer → request() times out, no exception.
 
         Note: this test intentionally simulates an unclean crash (socket closed without
         ctx.term()), so a ResourceWarning about an unclosed ZMQ context is expected.
@@ -1543,11 +1543,11 @@ class TestIpcRouterDealer(TestIPC):
         client = self._make_dealer_client("crash-sync-sender", {})
         time.sleep(PROPAGATION_DELAY)
 
-        reply = client.send("crash-async-dealer", "noop", {}, timeout=0.3)
+        reply = client.request("crash-async-dealer", "noop", {}, timeout=0.3)
         self.assertEqual(reply.get("status"), "error")
 
     def test_sync_dealer_crash_and_reconnect(self):
-        """Sync client crashes and reconnects with same identity; next send() succeeds."""
+        """Sync client crashes and reconnects with same identity; next request() succeeds."""
         # Phase 1: healthy.
         client1 = IpcDealerClient(port=self.port, identity="resilient-sync")
         client1.route("echo")(lambda d, _sender: {"echoed": d})
@@ -1562,7 +1562,7 @@ class TestIpcRouterDealer(TestIPC):
             sender.ACK_TIMEOUT = timeout
             asyncio.create_task(sender.start())
             await asyncio.sleep(PROPAGATION_DELAY)
-            r = await sender.send("resilient-sync", "echo", data)
+            r = await sender.request("resilient-sync", "echo", data)
             await sender.close()
             return r
 
@@ -1595,7 +1595,7 @@ class TestIpcRouterDealer(TestIPC):
     def test_async_dealer_late_reply_after_timeout_does_not_corrupt_next_send(self):
         """
         Scenario: sender times out waiting for reply, late reply arrives after timeout,
-        then a subsequent send() to a healthy handler completes successfully.
+        then a subsequent request() to a healthy handler completes successfully.
 
         Verifies that the stale reply is silently dropped (tracked as unexpected_reply)
         and does not corrupt the pending-reply state for the next call.
@@ -1624,7 +1624,7 @@ class TestIpcRouterDealer(TestIPC):
             # Phase 1: send with a very short timeout; handler will reply late.
             slow_reply_delay[0] = 0.5
             dealer.ACK_TIMEOUT = 0.1
-            r1 = await dealer.send("slow-responder", "echo", {"phase": 1})
+            r1 = await dealer.request("slow-responder", "echo", {"phase": 1})
             self.assertEqual(r1.get("status"), "error")  # timed out
 
             # Wait for the late reply to arrive and be dropped.
@@ -1633,7 +1633,7 @@ class TestIpcRouterDealer(TestIPC):
             # Phase 2: now use a generous timeout; handler replies promptly.
             slow_reply_delay[0] = 0.0
             dealer.ACK_TIMEOUT = ACK_TIMEOUT
-            r2 = await dealer.send("slow-responder", "echo", {"phase": 2})
+            r2 = await dealer.request("slow-responder", "echo", {"phase": 2})
 
             stats = dealer.get_stats()
             await dealer.close()

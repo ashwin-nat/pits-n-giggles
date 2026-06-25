@@ -30,7 +30,7 @@ between the two implementations.
 Wire shapes::
 
     command:  [dest,        reply_flag, topic, payload]   # dealer -> router -> dealer
-    reply:    [orig_sender, payload]                       # answer to send()
+    reply:    [orig_sender, payload]                       # answer to request()
     ack:      [orig_sender, ACK_SENTINEL]                  # fire() receipt ack
 """
 
@@ -41,6 +41,6 @@ _REPLY_REQUIRED = b"\x01"
 _NO_REPLY       = b"\x00"
 
 # Single fixed byte marking a fire() receipt ack. A 2-frame message whose second
-# frame equals this is an ack; otherwise it is a send() reply (a JSON payload,
+# frame equals this is an ack; otherwise it is a request() reply (a JSON payload,
 # which always begins '{' / '[' / digit / quote, so the two can never collide).
 ACK_SENTINEL = b"\x06"

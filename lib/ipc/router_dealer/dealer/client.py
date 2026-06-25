@@ -66,10 +66,10 @@ class IpcDealerClient:
 
     **Request-response** (blocks caller thread until reply or timeout)::
 
-        reply = client.send("backend", "get-stats", {}, timeout=2.0)
+        reply = client.request("backend", "get-stats", {}, timeout=2.0)
 
-    ``send()`` is safe to call from any thread *except* the loop thread itself
-    (deadlock). Only one outbound ``send()`` may be in-flight at a time.
+    ``request()`` is safe to call from any thread *except* the loop thread itself
+    (deadlock). Only one outbound ``request()`` may be in-flight at a time.
 
     ZMQ sockets are not thread-safe, so outbound sends are marshalled through
     an inproc PAIR pipe that the loop thread drains alongside the DEALER socket.
@@ -92,7 +92,7 @@ class IpcDealerClient:
 
         threading.Thread(target=client.start, daemon=True).start()
         # ... later:
-        reply = client.send("backend", "query", {})
+        reply = client.request("backend", "query", {})
         client.close()
     """
 
@@ -120,7 +120,7 @@ class IpcDealerClient:
         self._running = False
         self.stats = EventCounter()
 
-        # Set when the loop thread starts; used by send() to detect deadlock-prone misuse.
+        # Set when the loop thread starts; used by request() to detect deadlock-prone misuse.
         self._loop_thread_id: Optional[int] = None
 
         self._ctx = zmq.Context()
@@ -139,9 +139,9 @@ class IpcDealerClient:
 
         # Serialises all writes to _pipe_write (ZMQ sockets are not thread-safe).
         self._pipe_lock = threading.Lock()
-        # Serialises concurrent send() callers (only one in-flight at a time).
+        # Serialises concurrent request() callers (only one in-flight at a time).
         self._send_lock = threading.Lock()
-        # Slot for the loop thread to deposit a send() reply.
+        # Slot for the loop thread to deposit a request() reply.
         self._reply_slot: Optional[dict] = None
         self._reply_event = threading.Event()
 
@@ -209,7 +209,7 @@ class IpcDealerClient:
     # ---------------------------------------------------------
     # Outbound: request-response
     # ---------------------------------------------------------
-    def send(
+    def request(
         self,
         dest_identity: str,
         topic: str,
@@ -220,7 +220,7 @@ class IpcDealerClient:
         Send a command and block until a reply arrives or timeout elapses.
 
         Safe to call from any thread *except* the loop thread (deadlock).
-        Only one send() may be in-flight at a time.
+        Only one request() may be in-flight at a time.
 
         Args:
             dest_identity: ZMQ identity of the target DEALER.
@@ -232,9 +232,9 @@ class IpcDealerClient:
             Reply dict from the remote handler, or an error dict on timeout/failure.
         """
         assert self._running, \
-            "IpcDealerClient.start() must be running before send() — run it in a thread first"
+            "IpcDealerClient.start() must be running before request() — run it in a thread first"
         assert threading.get_ident() != self._loop_thread_id, \
-            "IpcDealerClient.send() called from the loop thread — deadlock. Use fire() or a different thread."
+            "IpcDealerClient.request() called from the loop thread — deadlock. Use fire() or a different thread."
 
         payload = orjson.dumps(data)
 
@@ -335,7 +335,7 @@ class IpcDealerClient:
             self.logger.silent("IpcDealerClient [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
             return awaiting_reply
 
-        # 2-frame reply to a pending send()
+        # 2-frame reply to a pending request()
         if len(frames) == 2 and awaiting_reply:
             try:
                 reply = orjson.loads(frames[-1])
@@ -372,7 +372,7 @@ class IpcDealerClient:
             return awaiting_reply
 
         # Fire-and-forget: confirm receipt with a bare ack before running the handler.
-        # (send() gets its confirmation from the reply, so it is not acked here.)
+        # (request() gets its confirmation from the reply, so it is not acked here.)
         if not wants_reply:
             self._send_ack(sender_id)
 
