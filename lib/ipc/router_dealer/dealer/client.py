@@ -31,7 +31,7 @@ import zmq
 
 from lib.event_counter import EventCounter
 
-from ._wire import _NO_REPLY, _REPLY_REQUIRED
+from ._wire import _NO_REPLY, _REPLY_REQUIRED, ACK_SENTINEL
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -327,6 +327,13 @@ class IpcDealerClient:
                 awaiting_reply = False
             return awaiting_reply
 
+        # 2-frame ack for a prior fire() — disambiguated from a reply by the sentinel byte
+        if len(frames) == 2 and frames[1] == ACK_SENTINEL:
+            sender = frames[0].decode("utf-8", errors="replace")
+            self.stats.track_event("__ACK__", sender)
+            self.logger.debug("IpcDealerClient [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
+            return awaiting_reply
+
         # 2-frame reply to a pending send()
         if len(frames) == 2 and awaiting_reply:
             try:
@@ -362,6 +369,11 @@ class IpcDealerClient:
             if wants_reply:
                 self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
             return awaiting_reply
+
+        # Fire-and-forget: confirm receipt with a bare ack before running the handler.
+        # (send() gets its confirmation from the reply, so it is not acked here.)
+        if not wants_reply:
+            self._send_ack(sender_id)
 
         sender_str = sender_id.decode("utf-8", errors="replace")
         try:
@@ -409,6 +421,14 @@ class IpcDealerClient:
         self._loop_thread_id = None
         self._close_sockets(poller)
         self.logger.debug("IpcDealerClient [%s] stopped", self.identity)
+
+    def _send_ack(self, sender_id: bytes) -> None:
+        try:
+            self.socket.send_multipart([sender_id, ACK_SENTINEL], flags=zmq.NOBLOCK)
+            self.stats.track_event("__ACK_SENT__", sender_id.decode("utf-8", errors="replace"))
+        except zmq.ZMQError as e:
+            self.stats.track_event("__ERROR__", "ack_send_failed")
+            self.logger.warning("IpcDealerClient [%s] failed to send ack: %s", self.identity, e)
 
     def _send_reply(self, sender_id: bytes, reply: dict) -> None:
         try:

@@ -1110,6 +1110,102 @@ class TestIpcRouterDealer(TestIPC):
             self.assertIn({"seq": i}, received)
 
     # ------------------------------------------------------------------
+    # Fire-and-forget receipt ack (sync dealer)
+    # ------------------------------------------------------------------
+
+    def test_sync_fire_is_acked_by_sync_receiver(self):
+        """IpcDealerClient.fire() to a sync receiver yields a receipt ack on the sender."""
+        received = []
+        receiver = self._make_dealer_client("sync-ack-recv", {
+            "ping": lambda d, _sender: received.append(d),
+        })
+        sender = self._make_dealer_client("sync-ack-send", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        sender.fire("sync-ack-recv", "ping", {"v": 7})
+        time.sleep(PROPAGATION_DELAY * 3)
+
+        self.assertIn({"v": 7}, received)
+        s_stats = sender.get_stats()
+        r_stats = receiver.get_stats()
+        self.assertGreaterEqual(s_stats.get("__ACK__", {}).get("sync-ack-recv", {}).get("count", 0), 1)
+        self.assertGreaterEqual(r_stats.get("__ACK_SENT__", {}).get("sync-ack-send", {}).get("count", 0), 1)
+
+    def test_sync_fire_to_unknown_topic_is_not_acked(self):
+        """A sync fire() to a known identity but unrouted topic is dropped, not acked."""
+        self._make_dealer_client("sync-ack-recv-unrouted", {})
+        sender = self._make_dealer_client("sync-ack-send-unrouted", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        sender.fire("sync-ack-recv-unrouted", "no-such-topic", {})
+        time.sleep(PROPAGATION_DELAY * 3)
+
+        self.assertEqual(sender.get_stats().get("__ACK__", {}), {})
+
+    def test_sync_fire_ack_does_not_corrupt_following_send(self):
+        """A sync fire() ack arriving before a send()'s reply must not be mistaken for it."""
+        receiver = self._make_dealer_client("sync-ack-mix", {
+            "press": lambda d, _sender: None,
+            "echo": lambda d, _sender: {"echoed": d},
+        })
+        sender = self._make_dealer_client("sync-ack-mix-send", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        sender.fire("sync-ack-mix", "press", {})
+        reply = sender.send("sync-ack-mix", "echo", {"x": 1})
+        self.assertEqual(reply.get("echoed"), {"x": 1})
+
+    def test_sync_fire_acked_by_async_receiver(self):
+        """IpcDealerClient.fire() to an async receiver gets an ack the sync sender records."""
+        received = []
+
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="async-ack-recv-x")
+
+            @receiver.route("press")
+            def on_press(data, _sender):
+                received.append(data)
+
+            asyncio.create_task(receiver.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            sender = self._make_dealer_client("sync-ack-send-x", {})
+            time.sleep(PROPAGATION_DELAY)
+
+            sender.fire("async-ack-recv-x", "press", {"btn": "y"})
+            await asyncio.sleep(PROPAGATION_DELAY * 2)
+
+            await receiver.close()
+            return sender.get_stats()
+
+        s_stats = self._run_async(run())
+        self.assertIn({"btn": "y"}, received)
+        self.assertGreaterEqual(s_stats.get("__ACK__", {}).get("async-ack-recv-x", {}).get("count", 0), 1)
+
+    def test_async_fire_acked_by_sync_receiver(self):
+        """IpcDealerAsync.fire() to a sync receiver gets an ack the async sender records."""
+        received = []
+        self._make_dealer_client("sync-ack-recv-y", {
+            "press": lambda d, _sender: received.append(d),
+        })
+
+        async def run():
+            sender = IpcDealerAsync(port=self.port, identity="async-ack-send-y")
+            asyncio.create_task(sender.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            await sender.fire("sync-ack-recv-y", "press", {"btn": "z"})
+            await asyncio.sleep(PROPAGATION_DELAY * 2)
+
+            s_stats = sender.get_stats()
+            await sender.close()
+            return s_stats
+
+        s_stats = self._run_async(run())
+        self.assertIn({"btn": "z"}, received)
+        self.assertGreaterEqual(s_stats.get("__ACK__", {}).get("sync-ack-recv-y", {}).get("count", 0), 1)
+
+    # ------------------------------------------------------------------
     # Bidirectional exchange: sync ↔ async, both sides send and receive
     # ------------------------------------------------------------------
 
