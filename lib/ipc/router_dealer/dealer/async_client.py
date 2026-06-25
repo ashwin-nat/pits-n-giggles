@@ -32,7 +32,7 @@ import zmq.asyncio
 
 from lib.event_counter import EventCounter
 
-from ._wire import _NO_REPLY, _REPLY_REQUIRED
+from ._wire import _NO_REPLY, _REPLY_REQUIRED, ACK_SENTINEL
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -177,6 +177,11 @@ class IpcDealerAsync:
                     continue
 
                 if len(frames) == 2:
+                    if frames[1] == ACK_SENTINEL:
+                        sender = frames[0].decode("utf-8", errors="replace")
+                        self.stats.track_event("__ACK__", sender)
+                        self.logger.debug("IpcDealerAsync [%s] fire ack from %r", self.identity, sender) # TODO: make it silent
+                        continue
                     pending = self._pending_reply
                     if pending is not None and not pending.done():
                         pending.set_result(frames)
@@ -213,6 +218,11 @@ class IpcDealerAsync:
                 await self._send_reply(sender_id, {"status": "error", "reason": f"unknown topic: {topic}"})
             return
 
+        # Fire-and-forget: confirm receipt with a bare ack before running the handler.
+        # (send() gets its confirmation from the reply, so it is not acked here.)
+        if not wants_reply:
+            await self._send_ack(sender_id)
+
         sender_str = sender_id.decode("utf-8", errors="replace")
         try:
             result = handler(data, sender_str)
@@ -226,6 +236,14 @@ class IpcDealerAsync:
             self.logger.exception("Handler error for topic %r: %s", topic, e)
             if wants_reply:
                 await self._send_reply(sender_id, {"status": "error", "reason": str(e)})
+
+    async def _send_ack(self, sender_id: bytes) -> None:
+        try:
+            await self.socket.send_multipart([sender_id, ACK_SENTINEL])
+            self.stats.track_event("__ACK_SENT__", sender_id.decode("utf-8", errors="replace"))
+        except zmq.ZMQError as e:
+            self.stats.track_event("__ERROR__", "ack_send_failed")
+            self.logger.warning("IpcDealerAsync [%s] failed to send ack: %s", self.identity, e)
 
     async def _send_reply(self, sender_id: bytes, reply: dict) -> None:
         try:

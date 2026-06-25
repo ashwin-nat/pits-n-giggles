@@ -776,6 +776,95 @@ class TestIpcRouterDealer(TestIPC):
         self.assertIn({"n": 1}, bridge_received)
         self.assertIn({"n": 2}, sync_received)
 
+    # ------------------------------------------------------------------
+    # Fire-and-forget receipt ack (async dealer)
+    # ------------------------------------------------------------------
+
+    def test_async_fire_is_acked_by_async_receiver(self):
+        """A fire() to an async receiver yields a receipt ack on the sender + a sent-ack on the receiver."""
+        received = []
+
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="ack-recv")
+
+            @receiver.route("press")
+            def on_press(data, _sender):
+                received.append(data)
+
+            asyncio.create_task(receiver.start())
+
+            sender = IpcDealerAsync(port=self.port, identity="ack-send")
+            asyncio.create_task(sender.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            await sender.fire("ack-recv", "press", {"btn": "mfd"})
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            s_stats = sender.get_stats()
+            r_stats = receiver.get_stats()
+            await sender.close()
+            await receiver.close()
+            return s_stats, r_stats
+
+        s_stats, r_stats = self._run_async(run())
+        self.assertIn({"btn": "mfd"}, received)
+        # Sender observed the receipt ack from the receiver's identity.
+        self.assertGreaterEqual(s_stats.get("__ACK__", {}).get("ack-recv", {}).get("count", 0), 1)
+        # Receiver recorded that it emitted the ack.
+        self.assertGreaterEqual(r_stats.get("__ACK_SENT__", {}).get("ack-send", {}).get("count", 0), 1)
+
+    def test_async_fire_to_unknown_topic_is_not_acked(self):
+        """A fire() to a known identity but unrouted topic is dropped, not acked."""
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="ack-recv-unrouted")
+            # No routes registered.
+            asyncio.create_task(receiver.start())
+
+            sender = IpcDealerAsync(port=self.port, identity="ack-send-unrouted")
+            asyncio.create_task(sender.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            await sender.fire("ack-recv-unrouted", "no-such-topic", {})
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            s_stats = sender.get_stats()
+            await sender.close()
+            await receiver.close()
+            return s_stats
+
+        s_stats = self._run_async(run())
+        self.assertEqual(s_stats.get("__ACK__", {}), {})
+
+    def test_async_ack_does_not_corrupt_pending_send(self):
+        """An ack arriving from a prior fire() must not be mistaken for a send()'s reply."""
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="ack-recv-mix")
+
+            @receiver.route("press")
+            def on_press(_data, _sender):
+                return None
+
+            @receiver.route("query")
+            def on_query(data, _sender):
+                return {"answer": data.get("q")}
+
+            asyncio.create_task(receiver.start())
+
+            sender = IpcDealerAsync(port=self.port, identity="ack-send-mix")
+            asyncio.create_task(sender.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            # Fire (will produce an ack) immediately followed by a send awaiting a reply.
+            await sender.fire("ack-recv-mix", "press", {})
+            reply = await sender.send("ack-recv-mix", "query", {"q": "hi"})
+
+            await sender.close()
+            await receiver.close()
+            return reply
+
+        reply = self._run_async(run())
+        self.assertEqual(reply.get("answer"), "hi")
+
     def test_async_dealer_close_cancels_recv_loop(self):
         """close() cleanly cancels the background recv task."""
         async def run():
