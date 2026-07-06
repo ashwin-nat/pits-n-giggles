@@ -14,8 +14,17 @@ Window {
     readonly property int baseHeight:     220
     readonly property int titleBarHeight: 20
 
+    // A hosted page may declare a preferred standalone height via `standaloneHeight`
+    // to hug its content instead of the full baseHeight. Pages that don't fall back.
+    readonly property int pageHeight: {
+        const it = pageContentLoader.item
+        if (it && it.standaloneHeight !== undefined && it.standaloneHeight > 0)
+            return it.standaloneHeight
+        return baseHeight
+    }
+
     width:  Math.round(baseWidth * scaleFactor)
-    height: Math.round((baseHeight + (showTitleBar ? titleBarHeight : 0)) * scaleFactor)
+    height: Math.round((pageHeight + (showTitleBar ? titleBarHeight : 0)) * scaleFactor)
 
     Item {
         anchors.fill: parent
@@ -50,10 +59,11 @@ Window {
         }
 
         Loader {
+            id:     pageContentLoader
             objectName: "pageContent"
             y:      root.showTitleBar ? root.titleBarHeight : 0
-            width:  baseWidth
-            height: baseHeight
+            width:  root.baseWidth
+            height: root.pageHeight
             source: root.pageSource
         }
     }

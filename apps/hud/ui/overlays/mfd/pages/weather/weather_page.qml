@@ -11,6 +11,12 @@ Item {
     /* ---------- UI MODE ---------- */
     property bool graphBasedUI: true
 
+    /* ---------- STANDALONE SIZING ---------- */
+    // Preferred window height when hosted standalone (StandalonePageHost reads this).
+    // The card layout only needs ~130px of content; the graph benefits from the full
+    // height. Ignored inside the MFD, which forces its own fixed page height.
+    readonly property int standaloneHeight: graphBasedUI ? 220 : 140
+
     /* ---------- WEATHER ICONS (SVG) ---------- */
     readonly property var weatherIcons: ({
         "Clear": "../../../../../../../assets/weather/clear.svg",
