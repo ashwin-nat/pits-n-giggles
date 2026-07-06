@@ -19,11 +19,17 @@
 #     a rerun replaces the section rather than duplicating it). The rest of
 #     the release notes is left untouched.
 #   - Publish the draft release automatically once the scan is clean.
+#   - Dispatch discord-release.yml to post the announcement (the publish step's
+#     own release-published event can't trigger it — GitHub doesn't let the
+#     default GITHUB_TOKEN chain into other workflows; workflow_dispatch is
+#     exempt from that restriction, so we call it directly instead).
 #
 # PERMISSIONS REQUIRED
 # --------------------
 # Requires "Read and write permissions" for the built-in GITHUB_TOKEN:
 #   Settings → Actions → General → Workflow permissions → Read and write permissions
+# This grants both `contents: write` (releases/tags) and `actions: write`
+# (needed to dispatch discord-release.yml), both declared below.
 #
 # Also requires a VT_API_KEY repo secret (Settings → Secrets and variables →
 # Actions → New repository secret) for the VirusTotal scan step. Get a free
@@ -38,6 +44,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -52,6 +59,7 @@ jobs:
     outputs:
       tag:        ${{ steps.draft.outputs.tag }}
       release_id: ${{ steps.draft.outputs.release_id }}
+      name:       ${{ steps.draft.outputs.name }}
 
     steps:
       - name: Locate draft release via GitHub API
@@ -75,9 +83,15 @@ jobs:
 
           TAG=$(echo "$RELEASES" | jq -r '.[0].tag_name')
           ID=$(echo  "$RELEASES" | jq -r '.[0].id')
+          NAME=$(echo "$RELEASES" | jq -r '.[0].name')
 
           echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
           echo "release_id=$ID"  >> "$GITHUB_OUTPUT"
+          {
+            echo "name<<VT_NAME_EOF"
+            echo "$NAME"
+            echo "VT_NAME_EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "Targeting draft release: $TAG (id=$ID)"
 
   # ───────────────────────────────────────────────────────────────────────────
@@ -314,7 +328,7 @@ jobs:
             echo "Polling analysis $ANALYSIS_ID for $NAME..."
             STATUS="queued"
             ELAPSED=0
-            TIMEOUT=300
+            TIMEOUT=900
             INTERVAL=20
             while [[ "$STATUS" != "completed" && "$ELAPSED" -lt "$TIMEOUT" ]]; do
               sleep "$INTERVAL"
@@ -396,13 +410,30 @@ jobs:
     needs: [find-release, virustotal]
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
-      RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
+      GH_TOKEN:     ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_ID:   ${{ needs.find-release.outputs.release_id }}
+      RELEASE_TAG:  ${{ needs.find-release.outputs.tag }}
+      RELEASE_NAME: ${{ needs.find-release.outputs.name }}
 
     steps:
+      # tag_name must be re-sent explicitly here: PATCHing draft=false alone
+      # can make GitHub re-derive the tag association and spawn a stray
+      # "untagged-<hash>" tag instead of keeping the original release tag.
       - name: Flip draft release to published
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
-            -X PATCH -f draft=false
+            -X PATCH -f draft=false -f tag_name="$RELEASE_TAG"
           echo "Published release $RELEASE_TAG"
+
+      # The GITHUB_TOKEN-authored publish above does not trigger other
+      # workflows' `on: release: published` listeners (GitHub blocks
+      # recursive workflow runs from the default token) — so discord-release.yml
+      # never fires on its own. workflow_dispatch is explicitly exempt from
+      # that restriction, so dispatch it directly instead.
+      - name: Notify Discord via workflow_dispatch
+        run: |
+          gh workflow run discord-release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            -f title="$RELEASE_NAME" \
+            -f tag="$RELEASE_TAG"
+          echo "Dispatched discord-release.yml for $RELEASE_TAG"
