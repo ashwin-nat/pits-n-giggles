@@ -407,8 +407,16 @@ class OverlaysMgr:
         """Interact with MFD overlay"""
         self.window_manager.broadcast_data('mfd_interact', {})
 
-    def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]):
-        """Apply a full overlays layout snapshot."""
+    def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
+        """Apply overlays layout to specified overlays
+
+        Args:
+            layout (Dict[str, Dict[str, int]]): A dictionary mapping overlay IDs to their
+                new layout parameters (x, y, scale_factor)
+
+        Returns:
+            Dict[str, Any]: A response dictionary indicating success or failure
+        """
         rsp = {
             "status": "success",
             "message": "Overlays layout applied successfully.",
@@ -425,6 +433,7 @@ class OverlaysMgr:
                     overlay_id,
                     "__set_config__",
                     overlay_layout,
+                    high_prio=True,
                 )
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.exception(

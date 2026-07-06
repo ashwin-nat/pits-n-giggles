@@ -30,10 +30,11 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     override)
 
 from pydantic import ValidationError
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtWidgets import QMenu, QMessageBox, QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (HudSettings, OverlayPosition, PngSettings)
+from lib.config import HudSettings, OverlayPosition, PngSettings
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -133,7 +134,7 @@ class HudAppMgr(PngAppMgrBase):
                 name="reset",
                 icon="reset",
                 callback=self.reset_callback,
-                tooltip="Reset Overlays Positions"
+                tooltip="Reset Overlays Positions (right-click to reset a single overlay)"
             ),
             ButtonConfig(
                 name="mfd_interact",
@@ -170,7 +171,44 @@ class HudAppMgr(PngAppMgrBase):
 
             button_list.append(btn)
 
+        # Right-clicking the reset button offers a per-overlay reset menu
+        reset_btn = self.buttons["reset"]
+        reset_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        reset_btn.customContextMenuRequested.connect(self._show_reset_overlay_menu)
+
         return button_list
+
+    def _show_reset_overlay_menu(self, pos: QPoint):
+        """Show a context menu of enabled overlays; selecting one resets only that overlay."""
+        reset_btn = self.buttons["reset"]
+        menu = QMenu(reset_btn)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: rgba(32, 32, 32, 255);
+                border: 1px solid rgba(255, 255, 255, 40);
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: white;
+                font-family: "Formula1";
+                font-size: 13px;
+                padding: 6px 20px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #0e639c;
+            }
+            QMenu::item:disabled {
+                color: rgba(255, 255, 255, 90);
+            }
+        """)
+        for oid in self.curr_settings.HUD.enabled_overlay_ids():
+            action = menu.addAction(oid.display_name)
+            action.triggered.connect(lambda _checked=False, oid=oid: self._reset_overlays([oid]))
+        if menu.isEmpty():
+            menu.addAction("No overlays enabled").setEnabled(False)
+        menu.exec(reset_btn.mapToGlobal(pos))
 
     def _update_all_button_states(self, running: bool):
         """Update all button states based on running state
@@ -239,15 +277,42 @@ class HudAppMgr(PngAppMgrBase):
             self.show_overlays_adj_popup()
 
     def reset_callback(self):
-        """Reset HUD overlays to default layout."""
-        self.debug_log("Sending reset overlays command to HUD...")
+        """Reset all HUD overlays to their default layout (left-click), after confirmation."""
+        reply = QMessageBox.question(
+            self.window,
+            "Reset Overlays",
+            "Reset all overlays to their default positions and scale factors?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
 
+        self._reset_overlays()
+
+    def _reset_overlays(self, overlay_ids: Optional[List[str]] = None):
+        """Reset HUD overlay positions/scales to defaults.
+
+        Args:
+            overlay_ids: Overlay IDs to reset. If None, all overlays are reset.
+        """
+        default_layout_dict = HudSettings.get_default_layout_dict()
+
+        if overlay_ids is None:
+            reset_ids = list(default_layout_dict.keys())
+        else:
+            reset_ids = overlay_ids
+
+        self.debug_log(f"Sending reset overlays command to HUD for: {reset_ids}")
+
+        # Send only the defaults for the overlays being reset
         default_layout_json = HudSettings.get_default_layout_json()
+        layout_payload = {oid: default_layout_json[oid] for oid in reset_ids}
         try:
             rsp = IpcClientSync(self.ipc_port).request(
                 command="set-overlays-layout",
                 args={
-                    "layout": default_layout_json,
+                    "layout": layout_payload,
                 },
             )
         except Exception as e: # pylint: disable=broad-except
@@ -259,12 +324,13 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to reset HUD overlays: {rsp.get("error", "unknown error")}")
             return
 
-        # IPC success - write defaults
+        # IPC success - persist the reset overlays' defaults, keeping the rest untouched
         try:
-            self._save_new_layout_to_disk(
-                new_layout=HudSettings.get_default_layout_dict()
-            )
-            self.info_log("HUD overlays reset to defaults and saved successfully.")
+            new_layout = dict(self.curr_settings.HUD.layout)
+            for oid in reset_ids:
+                new_layout[oid] = default_layout_dict[oid]
+            self._save_new_layout_to_disk(new_layout=new_layout)
+            self.info_log(f"HUD overlays reset to defaults and saved successfully: {reset_ids}")
         except Exception as e:  # pylint: disable=broad-except
             self.error_log(f"Failed to persist default HUD layout: {e}")
 

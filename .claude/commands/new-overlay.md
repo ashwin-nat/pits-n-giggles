@@ -43,9 +43,14 @@ GAP_TO_LEADER = "gap_to_leader"
 
 #### A2. Add `OverlayId` value — `lib/config/schema/hud/layout.py`
 
-Add an entry to the `OverlayId` enum:
+Add an entry to the `OverlayId` enum (value is the id string, not the display string):
 ```python
 GAP_TO_LEADER = "gap_to_leader_standalone"
+```
+
+Add a matching entry to the `OverlayId.display_name` property's mapping (this is the human-readable label shown in UI menus like the per-overlay reset menu):
+```python
+OverlayId.GAP_TO_LEADER: "Gap To Leader",
 ```
 
 Then add a default position to `DEFAULT_OVERLAY_LAYOUT`. All standalone MFD pages are 400×220 at scale=1. Spread it so it does not overlap existing entries (existing pages occupy the top row y=10 and bottom row y=840 across x=10/420/830/1240 — pick a free slot or the next row).
@@ -87,6 +92,11 @@ gap_to_leader_show_title: bool = Field(
 gap_to_leader_interact_udp_action_code: Optional[int] = udp_action_field(
     description="Interact with gap to leader overlay UDP action code", group="Gap To Leader"
 )
+```
+
+**e) Wire the enable flag into `enabled_overlay_ids()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+```python
+OverlayId.GAP_TO_LEADER: self.show_gap_to_leader,
 ```
 
 #### A4. Mark enable knob as catastrophic — `apps/launcher/subsystems/hud_mgr/hud_mgr.py`
@@ -260,14 +270,31 @@ show_<overlay_name>: bool = overlay_enable_field(description="Enable <Overlay Na
 
 **c) Any additional interaction UDP action codes** the user requested — one `udp_action_field` per interaction, same group. Include these in the same group plan.
 
-Also add the overlay ID constant at the top of the file (or in `lib/config/schema/hud/__init__.py` if that's where the other `*_OVERLAY_ID` constants live):
-```python
-<OVERLAY_NAME>_OVERLAY_ID = "<overlay_name>"
-```
+The overlay identity itself is an `OverlayId` enum member added in step B2 (not a standalone `*_OVERLAY_ID` constant).
 
 #### B2. Register overlay ID — `lib/config/schema/hud/layout.py`
 
-Read the file. Add `"<overlay_name>"` to the allowed overlay ID set/list so the config system recognises it.
+Read the file. Three edits:
+
+**a)** Add an entry to the `OverlayId` enum (value is the id string, not the display string). The overlay class's `OVERLAY_ID` class attribute should reference this member:
+```python
+FUEL_MONITOR = "fuel_monitor"
+```
+
+**b)** Add a matching entry to the `OverlayId.display_name` property's mapping (human-readable label for UI menus like the per-overlay reset menu):
+```python
+OverlayId.FUEL_MONITOR: "Fuel Monitor",
+```
+
+**c)** Add a default position to `DEFAULT_OVERLAY_LAYOUT` that does not overlap existing entries:
+```python
+OverlayId.FUEL_MONITOR: OverlayPosition(x=<x>, y=<y>),
+```
+
+Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+```python
+OverlayId.FUEL_MONITOR: self.show_fuel_monitor,
+```
 
 #### B3. Wire enable knob as catastrophic — `apps/launcher/subsystems/hud_mgr/hud_mgr.py`
 
@@ -356,7 +383,7 @@ Create two files:
 - MIT licence header (copy from template)
 - Class extends `BaseOverlay`
 - `QML_FILE = Path(__file__).parent / "<overlay_name>.qml"`
-- `OVERLAY_ID = "<overlay_name>"`
+- `OVERLAY_ID = OverlayId.<OVERLAY_NAME>` (reference the enum member added in B2, e.g. `OverlayId.FUEL_MONITOR` — not a raw string)
 - For high-frequency: `self.subscribe_hf(<HFType>)` in `__init__`, implement `render_frame()`
 - For event-driven: register handlers in `__init__` via `@self.on_event("<topic>")`,
   call `self.set_qml_property(name, value)` in handlers

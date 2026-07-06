@@ -701,6 +701,7 @@ class BaseOverlay(QmlBridge, QObject):
             config = OverlayPosition.fromJSON(data)
             self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
             self.set_window_position(config)
+            self.set_ui_scale(config.scale_factor)
 
         @self.on_event("__set_telemetry_active__")
         def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:

@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..diff import ConfigDiffMixin
 from ..utils import overlay_enable_field, udp_action_field
-from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayPosition,
+from .layout import (DEFAULT_OVERLAY_LAYOUT, OverlayId, OverlayPosition,
                      merge_overlay_layout)
 from .mfd import MfdSettings
 from .timing_tower import TimingTowerColOptions
@@ -615,6 +615,28 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     @property
     def next_mfd_page_udp_action_code(self) -> Optional[int]:
         return self.cycle_mfd_udp_action_code
+
+    def enabled_overlay_ids(self) -> list[OverlayId]:
+        """Return the enabled overlays, in OverlayId declaration order."""
+        enabled = {
+            OverlayId.LAP_TIMER:       self.show_lap_timer,
+            OverlayId.TIMING_TOWER:    self.show_timing_tower,
+            OverlayId.MFD:             self.show_mfd,
+            OverlayId.INPUT_TELEMETRY: self.show_input_overlay,
+            OverlayId.TRACK_RADAR:     self.show_track_radar_overlay,
+            OverlayId.HUD:             self.show_hud_overlay,
+            OverlayId.CIRCUIT_INFO:    self.show_circuit_info,
+            OverlayId.PU:              self.show_pu_info,
+            OverlayId.FUEL_INFO:       self.show_fuel_info,
+            OverlayId.TYRE_INFO:       self.show_tyre_info,
+            OverlayId.LAP_TIMES:       self.show_lap_times,
+            OverlayId.WEATHER:         self.show_weather,
+            OverlayId.PIT_REJOIN:      self.show_pit_rejoin,
+            OverlayId.TYRE_SETS:       self.show_tyre_sets,
+            OverlayId.PACE_COMP:       self.show_pace_comp,
+            OverlayId.TRAFFIC_MONITOR: self.show_traffic_monitor,
+        }
+        return [oid for oid, is_on in enabled.items() if is_on]
 
     @classmethod
     def get_layout_dict_from_json(cls, json_dict: Dict[str, Dict[str, int]]) -> Dict[str, OverlayPosition]:

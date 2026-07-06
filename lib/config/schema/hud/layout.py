@@ -50,6 +50,28 @@ class OverlayId(str, Enum):
     PACE_COMP        = "pace_comp_standalone"
     TRAFFIC_MONITOR  = "traffic_monitor_standalone"
 
+    @property
+    def display_name(self) -> str:
+        """Human-readable label for this overlay, used in UI menus."""
+        return {
+            OverlayId.LAP_TIMER:       "Lap Timer",
+            OverlayId.TIMING_TOWER:    "Timing Tower",
+            OverlayId.MFD:             "MFD",
+            OverlayId.INPUT_TELEMETRY: "Input Telemetry",
+            OverlayId.TRACK_RADAR:     "Track Radar",
+            OverlayId.HUD:             "HUD",
+            OverlayId.CIRCUIT_INFO:    "Circuit Info",
+            OverlayId.PU:              "Power Unit",
+            OverlayId.FUEL_INFO:       "Fuel Info",
+            OverlayId.TYRE_INFO:       "Tyre Info",
+            OverlayId.LAP_TIMES:       "Lap Times",
+            OverlayId.WEATHER:         "Weather",
+            OverlayId.PIT_REJOIN:      "Pit Rejoin",
+            OverlayId.TYRE_SETS:       "Tyre Sets",
+            OverlayId.PACE_COMP:       "Pace Comparison",
+            OverlayId.TRAFFIC_MONITOR: "Traffic Monitor",
+        }[self]
+
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
 class OverlayPosition(ConfigDiffMixin, BaseModel):
