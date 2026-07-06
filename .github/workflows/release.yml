@@ -15,8 +15,10 @@
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
 #   - Upload all artifacts + checksums.txt to the draft release.
 #   - Scan the uploaded binaries with VirusTotal; fail if any engine flags them.
+#   - Append a VirusTotal results section to the release notes (idempotent —
+#     a rerun replaces the section rather than duplicating it). The rest of
+#     the release notes is left untouched.
 #   - Publish the draft release automatically once the scan is clean.
-#   - Never touch the release notes.
 #
 # PERMISSIONS REQUIRED
 # --------------------
@@ -304,7 +306,7 @@ jobs:
 
             if [[ -z "$ANALYSIS_ID" ]]; then
               echo "::error::VirusTotal submission failed for $NAME: $SUBMIT_RESPONSE"
-              echo "$NAME: submission failed" >> virustotal-report.txt
+              echo "- \`$NAME\`: ⚠️ submission failed" >> virustotal-report.txt
               echo 1 > /tmp/vt_failed
               continue
             fi
@@ -324,13 +326,17 @@ jobs:
 
             if [[ "$STATUS" != "completed" ]]; then
               echo "::error::VirusTotal analysis for $NAME did not complete within ${TIMEOUT}s."
-              echo "$NAME: analysis timed out" >> virustotal-report.txt
+              echo "- \`$NAME\`: ⚠️ analysis timed out" >> virustotal-report.txt
               echo 1 > /tmp/vt_failed
               continue
             fi
 
             MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
-            echo "$NAME: $MALICIOUS malicious detection(s) - https://www.virustotal.com/gui/url/$ANALYSIS_ID" >> virustotal-report.txt
+            ICON="✅"
+            if [[ "$MALICIOUS" -gt 0 ]]; then
+              ICON="❌"
+            fi
+            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/url/$ANALYSIS_ID)" >> virustotal-report.txt
 
             if [[ "$MALICIOUS" -gt 0 ]]; then
               echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s)."
@@ -346,13 +352,41 @@ jobs:
           fi
           exit "$OVERALL_STATUS"
 
-      - name: Upload VirusTotal report to draft release
+      - name: Append VirusTotal results to release notes
         if: always()
         run: |
-          if [[ -f virustotal-report.txt ]]; then
-            gh release upload "$RELEASE_TAG" virustotal-report.txt \
-              --repo "$GITHUB_REPOSITORY" --clobber
+          set -euo pipefail
+
+          if [[ ! -f virustotal-report.txt ]]; then
+            echo "No virustotal-report.txt produced; skipping notes update."
+            exit 0
           fi
+
+          START="<!-- virustotal-scan:start -->"
+          END="<!-- virustotal-scan:end -->"
+
+          {
+            echo "$START"
+            echo "### VirusTotal Scan"
+            cat virustotal-report.txt
+            echo "$END"
+          } > vt-section.md
+
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq '.body // ""' > current-notes.md
+
+          # Strip any previous VirusTotal section (idempotent re-runs) then append the fresh one.
+          awk -v start="$START" -v end="$END" '
+            $0 == start { skip=1; next }
+            $0 == end   { skip=0; next }
+            !skip
+          ' current-notes.md > notes-base.md
+
+          { cat notes-base.md; echo; echo; cat vt-section.md; } > new-notes.md
+
+          jq -n --rawfile body new-notes.md '{body: $body}' \
+            | gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -X PATCH --input -
+
+          echo "Release notes updated with VirusTotal section."
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5. Publish the draft release. Only runs if the VirusTotal scan passed.
