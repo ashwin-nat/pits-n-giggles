@@ -14,12 +14,20 @@
 #   - Generate SHA256 checksums for all artifacts.
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
 #   - Upload all artifacts + checksums.txt to the draft release.
+#   - Scan the uploaded binaries with VirusTotal; fail if any engine flags them.
+#   - Publish the draft release automatically once the scan is clean.
 #   - Never touch the release notes.
 #
 # PERMISSIONS REQUIRED
 # --------------------
 # Requires "Read and write permissions" for the built-in GITHUB_TOKEN:
 #   Settings → Actions → General → Workflow permissions → Read and write permissions
+#
+# Also requires a VT_API_KEY repo secret (Settings → Secrets and variables →
+# Actions → New repository secret) for the VirusTotal scan step. Get a free
+# key by creating an account at virustotal.com and copying it from your
+# account's API Key page. The free tier (500 scans/day, 4 req/min) is
+# sufficient for this release cadence.
 
 name: Release
 
@@ -193,10 +201,10 @@ jobs:
           retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 3. Collect artifacts, checksum, wipe old assets, publish to draft release.
+  # 3. Collect artifacts, checksum, wipe old assets, upload to draft release.
   # ───────────────────────────────────────────────────────────────────────────
-  publish:
-    name: Publish to draft release
+  upload-assets:
+    name: Upload assets to draft release
     needs: [find-release, build]
     runs-on: ubuntu-latest
     env:
@@ -245,3 +253,122 @@ jobs:
               --repo "$GITHUB_REPOSITORY"
           done
           echo "All files uploaded to draft release $RELEASE_TAG"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 4. Scan the uploaded binaries with VirusTotal. Fails the job (and blocks
+  #    publish-release) if any engine flags either binary as malicious.
+  # ───────────────────────────────────────────────────────────────────────────
+  virustotal:
+    name: VirusTotal scan
+    needs: [find-release, upload-assets]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+      VT_API_KEY:  ${{ secrets.VT_API_KEY }}
+      RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
+      RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
+
+    steps:
+      - name: Check VT_API_KEY is configured
+        run: |
+          if [[ -z "$VT_API_KEY" ]]; then
+            echo "::error::VT_API_KEY secret is not set. Add it under Settings > Secrets and variables > Actions (see release.yml header for how to get a free key)."
+            exit 1
+          fi
+
+      - name: Scan release binaries with VirusTotal
+        run: |
+          set -euo pipefail
+
+          ASSETS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq '[.[] | select(.name | endswith(".exe") or endswith("-mac.zip")) | {name, url: .browser_download_url}]')
+
+          COUNT=$(echo "$ASSETS" | jq 'length')
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "::error::No .exe or -mac.zip assets found on draft release $RELEASE_TAG."
+            exit 1
+          fi
+
+          : > virustotal-report.txt
+          OVERALL_STATUS=0
+
+          echo "$ASSETS" | jq -c '.[]' | while read -r ASSET; do
+            NAME=$(echo "$ASSET" | jq -r '.name')
+            URL=$(echo "$ASSET" | jq -r '.url')
+
+            echo "Submitting $NAME to VirusTotal..."
+            SUBMIT_RESPONSE=$(curl -s -X POST "https://www.virustotal.com/api/v3/urls" \
+              -H "x-apikey: $VT_API_KEY" \
+              --data-urlencode "url=$URL")
+            ANALYSIS_ID=$(echo "$SUBMIT_RESPONSE" | jq -r '.data.id // empty')
+
+            if [[ -z "$ANALYSIS_ID" ]]; then
+              echo "::error::VirusTotal submission failed for $NAME: $SUBMIT_RESPONSE"
+              echo "$NAME: submission failed" >> virustotal-report.txt
+              echo 1 > /tmp/vt_failed
+              continue
+            fi
+
+            echo "Polling analysis $ANALYSIS_ID for $NAME..."
+            STATUS="queued"
+            ELAPSED=0
+            TIMEOUT=300
+            INTERVAL=20
+            while [[ "$STATUS" != "completed" && "$ELAPSED" -lt "$TIMEOUT" ]]; do
+              sleep "$INTERVAL"
+              ELAPSED=$((ELAPSED + INTERVAL))
+              ANALYSIS=$(curl -s "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+                -H "x-apikey: $VT_API_KEY")
+              STATUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.status')
+            done
+
+            if [[ "$STATUS" != "completed" ]]; then
+              echo "::error::VirusTotal analysis for $NAME did not complete within ${TIMEOUT}s."
+              echo "$NAME: analysis timed out" >> virustotal-report.txt
+              echo 1 > /tmp/vt_failed
+              continue
+            fi
+
+            MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
+            echo "$NAME: $MALICIOUS malicious detection(s) - https://www.virustotal.com/gui/url/$ANALYSIS_ID" >> virustotal-report.txt
+
+            if [[ "$MALICIOUS" -gt 0 ]]; then
+              echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s)."
+              echo 1 > /tmp/vt_failed
+            fi
+          done
+
+          echo "=== virustotal-report.txt ==="
+          cat virustotal-report.txt
+
+          if [[ -f /tmp/vt_failed ]]; then
+            OVERALL_STATUS=1
+          fi
+          exit "$OVERALL_STATUS"
+
+      - name: Upload VirusTotal report to draft release
+        if: always()
+        run: |
+          if [[ -f virustotal-report.txt ]]; then
+            gh release upload "$RELEASE_TAG" virustotal-report.txt \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # 5. Publish the draft release. Only runs if the VirusTotal scan passed.
+  # ───────────────────────────────────────────────────────────────────────────
+  publish-release:
+    name: Publish release
+    needs: [find-release, virustotal]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
+      RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
+
+    steps:
+      - name: Flip draft release to published
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -X PATCH -f draft=false
+          echo "Published release $RELEASE_TAG"
