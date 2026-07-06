@@ -25,15 +25,12 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, final
+from typing import Any, Dict, List, Optional, Tuple, final
 
 from PySide6.QtCore import QTimer
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,22 +41,23 @@ class SessionGroup:
 
 class WeatherForecastPage(MfdPageBase):
 
+    OVERLAY_ID = OverlayId.WEATHER
     KEY = MfdPageId.WEATHER_FORECAST
-    QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger, graph_based_ui: bool):
+    def __init__(self, logger: logging.Logger, graph_based_ui: bool):
+        self.graph_based_ui = graph_based_ui
+        super().__init__(logger)
+
+    @final
+    def setup_page(self):
         self._last_processed_samples: List[Dict[str, Any]] = []
         self.session_index: int = 0
         self.num_sessions: int = 0
         self.session_uid: int = 0
-        self.graph_based_ui: bool = graph_based_ui
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
 
-    def _init_event_handlers(self):
-        """Initialize event handlers."""
         @self.on_event("race_table_update")
         def race_table_update(data: Dict[str, Any]) -> None:
             forecast_data_flat = data.get("weather-forecast-samples", [])
@@ -71,10 +69,6 @@ class WeatherForecastPage(MfdPageBase):
             if incoming_session_uid != self.session_uid:
                 self._clear()
                 self.session_uid = incoming_session_uid
-
-            # Skip if data hasn't changed
-            if forecast_data_flat == self._last_processed_samples:
-                return
 
             self._display_weather_data(forecast_data_flat)
 
@@ -94,7 +88,7 @@ class WeatherForecastPage(MfdPageBase):
 
     @final
     def on_page_activated(self):
-        self.set_page_property("graphBasedUI", self.graph_based_ui)
+        self.set_qml_property("graphBasedUI", self.graph_based_ui)
         # Invalidate the cache after a delay
         QTimer.singleShot(1000, self._invalidate_cache)
 
@@ -161,7 +155,7 @@ class WeatherForecastPage(MfdPageBase):
 
         session_title, session_forecast = self._get_session_info(forecast_data_flat)
 
-        self.set_page_property("forecastData", session_forecast[: self.MAX_SAMPLES])
-        self.set_page_property("sessionTitle", session_title or "")
+        self.set_qml_property("forecastData", session_forecast[: self.MAX_SAMPLES])
+        self.set_qml_property("sessionTitle", session_title or "")
 
         self._last_processed_samples = forecast_data_flat

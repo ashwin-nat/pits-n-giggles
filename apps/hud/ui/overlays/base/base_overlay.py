@@ -22,65 +22,95 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import ctypes
 import logging
 from pathlib import Path
 from time import perf_counter_ns
-from typing import Optional, TypeVar, final, override
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
-from PySide6.QtCore import (QEvent, QMetaObject, QObject, QPoint, QSize,
-                            QPropertyAnimation, Qt, QTimer, QUrl, Slot)
-from PySide6.QtCore import Q_ARG
+from PySide6.QtCore import (Q_ARG, QEvent, QMetaObject, QObject, QPoint,
+                            QPropertyAnimation, QSize, Qt, QTimer, QUrl,
+                            Signal, Slot)
 from PySide6.QtGui import QCursor, QIcon, QMouseEvent
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
+from lib.assets_loader import load_icon
 from lib.config import OverlayPosition
+from meta.meta import APP_NAME_SNAKE
 
-from .base import BaseOverlay
+from .qml_bridge import QmlBridge
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
+OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
+
 HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
-_UNSET = object()  # sentinel for absent QML property cache entries
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class BaseOverlayQML(BaseOverlay, QObject):
+class BaseOverlay(QmlBridge, QObject):
     """
-    Base class for all QML-based overlays.
+    Base class for all QML overlay windows.
 
-    This is the QML equivalent of BaseOverlayWidget. It satisfies the abstract
-    interface required by BaseOverlay and provides:
+    Owns the QML window (QQuickWindow) and the process-facing transport: every
+    overlay gets the command/request dispatch infrastructure, the high-frequency
+    data channel, and the window lifecycle in one place.
 
     --------------------------------------------------------------------------
     WHAT THIS CLASS IMPLEMENTS
     --------------------------------------------------------------------------
+    - Overlay identity, configuration, and runtime state
+    - Command/request dispatch (via QmlBridge.on_event / dispatch_event)
+    - Default commands: toggling visibility, locked state, opacity, window
+      config, telemetry-active gating, get_window_info, get_window_stats
+    - High-frequency data subscription, caching, and loss accounting
     - Loading QML from disk using QQmlApplicationEngine
     - Ownership of the root QML window (QQuickWindow)
     - Applying window flags (always-on-top, frameless, tool vs full window)
     - Position & opacity management via QQuickWindow
     - Fade-in/fade-out via QPropertyAnimation bound to QQuickWindow.opacity
-    - Rebuilding QML UI when scale factor changes
     - Allowing locked/unlocked (click-through) behavior via flags
     - Windowed Overlay Mode (OBS capture)
+    - Optional fixed-rate render tick (refresh_interval_ms constructor arg);
+      event-driven overlays pass None and repaint on telemetry updates
 
     --------------------------------------------------------------------------
     WHAT DERIVED CLASSES MUST PROVIDE
     --------------------------------------------------------------------------
-    - A QML file path passed into constructor or via subclass default
-    - Optional extra integration with QML root object
-    - QML should expose a root Window {} or Item {} inside a Window {}
-    - QML should contain `property real scaleFactor`
+    - OVERLAY_ID class attribute
+    - A QML file path via the QML_FILE class attribute
+    - QML should expose a root Window {} containing `property real scaleFactor`
+    - render_frame() if a refresh interval is used
 
-    This class does NOT assume anything about the UI structure. Derived classes
-    may communicate with QML using:
-        - findChild()
-        - setProperty()
-        - QML signals/slots
-        - Connections in QML to C++/Python slots
+    Lifecycle hooks (override in leaf classes):
+        - pre_setup()   — before the QML window is created
+        - post_setup()  — after the QML window is created
+
+    --------------------------------------------------------------------------
+    OPTIONAL QML FRAME-ANIMATION STATS
+    --------------------------------------------------------------------------
+    Overlays that animate continuously (i.e. use FrameAnimation to drive
+    per-frame rendering) should include a FrameTelemetry component and expose
+    the following property aliases on the root Window:
+
+        import "../base"
+
+        property alias faFps:               frameTelemetry.fps
+        property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+        property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+        property alias faFrameCount:        frameTelemetry.frameCount
+
+        FrameTelemetry { id: frameTelemetry }
+
+    When these properties are present, get_window_stats() automatically reads
+    them from the QML root and includes them under the "frame_animation" key.
+    Overlays that do not define these properties are unaffected.
     """
 
+    response_signal = Signal(str, object)   # request_type, response_data
+    OVERLAY_ID: str = ""
     QML_FILE: Path = ""  # Derived classes MUST set this
 
     _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
@@ -119,13 +149,14 @@ class BaseOverlayQML(BaseOverlay, QObject):
         assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
         assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
 
+        QmlBridge.__init__(self)
         QObject.__init__(self)
+
         self._engine = QQmlApplicationEngine()
         self._root: Optional[QQuickWindow] = None
         self._unlock_overlay: Optional[QQuickItem] = None
         self._fade_anim = None
         self._drag_pos: Optional[QPoint] = None
-        self._qml_props: dict = {}
 
         self._refresh_interval_ms = refresh_interval_ms
         if refresh_interval_ms:
@@ -142,26 +173,72 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._resize_corner: Optional[Qt.Corner] = None
         self._resize_origin_scale: float = 1.0
 
-        super().__init__(
-            config,
-            logger,
-            locked,
-            opacity,
-            scale_factor,
-            windowed_overlay,
-        )
+        assert self.OVERLAY_ID
+
+        self.windowed_overlay = windowed_overlay
+        self.config = config
+        self.locked = locked
+        self.logger = logger
+        self.opacity = opacity
+        self.scale_factor = scale_factor
+        self.telemetry_active = True
+
+        self._request_handlers: Dict[str, OverlayRequestHandler] = {}
+        self._latest_hf: Dict[str, HighFreqBase] = {}
+        self._hf_subscriptions: set[str] = set()
+        self._hf_last_seq: Dict[str, int] = {}
+        self._hf_pending: set[str] = set()
+        self._user_hidden: bool = False  # True when user explicitly hid this overlay
+
+        # Create the actual window
+        self.pre_setup()
+        self._setup_window()
+        self.post_setup()
+        self.apply_config()
+
+        # Register default handlers
+        self._register_default_handlers()
+
         logger.debug("%s initialized. Path=%s. "
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
+
+    @property
+    def is_animation_overlay(self) -> bool:
+        return self._refresh_interval_ms is not None
+
+    # ------------------------------------------------------------------
+    # QmlBridge: _qml_target implementation
+    # ------------------------------------------------------------------
+    @property
+    def _qml_target(self) -> Optional[QQuickWindow]:
+        return self._root
 
     @property
     def qml_engine(self) -> QQmlApplicationEngine:
         """The QML engine for this overlay."""
         return self._engine
 
-    # ----------------------------------------------------------------------
+    @property
+    def root(self) -> Optional[QQuickWindow]:
+        """The root QML window. Available after _setup_window() completes."""
+        return self._root
+
+    # ------------------------------------------------------------------
+    # Lifecycle hooks
+    # ------------------------------------------------------------------
+    def pre_setup(self):
+        """Hook called before _setup_window(). Override in leaf classes with @final.
+
+        Called from base __init__ before subclass __init__ has run — overrides must not
+        depend on any subclass-initialized state.
+        """
+
+    def post_setup(self):
+        """Hook called after _setup_window() completes. Override in leaf classes with @final."""
+
+    # ------------------------------------------------------------------
     # Window + QML Setup
-    # ----------------------------------------------------------------------
-    @override
+    # ------------------------------------------------------------------
     def _setup_window(self):
         """Load QML and extract the root QQuickWindow."""
 
@@ -184,32 +261,72 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._root.installEventFilter(self)
         self._root.setProperty("scaleFactor", self.scale_factor)
 
-        super()._setup_window()
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+        self.set_window_title(self.OVERLAY_ID)
+        self.set_window_icon(load_icon(Path("assets") / "logo.png",
+                                     debug_log_printer=self.logger.debug,
+                                     error_log_printer=self.logger.error))
+
         self._create_unlock_overlay()
         self.update_window_flags()
         self._root.setVisible(True)
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
 
-    @final
-    def build_ui(self):
-        pass # QML based overlays dont need this
+    # ------------------------------------------------------------------
+    # Common handlers
+    # ------------------------------------------------------------------
 
-    # ----------------------------------------------------------------------
-    # Abstract method implementations
-    # ----------------------------------------------------------------------
+    def set_locked_state(self, locked: bool):
+        """Common handler for setting locked state."""
+        self.locked = locked
+        self.update_window_flags()
+
+        if self.locked and not self.telemetry_active:
+            self.logger.debug("%s locking overlay. But hiding it since telemetry is not active", self.OVERLAY_ID)
+            self.set_visibility(False)
+
+    def toggle_visibility(self):
+        """Common handler for toggling visibility."""
+        self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
+        if self.get_visibility():
+            self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
+            self.set_visibility(False)
+            self._user_hidden = True
+        else:
+            self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
+            self.set_visibility(True)
+            self._user_hidden = False
+
+    def set_telemetry_active(self, active: bool):
+        """Common handler for setting telemetry active state."""
+        self.logger.debug("%s set_telemetry_active: %s", self.OVERLAY_ID, active)
+        self.telemetry_active = active
+
+        if not self.locked:
+            # In unlocked mode. user is probably editing the overlay.
+            # Hence no-op
+            return
+
+        if active:
+            if not self._user_hidden:
+                self.set_visibility(True)
+        else:
+            self.set_visibility(False)
+
+    # ------------------------------------------------------------------
+    # Window management
+    # ------------------------------------------------------------------
     def set_window_title(self, title: str):
         self._root.setTitle(title)
 
     def set_window_icon(self, icon: QIcon):
         self._root.setIcon(icon)
 
-    @override
     def apply_config(self):
         self._root.setPosition(self.config.x, self.config.y)
         self.set_opacity(self.opacity)
 
-    @override
     def update_window_flags(self):
 
         flags = (
@@ -254,24 +371,14 @@ class BaseOverlayQML(BaseOverlay, QObject):
             return
         self._unlock_overlay.setVisible(not self.locked)
 
-    @override
     def set_opacity(self, opacity: int):
         self._root.setOpacity(opacity / 100.0)
 
     def set_ui_scale(self, ui_scale: float):
-        """
-        Update the UI scale factor at runtime.
-
-        This updates the scaleFactor property in QML if it exists,
-        allowing the QML UI to dynamically resize all scaled elements.
-
-        Args:
-            ui_scale: New scale factor (e.g., 1.0, 1.5, 2.0)
-        """
+        """Update the UI scale factor at runtime."""
         self.scale_factor = ui_scale
 
         if self._root:
-            # Check if the QML root has a scaleFactor property
             if self._root.property("scaleFactor") is not None:
                 self._root.setProperty("scaleFactor", ui_scale)
                 self.logger.debug("%s | UI scale updated to %s", self.OVERLAY_ID, ui_scale)
@@ -302,24 +409,23 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._fade_anim = anim
         anim.start()
 
-    @override
     def set_visibility(self, visible: bool):
         self.animate_fade(visible)
 
-    @override
     def get_window_info(self) -> OverlayPosition:
         pos = self._root.position()
         return OverlayPosition(x=pos.x(), y=pos.y(), scale_factor=self.scale_factor)
 
-    @override
     def set_window_position(self, config: OverlayPosition):
         self.config = config
         self._root.setPosition(config.x, config.y)
 
-    @override
     def get_visibility(self) -> bool:
         return self._root.isVisible()
 
+    # ------------------------------------------------------------------
+    # Drag / resize handling (unlocked mode)
+    # ------------------------------------------------------------------
     def _get_resize_corner_px(self) -> int:
         """Return the corner handle size in logical pixels.
 
@@ -447,22 +553,19 @@ class BaseOverlayQML(BaseOverlay, QObject):
                 return self._on_mouse_release()
         return super().eventFilter(obj, event)
 
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Rendering methods
-    # ----------------------------------------------------------------------
+    # ------------------------------------------------------------------
     def _on_frame(self):
-        """
-        Fixed-rate render tick for QML overlays.
-        Derived classes may override _render_frame().
-        """
+        """Fixed-rate render tick. Derived classes implement render_frame()."""
         if not self._root:
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_NO_ROOT__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_NO_ROOT__")
             return
 
         if not self.get_visibility():
             self._frame_active = False
-            self._stats.track_event("__FRAMES__", "__DROPPED_HIDDEN__")
+            self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_HIDDEN__")
             return
 
         # First frame after becoming visible — reset timing baseline so the
@@ -475,70 +578,21 @@ class BaseOverlayQML(BaseOverlay, QObject):
         self._clear_hf_pending()
         assert self._refresh_interval_ms
         assert self._fps
-        self._stats.track_frame_render("__FRAMES__", "__FRAME__", perf_counter_ns(), self._fps)
+        self._stats.track_frame_render("__FRAMES_PRODUCER__", "__FRAME__", perf_counter_ns(), self._fps)
 
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
-        self._stats.reset_frame_timing("__FRAMES__", "__FRAME__")
+        self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
 
-    def invalidate_qml_cache(self, *names: str) -> None:
-        """Remove one or more property names from the cache so the next
-        set_qml_property call always pushes the value to QML regardless of
-        whether it matches the previously cached value."""
-        for name in names:
-            self._qml_props.pop(name, None)
+    def render_frame(self):
+        """Derived classes must implement this method if a refresh interval is used."""
+        raise NotImplementedError
 
-    def set_qml_property(self, name: str, value) -> None:
-        """Set a property on the QML root object.
-
-        Silently does nothing if the root is not yet initialized or if the
-        property already holds the same value. Uses a local dict to track
-        last-set values to avoid the cost of reading back through the Qt
-        meta-object system.
-        """
-        if self._root is None:
-            return
-        if self._qml_props.get(name, _UNSET) == value:
-            self._stats.track_event("__QML_PROPERTY_CACHE_HITS__", name)
-            return
-        self._qml_props[name] = value
-        self._root.setProperty(name, value)
-        self._stats.track_event("__QML_PROPERTIES_PUSHES__", name)
-
-    @property
-    def root(self) -> Optional[QQuickWindow]:
-        """The root QML window. Available after _setup_window() completes."""
-        return self._root
-
-    def on_event(self, cmd_name: str, requires_root: bool = True):
-        """Register a command handler, optionally guarded by root availability.
-
-        Args:
-            cmd_name: The event/command name to handle.
-            requires_root: When True (default), the handler is silently dropped
-                and counted under ``__DROPPED_NO_ROOT__`` if the QML root window
-                is not yet initialised. Set to False for handlers that must run
-                even before the window is ready.
-        """
-        def decorator(func):
-            if requires_root:
-                def wrapper(data, _cmd=cmd_name):
-                    if not self._root:
-                        self._stats.track_event("__DROPPED_NO_ROOT__", _cmd)
-                        return None
-                    return func(data)
-                self._command_handlers[cmd_name] = wrapper
-            else:
-                self._command_handlers[cmd_name] = func
-            return func
-        return decorator
-
+    # ------------------------------------------------------------------
+    # QML method invocation
+    # ------------------------------------------------------------------
     def invoke_qml_method(self, method: str, *args) -> None:
-        """Invoke a QML method on the root window with QVariant arguments.
-
-        All positional args are forwarded as ``QVariant`` via a queued
-        connection, matching the standard pattern used across QML overlays.
-        """
+        """Invoke a QML method on the root window with QVariant arguments."""
         self._stats.track_event("__QML_METHOD_CALLS__", method)
         QMetaObject.invokeMethod(
             self._root,
@@ -547,9 +601,196 @@ class BaseOverlayQML(BaseOverlay, QObject):
             *(Q_ARG("QVariant", a) for a in args),
         )
 
-    def render_frame(self):
-        """Derived classes must implement this method."""
-        raise NotImplementedError
+    # ------------------------------------------------------------------
+    # Request handler registration
+    # ------------------------------------------------------------------
+    def on_request(self, request_type: str):
+        def decorator(func: OverlayRequestHandler):
+            self._request_handlers[request_type] = func
+            return func
+        return decorator
+
+    # ------------------------------------------------------------------
+    # High frequency data
+    # ------------------------------------------------------------------
+    def subscribe_hf(self, obj_type: HighFreqObjType) -> None:
+        """Subscribe to high frequency data."""
+        self._hf_subscriptions.add(obj_type.__hf_type__)
+
+    def update_hf_data_cache(self, data: HighFreqBase):
+        """Update the latest high frequency data cache."""
+        self._latest_hf[data.__hf_type__] = data
+
+    def get_latest_hf_data(self, type_: Type[HighFreqObjType]) -> Optional[HighFreqObjType]:
+        """Get the latest high frequency data of a specific type."""
+        return self._latest_hf.get(type_.__hf_type__)
+
+    def _track_hf_event(self, event_type: str) -> None:
+        self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
+        self._stats.track_event("__HF_EVENTS__", event_type)
+
+    def _clear_hf_pending(self) -> None:
+        """Mark all pending HF types as consumed by the current render frame."""
+        self._hf_pending.clear()
+
+    def _track_hf_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
+        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+
+    def _track_cmd_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
+        self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
+        self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+
+    # ------------------------------------------------------------------
+    # Stats (extends QmlBridge.get_stats)
+    # ------------------------------------------------------------------
+    def get_stats(self) -> dict:
+        """Get overlay runtime stats."""
+        stats = self._stats.get_stats()
+        if self._root and self.is_animation_overlay:
+            # Animation overlays must define these properties
+            stats["__FRAMES_RENDERED__"] = {
+                "type":               "__FRAMES_RENDERED__",
+                "fps":                self._root.property("faFps"),
+                "frame_time_ms":      self._root.property("faFrameTimeMs"),
+                "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
+                "frame_count":        self._root.property("faFrameCount"),
+            }
+        return stats
+
+    # ------------------------------------------------------------------
+    # Default handlers
+    # ------------------------------------------------------------------
+    def _register_default_handlers(self):
+        """Register built-in command and request handlers."""
+        @self.on_request("get_window_info")
+        def _get_info(_data: dict):
+            self.logger.debug('%s | Received request "get_window_info"', self.OVERLAY_ID)
+            return self.get_window_info().toJSON()
+
+        @self.on_request("get_window_stats")
+        def _get_stats(_data: dict):
+            self.logger.debug('%s | Received request "get_window_stats"', self.OVERLAY_ID)
+            return self.get_stats()
+
+        @self.on_event("__set_locked_state__")
+        def _set_locked(data: dict):
+            locked = data.get('new-value', False)
+            self.logger.debug('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
+            self.set_locked_state(locked)
+            if not locked:
+                self.set_visibility(True)
+
+        @self.on_event("__toggle_visibility__")
+        def _handle_toggle_visibility(_data: Dict[str, Any]):
+            self.toggle_visibility()
+
+        @self.on_event("__set_visibility__")
+        def _handle_set_visibility(data: Dict[str, Any]):
+            visible = data["visible"]
+            self.set_visibility(visible)
+
+        @self.on_event("__set_opacity__")
+        def _handle_set_opacity(data: Dict[str, Any]):
+            opacity = data["opacity"]
+            self.opacity = opacity
+            self.set_opacity(opacity)
+
+        @self.on_event("__set_config__")
+        def _handle_set_window_config(data: Dict[str, Any]) -> None:
+            config = OverlayPosition.fromJSON(data)
+            self.logger.debug("%s | Setting window config to %s", self.OVERLAY_ID, config)
+            self.set_window_position(config)
+            self.set_ui_scale(config.scale_factor)
+
+        @self.on_event("__set_telemetry_active__")
+        def _handle_set_telemetry_active(data: Dict[str, Any]) -> None:
+            active = data["active"]
+            self.set_telemetry_active(active)
+
+    # ------------------------------------------------------------------
+    # IPC - Signals/Slots
+    # ------------------------------------------------------------------
+    @Slot(str, bool, str, object)
+    def _handle_cmd(self, recipient: str, high_prio: bool, cmd: str, data: dict):
+        if recipient and recipient != self.OVERLAY_ID:
+            return
+        if not self.get_visibility() and not high_prio:
+            return
+        if cmd not in self._handlers:
+            return
+        payload = data["__payload__"]
+        timestamp = data["__meta__"]["__timestamp__"]
+        self._track_cmd_pipeline_latency(cmd, timestamp, perf_counter_ns())
+        try:
+            self.dispatch_event(cmd, payload)
+        except AssertionError:
+            self.logger.exception("%s | Assertion error handling command '%s'", self.OVERLAY_ID, cmd)
+            raise
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("%s | Error handling command '%s': %s", self.OVERLAY_ID, cmd, e)
+
+    @Slot(str, str, object)
+    def _handle_request(self, recipient: str, request_type: str, request_data: object):
+        """Internal request dispatcher for overlays."""
+        if recipient and recipient != self.OVERLAY_ID:
+            return
+
+        if handler := self._request_handlers.get(request_type):
+            self.logger.debug("%s | Handling request '%s'", self.OVERLAY_ID, request_type)
+            try:
+                response = handler(request_data)
+                self.response_signal.emit(request_type, response)
+            except AssertionError:
+                self.logger.exception("%s | Assertion error handling request '%s'", self.OVERLAY_ID, request_type)
+                raise
+            except Exception as e: # pylint: disable=broad-exception-caught
+                self.logger.exception("%s | Error handling request '%s': %s", self.OVERLAY_ID, request_type, e)
+        else:
+            self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
+
+    @Slot(object)
+    def _handle_high_freq_data(self, payload: HighFreqBase):
+        if payload.__hf_type__ not in self._hf_subscriptions:
+            return
+
+        self._track_hf_pipeline_latency(
+            payload.__hf_type__,
+            payload.__timestamp__,
+            perf_counter_ns(),
+        )
+
+        msg_type = payload.__hf_type__
+        curr_seq = payload.__seq__
+        prev_seq = self._hf_last_seq.get(msg_type)
+        if prev_seq is None:
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq == prev_seq + 1:
+            self._hf_last_seq[msg_type] = curr_seq
+        elif curr_seq > prev_seq + 1:
+            lost = curr_seq - prev_seq - 1
+            self._stats.track_event("__HF_LOSS__", "__TOTAL__", count=lost)
+            self._stats.track_event("__HF_LOSS__", msg_type, count=lost)
+            self._hf_last_seq[msg_type] = curr_seq
+        else:
+            self.logger.error(
+                "%s | HF out-of-order: type=%s prev_seq=%d curr_seq=%d",
+                self.OVERLAY_ID, msg_type, prev_seq, curr_seq,
+            )
+            return
+
+        self._latest_hf[payload.__hf_type__] = payload
+        if self.get_visibility():
+            if payload.__hf_type__ in self._hf_pending:
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
+                self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
+            else:
+                self._hf_pending.add(payload.__hf_type__)
+            self._track_hf_event(payload.__hf_type__)
+        else:
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
+            self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)
+
 
 class QmlLogger(QObject):
     def __init__(self, logger: logging.Logger, oid: str):

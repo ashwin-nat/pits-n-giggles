@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,10 +22,25 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .track_map import TrackMapOverlay
+from typing import Protocol
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+# -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-__all__ = [
-    "TrackMapOverlay",
-]
+class PowerFilter(Protocol):
+    """Protocol for all power filter implementations."""
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def update(self, time_ms: int, energy_j: float) -> None:
+        """Consume a new (time, energy) sample."""
+
+    def get_power_w(self) -> float:
+        """Return the latest estimated power in watts. Does not mutate state."""
+
+    def is_valid(self) -> bool:
+        """Return True when the filter has enough history to produce meaningful output."""
+
+    def reset(self) -> None:
+        """Clear all internal state. After this, is_valid() must return False."""

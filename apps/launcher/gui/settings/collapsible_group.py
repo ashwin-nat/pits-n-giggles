@@ -31,12 +31,15 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class CollapsibleGroup(QWidget):
-    def __init__(self, title: str, icon_map: Dict[str, QIcon], parent: Optional[QWidget] = None):
+    def __init__(self, title: str, icon_map: Dict[str, QIcon],
+                 title_tag: Optional[str] = None,
+                 parent: Optional[QWidget] = None):
         """A collapsible group widget for organizing settings in the launcher.
 
         Args:
             title: The title of the group.
             icon_map: A dictionary mapping icon names to icons.
+            title_tag: Optional short tag pill rendered after the title (e.g. "MFD").
             parent: The parent widget.
         """
         super().__init__(parent)
@@ -55,38 +58,60 @@ class CollapsibleGroup(QWidget):
                 background-color: #2d2d30;
                 border: 1px solid #4a4a4a;
                 border-radius: 4px;
-                padding: 2px;
             }
             QFrame:hover {
                 background-color: #37373d;
-                border-color: #0e639c;
+                border-color: #555555;
             }
         """)
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(10, 6, 10, 6)
+        header_layout.setContentsMargins(12, 8, 12, 8)
         header_layout.setSpacing(8)
+
+        title_label = QLabel(title)
+        title_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #d4d4d4; background: transparent; border: none;")
+        header_layout.addWidget(title_label)
+
+        if title_tag:
+            tag_label = QLabel(title_tag)
+            tag_label.setFont(QFont("Roboto", 7, QFont.Weight.Bold))
+            tag_label.setStyleSheet(
+                "QLabel { color: #ffffff; background-color: #0e7490;"
+                " border-radius: 3px; padding: 1px 5px; border: none; }"
+                " QToolTip { background-color: #1e1e1e; color: #d4d4d4;"
+                " border: 1px solid #555555; padding: 4px; border-radius: 0px; }"
+            )
+            tag_label.setFixedHeight(16)
+            tag_label.setToolTip("This overlay can be used as a page within the MFD overlay")
+            header_layout.addWidget(tag_label)
+
+        header_layout.addStretch()
 
         self._toggle_label = QLabel()
         self._toggle_label.setFixedSize(20, 20)
         header_layout.addWidget(self._toggle_label)
 
-        title_label = QLabel(title)
-        title_label.setFont(QFont("Roboto", 10, QFont.Weight.Bold))
-        title_label.setStyleSheet("color: #cccccc; background: transparent; border: none;")
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
-
-        header.mousePressEvent = self._on_header_clicked  # local, but now encapsulated
+        header.mousePressEvent = self._on_header_clicked
 
         outer_layout.addWidget(header)
 
         self._content_wrapper = QWidget()
-        self._content_wrapper.setStyleSheet("background-color: #1e1e1e;")
+        self._content_wrapper.setObjectName("collapsibleGroupBody")
+        self._content_wrapper.setStyleSheet("""
+            QWidget#collapsibleGroupBody {
+                background-color: #252526;
+                border: 1px solid #4a4a4a;
+                border-top: none;
+                border-radius: 0 0 4px 4px;
+            }
+        """)
         self._content_layout = QVBoxLayout(self._content_wrapper)
-        self._content_layout.setContentsMargins(12, 8, 8, 8)
+        self._content_layout.setContentsMargins(16, 10, 20, 10)
         self._content_layout.setSpacing(8)
         outer_layout.addWidget(self._content_wrapper)
 
+        self._header_layout = header_layout
         self._update_icon()
 
     @property
@@ -115,3 +140,16 @@ class CollapsibleGroup(QWidget):
 
     def _on_header_clicked(self, _event) -> None:
         self.set_collapsed(not self._is_collapsed)
+
+
+class HeaderCollapsibleGroup(CollapsibleGroup):
+    """CollapsibleGroup that inserts extra widgets between the stretch and the caret."""
+
+    def __init__(self, title: str, icon_map: Dict[str, QIcon],
+                 header_extra: Optional[QWidget] = None,
+                 title_tag: Optional[str] = None,
+                 parent: Optional[QWidget] = None):
+        super().__init__(title, icon_map, title_tag=title_tag, parent=parent)
+        if header_extra is not None:
+            # Insert before the caret label (last item)
+            self._header_layout.insertWidget(self._header_layout.count() - 1, header_extra)

@@ -23,6 +23,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
+import "../base"
 
 Window {
     id: root
@@ -32,6 +33,13 @@ Window {
 
     readonly property int baseWidth: 470
     readonly property int baseHeight: 116
+
+    property alias faFps:               frameTelemetry.fps
+    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+    property alias faFrameCount:        frameTelemetry.frameCount
+
+    FrameTelemetry { id: frameTelemetry }
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
@@ -45,10 +53,11 @@ Window {
     property int    gear:           0
     property int    speedKmph:      0
     property string speedUnitLabel: "km/h"
-    property string drsText:        "DRS"
-    property bool   drsEnabled:     false
-    property bool   drsAvailable:   false
-    property int    drsDistance:    0
+    property string drsText:           "DRS"
+    property bool   drsEnabled:        false
+    property bool   drsAvailable:      false
+    property int    drsDistance:       0
+    property bool   pitLimiterEnabled: false
 
     property bool   isF126:         true
     property bool   otEnabled:      false
@@ -524,28 +533,43 @@ Window {
                                 width:          (parent.width - 4) * 2 / 3
 
                                 Rectangle {
+                                    id:           drsBar
                                     anchors.centerIn: parent
                                     height:       22
                                     width:        parent.width - 8
                                     radius:       5
                                     clip:         true
-                                    color:        root.drsEnabled
-                                                      ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
-                                                      : (root.drsAvailable || root.drsDistance > 0)
-                                                          ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
-                                                          : Qt.rgba(0.16, 0.22, 0.28, 0.50)
+                                    color:        root.pitLimiterEnabled
+                                                      ? "white"
+                                                      : root.drsEnabled
+                                                          ? Qt.rgba(0.00, 0.90, 0.42, 0.18)
+                                                          : (root.drsAvailable || root.drsDistance > 0)
+                                                              ? Qt.rgba(1.00, 0.79, 0.32, 0.10)
+                                                              : Qt.rgba(0.16, 0.22, 0.28, 0.50)
                                     border.width: 1
-                                    border.color: root.drsEnabled
-                                                      ? "#00e676"
-                                                      : (root.drsAvailable || root.drsDistance > 0)
-                                                          ? "#ffca52"
-                                                          : "#2d3e4d"
+                                    border.color: root.pitLimiterEnabled
+                                                      ? "white"
+                                                      : root.drsEnabled
+                                                          ? "#00e676"
+                                                          : (root.drsAvailable || root.drsDistance > 0)
+                                                              ? "#ffca52"
+                                                              : "#2d3e4d"
+
+                                    // Pit-limiter pulse animation
+                                    SequentialAnimation on opacity {
+                                        running:  root.pitLimiterEnabled
+                                        loops:    Animation.Infinite
+                                        NumberAnimation { to: 0.4; duration: 400; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.InOutSine }
+                                        onStopped: drsBar.opacity = 1.0
+                                    }
 
                                     Rectangle {
                                         anchors.left:   parent.left
                                         anchors.top:    parent.top
                                         anchors.bottom: parent.bottom
-                                        visible: !root.drsEnabled &&
+                                        visible: !root.pitLimiterEnabled &&
+                                                 !root.drsEnabled &&
                                                  (root.drsDistance > 0 ||
                                                   (root.drsAvailable && root.drsDistance === 0))
                                         width: (root.drsAvailable && root.drsDistance === 0)
@@ -558,14 +582,16 @@ Window {
                                     Text {
                                         id:              drsLabel
                                         anchors.centerIn: parent
-                                        text:            root.drsText
+                                        text:            root.pitLimiterEnabled ? "LIMITER" : root.drsText
                                         font.family:     "Formula1"
                                         font.pixelSize:  8
-                                        color: root.drsEnabled
-                                               ? "#00e676"
-                                               : (root.drsAvailable || root.drsDistance > 0)
-                                                   ? "#ffca52"
-                                                   : "#3d4f5e"
+                                        color: root.pitLimiterEnabled
+                                               ? "black"
+                                               : root.drsEnabled
+                                                   ? "#00e676"
+                                                   : (root.drsAvailable || root.drsDistance > 0)
+                                                       ? "#ffca52"
+                                                       : "#3d4f5e"
                                         z: 1
                                     }
                                 }

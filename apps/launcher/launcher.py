@@ -30,8 +30,12 @@ import shutil
 import sys
 import tempfile
 
+from PySide6.QtCore import QLockFile
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QMessageBox
+
 from apps.launcher.gui import PngLauncherWindow
-from lib.file_path import resolve_user_file
+from lib.file_path import resolve_fixed_file, resolve_user_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
 from meta.meta import APP_NAME, APP_NAME_SNAKE
@@ -156,6 +160,56 @@ APP_ICON_PATH = str(resource_path("assets/logo.png"))
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
+def _hide_file_windows(path: str) -> None:
+    """On Windows, set the hidden attribute on a file so a curious user is less
+    likely to spot it and delete it. No-op on other platforms (a leading-dot name
+    already hides the file there by convention)."""
+    if os.name != "nt":
+        return
+    FILE_ATTRIBUTE_HIDDEN = 0x02
+    try:
+        ctypes.windll.kernel32.SetFileAttributesW(str(path), FILE_ATTRIBUTE_HIDDEN)
+    except Exception:  # pylint: disable=broad-except
+        pass
+
+
+def _acquire_single_instance_lock() -> QLockFile:
+    """Acquire the single-instance lock, or show an error and exit if another
+    instance already holds it.
+
+    Returns:
+        QLockFile: The acquired lock. The caller must keep a reference to it for
+            the process lifetime; QLockFile releases the lock on destruction.
+    """
+    # Leading dot hides the file on Unix; the Windows hidden attribute is set below
+    # once the lock file actually exists. Either way it stays out of casual sight.
+    # A fixed (cwd-independent) path so two instances launched from different
+    # directories still contend for the same lock and cannot coexist.
+    lock_path = resolve_fixed_file(f".{APP_NAME_SNAKE}.lock")
+    lock = QLockFile(lock_path)
+    lock.setStaleLockTime(0)  # rely on PID liveness check, not a time window
+
+    if not lock.tryLock(100):  # ms; small grace for a racing startup
+        # A non-stale lock is held by a live process -> another instance is running.
+        # A QApplication must exist before a QMessageBox can be shown.
+        app = QApplication.instance() or QApplication(sys.argv)
+        # On Windows, set the AppUserModelID so the taskbar shows our icon, not Python's.
+        if os.name == "nt":
+            try:
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME_SNAKE)
+            except Exception:  # pylint: disable=broad-except
+                pass
+        app.setWindowIcon(QIcon(APP_ICON_PATH))
+        box = QMessageBox(QMessageBox.Critical, APP_NAME, f"{APP_NAME} is already running.")
+        box.setWindowIcon(QIcon(APP_ICON_PATH))
+        box.exec()
+        sys.exit(1)
+
+    # The lock file now exists (tryLock created it); mark it hidden on Windows.
+    _hide_file_windows(lock_path)
+    return lock
+
+
 def entry_point() -> None:
     """
     Main entry point for the Pits n' Giggles application.
@@ -165,6 +219,10 @@ def entry_point() -> None:
         - Launching the main Tkinter application otherwise.
     """
     args: argparse.Namespace = parse_args()
+
+    # Enforce single instance before doing anything else. Keep `lock` referenced for
+    # the whole function lifetime so it is not garbage-collected (GC releases the lock).
+    lock = _acquire_single_instance_lock()  # pylint: disable=unused-variable
 
     # Handle smoke test
     if args.smoke_test is not None:

@@ -47,24 +47,23 @@ _DEFAULT_CAR_DIMENSIONS_M = _CarDims(2.00, 5.63)
 # Radar display constants — single source of truth for both Python and QML.
 # QML reads radarAreaRatio via a property set in post_setup so the canvas
 # geometry and the Python coordinate projection always agree.
-_RADAR_RANGE_M    = 25.0   # metres represented by half the radar area
 _RADAR_BASE_WIDTH = 300    # must match baseWidth in track_radar.qml
 _RADAR_AREA_RATIO = 0.85   # must match the 0.85 factor in track_radar.qml
 _RADAR_AREA_PX    = _RADAR_BASE_WIDTH * _RADAR_AREA_RATIO
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def car_px(formula_type: str) -> tuple[float, float]:
+def car_px(formula_type: str, range_m: float) -> tuple[float, float]:
     """Return (width_px, length_px) scaled to the radar coordinate system."""
     dims = _CAR_DIMENSIONS_M.get(formula_type, _DEFAULT_CAR_DIMENSIONS_M)
-    px_per_m = (_RADAR_AREA_PX / 2.0) / _RADAR_RANGE_M
+    px_per_m = (_RADAR_AREA_PX / 2.0) / range_m
     return round(dims.width_m * px_per_m, 1), round(dims.length_m * px_per_m, 1)
 
 
-def to_radar_coords(rel_x: float, rel_z: float) -> tuple[float, float]:
+def to_radar_coords(rel_x: float, rel_z: float, range_m: float) -> tuple[float, float]:
     # Match legacy QML projection exactly:
     #   radarArea.center + local offset where radarArea was inset in 300x300 root.
     # This resolves to root center while keeping radarArea-sized scaling.
     center = _RADAR_BASE_WIDTH / 2
-    scale = (_RADAR_AREA_PX / 2) / _RADAR_RANGE_M
+    scale = (_RADAR_AREA_PX / 2) / range_m
     return center - rel_x * scale, center - rel_z * scale

@@ -26,16 +26,17 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import get_ers_mode_color, get_ref_row, is_race_type_session, is_tt_session
+from apps.hud.common import (get_ers_mode_color, get_ref_row,
+                             is_race_type_session)
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlayQML
-from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
-                        OverlayId, OverlayPosition)
+from apps.hud.ui.overlays.base import BaseOverlay
+from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
+                        OverlaysSpeedUnit)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class HudOverlay(BaseOverlayQML):
+class HudOverlay(BaseOverlay):
     """
     Extremely minimal QML overlay template.
 
@@ -131,6 +132,7 @@ class HudOverlay(BaseOverlayQML):
         self.set_qml_property("drsEnabled",   drs_enabled)
         self.set_qml_property("drsAvailable", drs_avlb)
         self.set_qml_property("drsDistance",  drs_dist)
+        self.set_qml_property("pitLimiterEnabled", data.pit_limiter_enabled)
 
         # ERS — all values as percentages
         _store = CarStatusData.MAX_ERS_STORE_ENERGY
@@ -179,5 +181,5 @@ class HudOverlay(BaseOverlayQML):
 
             if is_race_type_session(session_type):
                 self._surplus_fuel = fuel.get(self._surplus_fuel_key)
-            elif is_tt_session(session_type):
+            else:
                 self._surplus_fuel = fuel.get("surplus-laps-game")

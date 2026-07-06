@@ -209,6 +209,16 @@ Rectangle {
                 font.pixelSize: 13
                 color: "#888888"
             }
+
+            // Waiting for data
+            Text {
+                anchors.centerIn: parent
+                visible: root.viewState === "empty"
+                text: "WAITING FOR DATA"
+                font.family: "Formula1"
+                font.pixelSize: 11
+                color: "#666666"
+            }
         }
     }
 

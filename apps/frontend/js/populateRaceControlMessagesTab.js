@@ -144,6 +144,32 @@ const detailRenderers = {
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };
 
+function formatRaceCtrlLocation(msg) {
+    const seg = msg['segment-info'];
+    const sector = msg['sector'];
+
+    const sectorLabel = sector ? `Sector ${sector.slice(1)}` : null;
+
+    if (!seg) return sectorLabel ?? '---';
+
+    const type = seg['type'] || '';
+    const name = seg['name'] || '';
+
+    if (type === 'straight') {
+        return name || sectorLabel || '---';
+    }
+    // corner - single vs complex distinguished by key presence
+    let turns;
+    if (seg['corner_number'] != null) {
+        turns = `T${seg['corner_number']}`;
+    } else if (seg['corner_numbers']?.length) {
+        const nums = seg['corner_numbers'];
+        turns = `T${nums[0]}-${nums[nums.length - 1]}`;
+    }
+    if (turns) return name ? `${turns} - ${name}` : turns;
+    return name || sectorLabel || '---';
+}
+
 /**
  * Populates the Race Control Messages tab with an AG Grid.
  * This function will fetch race control messages and display them in a sortable, paginated grid.
@@ -203,6 +229,15 @@ function populateRaceControlMessagesTab(containerElement, initialRowData) {
         { headerName: 'ID', field: 'id', sortable: true, filter: false, width: 80 },
         { headerName: 'Message Type', field: 'message-type', sortable: true, filter: false, width: 150 },
         { headerName: 'Lap Number', field: 'lap-number', sortable: true, filter: false, width: 150 },
+        {
+            headerName: 'Location',
+            sortable: false,
+            filter: false,
+            width: 200,
+            valueGetter: params => formatRaceCtrlLocation(params.data),
+            cellRenderer: params => params.value,
+            getQuickFilterText: params => params.value,
+        },
         {
             headerName: 'Details',
             field: 'details',

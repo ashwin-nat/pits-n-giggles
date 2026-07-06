@@ -102,6 +102,18 @@ class SaveViewerWebServer(BaseWebServer):
         self._defineTemplateFileRoutes()
         self._defineDataRoutes()
 
+    def _render_index(self) -> Any:
+        """Read the built React index.html and inject the app version.
+
+        Returns:
+            A Quart-compatible (body, status, headers) tuple serving index.html.
+        """
+        index_path = self.m_viewer_dir / 'index.html'
+        html = index_path.read_text(encoding='utf-8')
+        injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
+        html = html.replace('</head>', f'{injection}</head>', 1)
+        return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
+
     def _defineTemplateFileRoutes(self) -> None:
         """
         Define routes for rendering HTML templates.
@@ -110,15 +122,17 @@ class SaveViewerWebServer(BaseWebServer):
         """
         @self.http_route('/')
         async def viewerIndex():
-            index_path = self.m_viewer_dir / 'index.html'
-            html = index_path.read_text(encoding='utf-8')
-            injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
-            html = html.replace('</head>', f'{injection}</head>', 1)
-            return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
+            return self._render_index()
 
         @self.http_route('/<path:path>')
         async def viewerStatic(path: str):
-            return await self.send_from_directory(self.m_viewer_dir, path)
+            # Serve real static assets directly; fall back to index.html for any
+            # unknown path so the client-side (React) router can resolve it.
+            # Without this, refreshing/deep-linking a virtual route (e.g.
+            # /f1-26/sessions/<slug>) would 404 since no such file exists on disk.
+            if (self.m_viewer_dir / path).is_file():
+                return await self.send_from_directory(self.m_viewer_dir, path)
+            return self._render_index()
 
         @self.http_route('/legacy/<slug>')
         async def legacyView(slug: str):

@@ -24,6 +24,7 @@
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
@@ -56,6 +57,7 @@ from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
+from lib.track_segment_info import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
@@ -322,13 +324,18 @@ class SessionState:
         'm_save_race_ctrl_msgs',
         'm_weather_aware_prediction',
         'm_tyre_wear_window_size',
+        'm_power_filter_window_size',
         'm_custom_markers_history',
         'm_first_session_update_received',
         'm_version',
+        'm_pkt_fmt',
+        'm_game_major_ver',
+        'm_game_minor_ver',
         'm_connected_to_sim',
         'm_race_ctrl',
         'm_flashback_occurred',
         'm_in_menu',
+        'm_track_segments_db',
     )
 
     def __init__(self,
@@ -362,12 +369,16 @@ class SessionState:
         self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
         self.m_version: str = ver_str
+        self.m_pkt_fmt: Optional[int] = None
+        self.m_game_major_ver: Optional[int] = None
+        self.m_game_minor_ver: Optional[int] = None
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
         self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
+        self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -375,6 +386,9 @@ class SessionState:
 
         self.m_race_ctrl: SessionRaceControlManager = SessionRaceControlManager()
         self.m_flashback_occurred: bool = False
+        self.m_track_segments_db = TrackSegmentsDatabase(
+            Path(__file__).parents[3] / "assets/track-segments"
+        )
 
     ####### Control Methods ########
 
@@ -404,6 +418,9 @@ class SessionState:
         self.m_flashback_occurred = False
 
         self.m_pkt_count = 0
+        self.m_pkt_fmt = None
+        self.m_game_major_ver = None
+        self.m_game_minor_ver = None
 
         # No need to clear config params
 
@@ -418,6 +435,11 @@ class SessionState:
             self.m_num_active_cars and
             any(obj and obj.is_valid for obj in self.m_driver_data)
         )
+
+    @property
+    def game_ver_str(self) -> None:
+        """Returns the game version string"""
+        return f"{self.m_game_major_ver}.{self.m_game_minor_ver}"
 
     def setRaceOngoing(self) -> None:
         """
@@ -481,6 +503,10 @@ class SessionState:
 
             # Update packet copy and check for fastest lap recomputation
             driver_obj.updateLapDataPacketCopy(lap_data, self.m_session_info.m_track_len)
+            # Only feed the power estimators while the car is on a running timed lap; a lap
+            # timer of 0 (stationary/garage/not started) would reset the filter's rolling window.
+            if lap_data.m_currentLapTimeInMS > 0:
+                driver_obj.m_car_info.updatePowerEstimators(lap_data.m_currentLapTimeInMS)
 
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
@@ -510,7 +536,7 @@ class SessionState:
             lap_data: Lap data containing current lap number
         """
         # Capture zeroth lap snapshot if needed
-        if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot():
+        if self.m_session_info.curr_weather is not None and driver_obj.shouldCaptureZerothLapSnapshot(self.m_pkt_fmt):
             driver_obj.onLapChange(
                 old_lap_number=0,
                 session_type=self.m_session_info.m_session_type
@@ -649,6 +675,11 @@ class SessionState:
                         old_state=old_ai,
                         new_state=new_ai,
                     )
+                    if obj_to_be_updated.m_packet_copies.m_packet_lap_data:
+                        _lap_data = obj_to_be_updated.m_packet_copies.m_packet_lap_data
+                        msg.lap_distance = _lap_data.m_lapDistance
+                        msg.segment_info = self._lookup_segment_info(msg.lap_distance)
+                        msg.sector = str(_lap_data.m_sector)
                     obj_to_be_updated.m_race_ctrl.add_message(msg)
 
             # Update pkt copy
@@ -863,6 +894,7 @@ class SessionState:
         if self.m_save_race_ctrl_msgs:
             final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
         final_json['version'] = self.m_version
+        final_json['game-version'] = self.game_ver_str
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
@@ -1089,6 +1121,9 @@ class SessionState:
         """Record that a flashback has happened"""
 
         self.m_flashback_occurred = True
+        for driver_obj in self.m_driver_data:
+            if driver_obj:
+                driver_obj.m_car_info.resetPowerEstimators()
 
     def handleEvent(self, packet: PacketEventData):
         """Handle the event packet
@@ -1107,6 +1142,13 @@ class SessionState:
             lap_num = None
 
         if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
+            if msg.involved_drivers:
+                driver_obj = self._getObjectByIndex(msg.involved_drivers[0], create=False)
+                if driver_obj and driver_obj.m_packet_copies.m_packet_lap_data:
+                    _lap_data = driver_obj.m_packet_copies.m_packet_lap_data
+                    msg.lap_distance = _lap_data.m_lapDistance
+                    msg.segment_info = self._lookup_segment_info(msg.lap_distance)
+                    msg.sector = str(_lap_data.m_sector)
             self.m_race_ctrl.add_message(msg)
 
     def setChequeredFlagState(self, flag_val: bool) -> None:
@@ -1482,6 +1524,13 @@ class SessionState:
 
     ##### Internal Helpers #####
 
+    def _lookup_segment_info(self, lap_distance: float) -> Optional[Dict[str, Any]]:
+        """Return rendered segment info for the current track at lap_distance, or None."""
+        if self.m_session_info.m_track is None:
+            return None
+        seg = self.m_track_segments_db.get_segment_info(self.m_session_info.m_track.value, lap_distance)
+        return seg.to_dict() if seg else None
+
     def _getRaceCtrlHelperDict(self) -> Dict[str, Any]:
         """Get the race control messages helper dictionary. This is a mapping of index against driver info JSON,
         which contains the following keys: `name`, `team`, `driver-number`."""
@@ -1518,7 +1567,8 @@ class SessionState:
                 total_laps=self.m_session_info.m_total_laps,
                 state_ref=self,
                 weather_aware_prediction=self.m_weather_aware_prediction,
-                tyre_wear_window_size=self.m_tyre_wear_window_size)
+                tyre_wear_window_size=self.m_tyre_wear_window_size,
+                harvest_power_window_size=self.m_power_filter_window_size)
             self.m_driver_data[index] = obj
             self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj
@@ -1592,6 +1642,7 @@ class SessionState:
         """
 
         session_changed = False
+        self.m_pkt_fmt = packet.m_header.m_packetFormat
         if not self.m_first_session_update_received:
             # This is the first session update for this session. log the session info only once
             self.m_first_session_update_received = True

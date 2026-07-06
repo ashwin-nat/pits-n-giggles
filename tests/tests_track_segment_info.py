@@ -374,12 +374,12 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class TestSegmentRender(F1TelemetryUnitTestsBase):
+class TestSegmentDict(F1TelemetryUnitTestsBase):
 
-    def test_straight_named_render(self):
-        """Named straight renders with type=straight and name set."""
+    def test_straight_named_Dict(self):
+        """Named straight dict contains type and name."""
         seg = StraightSegmentInfo(name="Kemmel Straight", start_m=400, end_m=1200)
-        self.assertEqual(seg.render(), {"type": "straight", "name": "Kemmel Straight", "turns": ""})
+        self.assertEqual(seg.to_dict(), {"type": "straight", "name": "Kemmel Straight"})
 
     def test_straight_empty_name_raises(self):
         """Empty name on a straight raises ValidationError."""
@@ -391,40 +391,40 @@ class TestSegmentRender(F1TelemetryUnitTestsBase):
         with self.assertRaises(ValidationError):
             StraightSegmentInfo(start_m=0, end_m=100)
 
-    def test_corner_named_render(self):
-        """Named corner renders with type=corner, name, and turn number."""
+    def test_corner_named_dict(self):
+        """Named corner dict contains type, name, and corner_number."""
         seg = CornerSegmentInfo(name="La Source", start_m=0, end_m=200, corner_number=1)
-        self.assertEqual(seg.render(), {"type": "corner", "name": "La Source", "turns": "T1"})
+        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "La Source", "corner_number": 1})
 
-    def test_corner_unnamed_render(self):
-        """Unnamed corner renders with empty name and full 'Turn N' label."""
+    def test_corner_unnamed_dict(self):
+        """Unnamed corner dict contains with type, empty name, and corner_number."""
         seg = CornerSegmentInfo(name="", start_m=0, end_m=200, corner_number=3)
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turn 3"})
+        self.assertEqual(seg.to_dict(), {"type": "corner", "name": "", "corner_number": 3})
 
-    def test_complex_corner_named_render(self):
-        """Named complex corner renders with type=corner, name, and spaced turn numbers."""
+    def test_complex_corner_named_dict(self):
+        """Named complex corner dict contains type=complex_corner, name, and corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Pouhon", start_m=1400, end_m=1800, corner_numbers=(6, 7))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Pouhon", "turns": "Turns 6-7"})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Pouhon", "corner_numbers": [6, 7]})
 
-    def test_complex_corner_unnamed_render(self):
-        """Unnamed complex corner with >2 turns renders with 'Turns' range format."""
+    def test_complex_corner_unnamed_dict(self):
+        """Unnamed complex corner dict contains with type=complex_corner, empty name, and corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(1, 2, 3))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turns 1-3"})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "", "corner_numbers": [1, 2, 3]})
 
-    def test_complex_corner_unnamed_two_turns_render(self):
-        """Unnamed complex corner with 2 turns renders with 'Turn' slash format."""
+    def test_complex_corner_unnamed_two_turns_dict(self):
+        """Unnamed complex corner with 2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "", "turns": "Turns 3-4"})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "", "corner_numbers": [3, 4]})
 
-    def test_complex_corner_two_turns_render(self):
-        """Complex corner with exactly 2 turns renders with slash format."""
+    def test_complex_corner_two_turns_dict(self):
+        """Complex corner with exactly 2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Esses", start_m=0, end_m=500, corner_numbers=(3, 4))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Esses", "turns": "Turns 3-4"})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Esses", "corner_numbers": [3, 4]})
 
-    def test_complex_corner_many_turns_render(self):
-        """Complex corner with >2 turns renders with range format."""
+    def test_complex_corner_many_turns_dict(self):
+        """Complex corner with >2 turns dict contains corner_numbers list."""
         seg = ComplexCornerSegmentInfo(name="Maggotts-Becketts", start_m=0, end_m=800, corner_numbers=(5, 6, 7, 8))
-        self.assertEqual(seg.render(), {"type": "corner", "name": "Maggotts-Becketts", "turns": "Turns 5-8"})
+        self.assertEqual(seg.to_dict(), {"type": "complex_corner", "name": "Maggotts-Becketts", "corner_numbers": [5, 6, 7, 8]})
 
     # --- name optionality rules -------------------------------------------------------
 

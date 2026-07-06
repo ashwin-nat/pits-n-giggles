@@ -24,21 +24,19 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, MfdTyreWearRateType
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
+from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TyreInfoPage(MfdPageBase):
 
+    OVERLAY_ID = OverlayId.TYRE_INFO
     KEY = MfdPageId.TYRE_INFO
-    QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
 
@@ -49,19 +47,16 @@ class TyreInfoPage(MfdPageBase):
         'rear-right':  'RR',
     }
 
-    def __init__(self,
-                 overlay: "MfdOverlay",
-                 logger: logging.Logger,
+    def __init__(self, logger: logging.Logger,
                  tyre_wear_threshold: int,
-                 tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX,
-                 ):
+                 tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX):
         self.tyre_wear_threshold = tyre_wear_threshold
         self.tyre_wear_rate_type = tyre_wear_rate_type
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
+        super().__init__(logger)
 
-    def _init_event_handlers(self):
-        """Initialise event handlers."""
+    @final
+    def setup_page(self):
+
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             """Update tyre wear information display."""
@@ -78,11 +73,11 @@ class TyreInfoPage(MfdPageBase):
             telemetry_settings = ref_row["driver-info"]["telemetry-setting"]
 
             # Update compound display
-            self.set_page_property("currentCompound", actual_tyre_comp)
-            self.set_page_property("currentCompoundVisual", visual_tyre_comp)
+            self.set_qml_property("currentCompound", actual_tyre_comp)
+            self.set_qml_property("currentCompoundVisual", visual_tyre_comp)
 
             # Update stats
-            self.set_page_property("tyreAge", tyre_age)
+            self.set_qml_property("tyreAge", tyre_age)
 
             # Calculate and display wear rate
             tyre_wear_rates: Dict[str, Any] = tyre_info.get('wear-prediction', {}).get('rate', {})
@@ -90,21 +85,21 @@ class TyreInfoPage(MfdPageBase):
 
                 if self.tyre_wear_rate_type == MfdTyreWearRateType.AVERAGE:
                     rate = sum(tyre_wear_rates.values()) / len(tyre_wear_rates)
-                    self.set_page_property("wearRate", rate)
-                    self.set_page_property("wearRateTyre", "Avg")
+                    self.set_qml_property("wearRate", rate)
+                    self.set_qml_property("wearRateTyre", "Avg")
                 else:
                     max_key = max(tyre_wear_rates, key=tyre_wear_rates.__getitem__)
-                    self.set_page_property("wearRate", tyre_wear_rates[max_key])
-                    self.set_page_property("wearRateTyre", self.KEY_LABELS.get(max_key, ""))
+                    self.set_qml_property("wearRate", tyre_wear_rates[max_key])
+                    self.set_qml_property("wearRateTyre", self.KEY_LABELS.get(max_key, ""))
             else:
-                self.set_page_property("wearRate", 0.0)
-                self.set_page_property("wearRateTyre", "")
+                self.set_qml_property("wearRate", 0.0)
+                self.set_qml_property("wearRateTyre", "")
 
             if telemetry_settings != "Public":
-                self.set_page_property("telemetryDisabled", True)
+                self.set_qml_property("telemetryDisabled", True)
                 return
 
-            self.set_page_property("telemetryDisabled", False)
+            self.set_qml_property("telemetryDisabled", False)
 
             # Update wear table
             curr_lap_num = ref_row["lap-info"]["current-lap"]
@@ -175,7 +170,7 @@ class TyreInfoPage(MfdPageBase):
             if visual_compound in tyre_counts:
                 tyre_counts[visual_compound] = count
 
-        self.set_page_property("tyreCounts", tyre_counts)
+        self.set_qml_property("tyreCounts", tyre_counts)
 
     def _update_wear_table(self, curr_wear: Dict[str, float], curr_lap: int,
                           predictions: Optional[List[Dict]], pit_lap: Optional[int]) -> None:
@@ -232,7 +227,7 @@ class TyreInfoPage(MfdPageBase):
             })
 
         # Update QML table data
-        self.set_page_property("wearTableData", rows_data[:3])
+        self.set_qml_property("wearTableData", rows_data[:3])
 
     def _find_closest_prediction(self, predictions: List[Dict], target_lap: int) -> Optional[Dict]:
         """Find the prediction closest to the target lap."""

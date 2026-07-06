@@ -24,18 +24,19 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, final
+from typing import Any, Dict, Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
 from lib.f1_types import F1Utils
-from lib.track_segment_info.database import TrackSegmentsDatabase
+from lib.track_segment_info import (ComplexCornerSegmentInfo,
+                                    CornerSegmentInfo, TrackSegmentsDatabase)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class CircuitInfoOverlay(BaseOverlayQML):
+class CircuitInfoOverlay(BaseOverlay):
     """
     Extremely minimal QML overlay template.
 
@@ -147,22 +148,47 @@ class CircuitInfoOverlay(BaseOverlayQML):
         if not data:
             return
 
-        segment_info = self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m)
-        sectors = self.tracks_db.get_sectors(data.circuit_num)
-
         self.set_qml_property("circuitPosM", data.circuit_pos_m)
         self.set_qml_property("circuitLength", data.circuit_length or self.circuit_info_length)
+
+        sectors = self.tracks_db.get_sectors(data.circuit_num)
         self.set_qml_property(
             "sectorsInfo",
             {"s1": sectors.s1, "s2": sectors.s2} if sectors else None,
         )
 
-        if segment_info:
-            rendered = segment_info.render()
-            self.set_qml_property("segmentInfo", {
-                "type": rendered["type"],
-                "above": rendered["name"],
-                "below": rendered["turns"],
-            })
-        else:
-            self.set_qml_property("segmentInfo", None)
+        self.set_qml_property("segmentInfo", self._get_segment_dict(data))
+
+    def _get_segment_dict(self, data: HudOverlayData) -> Optional[Dict[str, Any]]:
+        """Get the segment info for the current circuit position.
+           Dict will contain "type", "above" and "below" keys.
+        """
+        qml_segment = None
+        if segment_info := self.tracks_db.get_segment_info(data.circuit_num, data.circuit_pos_m):
+            match segment_info.TYPE:
+                case "straight":
+                    qml_segment = {
+                        "type": "straight",
+                        "above": segment_info.name,
+                        "below": "",
+                    }
+                case "corner":
+                    corner_segment: CornerSegmentInfo = segment_info
+                    if segment_info.name:
+                        below = f"T{corner_segment.corner_number}"
+                    else:
+                        below = f"Turn {corner_segment.corner_number}"
+                    qml_segment = {
+                        "type": "corner",
+                        "above": corner_segment.name,
+                        "below": below,
+                    }
+                case "complex_corner":
+                    complex_segment: ComplexCornerSegmentInfo = segment_info
+                    first, last = complex_segment.corner_numbers[0], complex_segment.corner_numbers[-1]
+                    qml_segment = {
+                        "type": "corner",
+                        "above": complex_segment.name,
+                        "below": f"Turns {first}-{last}",
+                    }
+        return qml_segment

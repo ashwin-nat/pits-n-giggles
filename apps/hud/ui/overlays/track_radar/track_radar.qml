@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Shapes
+import "../base"
 
 Window {
     id: root
@@ -9,6 +10,13 @@ Window {
     property real scaleFactor: 1.0
     readonly property int baseWidth: 300
     readonly property int baseHeight: 300
+
+    property alias faFps:               frameTelemetry.fps
+    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
+    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
+    property alias faFrameCount:        frameTelemetry.frameCount
+
+    FrameTelemetry { id: frameTelemetry }
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -55,7 +63,6 @@ Window {
 
         clip: true
         opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
-        Behavior on opacity { NumberAnimation { duration: 500 } }
 
         transform: Scale {
             xScale: scaleFactor
@@ -110,13 +117,11 @@ Window {
             anchors.fill: parent
             source: "image://radar/glow-left"
             opacity: root.carOnLeft ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
         }
         Image {
             anchors.fill: parent
             source: "image://radar/glow-right"
             opacity: root.carOnRight ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
         // --- Other cars — fixed 22-slot Rectangle pool (scene graph) ---

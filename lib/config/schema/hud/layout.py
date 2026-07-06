@@ -33,15 +33,44 @@ from ..diff import ConfigDiffMixin
 # ------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
 class OverlayId(str, Enum):
-    LAP_TIMER       = "lap_timer"
-    TIMING_TOWER    = "timing_tower"
-    MFD             = "mfd"
-    TRACK_MAP       = "track_map"
-    INPUT_TELEMETRY = "input_telemetry"
-    TRACK_RADAR     = "track_radar"
-    HUD             = "hud_overlay"
-    CIRCUIT_INFO    = "circuit_info"
-    PU              = "pu"
+    LAP_TIMER        = "lap_timer"
+    TIMING_TOWER     = "timing_tower"
+    MFD              = "mfd"
+    INPUT_TELEMETRY  = "input_telemetry"
+    TRACK_RADAR      = "track_radar"
+    HUD              = "hud_overlay"
+    CIRCUIT_INFO     = "circuit_info"
+    PU               = "pu"
+    FUEL_INFO        = "fuel_info"
+    TYRE_INFO        = "tyre_info"
+    LAP_TIMES        = "lap_times_standalone"
+    WEATHER          = "weather_standalone"
+    PIT_REJOIN       = "pit_rejoin_standalone"
+    TYRE_SETS        = "tyre_sets_standalone"
+    PACE_COMP        = "pace_comp_standalone"
+    TRAFFIC_MONITOR  = "traffic_monitor_standalone"
+
+    @property
+    def display_name(self) -> str:
+        """Human-readable label for this overlay, used in UI menus."""
+        return {
+            OverlayId.LAP_TIMER:       "Lap Timer",
+            OverlayId.TIMING_TOWER:    "Timing Tower",
+            OverlayId.MFD:             "MFD",
+            OverlayId.INPUT_TELEMETRY: "Input Telemetry",
+            OverlayId.TRACK_RADAR:     "Track Radar",
+            OverlayId.HUD:             "HUD",
+            OverlayId.CIRCUIT_INFO:    "Circuit Info",
+            OverlayId.PU:              "Power Unit",
+            OverlayId.FUEL_INFO:       "Fuel Info",
+            OverlayId.TYRE_INFO:       "Tyre Info",
+            OverlayId.LAP_TIMES:       "Lap Times",
+            OverlayId.WEATHER:         "Weather",
+            OverlayId.PIT_REJOIN:      "Pit Rejoin",
+            OverlayId.TYRE_SETS:       "Tyre Sets",
+            OverlayId.PACE_COMP:       "Pace Comparison",
+            OverlayId.TRAFFIC_MONITOR: "Traffic Monitor",
+        }[self]
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
 
@@ -88,10 +117,6 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=10,
         y=355,
     ),
-    # OverlayId.TRACK_MAP: OverlayPosition(
-    #     x=10,
-    #     y=600,
-    # ),
     OverlayId.INPUT_TELEMETRY: OverlayPosition(
         x=10,
         y=600,
@@ -112,6 +137,16 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
         x=600,
         y=120,
     ),
+    # Standalone MFD pages — spread in two rows of 4 (each 400×220 at scale=1,
+    # assuming 1920×1080; top row y=10, bottom row y=840).
+    OverlayId.FUEL_INFO:       OverlayPosition(x=10,   y=10),
+    OverlayId.TYRE_INFO:       OverlayPosition(x=420,  y=10),
+    OverlayId.LAP_TIMES:       OverlayPosition(x=830,  y=10),
+    OverlayId.WEATHER:         OverlayPosition(x=1240, y=10),
+    OverlayId.PIT_REJOIN:      OverlayPosition(x=10,   y=840),
+    OverlayId.TYRE_SETS:       OverlayPosition(x=420,  y=840),
+    OverlayId.PACE_COMP:       OverlayPosition(x=830,  y=840),
+    OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=1240, y=840),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------

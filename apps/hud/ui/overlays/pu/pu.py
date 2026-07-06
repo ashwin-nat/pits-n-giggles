@@ -24,15 +24,15 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from apps.hud.common import get_ers_mode_color
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayId, OverlayPosition
+from lib.f1_types import CarStatusData
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PuOverlay(BaseOverlayQML):
+class PuOverlay(BaseOverlay):
 
     # Remember to add the QML path to scripts/png.spec
     QML_FILE = Path(__file__).parent / "pu.qml"
@@ -46,9 +46,10 @@ class PuOverlay(BaseOverlayQML):
         opacity: int,
         scale_factor: float,
         windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,
+        show_harvest_info: bool,
     ) -> None:
 
+        self._show_harvest_info = show_harvest_info
         super().__init__(
             config=config,
             logger=logger,
@@ -56,9 +57,8 @@ class PuOverlay(BaseOverlayQML):
             opacity=opacity,
             scale_factor=scale_factor,
             windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
+            refresh_interval_ms=None,
         )
-
         self._register_event_handlers()
 
     def _register_event_handlers(self):
@@ -85,18 +85,51 @@ class PuOverlay(BaseOverlayQML):
             mguk_w = pu_data["mguk-power-output-w"]
             ice_temp_c = pu_data["ice-temp-c"]
 
-            # ── Derived values ─────────────────────────────────────────────
+            # - Derived values ----------------------
             total_w  = ice_w + mguk_w
             total_kw = total_w / 1000.0
             ice_frac  = ice_w  / total_w if total_w > 0 else 0.0
             mguk_frac = mguk_w / total_w if total_w > 0 else 0.0
 
-            # ── Push to QML ────────────────────────────────────────────────
-            self.set_qml_property("totalPowerKw",  round(total_kw,       1))
-            self.set_qml_property("icePowerKw",    round(ice_w  / 1000.0, 1))
-            self.set_qml_property("mgukPowerKw",   round(mguk_w / 1000.0, 1))
-            self.set_qml_property("iceFraction",   round(ice_frac,  2))
-            self.set_qml_property("mgukFraction",  round(mguk_frac, 2))
+            # - Harvest info -----------------------
+            harv_pwr_mguk_w = pu_data["mguk-harv-power-w"]
+            harv_pwr_mguh_w = pu_data["mguh-harv-power-w"]
+            harv_nrg_mguk_j = hud_data["ers-harv-mguk"] or 0
+            harv_nrg_mguh_j = hud_data["ers-harv-mguh"] or 0
+
+            # - Push to QML ------------------------
+            self.set_qml_property("totalPowerKw",  f"{total_kw:.1f} kW")
+            self.set_qml_property("icePowerKw",    f"{ice_w  / 1000.0:.1f}")
+            self.set_qml_property("mgukPowerKw",   f"{mguk_w / 1000.0:.1f}")
+            self.set_qml_property("iceFraction",   ice_frac)
+            self.set_qml_property("mgukFraction",  mguk_frac)
             self.set_qml_property("iceTempC",      ice_temp_c)
             self.set_qml_property("ersMode",       ers_mode)
             self.set_qml_property("ersColor",      ers_color)
+
+            # - Harvest info push ------------------
+            self.set_qml_property("showHarvestInfo", self._show_harvest_info)
+            if self._show_harvest_info:
+                harv_limit_mguk  = f1_26_data["harv-limit-j"] if is_f1_26 else CarStatusData.MAX_MGUK_HARV_PER_LAP
+                mguk_harv_frac   = min(harv_nrg_mguk_j / harv_limit_mguk, 1.0)
+                is_harvesting    = bool(harv_pwr_mguk_w)
+                throttle         = hud_data["throttle"] or 0.0
+
+                if mguk_harv_frac == 0:
+                    prog_bar_str = "LIMIT REACHED"
+                elif is_harvesting and throttle == 1.0 and is_f1_26:
+                    prog_bar_str = "SUPER CLIPPING"
+                elif is_harvesting:
+                    prog_bar_str = "HARVESTING"
+                else:
+                    prog_bar_str = ""
+
+                self.set_qml_property("isF126",           is_f1_26)
+                self.set_qml_property("progBarStr",       prog_bar_str)
+                self.set_qml_property("harvNrgMgukMj",    f"{harv_nrg_mguk_j / 1_000_000.0:.2f} MJ")
+                self.set_qml_property("harvPwrMgukKw",    f"{harv_pwr_mguk_w / 1_000.0:.1f} kW")
+                self.set_qml_property("mgukHarvFraction", mguk_harv_frac)
+                self.set_qml_property("isHarvesting",     is_harvesting)
+                if not is_f1_26:
+                    self.set_qml_property("harvNrgMguhMj", f"{harv_nrg_mguh_j / 1_000_000.0:.2f} MJ")
+                    self.set_qml_property("harvPwrMguhKw", f"{harv_pwr_mguh_w / 1_000.0:.1f} kW")

@@ -108,9 +108,20 @@ Item {
         readonly property int  headerH: 28
         readonly property real rowH: rows.length > 0 ? (height - headerH) / rows.length : 0
 
+        // Waiting for data
+        Text {
+            anchors.centerIn: parent
+            visible: rows.length === 0
+            text: "WAITING FOR DATA"
+            font.family: "Formula1"
+            font.pixelSize: 11
+            color: "#666666"
+        }
+
         Column {
             anchors.fill: parent
             spacing: 0
+            visible: rows.length > 0
 
             /* ── HEADER ── */
             Row {

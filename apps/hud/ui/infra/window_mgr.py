@@ -33,6 +33,7 @@ from PySide6.QtWidgets import QApplication
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
+from lib.event_counter import EventCounter
 from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -44,7 +45,7 @@ class _HFTypeSignal(QObject):
 
 class WindowManager(QObject):
 
-    generic_cmd_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
+    msg_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
@@ -61,6 +62,7 @@ class WindowManager(QObject):
         self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
         self._hf_signals: Dict[str, _HFTypeSignal] = {}
+        self.stats = EventCounter()
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -101,7 +103,7 @@ class WindowManager(QObject):
         self.overlays[overlay_id] = overlay
 
         # Connect broadcast command and request signals TO the overlay
-        self.generic_cmd_signal.connect(overlay._handle_cmd)
+        self.msg_signal.connect(overlay._handle_cmd)
         self.mgmt_request_signal.connect(overlay._handle_request)
 
         # Connect overlay's response signal back to manager
@@ -157,8 +159,10 @@ class WindowManager(QObject):
 
             # Wait for response
             if self._response_condition.wait(self._response_mutex, timeout_ms):
+                self.stats.track_event("__REQUEST_OK__", request_type)
                 return self._response_data
             self.logger.warning("Request timeout: %s to %s", request_type, recipient or 'manager')
+            self.stats.track_event("__REQUEST_TIMEOUT__", request_type)
             return None
 
     # Keep existing methods for GUI thread use
@@ -170,7 +174,8 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
-        self.generic_cmd_signal.emit("", high_prio, cmd, self._marshal_data(data))
+        self.stats.track_event("__BROADCAST__", cmd)
+        self.msg_signal.emit("", high_prio, cmd, self._marshal_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
         """Unicast event data to a specific overlay using signal.
@@ -182,7 +187,8 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_id
-        self.generic_cmd_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
+        self.stats.track_event("__UNICAST__", event)
+        self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, data: HighFreqBase):
         """Send high-frequency data only to overlays subscribed to its type.
@@ -192,7 +198,10 @@ class WindowManager(QObject):
         """
         proxy = self._hf_signals.get(data.__hf_type__)
         if proxy:
+            self.stats.track_event("__HF_SEND__", data.__hf_type__)
             proxy.signal.emit(data)
+        else:
+            self.stats.track_event("__HF_DROP__", data.__hf_type__)
 
     def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add timestamp to payload."""
@@ -202,3 +211,6 @@ class WindowManager(QObject):
             },
             "__payload__": payload
         }
+
+    def get_stats(self) -> dict:
+        return self.stats.get_stats()

@@ -22,31 +22,25 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId
-
-if TYPE_CHECKING:
-    from apps.hud.ui.overlays.mfd.mfd import MfdOverlay
+from lib.config import MfdPageId, OverlayId
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TyreSetsPage(MfdPageBase):
 
+    OVERLAY_ID = OverlayId.TYRE_SETS
     KEY = MfdPageId.TYRE_SETS
-    QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
+    PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_sets_page.qml"
 
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]
 
-    def __init__(self, overlay: "MfdOverlay", logger: logging.Logger):
-        super().__init__(overlay, logger)
-        self._init_event_handlers()
-
-    def _init_event_handlers(self):
+    @final
+    def setup_page(self):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             tyre_sets_info = data.get("tyre-sets")
@@ -62,8 +56,8 @@ class TyreSetsPage(MfdPageBase):
             best_sets = self._prepare_best_sets(tyre_set_data)
             compound_mappings = self._prepare_compound_mappings(tyre_set_data)
 
-            self.set_page_property("bestSets", best_sets)
-            self.set_page_property("compoundMappings", compound_mappings)
+            self.set_qml_property("bestSets", best_sets)
+            self.set_qml_property("compoundMappings", compound_mappings)
 
     def _prepare_best_sets(self, tyre_set_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Prepare best available set for each compound type.
@@ -151,5 +145,5 @@ class TyreSetsPage(MfdPageBase):
 
     def _show_no_data(self):
         """Show placeholder state when no data available."""
-        self.set_page_property("bestSets", [])
-        self.set_page_property("compoundMappings", [])
+        self.set_qml_property("bestSets", [])
+        self.set_qml_property("compoundMappings", [])

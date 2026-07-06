@@ -30,10 +30,11 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     override)
 
 from pydantic import ValidationError
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtWidgets import QMenu, QMessageBox, QPushButton
 
 from lib.button_debouncer import ButtonDebouncer
-from lib.config import (HudSettings, OverlayPosition, PngSettings)
+from lib.config import HudSettings, OverlayPosition, PngSettings
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
@@ -133,7 +134,7 @@ class HudAppMgr(PngAppMgrBase):
                 name="reset",
                 icon="reset",
                 callback=self.reset_callback,
-                tooltip="Reset Overlays Positions"
+                tooltip="Reset Overlays Positions (right-click to reset a single overlay)"
             ),
             ButtonConfig(
                 name="mfd_interact",
@@ -170,7 +171,44 @@ class HudAppMgr(PngAppMgrBase):
 
             button_list.append(btn)
 
+        # Right-clicking the reset button offers a per-overlay reset menu
+        reset_btn = self.buttons["reset"]
+        reset_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        reset_btn.customContextMenuRequested.connect(self._show_reset_overlay_menu)
+
         return button_list
+
+    def _show_reset_overlay_menu(self, pos: QPoint):
+        """Show a context menu of enabled overlays; selecting one resets only that overlay."""
+        reset_btn = self.buttons["reset"]
+        menu = QMenu(reset_btn)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: rgba(32, 32, 32, 255);
+                border: 1px solid rgba(255, 255, 255, 40);
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: white;
+                font-family: "Formula1";
+                font-size: 13px;
+                padding: 6px 20px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #0e639c;
+            }
+            QMenu::item:disabled {
+                color: rgba(255, 255, 255, 90);
+            }
+        """)
+        for oid in self.curr_settings.HUD.enabled_overlay_ids():
+            action = menu.addAction(oid.display_name)
+            action.triggered.connect(lambda _checked=False, oid=oid: self._reset_overlays([oid]))
+        if menu.isEmpty():
+            menu.addAction("No overlays enabled").setEnabled(False)
+        menu.exec(reset_btn.mapToGlobal(pos))
 
     def _update_all_button_states(self, running: bool):
         """Update all button states based on running state
@@ -239,15 +277,42 @@ class HudAppMgr(PngAppMgrBase):
             self.show_overlays_adj_popup()
 
     def reset_callback(self):
-        """Reset HUD overlays to default layout."""
-        self.debug_log("Sending reset overlays command to HUD...")
+        """Reset all HUD overlays to their default layout (left-click), after confirmation."""
+        reply = QMessageBox.question(
+            self.window,
+            "Reset Overlays",
+            "Reset all overlays to their default positions and scale factors?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
 
+        self._reset_overlays()
+
+    def _reset_overlays(self, overlay_ids: Optional[List[str]] = None):
+        """Reset HUD overlay positions/scales to defaults.
+
+        Args:
+            overlay_ids: Overlay IDs to reset. If None, all overlays are reset.
+        """
+        default_layout_dict = HudSettings.get_default_layout_dict()
+
+        if overlay_ids is None:
+            reset_ids = list(default_layout_dict.keys())
+        else:
+            reset_ids = overlay_ids
+
+        self.debug_log(f"Sending reset overlays command to HUD for: {reset_ids}")
+
+        # Send only the defaults for the overlays being reset
         default_layout_json = HudSettings.get_default_layout_json()
+        layout_payload = {oid: default_layout_json[oid] for oid in reset_ids}
         try:
             rsp = IpcClientSync(self.ipc_port).request(
                 command="set-overlays-layout",
                 args={
-                    "layout": default_layout_json,
+                    "layout": layout_payload,
                 },
             )
         except Exception as e: # pylint: disable=broad-except
@@ -259,12 +324,13 @@ class HudAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to reset HUD overlays: {rsp.get("error", "unknown error")}")
             return
 
-        # IPC success - write defaults
+        # IPC success - persist the reset overlays' defaults, keeping the rest untouched
         try:
-            self._save_new_layout_to_disk(
-                new_layout=HudSettings.get_default_layout_dict()
-            )
-            self.info_log("HUD overlays reset to defaults and saved successfully.")
+            new_layout = dict(self.curr_settings.HUD.layout)
+            for oid in reset_ids:
+                new_layout[oid] = default_layout_dict[oid]
+            self._save_new_layout_to_disk(new_layout=new_layout)
+            self.info_log(f"HUD overlays reset to defaults and saved successfully: {reset_ids}")
         except Exception as e:  # pylint: disable=broad-except
             self.error_log(f"Failed to persist default HUD layout: {e}")
 
@@ -409,6 +475,22 @@ class HudAppMgr(PngAppMgrBase):
         else:
             self.debug_log("Set track radar idle opacity command was successful")
 
+    def _send_track_radar_range_change(self, range_m: int) -> None:
+        """Send track radar range change to HUD app
+
+        Args:
+            range_m (int): New track radar range in metres
+        """
+        self.debug_log("Sending set-track-radar-range command to HUD...")
+        rsp = IpcClientSync(self.ipc_port).request(command="set-track-radar-range", args={
+            "range_m": range_m,
+        })
+        status = rsp.get("status")
+        if status != "success":
+            self.error_log(f"Failed to set track radar range: {rsp}")
+        else:
+            self.debug_log("Set track radar range command was successful")
+
     def _start_integration_test_thread(self):
         """Start the integration test thread"""
         self.integration_test_stop_event.clear()
@@ -478,6 +560,23 @@ class HudAppMgr(PngAppMgrBase):
                 "overlays_fuel_estimation_mode",
                 "show_circuit_info",
                 "show_pu_info",
+                "pu_display_harvest_info",
+                "show_fuel_info",
+                "fuel_info_show_title",
+                "show_tyre_info",
+                "tyre_info_show_title",
+                "show_lap_times",
+                "lap_times_show_title",
+                "show_weather",
+                "weather_show_title",
+                "show_pit_rejoin",
+                "pit_rejoin_show_title",
+                "show_tyre_sets",
+                "tyre_sets_show_title",
+                "show_pace_comp",
+                "pace_comp_show_title",
+                "show_traffic_monitor",
+                "traffic_monitor_show_title",
             ],
             "Network": [
                 "broker_xpub_port",
@@ -529,7 +628,17 @@ class HudAppMgr(PngAppMgrBase):
                 max=HudSettings.model_fields["circuit_info_length"].json_schema_extra["ui"]["max"],
                 value=hud_settings.circuit_info_length,
                 visible=hud_settings.show_circuit_info,
-            )
+            ),
+
+            SliderItem(
+                key="track_radar_range_m",
+                label="Track Radar Range (m)",
+                min=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["min"],
+                max=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["max"],
+                value=hud_settings.track_radar_range_m,
+                tooltip=HudSettings.model_fields["track_radar_range_m"].json_schema_extra["ui"]["ext_info"][0],
+                visible=hud_settings.show_track_radar_overlay,
+            ),
         ])
         self.overlays_adj_popup.set_confirm_callback(self._overlays_adj_popup_on_confirm)
 
@@ -552,6 +661,7 @@ class HudAppMgr(PngAppMgrBase):
         new_settings.HUD.overlays_opacity = values["overlays_opacity"]
         new_settings.HUD.track_radar_idle_opacity = values["track_radar_idle_opacity"]
         new_settings.HUD.circuit_info_length = values["circuit_info_length"]
+        new_settings.HUD.track_radar_range_m = values["track_radar_range_m"]
 
         # ---- FORCE VALIDATION (this is the important bit) ----
         try:
@@ -590,6 +700,11 @@ class HudAppMgr(PngAppMgrBase):
             != validated_settings.HUD.circuit_info_length
         )
 
+        track_radar_range_changed = (
+            self.curr_settings.HUD.track_radar_range_m
+            != validated_settings.HUD.track_radar_range_m
+        )
+
         # ---- Apply runtime effects ----
         if global_opacity_changed:
             self._send_overlays_opacity_change(
@@ -606,8 +721,14 @@ class HudAppMgr(PngAppMgrBase):
                 validated_settings.HUD.circuit_info_length
             )
 
+        if track_radar_range_changed:
+            self._send_track_radar_range_change(
+                validated_settings.HUD.track_radar_range_m
+            )
+
         # ---- Persist only VALIDATED settings ----
-        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed:
+        if global_opacity_changed or track_radar_idle_opacity_changed or circuit_info_length_changed \
+                or track_radar_range_changed:
             self.window.update_settings(validated_settings)
             self.window.save_settings_to_disk(validated_settings)
 

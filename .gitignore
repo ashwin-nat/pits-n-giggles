@@ -31,3 +31,4 @@ coverage_reports/
 *.diff
 *:Zone.Identifier
 *.db
+.pits_n_giggles.lock

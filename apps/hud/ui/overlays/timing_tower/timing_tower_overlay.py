@@ -31,7 +31,7 @@ from apps.hud.common import (get_ers_mode_color,
                              get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
-from apps.hud.ui.overlays.base import BaseOverlayQML
+from apps.hud.ui.overlays.base import BaseOverlay
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
 from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
@@ -40,7 +40,7 @@ from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class TimingTowerOverlay(BaseOverlayQML):
+class TimingTowerOverlay(BaseOverlay):
     """QML-based timing tower overlay."""
 
     OVERLAY_ID: str = OverlayId.TIMING_TOWER
