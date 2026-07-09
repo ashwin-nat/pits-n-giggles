@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 
 Item {
     id: root
@@ -56,7 +56,7 @@ Item {
     Rectangle {
         id: container
         anchors.fill: parent
-        anchors.margins: margins
+        anchors.margins: root.margins
         color: "transparent"
 
         Column {
@@ -66,21 +66,25 @@ Item {
             /* ---------- HEADER ---------- */
             Row {
                 width: parent.width
-                height: Math.max(35, (parent.height - (numRows * Math.max(40, (parent.height - 35) / (numRows + 1)))))
+                height: Math.max(35, (parent.height - (root.numRows * Math.max(40, (parent.height - 35) / (root.numRows + 1)))))
 
                 Repeater {
-                    model: headers
+                    model: root.headers
                     Rectangle {
-                        width: container.width * columnWidthRatios[index]
+                        id: headerCell
+                        required property int index
+                        required property string modelData
+
+                        width: container.width * root.columnWidthRatios[headerCell.index]
                         height: parent.height
                         color: "#2a2a2a"
-                        border.color: colGrid
+                        border.color: root.colGrid
                         Text {
                             anchors.centerIn: parent
-                            text: modelData
-                            color: colText
-                            font.family: fontFamily
-                            font.pixelSize: fontSize
+                            text: headerCell.modelData
+                            color: root.colText
+                            font.family: root.fontFamily
+                            font.pixelSize: root.fontSize
                             font.bold: true
                         }
                     }
@@ -90,16 +94,18 @@ Item {
             /* ---------- ROWS ---------- */
             Repeater {
                 id: rowRepeater
-                model: numRows
+                model: root.numRows
 
                 Rectangle {
                     id: rowRect
-                    width: container.width
-                    height: (container.height - 35) / numRows
-                    color: (index % 2 === 0) ? "transparent" : colAltRow
-                    border.color: colGrid
+                    required property int index
 
-                    property int rowIndex: index
+                    width: container.width
+                    height: (container.height - 35) / root.numRows
+                    color: (rowRect.index % 2 === 0) ? "transparent" : root.colAltRow
+                    border.color: root.colGrid
+
+                    property int rowIndex: rowRect.index
                     property var rowData: (root.rows && root.rows.length > rowIndex) ? root.rows[rowIndex] : root.emptyRow()
 
                     Row {
@@ -107,16 +113,18 @@ Item {
 
                         Repeater {
                             id: cellRepeater
-                            model: numCols
+                            model: root.numCols
 
                             Rectangle {
                                 id: cellRect
-                                width: container.width * columnWidthRatios[index]
+                                required property int index
+
+                                width: container.width * root.columnWidthRatios[cellRect.index]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
-                                property int colIndex: index
+                                property int colIndex: cellRect.index
                                 property var cellData: (rowRect.rowData && rowRect.rowData.length > colIndex) ?
                                                        rowRect.rowData[colIndex] :
                                                        { text: "???", color: root.colDim }
@@ -125,8 +133,8 @@ Item {
                                     anchors.centerIn: parent
                                     text: cellRect.cellData.text
                                     color: cellRect.cellData.color
-                                    font.family: fontFamily
-                                    font.pixelSize: fontSize
+                                    font.family: root.fontFamily
+                                    font.pixelSize: root.fontSize
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     elide: Text.ElideNone
