@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Layouts
 
 Item {
     id: page
@@ -35,7 +35,7 @@ Item {
 
     /* ---------- COLORS ---------- */
     readonly property color separatorColor: "#444444"
-    readonly property color primaryTextColor: "#EEE"
+    readonly property color primaryTextColor: "#EEEEEE"
     readonly property color dimTextColor: "#999999"
     readonly property color rainColor: "#7dafff"
     readonly property color trackTempColor: "#ff6666"
@@ -74,55 +74,57 @@ Item {
 
             // Session title
             Text {
-                visible: sessionTitle !== ""
-                text: sessionTitle
+                visible: page.sessionTitle !== ""
+                text: page.sessionTitle
                 font.family: "Formula1"
                 font.pixelSize: 14
                 font.weight: Font.Bold
-                color: primaryTextColor
+                color: page.primaryTextColor
                 horizontalAlignment: Text.AlignHCenter
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
             Item {
                 width: parent.width
-                height: parent.height - (sessionTitle !== "" ? 30 : 0)
+                height: parent.height - (page.sessionTitle !== "" ? 30 : 0)
 
                 // No data message
                 Text {
-                    visible: forecastData.length === 0
+                    visible: page.forecastData.length === 0
                     anchors.centerIn: parent
                     text: "WAITING FOR DATA ..."
                     font.family: "Formula1"
                     font.pixelSize: 14
                     font.weight: Font.Bold
-                    color: dimTextColor
+                    color: page.dimTextColor
                     horizontalAlignment: Text.AlignHCenter
                 }
 
                 // CARD-BASED UI
                 Row {
-                    visible: forecastData.length > 0 && !graphBasedUI
+                    visible: page.forecastData.length > 0 && !page.graphBasedUI
                     anchors.centerIn: parent
-                    spacing: cardSpacing
+                    spacing: page.cardSpacing
 
                     Repeater {
-                        model: forecastData.length
+                        model: page.forecastData.length
 
                         Row {
-                            spacing: cardSpacing
+                            id: cardRow
+                            required property int index
+                            spacing: page.cardSpacing
 
                             WeatherCard {
-                                width: cardWidth
+                                width: page.cardWidth
                                 height: page.height - 20
-                                cardData: forecastData[index]
+                                cardData: page.forecastData[cardRow.index]
                             }
 
                             Rectangle {
-                                visible: index < forecastData.length - 1
-                                width: separatorWidth
+                                visible: cardRow.index < page.forecastData.length - 1
+                                width: page.separatorWidth
                                 height: Math.min(page.height * 0.6, 120)
-                                color: separatorColor
+                                color: page.separatorColor
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                         }
@@ -131,7 +133,7 @@ Item {
 
                 // GRAPH-BASED UI
                 WeatherGraph {
-                    visible: forecastData.length > 0 && graphBasedUI
+                    visible: page.forecastData.length > 0 && page.graphBasedUI
                     anchors.fill: parent
                     anchors.margins: 4
                     forecastData: page.forecastData
@@ -152,13 +154,13 @@ Item {
             // Time offset
             Text {
                 text: {
-                    const offset = cardData["time-offset"] || 0
+                    const offset = card.cardData["time-offset"] || 0
                     return offset > 0 ? `+${offset}m` : "Now"
                 }
                 font.family: "Consolas"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
-                color: primaryTextColor
+                color: page.primaryTextColor
                 horizontalAlignment: Text.AlignHCenter
                 width: parent.width
             }
@@ -168,7 +170,7 @@ Item {
                 width: 20
                 height: 20
                 anchors.horizontalCenter: parent.horizontalCenter
-                source: weatherIcons[cardData.weather] || weatherIcons["Clear"]
+                source: page.weatherIcons[card.cardData.weather] || page.weatherIcons["Clear"]
                 fillMode: Image.PreserveAspectFit
                 antialiasing: true
                 smooth: true
@@ -179,16 +181,16 @@ Item {
             TemperatureRow {
                 width: parent.width
                 iconSource: "../../../../../../../assets/overlays/track-temperature.svg"
-                temperature: cardData["track-temperature"]
-                temperatureChange: cardData["track-temperature-change"]
+                temperature: card.cardData["track-temperature"]
+                temperatureChange: card.cardData["track-temperature-change"]
             }
 
             // Air temperature
             TemperatureRow {
                 width: parent.width
                 iconSource: "../../../../../../../assets/overlays/air-temperature.svg"
-                temperature: cardData["air-temperature"]
-                temperatureChange: cardData["air-temperature-change"]
+                temperature: card.cardData["air-temperature"]
+                temperatureChange: card.cardData["air-temperature-change"]
             }
 
             // Rain percentage
@@ -199,7 +201,7 @@ Item {
                 Image {
                     width: 11
                     height: 11
-                    source: rainIcon
+                    source: page.rainIcon
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     mipmap: true
@@ -207,17 +209,18 @@ Item {
                 }
 
                 Text {
-                    text: `${cardData["rain-percentage"] || 0}%`
+                    text: `${card.cardData["rain-percentage"] || 0}%`
                     font.family: "Consolas"
                     font.pixelSize: 11
                     font.weight: Font.Bold
-                    color: rainColor
+                    color: page.rainColor
                 }
             }
         }
     }
 
     component TemperatureRow: Item {
+        id: tempRow
         required property string iconSource
         required property var temperature
         required property string temperatureChange
@@ -231,7 +234,7 @@ Item {
             Image {
                 width: 12
                 height: 12
-                source: iconSource
+                source: tempRow.iconSource
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 mipmap: true
@@ -240,11 +243,11 @@ Item {
             }
 
             Text {
-                text: temperature !== undefined ? `${temperature}°C` : "N/A"
+                text: tempRow.temperature !== undefined ? `${tempRow.temperature}°C` : "N/A"
                 font.family: "Consolas"
                 font.pixelSize: 11
                 font.weight: Font.Bold
-                color: primaryTextColor
+                color: page.primaryTextColor
                 anchors.verticalCenter: parent.verticalCenter
             }
 
@@ -253,9 +256,9 @@ Item {
                 height: 10
                 anchors.verticalCenter: parent.verticalCenter
                 source: {
-                    if (temperatureChange === "Temperature Up") return arrowUpIcon
-                    if (temperatureChange === "Temperature Down") return arrowDownIcon
-                    return dashIcon
+                    if (tempRow.temperatureChange === "Temperature Up") return page.arrowUpIcon
+                    if (tempRow.temperatureChange === "Temperature Down") return page.arrowDownIcon
+                    return page.dashIcon
                 }
                 fillMode: Image.PreserveAspectFit
                 smooth: true
@@ -278,14 +281,14 @@ Item {
 
         // Calculate min/max values for scaling
         readonly property var dataStats: {
-            if (forecastData.length === 0) return { minTemp: 0, maxTemp: 100, maxRain: 100 }
+            if (graphRoot.forecastData.length === 0) return { minTemp: 0, maxTemp: 100, maxRain: 100 }
 
             let minTemp = 999
             let maxTemp = -999
             let maxRain = 0
 
-            for (let i = 0; i < forecastData.length; i++) {
-                const item = forecastData[i]
+            for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                const item = graphRoot.forecastData[i]
                 const trackTemp = item["track-temperature"]
                 const airTemp = item["air-temperature"]
                 const rain = item["rain-percentage"] || 0
@@ -315,15 +318,15 @@ Item {
         // Convert data value to Y coordinate
         function valueToY(value, minVal, maxVal) {
             const range = maxVal - minVal
-            if (range === 0) return graphMarginTop + graphHeight / 2
+            if (range === 0) return graphRoot.graphMarginTop + graphRoot.graphHeight / 2
             const normalized = (value - minVal) / range
-            return graphMarginTop + graphHeight * (1 - normalized)
+            return graphRoot.graphMarginTop + graphRoot.graphHeight * (1 - normalized)
         }
 
         // Convert index to X coordinate
         function indexToX(index) {
-            const count = Math.max(1, forecastData.length - 1)
-            return graphMarginLeft + (graphWidth * index / count)
+            const count = Math.max(1, graphRoot.forecastData.length - 1)
+            return graphRoot.graphMarginLeft + (graphRoot.graphWidth * index / count)
         }
 
         // Background grid
@@ -335,24 +338,24 @@ Item {
                 ctx.clearRect(0, 0, width, height)
 
                 // Horizontal grid lines (5 lines)
-                ctx.strokeStyle = gridColor
+                ctx.strokeStyle = page.gridColor
                 ctx.lineWidth = 1
                 ctx.setLineDash([3, 3])
 
                 for (let i = 0; i <= 4; i++) {
-                    const y = graphMarginTop + (graphHeight * i / 4)
+                    const y = graphRoot.graphMarginTop + (graphRoot.graphHeight * i / 4)
                     ctx.beginPath()
-                    ctx.moveTo(graphMarginLeft, y)
-                    ctx.lineTo(graphMarginLeft + graphWidth, y)
+                    ctx.moveTo(graphRoot.graphMarginLeft, y)
+                    ctx.lineTo(graphRoot.graphMarginLeft + graphRoot.graphWidth, y)
                     ctx.stroke()
                 }
 
                 // Vertical grid lines (one per data point)
-                for (let i = 0; i < forecastData.length; i++) {
-                    const x = indexToX(i)
+                for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                    const x = graphRoot.indexToX(i)
                     ctx.beginPath()
-                    ctx.moveTo(x, graphMarginTop)
-                    ctx.lineTo(x, graphMarginTop + graphHeight)
+                    ctx.moveTo(x, graphRoot.graphMarginTop)
+                    ctx.lineTo(x, graphRoot.graphMarginTop + graphRoot.graphHeight)
                     ctx.stroke()
                 }
             }
@@ -361,26 +364,29 @@ Item {
         // Y-axis labels (temperature)
         Item {
             x: 0
-            y: graphMarginTop
-            width: graphMarginLeft - 5
-            height: graphHeight
+            y: graphRoot.graphMarginTop
+            width: graphRoot.graphMarginLeft - 5
+            height: graphRoot.graphHeight
 
             Repeater {
                 model: 5
                 Item {
+                    id: yAxisTick
+                    required property int index
+
                     width: parent.width
                     height: 12
-                    y: (parent.height * index / 4) - 6
+                    y: (parent.height * yAxisTick.index / 4) - 6
 
                     Text {
                         text: {
-                            const ratio = (4 - index) / 4
-                            const temp = dataStats.minTemp + ratio * (dataStats.maxTemp - dataStats.minTemp)
+                            const ratio = (4 - yAxisTick.index) / 4
+                            const temp = graphRoot.dataStats.minTemp + ratio * (graphRoot.dataStats.maxTemp - graphRoot.dataStats.minTemp)
                             return Math.round(temp) + "°"
                         }
                         font.family: "Consolas"
-                        font.pixelSize: yAxisLabelFontSize
-                        color: dimTextColor
+                        font.pixelSize: page.yAxisLabelFontSize
+                        color: page.dimTextColor
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.rightMargin: 5
@@ -391,27 +397,30 @@ Item {
 
         // Rain percentage scale (right side)
         Item {
-            x: graphMarginLeft + graphWidth + 5
-            y: graphMarginTop
-            width: graphMarginRight - 10
-            height: graphHeight
+            x: graphRoot.graphMarginLeft + graphRoot.graphWidth + 5
+            y: graphRoot.graphMarginTop
+            width: graphRoot.graphMarginRight - 10
+            height: graphRoot.graphHeight
 
             Repeater {
                 model: 5
                 Item {
+                    id: rainAxisTick
+                    required property int index
+
                     width: parent.width
                     height: 12
-                    y: (parent.height * index / 4) - 6
+                    y: (parent.height * rainAxisTick.index / 4) - 6
 
                     Text {
                         text: {
-                            const ratio = (4 - index) / 4
+                            const ratio = (4 - rainAxisTick.index) / 4
                             const rain = ratio * 100
                             return Math.round(rain) + "%"
                         }
                         font.family: "Consolas"
-                        font.pixelSize: yAxisLabelFontSize
-                        color: rainColor
+                        font.pixelSize: page.yAxisLabelFontSize
+                        color: page.rainColor
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -427,32 +436,32 @@ Item {
                 const ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
 
-                if (forecastData.length === 0) return
+                if (graphRoot.forecastData.length === 0) return
 
                 // Draw rain percentage line
-                ctx.strokeStyle = rainColor
+                ctx.strokeStyle = page.rainColor
                 ctx.lineWidth = 2
                 ctx.setLineDash([])
                 ctx.beginPath()
-                for (let i = 0; i < forecastData.length; i++) {
-                    const x = indexToX(i)
-                    const rain = forecastData[i]["rain-percentage"] || 0
-                    const y = valueToY(rain, 0, 100)
+                for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                    const x = graphRoot.indexToX(i)
+                    const rain = graphRoot.forecastData[i]["rain-percentage"] || 0
+                    const y = graphRoot.valueToY(rain, 0, 100)
                     if (i === 0) ctx.moveTo(x, y)
                     else ctx.lineTo(x, y)
                 }
                 ctx.stroke()
 
                 // Draw track temperature line
-                ctx.strokeStyle = trackTempColor
+                ctx.strokeStyle = page.trackTempColor
                 ctx.lineWidth = 2
                 ctx.beginPath()
                 let started = false
-                for (let i = 0; i < forecastData.length; i++) {
-                    const temp = forecastData[i]["track-temperature"]
+                for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                    const temp = graphRoot.forecastData[i]["track-temperature"]
                     if (temp !== undefined) {
-                        const x = indexToX(i)
-                        const y = valueToY(temp, dataStats.minTemp, dataStats.maxTemp)
+                        const x = graphRoot.indexToX(i)
+                        const y = graphRoot.valueToY(temp, graphRoot.dataStats.minTemp, graphRoot.dataStats.maxTemp)
                         if (!started) {
                             ctx.moveTo(x, y)
                             started = true
@@ -464,15 +473,15 @@ Item {
                 ctx.stroke()
 
                 // Draw air temperature line
-                ctx.strokeStyle = airTempColor
+                ctx.strokeStyle = page.airTempColor
                 ctx.lineWidth = 2
                 ctx.beginPath()
                 started = false
-                for (let i = 0; i < forecastData.length; i++) {
-                    const temp = forecastData[i]["air-temperature"]
+                for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                    const temp = graphRoot.forecastData[i]["air-temperature"]
                     if (temp !== undefined) {
-                        const x = indexToX(i)
-                        const y = valueToY(temp, dataStats.minTemp, dataStats.maxTemp)
+                        const x = graphRoot.indexToX(i)
+                        const y = graphRoot.valueToY(temp, graphRoot.dataStats.minTemp, graphRoot.dataStats.maxTemp)
                         if (!started) {
                             ctx.moveTo(x, y)
                             started = true
@@ -484,32 +493,32 @@ Item {
                 ctx.stroke()
 
                 // Draw data points
-                for (let i = 0; i < forecastData.length; i++) {
-                    const x = indexToX(i)
+                for (let i = 0; i < graphRoot.forecastData.length; i++) {
+                    const x = graphRoot.indexToX(i)
 
                     // Rain point
-                    const rain = forecastData[i]["rain-percentage"] || 0
-                    const rainY = valueToY(rain, 0, 100)
-                    ctx.fillStyle = rainColor
+                    const rain = graphRoot.forecastData[i]["rain-percentage"] || 0
+                    const rainY = graphRoot.valueToY(rain, 0, 100)
+                    ctx.fillStyle = page.rainColor
                     ctx.beginPath()
                     ctx.arc(x, rainY, 3, 0, Math.PI * 2)
                     ctx.fill()
 
                     // Track temp point
-                    const trackTemp = forecastData[i]["track-temperature"]
+                    const trackTemp = graphRoot.forecastData[i]["track-temperature"]
                     if (trackTemp !== undefined) {
-                        const trackY = valueToY(trackTemp, dataStats.minTemp, dataStats.maxTemp)
-                        ctx.fillStyle = trackTempColor
+                        const trackY = graphRoot.valueToY(trackTemp, graphRoot.dataStats.minTemp, graphRoot.dataStats.maxTemp)
+                        ctx.fillStyle = page.trackTempColor
                         ctx.beginPath()
                         ctx.arc(x, trackY, 3, 0, Math.PI * 2)
                         ctx.fill()
                     }
 
                     // Air temp point
-                    const airTemp = forecastData[i]["air-temperature"]
+                    const airTemp = graphRoot.forecastData[i]["air-temperature"]
                     if (airTemp !== undefined) {
-                        const airY = valueToY(airTemp, dataStats.minTemp, dataStats.maxTemp)
-                        ctx.fillStyle = airTempColor
+                        const airY = graphRoot.valueToY(airTemp, graphRoot.dataStats.minTemp, graphRoot.dataStats.maxTemp)
+                        ctx.fillStyle = page.airTempColor
                         ctx.beginPath()
                         ctx.arc(x, airY, 3, 0, Math.PI * 2)
                         ctx.fill()
@@ -525,16 +534,19 @@ Item {
 
         // X-axis labels (time) and weather icons
         Item {
-            x: graphMarginLeft
-            y: graphMarginTop + graphHeight + 3
-            width: graphWidth
+            x: graphRoot.graphMarginLeft
+            y: graphRoot.graphMarginTop + graphRoot.graphHeight + 3
+            width: graphRoot.graphWidth
             height: 35
 
             Repeater {
-                model: forecastData.length
+                model: graphRoot.forecastData.length
 
                 Item {
-                    x: index === 0 ? 0 : (graphWidth * index / Math.max(1, forecastData.length - 1))
+                    id: xAxisTick
+                    required property int index
+
+                    x: xAxisTick.index === 0 ? 0 : (graphRoot.graphWidth * xAxisTick.index / Math.max(1, graphRoot.forecastData.length - 1))
                     width: 1
                     height: 35
 
@@ -545,13 +557,13 @@ Item {
                         // Time label
                         Text {
                             text: {
-                                const offset = forecastData[index]["time-offset"] || 0
+                                const offset = graphRoot.forecastData[xAxisTick.index]["time-offset"] || 0
                                 return offset > 0 ? `+${offset}m` : "Now"
                             }
                             font.family: "Consolas"
-                            font.pixelSize: timeOffsetFontSize
+                            font.pixelSize: page.timeOffsetFontSize
                             font.weight: Font.Bold
-                            color: primaryTextColor
+                            color: page.primaryTextColor
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
 
@@ -560,7 +572,7 @@ Item {
                             width: 16
                             height: 16
                             anchors.horizontalCenter: parent.horizontalCenter
-                            source: weatherIcons[forecastData[index].weather] || weatherIcons["Clear"]
+                            source: page.weatherIcons[graphRoot.forecastData[xAxisTick.index].weather] || page.weatherIcons["Clear"]
                             fillMode: Image.PreserveAspectFit
                             antialiasing: true
                             smooth: true
@@ -584,14 +596,14 @@ Item {
                 Rectangle {
                     width: 16
                     height: 3
-                    color: rainColor
+                    color: page.rainColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                     text: "Rain %"
                     font.family: "Consolas"
-                    font.pixelSize: legendFontSize
-                    color: rainColor
+                    font.pixelSize: page.legendFontSize
+                    color: page.rainColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -601,14 +613,14 @@ Item {
                 Rectangle {
                     width: 16
                     height: 3
-                    color: trackTempColor
+                    color: page.trackTempColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                     text: "Track °C"
                     font.family: "Consolas"
-                    font.pixelSize: legendFontSize
-                    color: trackTempColor
+                    font.pixelSize: page.legendFontSize
+                    color: page.trackTempColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -618,14 +630,14 @@ Item {
                 Rectangle {
                     width: 16
                     height: 3
-                    color: airTempColor
+                    color: page.airTempColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                     text: "Air °C"
                     font.family: "Consolas"
-                    font.pixelSize: legendFontSize
-                    color: airTempColor
+                    font.pixelSize: page.legendFontSize
+                    color: page.airTempColor
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
