@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 
@@ -88,12 +89,15 @@ Rectangle {
                 visible: root.viewState === "table"
 
                 delegate: Rectangle {
+                    id: trafficRow
+                    required property var modelData
+
                     width: tableView.width
                     height: 35
                     color: "#80000000"
 
-                    border.color: modelData.isRef ? "white" : "transparent"
-                    border.width: modelData.isRef ? 2 : 0
+                    border.color: trafficRow.modelData.isRef ? "white" : "transparent"
+                    border.width: trafficRow.modelData.isRef ? 2 : 0
 
                     Rectangle {
                         anchors.top: parent.top
@@ -117,7 +121,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 width: 20
                                 height: 20
-                                source: root.teamIcons[modelData.team] || root.defaultTeamIcon
+                                source: root.teamIcons[trafficRow.modelData.team] || root.defaultTeamIcon
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true
                                 mipmap: true
@@ -128,7 +132,7 @@ Rectangle {
                         Text {
                             Layout.preferredWidth: 170
                             Layout.fillHeight: true
-                            text: modelData.name
+                            text: trafficRow.modelData.name
                             font.family: "Formula1"
                             font.pixelSize: 14
                             color: "white"
@@ -149,12 +153,12 @@ Rectangle {
                                 width: 6
                                 height: parent.height - 8
                                 radius: 2
-                                color: modelData.ersColor
+                                color: trafficRow.modelData.ersColor
                             }
 
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.ersPercent
+                                text: trafficRow.modelData.ersPercent
                                 font.family: "B612 Mono"
                                 font.pixelSize: 12
                                 color: "#dddddd"
@@ -169,7 +173,7 @@ Rectangle {
                                 width: 6
                                 height: parent.height - 8
                                 radius: 2
-                                color: modelData.drs ? "#00e676" : "#333333"
+                                color: trafficRow.modelData.drs ? "#00e676" : "#333333"
                             }
                         }
 
@@ -177,10 +181,10 @@ Rectangle {
                         Text {
                             Layout.preferredWidth: 55
                             Layout.fillHeight: true
-                            text: modelData.relDist
+                            text: trafficRow.modelData.relDist
                             font.family: "B612 Mono"
                             font.pixelSize: 12
-                            color: modelData.relDistColor
+                            color: trafficRow.modelData.relDistColor
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -189,7 +193,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            text: modelData.location
+                            text: trafficRow.modelData.location
                             font.family: "B612 Mono"
                             font.pixelSize: 12
                             color: "#aaaaaa"
