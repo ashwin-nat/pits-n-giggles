@@ -33,6 +33,9 @@ poetry run pytest tests/tests_version.py
 # Lint
 poetry run pylint --rcfile scripts/.pylintrc apps lib
 
+# Lint QML (HUD overlays)
+poetry run python scripts/qmllint.py
+
 # Build executable
 poetry run python scripts/build.py
 
