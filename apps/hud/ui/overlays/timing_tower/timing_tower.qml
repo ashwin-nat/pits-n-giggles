@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
@@ -41,9 +42,9 @@ Window {
 
     // Dynamic width: fixed structural cols + optional team_logo + sum of enabled dynamic cols
     readonly property int baseWidth: {
-        var w = cols.pos + cols.name;
+        let w = cols.pos + cols.name;
         w += cols.team_logo;
-        for (var i = 0; i < columnOrder.length; ++i) {
+        for (let i = 0; i < columnOrder.length; ++i) {
             w += cols[columnOrder[i]];
         }
         return w + 24;
@@ -99,6 +100,7 @@ Window {
     Component {
         id: tyreColComp
         Item {
+            id: tyreCell
             property var rowData
             anchors.fill: parent
             Row {
@@ -109,7 +111,7 @@ Window {
                     height: 20
                     sourceSize.width: width * Screen.devicePixelRatio
                     sourceSize.height: height * Screen.devicePixelRatio
-                    source: rowData ? (rowData.tyreIcon || "") : ""
+                    source: tyreCell.rowData ? (tyreCell.rowData.tyreIcon || "") : ""
                     fillMode: Image.PreserveAspectFit
                     smooth: true
                     anchors.verticalCenter: parent.verticalCenter
@@ -117,7 +119,7 @@ Window {
                     antialiasing: true
                 }
                 Text {
-                    text: rowData ? rowData.tyreWear : ""
+                    text: tyreCell.rowData ? tyreCell.rowData.tyreWear : ""
                     font.family: "Consolas"
                     font.pixelSize: 13
                     color: "#ffffff"
@@ -129,6 +131,7 @@ Window {
     Component {
         id: ersDrsColComp
         Item {
+            id: ersDrsCell
             property var rowData
             anchors.fill: parent
             Rectangle {
@@ -138,11 +141,11 @@ Window {
                 width: 6
                 height: parent.height - 8
                 radius: 2
-                color: rowData ? rowData.ersColor : "#444444"
+                color: ersDrsCell.rowData ? ersDrsCell.rowData.ersColor : "#444444"
             }
             Text {
                 anchors.centerIn: parent
-                text: rowData ? rowData.ers : ""
+                text: ersDrsCell.rowData ? ersDrsCell.rowData.ers : ""
                 font.family: "Consolas"
                 font.pixelSize: 13
                 color: "#dddddd"
@@ -156,20 +159,21 @@ Window {
                 width: 6
                 height: parent.height - 8
                 radius: 2
-                color: (rowData && rowData.overtakeBarColor) ? rowData.overtakeBarColor : "#333333"
+                color: (ersDrsCell.rowData && ersDrsCell.rowData.overtakeBarColor) ? ersDrsCell.rowData.overtakeBarColor : "#333333"
             }
         }
     }
     Component {
         id: pensColComp
         Item {
+            id: pensCell
             property var rowData
             anchors.fill: parent
             Text {
                 anchors.left: parent.left
                 anchors.leftMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                text: rowData ? rowData.penalties : ""
+                text: pensCell.rowData ? pensCell.rowData.penalties : ""
                 font.family: "Formula1"
                 font.pixelSize: 11
                 color: "white"
@@ -304,12 +308,12 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: mode === "tt" ? ttBaseWidth : baseWidth
-        height: mode === "tt" ? ttBaseHeight : baseHeight
+        width: root.mode === "tt" ? root.ttBaseWidth : root.baseWidth
+        height: root.mode === "tt" ? root.ttBaseHeight : root.baseHeight
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
             origin.x: scaledRoot.width / 2
             origin.y: scaledRoot.height / 2
         }
@@ -335,7 +339,7 @@ Window {
 
                     Text {
                         anchors.centerIn: parent
-                        text: sessionInfo
+                        text: root.sessionInfo
                         font.family: "Formula1"
                         font.pixelSize: 13
                         color: "#cccccc"
@@ -352,11 +356,11 @@ Window {
                     // Error message display (race mode only)
                     Text {
                         anchors.centerIn: parent
-                        text: errorMessage
+                        text: root.errorMessage
                         font.pixelSize: 12
                         font.bold: true
                         color: "#ffb86b"
-                        visible: showError && mode === "race"
+                        visible: root.showError && root.mode === "race"
                     }
 
                     // Column headers (race mode)
@@ -366,7 +370,7 @@ Window {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.margins: 2
-                        height: colHeaderVisible ? colHeaderHeight : 0
+                        height: root.colHeaderVisible ? root.colHeaderHeight : 0
 
                         Row {
                             anchors.left: parent.left
@@ -427,13 +431,15 @@ Window {
                                 }
                             }
                             Repeater {
-                                model: columnOrder
+                                model: root.columnOrder
                                 delegate: Item {
-                                    width: cols[modelData]
+                                    id: colHeaderCell
+                                    required property var modelData
+                                    width: cols[colHeaderCell.modelData]
                                     height: parent.height
                                     Text {
                                         anchors.fill: parent
-                                        text: colHeaderLabel(modelData)
+                                        text: root.colHeaderLabel(colHeaderCell.modelData)
                                         font.family: "Formula1"
                                         font.pixelSize: 10
                                         color: "#666666"
@@ -464,19 +470,21 @@ Window {
                         clip: true
                         interactive: false
                         reuseItems: true
-                        visible: !showError && mode === "race"
+                        visible: !root.showError && root.mode === "race"
 
-                        model: tableData
+                        model: root.tableData
 
                         delegate: Item {
-                            property var rowData: modelData
+                            id: rowItem
+                            required property var modelData
+                            property var rowData: rowItem.modelData
                             width: tableView.width
                             height: 28
 
                             // Row background
                             Rectangle {
                                 anchors.fill: parent
-                                color: rowData.isReference
+                                color: rowItem.rowData.isReference
                                     ? Qt.rgba(1, 1, 1, 0.07)
                                     : Qt.rgba(0.08, 0.08, 0.10, 0.6)
                                 radius: 3
@@ -496,7 +504,7 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 2
                                 height: parent.height - 6
-                                color: rowData.isReference ? "#ffffff" : "transparent"
+                                color: rowItem.rowData.isReference ? "#ffffff" : "transparent"
                                 radius: 1
                             }
 
@@ -515,16 +523,16 @@ Window {
                                     Rectangle {
                                         anchors.fill: parent
                                         anchors.margins: 1
-                                        color: rowData.isSb ? "#4a1d7a" : "transparent"
+                                        color: rowItem.rowData.isSb ? "#4a1d7a" : "transparent"
                                         radius: 2
                                     }
 
                                     Text {
                                         anchors.fill: parent
-                                        text: rowData.position < 10 ? rowData.position + " " : rowData.position
+                                        text: rowItem.rowData.position < 10 ? rowItem.rowData.position + " " : rowItem.rowData.position
                                         font.family: "Consolas"
                                         font.pixelSize: 12
-                                        color: "#ddd"
+                                        color: "#dddddd"
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -543,7 +551,7 @@ Window {
                                         height: 20
                                         sourceSize.width: width * Screen.devicePixelRatio * 2
                                         sourceSize.height: height * Screen.devicePixelRatio * 2
-                                        source: rowData.teamIcon || ""
+                                        source: rowItem.rowData.teamIcon || ""
                                         fillMode: Image.PreserveAspectFit
                                         smooth: true
                                         mipmap: true
@@ -556,7 +564,7 @@ Window {
                                 Text {
                                     width: cols.name
                                     height: parent.height
-                                    text: rowData.name
+                                    text: rowItem.rowData.name
                                     font.family: "Formula1"
                                     font.pixelSize: 13
                                     color: "#ffffff"
@@ -569,13 +577,15 @@ Window {
                                 // Components live at root level (not per-delegate), so onLoaded
                                 // wires rowData from the enclosing delegate into each cell.
                                 Repeater {
-                                    model: columnOrder
+                                    model: root.columnOrder
                                     delegate: Loader {
-                                        property string colId: modelData
-                                        width: cols[colId]
+                                        id: dynColLoader
+                                        required property var modelData
+                                        property string colId: dynColLoader.modelData
+                                        width: cols[dynColLoader.colId]
                                         height: parent.height
                                         sourceComponent: {
-                                            switch(colId) {
+                                            switch(dynColLoader.colId) {
                                                 case "delta":         return deltaColComp
                                                 case "delta_to_leader": return deltaToLeaderColComp
                                                 case "tyre":          return tyreColComp
@@ -591,7 +601,7 @@ Window {
                                                 default:              return null
                                             }
                                         }
-                                        onLoaded: item.rowData = Qt.binding(function() { return rowData })
+                                        onLoaded: item.rowData = Qt.binding(function() { return rowItem.rowData })
                                     }
                                 }
                             }
@@ -603,20 +613,20 @@ Window {
                         anchors.fill: parent
                         anchors.margins: 2
                         spacing: 0
-                        visible: mode === "tt"
+                        visible: root.mode === "tt"
 
                         // Column headers
                         Row {
                             width: parent.width
-                            height: ttColHeaderHeight
+                            height: root.ttColHeaderHeight
 
                             Text {
-                                width: ttColLabel
+                                width: root.ttColLabel
                                 height: parent.height
                                 text: ""
                             }
                             Text {
-                                width: ttColLapTime
+                                width: root.ttColLapTime
                                 height: parent.height
                                 text: "LAP"
                                 font.family: "Formula1"
@@ -626,7 +636,7 @@ Window {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             Text {
-                                width: ttColSector
+                                width: root.ttColSector
                                 height: parent.height
                                 text: "S1"
                                 font.family: "Formula1"
@@ -636,7 +646,7 @@ Window {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             Text {
-                                width: ttColSector
+                                width: root.ttColSector
                                 height: parent.height
                                 text: "S2"
                                 font.family: "Formula1"
@@ -646,7 +656,7 @@ Window {
                                 verticalAlignment: Text.AlignVCenter
                             }
                             Text {
-                                width: ttColSector
+                                width: root.ttColSector
                                 height: parent.height
                                 text: "S3"
                                 font.family: "Formula1"
@@ -658,15 +668,18 @@ Window {
                         }
 
                         Repeater {
-                            model: ttTableData
+                            model: root.ttTableData
 
                             delegate: Item {
+                                id: ttRow
+                                required property var modelData
+                                required property int index
                                 width: parent.width
                                 height: 28
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: index % 2 === 0
+                                    color: ttRow.index % 2 === 0
                                         ? Qt.rgba(0.10, 0.10, 0.12, 0.7)
                                         : Qt.rgba(0.06, 0.06, 0.08, 0.5)
                                     radius: 3
@@ -686,18 +699,18 @@ Window {
                                     height: parent.height
 
                                     Text {
-                                        width: ttColLabel
+                                        width: root.ttColLabel
                                         height: parent.height
-                                        text: modelData.label
+                                        text: ttRow.modelData.label
                                         font.family: "Formula1"
                                         font.pixelSize: 12
                                         color: "#aaaaaa"
                                         verticalAlignment: Text.AlignVCenter
                                     }
                                     Text {
-                                        width: ttColLapTime
+                                        width: root.ttColLapTime
                                         height: parent.height
-                                        text: modelData["lap-time-str"]
+                                        text: ttRow.modelData["lap-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 13
                                         color: "#ffffff"
@@ -705,9 +718,9 @@ Window {
                                         verticalAlignment: Text.AlignVCenter
                                     }
                                     Text {
-                                        width: ttColSector
+                                        width: root.ttColSector
                                         height: parent.height
-                                        text: modelData["s1-time-str"]
+                                        text: ttRow.modelData["s1-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"
@@ -715,9 +728,9 @@ Window {
                                         verticalAlignment: Text.AlignVCenter
                                     }
                                     Text {
-                                        width: ttColSector
+                                        width: root.ttColSector
                                         height: parent.height
-                                        text: modelData["s2-time-str"]
+                                        text: ttRow.modelData["s2-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"
@@ -725,9 +738,9 @@ Window {
                                         verticalAlignment: Text.AlignVCenter
                                     }
                                     Text {
-                                        width: ttColSector
+                                        width: root.ttColSector
                                         height: parent.height
-                                        text: modelData["s3-time-str"]
+                                        text: ttRow.modelData["s3-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"
