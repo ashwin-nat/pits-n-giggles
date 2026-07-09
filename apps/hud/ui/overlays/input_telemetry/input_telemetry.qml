@@ -86,14 +86,14 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: baseWidth
-        height: baseHeight
+        width: root.baseWidth
+        height: root.baseHeight
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
-            origin.x: baseWidth / 2
-            origin.y: baseHeight / 2
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
+            origin.x: root.baseWidth / 2
+            origin.y: root.baseHeight / 2
         }
 
         // ======================================================
@@ -103,8 +103,8 @@ Window {
             id: container
             x: 6
             y: 6
-            width: baseWidth - 12
-            height: baseHeight - 12
+            width: root.baseWidth - 12
+            height: root.baseHeight - 12
             radius: 6
             color: "#000000"
 
@@ -135,8 +135,8 @@ Window {
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 0.3; color: Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, root.revLightsSmoothed / 100) }
-                            GradientStop { position: 0.7; color: Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, root.revLightsSmoothed / 100) }
+                            GradientStop { position: 0.3; color: Qt.rgba(root.brakeColor.r, root.brakeColor.g, root.brakeColor.b, root.revLightsSmoothed / 100) }
+                            GradientStop { position: 0.7; color: Qt.rgba(root.throttleColor.r, root.throttleColor.g, root.throttleColor.b, root.revLightsSmoothed / 100) }
                             GradientStop { position: 1.0; color: "transparent" }
                         }
                     }
@@ -172,12 +172,12 @@ Window {
 
                             let len   = root.historyCount
                             let start = (root.historyHead - len + root.maxHistoryLength) % root.maxHistoryLength
-                            let spacing = width / (maxHistoryLength - 1)
+                            let spacing = width / (root.maxHistoryLength - 1)
 
                             // Throttle tint fill
                             let gradT = ctx.createLinearGradient(0, height, 0, 0)
-                            gradT.addColorStop(0, Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, 0.15))
-                            gradT.addColorStop(1, Qt.rgba(throttleColor.r, throttleColor.g, throttleColor.b, 0))
+                            gradT.addColorStop(0, Qt.rgba(root.throttleColor.r, root.throttleColor.g, root.throttleColor.b, 0.15))
+                            gradT.addColorStop(1, Qt.rgba(root.throttleColor.r, root.throttleColor.g, root.throttleColor.b, 0))
                             ctx.fillStyle = gradT
                             ctx.beginPath()
                             ctx.moveTo(0, height)
@@ -191,8 +191,8 @@ Window {
 
                             // Brake tint fill
                             let gradB = ctx.createLinearGradient(0, height, 0, 0)
-                            gradB.addColorStop(0, Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, 0.15))
-                            gradB.addColorStop(1, Qt.rgba(brakeColor.r, brakeColor.g, brakeColor.b, 0))
+                            gradB.addColorStop(0, Qt.rgba(root.brakeColor.r, root.brakeColor.g, root.brakeColor.b, 0.15))
+                            gradB.addColorStop(1, Qt.rgba(root.brakeColor.r, root.brakeColor.g, root.brakeColor.b, 0))
                             ctx.fillStyle = gradB
                             ctx.beginPath()
                             ctx.moveTo(0, height)
@@ -205,7 +205,7 @@ Window {
                             ctx.fill()
 
                             // --- THROTTLE LINE ---
-                            ctx.strokeStyle = throttleColor
+                            ctx.strokeStyle = root.throttleColor
                             ctx.lineWidth = 2
                             ctx.beginPath()
                             for (let t2=0; t2<len; t2++) {
@@ -216,7 +216,7 @@ Window {
                             ctx.stroke()
 
                             // --- BRAKE LINE ---
-                            ctx.strokeStyle = brakeColor
+                            ctx.strokeStyle = root.brakeColor
                             ctx.beginPath()
                             for (let b2=0; b2<len; b2++) {
                                 let yB2 = height - (root.brakeHistory[(start + b2) % root.maxHistoryLength]/100)*height
@@ -226,7 +226,7 @@ Window {
                             ctx.stroke()
 
                             // --- STEERING LINE ---
-                            ctx.strokeStyle = steeringColor
+                            ctx.strokeStyle = root.steeringColor
                             ctx.beginPath()
                             for (let s=0; s<len; s++) {
                                 let yS = height/2 - (root.steeringHistory[(start + s) % root.maxHistoryLength]/100)*(height/2)
@@ -249,18 +249,18 @@ Window {
 
                     // --- BRAKE BAR ---
                     Rectangle {
-                        width: 22
+                        Layout.preferredWidth: 22
                         Layout.fillHeight: true
                         radius: 3
                         color: "#202020"
-                        border.color: brakeColor
+                        border.color: root.brakeColor
                         clip: true
 
                         Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
                             height: (root.brakeSmoothed / 100) * parent.height
-                            color: brakeColor
+                            color: root.brakeColor
                         }
 
                         Text {
@@ -275,18 +275,18 @@ Window {
 
                     // --- THROTTLE BAR ---
                     Rectangle {
-                        width: 22
+                        Layout.preferredWidth: 22
                         Layout.fillHeight: true
                         radius: 3
                         color: "#202020"
-                        border.color: throttleColor
+                        border.color: root.throttleColor
                         clip: true
 
                         Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
                             height: (root.throttleSmoothed / 100) * parent.height
-                            color: throttleColor
+                            color: root.throttleColor
                         }
 
                         Text {
