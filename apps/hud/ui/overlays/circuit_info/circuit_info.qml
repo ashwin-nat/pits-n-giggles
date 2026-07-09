@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import "../base"
@@ -68,14 +69,14 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: barWidth
-        height: baseHeight
+        width: root.barWidth
+        height: root.baseHeight
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
-            origin.x: barWidth / 2
-            origin.y: baseHeight / 2
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
+            origin.x: root.barWidth / 2
+            origin.y: root.baseHeight / 2
         }
 
         Rectangle {
@@ -259,14 +260,17 @@ Window {
             Repeater {
                 model: root.sectorsInfo ? 2 : 0
                 delegate: Rectangle {
+                    id: sectorDivider
+                    required property int index
+
                     readonly property real frac: {
                         if (!root.sectorsInfo || root.circuitLength <= 0) return 0
-                        return index === 0
+                        return sectorDivider.index === 0
                             ? root.sectorsInfo.s1 / root.circuitLength
                             : root.sectorsInfo.s2 / root.circuitLength
                     }
 
-                    x: progressBarArea.width * frac - 1
+                    x: progressBarArea.width * sectorDivider.frac - 1
                     anchors.top: parent.top
                     anchors.topMargin: -3
                     anchors.bottom: parent.bottom
