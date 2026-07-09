@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Shapes
@@ -58,28 +59,31 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: baseWidth
-        height: baseHeight
+        width: root.baseWidth
+        height: root.baseHeight
 
         clip: true
-        opacity: lockedMode ? (carsNearby ? baseOpacity : idleOpacity) : baseOpacity
+        opacity: root.lockedMode ? (root.carsNearby ? root.baseOpacity : root.idleOpacity) : root.baseOpacity
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
-            origin.x: baseWidth / 2
-            origin.y: baseHeight / 2
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
+            origin.x: root.baseWidth / 2
+            origin.y: root.baseHeight / 2
         }
 
         // --- Static layer: grid circles (scene graph, paid once) ---
-        readonly property real halfR: baseWidth * radarAreaRatio / 2
+        readonly property real halfR: root.baseWidth * root.radarAreaRatio / 2
 
         Repeater {
             model: 3
             Shape {
+                id: gridCircle
+                required property int index
+
                 anchors.centerIn: parent
-                width: baseWidth
-                height: baseHeight
+                width: root.baseWidth
+                height: root.baseHeight
                 ShapePath {
                     strokeColor: Qt.rgba(1, 1, 1, 0.22)
                     strokeWidth: 1
@@ -87,10 +91,10 @@ Window {
                     strokeStyle: ShapePath.DashLine
                     dashPattern: [5, 5]
                     PathAngleArc {
-                        centerX: baseWidth / 2
-                        centerY: baseHeight / 2
-                        radiusX: (index + 1) * scaledRoot.halfR / 3
-                        radiusY: (index + 1) * scaledRoot.halfR / 3
+                        centerX: root.baseWidth / 2
+                        centerY: root.baseHeight / 2
+                        radiusX: (gridCircle.index + 1) * scaledRoot.halfR / 3
+                        radiusY: (gridCircle.index + 1) * scaledRoot.halfR / 3
                         startAngle: 0
                         sweepAngle: 360
                     }
