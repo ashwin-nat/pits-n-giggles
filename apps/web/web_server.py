@@ -38,7 +38,8 @@ from lib.ipc import IpcDealerAsync, PngAppId
 from lib.logger import PngLogger
 from lib.web_server import BaseWebServer, ClientType
 
-from .session_discovery import build_session_list, CACHE_FILE, formula_group_key
+from .save_viewer_state import getDriverInfoFrom, getRaceInfoFrom, getTelemetryInfoFrom, init_state
+from .session_discovery import build_session_list, CACHE_FILE, formula_group_key, load_session_json
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -103,6 +104,7 @@ class WebServer(BaseWebServer):
         self._m_cache_ready = asyncio.Event()
         self._m_watch_stop = asyncio.Event()
 
+        init_state(logger)
         self.define_routes()
         self.register_post_start_callback(self._post_start)
 
@@ -149,12 +151,32 @@ class WebServer(BaseWebServer):
         async def playerStreamOverlay() -> str:
             return await self.render_template('player-stream-overlay.html')
 
+        @self.http_route('/legacy/<slug>')
+        async def legacyView(slug: str) -> Any:
+            await self._m_cache_ready.wait()
+            if not self.m_slug_map.get(slug):
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return await self.render_template(
+                'driver-view.html', live_data_mode=False, version=self.m_ver_str, session_slug=slug
+            )
+
     def _defineDataRoutes(self) -> None:
-        """Define HTTP routes for retrieving telemetry and race-related data."""
+        """Define HTTP routes for retrieving telemetry and race-related data.
+
+        Each route also serves saved-session data via an optional `?slug=` query param
+        (used by the `/legacy/<slug>` driver-view, reading a session JSON file from disk
+        instead of the live broker cache).
+        """
 
         @self.http_route('/telemetry-info')
         async def telemetryInfoHTTP() -> Tuple[Dict[str, Any], int]:
-            return (self.m_race_table_cache or {}), HTTPStatus.OK
+            slug = self.request.args.get('slug')
+            if not slug:
+                return (self.m_race_table_cache or {}), HTTPStatus.OK
+            data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
+            if data is None:
+                return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+            return getTelemetryInfoFrom(data), HTTPStatus.OK
 
         @self.http_route('/stream-overlay-info')
         async def streamOverlayInfoHTTP() -> Tuple[Dict[str, Any], int]:
@@ -162,6 +184,12 @@ class WebServer(BaseWebServer):
 
         @self.http_route('/race-info')
         async def raceInfoHTTP() -> Tuple[Dict[str, Any], int]:
+            slug = self.request.args.get('slug')
+            if slug:
+                data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
+                if data is None:
+                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+                return getRaceInfoFrom(data), HTTPStatus.OK
             rsp = await self.m_dealer.request(str(PngAppId.BACKEND), "race-info-request", {})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
@@ -170,6 +198,17 @@ class WebServer(BaseWebServer):
         @self.http_route('/driver-info')
         async def driverInfoHTTP() -> Tuple[Dict[str, Any], int]:
             index = self.request.args.get('index')
+            slug = self.request.args.get('slug')
+            if slug:
+                if not index or not index.isdigit():
+                    return {'error': 'Invalid parameter value', 'message': '"index" parameter must be numeric'}, \
+                        HTTPStatus.BAD_REQUEST
+                data = await load_session_json(self.m_session_dir, self.m_slug_map, slug)
+                if data is None:
+                    return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
+                if driver_info := getDriverInfoFrom(data, int(index)):
+                    return driver_info, HTTPStatus.OK
+                return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
             rsp = await self.m_dealer.request(str(PngAppId.BACKEND), "driver-info-request", {"index": index})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
@@ -188,6 +227,12 @@ class WebServer(BaseWebServer):
         """
         index_path = self.m_viewer_dir / 'index.html'
         html = index_path.read_text(encoding='utf-8')
+
+        # Override the submodule's own bundled favicon/apple-touch-icon with ours, so the
+        # browser tab shows the app logo consistently across every page instead of the
+        # upstream save-viewer's own branding.
+        html = html.replace('href="/save-viewer/favicon.ico"', 'href="/favicon.ico"', 1)
+        html = html.replace('href="/save-viewer/apple-touch-icon.png"', 'href="/logo.png"', 1)
 
         version_injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
         sidebar_css_url = url_for('static', filename='css/sidebar.css')

@@ -127,8 +127,7 @@
   background: none;
   color: var(--png-sb-text);
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .png-sidebar-toggle:hover {
@@ -136,8 +135,16 @@
   color: var(--png-sb-text-active);
 }
 
-.png-sidebar-collapsed .png-sidebar-toggle {
-  transform: rotate(180deg);
+.png-sidebar-toggle-icon-expand {
+  display: none;
+}
+
+.png-sidebar-collapsed .png-sidebar-toggle-icon-collapse {
+  display: none;
+}
+
+.png-sidebar-collapsed .png-sidebar-toggle-icon-expand {
+  display: block;
 }
 
 /* Reserve the rail's width so host-page content never renders underneath it. Also resets the
