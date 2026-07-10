@@ -29,7 +29,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from quart import send_file
+from quart import send_file, url_for
 from watchfiles import awatch
 
 from lib.child_proc_mgmt import notify_parent_init_complete
@@ -127,13 +127,19 @@ class WebServer(BaseWebServer):
     def _defineTemplateFileRoutes(self) -> None:
         """Define routes for rendering HTML templates."""
 
+        @self.http_route('/')
+        async def homeView() -> str:
+            return await self.render_template('home.html', active_page='home', version=self.m_ver_str)
+
         @self.http_route('/live')
         async def liveView() -> str:
-            return await self.render_template('driver-view.html', live_data_mode=True, version=self.m_ver_str)
+            return await self.render_template(
+                'driver-view.html', active_page='live', live_data_mode=True, version=self.m_ver_str)
 
         @self.http_route('/eng-view')
         async def engineerView() -> str:
-            return await self.render_template('eng-view.html', live_data_mode=True, version=self.m_ver_str)
+            return await self.render_template(
+                'eng-view.html', active_page='eng-view', live_data_mode=True, version=self.m_ver_str)
 
         @self.http_route('/eng-view/trackmap')
         async def engineerViewTrackmap() -> str:
@@ -172,16 +178,28 @@ class WebServer(BaseWebServer):
             http_status = _DRIVER_INFO_HTTP_STATUS.get(rsp.get("error_code"), HTTPStatus.BAD_REQUEST)
             return {'error': rsp.get("error")}, http_status
 
-    def _render_index(self) -> Any:
-        """Read the built React index.html and inject the app version.
+    async def _render_index(self) -> Any:
+        """Read the built React index.html and inject the app version, the shared sidebar
+        stylesheet, and the sidebar markup itself (React's own `<aside>` becomes the secondary
+        rail alongside it).
 
         Returns:
             A Quart-compatible (body, status, headers) tuple serving index.html.
         """
         index_path = self.m_viewer_dir / 'index.html'
         html = index_path.read_text(encoding='utf-8')
-        injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
-        html = html.replace('</head>', f'{injection}</head>', 1)
+
+        version_injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
+        sidebar_css_url = url_for('static', filename='css/sidebar.css')
+        head_injection = f'<link rel="stylesheet" href="{sidebar_css_url}">{version_injection}'
+        html = html.replace('</head>', f'{head_injection}</head>', 1)
+
+        sidebar_html = await self.render_template('partials/sidebar.html', active_page='save-viewer')
+        sidebar_js_url = url_for('static', filename='js/sidebar.js')
+        html = html.replace('<body class="', '<body class="png-has-sidebar ', 1)
+        html = html.replace('<div id="root">', f'{sidebar_html}<div id="root">', 1)
+        html = html.replace('</body>', f'<script src="{sidebar_js_url}"></script></body>', 1)
+
         return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
 
     def _defineSaveViewerRoutes(self) -> None:
@@ -189,7 +207,7 @@ class WebServer(BaseWebServer):
 
         @self.http_route('/save-viewer/')
         async def saveViewerIndex():
-            return self._render_index()
+            return await self._render_index()
 
         @self.http_route('/save-viewer/<path:path>')
         async def saveViewerStatic(path: str):
@@ -204,7 +222,7 @@ class WebServer(BaseWebServer):
             candidate = (root / path).resolve()
             if candidate.is_relative_to(root) and candidate.is_file():
                 return await self.send_from_directory(self.m_viewer_dir, path)
-            return self._render_index()
+            return await self._render_index()
 
         @self.http_route('/save-viewer/api/sessions')
         async def apiSessions():
@@ -301,5 +319,4 @@ class WebServer(BaseWebServer):
 
         if not self.m_disable_browser_autoload:
             proto = 'https' if self.m_cert_path else 'http'
-            # TODO(Phase 3): point at "/" once the shared sidebar + home/hub page lands.
-            webbrowser.open(f'{proto}://localhost:{self.m_port}/live', new=2)
+            webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)

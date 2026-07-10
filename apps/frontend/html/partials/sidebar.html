@@ -1,0 +1,24 @@
+<nav class="png-sidebar" aria-label="Pits n' Giggles navigation">
+  <a class="png-sidebar-brand" href="/" title="Pits n' Giggles home">
+    <img class="png-sidebar-logo" src="/logo.png" alt="Pits n' Giggles">
+  </a>
+  <div class="png-sidebar-links">
+    <a class="png-sidebar-link{% if active_page == 'home' %} png-sidebar-link-active{% endif %}" href="/" title="Home">
+      <span class="png-sidebar-icon">🏠</span>
+      <span class="png-sidebar-label">Home</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'live' %} png-sidebar-link-active{% endif %}" href="/live" title="Live Dashboard">
+      <span class="png-sidebar-icon">🏎️</span>
+      <span class="png-sidebar-label">Live</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'eng-view' %} png-sidebar-link-active{% endif %}" href="/eng-view" title="Engineer View">
+      <span class="png-sidebar-icon">🔧</span>
+      <span class="png-sidebar-label">Eng</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'save-viewer' %} png-sidebar-link-active{% endif %}" href="/save-viewer/" title="Save Viewer">
+      <span class="png-sidebar-icon">💾</span>
+      <span class="png-sidebar-label">Saves</span>
+    </a>
+  </div>
+  <button type="button" class="png-sidebar-toggle" title="Collapse sidebar" aria-expanded="true">◂</button>
+</nav>

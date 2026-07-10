@@ -55,6 +55,7 @@ def main():
         )
     build_env = {
         **os.environ,
+        "VITE_BASE_PATH": "/save-viewer/",
         "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",

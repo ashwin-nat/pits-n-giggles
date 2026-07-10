@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% if port_info %}Pits n' Giggles - {{ port_info }}{% elif live_data_mode %}Pits n' Giggles - Live v{{ version }}{% else %}Pits n' Giggles - Save v{{ version }}{% endif %}</title>
+{% extends "base.html" %}
+{% block title %}{% if port_info %}Pits n' Giggles - {{ port_info }}{% elif live_data_mode %}Pits n' Giggles - Live v{{ version }}{% else %}Pits n' Giggles - Save v{{ version }}{% endif %}{% endblock %}
+{% block extra_head %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
@@ -34,8 +31,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tsparticles/confetti@3.0.3/tsparticles.confetti.bundle.min.js" integrity="sha384-1n3JwVeqLzmKF9uu5W4+kfasynDhf+EmT6Hns9p2MChdjzpTJrtd8tlzi+Y3RGn3" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js" integrity="sha384-AZ8EPX4FWLU/SIr5Xfoem6KYnSN7QhmrnEZIzF2NjoDoX9PV9GMuA0XCI3jndPym" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@35.3.0/dist/ag-grid-community.min.js" integrity="sha384-GbvRvkQNhoaZATsk65Au49OqhW8NGyoGqeziEqwOFDjR5WDBwx1w1QwlI/enfu+g" crossorigin="anonymous"></script>
-  </head>
-  <body>
+{% endblock %}
+{% block content %}
     <div class="dashboard-container">
       <header class="dashboard-header">
         <div class="track-info">
@@ -657,6 +654,8 @@
     <script src="{{ url_for('static', filename='js/raceTableRowPopulator.js') }}"></script>
     <script src="{{ url_for('static', filename='js/populateRaceControlMessagesTab.js') }}"></script>
     <script src="{{ url_for('static', filename='js/timeTrialDataPopulator.js') }}"></script>
+{% endblock %}
+{% block extra_scripts %}
     <script src="{{ url_for('static', filename='js/telemetryRenderer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/frontendUpdate.js') }}"></script>
     <script src="{{ url_for('static', filename='js/tyreDeltaToast.js') }}"></script>
@@ -668,5 +667,4 @@
       window.SESSION_SLUG = {% if session_slug %}"{{ session_slug }}"{% else %}null{% endif %};
     </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-  </body>
-</html>
+{% endblock %}

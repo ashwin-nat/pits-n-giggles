@@ -1,0 +1,82 @@
+/* Home/hub page. Self-contained (own vars) rather than pulling in the full style.css bundle
+   just for a handful of entry cards. */
+
+.png-home {
+  --png-home-bg: #0c0c12;
+  --png-home-card-bg: #1f1f2b;
+  --png-home-card-border: #2d2d3d;
+  --png-home-text: #ffffff;
+  --png-home-text-secondary: #9090a0;
+  --png-home-accent: #e10600;
+
+  min-height: 100vh;
+  background-color: var(--png-home-bg);
+  color: var(--png-home-text);
+  font-family: 'Exo 2', system-ui, -apple-system, sans-serif;
+  padding: 4rem 3rem;
+  box-sizing: border-box;
+}
+
+.png-home-header {
+  margin-bottom: 3rem;
+}
+
+.png-home-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.png-home-subtitle {
+  color: var(--png-home-text-secondary);
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+}
+
+.png-home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+  max-width: 1100px;
+}
+
+.png-home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: var(--png-home-card-bg);
+  border: 1px solid var(--png-home-card-border);
+  border-radius: 12px;
+  padding: 1.75rem;
+  text-decoration: none;
+  color: var(--png-home-text);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.png-home-card:hover {
+  border-color: var(--png-home-accent);
+  transform: translateY(-2px);
+}
+
+.png-home-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.png-home-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.png-home-card-desc {
+  font-size: 0.9rem;
+  color: var(--png-home-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.png-home-card-soon {
+  opacity: 0.5;
+  pointer-events: none;
+}

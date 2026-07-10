@@ -95,8 +95,7 @@ class WebAppMgr(PngAppMgrBase):
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        # TODO(Phase 3): point at "/" once the shared sidebar + home/hub page lands.
-        webbrowser.open(f'{self.proto}://localhost:{self.port}/live', new=2)
+        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
 
     def open_obs_overlay(self):
         """Open the OBS overlay page in a web browser."""

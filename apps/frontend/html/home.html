@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Pits n' Giggles{% endblock %}
+{% block extra_head %}
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+{% block content %}
+    <main class="png-home">
+      <header class="png-home-header">
+        <h1 class="png-home-title">Pits n' Giggles</h1>
+        <p class="png-home-subtitle">v{{ version }}</p>
+      </header>
+      <div class="png-home-cards">
+        <a class="png-home-card" href="/live">
+          <span class="png-home-card-icon">🏎️</span>
+          <h2 class="png-home-card-title">Live Dashboard</h2>
+          <p class="png-home-card-desc">Real-time timing, tyre wear, and race analysis while the game is running.</p>
+        </a>
+        <a class="png-home-card" href="/eng-view">
+          <span class="png-home-card-icon">🔧</span>
+          <h2 class="png-home-card-title">Engineer View</h2>
+          <p class="png-home-card-desc">Track map, weather, tyre stints, and deep race-engineering detail.</p>
+        </a>
+        <a class="png-home-card" href="/save-viewer/">
+          <span class="png-home-card-icon">💾</span>
+          <h2 class="png-home-card-title">Save Viewer</h2>
+          <p class="png-home-card-desc">Browse and analyse previously saved sessions.</p>
+        </a>
+      </div>
+    </main>
+{% endblock %}
