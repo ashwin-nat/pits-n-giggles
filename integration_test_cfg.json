@@ -2,7 +2,6 @@
     "Network": {
         "telemetry_port": 20778,
         "server_port": 4768,
-        "save_viewer_port": 4769,
         "broker_xpub_port": 53838,
         "broker_xsub_port": 53835,
         "broker_router_port": 53836,

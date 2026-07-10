@@ -69,7 +69,6 @@ class HudAppMgr(PngAppMgrBase):
         """Initialize the HUD subsystem manager
         :param common_cfg: Common configuration for the HUD app manager
         """
-        self.port = common_cfg.settings.Network.save_viewer_port
         self.supported = (sys.platform == "win32") # Only supported on Windows
         self.enabled = common_cfg.settings.HUD.enabled
         self.integration_test_interval = 2.0

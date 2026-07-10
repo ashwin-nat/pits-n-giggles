@@ -41,12 +41,12 @@ def _dispatch_frozen_submodule():
 
     Example invocations:
         pits_n_giggles.exe --module apps.backend <...>
-        pits_n_giggles.exe --module apps.save_viewer <...>
+        pits_n_giggles.exe --module apps.web <...>
     """
 
     ALLOWED_MODULES = {
         "apps.backend",
-        "apps.save_viewer",
+        "apps.web",
         "apps.hud",
         "apps.broker",
         "apps.mcp_server",

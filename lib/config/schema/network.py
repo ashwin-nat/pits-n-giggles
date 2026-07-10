@@ -51,11 +51,6 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         default=4768,
         port_type=PortType.TCP
     )
-    save_viewer_port: int = port_field(
-        f"{APP_NAME} Save Data Viewer Port",
-        default=4769,
-        port_type=PortType.TCP
-    )
     broker_xpub_port: int = port_field(
         "PitWall Downstream Port",
         default=53838,

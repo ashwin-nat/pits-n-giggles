@@ -26,11 +26,13 @@ import argparse
 import asyncio
 import logging
 import sys
+from pathlib import Path
 from typing import List
 
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PngError
+from lib.file_path import get_app_base_dir
 from lib.logger import get_logger
 from lib.periodic_task import periodic_task
 from lib.version import get_version
@@ -67,7 +69,15 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, debu
     tasks: List[asyncio.Task] = []
     shutdown_event = asyncio.Event()
 
-    web_server = WebServer(settings=settings, ver_str=version, logger=logger, debug_mode=debug_mode)
+    session_dir_setting = settings.Capture.session_dir_path
+    session_dir = session_dir_setting if session_dir_setting.is_absolute() \
+        else (get_app_base_dir() / session_dir_setting).resolve()
+    viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
+    logger.debug("Session directory: %s", session_dir)
+    logger.debug("Viewer directory: %s", viewer_dir)
+
+    web_server = WebServer(settings=settings, ver_str=version, logger=logger, session_dir=session_dir,
+                           viewer_dir=viewer_dir, debug_mode=debug_mode)
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
     ipc_sub = initSubscriber(settings.Network.broker_xpub_port, logger, web_server)

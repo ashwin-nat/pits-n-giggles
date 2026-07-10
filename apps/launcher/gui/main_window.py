@@ -41,8 +41,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       McpAppMgr, PngAppMgrBase,
-                                      PngAppMgrConfig, SaveViewerAppMgr,
-                                      WebAppMgr)
+                                      PngAppMgrConfig, WebAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -232,7 +231,6 @@ class PngLauncherWindow(QMainWindow):
         self.subsystems: List[PngAppMgrBase] = [
             BackendAppMgr(common_cfg, replay_server=replay_mode),
             WebAppMgr(common_cfg),
-            SaveViewerAppMgr(common_cfg),
             HudAppMgr(common_cfg),
             BrokerAppMgr(common_cfg),
             McpAppMgr(common_cfg)

@@ -44,7 +44,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         settings = NetworkSettings()
         self.assertEqual(settings.telemetry_port, 20777)
         self.assertEqual(settings.server_port, 4768)
-        self.assertEqual(settings.save_viewer_port, 4769)
         self.assertEqual(settings.udp_tyre_delta_action_code, None)
         self.assertEqual(settings.udp_custom_action_code, None)
         self.assertEqual(settings.wdt_interval_sec, 30)
@@ -85,14 +84,12 @@ class TestNetworkSettings(TestF1ConfigBase):
         net = NetworkSettings(
             telemetry_port=1,
             server_port=65535,
-            save_viewer_port=12345,
             udp_tyre_delta_action_code=1,
             udp_custom_action_code=12,
             wdt_interval_sec=45
         )
         self.assertEqual(net.telemetry_port, 1)
         self.assertEqual(net.server_port, 65535)
-        self.assertEqual(net.save_viewer_port, 12345)
         self.assertEqual(net.udp_tyre_delta_action_code, 1)
         self.assertEqual(net.udp_custom_action_code, 12)
         self.assertEqual(net.wdt_interval_sec, 45)
@@ -109,12 +106,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             NetworkSettings(server_port=70000)
 
-    def test_invalid_save_viewer_port(self):
-        with self.assertRaises(ValidationError):
-            NetworkSettings(save_viewer_port=-5)
-        with self.assertRaises(ValidationError):
-            NetworkSettings(save_viewer_port=70000)
-
     def test_invalid_udp_tyre_delta_action_code(self):
         with self.assertRaises(ValidationError):
             NetworkSettings(udp_tyre_delta_action_code=0)
@@ -126,11 +117,6 @@ class TestNetworkSettings(TestF1ConfigBase):
             NetworkSettings(udp_custom_action_code=0)
         with self.assertRaises(ValidationError):
             NetworkSettings(udp_custom_action_code=13)
-
-    def test_server_and_save_viewer_ports_must_differ(self):
-        """Test that server_port and save_viewer_port cannot be the same"""
-        with self.assertRaises(ValidationError) as ctx:
-            NetworkSettings(server_port=5000, save_viewer_port=5000)
 
     def test_udp_action_codes_must_differ(self):
         """Test that tyre and custom UDP action codes cannot be the same"""
@@ -209,7 +195,6 @@ class TestNetworkSettings(TestF1ConfigBase):
         NetworkSettings(
             telemetry_port=20777,      # UDP
             server_port=4768,          # TCP
-            save_viewer_port=4769,     # TCP
             broker_xpub_port=53838,    # TCP
             broker_xsub_port=53835,    # TCP
             broker_router_port=53836,  # TCP
@@ -219,7 +204,7 @@ class TestNetworkSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             NetworkSettings(
                 server_port=5000,
-                save_viewer_port=5000,
+                broker_xpub_port=5000,
             )
 
         # ---- 3. UDP–TCP same port (VALID) ----
@@ -232,8 +217,8 @@ class TestNetworkSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             NetworkSettings(
                 server_port=7000,
-                save_viewer_port=7000,
                 broker_xpub_port=7000,
+                broker_xsub_port=7000,
             )
 
         # ---- 5. broker_router_port conflicts with another TCP port ----
