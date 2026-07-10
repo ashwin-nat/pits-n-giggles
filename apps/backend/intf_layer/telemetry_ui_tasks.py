@@ -132,7 +132,8 @@ def initUiIntfLayer(
             logger,
             highFreqLocalUpdateTask,
             session_state,
-            ipc_pub), name="High Frequency Local Update Task"))
+            ipc_pub,
+            settings.StreamOverlay.show_sample_data_at_start), name="High Frequency Local Update Task"))
 
     # Interrupt/event driven tasks
     tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
@@ -153,20 +154,23 @@ async def lowFreqLocalUpdateTask(
         ipc_pub (IpcPublisherAsync): The IPC publisher
     """
 
-    race_table_data = PeriodicUpdateData(session_state).toJSON()
+    race_table_data = PeriodicUpdateData(session_state, send_position_data=True).toJSON()
     await ipc_pub.publish("race-table-update", race_table_data) # IPC publish is O(1) so do it always
 
 async def highFreqLocalUpdateTask(
     session_state: SessionState,
-    ipc_pub: IpcPublisherAsync) -> None:
+    ipc_pub: IpcPublisherAsync,
+    stream_overlay_start_sample_data: bool) -> None:
     """High frequency local update task to publish stream overlay data
 
     Args:
         session_state (SessionState): The session state
         ipc_pub (IpcPublisherAsync): The IPC publisher
+        stream_overlay_start_sample_data (bool): Whether to show sample data at start
     """
 
-    data = StreamOverlayData(session_state, export_hud_data=True, export_pu_data=True).toJSON(False)
+    data = StreamOverlayData(session_state, export_hud_data=True, export_pu_data=True).toJSON(
+        stream_overlay_start_sample_data)
     await ipc_pub.publish("stream-overlay-update", data)
 
 async def webClientUpdateTask(
