@@ -53,7 +53,7 @@ Subsystem manager files:
 - `apps/launcher/subsystems/backend_mgr.py`
 - `apps/launcher/subsystems/hud_mgr/hud_mgr.py`
 - `apps/launcher/subsystems/broker_mgr.py`
-- `apps/launcher/subsystems/save_viewer_mgr.py`
+- `apps/launcher/subsystems/web_mgr.py`
 - `apps/launcher/subsystems/mcp_mgr.py`
 
 ---

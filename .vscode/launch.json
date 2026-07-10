@@ -88,16 +88,6 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Post Race Data Viewer - Module",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "apps.save_viewer",
-            "console": "integratedTerminal",
-            "args": [
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
             "name": "Replayer - Module",
             "type": "debugpy",
             "request": "launch",

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 poetry install
 
-# First-time only: fetch the f1-save-viewer React submodule (built output served by save_viewer)
+# First-time only: fetch the f1-save-viewer React submodule (built output served by apps/web)
 git submodule update --init
 
 # Run tests
@@ -56,7 +56,7 @@ See `tests/README.md` for full details. Key conventions:
 
 ## Running Apps
 
-The launcher is the entry point — it spawns every other subsystem (backend, hud, broker, save_viewer, mcp_server) as subprocesses and sends them periodic heartbeats over IPC. A subsystem started on its own fails the heartbeat check and self-terminates, so **do not run subsystems standalone**; always go through the launcher:
+The launcher is the entry point — it spawns every other subsystem (backend, web, hud, broker, mcp_server) as subprocesses and sends them periodic heartbeats over IPC. A subsystem started on its own fails the heartbeat check and self-terminates, so **do not run subsystems standalone**; always go through the launcher:
 
 ```bash
 poetry run python -m apps.launcher          # Main GUI launcher (starts everything else)
@@ -71,23 +71,23 @@ poetry run python -m apps.dev_tools.telemetry_replayer --file-name example.f1pca
 
 ```
 apps/launcher/     — Qt (PySide6) GUI; spawns and monitors all other processes via IPC
-apps/backend/      — Core server: receives UDP/TCP from F1 game, runs analysis, serves WebSocket+REST
+apps/backend/      — Dumb core: receives UDP/TCP from F1 game, runs analysis, publishes over IPC only (no HTTP)
+apps/web/          — Quart + Socket.IO web server; serves the live dashboards, save-viewer, and home page on one port
 apps/hud/          — Always-on-top Qt overlay windows for in-game display
 apps/broker/       — ZeroMQ pub/sub broker for multi-client telemetry forwarding
-apps/save_viewer/  — Quart web server for analyzing saved session JSON files
 apps/mcp_server/   — Exposes live telemetry as MCP tools (FastMCP; stdio standalone, HTTP/SSE when launcher-managed)
-apps/frontend/     — Vanilla JS/HTML/CSS browser UI (served by backend)
-apps/external/     — Bundled external submodules (f1-save-viewer React app; dist/ served by save_viewer)
+apps/frontend/     — Vanilla JS/HTML/CSS browser UI (served by apps/web)
+apps/external/     — Bundled external submodules (f1-save-viewer React app; dist/ served by apps/web under /save-viewer/*)
 apps/dev_tools/    — Telemetry replayer and packet capture utilities
 ```
 
 ### Backend Layers (`apps/backend/`)
 
-The backend is structured in three layers:
+The backend is a dumb core — it has no HTTP server and pushes everything over IPC. It is structured in three layers:
 
 1. **`telemetry_layer/`** — UDP/TCP socket reception, packet parsing (16 F1 packet types), frame gating
 2. **`state_mgmt_layer/`** — `SessionState` aggregates all parsed data; runs overtake/collision detection, tyre wear extrapolation, race analysis
-3. **`intf_layer/`** — Quart web server + Socket.IO; pushes state updates to browser clients and HUD via WebSocket; exposes REST API
+3. **`intf_layer/`** — Publishes state updates over IPC pub/sub (consumed by the broker, then `apps/web`/`apps/hud`/`apps/mcp_server`); answers `driver-info`/`race-info` pull requests over the IPC router/dealer channel
 
 ### Shared Library (`lib/`)
 
@@ -103,7 +103,7 @@ Reusable modules consumed by multiple apps:
 - **`delta/`** — Lap delta calculations
 - **`openf1/`** — Integration with the external OpenF1 API
 - **`wdt/`** — Watchdog timer for async task health monitoring (sync and async variants)
-- **`web_server/`** — Shared async web server base (`BaseWebServer`) and uvicorn socket helper used by backend and save_viewer
+- **`web_server/`** — Shared async web server base (`BaseWebServer`) and uvicorn socket helper used by `apps/web`
 - **`assets_loader/`** — Loads fonts and icons (team logos, tyre compounds) for Qt HUD
 - **`event_counter/`** — Rate/count statistics tracking for telemetry performance metrics
 - **`track_segment_info/`** — Track segment metadata and per-circuit sector boundary database
@@ -116,8 +116,8 @@ Reusable modules consumed by multiple apps:
 F1 Game (UDP/TCP)
   → TelemetryManager (lib/telemetry_manager) parses packets
   → SessionState (state_mgmt_layer) aggregates and runs analysis
-  → TelemetryWebServer (intf_layer) broadcasts via Socket.IO
-  → Browser dashboard (apps/frontend) + HUD overlay (apps/hud)
+  → apps/backend publishes over IPC (pub/sub + router/dealer) via apps/broker
+  → apps/web broadcasts to browsers via Socket.IO; apps/hud renders the in-game overlay; apps/mcp_server exposes it as MCP tools
 ```
 
 ### Key Files
