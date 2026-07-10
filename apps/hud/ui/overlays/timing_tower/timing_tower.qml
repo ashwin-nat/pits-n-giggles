@@ -436,7 +436,7 @@ Window {
                                     id: colHeaderCell
                                     required property var modelData
                                     width: cols[colHeaderCell.modelData]
-                                    height: parent.height
+                                    height: parent ? parent.height : 0
                                     Text {
                                         anchors.fill: parent
                                         text: root.colHeaderLabel(colHeaderCell.modelData)
@@ -583,7 +583,7 @@ Window {
                                         required property var modelData
                                         property string colId: dynColLoader.modelData
                                         width: cols[dynColLoader.colId]
-                                        height: parent.height
+                                        height: parent ? parent.height : 0
                                         sourceComponent: {
                                             switch(dynColLoader.colId) {
                                                 case "delta":         return deltaColComp
@@ -674,7 +674,7 @@ Window {
                                 id: ttRow
                                 required property var modelData
                                 required property int index
-                                width: parent.width
+                                width: parent ? parent.width : 0
                                 height: 28
 
                                 Rectangle {

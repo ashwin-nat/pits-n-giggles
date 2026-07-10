@@ -76,7 +76,7 @@ Item {
                         required property string modelData
 
                         width: container.width * root.columnWidthRatios[headerCell.index]
-                        height: parent.height
+                        height: parent ? parent.height : 0
                         color: "#2a2a2a"
                         border.color: root.colGrid
                         Text {
@@ -120,7 +120,7 @@ Item {
                                 required property int index
 
                                 width: container.width * root.columnWidthRatios[cellRect.index]
-                                height: parent.height
+                                height: parent ? parent.height : 0
                                 color: "transparent"
                                 border.color: root.colGrid
 

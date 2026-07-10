@@ -374,9 +374,9 @@ Item {
                     id: yAxisTick
                     required property int index
 
-                    width: parent.width
+                    width: parent ? parent.width : 0
                     height: 12
-                    y: (parent.height * yAxisTick.index / 4) - 6
+                    y: parent ? (parent.height * yAxisTick.index / 4) - 6 : 0
 
                     Text {
                         text: {
@@ -408,9 +408,9 @@ Item {
                     id: rainAxisTick
                     required property int index
 
-                    width: parent.width
+                    width: parent ? parent.width : 0
                     height: 12
-                    y: (parent.height * rainAxisTick.index / 4) - 6
+                    y: parent ? (parent.height * rainAxisTick.index / 4) - 6 : 0
 
                     Text {
                         text: {
