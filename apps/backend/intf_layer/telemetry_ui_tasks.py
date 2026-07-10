@@ -24,21 +24,20 @@
 
 import asyncio
 import logging
-import random
-from typing import Any, Awaitable, Callable, List, Tuple
+from typing import List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
+                                                RaceInfoData,
                                                 StreamOverlayData)
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
-from lib.web_server import ClientType
+from lib.periodic_task import periodic_task
 
 from .ipc import registerIpcTask
 from .request_handlers import handleDriverInfoRequest
-from .telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -59,7 +58,12 @@ def _initDealer(
         result = handleDriverInfoRequest(session_state, data.get("index"))
         if result.ok:
             return {"ok": True, "data": result.data}
-        return {"ok": False, "error": result.detail, "data": None}
+        return {"ok": False, "error": result.detail, "error_code": result.error.name, "data": None}
+
+    @dealer.route("race-info-request")
+    async def _handle_race_info_request(_data: dict, sender: str) -> dict:
+        logger.debug("Received race info request via router from %s", sender)
+        return RaceInfoData(session_state).toJSON()
 
     return dealer
 
@@ -67,48 +71,35 @@ def initUiIntfLayer(
     settings: PngSettings,
     logger: logging.Logger,
     session_state: SessionState,
-    debug_mode: bool,
     tasks: List[asyncio.Task],
-    ver_str: str,
     run_ipc_server: bool,
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]:
-    """Initialize the UI interface layer and return then server obj for proper cleanup
+    telemetry_handler: F1TelemetryHandler) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
+    """Initialize the UI interface layer. The backend is a dumb core: it only publishes analysed
+    telemetry over IPC and answers pull requests — apps/web owns all HTTP/Socket.IO serving.
 
     Args:
         settings (PngSettings): Png settings
         logger (logging.Logger): Logger
         session_state (SessionState): Handle to the session state
-        debug_mode (bool): Debug enabled if true
         tasks (List[asyncio.Task]): List of tasks to be executed
-        ver_str (str): Version string
         run_ipc_server (bool): Whether to run the IPC server
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
 
     Returns:
-        Tuple[TelemetryWebServer, IpcPublisherAsync, IpcDealerAsync]: Web server, IPC publisher,
-                            and IPC dealer instances
+        Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and IPC dealer instances
     """
 
-    # First, create the server instance
-    web_server = TelemetryWebServer(
-        settings=settings,
-        ver_str=ver_str,
-        logger=logger,
-        session_state=session_state,
-        debug_mode=debug_mode,
-    )
     ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
     tasks.append(ipc_pub.get_task())
-    tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
     dealer = _initDealer(settings, logger, session_state)
     tasks.append(asyncio.create_task(dealer.start(), name="Backend Dealer Recv"))
 
     # Setup periodic tasks
     tasks.append(asyncio.create_task(
-        _periodic_task(
+        periodic_task(
             settings.Display.local_telemetry_interval_ms,
             shutdown_event,
             logger,
@@ -117,16 +108,7 @@ def initUiIntfLayer(
             ipc_pub), name="Low Frequency Local Update Task"
         ))
     tasks.append(asyncio.create_task(
-        _periodic_task(
-            settings.Display.refresh_interval,
-            shutdown_event,
-            logger,
-            webClientUpdateTask,
-            web_server,
-            session_state,
-            settings.StreamOverlay.show_sample_data_at_start), name="Web Client Update Task"))
-    tasks.append(asyncio.create_task(
-        _periodic_task(
+        periodic_task(
             settings.Display.hud_refresh_interval,
             shutdown_event,
             logger,
@@ -136,13 +118,13 @@ def initUiIntfLayer(
             settings.StreamOverlay.show_sample_data_at_start), name="High Frequency Local Update Task"))
 
     # Interrupt/event driven tasks
-    tasks.append(asyncio.create_task(frontEndMessageTask(web_server, shutdown_event),
+    tasks.append(asyncio.create_task(frontEndMessageTask(dealer, shutdown_event),
                                      name="Front End Message Task"))
     tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, dealer, web_server, tasks)
-    return web_server, ipc_pub, dealer
+    registerIpcTask(run_ipc_server, logger, session_state, telemetry_handler, ipc_pub, dealer, tasks)
+    return ipc_pub, dealer
 
 async def lowFreqLocalUpdateTask(
         session_state: SessionState,
@@ -173,48 +155,20 @@ async def highFreqLocalUpdateTask(
         stream_overlay_start_sample_data)
     await ipc_pub.publish("stream-overlay-update", data)
 
-async def webClientUpdateTask(
-    server: TelemetryWebServer,
-    session_state: SessionState,
-    stream_overlay_start_sample_data: bool) -> None:
-    """Task to update web clients with telemetry data
-
-    Args:
-        server (TelemetryWebServer): The telemetry web server
-        session_state (SessionState): The session state
-        stream_overlay_start_sample_data (bool): Whether to show sample data at start
-    """
-
-    if server.is_any_client_interested_in_event('race-table-update'):
-        await server.send_to_clients_interested_in_event(
-            event='race-table-update',
-            data=PeriodicUpdateData(session_state, send_position_data=True).toJSON()
-        )
-
-    if server.is_any_client_interested_in_event('stream-overlay-update'):
-        await server.send_to_clients_interested_in_event(
-            event='stream-overlay-update',
-            data=StreamOverlayData(session_state).toJSON(stream_overlay_start_sample_data)
-        )
-
 async def frontEndMessageTask(
-    server: TelemetryWebServer,
+    dealer: IpcDealerAsync,
     shutdown_event: asyncio.Event) -> None:
-    """Task to update clients with telemetry data
+    """Task to forward aperiodic frontend messages (toasts, markers, etc.) to apps/web via the
+    router/dealer channel.
 
     Args:
-        server (TelemetryWebServer): The telemetry web server
+        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
         shutdown_event (asyncio.Event): Event to signal shutdown
     """
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await server.send_to_clients_of_type(
-                event='frontend-update',
-                data=message.toJSON(),
-                client_type=ClientType.RACE_TABLE)
-
-    server.m_logger.debug("Shutting down front end message task")
+            await dealer.fire(str(PngAppId.WEB), "frontend-update", message.toJSON())
 
 async def hudInteractionTask(
     dealer: IpcDealerAsync,
@@ -229,54 +183,3 @@ async def hudInteractionTask(
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
             await dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())
-
-# -------------------------------------- UTILS -------------------------------------------------------------------------
-
-async def _initial_random_sleep() -> None:
-    """Sleep for a random amount of time to avoid bursty events"""
-    await asyncio.sleep(random.uniform(0, 0.2))
-
-async def _periodic_task(
-    interval_ms: int,
-    shutdown_event: asyncio.Event,
-    logger: logging.Logger,
-    task_coro: Callable[..., Awaitable[Any]],
-    *args,
-    **kwargs) -> None:
-    """Utility to run a periodic task with deadline scheduling
-
-    Args:
-    interval_ms (int): Interval in milliseconds
-    shutdown_event (asyncio.Event): Event to signal shutdown
-    logger (logging.Logger): Logger
-    task_coro: Coroutine function to run periodically
-    *args: Positional arguments to pass to task_coro
-    **kwargs: Keyword arguments to pass to task_coro
-    """
-    await _initial_random_sleep() # Stagger start times
-    interval = interval_ms / 1000.0
-    loop = asyncio.get_running_loop()
-    next_tick = loop.time()
-
-    task = asyncio.current_task()
-    task_name = task.get_name() if task else "<unknown>"
-
-    logger.debug("%s: Starting periodic task", task_name)
-
-    while not shutdown_event.is_set():
-        next_tick += interval
-        try:
-            await task_coro(*args, **kwargs)
-        except Exception as e: # pylint: disable=broad-except
-            logger.exception("%s: Error running periodic task %s", task_name, e)
-
-        delay = next_tick - loop.time()
-
-        if delay > 0:
-            await asyncio.sleep(delay)
-        else:
-            # Missed deadline — resync without sleeping
-            next_tick = loop.time()
-            await asyncio.sleep(0)
-
-    logger.debug("%s: Shutting down periodic task", task_name)
