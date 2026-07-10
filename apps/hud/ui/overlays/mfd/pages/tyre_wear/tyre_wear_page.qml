@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 
@@ -62,7 +63,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            color: bgCard
+            color: root.bgCard
             radius: 8
 
             RowLayout {
@@ -93,16 +94,16 @@ Item {
                             font.family: "Formula1"
                             font.pixelSize: 14
                             font.bold: true
-                            color: textColor
+                            color: root.textColor
                         }
 
-                        Rectangle { width: 1; height: 16; color: borderColor }
+                        Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: root.borderColor }
 
                         Text {
                             text: "Age"
                             font.family: "Formula1"
                             font.pixelSize: 11
-                            color: dimColor
+                            color: root.dimColor
                         }
 
                         Text {
@@ -110,7 +111,7 @@ Item {
                             font.family: "Formula1"
                             font.pixelSize: 13
                             font.bold: true
-                            color: accentColor
+                            color: root.accentColor
                         }
                     }
 
@@ -122,7 +123,7 @@ Item {
                             text: "Wear Rate"
                             font.family: "Formula1"
                             font.pixelSize: 10
-                            color: dimColor
+                            color: root.dimColor
                         }
 
                         Text {
@@ -132,7 +133,7 @@ Item {
                             font.family: "Formula1"
                             font.pixelSize: 12
                             font.bold: true
-                            color: accentColor
+                            color: root.accentColor
                         }
                     }
                 }
@@ -141,7 +142,7 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: 1
                     Layout.fillHeight: true
-                    color: borderColor
+                    color: root.borderColor
                 }
 
                 // Right: tyre inventory
@@ -156,7 +157,7 @@ Item {
                         font.family: "Formula1"
                         font.pixelSize: 8
                         font.letterSpacing: 1
-                        color: dimColor
+                        color: root.dimColor
                     }
 
                     // Row 1: Soft, Medium, Hard
@@ -168,24 +169,26 @@ Item {
                             model: ["Soft", "Medium", "Hard"]
 
                             RowLayout {
+                                id: softMedHardCell
+                                required property string modelData
                                 spacing: 2
-                                property int count: root.tyreCounts[modelData]
+                                property int count: root.tyreCounts[softMedHardCell.modelData]
 
                                 Image {
                                     Layout.preferredWidth: 20
                                     Layout.preferredHeight: 20
-                                    source: root.tyreIcons[modelData] || ""
+                                    source: root.tyreIcons[softMedHardCell.modelData] || ""
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true; antialiasing: true; mipmap: true
-                                    opacity: count > 0 ? 1.0 : 0.3
+                                    opacity: softMedHardCell.count > 0 ? 1.0 : 0.3
                                 }
 
                                 Text {
-                                    text: "×" + count
+                                    text: "×" + softMedHardCell.count
                                     font.family: "Formula1"
                                     font.pixelSize: 9
                                     font.bold: true
-                                    color: count > 0 ? accentColor : dimColor
+                                    color: softMedHardCell.count > 0 ? root.accentColor : root.dimColor
                                 }
                             }
                         }
@@ -200,24 +203,26 @@ Item {
                             model: ["Super Soft", "Inters", "Wet"]
 
                             RowLayout {
+                                id: ssIntersWetCell
+                                required property string modelData
                                 spacing: 2
-                                property int count: root.tyreCounts[modelData]
+                                property int count: root.tyreCounts[ssIntersWetCell.modelData]
 
                                 Image {
                                     Layout.preferredWidth: 20
                                     Layout.preferredHeight: 20
-                                    source: root.tyreIcons[modelData] || ""
+                                    source: root.tyreIcons[ssIntersWetCell.modelData] || ""
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true; antialiasing: true; mipmap: true
-                                    opacity: count > 0 ? 1.0 : 0.3
+                                    opacity: ssIntersWetCell.count > 0 ? 1.0 : 0.3
                                 }
 
                                 Text {
-                                    text: "×" + count
+                                    text: "×" + ssIntersWetCell.count
                                     font.family: "Formula1"
                                     font.pixelSize: 9
                                     font.bold: true
-                                    color: count > 0 ? accentColor : dimColor
+                                    color: ssIntersWetCell.count > 0 ? root.accentColor : root.dimColor
                                 }
                             }
                         }
@@ -237,14 +242,14 @@ Item {
                 text: "Telemetry disabled — wear data unavailable"
                 font.family: "Formula1"
                 font.pixelSize: 12
-                color: dangerColor
+                color: root.dangerColor
             }
 
             Rectangle {
                 id: tableRect
                 anchors.fill: parent
                 visible: !root.telemetryDisabled
-                color: bgTable
+                color: root.bgTable
                 radius: 6
                 clip: true
 
@@ -266,17 +271,19 @@ Item {
                             model: ["LAP", "FL", "FR", "RL", "RR"]
 
                             Rectangle {
+                                id: headerCell
+                                required property string modelData
                                 width: tableRect.colW
                                 height: tableRect.headerH
-                                color: bgHeader
+                                color: root.bgHeader
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: modelData
+                                    text: headerCell.modelData
                                     font.family: "Formula1"
                                     font.pixelSize: 11
                                     font.bold: true
-                                    color: accentColor
+                                    color: root.accentColor
                                 }
                             }
                         }
@@ -293,7 +300,7 @@ Item {
 
                             width: tableRect.width
                             height: tableRect.rowH
-                            color: index % 2 === 0 ? "transparent" : bgAltRow
+                            color: rowRect.index % 2 === 0 ? "transparent" : root.bgAltRow
 
                             Row {
                                 anchors.fill: parent
@@ -309,7 +316,7 @@ Item {
                                         font.family: "Formula1"
                                         font.pixelSize: 12
                                         font.bold: true
-                                        color: textColor
+                                        color: root.textColor
                                     }
                                 }
 
@@ -328,14 +335,15 @@ Item {
 
     // ── Components ───────────────────────────────────────────────────────
     component WearCell: Item {
+        id: wearCell
         required property var value
 
         Text {
             anchors.centerIn: parent
-            text: root.wearText(value)
+            text: root.wearText(wearCell.value)
             font.family: "B612 Mono"
             font.pixelSize: 12
-            color: root.wearColor(value)
+            color: root.wearColor(wearCell.value)
         }
     }
 }

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 
@@ -110,13 +111,16 @@ Rectangle {
             visible: root.tableData.length > 0
 
             delegate: Rectangle {
+                id: rejoinRow
+                required property var modelData
+
                 width: tableView.width
                 height: 35
                 color: "#80000000"
 
                 // Border for reference driver
-                border.color: modelData.isRef ? "white" : "transparent"
-                border.width: modelData.isRef ? 2 : 0
+                border.color: rejoinRow.modelData.isRef ? "white" : "transparent"
+                border.width: rejoinRow.modelData.isRef ? 2 : 0
 
                 // Top border for all rows
                 Rectangle {
@@ -136,7 +140,7 @@ Rectangle {
                     Text {
                         Layout.preferredWidth: 32
                         Layout.fillHeight: true
-                        text: modelData.position
+                        text: rejoinRow.modelData.position
                         font.family: "Formula1"
                         font.pixelSize: 10
                         font.bold: true
@@ -154,7 +158,7 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 20
                             height: 20
-                            source: root.teamIcons[modelData.team] || root.defaultTeamIcon
+                            source: root.teamIcons[rejoinRow.modelData.team] || root.defaultTeamIcon
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             mipmap: true
@@ -165,7 +169,7 @@ Rectangle {
                     Text {
                         Layout.preferredWidth: 220
                         Layout.fillHeight: true
-                        text: modelData.name
+                        text: rejoinRow.modelData.name
                         font.family: "Formula1"
                         font.pixelSize: 10
                         color: "white"
@@ -183,7 +187,7 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            source: root.tyreIcons[modelData.compound] || ""
+                            source: root.tyreIcons[rejoinRow.modelData.compound] || ""
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             mipmap: true
@@ -196,11 +200,11 @@ Rectangle {
                     Text {
                         Layout.preferredWidth: 30
                         Layout.fillHeight: true
-                        text: modelData.tyreAge
+                        text: rejoinRow.modelData.tyreAge
                         font.family: "B612 Mono"
                         font.pixelSize: 9
                         color: "white"
-                        horizontalAlignment: Text.AlignCenter
+                        horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
 
@@ -208,7 +212,7 @@ Rectangle {
                     Text {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        text: modelData.delta
+                        text: rejoinRow.modelData.delta
                         font.family: "B612 Mono"
                         font.pixelSize: 9
                         color: "white"

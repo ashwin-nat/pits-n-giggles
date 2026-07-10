@@ -21,61 +21,61 @@ Item {
         id: topEdge
         x: 0; y: 0
         width: parent.width; height: 2
-        color: borderColor
-        opacity: borderOpacity
+        color: unlockOverlay.borderColor
+        opacity: unlockOverlay.borderOpacity
     }
     Rectangle {
         id: bottomEdge
         x: 0; y: parent.height - 2
         width: parent.width; height: 2
-        color: borderColor
-        opacity: borderOpacity
+        color: unlockOverlay.borderColor
+        opacity: unlockOverlay.borderOpacity
     }
     Rectangle {
         id: leftEdge
         x: 0; y: 0
         width: 2; height: parent.height
-        color: borderColor
-        opacity: borderOpacity
+        color: unlockOverlay.borderColor
+        opacity: unlockOverlay.borderOpacity
     }
     Rectangle {
         id: rightEdge
         x: parent.width - 2; y: 0
         width: 2; height: parent.height
-        color: borderColor
-        opacity: borderOpacity
+        color: unlockOverlay.borderColor
+        opacity: unlockOverlay.borderOpacity
     }
 
     // Corner handles - solid filled squares to make grab zones obvious
     Rectangle {
         id: tlHandle
         x: 0; y: 0
-        width: handleSize; height: handleSize
-        color: accentColor
+        width: unlockOverlay.handleSize; height: unlockOverlay.handleSize
+        color: unlockOverlay.accentColor
         opacity: 0.9
         radius: 2
     }
     Rectangle {
         id: trHandle
-        x: parent.width - handleSize; y: 0
-        width: handleSize; height: handleSize
-        color: accentColor
+        x: parent.width - unlockOverlay.handleSize; y: 0
+        width: unlockOverlay.handleSize; height: unlockOverlay.handleSize
+        color: unlockOverlay.accentColor
         opacity: 0.9
         radius: 2
     }
     Rectangle {
         id: blHandle
-        x: 0; y: parent.height - handleSize
-        width: handleSize; height: handleSize
-        color: accentColor
+        x: 0; y: parent.height - unlockOverlay.handleSize
+        width: unlockOverlay.handleSize; height: unlockOverlay.handleSize
+        color: unlockOverlay.accentColor
         opacity: 0.9
         radius: 2
     }
     Rectangle {
         id: brHandle
-        x: parent.width - handleSize; y: parent.height - handleSize
-        width: handleSize; height: handleSize
-        color: accentColor
+        x: parent.width - unlockOverlay.handleSize; y: parent.height - unlockOverlay.handleSize
+        width: unlockOverlay.handleSize; height: unlockOverlay.handleSize
+        color: unlockOverlay.accentColor
         opacity: 0.9
         radius: 2
     }

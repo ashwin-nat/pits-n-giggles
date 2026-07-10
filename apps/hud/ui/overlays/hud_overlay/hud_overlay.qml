@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
@@ -101,14 +102,14 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width:  baseWidth
-        height: baseHeight
+        width:  root.baseWidth
+        height: root.baseHeight
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
-            origin.x: baseWidth  / 2
-            origin.y: baseHeight / 2
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
+            origin.x: root.baseWidth  / 2
+            origin.y: root.baseHeight / 2
         }
 
         // ── Pill visual background (drawn first / below tab) ─────────────────
@@ -202,17 +203,20 @@ Window {
                 Repeater {
                     model: 15
                     Rectangle {
+                        id: revLight
+                        required property int index
+
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
                         radius: 2
 
                         readonly property int  litCount: Math.round(root.revLightsPct / 100 * 15)
-                        readonly property bool isLit:    index < litCount
-                        readonly property string litColor: index < 5 ? "#39d37a"
-                                                         : index < 10 ? "#ff1744"
+                        readonly property bool isLit:    revLight.index < revLight.litCount
+                        readonly property string litColor: revLight.index < 5 ? "#39d37a"
+                                                         : revLight.index < 10 ? "#ff1744"
                                                          : "#9b30ff"
 
-                        color: isLit ? litColor : "#192531"
+                        color: revLight.isLit ? revLight.litColor : "#192531"
                         Behavior on color { ColorAnimation { duration: 50 } }
                     }
                 }
@@ -772,9 +776,12 @@ Window {
                         Repeater {
                             model: [[-1,-1],[-1,1],[1,-1],[1,1]]
                             Text {
+                                id: ersPctShadow
+                                required property var modelData
+
                                 visible:        root.ersMode.toLowerCase().indexOf("medium") !== -1
-                                x: ersPctLabel.x + modelData[0]
-                                y: ersPctLabel.y + modelData[1]
+                                x: ersPctLabel.x + ersPctShadow.modelData[0]
+                                y: ersPctLabel.y + ersPctShadow.modelData[1]
                                 text:           Math.round(root.clampPct(root.ersRemPct)) + "%"
                                 font.family:    "Formula1"
                                 font.pixelSize: 16

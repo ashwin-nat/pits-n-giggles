@@ -46,14 +46,14 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width:  baseWidth
-        height: baseHeight
+        width:  root.baseWidth
+        height: root.baseHeight
 
         transform: Scale {
-            xScale: scaleFactor
-            yScale: scaleFactor
-            origin.x: baseWidth  / 2
-            origin.y: baseHeight / 2
+            xScale: root.scaleFactor
+            yScale: root.scaleFactor
+            origin.x: root.baseWidth  / 2
+            origin.y: root.baseHeight / 2
         }
 
         // ════════════════════════════════════════════════════════════════════
@@ -61,7 +61,7 @@ Window {
         // ════════════════════════════════════════════════════════════════════
         Rectangle {
             anchors.fill: parent
-            color: bgBase
+            color: root.bgBase
             visible: !root.minOverlayStyle
 
             ColumnLayout {
@@ -72,7 +72,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 87
-                    color: bgHero
+                    color: root.bgHero
 
                     // Coloured left accent bar
                     Rectangle {
@@ -107,7 +107,7 @@ Window {
                                     font.family: "Formula1"
                                     font.pixelSize: 9
                                     font.letterSpacing: 1.5
-                                    color: labelClr
+                                    color: root.labelClr
                                 }
 
                                 Text {
@@ -132,7 +132,7 @@ Window {
                                     font.family: "Formula1"
                                     font.pixelSize: 9
                                     font.letterSpacing: 1.5
-                                    color: labelClr
+                                    color: root.labelClr
                                     Layout.fillWidth: true
                                     horizontalAlignment: Text.AlignRight
                                 }
@@ -159,7 +159,7 @@ Window {
                 }
 
                 // Divider
-                Rectangle { Layout.fillWidth: true; height: 1; color: divider }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.divider }
 
                 // ── LAST / BEST row ───────────────────────────────────────
                 RowLayout {
@@ -171,7 +171,7 @@ Window {
                     Rectangle {
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
-                        color: bgCard
+                        color: root.bgCard
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -186,7 +186,7 @@ Window {
                                 font.family: "Formula1"
                                 font.pixelSize: 9
                                 font.letterSpacing: 1.2
-                                color: labelClr
+                                color: root.labelClr
                             }
 
                             Text {
@@ -194,7 +194,7 @@ Window {
                                 font.family: "B612 Mono"
                                 font.pixelSize: 14
                                 font.weight: Font.Bold
-                                color: textClr
+                                color: root.textClr
                             }
 
                             Item { Layout.fillHeight: true }
@@ -208,13 +208,13 @@ Window {
                     }
 
                     // Vertical divider
-                    Rectangle { width: 1; Layout.fillHeight: true; color: divider }
+                    Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: root.divider }
 
                     // BEST card
                     Rectangle {
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
-                        color: bgCard
+                        color: root.bgCard
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -232,12 +232,12 @@ Window {
                                     font.family: "Formula1"
                                     font.pixelSize: 9
                                     font.letterSpacing: 1.2
-                                    color: labelClr
+                                    color: root.labelClr
                                 }
 
                                 // Purple pip — signals personal best / purple sector colour
                                 Rectangle {
-                                    width: 5; height: 5; radius: 2.5
+                                    Layout.preferredWidth: 5; Layout.preferredHeight: 5; radius: 2.5
                                     color: "#9b30ff"
                                     Layout.alignment: Qt.AlignVCenter
                                 }
@@ -263,13 +263,13 @@ Window {
                 }
 
                 // Divider
-                Rectangle { Layout.fillWidth: true; height: 1; color: divider }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.divider }
 
                 // ── ESTIMATED footer ──────────────────────────────────────
                 Rectangle {
                     Layout.fillWidth:    true
                     Layout.preferredHeight: 34
-                    color: bgFooter
+                    color: root.bgFooter
 
                     RowLayout {
                         anchors.fill: parent
@@ -284,7 +284,7 @@ Window {
                             font.family: "Formula1"
                             font.pixelSize: 9
                             font.letterSpacing: 1.5
-                            color: labelClr
+                            color: root.labelClr
                         }
 
                         Item { Layout.fillWidth: true }
@@ -348,7 +348,7 @@ Window {
         // ════════════════════════════════════════════════════════════════════
         Rectangle {
             anchors.fill: parent
-            color: bgHero
+            color: root.bgHero
             visible: root.minOverlayStyle
 
             // Left accent bar

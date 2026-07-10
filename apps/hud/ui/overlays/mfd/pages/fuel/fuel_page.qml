@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 
@@ -54,13 +55,13 @@ Item {
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: surplusValid
-                          ? (surplusValue >= 0 ? "+" : "") + surplusValue.toFixed(3)
+                    text: page.surplusValid
+                          ? (page.surplusValue >= 0 ? "+" : "") + page.surplusValue.toFixed(3)
                           : "---"
                     font.family: "B612 Mono"
                     font.pixelSize: 36
                     font.weight: Font.Bold
-                    color: surplusColor
+                    color: page.surplusColor
                 }
 
                 Text {
@@ -69,7 +70,7 @@ Item {
                     text: "laps"
                     font.family: "Formula1"
                     font.pixelSize: 11
-                    color: dimTextColor
+                    color: page.dimTextColor
                 }
             }
         }
@@ -77,8 +78,8 @@ Item {
         /* ── DIVIDER ─────────────────────────────────────────── */
         Rectangle {
             Layout.fillWidth: true
-            height: 1
-            color: borderColor
+            Layout.preferredHeight: 1
+            color: page.borderColor
         }
 
         /* ── METRICS STRIP ───────────────────────────────────── */
@@ -91,44 +92,45 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 label: "RATE"
-                value: currValue
+                value: page.currValue
                 unit: "kg/lap"
                 accent: true
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: borderColor }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: page.borderColor }
 
             MetricCell {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 label: "LAST LAP"
-                value: lastValue
+                value: page.lastValue
                 unit: "kg"
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: borderColor }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: page.borderColor }
 
             MetricCell {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 label: "TGT AVG"
-                value: tgtAvgValue
+                value: page.tgtAvgValue
                 unit: "kg/lap"
             }
 
-            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: borderColor }
+            Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: page.borderColor }
 
             MetricCell {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 label: "TGT NEXT"
-                value: tgtNextValue
+                value: page.tgtNextValue
                 unit: "kg"
             }
         }
     }
 
     component MetricCell: Item {
+        id: metricCell
         required property string label
         required property string value
         required property string unit
@@ -140,28 +142,28 @@ Item {
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: label
+                text: metricCell.label
                 font.family: "Formula1"
-                font.pixelSize: metricLabelSize
-                color: dimTextColor
+                font.pixelSize: page.metricLabelSize
+                color: page.dimTextColor
                 font.letterSpacing: 1
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: value
+                text: metricCell.value
                 font.family: "B612 Mono"
-                font.pixelSize: metricValueSize
+                font.pixelSize: page.metricValueSize
                 font.weight: Font.Bold
-                color: value === "---" ? dimTextColor : (accent ? primaryColor : textColor)
+                color: metricCell.value === "---" ? page.dimTextColor : (metricCell.accent ? page.primaryColor : page.textColor)
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: unit
+                text: metricCell.unit
                 font.family: "Formula1"
-                font.pixelSize: metricLabelSize
-                color: dimTextColor
+                font.pixelSize: page.metricLabelSize
+                color: page.dimTextColor
             }
         }
     }
