@@ -29,14 +29,24 @@ between the two implementations.
 
 Wire shapes::
 
-    command:  [dest,        reply_flag, topic, payload]   # dealer -> router -> dealer
-    reply:    [orig_sender, payload]                       # answer to request()
-    ack:      [orig_sender, ACK_SENTINEL]                  # fire() receipt ack
+    command:  [dest,        reply_flag, req_id, topic, payload]  # dealer -> router -> dealer
+    reply:    [orig_sender, req_id,     payload]                 # answer to request()
+    ack:      [orig_sender, ACK_SENTINEL]                        # fire() receipt ack
+
+``req_id`` is an 8-byte big-endian counter, scoped per dealer instance — it
+only needs to be unique among that dealer's own in-flight requests, not
+globally, so a monotonic counter is cheaper than a UUID. It is treated as an
+opaque token (never decoded back to an int) generated per ``request()`` call
+and echoed back verbatim in the reply, so multiple ``request()`` calls can be
+in flight concurrently on the same dealer — the reply is matched to its
+future/event by ``req_id``, not by send order. ``fire()`` has no reply to
+correlate, so it sends an empty ``b""`` in the req_id slot; the receipt ack
+(2-frame, unchanged) carries no req_id either since ``fire()`` never waits on it.
 """
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-# reply_flag values on a 4-frame command frame.
+# reply_flag values on a command frame.
 _REPLY_REQUIRED = b"\x01"
 _NO_REPLY       = b"\x00"
 

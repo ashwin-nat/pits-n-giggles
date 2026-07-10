@@ -714,7 +714,7 @@ class TestIpcRouterDealer(TestIPC):
             await asyncio.sleep(PROPAGATION_DELAY)
 
             await raw.send_multipart([
-                b"async-recv-badjson", b"\x01", b"anything", b"not-json{{{",
+                b"async-recv-badjson", b"\x01", b"req-1", b"anything", b"not-json{{{",
             ])
             try:
                 frames = await asyncio.wait_for(
@@ -1646,3 +1646,133 @@ class TestIpcRouterDealer(TestIPC):
         self.assertGreaterEqual(
             stats.get("__DROP__", {}).get("unexpected_reply", {}).get("count", 0), 1
         )
+
+    # ------------------------------------------------------------------
+    # Correlation IDs: multiple concurrent in-flight request() calls
+    # ------------------------------------------------------------------
+
+    def test_async_dealer_concurrent_requests_get_correct_replies(self):
+        """N concurrent request() calls on one async dealer each get their own reply, not a mixed-up one."""
+        N = 20
+
+        self._make_dealer_client("hud-concurrent", {
+            "echo": lambda d, _sender: {"echoed": d},
+        })
+
+        async def run():
+            dealer = IpcDealerAsync(port=self.port, identity="sender-concurrent")
+            asyncio.create_task(dealer.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            tasks = [
+                asyncio.create_task(dealer.request("hud-concurrent", "echo", {"seq": i}))
+                for i in range(N)
+            ]
+            replies = await asyncio.gather(*tasks)
+            await dealer.close()
+            return replies
+
+        replies = self._run_async(run())
+        for i, r in enumerate(replies):
+            self.assertEqual(r.get("echoed"), {"seq": i}, f"request {i} got mismatched reply: {r}")
+
+    def test_async_dealer_concurrent_requests_different_latencies_not_mixed_up(self):
+        """A slow reply and a fast reply issued concurrently must not be swapped."""
+        async def run():
+            receiver = IpcDealerAsync(port=self.port, identity="async-concurrent-latency")
+
+            @receiver.route("slow")
+            async def on_slow(data, _sender):
+                await asyncio.sleep(0.2)
+                return {"tag": "slow", "echo": data}
+
+            @receiver.route("fast")
+            async def on_fast(data, _sender):
+                return {"tag": "fast", "echo": data}
+
+            asyncio.create_task(receiver.start())
+
+            sender = IpcDealerAsync(port=self.port, identity="sender-concurrent-latency")
+            asyncio.create_task(sender.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+
+            slow_task = asyncio.create_task(sender.request("async-concurrent-latency", "slow", {"n": 1}))
+            await asyncio.sleep(0.02)
+            fast_reply = await sender.request("async-concurrent-latency", "fast", {"n": 2})
+            slow_reply = await slow_task
+
+            await sender.close()
+            await receiver.close()
+            return slow_reply, fast_reply
+
+        slow_reply, fast_reply = self._run_async(run())
+        self.assertEqual(slow_reply, {"tag": "slow", "echo": {"n": 1}})
+        self.assertEqual(fast_reply, {"tag": "fast", "echo": {"n": 2}})
+
+    def test_sync_dealer_concurrent_requests_from_multiple_threads(self):
+        """N sync request() calls from N different threads each get their own correct reply."""
+        N = 20
+
+        receiver = self._make_dealer_client("sync-concurrent-recv", {
+            "echo": lambda d, _sender: {"echoed": d},
+        })
+        sender = self._make_dealer_client("sync-concurrent-send", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        results = [None] * N
+
+        def do_request(i):
+            results[i] = sender.request("sync-concurrent-recv", "echo", {"seq": i}, timeout=ACK_TIMEOUT)
+
+        threads = [threading.Thread(target=do_request, args=(i,)) for i in range(N)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5.0)
+
+        for i, r in enumerate(results):
+            self.assertIsNotNone(r, f"request {i} never completed")
+            self.assertEqual(r.get("echoed"), {"seq": i}, f"request {i} got mismatched reply: {r}")
+
+    def test_bidir_concurrent_requests_sync_and_async_not_mixed_up(self):
+        """Sync and async dealers each issue several concurrent requests to each other; no cross-talk."""
+        N = 10
+
+        sync_client = self._make_dealer_client("bidir-concurrent-sync", {
+            "double": lambda d, _sender: {"n": d["n"] * 2},
+        })
+
+        async def run():
+            async_dealer = IpcDealerAsync(port=self.port, identity="bidir-concurrent-async")
+
+            @async_dealer.route("increment")
+            def on_increment(data, _sender):
+                return {"n": data["n"] + 1}
+
+            asyncio.create_task(async_dealer.start())
+            await asyncio.sleep(PROPAGATION_DELAY)
+            time.sleep(PROPAGATION_DELAY)
+
+            async_tasks = [
+                asyncio.create_task(async_dealer.request("bidir-concurrent-sync", "double", {"n": i}))
+                for i in range(N)
+            ]
+
+            loop = asyncio.get_event_loop()
+            sync_futures = [
+                loop.run_in_executor(
+                    None, sync_client.request, "bidir-concurrent-async", "increment", {"n": i}
+                )
+                for i in range(N)
+            ]
+
+            async_replies = await asyncio.gather(*async_tasks)
+            sync_replies = await asyncio.gather(*sync_futures)
+
+            await async_dealer.close()
+            return async_replies, sync_replies
+
+        async_replies, sync_replies = self._run_async(run())
+        for i in range(N):
+            self.assertEqual(async_replies[i].get("n"), i * 2, f"async request {i}: {async_replies[i]}")
+            self.assertEqual(sync_replies[i].get("n"), i + 1, f"sync request {i}: {sync_replies[i]}")
