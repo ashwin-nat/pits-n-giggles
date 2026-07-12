@@ -206,6 +206,9 @@ class EngViewRaceTable {
         this.previousTableData = []; // Stores the data from the previous update cycle
         this.refDriverTeam = null; // Team of the reference driver (player or spectated)
         this.INVALID_TEAMS = new Set(["F1 Generic"]);
+        // Column-state signature captured right after applying each builtin preset (see
+        // applyProfile/saveColumnState) - what "unmodified" looks like for that preset.
+        this._builtinColumnSignatures = { [this.FULL_PRESET_ID]: null, [this.MINIMAL_PRESET_ID]: null };
         this.manualRefDriverIndex = null;
         this.lockedDriverIndex = null;
         this.clearLockButton = document.getElementById('clear-lock-driver-btn');
@@ -237,11 +240,32 @@ class EngViewRaceTable {
         });
     }
 
+    // Strips a getColumnState() entry down to the fields that define a profile's identity
+    // (order is preserved by the caller, not this mapper). `width` is deliberately excluded:
+    // for our flex-sized columns it's a computed value that changes on its own whenever
+    // available space does (e.g. the scrollbar toggling as the driver count changes), so
+    // comparing it would treat that noise as a user edit.
+    #toColumnSignatureEntry(s) {
+        return { colId: s.colId, hide: s.hide ?? false, pinned: s.pinned ?? null, flex: s.flex ?? null };
+    }
+
     saveColumnState() {
         if (!this.gridApi) return null;
 
         const activeProfile = this.getActiveProfileId();
+        const columnState = this.gridApi.getColumnState();
+
         if (this.isBuiltinProfile(activeProfile)) {
+            // Compare against what applyProfile() actually applied for this preset (captured
+            // there, right after applying it) rather than re-deriving "what it should be" here -
+            // that keeps this in sync with applyProfile by construction instead of duplicating it.
+            const canonical = this._builtinColumnSignatures[activeProfile];
+            const live = columnState.map(s => this.#toColumnSignatureEntry(s));
+            if (canonical && _.isEqual(live, canonical)) {
+                // Nothing meaningfully changed from the builtin preset - just layout noise.
+                return null;
+            }
+
             // Fork: detach from the builtin into a new uniquely-named custom profile
             const existingNames = new Set(Object.values(this.loadProfiles()).map(p => p.name));
             let name = 'Custom';
@@ -252,10 +276,9 @@ class EngViewRaceTable {
             if (this.columnVisibilityPane.classList.contains('open')) {
                 this.populateProfileSelect();
             }
-            return this.gridApi.getColumnState();
+            return columnState;
         }
 
-        const columnState = this.gridApi.getColumnState();
         try {
             localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
             console.debug('Column state saved:', columnState);
@@ -356,6 +379,12 @@ class EngViewRaceTable {
             this.updateColumnMovability(false);
             this.updateTopLevelUnpinButton();
             if (this.gridApi) this.gridApi.refreshHeader();
+        }
+
+        // Snapshot what "unmodified" looks like for this preset, for saveColumnState()'s
+        // fork-vs-noise comparison. Captured last so it reflects everything applied above.
+        if (this.isBuiltinProfile(profileId) && this.gridApi) {
+            this._builtinColumnSignatures[profileId] = this.gridApi.getColumnState().map(s => this.#toColumnSignatureEntry(s));
         }
     }
 
@@ -485,7 +514,10 @@ class EngViewRaceTable {
                 this.updateTopLevelUnpinButton();
                 this.gridApi.refreshHeader();
 
-                // Add event listeners for column state changes
+                // Add event listeners for column state changes. Noisy/automatic events (e.g. flex
+                // columns recomputing width, or programmatic calls from applyProfile) are filtered
+                // out in saveColumnState() by diffing against the active profile's expected state,
+                // rather than trying to guess which events are "real" here.
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
