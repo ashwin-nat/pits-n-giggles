@@ -206,7 +206,13 @@ class EngViewRaceTable {
         this.previousTableData = []; // Stores the data from the previous update cycle
         this.refDriverTeam = null; // Team of the reference driver (player or spectated)
         this.INVALID_TEAMS = new Set(["F1 Generic"]);
+        // Column-state signature captured right after applying each builtin preset (see
+        // applyProfile/saveColumnState) - what "unmodified" looks like for that preset.
+        this._builtinColumnSignatures = { [this.FULL_PRESET_ID]: null, [this.MINIMAL_PRESET_ID]: null };
         this.manualRefDriverIndex = null;
+        this.lockedDriverIndex = null;
+        this.clearLockButton = document.getElementById('clear-lock-driver-btn');
+        this.lastLockScrollHintTime = null;
 
         // Column visibility pane elements
         this.settingsButton = document.getElementById('settings-btn');
@@ -227,13 +233,39 @@ class EngViewRaceTable {
         this.setupSettingsEventListeners();
         document.getElementById('clear-ref-driver-btn')?.addEventListener('click', () => this.#clearManualRef());
         this.unpinAllButton?.addEventListener('click', () => this.unpinAll());
+        this.clearLockButton?.addEventListener('click', () => this.#clearLock());
+        document.getElementById('collapsed-clear-lock-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.clearLockButton?.click();
+        });
+    }
+
+    // Strips a getColumnState() entry down to the fields that define a profile's identity
+    // (order is preserved by the caller, not this mapper). `width` is deliberately excluded:
+    // for our flex-sized columns it's a computed value that changes on its own whenever
+    // available space does (e.g. the scrollbar toggling as the driver count changes), so
+    // comparing it would treat that noise as a user edit.
+    #toColumnSignatureEntry(s) {
+        return { colId: s.colId, hide: s.hide ?? false, pinned: s.pinned ?? null, flex: s.flex ?? null };
     }
 
     saveColumnState() {
         if (!this.gridApi) return null;
 
         const activeProfile = this.getActiveProfileId();
+        const columnState = this.gridApi.getColumnState();
+
         if (this.isBuiltinProfile(activeProfile)) {
+            // Compare against what applyProfile() actually applied for this preset (captured
+            // there, right after applying it) rather than re-deriving "what it should be" here -
+            // that keeps this in sync with applyProfile by construction instead of duplicating it.
+            const canonical = this._builtinColumnSignatures[activeProfile];
+            const live = columnState.map(s => this.#toColumnSignatureEntry(s));
+            if (canonical && _.isEqual(live, canonical)) {
+                // Nothing meaningfully changed from the builtin preset - just layout noise.
+                return null;
+            }
+
             // Fork: detach from the builtin into a new uniquely-named custom profile
             const existingNames = new Set(Object.values(this.loadProfiles()).map(p => p.name));
             let name = 'Custom';
@@ -244,10 +276,9 @@ class EngViewRaceTable {
             if (this.columnVisibilityPane.classList.contains('open')) {
                 this.populateProfileSelect();
             }
-            return this.gridApi.getColumnState();
+            return columnState;
         }
 
-        const columnState = this.gridApi.getColumnState();
         try {
             localStorage.setItem(this.COLUMN_STATE_LS_KEY, JSON.stringify(columnState));
             console.debug('Column state saved:', columnState);
@@ -348,6 +379,12 @@ class EngViewRaceTable {
             this.updateColumnMovability(false);
             this.updateTopLevelUnpinButton();
             if (this.gridApi) this.gridApi.refreshHeader();
+        }
+
+        // Snapshot what "unmodified" looks like for this preset, for saveColumnState()'s
+        // fork-vs-noise comparison. Captured last so it reflects everything applied above.
+        if (this.isBuiltinProfile(profileId) && this.gridApi) {
+            this._builtinColumnSignatures[profileId] = this.gridApi.getColumnState().map(s => this.#toColumnSignatureEntry(s));
         }
     }
 
@@ -477,7 +514,10 @@ class EngViewRaceTable {
                 this.updateTopLevelUnpinButton();
                 this.gridApi.refreshHeader();
 
-                // Add event listeners for column state changes
+                // Add event listeners for column state changes. Noisy/automatic events (e.g. flex
+                // columns recomputing width, or programmatic calls from applyProfile) are filtered
+                // out in saveColumnState() by diffing against the active profile's expected state,
+                // rather than trying to guess which events are "real" here.
                 this.gridApi.addEventListener('columnResized', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnMoved', this.debounceSaveColumnState.bind(this));
                 this.gridApi.addEventListener('columnVisible', this.debounceSaveColumnState.bind(this));
@@ -489,17 +529,21 @@ class EngViewRaceTable {
             getRowClass: (params) => {
                 const data = params.data;
                 if (!data) return;
+                const classes = [];
+                if (this.lockedDriverIndex === data.index) {
+                    classes.push('locked-row');
+                }
                 const isReferenceDriver = this.#isRefDriver(data.index, data.isPlayer);
                 if (isReferenceDriver) {
-                    return 'ref-row';
+                    classes.push('ref-row');
+                } else if ((!this.INVALID_TEAMS.has(data.team)) && (data.team === this.refDriverTeam)) {
+                    classes.push('teammate-row');
                 }
-                if ((!this.INVALID_TEAMS.has(data.team)) && (data.team === this.refDriverTeam)) {
-                    return 'teammate-row';
-                }
-                return '';
+                return classes;
             },
             onRowClicked: (params) => {
                 if (params.event?.target?.closest('.pin-ref-btn')) return;
+                if (params.event?.target?.closest('.lock-row-btn')) return;
                 const data = params.data;
                 fetch(window.SESSION_SLUG ? `/driver-info?index=${data.index}&slug=${window.SESSION_SLUG}` : `/driver-info?index=${data.index}`)
                     .then(response => response.json())
@@ -517,12 +561,26 @@ class EngViewRaceTable {
         }
 
         gridDiv.addEventListener('click', (e) => {
-            const btn = e.target.closest('.pin-ref-btn');
-            if (btn) {
+            const pinBtn = e.target.closest('.pin-ref-btn');
+            if (pinBtn) {
                 e.stopPropagation();
-                this.#setManualRef(parseInt(btn.dataset.driverIndex, 10));
+                this.#setManualRef(parseInt(pinBtn.dataset.driverIndex, 10));
+                return;
+            }
+            const lockBtn = e.target.closest('.lock-row-btn');
+            if (lockBtn) {
+                e.stopPropagation();
+                this.#toggleLock(parseInt(lockBtn.dataset.driverIndex, 10));
             }
         });
+
+        // Hint the user that this row will re-center on the next update, since we don't
+        // block manual scrolling while locked.
+        const scrollHintHandler = () => {
+            if (this.lockedDriverIndex !== null) this.#showLockScrollHint();
+        };
+        gridDiv.addEventListener('wheel', scrollHintHandler, { passive: true });
+        gridDiv.addEventListener('touchmove', scrollHintHandler, { passive: true });
     }
 
     debounceSaveColumnState() {
@@ -965,10 +1023,17 @@ class EngViewRaceTable {
                     const isPinned = this.manualRefDriverIndex === data.index;
                     const starIcon = isPinned ? 'bi-star-fill' : 'bi-star';
                     const starStyle = isPinned ? 'color:#ffd700;' : '';
+                    const isLocked = this.lockedDriverIndex === data.index;
+                    const lockIcon = isLocked ? 'bi-lock-fill' : 'bi-unlock';
+                    const lockStyle = isLocked ? 'color:#60a5fa;' : '';
+                    const lockTitle = isLocked ? 'Unlock this row' : 'Lock this row (auto-scroll to follow)';
                     return `<div class="driver-name-cell">` +
                         `<div class="driver-name-cell-text">` +
                             this.createMultiLineCell({ row1: data.name, row2: data.team }) +
                         `</div>` +
+                        `<button class="lock-row-btn" data-driver-index="${data.index}" title="${lockTitle}">` +
+                            `<i class="bi ${lockIcon}" style="${lockStyle}"></i>` +
+                        `</button>` +
                         `<button class="pin-ref-btn" data-driver-index="${data.index}" title="Set as reference driver">` +
                             `<i class="bi ${starIcon}" style="${starStyle}"></i>` +
                         `</button>` +
@@ -1759,6 +1824,52 @@ class EngViewRaceTable {
 
 
 
+    // At most one driver can be locked at a time - locking a new one implicitly
+    // replaces any previous lock (this.lockedDriverIndex is a single value, not a set).
+    #toggleLock(index) {
+        if (this.lockedDriverIndex === index) {
+            this.#clearLock();
+            return;
+        }
+        this.lockedDriverIndex = index;
+        this.#updateClearLockButton();
+        if (this.gridApi) {
+            this.gridApi.redrawRows();
+            this.#scrollToLockedRow();
+        }
+    }
+
+    #clearLock() {
+        this.lockedDriverIndex = null;
+        this.#updateClearLockButton();
+        if (this.gridApi) this.gridApi.redrawRows();
+    }
+
+    #updateClearLockButton() {
+        const isLocked = this.lockedDriverIndex !== null;
+        if (this.clearLockButton) this.clearLockButton.style.display = isLocked ? '' : 'none';
+        const collapsedBtn = document.getElementById('collapsed-clear-lock-btn');
+        if (collapsedBtn) collapsedBtn.style.display = isLocked ? '' : 'none';
+    }
+
+    // Manual scroll isn't blocked while a row is locked (it'll just re-center on the next
+    // data update), so nudge the user with a transient hint instead of silently fighting them.
+    // Throttled so continuous scrolling doesn't spam the toast on every wheel tick.
+    #showLockScrollHint() {
+        const now = Date.now();
+        const LOCK_SCROLL_HINT_THROTTLE_MS = 2000;
+        if (this.lastLockScrollHintTime && now - this.lastLockScrollHintTime < LOCK_SCROLL_HINT_THROTTLE_MS) return;
+        this.lastLockScrollHintTime = now;
+        const driverName = this.previousTableData.find(d => d.index === this.lockedDriverIndex)?.name ?? 'driver';
+        showToast(`Locked to ${driverName} - will re-center on next update`, 1600);
+    }
+
+    #scrollToLockedRow() {
+        if (!this.gridApi || this.lockedDriverIndex === null) return;
+        const rowNode = this.gridApi.getRowNode(this.lockedDriverIndex.toString());
+        if (rowNode) this.gridApi.ensureNodeVisible(rowNode, 'middle');
+    }
+
     #setManualRef(index) {
         if (this.manualRefDriverIndex === index) {
             this.#clearManualRef();
@@ -1835,6 +1946,14 @@ class EngViewRaceTable {
             }
         }
 
+        // If the locked driver is no longer in the session, clear the lock
+        if (this.lockedDriverIndex !== null) {
+            const stillPresent = drivers.some(d => d["driver-info"]["index"] === this.lockedDriverIndex);
+            if (!stillPresent) {
+                this.#clearLock();
+            }
+        }
+
         const refEntry = updateReferenceLapTimes(drivers, (entry) => this.#isRefDriverEntry(entry));
         if (refEntry) {
             this.refDriverTeam = refEntry["driver-info"]["team"];
@@ -1889,6 +2008,9 @@ class EngViewRaceTable {
             }
 
             this.previousTableData = newTableData; // Store current data for next update cycle
+
+            // Auto-scroll to keep the locked row in view (e.g. tracking a driver through a pit stop)
+            this.#scrollToLockedRow();
 
             // If spectator index or spectating status changed, redraw rows to update 'ref-row' class
             if (prevSpectatorIndex !== this.spectatorIndex || prevIsSpectating !== this.isSpectating) {

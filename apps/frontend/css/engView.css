@@ -550,6 +550,39 @@ input[type="number"]::-webkit-outer-spin-button {
     .pin-ref-btn { opacity: 1; }
 }
 
+/* Lock (auto-scroll follow) button inside Name cell */
+.lock-row-btn {
+    background: none;
+    border: none;
+    color: var(--f1-text-secondary);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.ag-row:hover .lock-row-btn {
+    opacity: 1;
+}
+
+.locked-row .lock-row-btn {
+    opacity: 1;
+}
+
+.lock-row-btn:hover {
+    color: #60a5fa;
+}
+
+@media (hover: none) {
+    .lock-row-btn { opacity: 1; }
+}
+
+.locked-row {
+    box-shadow: inset 3px 0 0 0 #60a5fa;
+}
+
 .ag-header-cell-text {
     text-align: center;
 }
