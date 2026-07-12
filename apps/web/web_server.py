@@ -324,7 +324,7 @@ class WebServer(BaseWebServer):
                 self.m_logger.warning("Session directory does not exist: %s", self.m_session_dir)
                 return
             t0 = time.perf_counter()
-            async for sessions, slug_map in build_session_list(self.m_session_dir, self.m_logger):
+            async for sessions, slug_map in build_session_list(self.m_session_dir, self.m_logger, self.m_ver_str):
                 self.m_sessions_cache = sessions
                 self.m_slug_map = slug_map
                 self._m_cache_ready.set()  # unblocks waiting requests after the first batch

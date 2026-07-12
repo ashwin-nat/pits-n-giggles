@@ -40,6 +40,11 @@ from lib.logger import PngLogger
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 CACHE_FILE = '.png_session_cache.json'
+# Cache entries are tagged with the app version that produced them. Any version
+# mismatch (upgrade or downgrade) invalidates the whole cache — mtime alone can't
+# detect that the *parsing logic*, not the file, changed, and a manually-maintained
+# schema counter is too easy to forget bumping.
+_APP_VERSION_KEY = '__app_version__'
 _JSON_CACHE_SIZE = 25
 
 # Known session type strings derived from the authoritative enums, sorted longest-first
@@ -72,17 +77,23 @@ def find_json_files(session_dir: Path) -> List[Path]:
     ]
 
 
-def _load_cache(cache_path: Path) -> Dict[str, Any]:
+def _load_cache(cache_path: Path, app_version: str) -> Dict[str, Any]:
     try:
         with open(cache_path, 'rb') as f:
-            return orjson.loads(f.read())
+            cache: dict = orjson.loads(f.read())
     except (FileNotFoundError, orjson.JSONDecodeError):
         return {}
+    # Discard the whole cache on any version change (upgrade or downgrade) — the
+    # on-disk mtime can't tell us the *parsing logic* changed, only that the file
+    # didn't, and a hand-maintained schema counter is too easy to forget bumping.
+    if cache.get(_APP_VERSION_KEY) != app_version:
+        return {}
+    return cache
 
 
-def _save_cache(cache_path: Path, cache: Dict[str, Any]) -> None:
+def _save_cache(cache_path: Path, cache: Dict[str, Any], app_version: str) -> None:
     with open(cache_path, 'wb') as f:
-        f.write(orjson.dumps(cache))
+        f.write(orjson.dumps({**cache, _APP_VERSION_KEY: app_version}))
 
 
 def to_slug(relative_path: Path) -> str:
@@ -184,6 +195,90 @@ def _get_clean_race_laps(player: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [l for l in clean if l['lap-time-in-ms'] <= median * 1.2]
 
 
+def _get_classified_driver_count(classification_data: List[Dict[str, Any]],
+                                 stint_history: List[Dict[str, Any]]) -> int:
+    """Port of getClassifiedDriverCount from sessionSummary.ts."""
+    final_classified = sum(1 for d in classification_data if d.get('final-classification'))
+    return final_classified or len(stint_history) or len(classification_data)
+
+
+def _get_total_laps(session_info: Dict[str, Any], classification_data: List[Dict[str, Any]]) -> Optional[int]:
+    """Port of getTotalLaps from sessionSummary.ts."""
+    session_total = session_info.get('total-laps')
+    if isinstance(session_total, (int, float)) and session_total > 0:
+        return int(session_total)
+    final_laps = [
+        d.get('final-classification', {}).get('num-laps', 0) for d in classification_data
+    ]
+    final_laps = [laps for laps in final_laps if laps and laps > 0]
+    return max(final_laps) if final_laps else None
+
+
+def _get_best_lap_ms(classification: Dict[str, Any]) -> Optional[float]:
+    """Port of getBestLapMs from sessionSummary.ts."""
+    newer_field = classification.get('best-lap-time-ms')
+    if isinstance(newer_field, (int, float)) and newer_field > 0:
+        return newer_field
+    older_field = classification.get('best-lap-time-in-ms')
+    return older_field if older_field and older_field > 0 else None
+
+
+def _build_player_race_result(
+    data: Dict[str, Any],
+    player: Dict[str, Any],
+    session_info: Dict[str, Any],
+    field_size: int,
+) -> Optional[Dict[str, Any]]:
+    """Port of buildPlayerRaceResult from sessionSummary.ts. Race sessions only."""
+    if not _is_race_session(session_info.get('session-type', '')):
+        return None
+
+    classification = player.get('final-classification') or {}
+    stint_history = data.get('tyre-stint-history-v2', [])
+    stint_result = next(
+        (e for e in stint_history
+         if e.get('index') == player.get('index') or e.get('name') == player.get('driver-name')),
+        {},
+    )
+    position = classification.get('position') or stint_result.get('position')
+    if not position:
+        return None
+
+    classification_data = data.get('classification-data', [])
+    total_laps = _get_total_laps(session_info, classification_data)
+    sh = player.get('session-history', {})
+    player_laps = (
+        classification.get('num-laps')
+        or sh.get('num-laps')
+        or sum(1 for l in sh.get('lap-history-data', []) if l.get('lap-time-in-ms', 0) > 0)
+    )
+
+    result: Dict[str, Any] = {
+        'position': position,
+        'fieldSize': field_size,
+        'playerLaps': player_laps,
+    }
+    if grid_position := (classification.get('grid-position') or stint_result.get('grid-position')):
+        result['gridPosition'] = grid_position
+    if status := (classification.get('result-status') or stint_result.get('result-status')):
+        result['status'] = status
+    if 'points' in classification:
+        result['points'] = classification['points']
+    if 'penalties-time' in classification:
+        result['penaltiesTime'] = classification['penalties-time']
+    if 'num-penalties' in classification:
+        result['penaltyCount'] = classification['num-penalties']
+    if best_ms := _get_best_lap_ms(classification):
+        result['bestLapTimeMs'] = best_ms
+        if best_str := classification.get('best-lap-time-str'):
+            result['bestLapTime'] = best_str
+    if total_laps:
+        result['totalLaps'] = total_laps
+        if total_laps > 0:
+            result['lapRatio'] = player_laps / total_laps
+    return result
+
+
 def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
     """Load a session JSON and extract session-info plus player lap stats."""
     logger.debug("_parse_session_metadata: reading %s (%.1f MB)", path.name, path.stat().st_size / 1_048_576)
@@ -240,6 +335,11 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
             clean = _get_clean_race_laps(player)
             if clean:
                 result['best_race_pace_ms'] = sum(l['lap-time-in-ms'] for l in clean) / len(clean)
+
+        if not is_spectator:
+            field_size = _get_classified_driver_count(classification, data.get('tyre-stint-history-v2', []))
+            if player_race_result := _build_player_race_result(data, player, session_info, field_size):
+                result['player_race_result'] = player_race_result
     else:
         result['valid_lap_count'] = 0
 
@@ -334,6 +434,8 @@ def _make_session_entry(
     ):
         if val := outcome.get(src):
             entry[dst] = val
+    if player_race_result := outcome.get('player_race_result'):
+        entry['playerRaceResult'] = player_race_result
     return entry
 
 
@@ -350,12 +452,14 @@ def _snapshot(all_raw: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict
 async def build_session_list(
     session_dir: Path,
     logger: PngLogger,
+    app_version: str,
 ) -> AsyncIterator[Tuple[List[Dict[str, Any]], Dict[str, str]]]:
     """Async generator: yields (sessions, slug_map) after each batch of _PARSE_CONCURRENCY files.
 
     Files are processed newest-first so the most recent sessions are available
     after the very first yield. Metadata is cached on disk keyed by file mtime,
-    so only new or modified files are parsed on subsequent runs.
+    so only new or modified files are parsed on subsequent runs. The whole cache
+    is discarded if `app_version` doesn't match what's stored on disk.
     """
     if not session_dir.exists():
         return
@@ -368,7 +472,7 @@ async def build_session_list(
 
     cache_path = session_dir / CACHE_FILE
     cache_file_existed = cache_path.exists()
-    cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path)
+    cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path, app_version)
     cache_hits = sum(1 for r in json_files if str(r) in cache)
 
     if not cache_file_existed:
@@ -406,7 +510,7 @@ async def build_session_list(
     # Prune deleted files and persist the updated cache
     live_keys = {str(r) for r in json_files}
     pruned_cache = {k: v for k, v in cache.items() if k in live_keys}
-    await asyncio.to_thread(_save_cache, cache_path, pruned_cache)
+    await asyncio.to_thread(_save_cache, cache_path, pruned_cache, app_version)
     # logger.info("build_session_list: cache saved (%d entries)", len(pruned_cache))
 
 
