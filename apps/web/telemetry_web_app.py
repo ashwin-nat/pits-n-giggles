@@ -39,7 +39,8 @@ from lib.version import get_version
 from meta.meta import APP_NAME
 
 from .ipc_mgmt import init_ipc_task
-from .tasks import initDealer, initSubscriber, raceTableEmitTask, streamOverlayEmitTask
+from .tasks import (initDealer, initSubscriber, raceTableEmitTask,
+                    streamOverlayEmitTask)
 from .web_server import WebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -69,6 +70,8 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, debu
     tasks: List[asyncio.Task] = []
     shutdown_event = asyncio.Event()
 
+    logger.info("Starting web app, version=%s", version)
+
     session_dir_setting = settings.Capture.session_dir_path
     session_dir = session_dir_setting if session_dir_setting.is_absolute() \
         else (get_app_base_dir() / session_dir_setting).resolve()
@@ -76,8 +79,8 @@ async def main(logger: logging.Logger, settings: PngSettings, version: str, debu
     logger.debug("Session directory: %s", session_dir)
     logger.debug("Viewer directory: %s", viewer_dir)
 
-    web_server = WebServer(settings=settings, ver_str=version, logger=logger, session_dir=session_dir,
-                           viewer_dir=viewer_dir, debug_mode=debug_mode)
+    web_server = WebServer(settings=settings, ver_str=get_version(use_meta_version=True), logger=logger,
+                           session_dir=session_dir, viewer_dir=viewer_dir, debug_mode=debug_mode)
     tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
 
     ipc_sub = initSubscriber(settings.Network.broker_xpub_port, logger, web_server)
