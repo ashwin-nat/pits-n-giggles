@@ -556,15 +556,15 @@ class OverlaysMgr:
 
     def _input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        self.window_manager.send_high_freq_data(InputTelemetryData.from_json(data))
+        self.window_manager.send_high_freq_data(InputTelemetryData, data)
 
     def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
-        self.window_manager.send_high_freq_data(LiveSessionMotionInfo.from_json(data))
+        self.window_manager.send_high_freq_data(LiveSessionMotionInfo, data)
 
     def _hud_overlay_update(self, data: Dict[str, Any]):
         """Send HUD data to HUD overlay."""
-        self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
+        self.window_manager.send_high_freq_data(HudOverlayData, data)
 
     def _set_overlays_visibility(self, visible: bool):
         self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)

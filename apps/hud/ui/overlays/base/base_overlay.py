@@ -391,6 +391,8 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.warning("%s | Cannot set UI scale - root window not initialized", self.OVERLAY_ID)
 
     def animate_fade(self, show: bool):
+        if self._fade_anim is not None:
+            self._fade_anim.stop()
 
         target_opacity = self.opacity / 100.0
         start, end = (0, target_opacity) if show else (target_opacity, 0)
@@ -401,13 +403,28 @@ class BaseOverlay(QmlBridge, QObject):
         anim.setEndValue(end)
 
         if not show:
-            anim.finished.connect(lambda: self._root.setVisible(False))
+            anim.finished.connect(self._on_fade_out_finished)
         else:
             self._root.setOpacity(0)
             self._root.setVisible(True)
+            self._start_frame_timer()
 
         self._fade_anim = anim
         anim.start()
+
+    def _on_fade_out_finished(self):
+        """Fade-out completed: hide the window and stop the render tick."""
+        self._root.setVisible(False)
+        self._stop_frame_timer()
+
+    def _start_frame_timer(self) -> None:
+        if self._refresh_interval_ms is not None and not self._frame_timer.isActive():
+            self._frame_timer.start(self._refresh_interval_ms)
+
+    def _stop_frame_timer(self) -> None:
+        if self._frame_timer.isActive():
+            self._frame_timer.stop()
+        self._frame_active = False
 
     def set_visibility(self, visible: bool):
         self.animate_fade(visible)

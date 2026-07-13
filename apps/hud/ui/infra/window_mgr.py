@@ -24,7 +24,7 @@
 
 import os
 from time import perf_counter_ns
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Type
 
 from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
                             QTimer, QtMsgType, QWaitCondition, Signal, Slot,
@@ -190,18 +190,24 @@ class WindowManager(QObject):
         self.stats.track_event("__UNICAST__", event)
         self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
-    def send_high_freq_data(self, data: HighFreqBase):
-        """Send high-frequency data only to overlays subscribed to its type.
+    def send_high_freq_data(self, hf_cls: Type[HighFreqBase], json_data: Dict[str, Any]) -> None:
+        """Construct and send high-frequency data, but only if some overlay is subscribed to its type.
+
+        Skips the from_json() construction entirely when there are no subscribers, since that work
+        would otherwise be discarded.
 
         Args:
-            data (HighFreqBase): High-frequency data payload
+            hf_cls (Type[HighFreqBase]): High-frequency data class to construct via from_json()
+            json_data (Dict[str, Any]): Raw payload passed to hf_cls.from_json()
         """
-        proxy = self._hf_signals.get(data.__hf_type__)
-        if proxy:
-            self.stats.track_event("__HF_SEND__", data.__hf_type__)
-            proxy.signal.emit(data)
-        else:
-            self.stats.track_event("__HF_DROP__", data.__hf_type__)
+        proxy = self._hf_signals.get(hf_cls.__hf_type__)
+        if not proxy:
+            self.stats.track_event("__HF_DROP__", hf_cls.__hf_type__)
+            return
+
+        data = hf_cls.from_json(json_data)
+        self.stats.track_event("__HF_SEND__", hf_cls.__hf_type__)
+        proxy.signal.emit(data)
 
     def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add timestamp to payload."""
