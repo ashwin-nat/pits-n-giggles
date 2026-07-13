@@ -24,7 +24,7 @@
 
 import os
 from time import perf_counter_ns
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Callable, Dict, Optional, Tuple, Type
 
 from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
                             QTimer, QtMsgType, QWaitCondition, Signal, Slot,
@@ -35,6 +35,7 @@ from apps.hud.ui.infra.hf_types import HighFreqBase
 from apps.hud.ui.overlays import BaseOverlay
 from lib.event_counter import EventCounter
 from lib.logger import PngLogger
+from lib.mailbox import LatestSlot
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -66,10 +67,13 @@ class WindowManager(QObject):
         self.logger = logger
         self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
-        self._hf_mailbox: Dict[str, HighFreqBase] = {}   # hf_type -> latest snapshot
-        self._hf_subscriber_types: set = set()           # hf_types at least one overlay subscribes to
-        self._hf_last_seq: Dict[str, int] = {}           # write-site seq/loss accounting
+        self._hf_slots: Dict[str, LatestSlot[HighFreqBase]] = {}  # hf_type -> mailbox; only created for subscribed types
+        self._hf_last_seq: Dict[str, int] = {}                    # write-site seq/loss accounting
         self.stats = EventCounter()
+        self._state_slots: Dict[str, LatestSlot[Dict[str, Any]]] = {
+            topic: LatestSlot(topic, self.stats) for topic in STATE_TOPICS
+        }
+        self._state_cursors: Dict[Tuple[str, str], int] = {}  # (overlay_id, topic) -> last-read seq
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -120,7 +124,8 @@ class WindowManager(QObject):
         # of receiving it via a per-sample queued signal.
         overlay.set_window_manager(self)
         for hf_type in overlay._hf_subscriptions:
-            self._hf_subscriber_types.add(hf_type)
+            if hf_type not in self._hf_slots:
+                self._hf_slots[hf_type] = LatestSlot(hf_type, self.stats)
             self.logger.debug("Overlay %s subscribed to HF type '%s'", overlay_id, hf_type)
 
     # pylint: disable=useless-return
@@ -176,13 +181,70 @@ class WindowManager(QObject):
     def broadcast_data(self, cmd: str, data: Dict[str, Any], high_prio: bool = False):
         """Broadcast event data to all registered overlays using signal.
 
+        For a state topic (STATE_TOPICS), the marshaled payload is published to that
+        topic's mailbox slot and the signal carries no data - just a doorbell telling
+        overlays to pull the latest snapshot (take_state_topic()), coalescing any
+        backlog to the newest value. Every other command still carries its payload
+        directly on the signal, so it is processed in order, once per message.
+
         Args:
             cmd (str): Command
             data (Dict[str, Any]): Command data
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         self.stats.track_event("__BROADCAST__", cmd)
-        self.msg_signal.emit("", high_prio, cmd, self._marshal_data(data))
+        marshaled = self._marshal_data(data)
+        slot = self._state_slots.get(cmd)
+        if slot is not None:
+            slot.publish(marshaled)
+            self.msg_signal.emit("", high_prio, cmd, None)
+        else:
+            self.msg_signal.emit("", high_prio, cmd, marshaled)
+
+    def take_state_topic(self, overlay_id: str, cmd: str) -> Optional[Dict[str, Any]]:
+        """Pull cmd's mailbox slot for overlay_id, coalescing anything that overlay has
+        already seen. Tracks each overlay's read position internally; the caller never
+        deals with sequence numbers.
+
+        Callers are expected to only pass a cmd already known to be a state topic (as
+        BaseOverlay._handle_cmd does, calling this only when the doorbell signal carried
+        no payload) - anything else is a wiring bug, not a runtime condition to handle.
+
+        Returns:
+            The marshaled payload, or None if nothing has been published yet or the value
+            is unchanged since this overlay's last read.
+        """
+        slot = self._state_slots.get(cmd)
+        assert slot is not None, f"take_state_topic called for non-state topic '{cmd}'"
+        key = (overlay_id, cmd)
+        pulled = slot.take_if_new(self._state_cursors.get(key, 0))
+        if pulled is None:
+            return None
+        marshaled, seq = pulled
+        self._state_cursors[key] = seq
+        return marshaled
+
+    def replay_state_topic(self, overlay_id: str, cmd: str) -> Optional[Dict[str, Any]]:
+        """Unconditionally read cmd's mailbox slot for overlay_id and update its read
+        position to match, regardless of what it has already seen.
+
+        Used for replay-on-show: a freshly visible overlay gets the current value even
+        if it is the same one it processed before going invisible, and the cursor update
+        means the next ordinary take_state_topic() doesn't redeliver it a second time.
+
+        Returns:
+            The marshaled payload, or None if cmd is not a state topic or nothing has
+            been published yet.
+        """
+        slot = self._state_slots.get(cmd)
+        if slot is None:
+            return None
+        pulled = slot.take()
+        if pulled is None:
+            return None
+        marshaled, seq = pulled
+        self._state_cursors[(overlay_id, cmd)] = seq
+        return marshaled
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
         """Unicast event data to a specific overlay using ssignal.
@@ -198,11 +260,11 @@ class WindowManager(QObject):
         self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, hf_cls: Type[HighFreqBase], json_data: Dict[str, Any]) -> None:
-        """Construct high-frequency data and publish it to the mailbox, but only if some overlay
-        is subscribed to its type (skips the from_json() construction entirely otherwise, since
-        that work would otherwise be discarded).
+        """Construct high-frequency data and publish it to its mailbox slot, but only if some
+        overlay is subscribed to its type (skips the from_json() construction entirely otherwise,
+        since that work would otherwise be discarded).
 
-        Called from the IPC thread. Writes a single reference into self._hf_mailbox - atomic
+        Called from the IPC thread. LatestSlot.publish() is a single reference swap - atomic
         under the GIL - with no cross-thread signal. Overlay render ticks pull the latest value
         directly via get_latest_hf_data(); there is no per-sample delivery to coalesce.
 
@@ -211,18 +273,22 @@ class WindowManager(QObject):
             json_data (Dict[str, Any]): Raw payload passed to hf_cls.from_json()
         """
         hf_type = hf_cls.__hf_type__
-        if hf_type not in self._hf_subscriber_types:
+        slot = self._hf_slots.get(hf_type)
+        if slot is None:
             self.stats.track_event("__HF_DROP__", hf_type)
             return
 
         data = hf_cls.from_json(json_data)
         self._track_hf_write_seq(hf_type, data.__seq__)
-        self.stats.track_event("__HF_SEND__", hf_type)
-        self._hf_mailbox[hf_type] = data
+        slot.publish(data)
 
     def get_latest_hf_data(self, hf_type: str) -> Optional[HighFreqBase]:
         """Pull the latest published snapshot for hf_type, or None if nothing has been published yet."""
-        return self._hf_mailbox.get(hf_type)
+        slot = self._hf_slots.get(hf_type)
+        if slot is None:
+            return None
+        snapshot = slot.take()
+        return snapshot[0] if snapshot is not None else None
 
     def _track_hf_write_seq(self, hf_type: str, curr_seq: int) -> None:
         """Write-site seq/loss accounting - a single pass per hf_type instead of one per subscriber."""

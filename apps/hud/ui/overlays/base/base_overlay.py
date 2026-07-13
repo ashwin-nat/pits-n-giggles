@@ -410,6 +410,7 @@ class BaseOverlay(QmlBridge, QObject):
             self._root.setOpacity(0)
             self._root.setVisible(True)
             self._start_frame_timer()
+            self._replay_cached_state()
 
         self._fade_anim = anim
         anim.start()
@@ -418,6 +419,26 @@ class BaseOverlay(QmlBridge, QObject):
         """Fade-out completed: hide the window and stop the render tick."""
         self._root.setVisible(False)
         self._stop_frame_timer()
+
+    def _replay_cached_state(self) -> None:
+        """Redeliver the latest known snapshot for every handled topic on becoming visible.
+
+        While hidden, non-high-priority commands are dropped in _handle_cmd, so a state
+        topic's mailbox can advance well past what this overlay last processed. Without this,
+        a freshly shown overlay displays whatever it last rendered until the next broadcast
+        arrives, which can be seconds away. replay_state_topic() no-ops for anything that
+        isn't a state topic.
+        """
+        if self._window_manager is None:
+            return
+        for cmd in self._handlers:
+            data = self._window_manager.replay_state_topic(self.OVERLAY_ID, cmd)
+            if data is None:
+                continue
+            try:
+                self.dispatch_event(cmd, data["__payload__"])
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.logger.exception("%s | Error replaying cached state for '%s'", self.OVERLAY_ID, cmd)
 
     def _start_frame_timer(self) -> None:
         if self._refresh_interval_ms is not None and not self._frame_timer.isActive():
@@ -723,13 +744,21 @@ class BaseOverlay(QmlBridge, QObject):
     # IPC - Signals/Slots
     # ------------------------------------------------------------------
     @Slot(str, bool, str, object)
-    def _handle_cmd(self, recipient: str, high_prio: bool, cmd: str, data: dict):
+    def _handle_cmd(self, recipient: str, high_prio: bool, cmd: str, data: Optional[dict]):
         if recipient and recipient != self.OVERLAY_ID:
             return
         if not self.get_visibility() and not high_prio:
             return
         if cmd not in self._handlers:
             return
+
+        if data is None:
+            # State topic: the signal is a doorbell only, pull-and-coalesce from the mailbox.
+            assert self._window_manager is not None
+            data = self._window_manager.take_state_topic(self.OVERLAY_ID, cmd)
+            if data is None:
+                return
+
         payload = data["__payload__"]
         timestamp = data["__meta__"]["__timestamp__"]
         self._track_cmd_pipeline_latency(cmd, timestamp, perf_counter_ns())
