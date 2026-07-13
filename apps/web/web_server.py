@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import json
 import time
 import webbrowser
 from http import HTTPStatus
@@ -38,8 +39,10 @@ from lib.ipc import IpcDealerAsync, PngAppId
 from lib.logger import PngLogger
 from lib.web_server import BaseWebServer, ClientType
 
-from .save_viewer_state import getDriverInfoFrom, getRaceInfoFrom, getTelemetryInfoFrom, init_state
-from .session_discovery import build_session_list, CACHE_FILE, formula_group_key, load_session_json
+from .save_viewer_state import (getDriverInfoFrom, getRaceInfoFrom,
+                                getTelemetryInfoFrom, init_state)
+from .session_discovery import (CACHE_FILE, build_session_list,
+                                formula_group_key, load_session_json)
 
 # -------------------------------------- GLOBALS -----------------------------------------------------------------------
 
@@ -96,6 +99,7 @@ class WebServer(BaseWebServer):
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
         self.m_disable_browser_autoload = settings.Display.disable_browser_autoload
+        self.m_save_viewer_poll_interval_secs = settings.Display.save_viewer_poll_interval_secs
 
         self.m_session_dir: Path = session_dir
         self.m_viewer_dir: Path = viewer_dir
@@ -218,9 +222,9 @@ class WebServer(BaseWebServer):
             return {'error': rsp.get("error")}, http_status
 
     async def _render_index(self) -> Any:
-        """Read the built React index.html and inject the app version, the shared sidebar
-        stylesheet, and the sidebar markup itself (React's own `<aside>` becomes the secondary
-        rail alongside it).
+        """Read the built React index.html and inject the app version, the save-viewer
+        runtime config, the shared sidebar stylesheet, and the sidebar markup itself
+        (React's own `<aside>` becomes the secondary rail alongside it).
 
         Returns:
             A Quart-compatible (body, status, headers) tuple serving index.html.
@@ -235,8 +239,21 @@ class WebServer(BaseWebServer):
         html = html.replace('href="/save-viewer/apple-touch-icon.png"', 'href="/logo.png"', 1)
 
         version_injection = f'<script>window.__PNG_VERSION__="{self.m_ver_str}";</script>'
+        poll_interval_ms = (
+            self.m_save_viewer_poll_interval_secs * 1000
+            if self.m_save_viewer_poll_interval_secs is not None
+            else None
+        )
+        poll_interval_json = json.dumps(poll_interval_ms)
+        save_viewer_config_injection = (
+            f'<script>window.__PNG_SAVE_VIEWER_CONFIG__='
+            f'{{"sessionPollIntervalMs":{poll_interval_json}}};</script>'
+        )
         sidebar_css_url = url_for('static', filename='css/sidebar.css')
-        head_injection = f'<link rel="stylesheet" href="{sidebar_css_url}">{version_injection}'
+        head_injection = (
+            f'<link rel="stylesheet" href="{sidebar_css_url}">'
+            f'{version_injection}{save_viewer_config_injection}'
+        )
         html = html.replace('</head>', f'{head_injection}</head>', 1)
 
         sidebar_html = await self.render_template('partials/sidebar.html', active_page='save-viewer')

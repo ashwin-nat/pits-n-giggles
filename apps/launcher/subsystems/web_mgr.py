@@ -118,6 +118,8 @@ class WebAppMgr(PngAppMgrBase):
             ],
             "Display": [
                 "refresh_interval",
+                "save_viewer_poll_interval_secs",
+                "disable_browser_autoload",
             ],
             "HTTPS": [],
         })

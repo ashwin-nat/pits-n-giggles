@@ -104,6 +104,26 @@ class DisplaySettings(ConfigDiffMixin, BaseModel):
         }
     )
 
+    save_viewer_poll_interval_secs: Optional[int] = Field(
+        default=10,
+        ge=1,
+        le=30,
+        description="Save viewer: auto-refresh session list every N seconds (browser-side)",
+        json_schema_extra={
+            "ui": {
+                "type" : "text_box",
+                "visible": True,
+                "ext_info" : [
+                    "The save viewer's session list refreshes at this interval so newly "
+                    "saved sessions show up without a manual reload. Leave empty to "
+                    "disable polling — the list still refreshes when the browser tab "
+                    "regains focus. Consider disabling if you host the save viewer "
+                    "publicly."
+                ]
+            }
+        }
+    )
+
     wdt_timeout: Optional[float] = Field(
         default=5.0,
         ge=2.0,

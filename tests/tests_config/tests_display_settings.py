@@ -47,6 +47,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         self.assertEqual(settings.realtime_overlay_fps, 60)
         self.assertFalse(settings.use_cpu_acceleration)
         self.assertEqual(settings.wdt_timeout, 5.0)
+        self.assertEqual(settings.save_viewer_poll_interval_secs, 10)
 
     def test_refresh_interval_validation(self):
         """Test refresh interval must be positive"""
@@ -154,3 +155,30 @@ class TestDisplaySettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             DisplaySettings(wdt_timeout="notanumber")
+
+    def test_save_viewer_poll_interval_secs_validation(self):
+        settings = DisplaySettings(save_viewer_poll_interval_secs=5)
+        self.assertEqual(settings.save_viewer_poll_interval_secs, 5)
+
+        # Boundary conditions
+        settings = DisplaySettings(save_viewer_poll_interval_secs=1)
+        self.assertEqual(settings.save_viewer_poll_interval_secs, 1)
+
+        settings = DisplaySettings(save_viewer_poll_interval_secs=30)
+        self.assertEqual(settings.save_viewer_poll_interval_secs, 30)
+
+        # None disables polling
+        settings = DisplaySettings(save_viewer_poll_interval_secs=None)
+        self.assertIsNone(settings.save_viewer_poll_interval_secs)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(save_viewer_poll_interval_secs=0)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(save_viewer_poll_interval_secs=-1)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(save_viewer_poll_interval_secs=31)
+
+        with self.assertRaises(ValidationError):
+            DisplaySettings(save_viewer_poll_interval_secs="notanumber")
