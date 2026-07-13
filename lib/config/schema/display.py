@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from enum import Enum
 from typing import Any, ClassVar, Dict, Optional
 
 from pydantic import BaseModel, Field
@@ -30,18 +31,30 @@ from .diff import ConfigDiffMixin
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
+class AutoOpenDashboardMode(str, Enum):
+    DISABLED = "Disabled"
+    HUB = "Hub"
+    DRIVER_VIEW = "Driver View"
+    ENGINEER_VIEW = "Engineer View"
+    SAVE_VIEW = "Save View"
+
 class DisplaySettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible" : True,
     }
 
-    disable_browser_autoload: bool = Field(
-        default=False,
-        description="Disable automatic opening of the web page in the browser",
+    auto_open_dashboard: AutoOpenDashboardMode = Field(
+        default=AutoOpenDashboardMode.HUB,
+        description="Auto open dashboard",
         json_schema_extra={
             "ui": {
-                "type" : "check_box",
-                "visible": True
+                "type": "radio_buttons",
+                "options": [e.value for e in AutoOpenDashboardMode],
+                "visible": True,
+                "ext_info": [
+                    "Which page to automatically open in the browser when the app starts. "
+                    "Choose Disabled to not open a browser tab at all."
+                ]
             }
         }
     )

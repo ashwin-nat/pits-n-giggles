@@ -34,7 +34,7 @@ from quart import send_file, url_for
 from watchfiles import awatch
 
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import PngSettings
+from lib.config import AutoOpenDashboardMode, PngSettings
 from lib.ipc import IpcDealerAsync, PngAppId
 from lib.logger import PngLogger
 from lib.web_server import BaseWebServer, ClientType
@@ -50,6 +50,13 @@ _DRIVER_INFO_HTTP_STATUS = {
     "MISSING_PARAM": HTTPStatus.BAD_REQUEST,
     "INVALID_PARAM": HTTPStatus.BAD_REQUEST,
     "NOT_FOUND":      HTTPStatus.NOT_FOUND,
+}
+
+_AUTO_OPEN_DASHBOARD_PATHS = {
+    AutoOpenDashboardMode.HUB: '/',
+    AutoOpenDashboardMode.DRIVER_VIEW: '/live',
+    AutoOpenDashboardMode.ENGINEER_VIEW: '/eng-view',
+    AutoOpenDashboardMode.SAVE_VIEW: '/save-viewer/',
 }
 
 def _best(sessions: List[Dict[str, Any]], key: str) -> float:
@@ -98,7 +105,7 @@ class WebServer(BaseWebServer):
         self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
-        self.m_disable_browser_autoload = settings.Display.disable_browser_autoload
+        self.m_auto_open_dashboard = settings.Display.auto_open_dashboard
         self.m_save_viewer_poll_interval_secs = settings.Display.save_viewer_poll_interval_secs
 
         self.m_session_dir: Path = session_dir
@@ -379,6 +386,7 @@ class WebServer(BaseWebServer):
         asyncio.create_task(self._rebuild_session_cache(), name="Session Initial Scan")
         asyncio.create_task(self._sessions_watch_loop(), name="Session Watch Loop")
 
-        if not self.m_disable_browser_autoload:
+        if self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
             proto = 'https' if self.m_cert_path else 'http'
-            webbrowser.open(f'{proto}://localhost:{self.m_port}', new=2)
+            path = _AUTO_OPEN_DASHBOARD_PATHS[self.m_auto_open_dashboard]
+            webbrowser.open(f'{proto}://localhost:{self.m_port}{path}', new=2)

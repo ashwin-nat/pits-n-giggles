@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .capture import CaptureSettings
-from .display import DisplaySettings
+from .display import AutoOpenDashboardMode, DisplaySettings
 from .forwarding import ForwardingSettings
 from .https import HttpsSettings
 from .hud import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
@@ -45,6 +45,7 @@ from .subsys_ctrl import SubSysCtrl
 
 __all__ = [
     'CaptureSettings',
+    'AutoOpenDashboardMode',
     'DisplaySettings',
     'ForwardingSettings',
     'HttpsSettings',

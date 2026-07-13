@@ -29,7 +29,7 @@ from pydantic import ValidationError
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.config import DisplaySettings
+from lib.config import AutoOpenDashboardMode, DisplaySettings
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -42,7 +42,7 @@ class TestDisplaySettings(TestF1ConfigBase):
         """Test default values"""
         settings = DisplaySettings()
         self.assertEqual(settings.refresh_interval, 200)
-        self.assertFalse(settings.disable_browser_autoload)
+        self.assertEqual(settings.auto_open_dashboard, AutoOpenDashboardMode.HUB)
         self.assertEqual(settings.local_telemetry_rate, 5)
         self.assertEqual(settings.realtime_overlay_fps, 60)
         self.assertFalse(settings.use_cpu_acceleration)
@@ -60,25 +60,23 @@ class TestDisplaySettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             DisplaySettings(refresh_interval=-1)
 
-    def test_disable_browser_autoload_boolean(self):
-        # Default is False
+    def test_auto_open_dashboard_enum(self):
+        # Default is Hub
         display = DisplaySettings()
-        self.assertFalse(display.disable_browser_autoload)
+        self.assertEqual(display.auto_open_dashboard, AutoOpenDashboardMode.HUB)
 
-        # True is accepted
-        display = DisplaySettings(disable_browser_autoload=True)
-        self.assertTrue(display.disable_browser_autoload)
+        # Each mode is accepted
+        for mode in AutoOpenDashboardMode:
+            display = DisplaySettings(auto_open_dashboard=mode)
+            self.assertEqual(display.auto_open_dashboard, mode)
 
-        # String coercion works
-        display = DisplaySettings(disable_browser_autoload="True")
-        self.assertTrue(display.disable_browser_autoload)
+        # String value coercion works
+        display = DisplaySettings(auto_open_dashboard="Disabled")
+        self.assertEqual(display.auto_open_dashboard, AutoOpenDashboardMode.DISABLED)
 
-        display = DisplaySettings(disable_browser_autoload="False")
-        self.assertFalse(display.disable_browser_autoload)
-
-    def test_invalid_disable_browser_autoload(self):
+    def test_invalid_auto_open_dashboard(self):
         with self.assertRaises(ValidationError):
-            DisplaySettings(disable_browser_autoload="notaboolean")
+            DisplaySettings(auto_open_dashboard="not_a_mode")
 
     def test_local_telemetry_rate_validation(self):
         settings = DisplaySettings(local_telemetry_rate=5)

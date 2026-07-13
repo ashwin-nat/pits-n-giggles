@@ -31,7 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import configparser
 import tempfile
 
-from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
+from lib.config import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings, ForwardingSettings,
                         HttpsSettings, NetworkSettings,
                         PngSettings, PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, load_config_from_json,
@@ -152,7 +152,7 @@ post_race_data_autosave = True
 
 [Display]
 refresh_interval = 150
-disable_browser_autoload = True
+auto_open_dashboard = Disabled
 
 [Privacy]
 process_car_setup = True
@@ -183,7 +183,7 @@ cert_file_path = {cert_path}
 
             self.assertTrue(settings.Capture.post_race_data_autosave)
             self.assertEqual(settings.Display.refresh_interval, 150)
-            self.assertTrue(settings.Display.disable_browser_autoload)
+            self.assertEqual(settings.Display.auto_open_dashboard, AutoOpenDashboardMode.DISABLED)
 
             self.assertTrue(settings.Privacy.process_car_setup)
             self.assertEqual(settings.Forwarding.target_1, "localhost:8080")
@@ -241,7 +241,7 @@ cert_file_path = {cert_path}
             Capture=CaptureSettings(post_race_data_autosave=True),
             Display=DisplaySettings(
                 refresh_interval=300,
-                disable_browser_autoload=True
+                auto_open_dashboard=AutoOpenDashboardMode.DISABLED
             ),
             Privacy=PrivacySettings(process_car_setup=True),
             Forwarding=ForwardingSettings(
@@ -267,7 +267,7 @@ cert_file_path = {cert_path}
             self.assertEqual(loaded_settings.Network.udp_tyre_delta_action_code, original_settings.Network.udp_tyre_delta_action_code)
             self.assertEqual(loaded_settings.Capture.post_race_data_autosave, original_settings.Capture.post_race_data_autosave)
             self.assertEqual(loaded_settings.Display.refresh_interval, original_settings.Display.refresh_interval)
-            self.assertEqual(loaded_settings.Display.disable_browser_autoload, original_settings.Display.disable_browser_autoload)
+            self.assertEqual(loaded_settings.Display.auto_open_dashboard, original_settings.Display.auto_open_dashboard)
             self.assertEqual(loaded_settings.Privacy.process_car_setup, original_settings.Privacy.process_car_setup)
             self.assertEqual(loaded_settings.Forwarding.target_1, original_settings.Forwarding.target_1)
             self.assertEqual(loaded_settings.Forwarding.target_2, original_settings.Forwarding.target_2)
@@ -298,7 +298,7 @@ cert_file_path = {cert_path}
                 Capture=CaptureSettings(post_race_data_autosave=True),
                 Display=DisplaySettings(
                     refresh_interval=300,
-                    disable_browser_autoload=True
+                    auto_open_dashboard=AutoOpenDashboardMode.DISABLED
                 ),
                 Privacy=PrivacySettings(process_car_setup=True),
                 Forwarding=ForwardingSettings(
@@ -329,7 +329,7 @@ cert_file_path = {cert_path}
                 self.assertEqual(loaded_settings.Network.udp_tyre_delta_action_code, original_settings.Network.udp_tyre_delta_action_code)
                 self.assertEqual(loaded_settings.Capture.post_race_data_autosave, original_settings.Capture.post_race_data_autosave)
                 self.assertEqual(loaded_settings.Display.refresh_interval, original_settings.Display.refresh_interval)
-                self.assertEqual(loaded_settings.Display.disable_browser_autoload, original_settings.Display.disable_browser_autoload)
+                self.assertEqual(loaded_settings.Display.auto_open_dashboard, original_settings.Display.auto_open_dashboard)
                 self.assertEqual(loaded_settings.Privacy.process_car_setup, original_settings.Privacy.process_car_setup)
                 self.assertEqual(loaded_settings.Forwarding.target_1, original_settings.Forwarding.target_1)
                 self.assertEqual(loaded_settings.Forwarding.target_2, original_settings.Forwarding.target_2)
