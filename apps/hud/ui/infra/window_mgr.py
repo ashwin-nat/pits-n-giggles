@@ -36,6 +36,16 @@ from apps.hud.ui.overlays import BaseOverlay
 from lib.event_counter import EventCounter
 from lib.logger import PngLogger
 
+# -------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+# Topics carrying an idempotent full-state snapshot: coalescing to the latest value is safe.
+# Everything else is an imperative command (e.g. toggle/step actions) where every message must
+# be processed in order, so it is excluded from coalescing.
+STATE_TOPICS = frozenset({
+    "race_table_update",
+    "stream_overlay_update",
+})
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class WindowManager(QObject):
