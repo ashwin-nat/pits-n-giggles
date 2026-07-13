@@ -38,11 +38,6 @@ from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class _HFTypeSignal(QObject):
-    """Per-HF-type signal proxy. One instance per HF type; only subscribed overlays are connected."""
-    signal = Signal(object)
-
-
 class WindowManager(QObject):
 
     msg_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
@@ -61,7 +56,9 @@ class WindowManager(QObject):
         self.logger = logger
         self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
-        self._hf_signals: Dict[str, _HFTypeSignal] = {}
+        self._hf_mailbox: Dict[str, HighFreqBase] = {}   # hf_type -> latest snapshot
+        self._hf_subscriber_types: set = set()           # hf_types at least one overlay subscribes to
+        self._hf_last_seq: Dict[str, int] = {}           # write-site seq/loss accounting
         self.stats = EventCounter()
 
         qInstallMessageHandler(self._qt_message_handler)
@@ -109,11 +106,11 @@ class WindowManager(QObject):
         # Connect overlay's response signal back to manager
         overlay.response_signal.connect(self.mgmt_response_signal.emit)
 
-        # Connect to per-type HF signal proxies — subscriptions are populated during overlay __init__
+        # Let the overlay pull HF data straight from this manager's mailbox instead
+        # of receiving it via a per-sample queued signal.
+        overlay.set_window_manager(self)
         for hf_type in overlay._hf_subscriptions:
-            if hf_type not in self._hf_signals:
-                self._hf_signals[hf_type] = _HFTypeSignal(self)
-            self._hf_signals[hf_type].signal.connect(overlay._handle_high_freq_data)
+            self._hf_subscriber_types.add(hf_type)
             self.logger.debug("Overlay %s subscribed to HF type '%s'", overlay_id, hf_type)
 
     # pylint: disable=useless-return
@@ -178,7 +175,7 @@ class WindowManager(QObject):
         self.msg_signal.emit("", high_prio, cmd, self._marshal_data(data))
 
     def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
-        """Unicast event data to a specific overlay using signal.
+        """Unicast event data to a specific overlay using ssignal.
 
         Args:
             overlay_id (str): Overlay ID
@@ -191,23 +188,40 @@ class WindowManager(QObject):
         self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, hf_cls: Type[HighFreqBase], json_data: Dict[str, Any]) -> None:
-        """Construct and send high-frequency data, but only if some overlay is subscribed to its type.
+        """Construct high-frequency data and publish it to the mailbox, but only if some overlay
+        is subscribed to its type (skips the from_json() construction entirely otherwise, since
+        that work would otherwise be discarded).
 
-        Skips the from_json() construction entirely when there are no subscribers, since that work
-        would otherwise be discarded.
+        Called from the IPC thread. Writes a single reference into self._hf_mailbox - atomic
+        under the GIL - with no cross-thread signal. Overlay render ticks pull the latest value
+        directly via get_latest_hf_data(); there is no per-sample delivery to coalesce.
 
         Args:
             hf_cls (Type[HighFreqBase]): High-frequency data class to construct via from_json()
             json_data (Dict[str, Any]): Raw payload passed to hf_cls.from_json()
         """
-        proxy = self._hf_signals.get(hf_cls.__hf_type__)
-        if not proxy:
-            self.stats.track_event("__HF_DROP__", hf_cls.__hf_type__)
+        hf_type = hf_cls.__hf_type__
+        if hf_type not in self._hf_subscriber_types:
+            self.stats.track_event("__HF_DROP__", hf_type)
             return
 
         data = hf_cls.from_json(json_data)
-        self.stats.track_event("__HF_SEND__", hf_cls.__hf_type__)
-        proxy.signal.emit(data)
+        self._track_hf_write_seq(hf_type, data.__seq__)
+        self.stats.track_event("__HF_SEND__", hf_type)
+        self._hf_mailbox[hf_type] = data
+
+    def get_latest_hf_data(self, hf_type: str) -> Optional[HighFreqBase]:
+        """Pull the latest published snapshot for hf_type, or None if nothing has been published yet."""
+        return self._hf_mailbox.get(hf_type)
+
+    def _track_hf_write_seq(self, hf_type: str, curr_seq: int) -> None:
+        """Write-site seq/loss accounting - a single pass per hf_type instead of one per subscriber."""
+        prev_seq = self._hf_last_seq.get(hf_type)
+        if prev_seq is not None and curr_seq > prev_seq + 1:
+            lost = curr_seq - prev_seq - 1
+            self.stats.track_event("__HF_LOSS__", "__TOTAL__", count=lost)
+            self.stats.track_event("__HF_LOSS__", hf_type, count=lost)
+        self._hf_last_seq[hf_type] = curr_seq
 
     def _marshal_data(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add timestamp to payload."""

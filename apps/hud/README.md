@@ -31,7 +31,8 @@ Inits and runs the overlay windows, while providing means of communicating with 
 ### WindowManager API
 - `broadcast_data()` — send data to all overlays
 - `unicast_data()` — send commands to a specific overlay
-- `send_high_freq_data()` — send high-frequency sensor data
+- `send_high_freq_data()` — publish high-frequency sensor data to the per-type mailbox (skipped if unsubscribed)
+- `get_latest_hf_data()` — pull the latest published snapshot for a given HF type
 - `request()` — synchronous request/response mechanism
 
 ### WindowManager Signals
@@ -63,9 +64,10 @@ for typing convenience):
 
 `BaseOverlay(QmlBridge, QObject)` owns the window and the process-facing transport:
 
-- IPC slots `_handle_cmd` / `_handle_request` / `_handle_high_freq_data`, `response_signal`
+- IPC slots `_handle_cmd` / `_handle_request`, `response_signal`
 - Recipient filtering, visibility gating, cmd-pipeline latency tracking
-- HF channel: `subscribe_hf`, `_latest_hf`, seq/loss accounting, `_hf_pending`
+- HF channel: `subscribe_hf`, `get_latest_hf_data` — pulls straight from `WindowManager`'s
+  shared mailbox (no per-sample cross-thread signal; seq/loss accounting lives at the write site)
 - Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
   **constructor parameter**, never a base-class choice
 - Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.

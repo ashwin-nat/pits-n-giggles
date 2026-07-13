@@ -26,7 +26,8 @@ import ctypes
 import logging
 from pathlib import Path
 from time import perf_counter_ns
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Type,
+                    TypeVar)
 
 from PySide6.QtCore import (Q_ARG, QEvent, QMetaObject, QObject, QPoint,
                             QPropertyAnimation, QSize, Qt, QTimer, QUrl,
@@ -41,6 +42,9 @@ from lib.config import OverlayPosition
 from meta.meta import APP_NAME_SNAKE
 
 from .qml_bridge import QmlBridge
+
+if TYPE_CHECKING:
+    from apps.hud.ui.infra.window_mgr import WindowManager
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -184,10 +188,8 @@ class BaseOverlay(QmlBridge, QObject):
         self.telemetry_active = True
 
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
-        self._latest_hf: Dict[str, HighFreqBase] = {}
         self._hf_subscriptions: set[str] = set()
-        self._hf_last_seq: Dict[str, int] = {}
-        self._hf_pending: set[str] = set()
+        self._window_manager: Optional["WindowManager"] = None  # set via set_window_manager() during registration
         self._user_hidden: bool = False  # True when user explicitly hid this overlay
 
         # Create the actual window
@@ -592,7 +594,6 @@ class BaseOverlay(QmlBridge, QObject):
             self._frame_active = True
 
         self.render_frame()
-        self._clear_hf_pending()
         assert self._refresh_interval_ms
         assert self._fps
         self._stats.track_frame_render("__FRAMES_PRODUCER__", "__FRAME__", perf_counter_ns(), self._fps)
@@ -634,25 +635,18 @@ class BaseOverlay(QmlBridge, QObject):
         """Subscribe to high frequency data."""
         self._hf_subscriptions.add(obj_type.__hf_type__)
 
-    def update_hf_data_cache(self, data: HighFreqBase):
-        """Update the latest high frequency data cache."""
-        self._latest_hf[data.__hf_type__] = data
+    def set_window_manager(self, window_manager: "WindowManager") -> None:
+        """Attach the WindowManager whose HF mailbox this overlay pulls from.
+
+        Called exactly once, by WindowManager.register_overlay().
+        """
+        self._window_manager = window_manager
 
     def get_latest_hf_data(self, type_: Type[HighFreqObjType]) -> Optional[HighFreqObjType]:
-        """Get the latest high frequency data of a specific type."""
-        return self._latest_hf.get(type_.__hf_type__)
-
-    def _track_hf_event(self, event_type: str) -> None:
-        self._stats.track_event("__HF_EVENTS__", "__TOTAL__")
-        self._stats.track_event("__HF_EVENTS__", event_type)
-
-    def _clear_hf_pending(self) -> None:
-        """Mark all pending HF types as consumed by the current render frame."""
-        self._hf_pending.clear()
-
-    def _track_hf_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
-        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
-        self._stats.track_packet_latency("__HF_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
+        """Pull the latest high frequency data of a specific type from the shared mailbox
+        (written directly by the IPC thread; no per-sample cross-thread delivery)."""
+        assert self._window_manager is not None, f"{self.OVERLAY_ID} | not registered with a WindowManager"
+        return self._window_manager.get_latest_hf_data(type_.__hf_type__)
 
     def _track_cmd_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
         self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
@@ -765,49 +759,6 @@ class BaseOverlay(QmlBridge, QObject):
                 self.logger.exception("%s | Error handling request '%s': %s", self.OVERLAY_ID, request_type, e)
         else:
             self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
-
-    @Slot(object)
-    def _handle_high_freq_data(self, payload: HighFreqBase):
-        if payload.__hf_type__ not in self._hf_subscriptions:
-            return
-
-        self._track_hf_pipeline_latency(
-            payload.__hf_type__,
-            payload.__timestamp__,
-            perf_counter_ns(),
-        )
-
-        msg_type = payload.__hf_type__
-        curr_seq = payload.__seq__
-        prev_seq = self._hf_last_seq.get(msg_type)
-        if prev_seq is None:
-            self._hf_last_seq[msg_type] = curr_seq
-        elif curr_seq == prev_seq + 1:
-            self._hf_last_seq[msg_type] = curr_seq
-        elif curr_seq > prev_seq + 1:
-            lost = curr_seq - prev_seq - 1
-            self._stats.track_event("__HF_LOSS__", "__TOTAL__", count=lost)
-            self._stats.track_event("__HF_LOSS__", msg_type, count=lost)
-            self._hf_last_seq[msg_type] = curr_seq
-        else:
-            self.logger.error(
-                "%s | HF out-of-order: type=%s prev_seq=%d curr_seq=%d",
-                self.OVERLAY_ID, msg_type, prev_seq, curr_seq,
-            )
-            return
-
-        self._latest_hf[payload.__hf_type__] = payload
-        if self.get_visibility():
-            if payload.__hf_type__ in self._hf_pending:
-                self._stats.track_event("__HF_DROPPED_VISIBLE__", "__TOTAL__")
-                self._stats.track_event("__HF_DROPPED_VISIBLE__", payload.__hf_type__)
-            else:
-                self._hf_pending.add(payload.__hf_type__)
-            self._track_hf_event(payload.__hf_type__)
-        else:
-            self._stats.track_event("__HF_DROPPED_HIDDEN__", "__TOTAL__")
-            self._stats.track_event("__HF_DROPPED_HIDDEN__", payload.__hf_type__)
-
 
 class QmlLogger(QObject):
     def __init__(self, logger: logging.Logger, oid: str):
