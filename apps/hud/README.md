@@ -100,7 +100,10 @@ Use for displays that will never live inside the MFD:
 ### MFD hosts (also subclass `BaseOverlay`)
 
 - **`MfdOverlay`** — the MFD carousel; constructs and hosts N `MfdPageBase` instances, routes
-  events to the active page via `dispatch_event`, composes `__PAGES__` stats
+  events to the active page via `dispatch_event`, composes `__PAGES__` stats. On every page
+  switch, replays the latest mailbox snapshot for each topic the newly activated page
+  handles (`replay_state_topic`) — the page-switch counterpart of `BaseOverlay`'s
+  replay-on-show, since the MFD window itself never goes invisible when cycling pages.
 - **`StandalonePageHost`** — generic host that shows exactly one `MfdPageBase` in its own
   always-on-top window (`standalone_wrapper.qml`); written once, never subclassed
 

@@ -24,12 +24,13 @@
 
 import logging
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Type, final
+from typing import Any, ClassVar, Dict, List, Optional, Type, final
 
 from PySide6.QtCore import QUrl
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
@@ -85,29 +86,14 @@ class MfdOverlay(BaseOverlay):
             refresh_interval_ms=None, # Telemetry based refreshes
         )
 
-        self._register_page_event_handlers()
+        register_page_event_handlers(self, self._mfd_pages, self._active_page)
         self._init_cmd_handlers()
 
-    def _register_page_event_handlers(self):
-        """Automatically register all event handlers from all pages."""
-        # Collect all unique event types from all pages
-        all_event_types = set()
-        for page in self._mfd_pages:
-            all_event_types.update(page.get_handled_event_types())
-
-        for event_type in all_event_types:
-            self._register_broadcast_handler(event_type)
-
-        self.logger.debug("%s | Registered %d event handlers %s", self.OVERLAY_ID, len(all_event_types), all_event_types)
-
-    def _register_broadcast_handler(self, event_type: str):
-        """Register a handler that forwards an event to the active page."""
-        @self.on_event(event_type)
-        def _handler(data: Dict[str, Any]):
-            if not self._mfd_pages:
-                self.logger.warning("%s | Event '%s' received but no pages are initialised", self.OVERLAY_ID, event_type)
-                return
-            self._mfd_pages[self._current_index].dispatch_event(event_type, data)
+    def _active_page(self) -> Optional[MfdPageBase]:
+        """The page the carousel is currently showing, or None before pages exist."""
+        if not self._mfd_pages:
+            return None
+        return self._mfd_pages[self._current_index]
 
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
@@ -150,8 +136,31 @@ class MfdOverlay(BaseOverlay):
         for page in self._mfd_pages:
             if page.KEY == page_key:
                 page._on_page_activated(item)
+                self._replay_page_state(page)
             elif page.is_active:
                 page._on_page_deactivated()
+
+    def _replay_page_state(self, page: MfdPageBase) -> None:
+        """Redeliver the latest known snapshot for every topic the newly activated page
+        handles, so cycling to a page shows fresh content immediately instead of whatever
+        was last rendered (or nothing) until the next broadcast arrives.
+
+        This is the page-switch counterpart of BaseOverlay's replay-on-show (C4): the MFD
+        window itself never becomes hidden when cycling pages, so that path never fires here.
+        """
+        if self._window_manager is None:
+            return
+        for event_type in page.get_handled_event_types():
+            data = self._window_manager.replay_state_topic(self.OVERLAY_ID, event_type)
+            if data is None:
+                continue
+            try:
+                page.dispatch_event(event_type, data["__payload__"])
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.logger.exception(
+                    "%s | Error replaying cached state for page '%s' topic '%s'",
+                    self.OVERLAY_ID, page.KEY, event_type,
+                )
 
     def _apply_current_page(self):
         """Apply the current page."""

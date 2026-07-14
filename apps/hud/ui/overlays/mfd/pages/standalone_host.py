@@ -29,6 +29,7 @@ from typing import final
 from PySide6.QtCore import QObject, QUrl
 
 from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import OverlayPosition
 
@@ -78,6 +79,10 @@ class StandalonePageHost(BaseOverlay):
             refresh_interval_ms=None,  # pages are event-driven, never frame-driven
         )
 
+    def _active_page(self) -> MfdPageBase:
+        """The one page this host ever shows."""
+        return self._page
+
     @final
     def post_setup(self):
         """Load the page QML into the wrapper, activate the page, bridge its events."""
@@ -91,14 +96,7 @@ class StandalonePageHost(BaseOverlay):
 
         self._page._on_page_activated(page_item)
 
-        for event_type in self._page.get_handled_event_types():
-            self._register_page_event(event_type)
-
-    def _register_page_event(self, event_type: str):
-        """Register an overlay command handler that forwards to the hosted page."""
-        @self.on_event(event_type)
-        def _forward(data: dict, _et=event_type):
-            self._page.dispatch_event(_et, data)
+        register_page_event_handlers(self, [self._page], self._active_page)
 
     @final
     def get_stats(self) -> dict:
