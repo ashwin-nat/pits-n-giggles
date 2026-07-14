@@ -49,9 +49,15 @@ STATE_TOPICS = frozenset({
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
+class _TopicSignal(QObject):
+    """Per-topic command signal proxy. One instance per event type; only overlays that
+    actually handle that event type are connected, instead of every command fanning out
+    to every registered overlay."""
+    signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
+
+
 class WindowManager(QObject):
 
-    msg_signal = Signal(str, bool, str, object)  # recipient (empty = broadcast), priority, event, data
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
@@ -74,6 +80,7 @@ class WindowManager(QObject):
             topic: LatestSlot(topic, self.stats) for topic in STATE_TOPICS
         }
         self._state_cursors: Dict[Tuple[str, str], int] = {}  # (overlay_id, topic) -> last-read seq
+        self._topic_signals: Dict[str, _TopicSignal] = {}  # cmd -> proxy; only created for handled topics
 
         qInstallMessageHandler(self._qt_message_handler)
 
@@ -113,8 +120,14 @@ class WindowManager(QObject):
         self.logger.debug("Registering overlay %s", overlay_id)
         self.overlays[overlay_id] = overlay
 
-        # Connect broadcast command and request signals TO the overlay
-        self.msg_signal.connect(overlay._handle_cmd)
+        # Connect the overlay only to the per-topic proxies for events it actually handles
+        # (its handler set is complete by now: default handlers register in __init__,
+        # before this method ever runs) - not every command to every overlay.
+        for cmd in overlay.get_handled_event_types():
+            if cmd not in self._topic_signals:
+                self._topic_signals[cmd] = _TopicSignal(self)
+            self._topic_signals[cmd].signal.connect(overlay._handle_cmd)
+
         self.mgmt_request_signal.connect(overlay._handle_request)
 
         # Connect overlay's response signal back to manager
@@ -178,8 +191,11 @@ class WindowManager(QObject):
             return None
 
     # Keep existing methods for GUI thread use
-    def broadcast_data(self, cmd: str, data: Dict[str, Any], high_prio: bool = False):
-        """Broadcast event data to all registered overlays using signal.
+    def emit_event(self, cmd: str, data: Dict[str, Any], high_prio: bool = False):
+        """Emit event data to every overlay that handles cmd.
+
+        Skips everything - marshaling, mailbox publish, signal emission - if no
+        registered overlay handles cmd at all.
 
         For a state topic (STATE_TOPICS), the marshaled payload is published to that
         topic's mailbox slot and the signal carries no data - just a doorbell telling
@@ -192,14 +208,18 @@ class WindowManager(QObject):
             data (Dict[str, Any]): Command data
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
+        proxy = self._topic_signals.get(cmd)
+        if proxy is None:
+            self.stats.track_event("__BROADCAST_DROP__", cmd)
+            return
+
         self.stats.track_event("__BROADCAST__", cmd)
-        marshaled = self._marshal_data(data)
         slot = self._state_slots.get(cmd)
         if slot is not None:
-            slot.publish(marshaled)
-            self.msg_signal.emit("", high_prio, cmd, None)
+            slot.publish(self._marshal_data(data))
+            proxy.signal.emit("", high_prio, cmd, None)
         else:
-            self.msg_signal.emit("", high_prio, cmd, marshaled)
+            proxy.signal.emit("", high_prio, cmd, self._marshal_data(data))
 
     def take_state_topic(self, overlay_id: str, cmd: str) -> Optional[Dict[str, Any]]:
         """Pull cmd's mailbox slot for overlay_id, coalescing anything that overlay has
@@ -246,8 +266,8 @@ class WindowManager(QObject):
         self._state_cursors[(overlay_id, cmd)] = seq
         return marshaled
 
-    def unicast_data(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
-        """Unicast event data to a specific overlay using ssignal.
+    def unicast_event(self, overlay_id: str, event: str, data: Dict[str, Any], high_prio: bool = False):
+        """Unicast event data to a specific overlay using signal.
 
         Args:
             overlay_id (str): Overlay ID
@@ -256,8 +276,13 @@ class WindowManager(QObject):
             high_prio (bool): If True, command is high-priority and should be processed even if overlay is not visible
         """
         assert overlay_id
+        proxy = self._topic_signals.get(event)
+        if proxy is None:
+            self.stats.track_event("__UNICAST_DROP__", event)
+            return
+
         self.stats.track_event("__UNICAST__", event)
-        self.msg_signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
+        proxy.signal.emit(overlay_id, high_prio, event, self._marshal_data(data))
 
     def send_high_freq_data(self, hf_cls: Type[HighFreqBase], json_data: Dict[str, Any]) -> None:
         """Construct high-frequency data and publish it to its mailbox slot, but only if some

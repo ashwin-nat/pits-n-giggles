@@ -29,15 +29,20 @@ Provides purpose-specific convenience methods using the WindowManager APIs.
 Inits and runs the overlay windows, while providing means of communicating with the windows.
 
 ### WindowManager API
-- `broadcast_data()` — send data to all overlays
-- `unicast_data()` — send commands to a specific overlay
+- `emit_event()` — send data to every overlay that handles the topic (per-topic signal
+  proxy; overlays that don't handle it are never connected, let alone woken). For a state
+  topic, publishes to that topic's mailbox slot and emits a payload-less doorbell instead
+  of carrying the data directly.
+- `unicast_event()` — send commands to a specific overlay, same per-topic proxy
+- `take_state_topic()` / `replay_state_topic()` — pull a state topic's mailbox for a given
+  overlay, coalescing (or unconditionally, for replay-on-show)
 - `send_high_freq_data()` — publish high-frequency sensor data to the per-type mailbox (skipped if unsubscribed)
 - `get_latest_hf_data()` — pull the latest published snapshot for a given HF type
 - `request()` — synchronous request/response mechanism
 
 ### WindowManager Signals
-- `msg_signal`
-- `mgmt_high_freq_signal`
+- one `_TopicSignal` per event type an overlay handles — only overlays that handle that
+  event are connected to it
 - `mgmt_request_signal`
 - `mgmt_response_signal`
 - `_response_data`

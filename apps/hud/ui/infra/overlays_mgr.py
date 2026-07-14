@@ -305,7 +305,7 @@ class OverlaysMgr:
         if self.wdt:
             self.wdt.kick()
         self._prep_race_table_data(data)
-        self.window_manager.broadcast_data('race_table_update', data)
+        self.window_manager.emit_event('race_table_update', data)
         self._handle_in_menu_status(data)
 
     def stream_overlays_update(self, data):
@@ -314,7 +314,7 @@ class OverlaysMgr:
         self._motion_update(data)
         self._hud_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.broadcast_data('stream_overlay_update', data)
+            self.window_manager.emit_event('stream_overlay_update', data)
 
     # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
@@ -323,9 +323,9 @@ class OverlaysMgr:
 
         self.logger.debug("Toggling overlays visibility. oid=%s", oid)
         if oid:
-            self.window_manager.unicast_data(oid, '__toggle_visibility__', {}, high_prio=True)
+            self.window_manager.unicast_event(oid, '__toggle_visibility__', {}, high_prio=True)
         else:
-            self.window_manager.broadcast_data('__toggle_visibility__', {}, high_prio=True)
+            self.window_manager.emit_event('__toggle_visibility__', {}, high_prio=True)
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change."""
@@ -347,7 +347,7 @@ class OverlaysMgr:
         # 2. Broadcast locked state
         # --------------------------------------------------
         try:
-            self.window_manager.broadcast_data("__set_locked_state__", args, high_prio=True)
+            self.window_manager.emit_event("__set_locked_state__", args, high_prio=True)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception("Failed to broadcast locked state")
             rsp["status"] = "error"
@@ -393,19 +393,19 @@ class OverlaysMgr:
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
         self.logger.debug("Setting overlays opacity to %s%%", opacity)
-        self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity}, high_prio=True)
+        self.window_manager.emit_event('__set_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
+        self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
     def prev_page(self):
         """Go to the previous page in MFD overlay"""
-        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'prev_page', {})
+        self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'prev_page', {})
 
     def mfd_interact(self):
         """Interact with MFD overlay"""
-        self.window_manager.broadcast_data('mfd_interact', {})
+        self.window_manager.emit_event('mfd_interact', {})
 
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
         """Apply overlays layout to specified overlays
@@ -429,7 +429,7 @@ class OverlaysMgr:
 
         for overlay_id, overlay_layout in layout.items():
             try:
-                self.window_manager.unicast_data(
+                self.window_manager.unicast_event(
                     overlay_id,
                     "__set_config__",
                     overlay_layout,
@@ -452,11 +452,11 @@ class OverlaysMgr:
         """Set overlays scale factor to specified overlay"""
 
         self.logger.debug("Setting overlay %s scale factor to %s", oid, scale_factor)
-        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
+        self.window_manager.unicast_event(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
     def set_track_radar_idle_opacity(self, opacity: int):
         self.logger.debug("Setting track radar idle opacity to %s%%", opacity)
-        self.window_manager.unicast_data(
+        self.window_manager.unicast_event(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
@@ -465,7 +465,7 @@ class OverlaysMgr:
 
     def set_track_radar_range(self, range_m: float):
         self.logger.debug("Setting track radar range to %sm", range_m)
-        self.window_manager.unicast_data(
+        self.window_manager.unicast_event(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_range',
             data={'range_m': range_m},
@@ -474,7 +474,7 @@ class OverlaysMgr:
 
     def set_circuit_info_length(self, length: int):
         self.logger.debug("Setting circuit info length to %spx", length)
-        self.window_manager.unicast_data(
+        self.window_manager.unicast_event(
             overlay_id=CircuitInfoOverlay.OVERLAY_ID,
             event='set_circuit_info_length',
             data={'length': length},
@@ -567,13 +567,13 @@ class OverlaysMgr:
         self.window_manager.send_high_freq_data(HudOverlayData, data)
 
     def _set_overlays_visibility(self, visible: bool):
-        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
+        self.window_manager.emit_event("__set_visibility__", {"visible": visible}, high_prio=True)
 
     def _set_telemetry_active(self, active: bool):
         if active == self._telemetry_active:
             return
         self._telemetry_active = active
-        self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
+        self.window_manager.emit_event("__set_telemetry_active__", {"active": active}, high_prio=True)
 
     def _wdt_status_callback(self, active: bool):
         """Watchdog status callback. Tracks local WDT (data arriving from core)."""

@@ -29,15 +29,15 @@ subgraph OM["L1 · OverlaysManager"]
 end
 
 subgraph WMALL["L2 · WindowManager"]
-    API_BC["broadcast_data()"]
-    API_UC["unicast_data()"]
+    API_BC["emit_event()"]
+    API_UC["unicast_event()"]
     API_HF["send_high_freq_data()"]
     API_REQ["request()"]
-    Sig_MSG["msg_signal"]
-    Sig_HF["mgmt_high_freq_signal"]
+    Sig_MSG["_TopicSignal<br/><i>one per event type; only handling overlays connected</i>"]
     Sig_REQ["request_signal"]
     Sig_RESP["response_signal"]
     RespStore["_response_data"]
+    HFMailbox["HF mailbox<br/><i>LatestSlot per hf_type</i>"]
 end
 
 subgraph BRIDGE["QmlBridge (pure Python)"]
@@ -45,9 +45,8 @@ subgraph BRIDGE["QmlBridge (pure Python)"]
 end
 
 subgraph BASE["L3 · BaseOverlay"]
-    BaseOverlay["BaseOverlay(QmlBridge, QObject)<br/><i>IPC slots · HF channel · frame timer · window · recipient filter</i>"]
+    BaseOverlay["BaseOverlay(QmlBridge, QObject)<br/><i>IPC slots · frame timer · window · recipient filter</i>"]
     FrameTimer["QTimer · frame_timer<br/><i>periodic render_frame() tick</i>"]
-    HFCache["HF data cache<br/><i>_latest_hf · _hf_pending</i>"]
 end
 
 subgraph OVERLAYS["L4 · Overlay Implementations"]
@@ -98,18 +97,17 @@ OM_Req --> API_REQ
 %% ── WindowManager → Signals ──────────────────────────────────────────────
 API_BC --> Sig_MSG
 API_UC --> Sig_MSG
-API_HF --> Sig_HF
+API_HF -->|"publish"| HFMailbox
 API_REQ --> Sig_REQ
 
 %% ── Signals → BaseOverlay ────────────────────────────────────────────────
 Sig_MSG --> BaseOverlay
 Sig_REQ --> BaseOverlay
-Sig_HF -->|"_handle_high_freq_data()"| HFCache
+BaseOverlay -.->|"get_latest_hf_data() pull"| HFMailbox
 
 %% ── QmlBridge → BaseOverlay ──────────────────────────────────────────────
 QmlBridge --> BaseOverlay
 BaseOverlay --- FrameTimer
-BaseOverlay --- HFCache
 
 %% ── Event-driven overlays ────────────────────────────────────────────────
 BaseOverlay --> TimingTowerOverlay
@@ -154,11 +152,11 @@ classDef special   fill:#2e1065,stroke:#a855f7,color:#d8b4fe,stroke-width:2px
 classDef page      fill:#500724,stroke:#ec4899,color:#f9a8d4,stroke-width:2px
 
 class IPC,DEALER,SUB thread
-class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_HF,API_REQ,RespStore manager
-class Sig_MSG,Sig_HF,Sig_REQ,Sig_RESP signal
+class OM_Cmd,OM_Data,OM_Req,API_BC,API_UC,API_HF,API_REQ,RespStore,HFMailbox manager
+class Sig_MSG,Sig_REQ,Sig_RESP signal
 class QmlBridge bridge
 class BaseOverlay base
-class HFCache,FrameTimer timer
+class FrameTimer timer
 class TimingTowerOverlay,LapTimeOverlay,TrackMapOverlay overlay
 class InputTelemetryOverlay,CircuitInfoOverlay,TrackRadarOverlay,HudOverlay hfoverlay
 class MfdOverlay,StandalonePageHost special
