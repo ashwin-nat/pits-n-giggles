@@ -112,11 +112,13 @@ Use for displays that will never live inside the MFD:
 events exclusively through their host calling `dispatch_event`.
 
 - `KEY`, `PAGE_QML_FILE`, `OVERLAY_ID` class attributes
-- Page-item lifecycle: `_on_page_activated`, `on_page_deactivated`, `is_active`
+- Page-item lifecycle: `_on_page_activated`/`_on_page_deactivated` (internal state-clearers,
+  each calling the matching empty public hook), `is_active`
 - `_qml_target` → `self._page_item` (the active `QQuickItem`)
 - `setup_page()` — abstract; concrete pages override with `@final`, register `@self.on_event`
   handlers, initialise business state
-- `on_page_activated()` — optional override; called after the page item is live
+- `on_page_activated()` / `on_page_deactivated()` — optional overrides; called after the
+  internal state-clearer has already run
 
 ### Concrete pages (subclass `MfdPageBase` and nothing else)
 

@@ -39,8 +39,7 @@ from apps.hud.ui.overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
                                             TyreSetsPage, WeatherForecastPage)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import (OverlayId, OverlayPosition, PngSettings,
-                        WeatherMFDUIType)
+from lib.config import OverlayId, OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
@@ -161,7 +160,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.FUEL_INFO].scale_factor,
             show_title_bar=settings.HUD.fuel_info_show_title,
-            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -172,8 +171,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TYRE_INFO].scale_factor,
             show_title_bar=settings.HUD.tyre_info_show_title,
-            tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
-            tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -184,6 +182,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.LAP_TIMES].scale_factor,
             show_title_bar=settings.HUD.lap_times_show_title,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -193,8 +192,8 @@ class OverlaysMgr:
             opacity=settings.HUD.overlays_opacity,
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.WEATHER].scale_factor,
-            graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
             show_title_bar=settings.HUD.weather_show_title,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -205,6 +204,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.PIT_REJOIN].scale_factor,
             show_title_bar=settings.HUD.pit_rejoin_show_title,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -215,6 +215,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TYRE_SETS].scale_factor,
             show_title_bar=settings.HUD.tyre_sets_show_title,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -225,6 +226,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.PACE_COMP].scale_factor,
             show_title_bar=settings.HUD.pace_comp_show_title,
+            settings=settings,
         )
 
         self._register_page_host_if_enabled(
@@ -235,6 +237,7 @@ class OverlaysMgr:
             windowed_overlay=settings.HUD.use_windowed_overlays,
             scale_factor=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR].scale_factor,
             show_title_bar=settings.HUD.traffic_monitor_show_title,
+            settings=settings,
         )
 
         self._register_overlay_if_enabled(
@@ -532,14 +535,14 @@ class OverlaysMgr:
         windowed_overlay: bool,
         scale_factor: float,
         show_title_bar: bool,
-        **page_kwargs
+        settings: PngSettings,
     ):
         """Register an MFD page as a standalone overlay window via StandalonePageHost."""
         if not enabled:
             self.logger.debug("%s overlay is disabled", page_cls.OVERLAY_ID)
             return
 
-        page = page_cls(self.logger, **page_kwargs)
+        page = page_cls.from_settings(settings, self.logger)
         self.window_manager.register_overlay(
             page_cls.OVERLAY_ID,
             StandalonePageHost(

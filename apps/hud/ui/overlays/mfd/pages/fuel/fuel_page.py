@@ -28,7 +28,8 @@ from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId, OverlaysFuelEstimationMode
+from lib.config import (MfdPageId, OverlayId, OverlaysFuelEstimationMode,
+                        PngSettings)
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -39,6 +40,10 @@ class FuelInfoPage(MfdPageBase):
     PAGE_QML_FILE: Path = Path(__file__).parent / "fuel_page.qml"
 
     MIN_FUEL = 0.2
+
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "FuelInfoPage":
+        return cls(logger, fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode)
 
     def __init__(self, logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode

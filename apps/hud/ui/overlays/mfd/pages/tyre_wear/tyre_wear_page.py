@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId
+from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,6 +46,14 @@ class TyreInfoPage(MfdPageBase):
         'rear-left':   'RL',
         'rear-right':  'RR',
     }
+
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "TyreInfoPage":
+        return cls(
+            logger,
+            tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
+            tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
+        )
 
     def __init__(self, logger: logging.Logger,
                  tyre_wear_threshold: int,

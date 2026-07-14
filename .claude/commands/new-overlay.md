@@ -198,12 +198,17 @@ PAGES = [
 ```
 `PAGE_CLS_BY_KEY` is built automatically from `PAGES`.
 
-**b)** If the page has config kwargs, add an entry to `_get_page_kwargs`:
+**b)** If the page's `__init__` takes settings-derived kwargs, override `from_settings`
+on the page class itself (`apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.py`)
+— this is the single source of truth for "which settings does this page need",
+used by both `MfdOverlay` and `StandalonePageHost`:
 ```python
-GapToLeaderPage.KEY: {
-    "some_kwarg": settings.HUD.some_config_field,
-},
+@classmethod
+def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "GapToLeaderPage":
+    return cls(logger, some_kwarg=settings.HUD.some_config_field)
 ```
+If the page's `__init__` takes only `logger`, skip this — the base class default
+(`cls(logger)`) already covers it.
 
 #### A10. Register as standalone in `OverlaysMgr` — `apps/hud/ui/infra/overlays_mgr.py`
 
@@ -217,8 +222,7 @@ self._register_page_host_if_enabled(
     windowed_overlay=settings.HUD.use_windowed_overlays,
     scale_factor=settings.HUD.layout[OverlayId.GAP_TO_LEADER].scale_factor,
     show_title_bar=settings.HUD.gap_to_leader_show_title,
-    # any config kwargs:
-    # some_kwarg=settings.HUD.some_config_field,
+    settings=settings,
 )
 ```
 

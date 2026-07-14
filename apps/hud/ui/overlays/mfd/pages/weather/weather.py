@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple, final
 from PySide6.QtCore import QTimer
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings, WeatherMFDUIType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,6 +46,13 @@ class WeatherForecastPage(MfdPageBase):
     PAGE_QML_FILE: Path = Path(__file__).parent / "weather_page.qml"
 
     MAX_SAMPLES = 5
+
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "WeatherForecastPage":
+        return cls(
+            logger,
+            graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
+        )
 
     def __init__(self, logger: logging.Logger, graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui

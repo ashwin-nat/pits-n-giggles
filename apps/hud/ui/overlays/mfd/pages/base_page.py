@@ -28,6 +28,7 @@ from pathlib import Path
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.base.qml_bridge import QmlBridge
+from lib.config import PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -45,6 +46,17 @@ class MfdPageBase(QmlBridge):
     KEY: str = ""
     PAGE_QML_FILE: Path = ""
     OVERLAY_ID: str = ""  # window identity used when hosted by StandalonePageHost
+
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "MfdPageBase":  # pylint: disable=unused-argument
+        """Construct this page from app settings.
+
+        Default: no page-specific config, just cls(logger). Pages whose __init__
+        takes settings-derived kwargs override this, so MfdOverlay and
+        OverlaysMgr both build the page the same way instead of each
+        duplicating "which settings does this page need" separately.
+        """
+        return cls(logger)
 
     def __init__(self, logger: logging.Logger):
         assert self.KEY, "KEY must be set in subclass"
@@ -89,11 +101,15 @@ class MfdPageBase(QmlBridge):
     def on_page_activated(self):
         """Called when the page becomes active. Override in subclasses with @final."""
 
-    def on_page_deactivated(self):
-        """Called when the page is deactivated."""
+    def _on_page_deactivated(self):
+        """Internal deactivation — clears state, then calls the public hook."""
         self._page_item = None
         self._stats.track_event("__LIFECYCLE__", "deactivated")
         self.logger.debug("%s | Page deactivated", self.KEY)
+        self.on_page_deactivated()
+
+    def on_page_deactivated(self):
+        """Called when the page becomes deactivated. Override in subclasses with @final."""
 
     @property
     def is_active(self) -> bool:
