@@ -89,28 +89,9 @@ class BaseOverlay(QmlBridge, QObject):
     - render_frame() if a refresh interval is used
 
     Lifecycle hooks (override in leaf classes):
-        - pre_setup()   — before the QML window is created
-        - post_setup()  — after the QML window is created
+        - pre_setup()   - before the QML window is created
+        - post_setup()  - after the QML window is created
 
-    --------------------------------------------------------------------------
-    OPTIONAL QML FRAME-ANIMATION STATS
-    --------------------------------------------------------------------------
-    Overlays that animate continuously (i.e. use FrameAnimation to drive
-    per-frame rendering) should include a FrameTelemetry component and expose
-    the following property aliases on the root Window:
-
-        import "../base"
-
-        property alias faFps:               frameTelemetry.fps
-        property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
-        property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
-        property alias faFrameCount:        frameTelemetry.frameCount
-
-        FrameTelemetry { id: frameTelemetry }
-
-    When these properties are present, get_window_stats() automatically reads
-    them from the QML root and includes them under the "frame_animation" key.
-    Overlays that do not define these properties are unaffected.
     """
 
     response_signal = Signal(str, object)   # request_type, response_data
@@ -231,7 +212,7 @@ class BaseOverlay(QmlBridge, QObject):
     def pre_setup(self):
         """Hook called before _setup_window(). Override in leaf classes with @final.
 
-        Called from base __init__ before subclass __init__ has run — overrides must not
+        Called from base __init__ before subclass __init__ has run - overrides must not
         depend on any subclass-initialized state.
         """
 
@@ -274,6 +255,9 @@ class BaseOverlay(QmlBridge, QObject):
         self._root.setVisible(True)
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
+            # frameSwapped fires on the render thread; QueuedConnection marshals the
+            # handler onto the GUI thread so the stat object is only ever touched there.
+            self._root.frameSwapped.connect(self._on_frame_swapped, Qt.ConnectionType.QueuedConnection)
 
     # ------------------------------------------------------------------
     # Common handlers
@@ -608,7 +592,7 @@ class BaseOverlay(QmlBridge, QObject):
             self._stats.track_event("__FRAMES_PRODUCER__", "__DROPPED_HIDDEN__")
             return
 
-        # First frame after becoming visible — reset timing baseline so the
+        # First frame after becoming visible - reset timing baseline so the
         # hidden gap is not counted as a missed/late frame.
         if not self._frame_active:
             self._reset_frame_timing()
@@ -622,6 +606,16 @@ class BaseOverlay(QmlBridge, QObject):
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
         self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
+
+    def _on_frame_swapped(self) -> None:
+        """Passive record of an actually-presented frame.
+
+        Observes; never drives. Unlike the QML FrameAnimation this replaces, connecting
+        here forces nothing - frameSwapped only fires when a frame would have been
+        presented anyway, so "__FRAMES_RENDERED__" reflects the overlay's real repaint
+        cadence instead of the monitor refresh rate.
+        """
+        self._stats.track_frame_render("__FRAMES_RENDERED__", "__FRAME__", perf_counter_ns(), self._fps)
 
     def render_frame(self):
         """Derived classes must implement this method if a refresh interval is used."""
@@ -672,23 +666,6 @@ class BaseOverlay(QmlBridge, QObject):
     def _track_cmd_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
         self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
         self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
-
-    # ------------------------------------------------------------------
-    # Stats (extends QmlBridge.get_stats)
-    # ------------------------------------------------------------------
-    def get_stats(self) -> dict:
-        """Get overlay runtime stats."""
-        stats = self._stats.get_stats()
-        if self._root and self.is_animation_overlay:
-            # Animation overlays must define these properties
-            stats["__FRAMES_RENDERED__"] = {
-                "type":               "__FRAMES_RENDERED__",
-                "fps":                self._root.property("faFps"),
-                "frame_time_ms":      self._root.property("faFrameTimeMs"),
-                "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
-                "frame_count":        self._root.property("faFrameCount"),
-            }
-        return stats
 
     # ------------------------------------------------------------------
     # Default handlers

@@ -396,18 +396,6 @@ Create two files:
 
 **`<overlay_name>.qml`**:
 - Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
-- If the overlay animates continuously (drives per-frame rendering via FrameAnimation), add a `FrameTelemetry` component and expose its stats as aliases on the root Window. This enables `get_window_stats()` to include QML-side frame metrics automatically:
-  ```qml
-  import "../base"
-
-  property alias faFps:               frameTelemetry.fps
-  property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
-  property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
-  property alias faFrameCount:        frameTelemetry.frameCount
-
-  FrameTelemetry { id: frameTelemetry }
-  ```
-  Event-driven overlays (no continuous animation) should omit this.
 
 Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/<overlay_name>/<overlay_name>.qml` and fix every warning before moving on — the CI qmllint job runs with `--max-warnings 0`, so any warning fails the build. Common fixes: add `pragma ComponentBehavior: Bound` and qualify property accesses with the root `id` when the file has Repeater/Loader delegates; give delegates their own `id` with `required property int index` / `required property var modelData` instead of relying on the bare `index`/`modelData` context properties.
 

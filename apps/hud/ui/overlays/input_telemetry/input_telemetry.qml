@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
-import "../base"
 
 Window {
     id: root
@@ -10,13 +9,6 @@ Window {
     property real scaleFactor: 1.0
     readonly property int baseWidth: 450
     readonly property int baseHeight: 120
-
-    property alias faFps:               frameTelemetry.fps
-    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
-    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
-    property alias faFrameCount:        frameTelemetry.frameCount
-
-    FrameTelemetry { id: frameTelemetry }
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor

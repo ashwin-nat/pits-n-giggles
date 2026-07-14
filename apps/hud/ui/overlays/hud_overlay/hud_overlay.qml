@@ -24,7 +24,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
-import "../base"
 
 Window {
     id: root
@@ -34,13 +33,6 @@ Window {
 
     readonly property int baseWidth: 470
     readonly property int baseHeight: 116
-
-    property alias faFps:               frameTelemetry.fps
-    property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
-    property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
-    property alias faFrameCount:        frameTelemetry.frameCount
-
-    FrameTelemetry { id: frameTelemetry }
 
     width:  Math.max(1, Math.round(baseWidth  * scaleFactor))
     height: Math.max(1, Math.round(baseHeight * scaleFactor))
