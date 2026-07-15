@@ -24,7 +24,7 @@
 
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional
 
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 
 if TYPE_CHECKING:
     # Deferred: importing MfdPageBase at module scope would force

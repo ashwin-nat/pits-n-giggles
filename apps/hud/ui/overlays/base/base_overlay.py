@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import ctypes
-import logging
 from pathlib import Path
 from time import perf_counter_ns
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeVar
@@ -37,7 +36,8 @@ from PySide6.QtQuick import QQuickItem, QQuickWindow
 
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
-from lib.config import OverlayPosition
+from lib.config import OverlayPosition, PngSettings
+from lib.logger import PngLogger
 from meta.meta import APP_NAME_SNAKE
 
 from .qml_bridge import QmlBridge
@@ -81,8 +81,8 @@ class BaseOverlay(QmlBridge, QObject):
     - Fade-in/fade-out via QPropertyAnimation bound to QQuickWindow.opacity
     - Allowing locked/unlocked (click-through) behavior via flags
     - Windowed Overlay Mode (OBS capture)
-    - Optional fixed-rate render tick (refresh_interval_ms constructor arg);
-      event-driven overlays pass None and repaint on telemetry updates
+    - Optional fixed-rate render tick, enabled via the ANIMATION_DRIVEN class attr;
+      event-driven overlays leave it False and repaint on telemetry updates
 
     --------------------------------------------------------------------------
     WHAT DERIVED CLASSES MUST PROVIDE
@@ -104,6 +104,7 @@ class BaseOverlay(QmlBridge, QObject):
     _present_ts_signal = Signal(object)
     OVERLAY_ID: str = ""
     QML_FILE: Path = ""  # Derived classes MUST set this
+    ANIMATION_DRIVEN: bool = False  # leaf overlays needing a fixed-rate render tick set True
 
     _RESIZE_MIN_SCALE = 0.1   # minimum allowed scale factor during resize
     _RESIZE_MIN_WIDTH = 50    # minimum pixel width used to clamp raw_w before scale computation
@@ -117,29 +118,27 @@ class BaseOverlay(QmlBridge, QObject):
 
     def __init__(
         self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        refresh_interval_ms: Optional[int],
+        settings: PngSettings,
+        logger: PngLogger,
     ):
         """Initialize QML overlay.
 
         Args:
-            config (OverlayPosition): Overlay config
-            logger (logging.Logger): Logger object
-            locked (bool): Locked state
-            opacity (int): Window opacity
-            scale_factor (float): UI Scale factor (multiplier)
-            windowed_overlay (bool): Windowed overlay
-            refresh_interval_ms (Optional[int]): Refresh interval. If not specified, re-paint timer is disabled.
-                    The overlay is responsible to repaint itself (preferably on telemetry update)
+            settings (PngSettings): App settings. Common construction params (config,
+                    opacity, scale_factor, windowed_overlay, refresh interval) are derived
+                    from this. Derived classes read their own domain fields from settings
+                    before calling this.
+            logger (PngLogger): Logger object
         """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
         assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
         assert self.QML_FILE.is_file(), f"QML_FILE does not exist or is not a file: {self.QML_FILE}"
+        assert self.OVERLAY_ID
+
+        cfg = settings.HUD.layout[self.OVERLAY_ID]
+        refresh_interval_ms = (
+            settings.Display.realtime_overlay_update_interval_ms if self.ANIMATION_DRIVEN else None
+        )
 
         QmlBridge.__init__(self)
         QObject.__init__(self)
@@ -165,14 +164,12 @@ class BaseOverlay(QmlBridge, QObject):
         self._resize_corner: Optional[Qt.Corner] = None
         self._resize_origin_scale: float = 1.0
 
-        assert self.OVERLAY_ID
-
-        self.windowed_overlay = windowed_overlay
-        self.config = config
-        self.locked = locked
+        self.windowed_overlay = settings.HUD.use_windowed_overlays
+        self.config = cfg
+        self.locked = True
         self.logger = logger
-        self.opacity = opacity
-        self.scale_factor = scale_factor
+        self.opacity = settings.HUD.overlays_opacity
+        self.scale_factor = cfg.scale_factor
         self.telemetry_active = True
 
         self._request_handlers: Dict[str, OverlayRequestHandler] = {}
@@ -821,7 +818,7 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
 
 class QmlLogger(QObject):
-    def __init__(self, logger: logging.Logger, oid: str):
+    def __init__(self, logger: PngLogger, oid: str):
         super().__init__()
         self._logger = logger
         self._oid = oid

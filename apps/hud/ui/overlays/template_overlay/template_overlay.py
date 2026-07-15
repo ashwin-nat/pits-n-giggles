@@ -22,13 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import final, Optional
-from apps.hud.ui.infra.hf_types import DummyHFType
+from typing import final
 
-from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayPosition
+from apps.hud.ui.infra.hf_types import DummyHFType
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
+from lib.config import PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -43,27 +43,11 @@ class TemplateOverlay(BaseOverlay):
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "minimal_overlay.qml"
     OVERLAY_ID = "minimal_overlay" # Add a new entry to OverlayId in lib/config/schema/hud/layout.py and use it here
+    ANIMATION_DRIVEN = False  # Set True for a fixed-rate render_frame() tick; False for event-driven rendering
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,  # Set none for event-driven rendering (low frequency)
-    ) -> None:
-
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
-        )
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        # Read any overlay-specific fields off settings here, before calling super().__init__.
+        super().__init__(settings, logger)
 
         # For low frequency/low refresh rate overlays, register event handlers here and update window in the handlers.
         self._register_event_handlers()
@@ -71,11 +55,11 @@ class TemplateOverlay(BaseOverlay):
         # For high frequency/high refresh rate overlays, subscribe to HF types here and render in render_frame.
         self.subscribe_hf(DummyHFType)
 
-    ## For high frequency data, register HF types in ctor and render periodically in render_frame.
+    ## For high frequency data, register HF types in ctor, set ANIMATION_DRIVEN = True, and render in render_frame.
     @final
     def render_frame(self):
         """
-        This will be called by the base class periodically based on the refresh rate specified in the ctor.
+        This will be called by the base class periodically when ANIMATION_DRIVEN is True.
         Get the latest HF data and render it in the window
         """
         dummy_obj = self.get_latest_hf_data(DummyHFType)

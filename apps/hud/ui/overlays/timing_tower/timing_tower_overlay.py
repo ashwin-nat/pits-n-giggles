@@ -22,21 +22,21 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
-from apps.hud.common import (get_ers_mode_color,
-                             get_ref_row, get_relevant_race_table_rows,
+from apps.hud.common import (get_ers_mode_color, get_ref_row,
+                             get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session,
                              is_tt_session)
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
-from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
-                        OverlaysSpeedUnit, TimingTowerColOptions)
+from lib.config import (OverlayId, OverlaysFuelEstimationMode,
+                        OverlaysSpeedUnit, PngSettings)
 from lib.f1_types import F1Utils
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -48,62 +48,32 @@ class TimingTowerOverlay(BaseOverlay):
 
     MAX_SUPPORTED_CARS = 24
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        num_adjacent_cars: int,
-        windowed_overlay: bool,
-        speed_unit: OverlaysSpeedUnit,
-        fuel_est_mode: OverlaysFuelEstimationMode,
-        tt_col_options: TimingTowerColOptions,
-        relative_best_last_lap: bool = False,
-        combined_tl_pens: bool = False,
-    ):
+    def __init__(self, settings: PngSettings, logger: PngLogger):
         """Initialize timing tower overlay.
 
         Args:
-            config (OverlaysConfig): Overlay config
-            logger (logging.Logger): Logger object
-            locked (bool): Locked state
-            opacity (int): Window opacity
-            scale_factor (float): UI Scale factor (multiplier)
-            num_adjacent_cars (int): Number of adjacent cars
-            windowed_overlay (bool): Windowed overlay
-            speed_unit (OverlaysSpeedUnit): Speed unit for display
-            fuel_est_mode (OverlaysFuelEstimationMode): Fuel estimation mode
-            tt_col_options (TimingTowerColOptions): Timing tower column options
-            relative_best_last_lap (bool): Show best/last lap times as deltas vs the reference driver
-            combined_tl_pens (bool): Fold track-limit warnings into the penalties column
+            settings (PngSettings): App settings
+            logger (PngLogger): Logger object
         """
-        self.num_adjacent_cars = num_adjacent_cars
+        tt_col_options = settings.HUD.timing_tower_col_options
+
+        self.num_adjacent_cars = settings.HUD.timing_tower_num_adjacent_cars
         self.total_rows = min(((self.num_adjacent_cars * 2) + 1), self.MAX_SUPPORTED_CARS)
 
         self.show_col_header = tt_col_options.show_col_header
-        self.speed_unit = speed_unit
-        self.relative_best_last_lap = relative_best_last_lap
-        self.combined_tl_pens = combined_tl_pens
+        self.speed_unit = settings.HUD.overlays_speed_unit
+        self.relative_best_last_lap = settings.HUD.timing_tower_relative_best_last_lap
+        self.combined_tl_pens = settings.HUD.timing_tower_combined_tl_pens
 
         self.column_order: List[str] = [
             col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
         ]
-        self.fuel_est_mode = fuel_est_mode
+        self.fuel_est_mode = settings.HUD.overlays_fuel_estimation_mode
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
         self.tyre_icon_uris: Dict[str, str] = {}
 
-        super().__init__(
-            config,
-            logger,
-            locked,
-            opacity,
-            scale_factor,
-            windowed_overlay,
-            refresh_interval_ms=None  # Event-driven updates only
-        )
+        super().__init__(settings, logger)
 
         self._init_icons()
         self._init_event_handlers()

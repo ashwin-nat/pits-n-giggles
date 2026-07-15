@@ -22,14 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Type, final
 
 from PySide6.QtCore import QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
@@ -37,7 +36,8 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             PitRejoinPredictionPage,
                                             TrafficMonitorPage, TyreInfoPage,
                                             TyreSetsPage, WeatherForecastPage)
-from lib.config import OverlayId, OverlayPosition, PngSettings
+from lib.config import OverlayId, PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -59,16 +59,7 @@ class MfdOverlay(BaseOverlay):
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        settings: PngSettings,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-    ):
+    def __init__(self, settings: PngSettings, logger: PngLogger):
         # Pages are created AFTER QML is loaded (post_setup), but from_settings() needs
         # settings again at that point, so it's kept around until then.
         self._settings = settings
@@ -76,15 +67,7 @@ class MfdOverlay(BaseOverlay):
         self._current_index = 0
         self._init_pages_order(settings)
 
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None, # Telemetry based refreshes
-        )
+        super().__init__(settings, logger)
 
         register_page_event_handlers(self, self._mfd_pages, self._active_page)
         self._init_cmd_handlers()
