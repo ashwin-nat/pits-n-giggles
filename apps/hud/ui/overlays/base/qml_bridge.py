@@ -88,6 +88,14 @@ class QmlBridge:
         self._props[name] = value
         target.setProperty(name, value)
         self._stats.track_event("__PROPS__", name)
+        self._notify_qml_content_changed()
+
+    def _notify_qml_content_changed(self) -> None:
+        """Hook invoked after a real (non-cached) QML write. Default no-op.
+
+        Window-owning subclasses override this to stamp the change time for
+        change-to-present latency stats.
+        """
 
     def invalidate_qml_cache(self, *names: str) -> None:
         """Remove entries from the prop cache so next set_qml_property always pushes."""

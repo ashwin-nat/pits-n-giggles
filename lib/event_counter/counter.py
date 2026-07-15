@@ -31,6 +31,7 @@ from .base import Stat
 from .frame_render import FrameTimingStat
 from .latency import LatencyStat
 from .packet import PacketStat
+from .present_smoothness import PresentSmoothnessStat
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -47,6 +48,7 @@ class EventCounter:
         - track_packet()
         - track_packet_latency()
         - track_frame_render()
+        - track_present()
     """
 
     def __init__(self) -> None:
@@ -126,6 +128,29 @@ class EventCounter:
             bucket[subcategory] = stat
 
         stat.observe_frame(now_ns)
+
+    def track_present(self, category: str, subcategory: str, now_ns: int,
+                      period_ns: int) -> None:
+        """Record a presented-frame timestamp sample under `category/subcategory`.
+
+        Unlike track_frame_render(), presents have no rate contract: intervals
+        are recorded only inside active bursts, long gaps count as idle
+        boundaries, and intervals beyond the hitch threshold count as hitches.
+
+        Args:
+            category: Top-level group name (for example, `qml_overlay`).
+            subcategory: Nested stat name (for example, `hud`).
+            now_ns: Presentation timestamp in nanoseconds (captured at emission).
+            period_ns: Display period of the window's current screen in nanoseconds.
+        """
+        bucket = self._stats[category]
+
+        stat = bucket.get(subcategory)
+        if stat is None:
+            stat = PresentSmoothnessStat()
+            bucket[subcategory] = stat
+
+        stat.observe_present(now_ns, period_ns)
 
     def reset_frame_timing(self, category: str, subcategory: str) -> None:
         """Reset the frame timing baseline for the given category/subcategory.

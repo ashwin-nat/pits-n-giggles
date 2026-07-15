@@ -26,13 +26,12 @@ import ctypes
 import logging
 from pathlib import Path
 from time import perf_counter_ns
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Type,
-                    TypeVar)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeVar
 
 from PySide6.QtCore import (Q_ARG, QEvent, QMetaObject, QObject, QPoint,
                             QPropertyAnimation, QSize, Qt, QTimer, QUrl,
                             Signal, Slot)
-from PySide6.QtGui import QCursor, QIcon, QMouseEvent
+from PySide6.QtGui import QCursor, QIcon, QMouseEvent, QScreen
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 
@@ -51,6 +50,11 @@ if TYPE_CHECKING:
 OverlayRequestHandler = Callable[[Dict[str, Any]], str] # Takes dict arg, returns str (serialised JSON)
 
 HighFreqObjType = TypeVar("HighFreqObjType", bound=HighFreqBase)
+
+# -------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+# 60 Hz fallback used until the window's actual screen refresh rate is known.
+_DEFAULT_DISPLAY_PERIOD_NS = 16_666_667
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -95,6 +99,9 @@ class BaseOverlay(QmlBridge, QObject):
     """
 
     response_signal = Signal(str, object)   # request_type, response_data
+    # perf_counter_ns captured on the render thread at frameSwapped emission;
+    # object (not int) so the 64-bit value never truncates through Qt's meta-type.
+    _present_ts_signal = Signal(object)
     OVERLAY_ID: str = ""
     QML_FILE: Path = ""  # Derived classes MUST set this
 
@@ -172,6 +179,8 @@ class BaseOverlay(QmlBridge, QObject):
         self._hf_subscriptions: set[str] = set()
         self._window_manager: Optional["WindowManager"] = None  # set via set_window_manager() during registration
         self._user_hidden: bool = False  # True when user explicitly hid this overlay
+        self._pending_change_ns: Optional[int] = None  # newest QML content change not yet presented
+        self._display_period_ns: int = _DEFAULT_DISPLAY_PERIOD_NS
 
         # Create the actual window
         self.pre_setup()
@@ -255,9 +264,15 @@ class BaseOverlay(QmlBridge, QObject):
         self._root.setVisible(True)
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
-            # frameSwapped fires on the render thread; QueuedConnection marshals the
-            # handler onto the GUI thread so the stat object is only ever touched there.
-            self._root.frameSwapped.connect(self._on_frame_swapped, Qt.ConnectionType.QueuedConnection)
+
+        # Present smoothness/latency stats (all overlays): the timestamp must be
+        # captured at emission on the render thread — the DirectConnection handler
+        # touches nothing but the emit; only the value crosses to the GUI thread.
+        self._root.frameSwapped.connect(
+            self._on_frame_swapped_render_thread, Qt.ConnectionType.DirectConnection)
+        self._present_ts_signal.connect(self._on_present)
+        self._root.screenChanged.connect(self._on_screen_changed)
+        self._on_screen_changed(self._root.screen())
 
     # ------------------------------------------------------------------
     # Common handlers
@@ -403,6 +418,10 @@ class BaseOverlay(QmlBridge, QObject):
         """Fade-out completed: hide the window and stop the render tick."""
         self._root.setVisible(False)
         self._stop_frame_timer()
+        # A content change that was never presented must not survive the hide:
+        # the first present after re-show would otherwise record a bogus
+        # change-to-present latency sample spanning the whole hidden gap.
+        self._pending_change_ns = None
 
     def _replay_cached_state(self) -> None:
         """Redeliver the latest known snapshot for every handled topic on becoming visible.
@@ -607,15 +626,47 @@ class BaseOverlay(QmlBridge, QObject):
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
         self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
 
-    def _on_frame_swapped(self) -> None:
-        """Passive record of an actually-presented frame.
+    def _on_frame_swapped_render_thread(self) -> None:
+        """RENDER-THREAD hook: capture the presentation timestamp at emission.
 
-        Observes; never drives. Unlike the QML FrameAnimation this replaces, connecting
-        here forces nothing - frameSwapped only fires when a frame would have been
-        presented anyway, so "__FRAMES_RENDERED__" reflects the overlay's real repaint
-        cadence instead of the monitor refresh rate.
+        Must touch nothing but the emit — the value is marshaled to the GUI
+        thread via _present_ts_signal, so all stat state stays GUI-thread-only.
+        Capturing here (not in a queued slot) keeps intervals measuring actual
+        presentation cadence rather than GUI event-queue drain.
         """
-        self._stats.track_frame_render("__FRAMES_RENDERED__", "__FRAME__", perf_counter_ns(), self._fps)
+        self._present_ts_signal.emit(perf_counter_ns())
+
+    @Slot(object)
+    def _on_present(self, swap_ts_ns: int) -> None:
+        """GUI-thread record of a presented frame (timestamp from the render thread).
+
+        Feeds two stats:
+        - "__PRESENT_SMOOTHNESS__": active-burst present intervals + hitches;
+          idle gaps reset the baseline instead of counting as misses.
+        - "__PRESENT_LATENCY__": change-to-present latency, one sample per swap
+          that displays a pending content change.
+        """
+        self._stats.track_present("__PRESENT_SMOOTHNESS__", "__PRESENT__",
+                                  swap_ts_ns, self._display_period_ns)
+        pending = self._pending_change_ns
+        if pending is not None and pending <= swap_ts_ns:
+            # A change stamped after this swap was emitted has not been presented
+            # yet — leave it pending for the next swap.
+            self._pending_change_ns = None
+            self._stats.track_packet_latency("__PRESENT_LATENCY__", "__TOTAL__",
+                                             pending, swap_ts_ns)
+
+    def _on_screen_changed(self, screen: QScreen) -> None:
+        """Refresh the cached display period from the window's current screen."""
+        rate = screen.refreshRate() if screen is not None else 0.0
+        if rate and rate > 1.0:
+            self._display_period_ns = int(1_000_000_000 / rate)
+        else:
+            self._display_period_ns = _DEFAULT_DISPLAY_PERIOD_NS
+
+    def _notify_qml_content_changed(self) -> None:
+        """QmlBridge hook: stamp the newest not-yet-presented content change."""
+        self._pending_change_ns = perf_counter_ns()
 
     def render_frame(self):
         """Derived classes must implement this method if a refresh interval is used."""
@@ -627,6 +678,9 @@ class BaseOverlay(QmlBridge, QObject):
     def invoke_qml_method(self, method: str, *args) -> None:
         """Invoke a QML method on the root window with QVariant arguments."""
         self._stats.track_event("__QML_METHOD_CALLS__", method)
+        # Method invocations bypass the property diff cache, so every call is
+        # treated as a content change for present-latency stats.
+        self._notify_qml_content_changed()
         QMetaObject.invokeMethod(
             self._root,
             method,
