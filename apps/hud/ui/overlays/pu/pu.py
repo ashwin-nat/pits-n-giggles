@@ -22,13 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 
 from apps.hud.common import get_ers_mode_color
 from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, PngSettings
 from lib.f1_types import CarStatusData
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -38,27 +38,9 @@ class PuOverlay(BaseOverlay):
     QML_FILE = Path(__file__).parent / "pu.qml"
     OVERLAY_ID = OverlayId.PU
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        show_harvest_info: bool,
-    ) -> None:
-
-        self._show_harvest_info = show_harvest_info
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None,
-        )
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        self._show_harvest_info = settings.HUD.pu_display_harvest_info
+        super().__init__(settings, logger)
         self._register_event_handlers()
 
     def _register_event_handlers(self):

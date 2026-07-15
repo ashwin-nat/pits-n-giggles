@@ -22,14 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import math
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
 from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
 from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, PngSettings
+from lib.logger import PngLogger
 
 from ._glow_provider import RadarGlowImageProvider
 from ._radar_math import _RADAR_AREA_RATIO, car_px, to_radar_coords
@@ -47,22 +47,12 @@ class TrackRadarOverlay(BaseOverlay):
 
     QML_FILE = Path(__file__).parent / "track_radar.qml"
     OVERLAY_ID = OverlayId.TRACK_RADAR
+    ANIMATION_DRIVEN = True
 
-    def __init__(self,
-                 config: OverlayPosition,
-                 logger: logging.Logger,
-                 locked: bool,
-                 opacity: int,
-                 scale_factor: float,
-                 windowed_overlay: bool,
-                 refresh_interval_ms: int,
-                 idle_opacity: int,
-                 radar_range_m: int,):
-
-        assert refresh_interval_ms
-        self.idle_opacity = idle_opacity
-        self.radar_range_m: float = float(radar_range_m)
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
+    def __init__(self, settings: PngSettings, logger: PngLogger):
+        self.idle_opacity = settings.HUD.track_radar_idle_opacity
+        self.radar_range_m: float = float(settings.HUD.track_radar_range_m)
+        super().__init__(settings, logger)
         self.subscribe_hf(LiveSessionMotionInfo)
         self._register_handlers()
 

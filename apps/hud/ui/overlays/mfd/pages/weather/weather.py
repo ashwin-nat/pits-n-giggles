@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, final
@@ -31,6 +30,7 @@ from PySide6.QtCore import QTimer
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, PngSettings, WeatherMFDUIType
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -48,13 +48,13 @@ class WeatherForecastPage(MfdPageBase):
     MAX_SAMPLES = 5
 
     @classmethod
-    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "WeatherForecastPage":
+    def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "WeatherForecastPage":
         return cls(
             logger,
             graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
         )
 
-    def __init__(self, logger: logging.Logger, graph_based_ui: bool):
+    def __init__(self, logger: PngLogger, graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui
         super().__init__(logger)
 

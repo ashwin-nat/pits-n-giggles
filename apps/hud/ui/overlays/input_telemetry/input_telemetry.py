@@ -22,14 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import final
 
-
 from apps.hud.ui.infra.hf_types import InputTelemetryData
 from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -44,21 +43,14 @@ class InputTelemetryOverlay(BaseOverlay):
 
     QML_FILE = Path(__file__).parent / "input_telemetry.qml"
     OVERLAY_ID = OverlayId.INPUT_TELEMETRY
+    ANIMATION_DRIVEN = True
 
-    def __init__(self,
-                 config: OverlayPosition,
-                 logger: logging.Logger,
-                 locked: bool,
-                 opacity: int,
-                 scale_factor: float,
-                 windowed_overlay: bool,
-                 refresh_interval_ms: int,
-                 window_duration_sec: float) -> None:
-
-        assert refresh_interval_ms
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        refresh_interval_ms = settings.Display.realtime_overlay_update_interval_ms
         fps = 1000 // refresh_interval_ms
+        window_duration_sec = settings.HUD.input_overlay_buffer_duration_sec
         self.num_window_samples: int = max(1, round(window_duration_sec * fps))
-        super().__init__(config, logger, locked, opacity, scale_factor, windowed_overlay, refresh_interval_ms)
+        super().__init__(settings, logger)
         self.subscribe_hf(InputTelemetryData)
 
     @final

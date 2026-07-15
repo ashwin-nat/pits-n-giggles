@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Type, final
 
@@ -38,6 +37,7 @@ from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             TrafficMonitorPage, TyreInfoPage,
                                             TyreSetsPage, WeatherForecastPage)
 from lib.config import OverlayId, OverlayPosition, PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ class MfdOverlay(BaseOverlay):
         self,
         config: OverlayPosition,
         settings: PngSettings,
-        logger: logging.Logger,
+        logger: PngLogger,
         locked: bool,
         opacity: int,
         scale_factor: float,

@@ -22,13 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId, PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -48,14 +48,14 @@ class TyreInfoPage(MfdPageBase):
     }
 
     @classmethod
-    def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "TyreInfoPage":
+    def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "TyreInfoPage":
         return cls(
             logger,
             tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
             tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
         )
 
-    def __init__(self, logger: logging.Logger,
+    def __init__(self, logger: PngLogger,
                  tyre_wear_threshold: int,
                  tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX):
         self.tyre_wear_threshold = tyre_wear_threshold

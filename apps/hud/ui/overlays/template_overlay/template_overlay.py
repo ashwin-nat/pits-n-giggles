@@ -22,13 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import final, Optional
-from apps.hud.ui.infra.hf_types import DummyHFType
+from typing import Optional, final
 
+from apps.hud.ui.infra.hf_types import DummyHFType
 from apps.hud.ui.overlays.base import BaseOverlay
 from lib.config import OverlayPosition
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ class TemplateOverlay(BaseOverlay):
     def __init__(
         self,
         config: OverlayPosition,
-        logger: logging.Logger,
+        logger: PngLogger,
         locked: bool,
         opacity: int,
         scale_factor: float,

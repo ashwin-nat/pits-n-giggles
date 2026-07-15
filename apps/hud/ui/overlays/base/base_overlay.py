@@ -23,7 +23,6 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import ctypes
-import logging
 from pathlib import Path
 from time import perf_counter_ns
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeVar
@@ -38,6 +37,7 @@ from PySide6.QtQuick import QQuickItem, QQuickWindow
 from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition, PngSettings
+from lib.logger import PngLogger
 from meta.meta import APP_NAME_SNAKE
 
 from .qml_bridge import QmlBridge
@@ -119,7 +119,7 @@ class BaseOverlay(QmlBridge, QObject):
     def __init__(
         self,
         settings: PngSettings,
-        logger: logging.Logger,
+        logger: PngLogger,
     ):
         """Initialize QML overlay.
 
@@ -128,7 +128,7 @@ class BaseOverlay(QmlBridge, QObject):
                     opacity, scale_factor, windowed_overlay, refresh interval) are derived
                     from this. Derived classes read their own domain fields from settings
                     before calling this.
-            logger (logging.Logger): Logger object
+            logger (PngLogger): Logger object
         """
         assert self.QML_FILE, "Derived classes must define QML_FILE"
         assert isinstance(self.QML_FILE, Path), "QML_FILE must be a pathlib.Path"
@@ -818,7 +818,7 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.debug("%s | No handler for request '%s'", self.OVERLAY_ID, request_type)
 
 class QmlLogger(QObject):
-    def __init__(self, logger: logging.Logger, oid: str):
+    def __init__(self, logger: PngLogger, oid: str):
         super().__init__()
         self._logger = logger
         self._oid = oid

@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import final
 
@@ -32,6 +31,7 @@ from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import OverlayPosition
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -57,7 +57,7 @@ class StandalonePageHost(BaseOverlay):
         self,
         page: MfdPageBase,
         config: OverlayPosition,
-        logger: logging.Logger,
+        logger: PngLogger,
         locked: bool,
         opacity: int,
         scale_factor: float,
