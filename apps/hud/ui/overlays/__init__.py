@@ -22,15 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .base import BaseOverlay
-from .input_telemetry import InputTelemetryOverlay
-from .lap_timer import LapTimerOverlay
-from .mfd import MfdOverlay
-from .timing_tower import TimingTowerOverlay
-from .track_radar import TrackRadarOverlay
-from .hud_overlay.hud_overlay import HudOverlay
+from .base.base_overlay import BaseOverlay
 from .circuit_info.circuit_info import CircuitInfoOverlay
+from .hud_overlay.hud_overlay import HudOverlay
+from .input_telemetry.input_telemetry import InputTelemetryOverlay
+from .lap_timer.lap_timer_overlay import LapTimerOverlay
+from .mfd.mfd import MfdOverlay
 from .pu.pu import PuOverlay
+from .timing_tower.timing_tower_overlay import TimingTowerOverlay
+from .track_radar.track_radar import TrackRadarOverlay
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [

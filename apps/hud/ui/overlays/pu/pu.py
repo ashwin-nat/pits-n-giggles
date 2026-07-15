@@ -25,7 +25,7 @@
 from pathlib import Path
 
 from apps.hud.common import get_ers_mode_color
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import OverlayId, PngSettings
 from lib.f1_types import CarStatusData
 from lib.logger import PngLogger

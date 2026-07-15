@@ -27,7 +27,7 @@ from typing import final
 
 from PySide6.QtCore import QObject, QUrl
 
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import PngSettings

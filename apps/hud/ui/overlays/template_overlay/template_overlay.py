@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import final
 
 from apps.hud.ui.infra.hf_types import DummyHFType
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import PngSettings
 from lib.logger import PngLogger
 

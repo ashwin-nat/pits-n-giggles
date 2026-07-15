@@ -30,7 +30,7 @@ from PySide6.QtCore import QTimer
 from apps.hud.common import (get_ref_row, is_practice_session,
                              is_qualifying_session, is_race_type_session,
                              is_tt_session)
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger

@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional, final
 from apps.hud.common import (get_ers_mode_color, get_ref_row,
                              is_race_type_session)
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import (OverlayId, OverlaysFuelEstimationMode,
                         OverlaysSpeedUnit, PngSettings)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
@@ -50,8 +50,6 @@ class HudOverlay(BaseOverlay):
     ANIMATION_DRIVEN = True
 
     def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
-        fuel_estimation_mode = settings.HUD.overlays_fuel_estimation_mode
-
         super().__init__(settings, logger)
 
         self._speed_unit = settings.HUD.overlays_speed_unit
@@ -61,7 +59,7 @@ class HudOverlay(BaseOverlay):
         self._surplus_fuel_key: str = {
             OverlaysFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
             OverlaysFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
-        }.get(fuel_estimation_mode)
+        }.get(settings.HUD.overlays_fuel_estimation_mode)
         self._register_event_handlers()
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
