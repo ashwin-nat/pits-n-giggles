@@ -203,7 +203,7 @@ class HudAppMgr(PngAppMgrBase):
                 color: rgba(255, 255, 255, 90);
             }
         """)
-        for oid in self.curr_settings.HUD.enabled_overlay_ids():
+        for oid in self.curr_settings.HUD.enabled_overlays_by_id():
             action = menu.addAction(oid.display_name)
             action.triggered.connect(lambda _checked=False, oid=oid: self._reset_overlays([oid]))
         if menu.isEmpty():

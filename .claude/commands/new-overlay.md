@@ -94,7 +94,7 @@ gap_to_leader_interact_udp_action_code: Optional[int] = udp_action_field(
 )
 ```
 
-**e) Wire the enable flag into `enabled_overlay_ids()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+**e) Wire the enable flag into `enabled_overlays_by_id()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.GAP_TO_LEADER: self.show_gap_to_leader,
 ```
@@ -297,7 +297,7 @@ OverlayId.FUEL_MONITOR: "Fuel Monitor",
 OverlayId.FUEL_MONITOR: OverlayPosition(x=<x>, y=<y>),
 ```
 
-Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.FUEL_MONITOR: self.show_fuel_monitor,
 ```
