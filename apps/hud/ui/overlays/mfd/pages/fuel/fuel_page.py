@@ -45,6 +45,10 @@ class FuelInfoPage(MfdPageBase):
     def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "FuelInfoPage":
         return cls(logger, fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode)
 
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.fuel_info_show_title
+
     def __init__(self, logger: PngLogger, fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode
         super().__init__(logger)

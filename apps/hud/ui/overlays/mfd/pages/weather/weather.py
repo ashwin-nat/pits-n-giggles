@@ -54,6 +54,10 @@ class WeatherForecastPage(MfdPageBase):
             graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
         )
 
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.weather_show_title
+
     def __init__(self, logger: PngLogger, graph_based_ui: bool):
         self.graph_based_ui = graph_based_ui
         super().__init__(logger)

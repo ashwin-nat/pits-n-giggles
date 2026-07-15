@@ -58,6 +58,15 @@ class MfdPageBase(QmlBridge):
         """
         return cls(logger)
 
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        """Whether StandalonePageHost should show a title bar for this page.
+
+        Only required for pages registered in OverlaysMgr.STANDALONE_PAGE_CLASSES;
+        e.g. FuelInfoPage -> settings.HUD.fuel_info_show_title.
+        """
+        raise NotImplementedError
+
     def __init__(self, logger: PngLogger):
         assert self.KEY, "KEY must be set in subclass"
         assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"

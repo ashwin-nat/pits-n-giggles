@@ -55,6 +55,10 @@ class TyreInfoPage(MfdPageBase):
             tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
         )
 
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.tyre_info_show_title
+
     def __init__(self, logger: PngLogger,
                  tyre_wear_threshold: int,
                  tyre_wear_rate_type: MfdTyreWearRateType = MfdTyreWearRateType.MAX):

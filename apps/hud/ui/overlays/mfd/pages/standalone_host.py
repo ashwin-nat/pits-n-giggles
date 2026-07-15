@@ -30,7 +30,7 @@ from PySide6.QtCore import QObject, QUrl
 from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import OverlayPosition
+from lib.config import PngSettings
 from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -56,12 +56,8 @@ class StandalonePageHost(BaseOverlay):
     def __init__(
         self,
         page: MfdPageBase,
-        config: OverlayPosition,
+        settings: PngSettings,
         logger: PngLogger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
         show_title_bar: bool,
     ):
         self._page = page
@@ -69,15 +65,7 @@ class StandalonePageHost(BaseOverlay):
         # Identity comes from the hosted page (instance attribute shadows the
         # empty class attribute; set before super().__init__ asserts on it).
         self.OVERLAY_ID = page.OVERLAY_ID
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None,  # pages are event-driven, never frame-driven
-        )
+        super().__init__(settings, logger)
 
     def _active_page(self) -> MfdPageBase:
         """The one page this host ever shows."""

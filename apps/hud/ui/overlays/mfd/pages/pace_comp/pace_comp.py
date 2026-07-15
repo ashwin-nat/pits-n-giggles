@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, final
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              is_race_type_session, is_tt_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -41,6 +41,10 @@ class PaceCompPage(MfdPageBase):
     PAGE_QML_FILE: Path = Path(__file__).parent / "pace_comp_page.qml"
 
     NUM_ADJ_CARS = 2
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.pace_comp_show_title
 
     # -- Event wiring ----------------------------------------------------------
 
