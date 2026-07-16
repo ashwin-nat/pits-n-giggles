@@ -157,7 +157,6 @@ class PngAppMgrBase(QObject):
     status_changed = Signal(str)
     post_start_signal = Signal()
     post_stop_signal = Signal()
-    msg_window_signal = Signal()
 
     BASE_EXIT_REASONS: dict[int, ExitReason] = {
         PNG_LOST_CONN_TO_PARENT: ExitReason(
@@ -182,9 +181,6 @@ class PngAppMgrBase(QObject):
             can_restart=True,
         ),
     }
-
-    # Exit code reported when a child is killed via SIGTERM/TerminateProcess
-    SIGTERM_EXIT_CODE: int = 15
 
     # Derived classes MUST override these with specific values
     MODULE_PATH: Optional[str] = None
@@ -230,8 +226,19 @@ class PngAppMgrBase(QObject):
         self.curr_settings = config.settings
         self.integration_test_mode = config.integration_test_mode
 
-        # The current launch, if any. Guarded by _process_lock, which protects which run is
-        # current - never the contents of one.
+        # Makes whole lifecycle operations atomic: one start/stop/restart runs to completion before
+        # the next decides what to do. Held across the child's shutdown I/O, so for seconds at a
+        # time.
+        self._lifecycle_lock = threading.Lock()
+
+        # Guards which run is current and the state that goes with it - never the contents of a
+        # run. Must stay short, because _capture_output takes it and that thread is what drains
+        # the child's stdout: stall it and the pipe fills, the child blocks mid-write, and a child
+        # blocked on write cannot answer the shutdown _lifecycle_lock is waiting on. That is why
+        # these are two locks. Order, when both are taken: _lifecycle_lock, then _process_lock.
+        #
+        # Invariant: _run is not None exactly while _state is in ACTIVE_STATES; _launch_locked
+        # establishes it and _finalize_stop tears it down, both under this lock.
         self._run: Optional[ProcessRun] = None
         self._process_lock = threading.Lock()
 
@@ -245,8 +252,6 @@ class PngAppMgrBase(QObject):
         self.max_restart_attempts = config.max_restart_attempts
         self.restart_delay = config.restart_delay
         self._restart_count = 0
-        self._last_crash_time: Optional[float] = None
-        self._restart_window = 60.0  # Reset counter if stable for 60 seconds
         self._stats: Optional[dict] = None
 
         # Hooks
@@ -343,7 +348,15 @@ class PngAppMgrBase(QObject):
 
     def start(self, reason: str):
         """Start the subsystem process"""
+        with self._lifecycle_lock:
+            self._do_start(reason)
 
+    def _do_start(self, reason: str):
+        """Body of start(). Caller holds _lifecycle_lock.
+
+        Args:
+            reason: Why the subsystem is being started
+        """
         with self._process_lock:
             if self.is_running:
                 self.debug_log(f"{self.DISPLAY_NAME} is already running")
@@ -387,7 +400,15 @@ class PngAppMgrBase(QObject):
         # Both must be set before the workers are spawned: each thread compares its own run
         # against the current one, and reads the state, to know it is still wanted.
         self._set_state_locked(AppState.STARTING)
-        self._spawn_workers(run)
+        try:
+            self._spawn_workers(run)
+        except Exception:
+            # The child is alive but nothing is watching it. Drop the run and kill it, so the
+            # caller's CRASHED state does not leave _run set - a later start() would otherwise
+            # overwrite _run and lose this process for good.
+            self._run = None
+            self._terminate_process(run)
+            raise
 
         self.debug_log(f"{self.DISPLAY_NAME} started (PID: {run.child_pid})")
 
@@ -417,6 +438,21 @@ class PngAppMgrBase(QObject):
             final_state: State to settle in once the child is gone. RESTARTING keeps the manager
                          marked as shutting down across a restart's stop/start seam.
         """
+        with self._lifecycle_lock:
+            self._do_stop(reason, final_state)
+
+    def _do_stop(self, reason: str, final_state: AppState):
+        """Body of stop(). Caller holds _lifecycle_lock, and holds it for the whole shutdown:
+        restart() needs the child to actually be gone when this returns, and _monitor_exit
+        needs a settled state to mean that no shutdown is in flight.
+
+        restart() calls this directly, so a subclass that overrides stop() would not be
+        consulted by a restart. No subclass does; override this instead if one ever needs to.
+
+        Args:
+            reason: Why the subsystem is being stopped
+            final_state: State to settle in once the child is gone
+        """
         with self._process_lock:
             if self._state not in STOPPABLE_STATES:
                 self.debug_log(f"{self.DISPLAY_NAME} is not running")
@@ -431,7 +467,8 @@ class PngAppMgrBase(QObject):
         self.debug_log(f"Stopping {self.DISPLAY_NAME}... Reason: {reason}")
         self._lifecycle_stats.track_event("lifecycle", "stop")
 
-        # Force Qt to update UI now
+        # Force Qt to update UI now. Only does anything on the GUI thread, which is the
+        # start/stop button path; on the task threads there is no event loop to pump.
         self.window.process_events()
 
         # Try graceful shutdown first (IPC would go here)
@@ -473,14 +510,23 @@ class PngAppMgrBase(QObject):
         self.debug_log(f"Restarting {self.DISPLAY_NAME}...")
         _reason = f"Restarting: {reason}"
 
-        # Settling in RESTARTING rather than STOPPED marks the manager as shutting down for the
-        # whole stop/start seam, so a straggler thread from the old run stays quiet.
-        if self.is_running:
-            self.stop(_reason, final_state=AppState.RESTARTING)
-        else:
-            self._set_state(AppState.RESTARTING)
+        # The stop has to complete under one claim: a stop already in flight would otherwise make
+        # ours a no-op, and then our start would bail on the STOPPING state, silently turning a
+        # restart into a stop.
+        with self._lifecycle_lock:
+            # Settling in RESTARTING rather than STOPPED marks the manager as shutting down for
+            # the whole stop/start seam, so a straggler thread from the old run stays quiet.
+            if self.is_running:
+                self._do_stop(_reason, final_state=AppState.RESTARTING)
+            else:
+                self._set_state(AppState.RESTARTING)
 
         time.sleep(1)  # Brief pause
+
+        # Outside the claim, and start() rather than _do_start(): subclasses override start() to
+        # refuse to come up at all (HudAppMgr, when disabled or unsupported), and a restart must
+        # honour that. Safe to let go of the lock here because RESTARTING is holding the seam -
+        # it is not a stoppable state, so nothing can shut us down between the two halves.
         self.start(_reason)
 
     def start_stop(self, reason: str):
@@ -562,7 +608,9 @@ class PngAppMgrBase(QObject):
             # ---------------------------------------------------------
             if pid := extract_pid_from_line(line):
                 pid_recv_ts = time.time_ns()
-                changed = (pid != run.child_pid)
+                # Against the PID we spawned, not the last one reported: what this tells us is
+                # whether the child re-exec'd (PyInstaller), which is a fact about the launch
+                changed = (pid != run.process.pid)
                 run.child_pid = pid
                 self._lifecycle_stats.track_packet_latency(
                     "startup_latency", "to_pid", run.start_ts_ns, pid_recv_ts)
@@ -615,21 +663,22 @@ class PngAppMgrBase(QObject):
         try:
             ret_code = run.process.wait()
 
-            # Only the current run may speak for the manager: an abandoned run's process exiting
-            # is expected, and has already been accounted for by whoever abandoned it.
-            if self._run is not run:
-                return
+            # Decide under the operation lock. A stop() may be killing this very run right now,
+            # in which case the exit is expected and settling it is its job - waiting for it to
+            # finish is what stops a stop and a crash from both finalizing the same run.
+            with self._lifecycle_lock:
+                # Only the current run may speak for the manager: an abandoned run's process
+                # exiting is expected, and whoever abandoned it has already accounted for it.
+                if self._run is not run:
+                    return
 
-            # Check for expected exits
-            if self._state in SHUTTING_DOWN_STATES:
-                return
+                # An expected exit, already being handled by stop() or restart()
+                if self._state in SHUTTING_DOWN_STATES:
+                    return
 
-            if ret_code == self.SIGTERM_EXIT_CODE:  # SIGTERM during restart
-                return
-
-            # Unexpected exit
-            if self.is_running:
-                self._handle_unexpected_exit(ret_code)
+                # Unexpected exit
+                if self.is_running:
+                    self._handle_unexpected_exit(ret_code)
 
         finally:
             self.debug_log(f"{self.DISPLAY_NAME} Setting heartbeat stop flag...")
@@ -674,6 +723,11 @@ class PngAppMgrBase(QObject):
 
         failed_count = 0
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
+
+        # A beat that can outlive its own interval would stack up behind itself. Checked here
+        # rather than in __init__, where both knobs still hold their (correct) defaults.
+        assert self.heartbeat_timeout_ms < self.heartbeat_interval * 1000, \
+            f"{self.DISPLAY_NAME}: heartbeat timeout must be shorter than the interval"
 
         while not run.stop_heartbeat.is_set():
             # Our own process is normally reaped before this, which sets the flag above. Check
@@ -869,10 +923,6 @@ class PngAppMgrBase(QObject):
     def show_error(self, title: str, message: str):
         """Display an error message box."""
         self.window.show_error(title, message)
-
-    def select_file(self, title="Select File", file_filter="All Files (*.*)") -> str:
-        """Open a file dialog and return path or None."""
-        return self.window.select_file(title, file_filter)
 
     def _integration_fail(self, message: str):
         """Handle integration test failure by logging and exiting immediately."""
