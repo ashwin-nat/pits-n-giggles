@@ -640,12 +640,12 @@ class PngAppMgrBase(QObject):
         Args:
             hb_gen (int): Heartbeat generation number
         """
-        # Initial random delay
+        # Initial random delay. The run can end while we sleep, in which case the loop below
+        # never runs a beat.
         time.sleep(random.uniform(0, 2.0))
 
         failed_count = 0
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
-        assert not self._stop_heartbeat.is_set(), "Heartbeat thread started with stop flag already set" # TODO: remove
 
         while not self._stop_heartbeat.is_set():
             if hb_gen != self._heartbeat_gen_num:
