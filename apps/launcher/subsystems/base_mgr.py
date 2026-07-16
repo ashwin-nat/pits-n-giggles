@@ -28,7 +28,7 @@ import subprocess
 import sys
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, List, Optional
 
@@ -71,6 +71,61 @@ STOPPABLE_STATES = frozenset({AppState.STARTING, AppState.RUNNING})
 
 # States in which an exiting child is expected to be exiting, and must not be treated as a crash
 SHUTTING_DOWN_STATES = frozenset({AppState.STOPPING, AppState.RESTARTING})
+
+@dataclass(slots=True)
+class ProcessRun:
+    """Everything belonging to one launch of a subsystem's child process.
+
+    A run is created per start() and never reused: the manager drops it the moment the process
+    is reaped. Each worker thread is handed the run it was spawned for, so a thread left over
+    from an abandoned run reads and writes that dead object instead of racing the run that
+    replaced it. `mgr._run is run` is then the one question a straggler has to ask before it
+    acts on the manager itself.
+
+    Every mutable field here is written only by the run's own output-capture thread, so they
+    need no lock; the manager's lock guards which run is current, not what is in one.
+    """
+
+    process: subprocess.Popen
+    start_ts_ns: int
+
+    # The process we spawned, until the child reports its own PID (they differ under PyInstaller,
+    # where the process we spawn is a bootstrapper that re-execs)
+    child_pid: int
+
+    # Reported by the child once it has bound its IPC socket
+    ipc_port: Optional[int] = None
+
+    # Startup sync flags: post-start fires only once both tokens have been seen
+    init_complete_received: bool = False
+    post_start_fired: bool = False
+
+    # Set once this run's process has been reaped, to stop this run's heartbeat thread
+    stop_heartbeat: threading.Event = field(default_factory=threading.Event)
+
+    @classmethod
+    def spawn(cls, launch_cmd: List[str]) -> "ProcessRun":
+        """Launch the child process and build the run around it.
+
+        Args:
+            launch_cmd: Command to launch
+
+        Returns:
+            The new run
+
+        Raises:
+            Whatever Popen raises if the child cannot be launched
+        """
+        # pylint: disable=consider-using-with
+        process = subprocess.Popen(
+            launch_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            stdin=subprocess.PIPE
+        )
+        return cls(process=process, start_ts_ns=time.time_ns(), child_pid=process.pid)
 
 @dataclass(frozen=True)
 class ExitReason:
@@ -175,11 +230,10 @@ class PngAppMgrBase(QObject):
         self.curr_settings = config.settings
         self.integration_test_mode = config.integration_test_mode
 
-        # Process management
-        self.process: Optional[subprocess.Popen] = None
+        # The current launch, if any. Guarded by _process_lock, which protects which run is
+        # current - never the contents of one.
+        self._run: Optional[ProcessRun] = None
         self._process_lock = threading.Lock()
-        self.child_pid: Optional[int] = None
-        self._heartbeat_gen_num = 0
 
         # Lifecycle state. Transitions are made under _process_lock; reads are lock-free.
         self._state = AppState.STOPPED
@@ -205,19 +259,18 @@ class PngAppMgrBase(QObject):
             self.post_stop_signal.connect(self._post_stop_hook)
 
         # IPC and heartbeat settings
-        self.ipc_port: Optional[int] = None
         self.heartbeat_interval: float = 5.0  # seconds
         self.heartbeat_timeout_ms: int = 3000  # must be shorter than heartbeat_interval
         self.num_missable_heartbeats: int = 3
-        self._stop_heartbeat = threading.Event()
 
         # Lifecycle stats
         self._lifecycle_stats = EventCounter()
-        self._proc_start_ts_ns: Optional[int] = None
 
-        # Startup sync flags (fire post-start only after both seen)
-        self._init_complete_received = False
-        self._post_start_fired = False
+    @property
+    def ipc_port(self) -> Optional[int]:
+        """IPC port reported by the running child, or None if there is no child or it has not
+        reported one yet"""
+        return self._run.ipc_port if self._run else None
 
     @property
     def status(self) -> str:
@@ -299,64 +352,44 @@ class PngAppMgrBase(QObject):
             if reason != "Initial auto-start":
                 self.info_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
 
-            # Reset startup signaling state for this new start
-            self._init_complete_received = False
-            self._post_start_fired = False
-            self.ipc_port = None # Child process will report its IPC port
+            # Stats belong to the child that reported them, and outlive the run they came from
             self._stats = None
-            self._proc_start_ts_ns = None
 
             # Build and execute launch command
             launch_cmd = self.get_launch_command()
             self.debug_log(f"Launch command: {' '.join(launch_cmd)}")
 
             try:
-                # Start the subprocess
-                # pylint: disable=consider-using-with
-                self.process = subprocess.Popen(
-                    launch_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    stdin=subprocess.PIPE
-                )
+                run = ProcessRun.spawn(launch_cmd)
+                self._run = run
 
-                self._proc_start_ts_ns = time.time_ns()
-                self.child_pid = self.process.pid
-
-                # Must be set before the worker threads are spawned: they read the state to
-                # tell their own run from a stale one.
+                # Both must be set before the workers are spawned: each thread compares its own
+                # run against the current one, and reads the state, to know it is still wanted.
                 self._set_state_locked(AppState.STARTING)
 
-                # Fresh heartbeat lifecycle for every start — must be set before
-                # _monitor_exit is spawned, so that its captured stop_heartbeat ref
-                # matches the one the heartbeat thread will wait on.
-                self._stop_heartbeat = threading.Event()
-                self._heartbeat_gen_num += 1
-                hb_gen = self._heartbeat_gen_num
-
-                # Start monitoring threads
+                # Start monitoring threads. Each is bound to the run it was spawned for.
                 threading.Thread(
                     target=self._capture_output,
+                    args=(run,),
                     daemon=True,
                     name=f"{self.DISPLAY_NAME}-output"
                 ).start()
 
                 threading.Thread(
                     target=self._monitor_exit,
+                    args=(run,),
                     daemon=True,
                     name=f"{self.DISPLAY_NAME}-monitor"
                 ).start()
 
                 threading.Thread(
                     target=self._send_heartbeat,
-                    args=(hb_gen,),
+                    args=(run,),
                     daemon=True,
-                    name=f"{self.DISPLAY_NAME}-heartbeat-{hb_gen}"
+                    name=f"{self.DISPLAY_NAME}-heartbeat"
                 ).start()
 
-                self.debug_log(f"{self.DISPLAY_NAME} started (PID: {self.child_pid})")
+                self.debug_log(f"{self.DISPLAY_NAME} started (PID: {run.child_pid})")
                 self._lifecycle_stats.track_event("lifecycle", "start")
                 start_error = None
 
@@ -386,7 +419,7 @@ class PngAppMgrBase(QObject):
             # Claim the stop while holding the lock: _monitor_exit reads the state to tell an
             # expected exit from a crash, and a concurrent stop() must bail out on it.
             self._set_state_locked(AppState.STOPPING)
-            process = self.process
+            run = self._run
 
         self._publish_status()
         self.debug_log(f"Stopping {self.DISPLAY_NAME}... Reason: {reason}")
@@ -396,15 +429,15 @@ class PngAppMgrBase(QObject):
         self.window.process_events()
 
         # Try graceful shutdown first (IPC would go here)
-        if self._send_ipc_shutdown(reason):
+        if self._send_ipc_shutdown(run, reason):
             try:
-                process.wait(timeout=10)
+                run.process.wait(timeout=10)
                 self.debug_log(f"{self.DISPLAY_NAME} exited gracefully")
             except subprocess.TimeoutExpired:
                 self.debug_log(f"{self.DISPLAY_NAME} did not exit in time, forcing...")
-                self._terminate_process()
+                self._terminate_process(run)
         else:
-            self._terminate_process()
+            self._terminate_process(run)
 
         self._finalize_stop(final_state)
 
@@ -420,12 +453,9 @@ class PngAppMgrBase(QObject):
             label: Display string, if the state's own name is not specific enough
         """
         with self._process_lock:
-            self.process = None
-            self.child_pid = None
-            self.ipc_port = None
-            self._init_complete_received = False
-            # Suppress a late post-start hook from the run that just died
-            self._post_start_fired = True
+            # Dropping the run is the whole cleanup: its threads can still write to it, but
+            # nothing reads it any more, and `mgr._run is run` now answers False for all of them
+            self._run = None
             self._set_state_locked(state, label)
 
         self._publish_status()
@@ -500,15 +530,18 @@ class PngAppMgrBase(QObject):
         # Attempt restart. start() takes the state out of RESTARTING, on both its paths.
         self.start(f"Auto-restart attempt {self._restart_count}")
 
-    def _capture_output(self):
-        """Capture subprocess output and react to structured launcher tokens."""
+    def _capture_output(self, run: ProcessRun):
+        """Capture subprocess output and react to structured launcher tokens.
 
-        # Snapshot process and stdout safely
-        with self._process_lock:
-            process = self.process
-            if not process or not process.stdout:
-                return
-            stdout = process.stdout
+        Sole writer of the run's mutable fields, which is why they need no lock.
+
+        Args:
+            run: The run whose output to capture
+        """
+
+        stdout = run.process.stdout
+        if not stdout:
+            return
 
         self.debug_log(f"Capturing {self.DISPLAY_NAME} output...")
 
@@ -523,14 +556,10 @@ class PngAppMgrBase(QObject):
             # ---------------------------------------------------------
             if pid := extract_pid_from_line(line):
                 pid_recv_ts = time.time_ns()
-                with self._process_lock:
-                    current_pid = self.process.pid if self.process else None
-                    changed = (current_pid is not None and current_pid != pid)
-                    self.child_pid = pid
-                    start_ts = self._proc_start_ts_ns
-                if start_ts is not None:
-                    self._lifecycle_stats.track_packet_latency(
-                        "startup_latency", "to_pid", start_ts, pid_recv_ts)
+                changed = (pid != run.child_pid)
+                run.child_pid = pid
+                self._lifecycle_stats.track_packet_latency(
+                    "startup_latency", "to_pid", run.start_ts_ns, pid_recv_ts)
                 self.debug_log(f"{self.DISPLAY_NAME} PID update: {pid} changed={changed}")
                 continue
 
@@ -539,14 +568,11 @@ class PngAppMgrBase(QObject):
             # ---------------------------------------------------------
             if port := extract_ipc_port_from_line(line):
                 port_recv_ts = time.time_ns()
-                with self._process_lock:
-                    self.ipc_port = port
-                    start_ts = self._proc_start_ts_ns
-                if start_ts is not None:
-                    self._lifecycle_stats.track_packet_latency(
-                        "startup_latency", "to_ipc_port", start_ts, port_recv_ts)
+                run.ipc_port = port
+                self._lifecycle_stats.track_packet_latency(
+                    "startup_latency", "to_ipc_port", run.start_ts_ns, port_recv_ts)
                 self.debug_log(f"{self.DISPLAY_NAME} IPC port reported: {port}")
-                self._maybe_fire_post_start()
+                self._maybe_fire_post_start(run)
                 continue
 
             # ---------------------------------------------------------
@@ -555,19 +581,18 @@ class PngAppMgrBase(QObject):
             if is_init_complete(line):
                 init_recv_ts = time.time_ns()
                 self.debug_log(f"{self.DISPLAY_NAME} initialization complete")
+                run.init_complete_received = True
                 with self._process_lock:
-                    self._init_complete_received = True
-                    start_ts = self._proc_start_ts_ns
-                    # Guarded: a late token must not drag a stop back into RUNNING
-                    became_ready = self._state is AppState.STARTING
+                    # Guarded: only this run may report itself ready, and only out of STARTING,
+                    # so a late token cannot drag a stop back into RUNNING
+                    became_ready = self._run is run and self._state is AppState.STARTING
                     if became_ready:
                         self._set_state_locked(AppState.RUNNING)
                 if became_ready:
                     self._publish_status()
-                if start_ts is not None:
-                    self._lifecycle_stats.track_packet_latency(
-                        "startup_latency", "to_init_complete", start_ts, init_recv_ts)
-                self._maybe_fire_post_start()
+                self._lifecycle_stats.track_packet_latency(
+                    "startup_latency", "to_init_complete", run.start_ts_ns, init_recv_ts)
+                self._maybe_fire_post_start(run)
                 continue
 
             # ---------------------------------------------------------
@@ -575,19 +600,18 @@ class PngAppMgrBase(QObject):
             # ---------------------------------------------------------
             self.info_log(line, src=self.SHORT_NAME)
 
-    def _monitor_exit(self):
-        """Monitor for unexpected process exit"""
-        process = self.process
-        stop_heartbeat = self._stop_heartbeat  # capture local ref to avoid race with restart
+    def _monitor_exit(self, run: ProcessRun):
+        """Monitor for unexpected process exit
 
+        Args:
+            run: The run whose process to wait on
+        """
         try:
-            if not process:
-                return
+            ret_code = run.process.wait()
 
-            ret_code = process.wait()
-
-            # Check if this is still the current process
-            if self.process is not process:
+            # Only the current run may speak for the manager: an abandoned run's process exiting
+            # is expected, and has already been accounted for by whoever abandoned it.
+            if self._run is not run:
                 return
 
             # Check for expected exits
@@ -602,10 +626,8 @@ class PngAppMgrBase(QObject):
                 self._handle_unexpected_exit(ret_code)
 
         finally:
-            if stop_heartbeat is not self._stop_heartbeat:
-                self.debug_log(f"{self.DISPLAY_NAME} [RACE DETECTED] monitor exit fired after restart replaced stop_heartbeat")
             self.debug_log(f"{self.DISPLAY_NAME} Setting heartbeat stop flag...")
-            stop_heartbeat.set()
+            run.stop_heartbeat.set()
 
     def _handle_unexpected_exit(self, ret_code: int):
         """Handle unexpected process termination"""
@@ -634,11 +656,11 @@ class PngAppMgrBase(QObject):
                 f"{self.DISPLAY_NAME} will not auto-restart (max attempts reached)"
             )
 
-    def _send_heartbeat(self, hb_gen: int):
+    def _send_heartbeat(self, run: ProcessRun):
         """Send periodic heartbeat to child process
 
         Args:
-            hb_gen (int): Heartbeat generation number
+            run: The run whose child to beat against
         """
         # Initial random delay. The run can end while we sleep, in which case the loop below
         # never runs a beat.
@@ -647,9 +669,11 @@ class PngAppMgrBase(QObject):
         failed_count = 0
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
 
-        while not self._stop_heartbeat.is_set():
-            if hb_gen != self._heartbeat_gen_num:
-                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting (stale generation {hb_gen})")
+        while not run.stop_heartbeat.is_set():
+            # Our own process is normally reaped before this, which sets the flag above. Check
+            # anyway: a stale run must never stop the run that replaced it.
+            if self._run is not run:
+                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting, run superseded.")
                 break
 
             # If we are stopping or restarting, do not treat missing port as failure
@@ -657,8 +681,8 @@ class PngAppMgrBase(QObject):
                 self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting, subsystem is shutting down.")
                 break
 
-            self.debug_log(f"{self.DISPLAY_NAME}: Sending heartbeat to port {self.ipc_port}...")
-            port = self.ipc_port
+            self.debug_log(f"{self.DISPLAY_NAME}: Sending heartbeat to port {run.ipc_port}...")
+            port = run.ipc_port
 
             if not port:
                 # No port means child hasn't initialised yet - treat as a missed heartbeat
@@ -690,19 +714,26 @@ class PngAppMgrBase(QObject):
                 self.stop("Heartbeat failure")
                 break
 
-            self._stop_heartbeat.wait(self.heartbeat_interval)
+            run.stop_heartbeat.wait(self.heartbeat_interval)
 
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job exiting...")
-        self._stop_heartbeat.clear()
 
-    def _send_ipc_shutdown(self, reason: str) -> bool:
-        """Send IPC shutdown command"""
-        if not self.ipc_port:
+    def _send_ipc_shutdown(self, run: ProcessRun, reason: str) -> bool:
+        """Send IPC shutdown command
+
+        Args:
+            run: The run to shut down
+            reason: Why the subsystem is being stopped
+
+        Returns:
+            True if the child acknowledged the shutdown
+        """
+        if not run.ipc_port:
             self.debug_log("Cannot send IPC shutdown - no IPC port detected from child.")
             return False
 
         try:
-            ipc_client = IpcClientSync(self.ipc_port)
+            ipc_client = IpcClientSync(run.ipc_port)
             stats_rsp = ipc_client.get_stats()
             if stats_rsp.get("status") == "success":
                 self._stats = stats_rsp.get("stats")
@@ -719,46 +750,44 @@ class PngAppMgrBase(QObject):
             self._lifecycle_stats.track_event("ipc", "shutdown_fail")
             return False
 
-    def _terminate_process(self):
-        """Force-terminate the process and all its subprocesses"""
+    def _terminate_process(self, run: ProcessRun):
+        """Force-terminate the run's process and all its subprocesses
 
-        target_pid = None
-        if self.child_pid and self.child_pid != (self.process.pid if self.process else None):
-            # Terminate actual child (PyInstaller case)
-            target_pid = self.child_pid
-        elif self.process:
-            target_pid = self.process.pid
+        Args:
+            run: The run to terminate
+        """
+        # The PID we spawned, or the one the child reported for itself (PyInstaller case)
+        target_pid = run.child_pid
+        try:
+            parent = psutil.Process(target_pid)
+            children = parent.children(recursive=True)
+            for child in children:
+                child.terminate()
+            parent.terminate()
+            _, alive = psutil.wait_procs([parent] + children, timeout=5)
+            for p in alive:
+                p.kill()
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.debug_log(f"Failed to terminate process tree for PID {target_pid}: {e}")
 
-        if target_pid:
-            try:
-                parent = psutil.Process(target_pid)
-                children = parent.children(recursive=True)
-                for child in children:
-                    child.terminate()
-                parent.terminate()
-                _, alive = psutil.wait_procs([parent] + children, timeout=5)
-                for p in alive:
-                    p.kill()
-            except Exception as e: # pylint: disable=broad-exception-caught
-                self.debug_log(f"Failed to terminate process tree for PID {target_pid}: {e}")
+    def _maybe_fire_post_start(self, run: ProcessRun) -> None:
+        """Fire the post-start hook only once and only after both init & ipc port received.
 
-    def _maybe_fire_post_start(self) -> None:
-        """Fire the post-start hook only once and only after both init & ipc port received."""
-        # Do not hold the process lock while emitting signals to avoid deadlocks with UI callbacks.
-        if self._post_start_fired:
+        Args:
+            run: The run reporting itself started
+        """
+        if run.post_start_fired or not run.init_complete_received or run.ipc_port is None:
             return
 
-        with self._process_lock:
-            init_ok = self._init_complete_received
-            port_ok = self.ipc_port is not None
-            should_fire = not self._post_start_fired and init_ok and port_ok
-            if should_fire:
-                self._post_start_fired = True
+        # An abandoned run must not announce itself as started: its post-start hook would tell
+        # the UI a subsystem is up when what is up is a different run, or nothing at all.
+        if self._run is not run:
+            return
 
-        if should_fire:
-            self.debug_log(f"{self.DISPLAY_NAME}: All startup signals received - firing post-start hook")
-            if self._post_start_hook:
-                self.post_start_signal.emit()
+        run.post_start_fired = True
+        self.debug_log(f"{self.DISPLAY_NAME}: All startup signals received - firing post-start hook")
+        if self._post_start_hook:
+            self.post_start_signal.emit()
 
     def _set_state(self, state: AppState, label: Optional[str] = None):
         """Transition to a new state and publish it. Must be called without _process_lock held.
