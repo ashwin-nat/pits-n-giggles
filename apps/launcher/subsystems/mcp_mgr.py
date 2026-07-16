@@ -103,6 +103,7 @@ class McpAppMgr(PngAppMgrBase):
             ],
             "Network": [
                 "broker_xpub_port",
+                "broker_router_port",
                 "server_port",
             ],
         })

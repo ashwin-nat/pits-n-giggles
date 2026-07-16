@@ -265,8 +265,15 @@ class PngAppMgrBase(QObject):
 
         # IPC and heartbeat settings
         self.heartbeat_interval: float = 5.0  # seconds
-        self.heartbeat_timeout_ms: int = 3000  # must be shorter than heartbeat_interval
+        self.heartbeat_timeout_ms: int = 3000
         self.num_missable_heartbeats: int = 3
+
+        # A beat that can outlive its own interval would stack up behind itself. Checked here
+        # rather than where the beats are sent: that runs on a worker thread, where an assert
+        # kills the thread silently, the child's watchdog fires ~15s later, and every subsystem
+        # dies of a lost parent at once.
+        assert self.heartbeat_timeout_ms < self.heartbeat_interval * 1000, \
+            f"{self.DISPLAY_NAME}: heartbeat timeout must be shorter than the interval"
 
         # Lifecycle stats
         self._lifecycle_stats = EventCounter()
@@ -723,11 +730,6 @@ class PngAppMgrBase(QObject):
 
         failed_count = 0
         self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat job starting...")
-
-        # A beat that can outlive its own interval would stack up behind itself. Checked here
-        # rather than in __init__, where both knobs still hold their (correct) defaults.
-        assert self.heartbeat_timeout_ms < self.heartbeat_interval * 1000, \
-            f"{self.DISPLAY_NAME}: heartbeat timeout must be shorter than the interval"
 
         while not run.stop_heartbeat.is_set():
             # Our own process is normally reaped before this, which sets the flag above. Check
