@@ -355,41 +355,8 @@ class PngAppMgrBase(QObject):
             # Stats belong to the child that reported them, and outlive the run they came from
             self._stats = None
 
-            # Build and execute launch command
-            launch_cmd = self.get_launch_command()
-            self.debug_log(f"Launch command: {' '.join(launch_cmd)}")
-
             try:
-                run = ProcessRun.spawn(launch_cmd)
-                self._run = run
-
-                # Both must be set before the workers are spawned: each thread compares its own
-                # run against the current one, and reads the state, to know it is still wanted.
-                self._set_state_locked(AppState.STARTING)
-
-                # Start monitoring threads. Each is bound to the run it was spawned for.
-                threading.Thread(
-                    target=self._capture_output,
-                    args=(run,),
-                    daemon=True,
-                    name=f"{self.DISPLAY_NAME}-output"
-                ).start()
-
-                threading.Thread(
-                    target=self._monitor_exit,
-                    args=(run,),
-                    daemon=True,
-                    name=f"{self.DISPLAY_NAME}-monitor"
-                ).start()
-
-                threading.Thread(
-                    target=self._send_heartbeat,
-                    args=(run,),
-                    daemon=True,
-                    name=f"{self.DISPLAY_NAME}-heartbeat"
-                ).start()
-
-                self.debug_log(f"{self.DISPLAY_NAME} started (PID: {run.child_pid})")
+                self._launch_locked()
                 self._lifecycle_stats.track_event("lifecycle", "start")
                 start_error = None
 
@@ -402,6 +369,45 @@ class PngAppMgrBase(QObject):
         self._publish_status()
         if start_error:
             self._integration_fail(start_error)
+
+    def _launch_locked(self):
+        """Spawn the child process and the workers that watch it.
+
+        Caller holds _process_lock and owns what happens if this raises.
+
+        Raises:
+            Whatever Popen raises if the child cannot be launched
+        """
+        launch_cmd = self.get_launch_command()
+        self.debug_log(f"Launch command: {' '.join(launch_cmd)}")
+
+        run = ProcessRun.spawn(launch_cmd)
+        self._run = run
+
+        # Both must be set before the workers are spawned: each thread compares its own run
+        # against the current one, and reads the state, to know it is still wanted.
+        self._set_state_locked(AppState.STARTING)
+        self._spawn_workers(run)
+
+        self.debug_log(f"{self.DISPLAY_NAME} started (PID: {run.child_pid})")
+
+    def _spawn_workers(self, run: ProcessRun):
+        """Start the three threads that watch one run, each bound to the run it watches.
+
+        Args:
+            run: The run to watch
+        """
+        for target, name in (
+            (self._capture_output, "output"),
+            (self._monitor_exit, "monitor"),
+            (self._send_heartbeat, "heartbeat"),
+        ):
+            threading.Thread(
+                target=target,
+                args=(run,),
+                daemon=True,
+                name=f"{self.DISPLAY_NAME}-{name}"
+            ).start()
 
     def stop(self, reason: str, final_state: AppState = AppState.STOPPED):
         """Stop the subsystem process
