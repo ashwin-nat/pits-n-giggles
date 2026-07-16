@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Close stale PRs (skip repo owner)
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const STALE_DAYS = 30;
