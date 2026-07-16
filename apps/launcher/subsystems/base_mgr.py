@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 import psutil
@@ -49,6 +50,27 @@ if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
+
+class AppState(Enum):
+    """Lifecycle state of a managed subsystem. The value doubles as the default display string."""
+
+    STOPPED     = "Stopped"
+    STARTING    = "Starting"      # process spawned, waiting for the child to report init-complete
+    RUNNING     = "Running"
+    STOPPING    = "Stopping"
+    RESTARTING  = "Restarting"
+    CRASHED     = "Crashed"
+    DISABLED    = "Disabled"      # turned off in settings; will not start
+    UNSUPPORTED = "Unsupported"   # not available on this OS; will not start
+
+# States in which a child process exists and has not been reaped yet
+ACTIVE_STATES = frozenset({AppState.STARTING, AppState.RUNNING, AppState.STOPPING})
+
+# States from which a stop can be claimed
+STOPPABLE_STATES = frozenset({AppState.STARTING, AppState.RUNNING})
+
+# States in which an exiting child is expected to be exiting, and must not be treated as a crash
+SHUTTING_DOWN_STATES = frozenset({AppState.STOPPING, AppState.RESTARTING})
 
 @dataclass(frozen=True)
 class ExitReason:
@@ -157,13 +179,12 @@ class PngAppMgrBase(QObject):
         self.process: Optional[subprocess.Popen] = None
         self._process_lock = threading.Lock()
         self.child_pid: Optional[int] = None
-        self.is_running = False
-        self._is_restarting = threading.Event()
-        self._is_stopping = threading.Event()
         self._heartbeat_gen_num = 0
 
-        # Status tracking
-        self.status = "Stopped"
+        # Lifecycle state. Transitions are made under _process_lock; reads are lock-free.
+        self._state = AppState.STOPPED
+        # Overrides the state's own display string when set (crash reason, restart counter)
+        self._status_label: Optional[str] = None
 
         # Auto-restart configuration
         self.auto_restart = config.auto_restart
@@ -197,6 +218,17 @@ class PngAppMgrBase(QObject):
         # Startup sync flags (fire post-start only after both seen)
         self._init_complete_received = False
         self._post_start_fired = False
+
+    @property
+    def status(self) -> str:
+        """Display string for the current state"""
+        return self._status_label or self._state.value
+
+    @property
+    def is_running(self) -> bool:
+        """True while this manager owns a child process, from a successful spawn until the
+        process has exited and been reaped"""
+        return self._state in ACTIVE_STATES
 
     def register_exit_reason(self, code: int, reason: ExitReason):
         """Register an exit reason
@@ -291,8 +323,11 @@ class PngAppMgrBase(QObject):
                 )
 
                 self._proc_start_ts_ns = time.time_ns()
-                self.is_running = True
                 self.child_pid = self.process.pid
+
+                # Must be set before the worker threads are spawned: they read the state to
+                # tell their own run from a stale one.
+                self._set_state_locked(AppState.STARTING)
 
                 # Fresh heartbeat lifecycle for every start — must be set before
                 # _monitor_exit is spawned, so that its captured stop_heartbeat ref
@@ -323,34 +358,38 @@ class PngAppMgrBase(QObject):
 
                 self.debug_log(f"{self.DISPLAY_NAME} started (PID: {self.child_pid})")
                 self._lifecycle_stats.track_event("lifecycle", "start")
-                status = "Starting"
                 start_error = None
 
             except Exception as e: # pylint: disable=broad-exception-caught
                 self.error_log(f"Failed to start {self.DISPLAY_NAME}: {e}")
-                self.is_running = False
+                self._set_state_locked(AppState.CRASHED)
                 self._lifecycle_stats.track_event("lifecycle", "start_failed")
-                status = "Crashed"
                 start_error = f"Failed to start {self.DISPLAY_NAME}: {e}"
 
-        self._update_status(status)
+        self._publish_status()
         if start_error:
             self._integration_fail(start_error)
 
-    def stop(self, reason: str):
-        """Stop the subsystem process"""
+    def stop(self, reason: str, final_state: AppState = AppState.STOPPED):
+        """Stop the subsystem process
+
+        Args:
+            reason: Why the subsystem is being stopped
+            final_state: State to settle in once the child is gone. RESTARTING keeps the manager
+                         marked as shutting down across a restart's stop/start seam.
+        """
         with self._process_lock:
-            if not self.is_running or self._is_stopping.is_set():
+            if self._state not in STOPPABLE_STATES:
                 self.debug_log(f"{self.DISPLAY_NAME} is not running")
                 return
 
-            # Claim the stop while holding the lock: _monitor_exit reads this flag to tell an
+            # Claim the stop while holding the lock: _monitor_exit reads the state to tell an
             # expected exit from a crash, and a concurrent stop() must bail out on it.
-            self._is_stopping.set()
+            self._set_state_locked(AppState.STOPPING)
             process = self.process
 
+        self._publish_status()
         self.debug_log(f"Stopping {self.DISPLAY_NAME}... Reason: {reason}")
-        self._update_status("Stopping")
         self._lifecycle_stats.track_event("lifecycle", "stop")
 
         # Force Qt to update UI now
@@ -367,44 +406,46 @@ class PngAppMgrBase(QObject):
         else:
             self._terminate_process()
 
-        self._finalize_stop("Stopped")
+        self._finalize_stop(final_state)
 
-    def _finalize_stop(self, status: str):
-        """Clear per-run state, publish the terminal status and fire the post-stop hook.
+    def _finalize_stop(self, state: AppState, label: Optional[str] = None):
+        """Clear per-run state, publish the terminal state and fire the post-stop hook.
 
         Shared tail of the expected (stop) and unexpected (crash) shutdown paths. Must be
         called without _process_lock held - the hook may be delivered to a directly
         connected slot, which must never run while the lock is held.
 
         Args:
-            status: Terminal status to publish
+            state: State to settle in now that no child process is left
+            label: Display string, if the state's own name is not specific enough
         """
         with self._process_lock:
             self.process = None
             self.child_pid = None
             self.ipc_port = None
-            self.is_running = False
             self._init_complete_received = False
             # Suppress a late post-start hook from the run that just died
             self._post_start_fired = True
-            self._is_stopping.clear()
+            self._set_state_locked(state, label)
 
-        self._update_status(status)
+        self._publish_status()
         if self._post_stop_hook:
             self.post_stop_signal.emit()
 
     def restart(self, reason: str):
         """Restart the subsystem"""
-        self._is_restarting.set()
         self.debug_log(f"Restarting {self.DISPLAY_NAME}...")
         _reason = f"Restarting: {reason}"
 
+        # Settling in RESTARTING rather than STOPPED marks the manager as shutting down for the
+        # whole stop/start seam, so a straggler thread from the old run stays quiet.
         if self.is_running:
-            self.stop(_reason)
+            self.stop(_reason, final_state=AppState.RESTARTING)
+        else:
+            self._set_state(AppState.RESTARTING)
 
         time.sleep(1)  # Brief pause
         self.start(_reason)
-        self._is_restarting.clear()
 
     def start_stop(self, reason: str):
         """Toggle between start and stop"""
@@ -449,17 +490,15 @@ class PngAppMgrBase(QObject):
         self.warning_log(
             f"{self.DISPLAY_NAME} auto-restart attempt {self._restart_count}/{self.max_restart_attempts}"
         )
-        self._update_status(f"Restarting ({self._restart_count}/{self.max_restart_attempts})")
+        self._set_state(
+            AppState.RESTARTING,
+            label=f"Restarting ({self._restart_count}/{self.max_restart_attempts})")
 
         # Wait before restarting
         time.sleep(self.restart_delay)
 
-        # Attempt restart
-        self._is_restarting.set()
-        try:
-            self.start(f"Auto-restart attempt {self._restart_count}")
-        finally:
-            self._is_restarting.clear()
+        # Attempt restart. start() takes the state out of RESTARTING, on both its paths.
+        self.start(f"Auto-restart attempt {self._restart_count}")
 
     def _capture_output(self):
         """Capture subprocess output and react to structured launcher tokens."""
@@ -519,7 +558,12 @@ class PngAppMgrBase(QObject):
                 with self._process_lock:
                     self._init_complete_received = True
                     start_ts = self._proc_start_ts_ns
-                self._update_status("Running")
+                    # Guarded: a late token must not drag a stop back into RUNNING
+                    became_ready = self._state is AppState.STARTING
+                    if became_ready:
+                        self._set_state_locked(AppState.RUNNING)
+                if became_ready:
+                    self._publish_status()
                 if start_ts is not None:
                     self._lifecycle_stats.track_packet_latency(
                         "startup_latency", "to_init_complete", start_ts, init_recv_ts)
@@ -547,7 +591,7 @@ class PngAppMgrBase(QObject):
                 return
 
             # Check for expected exits
-            if self._is_restarting.is_set() or self._is_stopping.is_set():
+            if self._state in SHUTTING_DOWN_STATES:
                 return
 
             if ret_code == self.SIGTERM_EXIT_CODE:  # SIGTERM during restart
@@ -571,7 +615,7 @@ class PngAppMgrBase(QObject):
         self._integration_fail(err_msg)
 
         reason = self.exit_reasons.get(ret_code, self.exit_reasons[PNG_ERROR_CODE_UNKNOWN])
-        self._finalize_stop(reason.status)
+        self._finalize_stop(AppState.CRASHED, label=reason.status)
 
         if reason.settings_field:
             self.show_error(reason.title, f"{reason.message}\nField: {reason.settings_field}")
@@ -609,8 +653,8 @@ class PngAppMgrBase(QObject):
                 break
 
             # If we are stopping or restarting, do not treat missing port as failure
-            if self._is_stopping.is_set() or self._is_restarting.is_set():
-                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting due to stop/restart flag.")
+            if self._state in SHUTTING_DOWN_STATES:
+                self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting, subsystem is shutting down.")
                 break
 
             self.debug_log(f"{self.DISPLAY_NAME}: Sending heartbeat to port {self.ipc_port}...")
@@ -716,11 +760,35 @@ class PngAppMgrBase(QObject):
             if self._post_start_hook:
                 self.post_start_signal.emit()
 
-    def _update_status(self, status: str):
-        """Update status and emit signal"""
-        self.status = status
+    def _set_state(self, state: AppState, label: Optional[str] = None):
+        """Transition to a new state and publish it. Must be called without _process_lock held.
+
+        Args:
+            state: New state
+            label: Display string, if the state's own name is not specific enough
+        """
+        with self._process_lock:
+            self._set_state_locked(state, label)
+        self._publish_status()
+
+    def _set_state_locked(self, state: AppState, label: Optional[str] = None):
+        """Transition to a new state without publishing it.
+
+        For transitions that must be atomic with the surrounding critical section. The caller
+        holds _process_lock and must call _publish_status() once it has released it.
+
+        Args:
+            state: New state
+            label: Display string, if the state's own name is not specific enough
+        """
+        self._state = state
+        self._status_label = label
+
+    def _publish_status(self):
+        """Emit the current display string. Must be called without _process_lock held, since a
+        directly connected slot would otherwise run under it."""
         if self.SHOULD_DISPLAY:
-            self.status_changed.emit(status)
+            self.status_changed.emit(self.status)
 
     # Logging methods
     def info_log(self, message: str, src: str = ''):
