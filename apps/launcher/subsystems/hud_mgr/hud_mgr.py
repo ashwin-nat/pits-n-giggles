@@ -37,7 +37,7 @@ from lib.button_debouncer import ButtonDebouncer
 from lib.config import HudSettings, OverlayPosition, PngSettings
 from lib.ipc import IpcClientSync
 
-from ..base_mgr import PngAppMgrBase, PngAppMgrConfig
+from ..base_mgr import AppState, PngAppMgrBase, PngAppMgrConfig
 from .popup import OverlaysAdjustPopup, SliderItem
 
 if TYPE_CHECKING:
@@ -91,9 +91,9 @@ class HudAppMgr(PngAppMgrBase):
             config=config,
         )
         if not self.enabled:
-            self._update_status("Disabled")
+            self._set_state(AppState.DISABLED)
         elif not self.supported:
-            self._update_status("Unsupported")
+            self._set_state(AppState.UNSUPPORTED)
 
         self.overlays_adj_popup = OverlaysAdjustPopup(self.window)
         self.overlays_adj_popup.hide()
@@ -363,12 +363,12 @@ class HudAppMgr(PngAppMgrBase):
         self.debug_log(f"Starting {self.DISPLAY_NAME}... Reason: {reason}")
         if not self.enabled:
             self.debug_log(f"{self.DISPLAY_NAME} is not enabled.")
-            self._update_status("Disabled")
+            self._set_state(AppState.DISABLED)
             return
 
         if not self.supported:
             self.debug_log(f"{self.DISPLAY_NAME} is not supported.")
-            self._update_status("Unsupported")
+            self._set_state(AppState.UNSUPPORTED)
             return
 
         # Run the standard start
