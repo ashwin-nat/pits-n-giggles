@@ -25,7 +25,8 @@
 import ctypes
 from pathlib import Path
 from time import perf_counter_ns
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeVar
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Optional, Type,
+                    TypeVar, final)
 
 from PySide6.QtCore import (Q_ARG, QEvent, QMetaObject, QObject, QPoint,
                             QPropertyAnimation, QSize, Qt, QTimer, QUrl,
@@ -661,6 +662,7 @@ class BaseOverlay(QmlBridge, QObject):
         else:
             self._display_period_ns = _DEFAULT_DISPLAY_PERIOD_NS
 
+    @final
     def _notify_qml_content_changed(self) -> None:
         """QmlBridge hook: stamp the newest not-yet-presented content change."""
         self._pending_change_ns = perf_counter_ns()
