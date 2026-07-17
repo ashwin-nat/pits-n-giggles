@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import gzip
 import time
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
@@ -39,7 +40,8 @@ from lib.logger import PngLogger
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-CACHE_FILE = '.png_session_cache.json'
+LEGACY_CACHE_FILE = '.png_session_cache.json'
+CACHE_FILE = f'{LEGACY_CACHE_FILE}.gz'
 # Cache entries are tagged with the app version that produced them. Any version
 # mismatch (upgrade or downgrade) invalidates the whole cache — mtime alone can't
 # detect that the *parsing logic*, not the file, changed, and a manually-maintained
@@ -77,11 +79,15 @@ def find_json_files(session_dir: Path) -> List[Path]:
     ]
 
 
-def _load_cache(cache_path: Path, app_version: str) -> Dict[str, Any]:
+def _load_cache(cache_path: Path, app_version: str, logger: PngLogger) -> Dict[str, Any]:
+    legacy_path = cache_path.with_name(LEGACY_CACHE_FILE)
+    if legacy_path.exists():
+        logger.info("Session cache: deleting deprecated cache file %s", legacy_path)
+        legacy_path.unlink(missing_ok=True)
     try:
         with open(cache_path, 'rb') as f:
-            cache: dict = orjson.loads(f.read())
-    except (FileNotFoundError, orjson.JSONDecodeError):
+            cache: dict = orjson.loads(gzip.decompress(f.read()))
+    except (FileNotFoundError, orjson.JSONDecodeError, gzip.BadGzipFile):
         return {}
     # Discard the whole cache on any version change (upgrade or downgrade) — the
     # on-disk mtime can't tell us the *parsing logic* changed, only that the file
@@ -93,7 +99,7 @@ def _load_cache(cache_path: Path, app_version: str) -> Dict[str, Any]:
 
 def _save_cache(cache_path: Path, cache: Dict[str, Any], app_version: str) -> None:
     with open(cache_path, 'wb') as f:
-        f.write(orjson.dumps({**cache, _APP_VERSION_KEY: app_version}))
+        f.write(gzip.compress(orjson.dumps({**cache, _APP_VERSION_KEY: app_version})))
 
 
 def to_slug(relative_path: Path) -> str:
@@ -472,7 +478,7 @@ async def build_session_list(
 
     cache_path = session_dir / CACHE_FILE
     cache_file_existed = cache_path.exists()
-    cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path, app_version)
+    cache: Dict[str, Any] = await asyncio.to_thread(_load_cache, cache_path, app_version, logger)
     cache_hits = sum(1 for r in json_files if str(r) in cache)
 
     if not cache_file_existed:
