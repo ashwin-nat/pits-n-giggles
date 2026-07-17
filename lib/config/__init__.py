@@ -33,7 +33,7 @@ from .schema import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings,
                      NetworkSettings, OverlayId, OverlayPosition,
                      PitTimeLossF1, PitTimeLossF2, PngSettings,
                      PredictionSettings, HarvestPowerSmoothing, PrivacySettings,
-                     StreamOverlaySettings, SubSysCtrl, TimingTowerColId,
+                     StreamOverlaySettings, TimingTowerColId,
                      TimingTowerColOptions, TimingTowerColSettings,
                      WeatherMFDUIType)
 from .types import FilePathStr
@@ -48,7 +48,6 @@ __all__ = [
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
-    'SubSysCtrl',
     'PngSettings',
     'PredictionSettings',
     'HarvestPowerSmoothing',

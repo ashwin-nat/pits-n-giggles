@@ -39,7 +39,6 @@ from .png import PngSettings
 from .prediction import HarvestPowerSmoothing, PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
-from .subsys_ctrl import SubSysCtrl
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -65,7 +64,6 @@ __all__ = [
     'HarvestPowerSmoothing',
     'PrivacySettings',
     'StreamOverlaySettings',
-    'SubSysCtrl',
 
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
