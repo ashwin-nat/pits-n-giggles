@@ -31,8 +31,7 @@ from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
 from .https import HttpsSettings
 from .hud import HudSettings
 from .network import NetworkSettings
-from .pit_time_loss_f1 import PitTimeLossF1
-from .pit_time_loss_f2 import PitTimeLossF2
+from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
@@ -49,8 +48,8 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings, description="Stream Overlay")
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings, description="HTTPS")
     HUD: HudSettings = Field(default_factory=HudSettings, description="Overlays")
-    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")
-    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")
+    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")  # type: ignore[valid-type]
+    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")  # type: ignore[valid-type]
     Prediction: PredictionSettings = Field(default_factory=PredictionSettings, description="Prediction")
     MCP: McpSettings = Field(default_factory=McpSettings, description="MCP")
     model_config = ConfigDict(str_strip_whitespace=True)
