@@ -2,6 +2,7 @@
 {% block title %}Pits n' Giggles{% endblock %}
 {% block extra_head %}
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
 {% endblock %}
 {% block content %}
@@ -12,17 +13,23 @@
       </header>
       <div class="png-home-cards">
         <a class="png-home-card" href="/live">
-          <span class="png-home-card-icon">🏎️</span>
-          <h2 class="png-home-card-title">Live Dashboard</h2>
-          <p class="png-home-card-desc">Real-time timing, tyre wear, and race analysis while the game is running.</p>
+          <i class="bi bi-car-front-fill png-home-card-icon" aria-hidden="true"></i>
+          <div class="png-home-card-title-row">
+            <h2 class="png-home-card-title">Driver View</h2>
+            <span class="png-home-live-badge"><span class="png-home-live-dot"></span>Live</span>
+          </div>
+          <p class="png-home-card-desc">Real-time timing, optimized for viewing without interaction during a session.</p>
         </a>
         <a class="png-home-card" href="/eng-view">
-          <span class="png-home-card-icon">🔧</span>
-          <h2 class="png-home-card-title">Engineer View</h2>
-          <p class="png-home-card-desc">Track map, weather, tyre stints, and deep race-engineering detail.</p>
+          <i class="bi bi-wrench-adjustable png-home-card-icon" aria-hidden="true"></i>
+          <div class="png-home-card-title-row">
+            <h2 class="png-home-card-title">Engineer View</h2>
+            <span class="png-home-live-badge"><span class="png-home-live-dot"></span>Live</span>
+          </div>
+          <p class="png-home-card-desc">Real-time track map, weather, tyre stints, and deep race-engineering detail.</p>
         </a>
         <a class="png-home-card" href="/save-viewer/">
-          <span class="png-home-card-icon">💾</span>
+          <i class="bi bi-floppy-fill png-home-card-icon" aria-hidden="true"></i>
           <h2 class="png-home-card-title">Save Viewer</h2>
           <p class="png-home-card-desc">Browse and analyse previously saved sessions.</p>
         </a>

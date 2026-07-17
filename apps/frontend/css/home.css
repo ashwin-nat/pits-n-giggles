@@ -63,10 +63,39 @@
   line-height: 1;
 }
 
+.png-home-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .png-home-card-title {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+}
+
+.png-home-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--png-home-text-secondary);
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--png-home-card-border);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+}
+
+.png-home-live-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--png-home-accent);
 }
 
 .png-home-card-desc {

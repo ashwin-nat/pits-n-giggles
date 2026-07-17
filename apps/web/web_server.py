@@ -257,8 +257,14 @@ class WebServer(BaseWebServer):
             f'{{"sessionPollIntervalMs":{poll_interval_json}}};</script>'
         )
         sidebar_css_url = url_for('static', filename='css/sidebar.css')
+        bootstrap_icons_link = (
+            '<link rel="stylesheet" '
+            'href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" '
+            'integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" '
+            'crossorigin="anonymous">'
+        )
         head_injection = (
-            f'<link rel="stylesheet" href="{sidebar_css_url}">'
+            f'{bootstrap_icons_link}<link rel="stylesheet" href="{sidebar_css_url}">'
             f'{version_injection}{save_viewer_config_injection}'
         )
         html = html.replace('</head>', f'{head_injection}</head>', 1)

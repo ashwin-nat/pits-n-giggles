@@ -7,7 +7,8 @@
 */
 
 .png-sidebar {
-  --png-sb-width: 64px;
+  --png-sb-width: 220px;
+  --png-sb-width-collapsed: 56px;
   --png-sb-bg: #0c0c12;
   --png-sb-border: #2d2d3d;
   --png-sb-text: #9090a0;
@@ -23,8 +24,8 @@
   border-right: 1px solid var(--png-sb-border);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 12px 0;
+  align-items: flex-start;
+  padding: 12px 8px;
   gap: 4px;
   z-index: 1000;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -33,7 +34,7 @@
 }
 
 .png-sidebar-collapsed {
-  --png-sb-width: 40px;
+  --png-sb-width: var(--png-sb-width-collapsed);
 }
 
 .png-sidebar-collapsed .png-sidebar-label {
@@ -69,15 +70,15 @@
 .png-sidebar-link {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: calc(var(--png-sb-width) - 8px);
-  padding: 8px 0;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
   border-radius: 8px;
   color: var(--png-sb-text);
   text-decoration: none;
+  box-sizing: border-box;
   transition: background-color 0.15s, color 0.15s;
 }
 
@@ -104,19 +105,24 @@
 }
 
 .png-sidebar-icon {
+  flex-shrink: 0;
+  width: 18px;
   font-size: 18px;
   line-height: 1;
+  text-align: center;
 }
 
 .png-sidebar-label {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .png-sidebar-toggle {
   margin-top: auto;
+  align-self: flex-end;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,9 +136,19 @@
   transition: background-color 0.15s, color 0.15s;
 }
 
+.png-sidebar-collapsed .png-sidebar-brand,
+.png-sidebar-collapsed .png-sidebar-toggle {
+  align-self: center;
+}
+
 .png-sidebar-toggle:hover {
   background-color: rgba(255, 255, 255, 0.06);
   color: var(--png-sb-text-active);
+}
+
+.png-sidebar-toggle-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .png-sidebar-toggle-icon-expand {
@@ -152,11 +168,11 @@
    would otherwise show as a white border around the page. */
 body.png-has-sidebar {
   margin: 0;
-  padding-left: 64px;
+  padding-left: 220px;
   box-sizing: border-box;
   transition: padding-left 0.15s ease;
 }
 
 body.png-sidebar-collapsed {
-  padding-left: 40px;
+  padding-left: 56px;
 }

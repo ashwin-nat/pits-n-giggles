@@ -4,30 +4,24 @@
   </a>
   <div class="png-sidebar-links">
     <a class="png-sidebar-link{% if active_page == 'home' %} png-sidebar-link-active{% endif %}" href="/" title="Home">
-      <span class="png-sidebar-icon">🏠</span>
+      <i class="bi bi-house-door-fill png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Home</span>
     </a>
-    <a class="png-sidebar-link{% if active_page == 'live' %} png-sidebar-link-active{% endif %}" href="/live" title="Live Dashboard">
-      <span class="png-sidebar-icon">🏎️</span>
-      <span class="png-sidebar-label">Live</span>
+    <a class="png-sidebar-link{% if active_page == 'live' %} png-sidebar-link-active{% endif %}" href="/live" title="Driver View (Live)">
+      <i class="bi bi-car-front-fill png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Driver View</span>
     </a>
-    <a class="png-sidebar-link{% if active_page == 'eng-view' %} png-sidebar-link-active{% endif %}" href="/eng-view" title="Engineer View">
-      <span class="png-sidebar-icon">🔧</span>
-      <span class="png-sidebar-label">Eng</span>
+    <a class="png-sidebar-link{% if active_page == 'eng-view' %} png-sidebar-link-active{% endif %}" href="/eng-view" title="Engineer View (Live)">
+      <i class="bi bi-wrench-adjustable png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Engineer View</span>
     </a>
-    <a class="png-sidebar-link{% if active_page == 'save-viewer' %} png-sidebar-link-active{% endif %}" href="/save-viewer/" title="Save Viewer">
-      <span class="png-sidebar-icon">💾</span>
-      <span class="png-sidebar-label">Saves</span>
+    <a class="png-sidebar-link{% if active_page == 'save-viewer' %} png-sidebar-link-active{% endif %}" href="/save-viewer/" title="Save Data">
+      <i class="bi bi-floppy2-fill png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Save Data</span>
     </a>
   </div>
   <button type="button" class="png-sidebar-toggle" title="Collapse sidebar" aria-expanded="true">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"
-         class="png-sidebar-toggle-icon png-sidebar-toggle-icon-collapse" aria-hidden="true">
-      <path fill-rule="evenodd" d="M11.854 3.146a.5.5 0 0 1 0 .708L8.207 7.5l3.647 3.646a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0zM4.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 1 0v-13a.5.5 0 0 0-.5-.5z"/>
-    </svg>
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"
-         class="png-sidebar-toggle-icon png-sidebar-toggle-icon-expand" aria-hidden="true">
-      <path fill-rule="evenodd" d="M4.146 3.146a.5.5 0 0 0 0 .708L7.793 7.5l-3.647 3.646a.5.5 0 1 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708 0zM11.5 1a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0v-13a.5.5 0 0 1 .5-.5z"/>
-    </svg>
+    <i class="bi bi-chevron-bar-left png-sidebar-toggle-icon png-sidebar-toggle-icon-collapse" aria-hidden="true"></i>
+    <i class="bi bi-chevron-bar-right png-sidebar-toggle-icon png-sidebar-toggle-icon-expand" aria-hidden="true"></i>
   </button>
 </nav>
