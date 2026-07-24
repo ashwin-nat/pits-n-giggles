@@ -33,8 +33,7 @@ from .hud import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                   TimingTowerColSettings,
                   WeatherMFDUIType)
 from .network import NetworkSettings
-from .pit_time_loss_f1 import PitTimeLossF1
-from .pit_time_loss_f2 import PitTimeLossF2
+from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .png import PngSettings
 from .prediction import HarvestPowerSmoothing, PredictionSettings
 from .privacy import PrivacySettings
