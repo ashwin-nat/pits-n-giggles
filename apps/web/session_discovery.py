@@ -43,7 +43,7 @@ from lib.logger import PngLogger
 LEGACY_CACHE_FILE = '.png_session_cache.json'
 CACHE_FILE = f'{LEGACY_CACHE_FILE}.gz'
 # Cache entries are tagged with the app version that produced them. Any version
-# mismatch (upgrade or downgrade) invalidates the whole cache — mtime alone can't
+# mismatch (upgrade or downgrade) invalidates the whole cache - mtime alone can't
 # detect that the *parsing logic*, not the file, changed, and a manually-maintained
 # schema counter is too easy to forget bumping.
 _APP_VERSION_KEY = '__app_version__'
@@ -66,7 +66,7 @@ _RACE_SESSION_TYPES: frozenset = frozenset(
 _F1_FORMULA_STRINGS: frozenset = frozenset(
     str(f) for f in PacketSessionData.FormulaType if f.is_f1()
 )
-_PARSE_CONCURRENCY = 50
+_PARSE_CONCURRENCY = 32
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -89,7 +89,7 @@ def _load_cache(cache_path: Path, app_version: str, logger: PngLogger) -> Dict[s
             cache: dict = orjson.loads(gzip.decompress(f.read()))
     except (FileNotFoundError, orjson.JSONDecodeError, gzip.BadGzipFile):
         return {}
-    # Discard the whole cache on any version change (upgrade or downgrade) — the
+    # Discard the whole cache on any version change (upgrade or downgrade) - the
     # on-disk mtime can't tell us the *parsing logic* changed, only that the file
     # didn't, and a hand-maintained schema counter is too easy to forget bumping.
     if cache.get(_APP_VERSION_KEY) != app_version:
@@ -358,27 +358,33 @@ async def _parse_one(
     full_path: Path,
     logger: PngLogger,
     cache: Dict[str, Any],
+    sem: asyncio.Semaphore,
 ) -> Tuple[Path, Any]:
-    """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files."""
-    cache_key = str(rel_path)
-    try:
-        mtime = full_path.stat().st_mtime
-    except OSError:
-        mtime = 0.0
+    """Return (rel_path, session_info | Exception), using the mtime cache to skip unchanged files.
 
-    cached = cache.get(cache_key)
-    if cached and cached.get('mtime') == mtime and 'data' in cached:
-        return rel_path, cached['data']
+    Concurrency across all files is capped via `sem` rather than by chunking into batches,
+    so a slow file doesn't stall the next file from starting.
+    """
+    async with sem:
+        cache_key = str(rel_path)
+        try:
+            mtime = full_path.stat().st_mtime
+        except OSError:
+            mtime = 0.0
 
-    try:
-        start = time.perf_counter()
-        parsed = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
-        logger.debug("[%d/%d] done in %.2fs — %s", file_idx, total, time.perf_counter() - start, rel_path)
-        cache[cache_key] = {'mtime': mtime, 'data': parsed}
-        return rel_path, parsed
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.silent("[%d/%d] failed — %s: %s", file_idx, total, rel_path, exc)
-        return rel_path, exc
+        cached = cache.get(cache_key)
+        if cached and cached.get('mtime') == mtime and 'data' in cached:
+            return rel_path, cached['data']
+
+        try:
+            start = time.perf_counter()
+            parsed = await asyncio.to_thread(_parse_session_metadata, full_path, logger)
+            logger.debug("[%d/%d] done in %.2fs - %s", file_idx, total, time.perf_counter() - start, rel_path)
+            cache[cache_key] = {'mtime': mtime, 'data': parsed}
+            return rel_path, parsed
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.silent("[%d/%d] failed - %s: %s", file_idx, total, rel_path, exc)
+            return rel_path, exc
 
 
 def _sort_files_newest_first(json_files: List[Path]) -> List[Path]:
@@ -493,23 +499,26 @@ async def build_session_list(
 
     all_raw: List[Dict[str, Any]] = []
 
-    for batch_start in range(0, total, _PARSE_CONCURRENCY):
-        batch = json_files[batch_start:batch_start + _PARSE_CONCURRENCY]
-        results = await asyncio.gather(
-            *[
-                _parse_one(batch_start + i + 1, total, rel, session_dir / rel, logger, cache)
-                for i, rel in enumerate(batch)
-            ]
-        )
+    sem = asyncio.Semaphore(_PARSE_CONCURRENCY)
+    tasks = [
+        asyncio.create_task(_parse_one(i + 1, total, rel, session_dir / rel, logger, cache, sem))
+        for i, rel in enumerate(json_files)
+    ]
 
-        for rel_path, outcome in results:
-            all_raw.append(_make_session_entry(rel_path, session_dir / rel_path, outcome))
+    completed = 0
+    for coro in asyncio.as_completed(tasks):
+        rel_path, outcome = await coro
+        all_raw.append(_make_session_entry(rel_path, session_dir / rel_path, outcome))
+        completed += 1
 
+        # _snapshot() copies + sorts all_raw from scratch, so yielding on every single
+        # completion is O(n^2) for large session dirs. Fine for now; if this becomes a
+        # bottleneck, throttle to yielding every N completions (as before) or maintain
+        # all_raw in sorted order incrementally instead of re-sorting per snapshot.
         sessions, slug_map = _snapshot(all_raw)
-        batch_end = min(batch_start + _PARSE_CONCURRENCY, total)
         logger.debug(
-            "build_session_list: files %d-%d/%d done — %d sessions so far",
-            batch_start + 1, batch_end, total, len(sessions),
+            "build_session_list: %d/%d done - %d sessions so far",
+            completed, total, len(sessions),
         )
         yield sessions, slug_map
 
