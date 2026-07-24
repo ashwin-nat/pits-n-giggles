@@ -42,7 +42,17 @@ poetry run python scripts/build.py
 # Run coverage
 poetry run python scripts/coverage_ut.py
 poetry run python scripts/coverage_integration_tests.py
+
+# Build/refresh the graphify code knowledge graph (offline, no LLM)
+poetry run graphify extract . --code-only
+
+# Query the graph
+poetry run graphify god-nodes --top 15
+poetry run graphify query "how does telemetry flow from the backend to the web app?"
+poetry run graphify explain "SessionState"
 ```
+
+`graphify-out/` is a local generated artifact (gitignored) — regenerate it with `extract` above after significant refactors rather than expecting it to stay in sync automatically.
 
 ## Tests
 

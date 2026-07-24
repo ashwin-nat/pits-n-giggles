@@ -33,3 +33,4 @@ coverage_reports/
 *.db
 .pits_n_giggles.lock
 *.gz
+graphify-out/

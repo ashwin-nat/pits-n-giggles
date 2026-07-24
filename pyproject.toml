@@ -67,4 +67,5 @@ pytest-cov = "^6.1"
 pytest-xdist = "^3.6"
 pytest-asyncio = "^0.24"
 allure-pytest = "^2.13"
+graphifyy = "^0.9.25"
 
