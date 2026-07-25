@@ -118,7 +118,7 @@ class PngRunner:
 
         self.m_logger.info(
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
-            "on the screen before the race start — that is when the game starts sending telemetry data")
+            "on the screen before the race start - that is when the game starts sending telemetry data")
 
         return initUiIntfLayer(
             settings=self.m_config,
