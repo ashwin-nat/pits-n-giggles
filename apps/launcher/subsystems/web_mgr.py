@@ -24,12 +24,16 @@
 
 import webbrowser
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING, List
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
+from lib.file_path import resolve_user_file
 
 from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
@@ -86,11 +90,13 @@ class WebAppMgr(PngAppMgrBase):
                                                        "Open Dashboard")
         self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
                                                          "Open Stream Overlay")
+        self.import_button = self.build_button(self.get_icon("import"), self.import_callback, "Import Session Data")
 
         return [
             self.start_stop_button,
             self.open_dashboard_button,
             self.open_obs_overlay_button,
+            self.import_button,
         ]
 
     def open_dashboard(self):
@@ -100,6 +106,16 @@ class WebAppMgr(PngAppMgrBase):
     def open_obs_overlay(self):
         """Open the OBS overlay page in a web browser."""
         webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
+
+    def import_callback(self):
+        """Callback for the import button. Opens the import dialog."""
+        self.debug_log(f"{self.DISPLAY_NAME}: Import button pressed")
+        import_dir = Path(resolve_user_file("data/import"))
+        self.show_success(
+            "Import Session Data",
+            "Paste your session files into this folder"
+        )
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(import_dir)))
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the web application
@@ -136,6 +152,7 @@ class WebAppMgr(PngAppMgrBase):
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, True)
         self.set_button_state(self.open_obs_overlay_button, True)
+        self.set_button_state(self.import_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
@@ -144,6 +161,7 @@ class WebAppMgr(PngAppMgrBase):
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, False)
         self.set_button_state(self.open_obs_overlay_button, False)
+        self.set_button_state(self.import_button, False)
 
     def start_stop_callback(self):
         """Start or stop the web application."""
@@ -151,6 +169,7 @@ class WebAppMgr(PngAppMgrBase):
         self.set_button_state(self.start_stop_button, False)
         self.set_button_state(self.open_dashboard_button, False)
         self.set_button_state(self.open_obs_overlay_button, False)
+        self.set_button_state(self.import_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")

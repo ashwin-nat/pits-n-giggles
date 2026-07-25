@@ -286,6 +286,7 @@ class PngLauncherWindow(QMainWindow):
             "website" : self._load_icon(icons_path_base / "website.svg"),
             "overlay-preview": self._load_icon(Path("assets") / "overlay-preview-icon.svg"),
             "close"          : self._load_icon(icons_path_base / "close-icon.svg"),
+            "import"         : self._load_icon(icons_path_base / "import.svg"),
         }
 
     def get_icon(self, key: str) -> Optional[QIcon]:
@@ -504,6 +505,7 @@ class PngLauncherWindow(QMainWindow):
         # subsystems write here; creating it now avoids coupling/races where the first
         # producer to run owns creation.
         Path(resolve_user_file("data")).mkdir(parents=True, exist_ok=True)
+        Path(resolve_user_file("data/import")).mkdir(parents=True, exist_ok=True)
 
         for subsystem in self.subsystems:
             if subsystem.get_start_by_default():
