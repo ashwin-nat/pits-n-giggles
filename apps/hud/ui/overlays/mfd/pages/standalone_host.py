@@ -22,15 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import final
 
 from PySide6.QtCore import QObject, QUrl
 
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
+from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import OverlayPosition
+from lib.config import PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -55,12 +56,8 @@ class StandalonePageHost(BaseOverlay):
     def __init__(
         self,
         page: MfdPageBase,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
+        settings: PngSettings,
+        logger: PngLogger,
         show_title_bar: bool,
     ):
         self._page = page
@@ -68,15 +65,11 @@ class StandalonePageHost(BaseOverlay):
         # Identity comes from the hosted page (instance attribute shadows the
         # empty class attribute; set before super().__init__ asserts on it).
         self.OVERLAY_ID = page.OVERLAY_ID
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None,  # pages are event-driven, never frame-driven
-        )
+        super().__init__(settings, logger)
+
+    def _active_page(self) -> MfdPageBase:
+        """The one page this host ever shows."""
+        return self._page
 
     @final
     def post_setup(self):
@@ -91,14 +84,7 @@ class StandalonePageHost(BaseOverlay):
 
         self._page._on_page_activated(page_item)
 
-        for event_type in self._page.get_handled_event_types():
-            self._register_page_event(event_type)
-
-    def _register_page_event(self, event_type: str):
-        """Register an overlay command handler that forwards to the hosted page."""
-        @self.on_event(event_type)
-        def _forward(data: dict, _et=event_type):
-            self._page.dispatch_event(_et, data)
+        register_page_event_handlers(self, [self._page], self._active_page)
 
     @final
     def get_stats(self) -> dict:

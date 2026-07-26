@@ -22,17 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QTimer
 
-from apps.hud.common import (get_ref_row, is_practice_session, is_tt_session,
-                             is_qualifying_session, is_race_type_session)
-from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from apps.hud.common import (get_ref_row, is_practice_session,
+                             is_qualifying_session, is_race_type_session,
+                             is_tt_session)
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
+from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,46 +48,25 @@ class LapTimerOverlay(BaseOverlay):
     DEFAULT_DELTA = "---"
     DEFAULT_SECTOR_STATUS = [F1Utils.SECTOR_STATUS_NA] * 3
 
-    def __init__(self,
-                 config: OverlayPosition,
-                 logger: logging.Logger,
-                 locked: bool,
-                 opacity: int,
-                 scale_factor: float,
-                 windowed_overlay: bool,
-                 min_overlay_style: bool,
-                 ):
+    def __init__(self, settings: PngSettings, logger: PngLogger):
         """Initialize lap timer overlay.
 
         Args:
-            config (OverlaysConfig): Overlay config
-            logger (logging.Logger): Logger object
-            locked (bool): Locked state
-            opacity (int): Window opacity
-            scale_factor (float): UI Scale factor (multiplier)
-            windowed_overlay (bool): Windowed overlay
-            min_overlay_style (bool): Display Minimal style overlay
+            settings (PngSettings): App settings
+            logger (PngLogger): Logger object
         """
         # Session state
         self.curr_session_uid = None
         self.last_lap_num: Optional[int] = None
         self.show_last_lap_sector_bar = False
-        self.min_overlay_style = min_overlay_style
+        self.min_overlay_style = settings.HUD.lap_timer_minimal
 
         # Timer for last lap sector display
         self.last_sector_display_timer = QTimer()
         self.last_sector_display_timer.setSingleShot(True)
         self.last_sector_display_timer.timeout.connect(self._timer_clear_cb)
 
-        super().__init__(
-            config,
-            logger,
-            locked,
-            opacity,
-            scale_factor,
-            windowed_overlay,
-            refresh_interval_ms=None  # Event-driven, no fixed refresh
-        )
+        super().__init__(settings, logger)
 
         self.set_qml_property("minOverlayStyle", self.min_overlay_style)
         self._init_event_handlers()

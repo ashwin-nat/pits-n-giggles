@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -42,6 +42,10 @@ class LapTimesPage(MfdPageBase):
     S1_VALID_MASK = 2
     S2_VALID_MASK = 4
     S3_VALID_MASK = 8
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.lap_times_show_title
 
     @final
     def on_page_activated(self):

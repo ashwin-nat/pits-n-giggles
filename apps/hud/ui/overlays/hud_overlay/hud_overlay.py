@@ -22,17 +22,17 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
 from apps.hud.common import (get_ers_mode_color, get_ref_row,
                              is_race_type_session)
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import (OverlayId, OverlayPosition, OverlaysFuelEstimationMode,
-                        OverlaysSpeedUnit)
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
+from lib.config import (OverlayId, OverlaysFuelEstimationMode,
+                        OverlaysSpeedUnit, PngSettings)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,38 +47,19 @@ class HudOverlay(BaseOverlay):
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "hud_overlay.qml"
     OVERLAY_ID = OverlayId.HUD
+    ANIMATION_DRIVEN = True
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        refresh_interval_ms: Optional[int] = None,
-        speed_unit: OverlaysSpeedUnit = OverlaysSpeedUnit.KMPH,
-        fuel_estimation_mode: OverlaysFuelEstimationMode = OverlaysFuelEstimationMode.LINEAR_REGRESSION,
-    ) -> None:
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        super().__init__(settings, logger)
 
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
-        )
-
-        self._speed_unit = speed_unit
+        self._speed_unit = settings.HUD.overlays_speed_unit
         self.subscribe_hf(HudOverlayData)
 
         self._surplus_fuel: Optional[float] = None
         self._surplus_fuel_key: str = {
             OverlaysFuelEstimationMode.LINEAR_REGRESSION: "surplus-laps-png",
             OverlaysFuelEstimationMode.GAME_BUILT_IN: "surplus-laps-game",
-        }.get(fuel_estimation_mode)
+        }.get(settings.HUD.overlays_fuel_estimation_mode)
         self._register_event_handlers()
 
     ## For high frequency data, register HF types in ctor and render periodically in render_frame.
