@@ -89,8 +89,22 @@ Resolve the data source in this order:
    ```
    from `stats["HUD"]["ingress"]["subscriber"]["__TOTAL__"]`
 
-   **Frame timing** (per overlay from `stats["HUD"]["overlays"]`):
-   - avg FPS, missed frame %, pacing error
+   **Frame timing — producer ticks** (per overlay from `stats["HUD"]["overlays"][oid]["__FRAMES_PRODUCER__"]["__FRAME__"]`):
+   - avg FPS, missed frame %, pacing error. Ticks have a rate contract, so
+     budget/miss numbers apply here (and only here).
+
+   **Render smoothness — presented frames** (per overlay, new schema):
+   - `["__PRESENT_SMOOTHNESS__"]["__PRESENT__"]`: `presents`, `count` (active
+     intervals), `boundaries` (idle gaps — normal for on-demand rendering, not
+     a problem), `hitches.count` / `hitches.per_active_min`, `active_time_s`,
+     `interval_ns` p50/p95/p99.
+   - `["__PRESENT_LATENCY__"]["__TOTAL__"]`: change→present latency
+     (LatencyStat schema) — p50/p95/p99 in µs.
+   - `["__FRAMES_RENDERED__"]` no longer exists in current builds (removed in
+     favor of the two categories above). Older sessions in the DB may still
+     contain it — if present, NEVER apply fps targets, miss ratios, or budget
+     thresholds to it (presents are on-demand and have no rate contract);
+     report its `count` at most.
 
    **Broker traffic**:
    - Total packets and bytes from `stats["Pit Wall"]["__OVERALL__"]["traffic"]`
@@ -99,6 +113,14 @@ Resolve the data source in this order:
    - ✓ loss < 1%, latency p99 < 2ms, tail ratio < 2.0, handler success > 99%, FPS within ±5%
    - ⚠ loss > 2%, p99 > 5ms, tail > 3.0, FPS < 95%
    - 🚩 loss > 10%, p99 > 10ms, handler success < 95%, missed frames > 70%
+   - Render smoothness: ✓ hitches < 1/active-min and present latency p95 ≤ 2
+     display periods (~33 ms at 60 Hz); ⚠ hitches > 5/active-min or p95 > 4
+     periods; 🚩 hitches > 30/active-min. Low `presents` or high `boundaries`
+     are NOT unhealthy — they mean content rarely changed (GPU savings).
+   - **Small-sample rule**: for any latency/percentile stat with count < 50,
+     report "insufficient samples (n=X)" instead of percentiles — a handful of
+     events (e.g. rare control commands caught inside a one-off stall) makes
+     p95/tail meaningless.
 
 4. **Output a complete markdown report** with these sections:
    1. **Executive Summary** — 1-2 sentences on overall health
@@ -106,7 +128,7 @@ Resolve the data source in this order:
    3. **Egress (Core → Broker)** — IPC publish totals, per-topic breakdown, reconnections
    4. **Ingress (Broker → HUD)** — subscriber totals, loss rate, missed messages, stale drops, per-topic
    5. **Latency Analysis** — p50/p95/p99/tail ratio per topic, with ✓/⚠/🚩
-   6. **HUD Processing Pipeline** — frame timing, FPS accuracy, missed frame %, command latency per overlay
+   6. **HUD Processing Pipeline** — producer tick timing (FPS accuracy, missed frame %), render smoothness (hitch rate, change→present latency), command latency per overlay
    7. **Broker Statistics** — overall traffic, per-topic packets/bytes, subscription events
    8. **System Health Summary** — table of all major metrics with status indicators
    9. **Observations & Recommendations** — what's healthy, what needs watching

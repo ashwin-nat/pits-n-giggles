@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -38,6 +38,10 @@ class TyreSetsPage(MfdPageBase):
 
     ALL_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard", "Inters", "Wet"]
     SLICK_COMPOUNDS = ["Super Soft", "Soft", "Medium", "Hard"]
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.tyre_sets_show_title
 
     @final
     def setup_page(self):

@@ -22,15 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
 from apps.hud.common import get_ref_row
 from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
+from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
+from lib.logger import PngLogger
 from lib.track_segment_info import (ComplexCornerSegmentInfo,
                                     CornerSegmentInfo, TrackSegmentsDatabase)
 
@@ -47,6 +47,7 @@ class CircuitInfoOverlay(BaseOverlay):
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "circuit_info.qml"
     OVERLAY_ID = OverlayId.CIRCUIT_INFO
+    ANIMATION_DRIVEN = True
 
     GREEN_SECTOR_COLOUR = "#28a745"
     YELLOW_SECTOR_COLOUR = "#ffc107"
@@ -54,28 +55,9 @@ class CircuitInfoOverlay(BaseOverlay):
     PURPLE_SECTOR_COLOUR = "#9b30ff"
     NA_SECTOR_COLOUR = "#888888"
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        circuit_info_length: int,
-        refresh_interval_ms: Optional[int] = None,  # Set none for event-driven rendering (low frequency)
-    ) -> None:
-
-        self.circuit_info_length = circuit_info_length
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
-        )
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        self.circuit_info_length = settings.HUD.circuit_info_length
+        super().__init__(settings, logger)
 
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
 

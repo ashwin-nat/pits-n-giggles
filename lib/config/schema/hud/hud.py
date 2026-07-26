@@ -616,7 +616,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     def next_mfd_page_udp_action_code(self) -> Optional[int]:
         return self.cycle_mfd_udp_action_code
 
-    def enabled_overlay_ids(self) -> list[OverlayId]:
+    def enabled_overlays_by_id(self) -> list[OverlayId]:
         """Return the enabled overlays, in OverlayId declaration order."""
         enabled = {
             OverlayId.LAP_TIMER:       self.show_lap_timer,
