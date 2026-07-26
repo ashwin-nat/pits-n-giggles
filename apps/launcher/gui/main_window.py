@@ -184,7 +184,21 @@ class PngLauncherWindow(QMainWindow):
         self.console = None
 
         # Setup logging
-        self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        try:
+            self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        except PermissionError:
+            box = QMessageBox(
+                QMessageBox.Icon.Critical,
+                APP_NAME + " - " + self.ver_str,
+                f"{APP_NAME} cannot write its files here and cannot start.\n\n"
+                "This usually happens when the app is launched from a Start Menu shortcut, "
+                "where it has no write permission.\n\n"
+                f"Please run {APP_NAME} directly from a dedicated folder instead.\n\n"
+                "(Create a folder, place the exe in it, and run it from there.)",
+            )
+            box.setWindowIcon(QIcon(logo_path))
+            box.exec()
+            sys.exit(1)
         self.log_signals = LogSignals()
         self.log_signals.log_message.connect(self._write_log)
         self.subsystems_short_names = set()
