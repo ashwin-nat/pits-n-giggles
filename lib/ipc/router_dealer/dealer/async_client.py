@@ -109,9 +109,11 @@ class IpcDealerAsync:
 
         self._ctx = zmq.asyncio.Context()
         self.socket: Optional[zmq.asyncio.Socket] = None
-        # Guards only the outbound socket.send_multipart() call itself (not the
-        # await-for-reply), so concurrent request()/fire() calls can't interleave
-        # frames of two different multipart messages on the wire.
+        # Guards every socket.send_multipart() call (outbound request()/fire(),
+        # and inbound-triggered _send_reply()/_send_ack() from the recv loop).
+        # These run as independently scheduled coroutines on the same event loop;
+        # send_multipart() awaits between frames, so without this lock two
+        # concurrent sends can interleave frames of separate messages on the wire.
         self._send_lock = asyncio.Lock()
         self.stats = EventCounter()
 
@@ -248,7 +250,8 @@ class IpcDealerAsync:
 
     async def _send_ack(self, sender_id: bytes) -> None:
         try:
-            await self.socket.send_multipart([sender_id, ACK_SENTINEL])
+            async with self._send_lock:
+                await self.socket.send_multipart([sender_id, ACK_SENTINEL])
             self.stats.track_event("__ACK_SENT__", sender_id.decode("utf-8", errors="replace"))
         except zmq.ZMQError as e:
             self.stats.track_event("__ERROR__", "ack_send_failed")
@@ -256,7 +259,8 @@ class IpcDealerAsync:
 
     async def _send_reply(self, sender_id: bytes, req_id: bytes, reply: dict) -> None:
         try:
-            await self.socket.send_multipart([sender_id, req_id, orjson.dumps(reply)])
+            async with self._send_lock:
+                await self.socket.send_multipart([sender_id, req_id, orjson.dumps(reply)])
             self.stats.track_event("__REPLY__", reply.get("status", "data"))
         except zmq.ZMQError as e:
             self.stats.track_event("__ERROR__", "reply_send_failed")
