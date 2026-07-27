@@ -25,12 +25,16 @@ import asyncio
 import sys
 import threading
 import time
-
-from .base import TestIPC
-from lib.ipc import IpcRouter, IpcDealerClient, IpcDealerAsync
-from lib.error_status import PngRouterPortInUseError
+from unittest.mock import patch
 
 import pytest
+import zmq
+
+from lib.error_status import PngRouterPortInUseError
+from lib.ipc import IpcDealerAsync, IpcDealerClient, IpcRouter
+
+from .base import TestIPC
+
 pytestmark = pytest.mark.serial
 
 if sys.platform == "win32":
@@ -1733,6 +1737,37 @@ class TestIpcRouterDealer(TestIPC):
         for i, r in enumerate(results):
             self.assertIsNotNone(r, f"request {i} never completed")
             self.assertEqual(r.get("echoed"), {"seq": i}, f"request {i} got mismatched reply: {r}")
+
+    def test_sync_dealer_own_socket_failure_fails_all_pending_requests(self):
+        """
+        If the client's own DEALER socket errors out on recv while multiple
+        request() calls are in flight, every pending caller must get an error
+        reply instead of hanging — the reconnect path clears the whole pending
+        dict, not just a single slot.
+
+        Drives IpcDealerClient._handle_dealer_event() directly with a mocked
+        recv_multipart() failure, since reliably forcing a recv-time (as opposed
+        to poll-time) ZMQError over a real socket is a timing race.
+        """
+
+        client = self._make_dealer_client("sync-ownfail", {})
+        time.sleep(PROPAGATION_DELAY)
+
+        event1, slot1 = threading.Event(), {}
+        event2, slot2 = threading.Event(), {}
+        with client._pending_lock:
+            client._pending[b"req-1"] = (event1, slot1)
+            client._pending[b"req-2"] = (event2, slot2)
+
+        with patch.object(client.socket, "recv_multipart", side_effect=zmq.ZMQError(1)):
+            client._handle_dealer_event({client.socket: 1})
+
+        self.assertTrue(event1.wait(timeout=1.0))
+        self.assertTrue(event2.wait(timeout=1.0))
+        self.assertEqual(slot1["reply"], {"status": "error", "reason": "socket reconnected"})
+        self.assertEqual(slot2["reply"], {"status": "error", "reason": "socket reconnected"})
+        with client._pending_lock:
+            self.assertEqual(client._pending, {})
 
     def test_bidir_concurrent_requests_sync_and_async_not_mixed_up(self):
         """Sync and async dealers each issue several concurrent requests to each other; no cross-talk."""
