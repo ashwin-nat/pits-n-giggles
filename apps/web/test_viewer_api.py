@@ -1,9 +1,9 @@
 """Manual smoke-test script for the save-viewer API endpoints.
 
 Usage:
-    poetry run python apps/save_viewer/test_viewer_api.py --base-url http://localhost:<port>
+    poetry run python apps/web/test_viewer_api.py --base-url http://localhost:<port>
 
-Requires the save-viewer server to be running. Exits 0 on all-pass, non-zero otherwise.
+Requires the web server to be running. Exits 0 on all-pass, non-zero otherwise.
 """
 
 import argparse
@@ -14,6 +14,7 @@ import requests
 
 REQUIRED_SESSION_KEYS = {"slug", "sessionType", "track", "date", "validLapCount"}
 TIMEOUT = 10  # seconds per request
+
 
 _passed = 0
 _failed = 0
@@ -40,7 +41,7 @@ def _get(session: requests.Session, url: str) -> requests.Response:
 
 
 def run(base_url: str) -> None:
-    base_url = base_url.rstrip("/")
+    base_url = base_url.rstrip("/") + "/save-viewer"
     session = requests.Session()
 
     # 1. GET /api/sessions → 200 with non-empty array
@@ -118,21 +119,20 @@ def run(base_url: str) -> None:
     except Exception as exc: # pylint: disable=broad-exception-caught
         _check("GET /api/sessions/does-not-exist returns 404", False, str(exc))
 
-    # 5. Path traversal → 403 or 404; body must not contain filesystem content
+    # 5. Path traversal must never leak filesystem content. A %2F-encoded ".." segment
+    #    routes past the /api/sessions/<slug> handler entirely (ASGI decodes %2F before
+    #    matching, so it lands on the SPA catch-all instead) — that's expected and safe as
+    #    long as the response is the app shell, not real file content. Any status code is
+    #    fine here; only the body content matters.
     TRAVERSAL_PATH = "/%2F..%2F..%2Fetc%2Fpasswd"
-    print(f"\n[5] GET /api/sessions{TRAVERSAL_PATH} — expect 403/404 + safe body")
+    print(f"\n[5] GET /api/sessions{TRAVERSAL_PATH} — expect no filesystem content in the body")
     try:
         r = _get(session, f"{base_url}/api/sessions{TRAVERSAL_PATH}")
-        status_ok = r.status_code in {403, 404}
         body_safe = "root:" not in r.text and "/bin/" not in r.text
         _check(
-            "Path traversal returns 403/404 and body contains no filesystem content",
-            status_ok and body_safe,
-            (
-                f"got {r.status_code}"
-                if not status_ok
-                else "response body contains filesystem content"
-            ),
+            "Path traversal response body contains no filesystem content",
+            body_safe,
+            "response body contains filesystem content" if not body_safe else "",
         )
     except Exception as exc: # pylint: disable=broad-exception-caught
         _check(

@@ -33,7 +33,6 @@ from lib.child_proc_mgmt import report_ipc_port_from_child
 
 from .command_handlers import (handleForwardingConfigChange, handleGetStats, handleManualSave,
                                handleHeartbeatMissed, handleShutdown, handleUdpActionCodeChange)
-from ..telemetry_web_server import TelemetryWebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -44,7 +43,6 @@ def registerIpcTask(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
         dealer: IpcDealerAsync,
-        web_server: TelemetryWebServer,
         tasks: List[asyncio.Task]
         ) -> None:
     """Register the IPC task
@@ -56,7 +54,6 @@ def registerIpcTask(
         telemetry_handler (F1TelemetryHandler): Telemetry handler
         ipc_pub (IpcPublisherAsync): IPC publisher
         dealer (IpcDealerAsync): IPC dealer
-        web_server (TelemetryWebServer): Telemetry web server
         tasks (List[asyncio.Task]): List of tasks
     """
 
@@ -91,7 +88,7 @@ def registerIpcTask(
 
     @server.on_get_stats
     async def _handle_get_stats(_args: dict):
-        return await handleGetStats(telemetry_handler, ipc_pub, dealer, web_server)
+        return await handleGetStats(telemetry_handler, ipc_pub, dealer)
 
     tasks.append(asyncio.create_task(server.run(), name="IPC Server"))
 

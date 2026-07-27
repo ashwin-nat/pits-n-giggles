@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pits n' Giggles{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="png-has-sidebar">
+    {% include 'partials/sidebar.html' %}
+    {% block content %}{% endblock %}
+    {% block extra_scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+</body>
+</html>

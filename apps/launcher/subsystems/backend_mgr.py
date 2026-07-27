@@ -23,15 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-import webbrowser
 from dataclasses import replace
 from typing import TYPE_CHECKING, List, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
-from lib.error_status import (PNG_ERROR_CODE_HTTP_PORT_IN_USE,
-                              PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE)
+from lib.error_status import PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
 from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
@@ -63,8 +61,6 @@ class BackendAppMgr(PngAppMgrBase):
         if replay_server:
             extra_args.append("--replay-server")
         final_args = [*common_cfg.args, *extra_args]
-        self.port = common_cfg.settings.Network.server_port
-        self.proto = common_cfg.settings.HTTPS.proto
 
         config = replace(common_cfg,
                          args=final_args,
@@ -75,14 +71,6 @@ class BackendAppMgr(PngAppMgrBase):
         super().__init__(
             config=config,
         )
-        self.register_exit_reason(PNG_ERROR_CODE_HTTP_PORT_IN_USE, ExitReason(
-            code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,
-            status="HTTP Port Conflict",
-            title="HTTP port in use",
-            message="The HTTP port is already in use by another process. Please close the other process and try again or change the port.",
-            can_restart=False,
-            settings_field='Network -> "Pits n\' Giggles HTTP Server Port"'
-        ))
         self.register_exit_reason(PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, ExitReason(
             code=PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
             status="UDP Port Conflict",
@@ -98,26 +86,12 @@ class BackendAppMgr(PngAppMgrBase):
         """
 
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
-                                                       "Open Dashboard")
-        self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
-                                                         "Open Stream Overlay")
         self.manual_save_button = self.build_button(self.get_icon("save"), self.manual_save, "Manual Save")
 
         return [
             self.start_stop_button,
-            self.open_dashboard_button,
-            self.open_obs_overlay_button,
             self.manual_save_button,
         ]
-
-    def open_dashboard(self):
-        """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
-
-    def open_obs_overlay(self):
-        """Open the OBS overlay page in a web browser."""
-        webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -126,10 +100,6 @@ class BackendAppMgr(PngAppMgrBase):
 
         :return: True if the app needs to be restarted
         """
-
-        # Update the port number
-        self.port = new_settings.Network.server_port
-        self.proto = new_settings.HTTPS.proto
 
         # Update UDP action codes if required
         if udp_action_codes_diff := self.curr_settings.diff(new_settings, {
@@ -168,8 +138,6 @@ class BackendAppMgr(PngAppMgrBase):
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "telemetry_port",
-                "server_port",
-                "bind_address",
                 "wdt_interval_sec",
                 "broker_xsub_port",
                 "broker_router_port",
@@ -177,7 +145,6 @@ class BackendAppMgr(PngAppMgrBase):
             ],
             "Capture" : [],
             "Display" : [
-                "refresh_interval",
                 "local_telemetry_rate",
             ],
             "Logging" : [],
@@ -203,9 +170,6 @@ class BackendAppMgr(PngAppMgrBase):
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_dashboard_button, True)
-        self.set_button_state(self.open_obs_overlay_button, True)
         self.set_button_state(self.manual_save_button, True)
 
     def post_stop(self):
@@ -213,8 +177,6 @@ class BackendAppMgr(PngAppMgrBase):
         self.set_button_icon(self.start_stop_button, self.get_icon("start"))
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_obs_overlay_button, False)
         self.set_button_state(self.manual_save_button, False)
 
     def manual_save(self):
@@ -261,8 +223,6 @@ class BackendAppMgr(PngAppMgrBase):
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
         self.set_button_state(self.manual_save_button, False)
-        self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.open_obs_overlay_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Stop button pressed")

@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       McpAppMgr, PngAppMgrBase,
-                                      PngAppMgrConfig, SaveViewerAppMgr)
+                                      PngAppMgrConfig, WebAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -244,7 +244,7 @@ class PngLauncherWindow(QMainWindow):
 
         self.subsystems: List[PngAppMgrBase] = [
             BackendAppMgr(common_cfg, replay_server=replay_mode),
-            SaveViewerAppMgr(common_cfg),
+            WebAppMgr(common_cfg),
             HudAppMgr(common_cfg),
             BrokerAppMgr(common_cfg),
             McpAppMgr(common_cfg)
@@ -300,6 +300,7 @@ class PngLauncherWindow(QMainWindow):
             "website" : self._load_icon(icons_path_base / "website.svg"),
             "overlay-preview": self._load_icon(Path("assets") / "overlay-preview-icon.svg"),
             "close"          : self._load_icon(icons_path_base / "close-icon.svg"),
+            "import"         : self._load_icon(icons_path_base / "import.svg"),
         }
 
     def get_icon(self, key: str) -> Optional[QIcon]:
@@ -518,6 +519,7 @@ class PngLauncherWindow(QMainWindow):
         # subsystems write here; creating it now avoids coupling/races where the first
         # producer to run owns creation.
         Path(resolve_user_file("data")).mkdir(parents=True, exist_ok=True)
+        Path(resolve_user_file("data/import")).mkdir(parents=True, exist_ok=True)
 
         for subsystem in self.subsystems:
             if subsystem.get_start_by_default():

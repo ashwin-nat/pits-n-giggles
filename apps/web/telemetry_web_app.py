@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,16 +29,19 @@ import sys
 from pathlib import Path
 from typing import List
 
-from apps.save_viewer.save_viewer_ipc import init_ipc_task
-from apps.save_viewer.save_viewer_state import init_state
-from apps.save_viewer.save_web_server import init_server_task
 from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import load_config_from_json
+from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PngError
 from lib.file_path import get_app_base_dir
 from lib.logger import get_logger
+from lib.periodic_task import periodic_task
 from lib.version import get_version
 from meta.meta import APP_NAME
+
+from .ipc_mgmt import init_ipc_task
+from .tasks import (initDealer, initSubscriber, raceTableEmitTask,
+                    streamOverlayEmitTask)
+from .web_server import WebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -49,35 +52,62 @@ def parseArgs() -> argparse.Namespace:
         argparse.Namespace: The parsed args namespace
     """
 
-    # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} save data viewer")
-
-    # Add command-line arguments with default values
+    parser = argparse.ArgumentParser(description=f"{APP_NAME} unified web app")
     parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
-    # Parse the command-line arguments
     return parser.parse_args()
 
-async def main(logger: logging.Logger, server_port: int, version: str, bind_address: str,
-               session_dir: Path, viewer_dir: Path) -> None:
+async def main(logger: logging.Logger, settings: PngSettings, version: str, debug_mode: bool) -> None:
     """Main function
 
     Args:
         logger (logging.Logger): Logger
-        server_port (int): Server port
-        version (str): Version
-        bind_address (str): Bind address for the web server
-        session_dir (Path): Directory to scan for saved session JSON files
-        viewer_dir (Path): Directory containing the built f1-save-viewer React app
+        settings (PngSettings): Settings
+        version (str): Version string
+        debug_mode (bool): Whether debug mode is enabled
     """
     tasks: List[asyncio.Task] = []
-    init_state(logger=logger)
-    web_server = init_server_task(port=server_port, ver_str=version, logger=logger, tasks=tasks,
-                                  bind_address=bind_address, session_dir=session_dir, viewer_dir=viewer_dir)
-    init_ipc_task(logger=logger, server=web_server, tasks=tasks)
+    shutdown_event = asyncio.Event()
+
+    logger.info("Starting web app, version=%s", version)
+
+    session_dir_setting = settings.Capture.session_dir_path
+    session_dir = session_dir_setting if session_dir_setting.is_absolute() \
+        else (get_app_base_dir() / session_dir_setting).resolve()
+    viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
+    logger.debug("Session directory: %s", session_dir)
+    logger.debug("Viewer directory: %s", viewer_dir)
+
+    web_server = WebServer(settings=settings, ver_str=get_version(use_meta_version=True), logger=logger,
+                           session_dir=session_dir, viewer_dir=viewer_dir, debug_mode=debug_mode)
+    tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
+
+    ipc_sub = initSubscriber(settings.Network.broker_xpub_port, logger, web_server)
+    tasks.append(asyncio.create_task(ipc_sub.run(), name="Broker Subscriber Task"))
+
+    dealer = initDealer(settings.Network.broker_router_port, logger, web_server)
+    tasks.append(asyncio.create_task(dealer.start(), name="Web Dealer Recv"))
+
+    tasks.append(asyncio.create_task(
+        periodic_task(
+            settings.Display.refresh_interval,
+            shutdown_event,
+            logger,
+            raceTableEmitTask,
+            web_server), name="Race Table Emit Task"))
+    tasks.append(asyncio.create_task(
+        periodic_task(
+            settings.Display.refresh_interval,
+            shutdown_event,
+            logger,
+            streamOverlayEmitTask,
+            web_server), name="Stream Overlay Emit Task"))
+
+    init_ipc_task(logger, web_server, ipc_sub, dealer, shutdown_event, tasks)
 
     try:
+        logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         logger.debug("Main task was cancelled.")
@@ -89,29 +119,21 @@ async def main(logger: logging.Logger, server_port: int, version: str, bind_addr
         logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
         sys.exit(e.exit_code)
 
-
 def entry_point():
     """Entry point"""
     report_pid_from_child()
     args = parseArgs()
-    png_logger = get_logger("save_viewer", args.debug, jsonl=True)
+    png_logger = get_logger("web", args.debug, jsonl=True)
     version = get_version()
-    configs = load_config_from_json(args.config_file, png_logger)
-    p = configs.Capture.session_dir_path
-    session_dir = p if p.is_absolute() else (get_app_base_dir() / p).resolve()
-    png_logger.info("Session directory: %s", session_dir)
-    viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
-    png_logger.debug("Viewer directory: %s", viewer_dir)
+    settings = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
         asyncio.run(main(
             logger=png_logger,
-            server_port=configs.Network.save_viewer_port,
+            settings=settings,
             version=version,
-            bind_address=configs.Network.bind_address,
-            session_dir=session_dir,
-            viewer_dir=viewer_dir))
+            debug_mode=args.debug))
     except KeyboardInterrupt:
         png_logger.info("Program interrupted by user.")
     except asyncio.CancelledError:

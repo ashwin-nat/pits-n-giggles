@@ -31,6 +31,7 @@ from requests.exceptions import RequestException
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.version import get_version, is_update_available
+from meta.meta import APP_VERSION
 
 from tests_base import F1TelemetryUnitTestsBase
 
@@ -124,3 +125,11 @@ class TestGetVersion(F1TelemetryUnitTestsBase):
     @patch.dict(os.environ, {'PNG_VERSION': ''})
     def test_returns_empty_string_if_env_is_empty(self):
         self.assertEqual(get_version(), '')
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_returns_meta_version_when_use_meta_version_true_and_env_missing(self):
+        self.assertEqual(get_version(use_meta_version=True), APP_VERSION)
+
+    @patch.dict(os.environ, {'PNG_VERSION': '3.0.0'})
+    def test_env_value_takes_priority_over_use_meta_version(self):
+        self.assertEqual(get_version(use_meta_version=True), '3.0.0')

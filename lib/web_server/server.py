@@ -422,6 +422,10 @@ class BaseWebServer:
                 'file': 'favicon.ico',
                 'mimetype': 'image/vnd.microsoft.icon'
             },
+            '/logo.png': {
+                'file': 'logo.png',
+                'mimetype': 'image/png'
+            },
             '/tyre-icons/soft.svg': {
                 'file': 'tyre-icons/soft_tyre.svg',
                 'mimetype': 'image/svg+xml'

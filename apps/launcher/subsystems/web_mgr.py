@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,16 @@
 
 import webbrowser
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING, List
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QPushButton
 
 from lib.config import PngSettings
 from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
+from lib.file_path import resolve_user_file
 
 from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
 
@@ -38,24 +42,24 @@ if TYPE_CHECKING:
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class SaveViewerAppMgr(PngAppMgrBase):
-    """Implementation of PngApp for save viewer"""
+class WebAppMgr(PngAppMgrBase):
+    """Implementation of PngApp for the unified web subsystem (live dashboard + save viewer)"""
 
-    MODULE_PATH = "apps.save_viewer"
-    DISPLAY_NAME = "Save Viewer"
-    SHORT_NAME = "SAVE"
+    MODULE_PATH = "apps.web"
+    DISPLAY_NAME = "Web"
+    SHORT_NAME = "WEB"
 
     def __init__(self,
                  common_cfg: PngAppMgrConfig):
-        """Initialize the save viewer manager
-        :param common_cfg: Common configuration for the save viewer app manager
+        """Initialize the web manager
+        :param common_cfg: Common configuration for the web app manager
         """
 
         extra_args = []
         if common_cfg.debug_mode:
             extra_args.append("--debug")
         temp_args = common_cfg.args + extra_args
-        self.port = common_cfg.settings.Network.save_viewer_port
+        self.port = common_cfg.settings.Network.server_port
         self.proto = common_cfg.settings.HTTPS.proto
 
         config = replace(common_cfg,
@@ -71,9 +75,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
             code=PNG_ERROR_CODE_HTTP_PORT_IN_USE,
             status="HTTP Port Conflict",
             title="HTTP port in use",
-            message="The HTTP port is already in use by another process. Please close the other process and try again or change the port",
+            message="The HTTP port is already in use by another process. Please close the other process and try again or change the port.",
             can_restart=False,
-            settings_field='Network -> "Pits n\' Giggles Save Data Viewer Port"'
+            settings_field='Network -> "Pits n\' Giggles HTTP Server Port"'
         ))
 
     def get_buttons(self) -> List[QPushButton]:
@@ -84,24 +88,37 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
         self.open_dashboard_button = self.build_button(self.get_icon("dashboard"), self.open_dashboard,
                                                        "Open Dashboard")
-        self.github_button = self.build_button(self.get_icon("github"), self.open_github, "GitHub")
+        self.open_obs_overlay_button = self.build_button(self.get_icon("twitch"), self.open_obs_overlay,
+                                                         "Open Stream Overlay")
+        self.import_button = self.build_button(self.get_icon("import"), self.import_callback, "Import Session Data")
 
         return [
             self.start_stop_button,
             self.open_dashboard_button,
-            self.github_button
+            self.open_obs_overlay_button,
+            self.import_button,
         ]
 
     def open_dashboard(self):
         """Open the dashboard viewer in a web browser."""
-        webbrowser.open(f'http://localhost:{self.port}', new=2)
+        webbrowser.open(f'{self.proto}://localhost:{self.port}', new=2)
 
-    def open_github(self):
-        """Open the GitHub repository in a web browser."""
-        webbrowser.open("https://github.com/linuz90/f1-telemetry-viewer", new=2)
+    def open_obs_overlay(self):
+        """Open the OBS overlay page in a web browser."""
+        webbrowser.open(f'{self.proto}://localhost:{self.port}/player-stream-overlay', new=2)
+
+    def import_callback(self):
+        """Callback for the import button. Opens the import dialog."""
+        self.debug_log(f"{self.DISPLAY_NAME}: Import button pressed")
+        import_dir = Path(resolve_user_file("data/import"))
+        self.show_success(
+            "Import Session Data",
+            "Paste your session files into this folder"
+        )
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(import_dir)))
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
-        """Handle changes in settings for the backend application
+        """Handle changes in settings for the web application
 
         :param new_settings: New settings
 
@@ -110,16 +127,22 @@ class SaveViewerAppMgr(PngAppMgrBase):
 
         diff = self.curr_settings.diff(new_settings, {
             "Network": [
-                "save_viewer_port",
+                "server_port",
                 "bind_address",
+                "broker_xpub_port",
+                "broker_router_port",
             ],
-            "Capture": [
-                "session_dir",
+            "Display": [
+                "refresh_interval",
+                "save_viewer_poll_interval_secs",
+                "auto_open_dashboard",
             ],
+            "HTTPS": [],
         })
         self.debug_log(f"{self.DISPLAY_NAME} Settings changed: {diff}")
         # Update the port number
-        self.port = new_settings.Network.save_viewer_port
+        self.port = new_settings.Network.server_port
+        self.proto = new_settings.HTTPS.proto
         return bool(diff)
 
     def post_start(self):
@@ -127,9 +150,9 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, True)
-        self.set_button_state(self.github_button, True)
+        self.set_button_state(self.open_obs_overlay_button, True)
+        self.set_button_state(self.import_button, True)
 
     def post_stop(self):
         """Update buttons after app stop"""
@@ -137,13 +160,16 @@ class SaveViewerAppMgr(PngAppMgrBase):
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.open_dashboard_button, False)
-        self.set_button_state(self.github_button, True)
+        self.set_button_state(self.open_obs_overlay_button, False)
+        self.set_button_state(self.import_button, False)
 
     def start_stop_callback(self):
-        """Start or stop the backend application."""
+        """Start or stop the web application."""
         # disable the button. enable in post_start/post_stop
         self.set_button_state(self.start_stop_button, False)
         self.set_button_state(self.open_dashboard_button, False)
+        self.set_button_state(self.open_obs_overlay_button, False)
+        self.set_button_state(self.import_button, False)
         try:
             # Call the start_stop method
             self.start_stop("Button pressed")

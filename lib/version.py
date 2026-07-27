@@ -30,13 +30,21 @@ from typing import Any, Dict, List, Optional
 import requests
 from packaging import version
 
+from meta.meta import APP_VERSION
+
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 PNG_RELEASES_API = "https://api.github.com/repos/ashwin-nat/pits-n-giggles/releases"
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def get_version() -> str:
+def get_version(use_meta_version: bool = False) -> str:
     """Get the version string from env variable
+
+    Args:
+        use_meta_version (bool): If True, fall back to meta.meta.APP_VERSION instead of
+            the git-derived dev string when PNG_VERSION is not set. Useful for callers
+            that need a stable version string that doesn't change on every commit
+            (e.g. dev-mode cache-busting).
 
     Returns:
         str: Version string
@@ -45,6 +53,9 @@ def get_version() -> str:
     env_ver = os.environ.get('PNG_VERSION')
     if env_ver is not None:
         return env_ver
+
+    if use_meta_version:
+        return APP_VERSION
 
     branch_name, latest_commit, working_tree_state = _get_git_metadata()
     return f"dev_{branch_name}_{latest_commit}_{working_tree_state}"

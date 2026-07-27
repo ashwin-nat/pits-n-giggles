@@ -41,7 +41,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 
 ## Purpose
 
-The `lib/` folder is not a standalone app. Instead, it provides reusable modules that the apps (`backend`, `hud`, `save_viewer`, `launcher`, `frontend`) can import.
+The `lib/` folder is not a standalone app. Instead, it provides reusable modules that the apps (`backend`, `web`, `hud`, `launcher`, `frontend`) can import.
 
 ## Usage Example
 

@@ -22,10 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .telemetry_web_server import TelemetryWebServer
 from .telemetry_ui_tasks import initUiIntfLayer
 
 __all__ = [
-    "TelemetryWebServer",
     "initUiIntfLayer",
 ]
