@@ -46,6 +46,7 @@ class TestCaptureSettings(TestF1ConfigBase):
         self.assertFalse(settings.post_fp_data_autosave)
         self.assertFalse(settings.post_tt_data_autosave)
         self.assertFalse(settings.save_race_ctrl_msg)
+        self.assertTrue(settings.drop_pit_otk_msg)
 
     def test_boolean_validation_post_race_data_autosave(self):
         capture_true = CaptureSettings(post_race_data_autosave=True)
@@ -110,12 +111,24 @@ class TestCaptureSettings(TestF1ConfigBase):
         capture_false = CaptureSettings(save_race_ctrl_msg=False)
         self.assertFalse(capture_false.save_race_ctrl_msg)
 
-        # Also test coercion from strings if you want
         capture_str_true = CaptureSettings(save_race_ctrl_msg="True")
         self.assertTrue(capture_str_true.save_race_ctrl_msg)
 
         capture_str_false = CaptureSettings(save_race_ctrl_msg="False")
         self.assertFalse(capture_str_false.save_race_ctrl_msg)
+
+    def test_boolean_validation_drop_pit_otk_msg(self):
+        capture_true = CaptureSettings(drop_pit_otk_msg=True)
+        self.assertTrue(capture_true.drop_pit_otk_msg)
+
+        capture_false = CaptureSettings(drop_pit_otk_msg=False)
+        self.assertFalse(capture_false.drop_pit_otk_msg)
+
+        capture_str_true = CaptureSettings(drop_pit_otk_msg="True")
+        self.assertTrue(capture_str_true.drop_pit_otk_msg)
+
+        capture_str_false = CaptureSettings(drop_pit_otk_msg="False")
+        self.assertFalse(capture_str_false.drop_pit_otk_msg)
 
     def test_invalid_type_raises(self):
         with self.assertRaises(ValidationError):
@@ -132,6 +145,9 @@ class TestCaptureSettings(TestF1ConfigBase):
 
         with self.assertRaises(ValidationError):
             CaptureSettings(save_race_ctrl_msg="notaboolean")
+
+        with self.assertRaises(ValidationError):
+            CaptureSettings(drop_pit_otk_msg="notaboolean")
 
     def test_default_just_in_case_autosave(self):
         self.assertTrue(CaptureSettings().just_in_case_autosave)

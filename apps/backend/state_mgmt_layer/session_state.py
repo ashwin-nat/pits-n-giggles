@@ -55,7 +55,8 @@ from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
-from lib.race_ctrl import (DriverAiStatusChange, SessionRaceControlManager,
+from lib.race_ctrl import (DriverAiStatusChange, MessageType,
+                           OvertakeRaceCtrlMsg, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
 from lib.track_segment_info import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
@@ -322,6 +323,7 @@ class SessionState:
         'm_session_info',
         'm_process_car_setups',
         'm_save_race_ctrl_msgs',
+        'm_drop_pit_otk_msg',
         'm_weather_aware_prediction',
         'm_tyre_wear_window_size',
         'm_power_filter_window_size',
@@ -376,6 +378,7 @@ class SessionState:
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
+        self.m_drop_pit_otk_msg: bool = settings.Capture.drop_pit_otk_msg
         self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
         self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
@@ -1126,30 +1129,53 @@ class SessionState:
                 driver_obj.m_car_info.resetPowerEstimators()
 
     def handleEvent(self, packet: PacketEventData):
-        """Handle the event packet
+        """Handle an event packet."""
 
-        Args:
-            packet (PacketEventData): The parsed object containing the event data packet's contents
-        """
+        leader = self.getDriverInfoByPosition(1)
+        lap_num = leader.m_lap_info.m_current_lap if leader else None
 
-        # if not self.m_save_race_ctrl_msg:
-        #     return
+        msg = race_ctrl_event_msg_factory(packet, lap_number=lap_num)
+        if not msg:
+            return
 
-        # Get lap number from leader
-        if driver := self.getDriverInfoByPosition(1):
-            lap_num = driver.m_lap_info.m_current_lap
-        else:
-            lap_num = None
+        if msg.message_type == MessageType.OVERTAKE:
+            otk_msg: OvertakeRaceCtrlMsg = msg
+            overtaker = self._getObjectByIndex(msg.involved_drivers[0], create=False)
+            overtaken = self._getObjectByIndex(msg.involved_drivers[1], create=False)
 
-        if msg := race_ctrl_event_msg_factory(packet, lap_number=lap_num):
-            if msg.involved_drivers:
-                driver_obj = self._getObjectByIndex(msg.involved_drivers[0], create=False)
-                if driver_obj and driver_obj.m_packet_copies.m_packet_lap_data:
-                    _lap_data = driver_obj.m_packet_copies.m_packet_lap_data
-                    msg.lap_distance = _lap_data.m_lapDistance
-                    msg.segment_info = self._lookup_segment_info(msg.lap_distance)
-                    msg.sector = str(_lap_data.m_sector)
-            self.m_race_ctrl.add_message(msg)
+            overtaker_pitting = overtaker.m_lap_info.m_is_pitting if overtaker else None
+            overtaken_pitting = overtaken.m_lap_info.m_is_pitting if overtaken else None
+
+            self.m_logger.debug(
+                "Overtake event: %s overtakes %s. Pit status: %s, %s",
+                overtaker.m_driver_info.name if overtaker else "Unknown",
+                overtaken.m_driver_info.name if overtaken else "Unknown",
+                overtaker_pitting,
+                overtaken_pitting,
+            )
+
+            # Ignore overtakes where only one car is pitting.
+            if overtaker_pitting != overtaken_pitting:
+                self.m_logger.debug(
+                    "Dropping overtake event because only one driver is pitting: %s=%s, %s=%s",
+                    overtaker.m_driver_info.name if overtaker else "Unknown",
+                    overtaker_pitting,
+                    overtaken.m_driver_info.name if overtaken else "Unknown",
+                    overtaken_pitting,
+                )
+                return
+
+            otk_msg.is_pit_lane_overtake = overtaker_pitting
+
+        if msg.involved_drivers:
+            driver = self._getObjectByIndex(msg.involved_drivers[0], create=False)
+            lap_data = driver.m_packet_copies.m_packet_lap_data if driver else None
+            if lap_data:
+                msg.lap_distance = lap_data.m_lapDistance
+                msg.segment_info = self._lookup_segment_info(msg.lap_distance)
+                msg.sector = str(lap_data.m_sector)
+
+        self.m_race_ctrl.add_message(msg)
 
     def setChequeredFlagState(self, flag_val: bool) -> None:
         """Set the chequered flag status

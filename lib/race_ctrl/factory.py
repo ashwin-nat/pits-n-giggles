@@ -131,9 +131,10 @@ def race_ctrl_event_msg_factory(packet: PacketEventData, lap_number: int) -> Opt
 
         case PacketEventData.EventPacketType.COLLISION:
             collision: PacketEventData.Collision = packet.mEventDetails
+            sev = str(collision.m_severity) or None
             return CollisionRaceCtrlMsg(timestamp=time.time(), involved_drivers=[collision.m_vehicle_1_index,
                                                                                 collision.m_vehicle_2_index],
-                                        severity=str(collision.m_severity),
+                                        severity=sev,
                                         lap_number=lap_number)
 
         case PacketEventData.EventPacketType.FLASHBACK:
