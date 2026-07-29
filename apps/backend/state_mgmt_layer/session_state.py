@@ -34,8 +34,8 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.config import PngSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (ActualTyreCompound, CarStatusData, F1Utils,
-                          FinalClassificationData, GameMode, LapData,
+from lib.f1_types import (MAX_DRIVERS, ActualTyreCompound, CarStatusData,
+                          F1Utils, FinalClassificationData, GameMode, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
                           PacketCarTelemetryData, PacketEventData,
@@ -300,8 +300,6 @@ class SessionState:
     offload it to a separate task via the inter task communicator
     """
 
-    MAX_DRIVERS: int = 24
-
     __slots__ = (
         'm_logger',
         'm_pkt_count',
@@ -353,7 +351,7 @@ class SessionState:
 
         self.m_logger = logger
         self.m_pkt_count: int = 0
-        self.m_driver_data: List[Optional[DataPerDriver]] = [None] * self.MAX_DRIVERS
+        self.m_driver_data: List[Optional[DataPerDriver]] = [None] * MAX_DRIVERS
         self.m_player_index: Optional[int] = None
         self.m_fastest_index: Optional[int] = None
         self.m_num_active_cars: Optional[int] = None
@@ -400,7 +398,7 @@ class SessionState:
         Args:
             reason (str): Why the data structures should be cleared. Used for logging
         """
-        self.m_driver_data = [None] * self.MAX_DRIVERS
+        self.m_driver_data = [None] * MAX_DRIVERS
         self.m_player_index = None
         self.m_fastest_index = None
         self.m_num_active_cars = None
