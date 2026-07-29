@@ -638,12 +638,11 @@ class DataPerDriver:
         # Add the tyre wear data into the tyre stint history
         tyre_set_key = self._getCurrentTyreSetKey()
         if old_lap_number and self.m_tyre_info.m_tyre_set_history_manager.length:
-            wear = TyreWearPerLap(
-                fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+            wear = TyreWearPerLap.from_car_damage(
+                self.m_packet_copies.m_packet_car_damage,
                 lap_number=old_lap_number,
+                # NOTE: preserved verbatim - this passes the SafetyCarType enum itself rather than comparing it
+                # against NO_SAFETY_CAR the way the extrapolator sample below does. See state-mgmt-simplification.md
                 is_racing_lap=self.m_driver_info.m_curr_lap_max_sc_status,
                 desc=f"end of lap {old_lap_number} snapshot. {tyre_set_key}",
                 weather_id=self.m_state_ref.m_session_info.curr_weather
@@ -652,11 +651,8 @@ class DataPerDriver:
 
         # Add the tyre wear data into the extrapolator
         if tyre_set_id := self._getCurrentTyreSetKey():
-            self.m_tyre_info.m_tyre_wear_extrapolator.add(TyreWearPerLap(
-                fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+            self.m_tyre_info.m_tyre_wear_extrapolator.add(TyreWearPerLap.from_car_damage(
+                self.m_packet_copies.m_packet_car_damage,
                 lap_number=old_lap_number,
                 is_racing_lap=(self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR),
                 desc=tyre_set_id,
@@ -749,11 +745,8 @@ class DataPerDriver:
                 if zeroth_lap_snapshot := self.m_per_lap_snapshots.get(0):
                     if car_dmg_pkt := zeroth_lap_snapshot.m_car_damage_packet:
                         # Start of race, enter the tyre wear data along with starting value
-                        initial_tyre_wear = TyreWearPerLap(
-                            fl_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                            fr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                            rl_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                            rr_tyre_wear=car_dmg_pkt.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+                        initial_tyre_wear = TyreWearPerLap.from_car_damage(
+                            car_dmg_pkt,
                             lap_number=0,
                             is_racing_lap=True,
                             desc=f"end of zeroth lap data point {fitted_tyre_set_key}",
@@ -919,11 +912,8 @@ class DataPerDriver:
                 last_stint_max_wear.desc = f"Delayed tyre set change weird. old tyre val. key={fitted_tyre_set_key}"
                 self.m_tyre_info.m_tyre_set_history_manager.overwriteTyreWear(last_stint_max_wear, stint_index=-1)
 
-        initial_tyre_wear = TyreWearPerLap(
-            fl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-            fr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-            rl_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-            rr_tyre_wear=self.m_packet_copies.m_packet_car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+        initial_tyre_wear = TyreWearPerLap.from_car_damage(
+            self.m_packet_copies.m_packet_car_damage,
             lap_number=self.m_lap_info.m_current_lap-1, # -1 because this is the end of last lap value
             is_racing_lap=True,
             desc=f"tyre set change detected. key={str(fitted_tyre_set_key)}",

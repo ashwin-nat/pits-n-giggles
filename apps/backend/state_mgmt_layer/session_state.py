@@ -909,11 +909,8 @@ class SessionState:
             obj_to_be_updated.addCarDamageRaceCtrlMsg(car_damage)
             tyre_set_key = obj_to_be_updated._getCurrentTyreSetKey()
             obj_to_be_updated.m_packet_copies.m_packet_car_damage = car_damage
-            obj_to_be_updated.m_tyre_info.tyre_wear.push(TyreWearPerLap(
-                fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
-                fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
-                rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
-                rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+            obj_to_be_updated.m_tyre_info.tyre_wear.push(TyreWearPerLap.from_car_damage(
+                car_damage,
                 desc=f"curr tyre wear {tyre_set_key}",
                 weather_id=self.m_session_info.curr_weather,
             ))
