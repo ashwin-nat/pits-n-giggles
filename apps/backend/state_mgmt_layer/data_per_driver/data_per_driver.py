@@ -31,8 +31,8 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.delta import LapDeltaManager
 from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
-                          PacketLapPositionsData, ResultStatus, SafetyCarType,
-                          SessionType, TrackID)
+                          PacketLapPositionsData, ResultStatus, SessionType,
+                          TrackID)
 from lib.race_ctrl import (CarDamageRaceControlMessage,
                            DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
@@ -654,9 +654,7 @@ class DataPerDriver:
             wear = TyreWearPerLap.from_car_damage(
                 self.m_packet_copies.m_packet_car_damage,
                 lap_number=old_lap_number,
-                # NOTE: preserved verbatim - this passes the SafetyCarType enum itself rather than comparing it
-                # against NO_SAFETY_CAR the way the extrapolator sample below does. See state-mgmt-simplification.md
-                is_racing_lap=self.m_driver_info.m_curr_lap_max_sc_status,
+                is_racing_lap=self.m_driver_info.is_curr_lap_racing,
                 desc=f"end of lap {old_lap_number} snapshot. {tyre_set_key}",
                 weather_id=self.m_state_ref.m_session_info.curr_weather
             )
@@ -667,7 +665,7 @@ class DataPerDriver:
             self.m_tyre_info.m_tyre_wear_extrapolator.add(TyreWearPerLap.from_car_damage(
                 self.m_packet_copies.m_packet_car_damage,
                 lap_number=old_lap_number,
-                is_racing_lap=(self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR),
+                is_racing_lap=self.m_driver_info.is_curr_lap_racing,
                 desc=tyre_set_id,
                 weather_id=self.m_state_ref.m_session_info.curr_weather
             ))
@@ -677,7 +675,7 @@ class DataPerDriver:
             self.m_car_info.m_fuel_rate_recommender.add(
                 self.m_packet_copies.m_packet_car_status.m_fuelInTank,
                 old_lap_number,
-                (self.m_driver_info.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR), # is_racing_lap
+                self.m_driver_info.is_curr_lap_racing,
                 desc=f"end of lap {old_lap_number} snapshot {tyre_set_key}"
             )
 

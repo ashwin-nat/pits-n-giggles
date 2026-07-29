@@ -45,7 +45,7 @@ class DriverInfo:
         telemetry_restrictions (Optional[TelemetrySetting]): Telemetry settings indicating the level of data available for the driver.
         driver_number (Optional[int]): The race number of the driver.
         m_dnf_status_code (Optional[str]): Status code indicating if the driver did not finish the race.
-        m_curr_lap_sc_status (Optional[SafetyCarType]): The current lap's safety car status.
+        m_curr_lap_max_sc_status (Optional[SafetyCarType]): The highest safety car status seen this lap.
     """
     name: Optional[str] = None
     position: Optional[int] = None
@@ -56,3 +56,16 @@ class DriverInfo:
     driver_number: Optional[int] = None
     m_dnf_status_code: Optional[str] = None
     m_curr_lap_max_sc_status: Optional[SafetyCarType] = None
+
+    @property
+    def is_curr_lap_racing(self) -> bool:
+        """Whether the current lap has run entirely under green flag conditions.
+
+        Samples taken on non-racing laps are segmented out of the tyre wear and fuel usage
+        regressions, since wear and consumption behave differently behind a safety car.
+
+        Returns:
+            bool: True if no safety car has been seen this lap
+        """
+
+        return self.m_curr_lap_max_sc_status == SafetyCarType.NO_SAFETY_CAR
