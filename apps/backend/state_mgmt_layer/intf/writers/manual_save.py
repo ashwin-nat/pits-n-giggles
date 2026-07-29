@@ -113,7 +113,9 @@ class ManualSaveRsp:
         try:
             path = await save_json_to_file(self.m_final_json, self.m_file_name)
             self.m_logger.info("Wrote session info to %s", self.m_file_name)
-            return {"status": "success", "message": f"Data saved to {path}"}
+            # file-path is the structured form of the same thing the message describes, so
+            # callers do not have to parse prose to find what was written
+            return {"status": "success", "message": f"Data saved to {path}", "file-path": str(path)}
         except Exception as e:  # pylint: disable=broad-except
             self.m_logger.exception("Failed to write session info to %s", self.m_file_name)
             return {

@@ -11,6 +11,7 @@ import ssl
 import subprocess
 import sys
 import threading
+import json
 import time
 import webbrowser
 from pathlib import Path
@@ -25,6 +26,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_json
 from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
+from lib.save_invariants import checkSaveFile
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
 
@@ -45,6 +47,9 @@ test_stats = {
     "telemetry_failed": 0,
     "endpoints_passed": 0,
     "endpoints_failed": 0,
+    "invariants_checked": 0,
+    "invariants_skipped": 0,
+    "invariant_violations": 0,
 }
 
 logger = create_logger()
@@ -236,6 +241,58 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
             preexec_fn=os.setsid
         )
 
+def trigger_manual_save(port: int) -> Optional[Path]:
+    """Ask the backend to write the current session state to disk.
+
+    Preferred over waiting for autosave: it does not depend on the post-session autosave
+    config flags, nor on the recording reaching a clean session end.
+
+    Args:
+        port (int): The backend's IPC port
+
+    Returns:
+        Optional[Path]: Path to the written save file, or None if the save failed
+    """
+
+    try:
+        rsp = IpcClientSync(port).request("manual-save")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.test_log(f"  [FAIL] Manual save IPC failed: {e}")
+        return None
+
+    if rsp.get("status") != "success":
+        logger.test_log(f"  [FAIL] Manual save rejected: {rsp.get('message')}")
+        return None
+
+    path = rsp.get("file-path")
+    return Path(path) if path else None
+
+
+def check_save_invariants(save_path: Path) -> Optional[int]:
+    """Run the state-layer invariants over a written save file.
+
+    Args:
+        save_path (Path): The save file to check
+
+    Returns:
+        Optional[int]: Number of violations, or None if the file could not be read
+    """
+
+    try:
+        with open(save_path, "r", encoding="utf-8") as f:
+            save = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.test_log(f"  [FAIL] Could not read save file {save_path}: {e}")
+        return None
+
+    report = checkSaveFile(save)
+    status = "OK" if report.ok else "FAIL"
+    logger.test_log(f"  [{status}] Invariants: {report.summary()}")
+    for violation in report.violations:
+        logger.test_log(f"           {violation}")
+    return len(report.violations)
+
+
 def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
     """Process a single test file and check endpoints."""
     http_endpoints = [
@@ -248,7 +305,9 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
     results = {
         "telemetry_success": False,
         "endpoints_passed": 0,
-        "endpoints_failed": 0
+        "endpoints_failed": 0,
+        "invariants_checked": False,
+        "invariant_violations": 0,
     }
 
     # Send telemetry data
@@ -273,6 +332,15 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
         else:
             results["endpoints_failed"] += 1
 
+    # Save the resulting state and check it against the invariants. Unlike the endpoint
+    # pings above, this reads the body and asserts relationships that must hold for any
+    # session - so it can actually catch a broken state layer.
+    if save_path := trigger_manual_save(ipc_port):
+        violations = check_save_invariants(save_path)
+        if violations is not None:
+            results["invariants_checked"] = True
+            results["invariant_violations"] = violations
+
     return results
 
 
@@ -286,6 +354,9 @@ def print_test_statistics() -> None:
     logger.test_log(f"Telemetry failed:       {test_stats['telemetry_failed']}")
     logger.test_log(f"Endpoint checks passed: {test_stats['endpoints_passed']}")
     logger.test_log(f"Endpoint checks failed: {test_stats['endpoints_failed']}")
+    logger.test_log(f"Invariants checked:     {test_stats['invariants_checked']} files")
+    logger.test_log(f"Invariants not checked: {test_stats['invariants_skipped']} files")
+    logger.test_log(f"Invariant violations:   {test_stats['invariant_violations']}")
 
     total_telemetry = test_stats['telemetry_sent'] + test_stats['telemetry_failed']
     total_endpoints = test_stats['endpoints_passed'] + test_stats['endpoints_failed']
@@ -353,11 +424,18 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
                 test_stats["telemetry_failed"] += 1
             test_stats["endpoints_passed"] += results["endpoints_passed"]
             test_stats["endpoints_failed"] += results["endpoints_failed"]
+            if results["invariants_checked"]:
+                test_stats["invariants_checked"] += 1
+            else:
+                test_stats["invariants_skipped"] += 1
+            test_stats["invariant_violations"] += results["invariant_violations"]
 
             # Print file statistics
             logger.test_log(f"\nFile Results:")
             logger.test_log(f"  Telemetry: {'Sent' if results['telemetry_success'] else 'Failed'}")
             logger.test_log(f"  Endpoints: {results['endpoints_passed']} passed, {results['endpoints_failed']} failed")
+            logger.test_log(f"  Invariants: {results['invariant_violations']} violations"
+                            if results["invariants_checked"] else "  Invariants: not checked")
 
             time.sleep(2)
 
@@ -381,7 +459,9 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
     return (
         test_stats["files_processed"] == len(files) and
         test_stats["telemetry_failed"] == 0 and
-        test_stats["endpoints_failed"] == 0
+        test_stats["endpoints_failed"] == 0 and
+        test_stats["invariants_skipped"] == 0 and
+        test_stats["invariant_violations"] == 0
     )
 
 
