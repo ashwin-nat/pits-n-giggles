@@ -555,6 +555,12 @@ class DataPerDriver:
         self.m_tyre_info.handleFlashback(outdated_laps)
         self.m_car_info.m_fuel_rate_recommender.remove(outdated_laps)
 
+        # Abandon any tyre set change still waiting on packets. The wear state it would have
+        # completed against has just been rewound, and the rolling buffer it reads the old
+        # stint's final wear from was cleared outright. Detection re-fires on the next tyre
+        # sets packet if the change survived the flashback.
+        self.m_pending_tyre_change = None
+
         self.m_logger.debug("Driver %s - detected flashback. outdated_laps: %s", str(self), outdated_laps)
 
     def onLapChange(self,
