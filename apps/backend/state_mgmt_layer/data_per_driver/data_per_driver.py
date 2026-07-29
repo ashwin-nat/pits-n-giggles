@@ -24,7 +24,7 @@
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple
 
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
@@ -922,12 +922,17 @@ class DataPerDriver:
 
     def _getDelayedTyreChangeDataWeird(self) -> Optional[TyreWearPerLap]:
         """Get the initial tyre wear data for the delayed tyre set change handling"""
-        idx, initial_tyre_wear = self.m_tyre_info.tyre_wear.get_max_average_with_index()
-        if not initial_tyre_wear:
+        idx, max_wear_sample = self.m_tyre_info.tyre_wear.get_max_average_with_index()
+        if not max_wear_sample:
             self.m_logger.warning("Driver %s - unable to process delayed tyre set "
                                   "change since initial wear data is unavailable", str(self))
             return None
-        initial_tyre_wear.lap_number = self.m_lap_info.m_current_lap - 1
+
+        # Copy before mutating. get_max_average_with_index() hands back the live instance still
+        #   held in the rolling buffer, and the caller goes on to store this object into the stint
+        #   history - leaving one mutable object with two owners. A later tyre change that picked
+        #   the same sample as its max would then silently rewrite an already recorded stint entry.
+        initial_tyre_wear = replace(max_wear_sample, lap_number=self.m_lap_info.m_current_lap - 1)
         self.m_logger.debug("Driver %s - delayed tyre set change. initial tyre wear data: %s. index: %s",
                             str(self), str(initial_tyre_wear), idx)
         return initial_tyre_wear

@@ -297,6 +297,24 @@ class TestWeirdTrackOrderings:
         old_stint = driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=0)
         assert old_stint.m_tyre_wear_history[-1].fl_tyre_wear == OLD_TYRE_WEAR
 
+    def test_rewrite_does_not_alias_the_rolling_buffer(self, driver):
+        """The rewrite must store a copy, not the live sample still in the rolling buffer.
+
+        `get_max_average_with_index()` returns the instance held in the deque. Storing that
+        same object into the stint history would leave it with two owners, so a later change
+        selecting it again would rewrite an already recorded entry in place.
+        """
+
+        fire_tyre_sets(driver, WEIRD_TRACK)
+        fire_car_damage(driver)
+        fire_lap_change(driver)
+
+        old_stint = driver.m_tyre_info.m_tyre_set_history_manager.getEntry(index=0)
+        stored = old_stint.m_tyre_wear_history[-1]
+
+        assert all(stored is not sample for sample in driver.m_tyre_info.tyre_wear), \
+            "stint history must not hold a live rolling buffer instance"
+
 class TestPreDetectionLapChange:
     """A lap change that lands before the tyre sets packet is noticed.
 

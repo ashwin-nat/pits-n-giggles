@@ -213,14 +213,6 @@ class TyreSetHistoryManager:
             raise IndexError("Tyre history is empty, cannot add tyre wear info")
         self.m_history[-1].m_tyre_wear_history.append(tyre_wear_info)
 
-    def overwriteLatestTyreWear(self, tyre_wear_info: TyreWearPerLap) -> None:
-        """Overwrite tyre wear info for the specified tyre wear history item at the given index
-
-        Args:
-            tyre_wear_info (TyreWearPerLap): Tyre wear of latest lap
-        """
-        self.overwriteLatestTyreWear(tyre_wear_info)
-
     def overwriteTyreWear(self, tyre_wear_info: TyreWearPerLap, stint_index: int = -1, lap_index: int = -1) -> None:
         """Overwrite tyre wear info for the specified tyre wear history item at the given index
 
