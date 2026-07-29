@@ -340,18 +340,26 @@ class TestPreDetectionLapChange:
 class TestPendingLifetime:
     """Cancellation, replacement and abandonment of a pending change."""
 
-    def test_second_change_while_pending_is_not_lost(self, driver, track):
-        """A second stop before the first completes must still be recorded.
+    def test_stuck_pending_change_does_not_suppress_a_later_one(self, driver, track):
+        """A pending change whose packets never arrive must not wedge tyre tracking.
 
-        The `if m_pending_tyre_change is None` guard drops the second change, and completion
-        reads the *current* `m_fittedIdx`, so the intermediate set never reaches the history.
+        Completion needs a car damage packet, and on weird tracks a lap boundary too. If the
+        driver retires or disconnects first, those never come - and because detection is
+        suppressed while anything is pending, and the history entry is only added on
+        completion, every later change would be dropped for the rest of the session.
         """
 
         fire_tyre_sets(driver, track)
-        fire_tyre_sets(driver, track, fitted_idx=THIRD_SET_IDX, key=THIRD_SET_KEY)
-        deliver_all_signals(driver, track)
+        assert driver.m_pending_tyre_change.target_idx == NEW_SET_IDX
 
-        assert stint_count(driver) == 3, "the intermediate set must appear in history"
+        # No packets arrive; the set moves on regardless
+        fire_tyre_sets(driver, track, fitted_idx=THIRD_SET_IDX, key=THIRD_SET_KEY)
+        assert driver.m_pending_tyre_change.target_idx == THIRD_SET_IDX, \
+            "a stale pending change must not suppress the set actually fitted now"
+
+        deliver_all_signals(driver, track)
+        assert stint_count(driver) == 2
+        assert latest_stint(driver).m_fitted_index == THIRD_SET_IDX
 
     def test_flashback_discards_pending_change(self, driver, track):
         """A flashback rewinds the wear state; a pending change must not outlive it.
@@ -375,10 +383,6 @@ class TestTrackUnknown:
 
         On a weird track that means the very first change of the session takes the
         normal-track path and skips the old-stint rewrite entirely.
-
-        The fix here is a design decision rather than a mechanical correction - most likely
-        defer detection until the track is known, or re-evaluate `is_weird_track` when the
-        session packet names it.
         """
 
         assert not F1Utils.isFinishLineAfterPitGarage(None)

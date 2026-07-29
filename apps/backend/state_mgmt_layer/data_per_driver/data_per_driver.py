@@ -65,11 +65,14 @@ class PendingTyreChange:
         is_weird_track (bool): True if the pit garage is before the finish line. Such tracks need the last stint's
                                final wear rewritten before the new stint is started.
         awaiting_lap_change (bool): True while a lap change is still awaited. Only ever True on weird tracks.
+        target_idx (int): The fitted tyre set index this change is for. Used to spot the set changing again
+                          before this change settled.
         awaiting_car_dmg (bool): True while the next car damage packet (new tyre's wear) is still awaited.
     """
 
     is_weird_track: bool
     awaiting_lap_change: bool
+    target_idx: int
     awaiting_car_dmg: bool = True
 
     @property
@@ -793,7 +796,18 @@ class DataPerDriver:
                 # On weird tracks (pit garage before the finish line), the tyre set change happens before lap
                 #   completion, so the prev lap's tyre wear data could get lost. There, the lap change is awaited
                 #   as well, and the last stint's final wear is rewritten on completion
-                if self.m_pending_tyre_change is None:
+                pending = self.m_pending_tyre_change
+                if pending and pending.target_idx != fitted_index:
+                    # The fitted set moved on before the previous change settled. Whether that is a
+                    #   genuine second stop or a change whose awaited packets never arrived (driver
+                    #   retired or disconnected), holding the stale one would suppress every later
+                    #   change for the rest of the session. Re-arm on the set actually fitted now.
+                    self.m_logger.debug("Driver %s - fitted set moved %d -> %d while a change was still "
+                                        "pending. Re-arming on the current set",
+                                        str(self), pending.target_idx, fitted_index)
+                    pending = None
+
+                if pending is None:
                     is_weird = F1Utils.isFinishLineAfterPitGarage(track)
 
                     # The weird-track lap wait exists so the rewrite happens after onLapChange has
@@ -812,6 +826,7 @@ class DataPerDriver:
                     self.m_pending_tyre_change = PendingTyreChange(
                         is_weird_track=is_weird,
                         awaiting_lap_change=is_weird and not line_crossed_since_old_set_seen,
+                        target_idx=fitted_index,
                     )
                     self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed "
                                         "handling. weird=%s line already crossed=%s", str(self),
