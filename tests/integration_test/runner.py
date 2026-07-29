@@ -23,6 +23,7 @@ from aiohttp import ClientSession, TCPConnector
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.config import load_config_from_json
+from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
@@ -241,7 +242,7 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
         f"{proto}://localhost:{http_port}/telemetry-info",
         f"{proto}://localhost:{http_port}/race-info",
         f"{proto}://localhost:{http_port}/stream-overlay-info",
-        *[f"{proto}://localhost:{http_port}/driver-info?index={i}" for i in range(23)]
+        *[f"{proto}://localhost:{http_port}/driver-info?index={i}" for i in range(MAX_DRIVERS)]
     ]
 
     results = {
@@ -300,7 +301,11 @@ def print_test_statistics() -> None:
     logger.test_log("=" * 80)
 
 def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
-    """Main test execution function."""
+    """Main test execution function.
+
+    Returns:
+        bool: True only if every file replayed and every endpoint check passed.
+    """
     global app_process, exit_event, ipc_port
 
     files = fetch_test_files()
@@ -324,7 +329,8 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     time.sleep(5)
 
-    # Launch browser views
+    # Launch browser views. These are not decoration - they put the web server routes,
+    # Socket.IO and the frontend JS through the run as well.
     logger.test_log("Launching driver view, engineer view and overlay clients")
     webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
@@ -370,7 +376,13 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         # Print final statistics
         print_test_statistics()
 
-    return True
+    # Report honestly. Previously this returned True unconditionally, so the process always
+    # exited 0 and the runner could never gate anything.
+    return (
+        test_stats["files_processed"] == len(files) and
+        test_stats["telemetry_failed"] == 0 and
+        test_stats["endpoints_failed"] == 0
+    )
 
 
 if __name__ == "__main__":
