@@ -15,8 +15,8 @@
     "Capture": {
         "post_race_data_autosave": true,
         "post_quali_data_autosave": true,
-        "post_fp_data_autosave": false,
-        "post_tt_data_autosave": false,
+        "post_fp_data_autosave": true,
+        "post_tt_data_autosave": true,
         "save_race_ctrl_msg": false,
         "just_in_case_autosave": true,
         "session_dir": "data"

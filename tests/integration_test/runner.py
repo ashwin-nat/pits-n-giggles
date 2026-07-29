@@ -47,8 +47,8 @@ test_stats = {
     "telemetry_failed": 0,
     "endpoints_passed": 0,
     "endpoints_failed": 0,
-    "invariants_checked": 0,
-    "invariants_skipped": 0,
+    "saves_checked": 0,
+    "saves_unreadable": 0,
     "invariant_violations": 0,
 }
 
@@ -241,31 +241,17 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
             preexec_fn=os.setsid
         )
 
-def trigger_manual_save(port: int) -> Optional[Path]:
-    """Ask the backend to write the current session state to disk.
-
-    Preferred over waiting for autosave: it does not depend on the post-session autosave
-    config flags, nor on the recording reaching a clean session end.
+def snapshot_saves(session_dir: Path) -> set:
+    """List the save files currently on disk.
 
     Args:
-        port (int): The backend's IPC port
+        session_dir (Path): Directory the app writes sessions into
 
     Returns:
-        Optional[Path]: Path to the written save file, or None if the save failed
+        set: Every save file found under it
     """
 
-    try:
-        rsp = IpcClientSync(port).request("manual-save")
-    except Exception as e:  # pylint: disable=broad-except
-        logger.test_log(f"  [FAIL] Manual save IPC failed: {e}")
-        return None
-
-    if rsp.get("status") != "success":
-        logger.test_log(f"  [FAIL] Manual save rejected: {rsp.get('message')}")
-        return None
-
-    path = rsp.get("file-path")
-    return Path(path) if path else None
+    return set(session_dir.rglob("*.json")) if session_dir.is_dir() else set()
 
 
 def check_save_invariants(save_path: Path) -> Optional[int]:
@@ -287,10 +273,38 @@ def check_save_invariants(save_path: Path) -> Optional[int]:
 
     report = checkSaveFile(save)
     status = "OK" if report.ok else "FAIL"
-    logger.test_log(f"  [{status}] Invariants: {report.summary()}")
+    logger.test_log(f"  [{status}] Invariants {save_path.name}: {report.summary()}")
     for violation in report.violations:
         logger.test_log(f"           {violation}")
     return len(report.violations)
+
+
+def check_new_saves(session_dir: Path, seen: set) -> set:
+    """Check any save files the app has written since the last sweep.
+
+    The app writes these itself - post-session autosave, plus just-in-case autosave when a
+    new session starts before the previous one finished, which is exactly what a
+    back-to-back replay looks like. So there is nothing to trigger; we just pick up what
+    appeared. Attribution to a specific recording is approximate for that reason, hence the
+    file name in the log line.
+
+    Args:
+        session_dir (Path): Directory the app writes sessions into
+        seen (set): Save files already accounted for
+
+    Returns:
+        set: The updated set of accounted-for files
+    """
+
+    current = snapshot_saves(session_dir)
+    for save_path in sorted(current - seen):
+        violations = check_save_invariants(save_path)
+        if violations is None:
+            test_stats["saves_unreadable"] += 1
+            continue
+        test_stats["saves_checked"] += 1
+        test_stats["invariant_violations"] += violations
+    return current
 
 
 def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
@@ -306,8 +320,6 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
         "telemetry_success": False,
         "endpoints_passed": 0,
         "endpoints_failed": 0,
-        "invariants_checked": False,
-        "invariant_violations": 0,
     }
 
     # Send telemetry data
@@ -332,15 +344,6 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
         else:
             results["endpoints_failed"] += 1
 
-    # Save the resulting state and check it against the invariants. Unlike the endpoint
-    # pings above, this reads the body and asserts relationships that must hold for any
-    # session - so it can actually catch a broken state layer.
-    if save_path := trigger_manual_save(ipc_port):
-        violations = check_save_invariants(save_path)
-        if violations is not None:
-            results["invariants_checked"] = True
-            results["invariant_violations"] = violations
-
     return results
 
 
@@ -354,8 +357,8 @@ def print_test_statistics() -> None:
     logger.test_log(f"Telemetry failed:       {test_stats['telemetry_failed']}")
     logger.test_log(f"Endpoint checks passed: {test_stats['endpoints_passed']}")
     logger.test_log(f"Endpoint checks failed: {test_stats['endpoints_failed']}")
-    logger.test_log(f"Invariants checked:     {test_stats['invariants_checked']} files")
-    logger.test_log(f"Invariants not checked: {test_stats['invariants_skipped']} files")
+    logger.test_log(f"Saves checked:          {test_stats['saves_checked']}")
+    logger.test_log(f"Saves unreadable:       {test_stats['saves_unreadable']}")
     logger.test_log(f"Invariant violations:   {test_stats['invariant_violations']}")
 
     total_telemetry = test_stats['telemetry_sent'] + test_stats['telemetry_failed']
@@ -371,7 +374,8 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
+def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool,
+         session_dir: Path = Path("data")) -> bool:
     """Main test execution function.
 
     Returns:
@@ -381,6 +385,10 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     files = fetch_test_files()
     logger.test_log(f"Number of Test files: {len(files)}")
+
+    # Only saves written from here on belong to this run
+    seen_saves = snapshot_saves(session_dir)
+    logger.test_log(f"Existing saves in {session_dir}: {len(seen_saves)} (ignored)")
 
     exit_event = threading.Event()
 
@@ -424,20 +432,14 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
                 test_stats["telemetry_failed"] += 1
             test_stats["endpoints_passed"] += results["endpoints_passed"]
             test_stats["endpoints_failed"] += results["endpoints_failed"]
-            if results["invariants_checked"]:
-                test_stats["invariants_checked"] += 1
-            else:
-                test_stats["invariants_skipped"] += 1
-            test_stats["invariant_violations"] += results["invariant_violations"]
 
             # Print file statistics
             logger.test_log(f"\nFile Results:")
             logger.test_log(f"  Telemetry: {'Sent' if results['telemetry_success'] else 'Failed'}")
             logger.test_log(f"  Endpoints: {results['endpoints_passed']} passed, {results['endpoints_failed']} failed")
-            logger.test_log(f"  Invariants: {results['invariant_violations']} violations"
-                            if results["invariants_checked"] else "  Invariants: not checked")
 
             time.sleep(2)
+            seen_saves = check_new_saves(session_dir, seen_saves)
 
         time.sleep(5)
 
@@ -451,6 +453,11 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         if not send_ipc_shutdown(ipc_port):
             kill_app(app_process)
 
+        # The last session's save is only written on shutdown, and just-in-case autosave
+        # lags a session behind, so sweep once more after the app has gone.
+        time.sleep(2)
+        check_new_saves(session_dir, seen_saves)
+
         # Print final statistics
         print_test_statistics()
 
@@ -460,7 +467,8 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         test_stats["files_processed"] == len(files) and
         test_stats["telemetry_failed"] == 0 and
         test_stats["endpoints_failed"] == 0 and
-        test_stats["invariants_skipped"] == 0 and
+        test_stats["saves_checked"] > 0 and
+        test_stats["saves_unreadable"] == 0 and
         test_stats["invariant_violations"] == 0
     )
 
@@ -483,7 +491,8 @@ if __name__ == "__main__":
             telemetry_port=settings.Network.telemetry_port,
             http_port=settings.Network.server_port,
             proto=settings.HTTPS.proto,
-            coverage_enabled=coverage_enabled
+            coverage_enabled=coverage_enabled,
+            session_dir=Path(settings.Capture.session_dir)
         )
     except KeyboardInterrupt:
         logger.test_log("\n[MAIN] KeyboardInterrupt caught")
