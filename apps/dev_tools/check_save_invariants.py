@@ -22,14 +22,16 @@
 
 """Check saved session JSON files against the state-layer invariants.
 
-Usage:
-    poetry run python scripts/check_save_invariants.py <file-or-glob> [...]
+Run from the repo root:
 
     # one specific file
-    poetry run python scripts/check_save_invariants.py data/2026_07_29/race-info/Race_Melbourne_*.json
+    poetry run python -m apps.dev_tools.check_save_invariants data/2026_07_29/race-info/Race_Melbourne_*.json
 
     # everything produced by an integration run
-    poetry run python scripts/check_save_invariants.py "data/**/*.json"
+    poetry run python -m apps.dev_tools.check_save_invariants "data/**/*.json"
+
+    # only show the failures
+    poetry run python -m apps.dev_tools.check_save_invariants -q "data/**/*.json"
 
 Exits 1 if any file has a violation, so it can gate a script.
 """
@@ -43,10 +45,6 @@ import sys
 from pathlib import Path
 from typing import List
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# pylint: disable=wrong-import-position
 from lib.save_invariants import checkSaveFile
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
