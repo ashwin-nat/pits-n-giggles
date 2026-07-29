@@ -124,6 +124,12 @@ def _driver() -> DataPerDriver:
 
     obj.m_packet_copies.m_packet_tyre_sets = _tyre_sets(OLD_SET_IDX, OLD_SET_KEY)
     obj.m_packet_copies.m_packet_car_damage = _car_damage(OLD_TYRE_WEAR)
+
+    # A tyre sets packet confirming the old set has arrived this lap, as it would have been
+    # doing all stint. This is what lets a later change tell whether the line has been
+    # crossed since the old set was last seen fitted.
+    obj.updateTyreSetData(fitted_index=OLD_SET_IDX, track=NORMAL_TRACK)
+    assert obj.m_current_set_last_seen_lap == START_LAP
     return obj
 
 def fire_tyre_sets(driver: DataPerDriver, track: TrackID,
@@ -186,6 +192,15 @@ class TestDetection:
         assert pending.is_weird_track is is_weird
         assert pending.awaiting_lap_change is is_weird
         assert pending.awaiting_car_dmg
+
+    def test_unchanged_tyre_sets_packet_records_the_lap(self, driver, track):
+        """Packets confirming the fitted set track the lap, without registering anything."""
+
+        driver.m_lap_info.m_current_lap = START_LAP + 3
+        driver.updateTyreSetData(fitted_index=OLD_SET_IDX, track=track)
+
+        assert driver.m_current_set_last_seen_lap == START_LAP + 3
+        assert driver.m_pending_tyre_change is None
 
     def test_repeat_tyre_sets_packets_do_not_re_register(self, driver, track):
         """Tyre sets packets keep arriving during the pit exit; detection is idempotent."""

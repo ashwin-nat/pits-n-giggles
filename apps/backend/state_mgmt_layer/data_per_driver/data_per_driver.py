@@ -100,6 +100,8 @@ class DataPerDriver:
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
         m_position_history (List[int]): List of positions of the driver
         m_pending_tyre_change (Optional[PendingTyreChange]): Tyre set change awaiting further packets, if any.
+        m_current_set_last_seen_lap (Optional[int]): Lap at which a tyre sets packet last confirmed the fitted
+                                                    set already recorded in the stint history.
         m_race_ctrl (DriverRaceControlManager): Manager for race control messages specific to the driver.
         m_delta_mgr (LapDeltaManager): Lap delta manager
     """
@@ -118,6 +120,7 @@ class DataPerDriver:
         "m_per_lap_snapshots",
         "m_position_history",
         "m_pending_tyre_change",
+        "m_current_set_last_seen_lap",
         "m_race_ctrl",
         "m_delta_mgr",
         "m_state_ref",
@@ -199,6 +202,7 @@ class DataPerDriver:
 
         # Tyre set change awaiting further packets
         self.m_pending_tyre_change: Optional[PendingTyreChange] = None
+        self.m_current_set_last_seen_lap: Optional[int] = None
 
         # Race control manager
         self.m_race_ctrl: DriverRaceControlManager = DriverRaceControlManager(index)
@@ -791,12 +795,32 @@ class DataPerDriver:
                 #   as well, and the last stint's final wear is rewritten on completion
                 if self.m_pending_tyre_change is None:
                     is_weird = F1Utils.isFinishLineAfterPitGarage(track)
+
+                    # The weird-track lap wait exists so the rewrite happens after onLapChange has
+                    #   closed out the old stint's final lap. If the line has already been crossed
+                    #   since a tyre sets packet last confirmed the old set, that boundary is behind
+                    #   us and waiting again would stall the change a full lap - long enough for
+                    #   onLapChange to append a second entry, leaving the rewrite patching the wrong
+                    #   lap and the new stint starting a lap late.
+                    # This ordering is routine, not an edge case: the tyre sets packet is per-car
+                    #   index cycled, so on a weird track (garage seconds before the line) the change
+                    #   is often noticed only after the car has already crossed.
+                    line_crossed_since_old_set_seen = (
+                        self.m_current_set_last_seen_lap is not None and
+                        self.m_current_set_last_seen_lap < self.m_lap_info.m_current_lap
+                    )
                     self.m_pending_tyre_change = PendingTyreChange(
                         is_weird_track=is_weird,
-                        awaiting_lap_change=is_weird,
+                        awaiting_lap_change=is_weird and not line_crossed_since_old_set_seen,
                     )
-                    self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed handling",
-                                        str(self), self.m_lap_info.m_current_lap)
+                    self.m_logger.debug("Driver %s - lap %d tyre set change detected. Registering for delayed "
+                                        "handling. weird=%s line already crossed=%s", str(self),
+                                        self.m_lap_info.m_current_lap, is_weird, line_crossed_since_old_set_seen)
+
+            else:
+                # Same set still fitted. Remember the lap, so that when a change is eventually
+                # detected we can tell whether the finish line has been crossed since.
+                self.m_current_set_last_seen_lap = self.m_lap_info.m_current_lap
 
     def onTyreSetChange(self, fitted_index: int, fitted_tyre_set_key: str, lap_number: int,
                         initial_tyre_wear: TyreWearPerLap) -> None:
