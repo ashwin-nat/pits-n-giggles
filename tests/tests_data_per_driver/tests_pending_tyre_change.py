@@ -378,15 +378,25 @@ class TestPendingLifetime:
 class TestTrackUnknown:
     """The first tyre sets packet can arrive before the session packet names the track."""
 
-    def test_unknown_track_is_not_silently_treated_as_normal(self, driver):
+    def test_change_before_track_is_known_is_deferred(self, driver):
         """isFinishLineAfterPitGarage(None) is bare set membership, so None reads as False.
 
-        On a weird track that means the very first change of the session takes the
-        normal-track path and skips the old-stint rewrite entirely.
+        Registering on that answer would put a weird track on the normal-track path and skip
+        the old-stint rewrite entirely, for the first change of the session. Detection is
+        deferred instead.
         """
 
         assert not F1Utils.isFinishLineAfterPitGarage(None)
 
         fire_tyre_sets(driver, None)
-        assert driver.m_pending_tyre_change.is_weird_track is not False, \
+        assert driver.m_pending_tyre_change is None, \
             "an unknown track must not be assumed to be a normal track"
+
+    def test_deferred_change_is_picked_up_once_the_track_is_known(self, driver):
+        """Deferral must not lose the change - the next tyre sets packet re-detects it."""
+
+        fire_tyre_sets(driver, None)
+        fire_tyre_sets(driver, WEIRD_TRACK)
+
+        assert driver.m_pending_tyre_change is not None
+        assert driver.m_pending_tyre_change.is_weird_track
