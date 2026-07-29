@@ -53,7 +53,6 @@ from lib.logger import PngLogger
 from lib.openf1 import MostRecentPoleLap
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
-from lib.pending_events import DriverPendingEvents
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            OvertakeRaceCtrlMsg, SessionRaceControlManager,
@@ -564,8 +563,7 @@ class SessionState:
             )
 
             driver_obj.m_lap_info.m_current_lap = new_lap
-            driver_obj.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
-            driver_obj.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.LAP_CHANGE_EVENT)
+            driver_obj.notifyLapChanged()
 
     def _updateDriverStatus(self,
                             driver_obj: DataPerDriver,
@@ -921,9 +919,8 @@ class SessionState:
             ))
             obj_to_be_updated.m_car_info.updateDamage(car_damage)
 
-            # Update delayed tyre change data if events are pending
-            obj_to_be_updated.m_pending_events_mgr_weird_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
-            obj_to_be_updated.m_pending_events_mgr_normal_track.onEvent(DriverPendingEvents.CAR_DMG_PKT_EVENT)
+            # Update delayed tyre change data if a change is pending
+            obj_to_be_updated.notifyCarDamageUpdated()
 
     def processSessionHistoryUpdate(self, packet: PacketSessionHistoryData) -> None:
         """Process the session history update packet and update the necessary fields
