@@ -323,7 +323,6 @@ class SessionState:
         'm_session_info',
         'm_process_car_setups',
         'm_save_race_ctrl_msgs',
-        'm_drop_pit_otk_msg',
         'm_weather_aware_prediction',
         'm_tyre_wear_window_size',
         'm_power_filter_window_size',
@@ -378,7 +377,6 @@ class SessionState:
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
-        self.m_drop_pit_otk_msg: bool = settings.Capture.drop_pit_otk_msg
         self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
         self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
@@ -1143,29 +1141,16 @@ class SessionState:
             overtaker = self._getObjectByIndex(msg.involved_drivers[0], create=False)
             overtaken = self._getObjectByIndex(msg.involved_drivers[1], create=False)
 
-            overtaker_pitting = overtaker.m_lap_info.m_is_pitting if overtaker else None
-            overtaken_pitting = overtaken.m_lap_info.m_is_pitting if overtaken else None
+            otk_msg.overtaker_pitting = overtaker.m_lap_info.m_is_pitting if overtaker else None
+            otk_msg.overtaken_pitting = overtaken.m_lap_info.m_is_pitting if overtaken else None
 
             self.m_logger.debug(
                 "Overtake event: %s overtakes %s. Pit status: %s, %s",
                 overtaker.m_driver_info.name if overtaker else "Unknown",
                 overtaken.m_driver_info.name if overtaken else "Unknown",
-                overtaker_pitting,
-                overtaken_pitting,
+                otk_msg.overtaker_pitting,
+                otk_msg.overtaken_pitting,
             )
-
-            # Ignore overtakes where only one car is pitting.
-            if overtaker_pitting != overtaken_pitting:
-                self.m_logger.debug(
-                    "Dropping overtake event because only one driver is pitting: %s=%s, %s=%s",
-                    overtaker.m_driver_info.name if overtaker else "Unknown",
-                    overtaker_pitting,
-                    overtaken.m_driver_info.name if overtaken else "Unknown",
-                    overtaken_pitting,
-                )
-                return
-
-            otk_msg.is_pit_lane_overtake = overtaker_pitting
 
         if msg.involved_drivers:
             driver = self._getObjectByIndex(msg.involved_drivers[0], create=False)

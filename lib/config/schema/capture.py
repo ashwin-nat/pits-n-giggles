@@ -88,25 +88,6 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    drop_pit_otk_msg: bool = Field(
-        default=True,
-        description="Reduce pit-related overtake messages",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True,
-                "ext_info" : [
-                    "The game reports many overtakes while cars are entering or exiting the pits, "
-                        "which can clutter the race control feed.\n\n"
-                    "When enabled, these pit stop related overtake messages are filtered. "
-                        "Normal on-track overtakes and pit lane overtakes between two pitting cars are still shown.",
-
-                    "Disclaimer: Some legitimate strategy-related overtakes "
-                        "(for example, an undercut ) may also be hidden."
-                ]
-            }
-        }
-    )
     just_in_case_autosave: bool = Field(
         default=True,
         description="Just-in-case autosave (F1 25)",
