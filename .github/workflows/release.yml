@@ -14,7 +14,8 @@
 #   - Generate SHA256 checksums for all artifacts.
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
 #   - Upload all artifacts + checksums.txt to the draft release.
-#   - Scan the uploaded binaries with VirusTotal; fail if any engine flags them.
+#   - Upload the binaries themselves to VirusTotal for a full multi-engine file
+#     scan; fail if any engine flags them.
 #   - Append a VirusTotal results section to the release notes (idempotent —
 #     a rerun replaces the section rather than duplicating it). The rest of
 #     the release notes is left untouched.
@@ -271,8 +272,9 @@ jobs:
           echo "All files uploaded to draft release $RELEASE_TAG"
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 4. Scan the uploaded binaries with VirusTotal. Fails the job (and blocks
-  #    publish-release) if any engine flags either binary as malicious.
+  # 4. Scan the release binaries with VirusTotal. The binaries are downloaded and
+  #    uploaded to VT so every engine sees the actual file bytes. Fails the job
+  #    (and blocks publish-release) if any engine flags either binary.
   # ───────────────────────────────────────────────────────────────────────────
   virustotal:
     name: VirusTotal scan
@@ -292,89 +294,136 @@ jobs:
             exit 1
           fi
 
-      - name: Scan release binaries with VirusTotal
+      # Assets are fetched by asset id rather than `gh release download`: the
+      # release is still a draft here, and drafts aren't addressable by tag.
+      - name: Download release binaries
         run: |
           set -euo pipefail
+          mkdir -p vt-assets
 
           ASSETS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
-            --jq '[.[] | select(.name | endswith(".exe") or endswith("-mac.zip")) | {name, url: .browser_download_url}]')
+            --jq '.[] | select(.name | endswith(".exe") or endswith("-mac.zip")) | "\(.id) \(.size) \(.name)"')
 
-          COUNT=$(echo "$ASSETS" | jq 'length')
-          if [[ "$COUNT" -eq 0 ]]; then
+          if [[ -z "$ASSETS" ]]; then
             echo "::error::No .exe or -mac.zip assets found on draft release $RELEASE_TAG."
             exit 1
           fi
 
+          while read -r ASSET_ID SIZE NAME; do
+            echo "Downloading $NAME (id=$ASSET_ID, $SIZE bytes)"
+            gh api "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID" \
+              -H "Accept: application/octet-stream" > "vt-assets/$NAME"
+
+            # The asset endpoint 302s to storage; if that redirect were ever not
+            # followed we'd silently save a few hundred bytes of JSON and hand VT
+            # a file that isn't the release binary at all.
+            GOT=$(stat -c%s "vt-assets/$NAME")
+            if [[ "$GOT" -ne "$SIZE" ]]; then
+              echo "::error::$NAME downloaded as $GOT bytes but the release asset is $SIZE bytes."
+              exit 1
+            fi
+          done <<< "$ASSETS"
+
+          ls -lh vt-assets/
+
+      - name: Scan release binaries with VirusTotal
+        run: |
+          set -euo pipefail
+
           : > virustotal-report.txt
-          OVERALL_STATUS=0
+          FAILED=0
 
-          echo "$ASSETS" | jq -c '.[]' | while read -r ASSET; do
-            NAME=$(echo "$ASSET" | jq -r '.name')
-            URL=$(echo "$ASSET" | jq -r '.url')
+          for FILE in vt-assets/*; do
+            NAME=$(basename "$FILE")
+            SHA=$(sha256sum "$FILE" | cut -d' ' -f1)
+            echo "::group::$NAME ($SHA)"
 
-            echo "Submitting $NAME to VirusTotal..."
-            SUBMIT_RESPONSE=$(curl -s -X POST "https://www.virustotal.com/api/v3/urls" \
-              -H "x-apikey: $VT_API_KEY" \
-              --data-urlencode "url=$URL")
-            ANALYSIS_ID=$(echo "$SUBMIT_RESPONSE" | jq -r '.data.id // empty')
+            # Fast path: VT may already know this exact build — a re-run of this
+            # workflow rebuilds byte-identical artifacts often enough that
+            # re-uploading ~200 MB to relearn the same verdict is wasteful.
+            EXISTING=$(curl -sS "https://www.virustotal.com/api/v3/files/$SHA" \
+              -H "x-apikey: $VT_API_KEY" || true)
+            MALICIOUS=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_stats.malicious // empty')
 
-            if [[ -z "$ANALYSIS_ID" ]]; then
-              echo "::error::VirusTotal submission failed for $NAME: $SUBMIT_RESPONSE"
-              echo "- \`$NAME\`: ⚠️ submission failed" >> virustotal-report.txt
-              echo 1 > /tmp/vt_failed
-              continue
+            if [[ -n "$MALICIOUS" ]]; then
+              echo "VirusTotal already has this file; reusing its stored verdict."
+            else
+              # Both artifacts are ~200 MB. The plain POST /files endpoint caps at
+              # 32 MB, so anything this size has to go through a one-shot upload
+              # URL obtained from /files/upload_url (good to 650 MB on the free
+              # tier).
+              UPLOAD_URL=$(curl -sS "https://www.virustotal.com/api/v3/files/upload_url" \
+                -H "x-apikey: $VT_API_KEY" | jq -r '.data // empty')
+
+              if [[ -z "$UPLOAD_URL" ]]; then
+                echo "::error::Could not obtain a VirusTotal upload URL for $NAME."
+                echo "- \`$NAME\`: ⚠️ upload URL request failed" >> virustotal-report.txt
+                FAILED=1
+                echo "::endgroup::"
+                continue
+              fi
+
+              echo "Uploading $NAME ($(du -h "$FILE" | cut -f1)) to VirusTotal..."
+              SUBMIT_RESPONSE=$(curl -sS -X POST "$UPLOAD_URL" \
+                -H "x-apikey: $VT_API_KEY" \
+                -F "file=@$FILE" || true)
+              ANALYSIS_ID=$(echo "$SUBMIT_RESPONSE" | jq -r '.data.id // empty')
+
+              if [[ -z "$ANALYSIS_ID" ]]; then
+                echo "::error::VirusTotal submission failed for $NAME: $SUBMIT_RESPONSE"
+                echo "- \`$NAME\`: ⚠️ submission failed" >> virustotal-report.txt
+                FAILED=1
+                echo "::endgroup::"
+                continue
+              fi
+
+              # File analyses queue behind ~70 engines and take a lot longer than
+              # the old URL lookups did, hence the roomier budget.
+              echo "Polling analysis $ANALYSIS_ID for $NAME..."
+              STATUS="queued"
+              ELAPSED=0
+              TIMEOUT=1800
+              INTERVAL=30
+              while [[ "$STATUS" != "completed" && "$ELAPSED" -lt "$TIMEOUT" ]]; do
+                sleep "$INTERVAL"
+                ELAPSED=$((ELAPSED + INTERVAL))
+                ANALYSIS=$(curl -sS "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
+                  -H "x-apikey: $VT_API_KEY" || true)
+                STATUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.status // "unknown"')
+              done
+
+              if [[ "$STATUS" != "completed" ]]; then
+                echo "::error::VirusTotal analysis for $NAME did not complete within ${TIMEOUT}s."
+                echo "- \`$NAME\`: ⚠️ analysis timed out" >> virustotal-report.txt
+                FAILED=1
+                echo "::endgroup::"
+                continue
+              fi
+
+              MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
             fi
 
-            echo "Polling analysis $ANALYSIS_ID for $NAME..."
-            STATUS="queued"
-            ELAPSED=0
-            TIMEOUT=900
-            INTERVAL=20
-            while [[ "$STATUS" != "completed" && "$ELAPSED" -lt "$TIMEOUT" ]]; do
-              sleep "$INTERVAL"
-              ELAPSED=$((ELAPSED + INTERVAL))
-              ANALYSIS=$(curl -s "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" \
-                -H "x-apikey: $VT_API_KEY")
-              STATUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.status')
-            done
-
-            if [[ "$STATUS" != "completed" ]]; then
-              echo "::error::VirusTotal analysis for $NAME did not complete within ${TIMEOUT}s."
-              echo "- \`$NAME\`: ⚠️ analysis timed out" >> virustotal-report.txt
-              echo 1 > /tmp/vt_failed
-              continue
-            fi
-
-            MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
             ICON="✅"
             if [[ "$MALICIOUS" -gt 0 ]]; then
               ICON="❌"
             fi
 
-            # The GUI report page is keyed on the URL identifier (the SHA256 of the
-            # submitted URL), NOT on the analysis ID (which looks like
-            # "u-<sha256>-<timestamp>") — linking the analysis ID 404s. The analysis
-            # response carries the right value under .meta.url_info.id; fall back to
-            # hashing the URL ourselves if VT ever stops returning it.
-            URL_ID=$(echo "$ANALYSIS" | jq -r '.meta.url_info.id // empty')
-            if [[ -z "$URL_ID" ]]; then
-              URL_ID=$(printf '%s' "$URL" | sha256sum | cut -d' ' -f1)
-            fi
-            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/url/$URL_ID)" >> virustotal-report.txt
+            # File reports are keyed on the file's SHA256 — the same hash already
+            # published in checksums.txt, so readers can verify the link points at
+            # the binary they downloaded.
+            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/file/$SHA)" >> virustotal-report.txt
 
             if [[ "$MALICIOUS" -gt 0 ]]; then
               echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s)."
-              echo 1 > /tmp/vt_failed
+              FAILED=1
             fi
+            echo "::endgroup::"
           done
 
           echo "=== virustotal-report.txt ==="
           cat virustotal-report.txt
 
-          if [[ -f /tmp/vt_failed ]]; then
-            OVERALL_STATUS=1
-          fi
-          exit "$OVERALL_STATUS"
+          exit "$FAILED"
 
       - name: Append VirusTotal results to release notes
         if: always()
