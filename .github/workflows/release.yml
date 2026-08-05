@@ -15,7 +15,7 @@
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
 #   - Upload all artifacts + checksums.txt to the draft release.
 #   - Upload the binaries themselves to VirusTotal for a full multi-engine file
-#     scan; fail if any engine flags them.
+#     scan; fail if detections reach MAX_DETECTIONS (see the virustotal job).
 #   - Append a VirusTotal results section to the release notes (idempotent —
 #     a rerun replaces the section rather than duplicating it). The rest of
 #     the release notes is left untouched.
@@ -274,7 +274,7 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   # 4. Scan the release binaries with VirusTotal. The binaries are downloaded and
   #    uploaded to VT so every engine sees the actual file bytes. Fails the job
-  #    (and blocks publish-release) if any engine flags either binary.
+  #    (and blocks publish-release) once detections reach MAX_DETECTIONS.
   # ───────────────────────────────────────────────────────────────────────────
   virustotal:
     name: VirusTotal scan
@@ -285,6 +285,11 @@ jobs:
       VT_API_KEY:  ${{ secrets.VT_API_KEY }}
       RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
       RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
+      # Block the release at this many detections. Not 1: an unsigned PyInstaller
+      # binary reliably picks up a generic-heuristic hit from one or two of the
+      # ~70 engines, while anything genuinely compromised lights up far more.
+      # Detections below the threshold still appear in the release notes.
+      MAX_DETECTIONS: 3
 
     steps:
       - name: Check VT_API_KEY is configured
@@ -347,6 +352,7 @@ jobs:
 
             if [[ -n "$MALICIOUS" ]]; then
               echo "VirusTotal already has this file; reusing its stored verdict."
+              FLAGGED_BY=$(echo "$EXISTING" | jq -r '[.data.attributes.last_analysis_results // {} | to_entries[] | select(.value.category == "malicious") | .key] | join(", ")')
             else
               # Both artifacts are ~200 MB. The plain POST /files endpoint caps at
               # 32 MB, so anything this size has to go through a one-shot upload
@@ -401,21 +407,32 @@ jobs:
               fi
 
               MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
+              FLAGGED_BY=$(echo "$ANALYSIS" | jq -r '[.data.attributes.results // {} | to_entries[] | select(.value.category == "malicious") | .key] | join(", ")')
             fi
 
+            # Name the engines: a lone detection on an unsigned PyInstaller build
+            # is usually a generic heuristic, and knowing which engine it was is
+            # the difference between "known false positive" and "investigate".
             ICON="✅"
+            DETAIL=""
             if [[ "$MALICIOUS" -gt 0 ]]; then
+              ICON="⚠️"
+              DETAIL=" (${FLAGGED_BY:-engine list unavailable})"
+            fi
+            if [[ "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
               ICON="❌"
             fi
 
             # File reports are keyed on the file's SHA256 — the same hash already
             # published in checksums.txt, so readers can verify the link points at
             # the binary they downloaded.
-            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/file/$SHA)" >> virustotal-report.txt
+            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s)$DETAIL — [VirusTotal report](https://www.virustotal.com/gui/file/$SHA)" >> virustotal-report.txt
 
-            if [[ "$MALICIOUS" -gt 0 ]]; then
-              echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s)."
+            if [[ "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
+              echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s) (threshold $MAX_DETECTIONS): ${FLAGGED_BY:-unknown engines}"
               FAILED=1
+            elif [[ "$MALICIOUS" -gt 0 ]]; then
+              echo "::warning::$NAME has $MALICIOUS malicious detection(s), under the threshold of $MAX_DETECTIONS: ${FLAGGED_BY:-unknown engines}"
             fi
             echo "::endgroup::"
           done
