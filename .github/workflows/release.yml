@@ -303,6 +303,9 @@ jobs:
       # something broad is going on and the release should stop no matter who
       # reported it.
       MAX_DETECTIONS: 6
+      # How old VirusTotal's stored verdict may be before we ask it to re-scan
+      # instead of trusting what it has.
+      MAX_VERDICT_AGE_DAYS: 14
 
     steps:
       - name: Check VT_API_KEY is configured
@@ -361,11 +364,39 @@ jobs:
             # re-uploading ~200 MB to relearn the same verdict is wasteful.
             EXISTING=$(curl -sS "https://www.virustotal.com/api/v3/files/$SHA" \
               -H "x-apikey: $VT_API_KEY" || true)
-            MALICIOUS=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_stats.malicious // empty')
+            STORED=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_stats.malicious // empty')
+            STORED_DATE=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_date // empty')
 
-            if [[ -n "$MALICIOUS" ]]; then
-              echo "VirusTotal already has this file; reusing its stored verdict."
+            # A stored verdict is only worth reusing while it's recent. Engines
+            # revise signatures constantly, so an old result can report a
+            # detection that its vendor has since retracted — or miss one added
+            # later. Re-runs of this workflow are minutes apart and stay on the
+            # fast path; anything older gets re-checked.
+            STORED_AGE_DAYS=""
+            if [[ -n "$STORED_DATE" ]]; then
+              STORED_AGE_DAYS=$(( ( $(date +%s) - STORED_DATE ) / 86400 ))
+            fi
+
+            ANALYSIS_ID=""
+            if [[ -n "$STORED" && -n "$STORED_AGE_DAYS" && "$STORED_AGE_DAYS" -le "$MAX_VERDICT_AGE_DAYS" ]]; then
+              echo "VirusTotal scanned this file ${STORED_AGE_DAYS} day(s) ago; reusing that verdict."
+              MALICIOUS="$STORED"
               FLAGGED_LIST=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_results // {} | to_entries[] | select(.value.category == "malicious") | .key')
+            elif [[ -n "$STORED" ]]; then
+              # VT has the bytes already, so ask it to re-run the engines rather
+              # than spending another ~200 MB upload on a file it can identify by
+              # hash.
+              echo "VirusTotal's verdict is ${STORED_AGE_DAYS:-an unknown number of} day(s) old; requesting a re-scan."
+              ANALYSIS_ID=$(curl -sS -X POST "https://www.virustotal.com/api/v3/files/$SHA/analyse" \
+                -H "x-apikey: $VT_API_KEY" | jq -r '.data.id // empty')
+
+              if [[ -z "$ANALYSIS_ID" ]]; then
+                echo "::error::Could not request a re-scan of $NAME."
+                echo "- \`$NAME\`: ⚠️ re-scan request failed" >> virustotal-report.txt
+                FAILED=1
+                echo "::endgroup::"
+                continue
+              fi
             else
               # Both artifacts are ~200 MB. The plain POST /files endpoint caps at
               # 32 MB, so anything this size has to go through a one-shot upload
@@ -395,9 +426,13 @@ jobs:
                 echo "::endgroup::"
                 continue
               fi
+            fi
 
-              # File analyses queue behind ~70 engines and take a lot longer than
-              # the old URL lookups did, hence the roomier budget.
+            # Shared by the upload and re-scan paths; skipped when a fresh stored
+            # verdict already answered the question. File analyses queue behind
+            # ~70 engines and take a lot longer than the old URL lookups did,
+            # hence the roomier budget.
+            if [[ -n "$ANALYSIS_ID" ]]; then
               echo "Polling analysis $ANALYSIS_ID for $NAME..."
               STATUS="queued"
               ELAPSED=0
