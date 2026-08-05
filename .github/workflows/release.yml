@@ -350,7 +350,17 @@ jobs:
             if [[ "$MALICIOUS" -gt 0 ]]; then
               ICON="❌"
             fi
-            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/url/$ANALYSIS_ID)" >> virustotal-report.txt
+
+            # The GUI report page is keyed on the URL identifier (the SHA256 of the
+            # submitted URL), NOT on the analysis ID (which looks like
+            # "u-<sha256>-<timestamp>") — linking the analysis ID 404s. The analysis
+            # response carries the right value under .meta.url_info.id; fall back to
+            # hashing the URL ourselves if VT ever stops returning it.
+            URL_ID=$(echo "$ANALYSIS" | jq -r '.meta.url_info.id // empty')
+            if [[ -z "$URL_ID" ]]; then
+              URL_ID=$(printf '%s' "$URL" | sha256sum | cut -d' ' -f1)
+            fi
+            echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s) — [VirusTotal report](https://www.virustotal.com/gui/url/$URL_ID)" >> virustotal-report.txt
 
             if [[ "$MALICIOUS" -gt 0 ]]; then
               echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s)."
