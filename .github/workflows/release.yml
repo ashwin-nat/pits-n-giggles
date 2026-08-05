@@ -15,7 +15,8 @@
 #   - Wipe any existing assets from the draft release (idempotent re-runs).
 #   - Upload all artifacts + checksums.txt to the draft release.
 #   - Upload the binaries themselves to VirusTotal for a full multi-engine file
-#     scan; fail if detections reach MAX_DETECTIONS (see the virustotal job).
+#     scan; fail if any engine outside KNOWN_FP_ENGINES flags them (see the
+#     virustotal job for why the gate isn't a plain detection count).
 #   - Append a VirusTotal results section to the release notes (idempotent —
 #     a rerun replaces the section rather than duplicating it). The rest of
 #     the release notes is left untouched.
@@ -274,7 +275,8 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   # 4. Scan the release binaries with VirusTotal. The binaries are downloaded and
   #    uploaded to VT so every engine sees the actual file bytes. Fails the job
-  #    (and blocks publish-release) once detections reach MAX_DETECTIONS.
+  #    (and blocks publish-release) when an engine outside KNOWN_FP_ENGINES flags
+  #    a binary, or when the total reaches MAX_DETECTIONS.
   # ───────────────────────────────────────────────────────────────────────────
   virustotal:
     name: VirusTotal scan
@@ -285,11 +287,22 @@ jobs:
       VT_API_KEY:  ${{ secrets.VT_API_KEY }}
       RELEASE_TAG: ${{ needs.find-release.outputs.tag }}
       RELEASE_ID:  ${{ needs.find-release.outputs.release_id }}
-      # Block the release at this many detections. Not 1: an unsigned PyInstaller
-      # binary reliably picks up a generic-heuristic hit from one or two of the
-      # ~70 engines, while anything genuinely compromised lights up far more.
-      # Detections below the threshold still appear in the release notes.
-      MAX_DETECTIONS: 3
+      # The gate is "did an engine we don't already expect flag this build", not a
+      # bare count. An unsigned PyInstaller onefile binary self-extracts to temp,
+      # which a handful of low-tier engines permanently read as dropper
+      # behaviour — as of v4.3.0 that's the three below, and no amount of waiting
+      # clears them. A genuine compromise would light up the majors that are
+      # clean today (Microsoft, Kaspersky, ESET), so any engine outside this list
+      # fails the job.
+      #
+      # Names are matched case- and space-insensitively, and by prefix in either
+      # direction, because VT's GUI labels don't match its API keys ("Bkav Pro"
+      # vs "Bkav", "Arctic Wolf" vs "ArcticWolf").
+      KNOWN_FP_ENGINES: "ArcticWolf,Bkav,SecureAge"
+      # Hard ceiling regardless of the list above: this many detections means
+      # something broad is going on and the release should stop no matter who
+      # reported it.
+      MAX_DETECTIONS: 6
 
     steps:
       - name: Check VT_API_KEY is configured
@@ -352,7 +365,7 @@ jobs:
 
             if [[ -n "$MALICIOUS" ]]; then
               echo "VirusTotal already has this file; reusing its stored verdict."
-              FLAGGED_BY=$(echo "$EXISTING" | jq -r '[.data.attributes.last_analysis_results // {} | to_entries[] | select(.value.category == "malicious") | .key] | join(", ")')
+              FLAGGED_LIST=$(echo "$EXISTING" | jq -r '.data.attributes.last_analysis_results // {} | to_entries[] | select(.value.category == "malicious") | .key')
             else
               # Both artifacts are ~200 MB. The plain POST /files endpoint caps at
               # 32 MB, so anything this size has to go through a one-shot upload
@@ -407,19 +420,49 @@ jobs:
               fi
 
               MALICIOUS=$(echo "$ANALYSIS" | jq -r '.data.attributes.stats.malicious')
-              FLAGGED_BY=$(echo "$ANALYSIS" | jq -r '[.data.attributes.results // {} | to_entries[] | select(.value.category == "malicious") | .key] | join(", ")')
+              FLAGGED_LIST=$(echo "$ANALYSIS" | jq -r '.data.attributes.results // {} | to_entries[] | select(.value.category == "malicious") | .key')
             fi
 
-            # Name the engines: a lone detection on an unsigned PyInstaller build
-            # is usually a generic heuristic, and knowing which engine it was is
-            # the difference between "known false positive" and "investigate".
+            # Split the flagging engines into the ones we already expect and the
+            # ones we don't — the latter are what actually gate the release.
+            UNEXPECTED=""
+            while read -r HIT; do
+              [[ -z "$HIT" ]] && continue
+              HIT_NORM=$(echo "$HIT" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+              KNOWN=0
+              while read -r ALLOWED; do
+                [[ -z "$ALLOWED" ]] && continue
+                ALLOWED_NORM=$(echo "$ALLOWED" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+                if [[ "$HIT_NORM" == "$ALLOWED_NORM"* || "$ALLOWED_NORM" == "$HIT_NORM"* ]]; then
+                  KNOWN=1
+                  break
+                fi
+              done <<< "$(echo "$KNOWN_FP_ENGINES" | tr ',' '\n')"
+              if [[ "$KNOWN" -eq 0 ]]; then
+                UNEXPECTED="${UNEXPECTED:+$UNEXPECTED, }$HIT"
+              fi
+            done <<< "$FLAGGED_LIST"
+
+            FLAGGED_BY=$(echo "$FLAGGED_LIST" | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+            FLAGGED_COUNT=$(echo "$FLAGGED_LIST" | grep -c '[^[:space:]]' || true)
+
+            # The count comes from stats.malicious but the names come from the
+            # results map. If we couldn't enumerate every detection we have no
+            # basis for calling them all known — don't wave it through.
+            if [[ "$FLAGGED_COUNT" -lt "$MALICIOUS" ]]; then
+              UNEXPECTED="${UNEXPECTED:+$UNEXPECTED, }$((MALICIOUS - FLAGGED_COUNT)) unidentified engine(s)"
+            fi
+
             ICON="✅"
             DETAIL=""
             if [[ "$MALICIOUS" -gt 0 ]]; then
               ICON="⚠️"
               DETAIL=" (${FLAGGED_BY:-engine list unavailable})"
+              if [[ -z "$UNEXPECTED" && -n "$FLAGGED_BY" ]]; then
+                DETAIL=" — known false positives ($FLAGGED_BY)"
+              fi
             fi
-            if [[ "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
+            if [[ -n "$UNEXPECTED" || "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
               ICON="❌"
             fi
 
@@ -428,11 +471,14 @@ jobs:
             # the binary they downloaded.
             echo "- \`$NAME\`: $ICON $MALICIOUS malicious detection(s)$DETAIL — [VirusTotal report](https://www.virustotal.com/gui/file/$SHA)" >> virustotal-report.txt
 
-            if [[ "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
-              echo "::error::VirusTotal flagged $NAME with $MALICIOUS malicious detection(s) (threshold $MAX_DETECTIONS): ${FLAGGED_BY:-unknown engines}"
+            if [[ -n "$UNEXPECTED" ]]; then
+              echo "::error::$NAME was flagged by engine(s) outside the known false-positive list: $UNEXPECTED (all detections: ${FLAGGED_BY:-unknown})"
+              FAILED=1
+            elif [[ "$MALICIOUS" -ge "$MAX_DETECTIONS" ]]; then
+              echo "::error::$NAME has $MALICIOUS malicious detection(s), at or over the ceiling of $MAX_DETECTIONS: ${FLAGGED_BY:-unknown engines}"
               FAILED=1
             elif [[ "$MALICIOUS" -gt 0 ]]; then
-              echo "::warning::$NAME has $MALICIOUS malicious detection(s), under the threshold of $MAX_DETECTIONS: ${FLAGGED_BY:-unknown engines}"
+              echo "::warning::$NAME has $MALICIOUS malicious detection(s), all from known false-positive engines: $FLAGGED_BY"
             fi
             echo "::endgroup::"
           done
