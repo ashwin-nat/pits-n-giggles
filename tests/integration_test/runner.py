@@ -12,6 +12,7 @@ import subprocess
 import sys
 import threading
 import json
+import queue
 import time
 import webbrowser
 from pathlib import Path
@@ -23,6 +24,8 @@ from aiohttp import ClientSession, TCPConnector
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+from lib.child_proc_mgmt import (extract_save_skipped_from_line,
+                                 extract_saved_path_from_line)
 from lib.config import load_config_from_json
 from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
@@ -48,6 +51,7 @@ test_stats = {
     "endpoints_passed": 0,
     "endpoints_failed": 0,
     "saves_checked": 0,
+    "saves_skipped": 0,
     "saves_unreadable": 0,
     "invariant_violations": 0,
 }
@@ -241,17 +245,37 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
             preexec_fn=os.setsid
         )
 
-def snapshot_saves(session_dir: Path) -> set:
-    """List the save files currently on disk.
+def pump_app_output(process: subprocess.Popen, saved_paths: queue.Queue) -> None:
+    """Drain the launcher's stdout, logging it and picking out the save tokens.
+
+    The launcher forwards everything its subsystems print, and keeps writing its own log
+    file as before. We drop all of it except the save tokens.
+
+    Draining is required regardless: the pipe is created with subprocess.PIPE, and an
+    unread pipe fills its OS buffer and then blocks the child mid-write. base_mgr makes
+    the same point about its own children.
 
     Args:
-        session_dir (Path): Directory the app writes sessions into
-
-    Returns:
-        set: Every save file found under it
+        process (subprocess.Popen): The launcher process
+        saved_paths (queue.Queue): Receives the path of each session save as it is written
     """
 
-    return set(session_dir.rglob("*.json")) if session_dir.is_dir() else set()
+    if not process.stdout:
+        return
+
+    for raw_line in process.stdout:
+        line = raw_line.rstrip()
+        if not line:
+            continue
+
+        if saved_path := extract_saved_path_from_line(line):
+            saved_paths.put(saved_path)
+            logger.test_log(f"  [SAVE] Session written to {saved_path}")
+        elif skip_reason := extract_save_skipped_from_line(line):
+            test_stats["saves_skipped"] += 1
+            logger.test_log(f"  [SKIP] Session not saved: {skip_reason}")
+        # Anything else is discarded. The launcher already writes the consolidated
+        # subsystem log to its own file; duplicating it here would just double it up.
 
 
 def check_save_invariants(save_path: Path) -> Optional[int]:
@@ -279,32 +303,28 @@ def check_save_invariants(save_path: Path) -> Optional[int]:
     return len(report.violations)
 
 
-def check_new_saves(session_dir: Path, seen: set) -> set:
-    """Check any save files the app has written since the last sweep.
+def drain_saved_queue(saved_paths: queue.Queue) -> None:
+    """Check every session save announced since the last drain.
 
-    The app writes these itself - post-session autosave, plus just-in-case autosave when a
-    new session starts before the previous one finished, which is exactly what a
-    back-to-back replay looks like. So there is nothing to trigger; we just pick up what
-    appeared. Attribution to a specific recording is approximate for that reason, hence the
-    file name in the log line.
+    The app tells us what it wrote via a stdout token, so each save is picked up as it
+    happens rather than inferred from a directory diff.
 
     Args:
-        session_dir (Path): Directory the app writes sessions into
-        seen (set): Save files already accounted for
-
-    Returns:
-        set: The updated set of accounted-for files
+        saved_paths (queue.Queue): Paths announced by the output pump
     """
 
-    current = snapshot_saves(session_dir)
-    for save_path in sorted(current - seen):
+    while True:
+        try:
+            save_path = Path(saved_paths.get_nowait())
+        except queue.Empty:
+            return
+
         violations = check_save_invariants(save_path)
         if violations is None:
             test_stats["saves_unreadable"] += 1
             continue
         test_stats["saves_checked"] += 1
         test_stats["invariant_violations"] += violations
-    return current
 
 
 def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
@@ -358,6 +378,7 @@ def print_test_statistics() -> None:
     logger.test_log(f"Endpoint checks passed: {test_stats['endpoints_passed']}")
     logger.test_log(f"Endpoint checks failed: {test_stats['endpoints_failed']}")
     logger.test_log(f"Saves checked:          {test_stats['saves_checked']}")
+    logger.test_log(f"Saves skipped by app:   {test_stats['saves_skipped']}")
     logger.test_log(f"Saves unreadable:       {test_stats['saves_unreadable']}")
     logger.test_log(f"Invariant violations:   {test_stats['invariant_violations']}")
 
@@ -374,8 +395,7 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool,
-         session_dir: Path = Path("data")) -> bool:
+def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
     """Main test execution function.
 
     Returns:
@@ -386,16 +406,23 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
     files = fetch_test_files()
     logger.test_log(f"Number of Test files: {len(files)}")
 
-    # Only saves written from here on belong to this run
-    seen_saves = snapshot_saves(session_dir)
-    logger.test_log(f"Existing saves in {session_dir}: {len(seen_saves)} (ignored)")
-
     exit_event = threading.Event()
 
     # Start the app
     ipc_port = get_free_tcp_port()
     app_process = start_app(config_file, ipc_port, coverage_enabled)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
+
+    # Drain the launcher's stdout. Required regardless of the tokens: an unread pipe fills
+    # and blocks the child mid-write.
+    saved_paths: queue.Queue = queue.Queue()
+    output_thread = threading.Thread(
+        target=pump_app_output,
+        args=(app_process, saved_paths),
+        daemon=True
+    )
+    output_thread.start()
+    logger.test_log(f"Output pump thread started (TID: {output_thread.ident})")
 
     # Start heartbeat thread
     heartbeat_thread = threading.Thread(
@@ -439,7 +466,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
             logger.test_log(f"  Endpoints: {results['endpoints_passed']} passed, {results['endpoints_failed']} failed")
 
             time.sleep(2)
-            seen_saves = check_new_saves(session_dir, seen_saves)
+            drain_saved_queue(saved_paths)
 
         time.sleep(5)
 
@@ -453,10 +480,10 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         if not send_ipc_shutdown(ipc_port):
             kill_app(app_process)
 
-        # The last session's save is only written on shutdown, and just-in-case autosave
-        # lags a session behind, so sweep once more after the app has gone.
-        time.sleep(2)
-        check_new_saves(session_dir, seen_saves)
+        # The last session's save is written during shutdown, so give the pump a moment to
+        # see it before draining a final time.
+        output_thread.join(timeout=10)
+        drain_saved_queue(saved_paths)
 
         # Print final statistics
         print_test_statistics()
@@ -491,8 +518,7 @@ if __name__ == "__main__":
             telemetry_port=settings.Network.telemetry_port,
             http_port=settings.Network.server_port,
             proto=settings.HTTPS.proto,
-            coverage_enabled=coverage_enabled,
-            session_dir=Path(settings.Capture.session_dir)
+            coverage_enabled=coverage_enabled
         )
     except KeyboardInterrupt:
         logger.test_log("\n[MAIN] KeyboardInterrupt caught")
