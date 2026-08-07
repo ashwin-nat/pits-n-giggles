@@ -1506,35 +1506,6 @@ class SessionState:
         return  (0 <= index < len(self.m_driver_data)) and \
                 (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
 
-    def isSuspiciousSessionStart(self, session_uid: int) -> bool:
-        """Check if the session start event is suspicious.
-
-        Args:
-            session_uid (int): The session UID
-
-        Returns:
-            bool: True if the session start event is suspicious, False otherwise
-        """
-
-        if self.m_session_info.m_chequered_flag:
-            self.m_logger.warning("Suspicious session start event message for session %d after CHEQUERED_FLAG event",
-                                    session_uid)
-            return True
-
-        driver = self.getDriverInfoByPosition(1)
-        if not driver:
-            self.m_logger.warning("Cannot find P1 driver in session %d", session_uid)
-            return False
-
-        if driver.m_lap_info.m_current_lap >= self.m_session_info.m_total_laps:
-                self.m_logger.warning("Suspicious session start event message for session %d - "
-                                      "leader may have completed race (lap %d)",
-                                        session_uid, driver.m_lap_info.m_current_lap)
-                return True
-
-        self.m_logger.debug("SESSION_START for %d doesn't seem suspicious", session_uid)
-        return False
-
     ##### Internal Helpers #####
 
     def _lookup_segment_info(self, lap_distance: float) -> Optional[Dict[str, Any]]:
