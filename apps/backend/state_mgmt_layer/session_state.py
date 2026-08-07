@@ -1069,16 +1069,6 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_overtake_dist = car_telemetry_data.m_overtakeActivationDistance
             obj_to_be_updated.m_car_info.m_2026_regs = car_telemetry_data.m_2026Regulations
 
-    def processSessionStarted(self, reason: str) -> None:
-        """
-        Reset the data structures when SESSION_STARTED has been received
-
-        Args:
-            reason (str): Reason for clearing
-        """
-        self.clear(reason)
-        self.setRaceOngoing()
-
     async def processSessionUpdate(self, packet: PacketSessionData) -> None:
         """Update the data strctures with session data.
 

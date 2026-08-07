@@ -783,7 +783,8 @@ class F1TelemetryHandler:
         Args:
             reason (str): Reason for clearing
         """
-        self.m_session_state_ref.processSessionStarted(reason)
+        self.m_session_state_ref.clear(reason)
+        self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
