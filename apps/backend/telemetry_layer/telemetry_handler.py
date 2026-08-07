@@ -35,7 +35,7 @@ from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.button_debouncer import ButtonDebouncer
 from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.event_counter import EventCounter
-from lib.f1_types import (F1PacketType, PacketCarDamageData,
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetry2Data, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
@@ -339,6 +339,29 @@ class F1TelemetryHandler:
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
+        @self.m_manager.on_any_packet()
+        async def handleSessionUidGate(packet: F1PacketBase) -> None:
+            """Detect a session UID change on any packet, ahead of that packet's own typed
+            callback, and clear before anything merges it into per-type state.
+
+            # TODO: this clears on the first packet carrying a new UID, with no debounce.
+            # A single corrupt/stale header could in theory trigger a false clear - validate
+            # against the recorded multi-version replay captures in test_data/ before relying
+            # on this in the field, and reinstate a debounce (see session-uid-clearing-plan.md)
+            # if that turns up false clears.
+
+            Args:
+                packet: The parsed packet, of any type the manager is set up to dispatch.
+            """
+            uid = packet.m_header.m_sessionUID
+            if uid in (0, self.m_last_session_uid):
+                return
+
+            self.m_logger.warning("Session UID changed %s -> %s on a %s packet. Clearing data structures.",
+                                  self.m_last_session_uid, uid, packet.m_header.m_packetId.name)
+            self.m_last_session_uid = uid
+            self.clearAllDataStructures(f"Session UID changed to {uid}")
+
         @self.m_manager.on_packet(F1PacketType.SESSION)
         async def handleSessionData(packet: PacketSessionData) -> None:
             """
@@ -353,11 +376,8 @@ class F1TelemetryHandler:
                 self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
                                    packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session duration is 0")
-
-            elif await self.m_session_state_ref.processSessionUpdate(packet):
-                self.m_logger.info("Session UID changed. clearing data structures. UID %d",
-                                   packet.m_header.m_sessionUID)
-                self.clearAllDataStructures("Session UID changed")
+            else:
+                await self.m_session_state_ref.processSessionUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
         async def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -490,6 +510,17 @@ class F1TelemetryHandler:
             Args:
                 packet (PacketSessionHistoryData): The session history update packet
             """
+
+            if packet.m_header.m_sessionUID == 0:
+                # Observed in the wild: a well-formed SESSION_HISTORY packet mid-session with
+                # UID 0 and m_carIdx/player index pointing at no real car - a placeholder the
+                # game emits in some states (e.g. spectating). Some of these have been linked
+                # to reports of bogus lap data, so drop rather than merge it into a real
+                # session's history.
+                self.m_logger.warning(
+                    "Dropping SESSION_HISTORY packet with UID 0. Car index %d, frame %d, num laps: %d",
+                    packet.m_carIdx, packet.m_header.m_frameIdentifier, packet.m_numLaps)
+                return
 
             # After end of session, the game will periodically send SESSION_HISTORY.
             # But for the purposes of auto hiding menu, lets not treat it as periodic

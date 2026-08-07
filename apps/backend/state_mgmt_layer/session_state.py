@@ -1079,20 +1079,22 @@ class SessionState:
         self.clear(reason)
         self.setRaceOngoing()
 
-    async def processSessionUpdate(self, packet: PacketSessionData) -> bool:
-        """Update the data strctures with session data
+    async def processSessionUpdate(self, packet: PacketSessionData) -> None:
+        """Update the data strctures with session data.
+
+        A session UID change is detected and cleared centrally, ahead of this call - see
+        F1TelemetryHandler's on_any_packet-registered UID gate. This method only populates
+        fields from the packet; it must not clear anything itself, or it wipes the very
+        fields m_session_info.processSessionUpdate() just populated from this packet.
+
         Args:
             packet (PacketSessionData): Session data packet
-
-            bool - True if all data needs to be reset
         """
 
         session_changed = self._processSessionUpdateHelper(packet)
-        if should_clear := self.m_session_info.processSessionUpdate(packet):
-            self.clear("session update")
+        self.m_session_info.processSessionUpdate(packet)
         if session_changed:
             await self._notifyExternalApiTask()
-        return should_clear
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
