@@ -352,18 +352,19 @@ class F1TelemetryHandler:
             Args:
                 packet: The parsed packet, of any type the manager is set up to dispatch.
             """
-            uid = packet.m_header.m_sessionUID
-            if uid in (0, self.m_last_session_uid):
-                return
+            new_uid = packet.m_header.m_sessionUID
+            old_uid = self.m_last_session_uid
+            if new_uid in (0, old_uid):
+                return  # menu packet, or no change
 
             self.m_logger.warning("Session UID changed %s -> %s on a %s packet. Clearing data structures.",
-                                  self.m_last_session_uid, uid, packet.m_header.m_packetId.name)
-            # In the first session, m_last_session_uid will be 0, because menu packets contain session UID 0.
-            # We need to no-op for both m_last_session_uid 0 and None
-            if not self.m_last_session_uid:
-                self._saveJustInCaseIfNeeded(self.m_last_session_uid)
-            self.m_last_session_uid = uid
-            self.clearAllDataStructures(f"Session UID changed to {uid}")
+                                  old_uid, new_uid, packet.m_header.m_packetId.name)
+
+            if old_uid is not None:
+                self._saveJustInCaseIfNeeded(old_uid)
+
+            self.m_last_session_uid = new_uid
+            self.clearAllDataStructures(f"Session UID changed to {new_uid}")
 
         @self.m_manager.on_packet(F1PacketType.SESSION)
         async def handleSessionData(packet: PacketSessionData) -> None:
