@@ -17,16 +17,17 @@
         "post_quali_data_autosave": true,
         "post_fp_data_autosave": false,
         "post_tt_data_autosave": false,
-        "save_race_ctrl_msg": false,
+        "save_race_ctrl_msg": true,
         "just_in_case_autosave": true,
         "session_dir": "data"
     },
     "Display": {
-        "disable_browser_autoload": true,
+        "auto_open_dashboard": "Hub",
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
         "realtime_overlay_fps": 60,
         "use_cpu_acceleration": false,
+        "save_viewer_poll_interval_secs": 10,
         "wdt_timeout": 5.0
     },
     "Privacy": {
@@ -204,6 +205,11 @@
                 "y": 17,
                 "scale_factor": 1.0
             },
+            "mfd": {
+                "x": -842,
+                "y": 27,
+                "scale_factor": 1.0
+            },
             "input_telemetry": {
                 "x": -863,
                 "y": 512,
@@ -227,11 +233,6 @@
             "pu": {
                 "x": -1831,
                 "y": 217,
-                "scale_factor": 1.0
-            },
-            "mfd": {
-                "x": -842,
-                "y": 27,
                 "scale_factor": 1.0
             },
             "fuel_info": {
