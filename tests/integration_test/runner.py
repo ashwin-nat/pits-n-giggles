@@ -11,6 +11,8 @@ import ssl
 import subprocess
 import sys
 import threading
+import json
+import queue
 import time
 import webbrowser
 from pathlib import Path
@@ -22,8 +24,12 @@ from aiohttp import ClientSession, TCPConnector
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+from lib.child_proc_mgmt import (extract_save_skipped_from_line,
+                                 extract_saved_path_from_line)
 from lib.config import load_config_from_json
+from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
+from lib.save_invariants import checkSaveFile
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
 
@@ -44,6 +50,10 @@ test_stats = {
     "telemetry_failed": 0,
     "endpoints_passed": 0,
     "endpoints_failed": 0,
+    "saves_checked": 0,
+    "saves_skipped": 0,
+    "saves_unreadable": 0,
+    "invariant_violations": 0,
 }
 
 logger = create_logger()
@@ -235,19 +245,101 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
             preexec_fn=os.setsid
         )
 
+def pump_app_output(process: subprocess.Popen, saved_paths: queue.Queue) -> None:
+    """Drain the launcher's stdout, logging it and picking out the save tokens.
+
+    The launcher forwards everything its subsystems print, and keeps writing its own log
+    file as before. We drop all of it except the save tokens.
+
+    Draining is required regardless: the pipe is created with subprocess.PIPE, and an
+    unread pipe fills its OS buffer and then blocks the child mid-write. base_mgr makes
+    the same point about its own children.
+
+    Args:
+        process (subprocess.Popen): The launcher process
+        saved_paths (queue.Queue): Receives the path of each session save as it is written
+    """
+
+    if not process.stdout:
+        return
+
+    for raw_line in process.stdout:
+        line = raw_line.rstrip()
+        if not line:
+            continue
+
+        if saved_path := extract_saved_path_from_line(line):
+            saved_paths.put(saved_path)
+            logger.test_log(f"  [SAVE] Session written to {saved_path}")
+        elif skip_reason := extract_save_skipped_from_line(line):
+            test_stats["saves_skipped"] += 1
+            logger.test_log(f"  [SKIP] Session not saved: {skip_reason}")
+        # Anything else is discarded. The launcher already writes the consolidated
+        # subsystem log to its own file; duplicating it here would just double it up.
+
+
+def check_save_invariants(save_path: Path) -> Optional[int]:
+    """Run the state-layer invariants over a written save file.
+
+    Args:
+        save_path (Path): The save file to check
+
+    Returns:
+        Optional[int]: Number of violations, or None if the file could not be read
+    """
+
+    try:
+        with open(save_path, "r", encoding="utf-8") as f:
+            save = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.test_log(f"  [FAIL] Could not read save file {save_path}: {e}")
+        return None
+
+    report = checkSaveFile(save)
+    status = "OK" if report.ok else "FAIL"
+    logger.test_log(f"  [{status}] Invariants {save_path.name}: {report.summary()}")
+    for violation in report.violations:
+        logger.test_log(f"           {violation}")
+    return len(report.violations)
+
+
+def drain_saved_queue(saved_paths: queue.Queue) -> None:
+    """Check every session save announced since the last drain.
+
+    The app tells us what it wrote via a stdout token, so each save is picked up as it
+    happens rather than inferred from a directory diff.
+
+    Args:
+        saved_paths (queue.Queue): Paths announced by the output pump
+    """
+
+    while True:
+        try:
+            save_path = Path(saved_paths.get_nowait())
+        except queue.Empty:
+            return
+
+        violations = check_save_invariants(save_path)
+        if violations is None:
+            test_stats["saves_unreadable"] += 1
+            continue
+        test_stats["saves_checked"] += 1
+        test_stats["invariant_violations"] += violations
+
+
 def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
     """Process a single test file and check endpoints."""
     http_endpoints = [
         f"{proto}://localhost:{http_port}/telemetry-info",
         f"{proto}://localhost:{http_port}/race-info",
         f"{proto}://localhost:{http_port}/stream-overlay-info",
-        *[f"{proto}://localhost:{http_port}/driver-info?index={i}" for i in range(23)]
+        *[f"{proto}://localhost:{http_port}/driver-info?index={i}" for i in range(MAX_DRIVERS)]
     ]
 
     results = {
         "telemetry_success": False,
         "endpoints_passed": 0,
-        "endpoints_failed": 0
+        "endpoints_failed": 0,
     }
 
     # Send telemetry data
@@ -285,6 +377,10 @@ def print_test_statistics() -> None:
     logger.test_log(f"Telemetry failed:       {test_stats['telemetry_failed']}")
     logger.test_log(f"Endpoint checks passed: {test_stats['endpoints_passed']}")
     logger.test_log(f"Endpoint checks failed: {test_stats['endpoints_failed']}")
+    logger.test_log(f"Saves checked:          {test_stats['saves_checked']}")
+    logger.test_log(f"Saves skipped by app:   {test_stats['saves_skipped']}")
+    logger.test_log(f"Saves unreadable:       {test_stats['saves_unreadable']}")
+    logger.test_log(f"Invariant violations:   {test_stats['invariant_violations']}")
 
     total_telemetry = test_stats['telemetry_sent'] + test_stats['telemetry_failed']
     total_endpoints = test_stats['endpoints_passed'] + test_stats['endpoints_failed']
@@ -300,7 +396,11 @@ def print_test_statistics() -> None:
     logger.test_log("=" * 80)
 
 def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
-    """Main test execution function."""
+    """Main test execution function.
+
+    Returns:
+        bool: True only if every file replayed and every endpoint check passed.
+    """
     global app_process, exit_event, ipc_port
 
     files = fetch_test_files()
@@ -313,6 +413,17 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
     app_process = start_app(config_file, ipc_port, coverage_enabled)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
 
+    # Drain the launcher's stdout. Required regardless of the tokens: an unread pipe fills
+    # and blocks the child mid-write.
+    saved_paths: queue.Queue = queue.Queue()
+    output_thread = threading.Thread(
+        target=pump_app_output,
+        args=(app_process, saved_paths),
+        daemon=True
+    )
+    output_thread.start()
+    logger.test_log(f"Output pump thread started (TID: {output_thread.ident})")
+
     # Start heartbeat thread
     heartbeat_thread = threading.Thread(
         target=send_heartbeat,
@@ -324,7 +435,8 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     time.sleep(5)
 
-    # Launch browser views
+    # Launch browser views. These are not decoration - they put the web server routes,
+    # Socket.IO and the frontend JS through the run as well.
     logger.test_log("Launching driver view, engineer view and overlay clients")
     webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
     webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
@@ -354,6 +466,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
             logger.test_log(f"  Endpoints: {results['endpoints_passed']} passed, {results['endpoints_failed']} failed")
 
             time.sleep(2)
+            drain_saved_queue(saved_paths)
 
         time.sleep(5)
 
@@ -367,10 +480,24 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         if not send_ipc_shutdown(ipc_port):
             kill_app(app_process)
 
+        # The last session's save is written during shutdown, so give the pump a moment to
+        # see it before draining a final time.
+        output_thread.join(timeout=10)
+        drain_saved_queue(saved_paths)
+
         # Print final statistics
         print_test_statistics()
 
-    return True
+    # Report honestly. Previously this returned True unconditionally, so the process always
+    # exited 0 and the runner could never gate anything.
+    return (
+        test_stats["files_processed"] == len(files) and
+        test_stats["telemetry_failed"] == 0 and
+        test_stats["endpoints_failed"] == 0 and
+        test_stats["saves_checked"] > 0 and
+        test_stats["saves_unreadable"] == 0 and
+        test_stats["invariant_violations"] == 0
+    )
 
 
 if __name__ == "__main__":

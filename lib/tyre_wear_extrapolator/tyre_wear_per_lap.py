@@ -25,7 +25,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from lib.f1_types.packet_1_session_data import WeatherForecastSample
+from lib.f1_types import CarDamageData, F1Utils, WeatherForecastSample
 
 # ------------------------- CLASS DEFINITIONS --------------------------------------------------------------------------
 
@@ -50,6 +50,38 @@ class TyreWearPerLap:
     is_racing_lap: bool = True
     desc: Optional[str] = None
     weather_id: Optional[WeatherForecastSample.WeatherCondition] = None
+
+    @classmethod
+    def from_car_damage(cls,
+                        car_damage: CarDamageData,
+                        lap_number: Optional[int] = None,
+                        is_racing_lap: bool = True,
+                        desc: Optional[str] = None,
+                        weather_id: Optional[WeatherForecastSample.WeatherCondition] = None
+                        ) -> "TyreWearPerLap":
+        """Build a sample from a car damage packet's tyre wear array.
+
+        Args:
+            car_damage (CarDamageData): The car damage data to read the four wear values from
+            lap_number (Optional[int]): Lap number this sample belongs to
+            is_racing_lap (bool): Whether this was a green-flag racing lap
+            desc (Optional[str]): Human readable description, used when debugging wear history
+            weather_id (Optional[WeatherForecastSample.WeatherCondition]): Weather at the time of sampling
+
+        Returns:
+            TyreWearPerLap: The constructed sample
+        """
+
+        return cls(
+            fl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_LEFT],
+            fr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_FRONT_RIGHT],
+            rl_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_LEFT],
+            rr_tyre_wear=car_damage.m_tyresWear[F1Utils.INDEX_REAR_RIGHT],
+            lap_number=lap_number,
+            is_racing_lap=is_racing_lap,
+            desc=desc,
+            weather_id=weather_id,
+        )
 
     @property
     def m_average(self) -> float:

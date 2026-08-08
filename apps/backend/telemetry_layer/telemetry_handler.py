@@ -33,6 +33,7 @@ from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.button_debouncer import ButtonDebouncer
+from lib.child_proc_mgmt import report_session_save_skipped_from_child
 from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
@@ -854,6 +855,7 @@ class F1TelemetryHandler:
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
             self.m_logger.warning("Session type is None. Not saving data. Ignore if first session.")
+            report_session_save_skipped_from_child("session-type-unknown")
             return False
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
@@ -864,7 +866,12 @@ class F1TelemetryHandler:
             return True
         if curr_session_type.isTimeTrialTypeSession() and self.m_capture_settings.post_tt_data_autosave:
             return True
-        return False # movie or story mode
+
+        # Either autosave is off for this session type, or it is a mode we never save (movie,
+        # story). Announce it, so a consumer can tell a deliberate skip from a failed save.
+        self.m_logger.debug("Not autosaving %s data - disabled for this session type", curr_session_type)
+        report_session_save_skipped_from_child(f"autosave-disabled:{curr_session_type}")
+        return False
 
     def _isUdpActionButtonPressed(self,
                                        buttons_event: PacketEventData.Buttons,
