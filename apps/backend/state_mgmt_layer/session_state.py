@@ -320,7 +320,6 @@ class SessionState:
         'm_session_info',
         'm_process_car_setups',
         'm_save_race_ctrl_msgs',
-        'm_drop_pit_otk_msg',
         'm_weather_aware_prediction',
         'm_tyre_wear_window_size',
         'm_power_filter_window_size',
@@ -375,7 +374,6 @@ class SessionState:
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
         self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
-        self.m_drop_pit_otk_msg: bool = settings.Capture.drop_pit_otk_msg
         self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
         self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
@@ -1063,30 +1061,22 @@ class SessionState:
             obj_to_be_updated.m_car_info.m_overtake_dist = car_telemetry_data.m_overtakeActivationDistance
             obj_to_be_updated.m_car_info.m_2026_regs = car_telemetry_data.m_2026Regulations
 
-    def processSessionStarted(self, reason: str) -> None:
-        """
-        Reset the data structures when SESSION_STARTED has been received
+    async def processSessionUpdate(self, packet: PacketSessionData) -> None:
+        """Update the data strctures with session data.
 
-        Args:
-            reason (str): Reason for clearing
-        """
-        self.clear(reason)
-        self.setRaceOngoing()
+        A session UID change is detected and cleared centrally, ahead of this call - see
+        F1TelemetryHandler's on_any_packet-registered UID gate. This method only populates
+        fields from the packet; it must not clear anything itself, or it wipes the very
+        fields m_session_info.processSessionUpdate() just populated from this packet.
 
-    async def processSessionUpdate(self, packet: PacketSessionData) -> bool:
-        """Update the data strctures with session data
         Args:
             packet (PacketSessionData): Session data packet
-
-            bool - True if all data needs to be reset
         """
 
         session_changed = self._processSessionUpdateHelper(packet)
-        if should_clear := self.m_session_info.processSessionUpdate(packet):
-            self.clear("session update")
+        self.m_session_info.processSessionUpdate(packet)
         if session_changed:
             await self._notifyExternalApiTask()
-        return should_clear
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
@@ -1135,29 +1125,16 @@ class SessionState:
             overtaker = self._getObjectByIndex(msg.involved_drivers[0], create=False)
             overtaken = self._getObjectByIndex(msg.involved_drivers[1], create=False)
 
-            overtaker_pitting = overtaker.m_lap_info.m_is_pitting if overtaker else None
-            overtaken_pitting = overtaken.m_lap_info.m_is_pitting if overtaken else None
+            otk_msg.overtaker_pitting = overtaker.m_lap_info.m_is_pitting if overtaker else None
+            otk_msg.overtaken_pitting = overtaken.m_lap_info.m_is_pitting if overtaken else None
 
             self.m_logger.debug(
                 "Overtake event: %s overtakes %s. Pit status: %s, %s",
                 overtaker.m_driver_info.name if overtaker else "Unknown",
                 overtaken.m_driver_info.name if overtaken else "Unknown",
-                overtaker_pitting,
-                overtaken_pitting,
+                otk_msg.overtaker_pitting,
+                otk_msg.overtaken_pitting,
             )
-
-            # Ignore overtakes where only one car is pitting.
-            if overtaker_pitting != overtaken_pitting:
-                self.m_logger.debug(
-                    "Dropping overtake event because only one driver is pitting: %s=%s, %s=%s",
-                    overtaker.m_driver_info.name if overtaker else "Unknown",
-                    overtaker_pitting,
-                    overtaken.m_driver_info.name if overtaken else "Unknown",
-                    overtaken_pitting,
-                )
-                return
-
-            otk_msg.is_pit_lane_overtake = overtaker_pitting
 
         if msg.involved_drivers:
             driver = self._getObjectByIndex(msg.involved_drivers[0], create=False)
@@ -1510,35 +1487,6 @@ class SessionState:
 
         return  (0 <= index < len(self.m_driver_data)) and \
                 (self.m_driver_data[index] and self.m_driver_data[index].is_valid)
-
-    def isSuspiciousSessionStart(self, session_uid: int) -> bool:
-        """Check if the session start event is suspicious.
-
-        Args:
-            session_uid (int): The session UID
-
-        Returns:
-            bool: True if the session start event is suspicious, False otherwise
-        """
-
-        if self.m_session_info.m_chequered_flag:
-            self.m_logger.warning("Suspicious session start event message for session %d after CHEQUERED_FLAG event",
-                                    session_uid)
-            return True
-
-        driver = self.getDriverInfoByPosition(1)
-        if not driver:
-            self.m_logger.warning("Cannot find P1 driver in session %d", session_uid)
-            return False
-
-        if driver.m_lap_info.m_current_lap >= self.m_session_info.m_total_laps:
-                self.m_logger.warning("Suspicious session start event message for session %d - "
-                                      "leader may have completed race (lap %d)",
-                                        session_uid, driver.m_lap_info.m_current_lap)
-                return True
-
-        self.m_logger.debug("SESSION_START for %d doesn't seem suspicious", session_uid)
-        return False
 
     ##### Internal Helpers #####
 

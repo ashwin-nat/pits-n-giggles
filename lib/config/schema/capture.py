@@ -88,25 +88,6 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
-    drop_pit_otk_msg: bool = Field(
-        default=True,
-        description="Reduce pit-related overtake messages",
-        json_schema_extra={
-            "ui": {
-                "type" : "check_box",
-                "visible": True,
-                "ext_info" : [
-                    "The game reports many overtakes while cars are entering or exiting the pits, "
-                        "which can clutter the race control feed.\n\n"
-                    "When enabled, these pit stop related overtake messages are filtered. "
-                        "Normal on-track overtakes and pit lane overtakes between two pitting cars are still shown.",
-
-                    "Disclaimer: Some legitimate strategy-related overtakes "
-                        "(for example, an undercut ) may also be hidden."
-                ]
-            }
-        }
-    )
     just_in_case_autosave: bool = Field(
         default=True,
         description="Just-in-case autosave (F1 25)",
@@ -115,15 +96,14 @@ class CaptureSettings(ConfigDiffMixin, BaseModel):
                 "type" : "check_box",
                 "visible": True,
                 "ext_info": [
-                    "TLDR: There is a game bug in F1 25 that can cause session data loss in multiplayer sessions. \n"
+                    "TLDR: Some game bugs can cause session data loss, e.g. in multiplayer sessions. \n"
                     "Enabling this option allows Pits n' Giggles to automatically save session data if it detects this "
                     "data loss",
 
-                    "F1 25 has a bug where SESSION_START is sent just before FINAL_CLASSIFICATION, \n"
-                    "causing Pits n' Giggles to think a new session is starting and clear all data. \n"
-                    "When enabled, if a SESSION_START arrives after the chequered flag but before \n"
-                    "FINAL_CLASSIFICATION is processed, the current session data is saved to disk \n"
-                    "before clearing, preventing data loss."
+                    "Pits n' Giggles detects the start of a new session by watching for a change in the \n"
+                    "game's session ID, and clears its data when that happens. When enabled, if that \n"
+                    "change is detected before a FINAL_CLASSIFICATION packet was received for the \n"
+                    "session being replaced, its data is saved to disk before clearing, preventing loss."
                 ]
             }
         }

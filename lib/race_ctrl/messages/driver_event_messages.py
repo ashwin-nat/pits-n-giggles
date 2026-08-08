@@ -145,7 +145,8 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
             message_type=MessageType.OVERTAKE,
             involved_drivers=[overtaker_index, overtaken_index],
             lap_number=lap_number)
-        self.is_pit_lane_overtake: bool = False
+        self.overtaker_pitting: bool = False
+        self.overtaken_pitting: bool = False
 
     @property
     def overtaker_index(self) -> int:
@@ -161,7 +162,8 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
             **super().toJSON(driver_info_dict),
             "overtaker-index": self.overtaker_index,
             "overtaken-index": self.overtaken_index,
-            "is-pit-lane-overtake": self.is_pit_lane_overtake,
+            "overtaker-pitting": self.overtaker_pitting,
+            "overtaken-pitting": self.overtaken_pitting,
         }
 
         if driver_info_dict:
