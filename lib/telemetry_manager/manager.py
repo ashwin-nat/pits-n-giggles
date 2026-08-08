@@ -72,7 +72,7 @@ class AsyncF1TelemetryManager:
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
-        self.m_any_packet_callback: F1TelemetryCallback = None
+        self.m_any_packet_callback: Optional[F1TelemetryCallback] = None
 
     def on_packet(self, packet_type: F1PacketType):
         """Decorator to register a callback for a specific packet type
@@ -107,6 +107,10 @@ class AsyncF1TelemetryManager:
     def on_any_packet(self):
         """Decorator to register a callback that fires for every parsed packet, of any type,
         after frame-gate filtering but before that packet's typed callback.
+
+        Only one callback can be registered at a time, same as on_raw_packet - registering a
+        second one silently replaces the first. If more than one consumer ever needs this hook,
+        fan them out from within a single registered callback.
 
         A dropped packet never reaches this hook. Like on_packet, it only sees packet types the
         factory was told to parse in the first place, i.e. types with a registered typed
