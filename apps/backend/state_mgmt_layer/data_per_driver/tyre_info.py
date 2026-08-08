@@ -253,8 +253,10 @@ class TyreSetHistoryManager:
             final_lap_num(int): The lap number of the final/current lap
         """
 
-        # Don't do any of this if we have no tyre stint history. Can happen if player has telemetry disabled
-        if not self.length:
+        # Don't do any of this if we have no tyre stint history (can happen if player has telemetry
+        # disabled), or no final lap number to anchor the last stint's end on (can happen if the
+        # session ended before any SESSION_HISTORY packet arrived for this driver).
+        if not self.length or final_lap_num is None:
             return
 
         for i in range(len(self.m_history) - 1):

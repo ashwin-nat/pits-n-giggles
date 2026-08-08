@@ -408,9 +408,12 @@ class DataPerDriver:
             JSON list: JSON list containing multiple JSON objects, each representing one set of tyres used, in order.
         """
 
+        # Can be None for a session fragment that ended before any (non-dropped) SESSION_HISTORY
+        # packet arrived for this driver - e.g. several session UIDs in quick succession.
+        session_history = self.m_packet_copies.m_packet_session_history
         return self.m_tyre_info.m_tyre_set_history_manager.toJSON(include_wear_history,
                                                     self.m_packet_copies.m_packet_tyre_sets,
-                                                    self.m_packet_copies.m_packet_session_history.m_numLaps)
+                                                    session_history.m_numLaps if session_history else None)
 
     def _getTyreWearHistoryJSON(self, start_lap : int, end_lap : int):
         """
