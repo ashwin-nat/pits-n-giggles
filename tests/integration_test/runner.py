@@ -3,6 +3,7 @@
 Simple integration test for Pits n Giggles App
 """
 
+import argparse
 import asyncio
 import os
 import platform
@@ -15,8 +16,9 @@ import json
 import queue
 import time
 import webbrowser
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional, Tuple
 
 import gdown
 from aiohttp import ClientSession, TCPConnector
@@ -30,13 +32,21 @@ from lib.config import load_config_from_json
 from lib.f1_types import MAX_DRIVERS
 from lib.ipc import IpcClientSync, get_free_tcp_port
 from lib.save_invariants import checkSaveFile
+from tests.integration_test.diff_utils import (create_worktree, diff_captures,
+                                               normalize_for_diff, remove_worktree,
+                                               resolve_commit)
 from tests.integration_test.log import create_logger, TestLogger
 from apps.dev_tools.telemetry_replayer import send_telemetry_data
 
 # Constants
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/13tIadKMvi3kuItkovT6GUTTHOL3YM6n_?usp=drive_link"
-CACHE_DIR = Path("test_data")
 IS_WINDOWS = platform.system() == "Windows"
+TEST_DATA_DIR = PROJECT_ROOT / "test_data"
+
+# Base-commit endpoint captures, keyed by base commit. Not golden files: nothing here is
+# committed or reviewed, it is a throwaway cache that regenerates on demand - see
+# state-mgmt-simplification.md's "Regression harness" section for why.
+DIFF_CACHE_DIR = TEST_DATA_DIR / ".diff_cache"
 
 # Global state for signal handling
 app_process: Optional[subprocess.Popen] = None
@@ -54,6 +64,7 @@ test_stats = {
     "saves_skipped": 0,
     "saves_unreadable": 0,
     "invariant_violations": 0,
+    "diff_violations": 0,
 }
 
 logger = create_logger()
@@ -61,7 +72,7 @@ logger = create_logger()
 
 def get_cached_files() -> list[str]:
     """Get list of cached test files."""
-    return sorted(str(p) for p in CACHE_DIR.glob("*.f1pcap"))
+    return sorted(str(p) for p in TEST_DATA_DIR.glob("*.f1pcap"))
 
 
 def send_ipc_shutdown(port: int) -> bool:
@@ -148,33 +159,46 @@ def send_heartbeat(
     logger.test_log("Integration test: Heartbeat job stopped")
 
 
-async def _check_endpoints_async(urls: list[str]) -> list[tuple[str, bool]]:
-    """Check if HTTP endpoints are responding."""
+async def _check_endpoints_async(urls: list[str], capture_body: bool) -> list[Tuple[str, bool, Any]]:
+    """Check if HTTP endpoints are responding, optionally capturing their JSON body.
+
+    Args:
+        urls (list[str]): Endpoints to check.
+        capture_body (bool): If True, also parse and return each response's JSON body -
+            used for --base diffing. Left False for a normal run since parsing bodies we
+            never look at is wasted work.
+    """
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
 
     connector = TCPConnector(ssl=ssl_context)
 
-    async def fetch(url: str) -> tuple[str, bool]:
+    async def fetch(url: str) -> Tuple[str, bool, Any]:
         try:
             async with session.get(url, timeout=5) as response:
                 success = response.status in {200, 404}
                 status_str = "OK" if success else "FAIL"
                 logger.test_log(f"  [{status_str}] Endpoint check: {url} ({response.status})")
-                return (url, success)
+                body = None
+                if capture_body and success:
+                    try:
+                        body = await response.json(content_type=None)
+                    except ValueError:
+                        body = None
+                return (url, success, body)
         except Exception as e:
             logger.test_log(f"  [FAIL] Endpoint check: {url} - {e}")
-            return (url, False)
+            return (url, False, None)
 
     async with ClientSession(connector=connector) as session:
         tasks = [fetch(url) for url in urls]
         return await asyncio.gather(*tasks)
 
 
-def check_endpoints_blocking(urls: list[str]) -> list[tuple[str, bool]]:
+def check_endpoints_blocking(urls: list[str], capture_body: bool = False) -> list[Tuple[str, bool, Any]]:
     """Blocking wrapper for endpoint checks."""
-    return asyncio.run(_check_endpoints_async(urls))
+    return asyncio.run(_check_endpoints_async(urls, capture_body))
 
 
 def fetch_test_files() -> list[str]:
@@ -189,7 +213,7 @@ def fetch_test_files() -> list[str]:
     try:
         files = gdown.download_folder(
             DRIVE_FOLDER_URL,
-            output=str(CACHE_DIR),
+            output=str(TEST_DATA_DIR),
             quiet=False,
             remaining_ok=True
         )
@@ -208,8 +232,17 @@ def fetch_test_files() -> list[str]:
         sys.exit(1)
 
 
-def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess.Popen:
-    """Start the application process."""
+def start_app(config_file: str, port: int, coverage_enabled: bool, cwd: Optional[Path] = None) -> subprocess.Popen:
+    """Start the application process.
+
+    Args:
+        config_file (str): Path to the config file. Pass an absolute path when cwd is set to
+            something other than the repo root, since the launcher resolves it relative to cwd.
+        port (int): IPC port for the launcher to listen on.
+        coverage_enabled (bool): Whether to wrap the launch in coverage.py.
+        cwd (Optional[Path]): Working directory to launch from - a git worktree checkout of a
+            base commit, when driving a --base diff capture, or the repo root otherwise.
+    """
     app_cmd_base = [
         "-m", "apps.launcher",
         "--ipc-port", str(port),
@@ -226,11 +259,12 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
     else:
         app_cmd = [sys.executable, *app_cmd_base]
 
-    logger.test_log(f"Starting app with command: {' '.join(app_cmd)}")
+    logger.test_log(f"Starting app with command: {' '.join(app_cmd)}" + (f" (cwd={cwd})" if cwd else ""))
 
     if IS_WINDOWS:
         return subprocess.Popen(
             app_cmd,
+            cwd=cwd,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -239,6 +273,7 @@ def start_app(config_file: str, port: int, coverage_enabled: bool) -> subprocess
     else:
         return subprocess.Popen(
             app_cmd,
+            cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -327,8 +362,18 @@ def drain_saved_queue(saved_paths: queue.Queue) -> None:
         test_stats["invariant_violations"] += violations
 
 
-def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str) -> dict:
-    """Process a single test file and check endpoints."""
+def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str,
+                       capture_bodies: bool = False) -> dict:
+    """Process a single test file and check endpoints.
+
+    Args:
+        file (str): Path to the .f1pcap recording to replay.
+        telemetry_port (int): UDP port the app is listening for telemetry on.
+        http_port (int): Port the app's web server is listening on.
+        proto (str): "http" or "https".
+        capture_bodies (bool): If True, also collect each endpoint's normalized JSON body
+            under results["endpoint_bodies"], for --base diffing.
+    """
     http_endpoints = [
         f"{proto}://localhost:{http_port}/telemetry-info",
         f"{proto}://localhost:{http_port}/race-info",
@@ -356,13 +401,24 @@ def process_test_file(file: str, telemetry_port: int, http_port: int, proto: str
     except Exception as e:
         logger.test_log(f"  [FAIL] Error sending telemetry data: {e}")
 
+    # send_telemetry_data returns once the bytes are on the wire, not once the backend has
+    # finished processing them - give it a moment to settle before checking endpoints, or the
+    # last packet or two (e.g. FINAL_CLASSIFICATION) can still be mid-flight.
+    time.sleep(5)
+
     # Check endpoints
-    endpoint_results = check_endpoints_blocking(http_endpoints)
-    for _, success in endpoint_results:
+    endpoint_results = check_endpoints_blocking(http_endpoints, capture_body=capture_bodies)
+    endpoint_bodies: Dict[str, Any] = {}
+    for url, success, body in endpoint_results:
         if success:
             results["endpoints_passed"] += 1
         else:
             results["endpoints_failed"] += 1
+        if capture_bodies:
+            endpoint_bodies[url] = normalize_for_diff(body)
+
+    if capture_bodies:
+        results["endpoint_bodies"] = endpoint_bodies
 
     return results
 
@@ -381,6 +437,8 @@ def print_test_statistics() -> None:
     logger.test_log(f"Saves skipped by app:   {test_stats['saves_skipped']}")
     logger.test_log(f"Saves unreadable:       {test_stats['saves_unreadable']}")
     logger.test_log(f"Invariant violations:   {test_stats['invariant_violations']}")
+    if test_stats["diff_violations"]:
+        logger.test_log(f"Diff violations:        {test_stats['diff_violations']}")
 
     total_telemetry = test_stats['telemetry_sent'] + test_stats['telemetry_failed']
     total_endpoints = test_stats['endpoints_passed'] + test_stats['endpoints_failed']
@@ -395,13 +453,45 @@ def print_test_statistics() -> None:
 
     logger.test_log("=" * 80)
 
-def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool) -> bool:
+
+def reset_stats() -> None:
+    """Zero out the module-level stats dict.
+
+    main() is called more than once in the same process in --base mode (once to drive the
+    base-commit app for the capture, once for the real working-tree run) - without this the
+    two runs' numbers would accumulate into one another.
+    """
+    for key in test_stats:
+        test_stats[key] = 0
+
+
+def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool,
+          capture_bodies: bool = False, open_browser: bool = True,
+          app_cwd: Optional[Path] = None) -> Tuple[bool, Optional[Dict[str, Any]]]:
     """Main test execution function.
 
+    Args:
+        config_file (str): Path to the config file to launch the app with.
+        telemetry_port (int): UDP port the app is listening for telemetry on.
+        http_port (int): Port the app's web server is listening on.
+        proto (str): "http" or "https".
+        coverage_enabled (bool): Whether to wrap the launch in coverage.py.
+        capture_bodies (bool): If True, collect normalized endpoint bodies for --base diffing.
+        open_browser (bool): If False, skip opening the browser views - used for the
+            invisible base-commit capture run, which nothing looks at. The user-facing run
+            (base diff's "current" side, and the plain no-diff mode) always opens them; see
+            state-mgmt-simplification.md's ground rule against a general --no-browser flag.
+        app_cwd (Optional[Path]): Working directory to launch the app from - a worktree
+            checkout of a base commit, or None for the repo root.
+
     Returns:
-        bool: True only if every file replayed and every endpoint check passed.
+        Tuple[bool, Optional[Dict[str, Any]]]: (True only if every file replayed and every
+            endpoint check passed, {file_stem: {url: normalized_body}} if capture_bodies else None)
     """
     global app_process, exit_event, ipc_port
+
+    reset_stats()
+    endpoint_capture: Dict[str, Any] = {}
 
     files = fetch_test_files()
     logger.test_log(f"Number of Test files: {len(files)}")
@@ -410,7 +500,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     # Start the app
     ipc_port = get_free_tcp_port()
-    app_process = start_app(config_file, ipc_port, coverage_enabled)
+    app_process = start_app(config_file, ipc_port, coverage_enabled, cwd=app_cwd)
     logger.test_log(f"Started app with IPC port: {ipc_port}")
 
     # Drain the launcher's stdout. Required regardless of the tokens: an unread pipe fills
@@ -435,12 +525,13 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     time.sleep(5)
 
-    # Launch browser views. These are not decoration - they put the web server routes,
-    # Socket.IO and the frontend JS through the run as well.
-    logger.test_log("Launching driver view, engineer view and overlay clients")
-    webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
-    webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
-    webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
+    if open_browser:
+        # Launch browser views. These are not decoration - they put the web server routes,
+        # Socket.IO and the frontend JS through the run as well.
+        logger.test_log("Launching driver view, engineer view and overlay clients")
+        webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
+        webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
+        webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
 
     try:
         # Process each test file
@@ -449,7 +540,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
             logger.test_log(f">>> Test {index + 1}/{len(files)}: {Path(file).name} <<<")
             logger.test_log("=" * 80)
 
-            results = process_test_file(file, telemetry_port, http_port, proto)
+            results = process_test_file(file, telemetry_port, http_port, proto, capture_bodies=capture_bodies)
 
             # Update statistics
             test_stats["files_processed"] += 1
@@ -459,6 +550,8 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
                 test_stats["telemetry_failed"] += 1
             test_stats["endpoints_passed"] += results["endpoints_passed"]
             test_stats["endpoints_failed"] += results["endpoints_failed"]
+            if capture_bodies:
+                endpoint_capture[Path(file).stem] = results["endpoint_bodies"]
 
             # Print file statistics
             logger.test_log(f"\nFile Results:")
@@ -490,7 +583,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
 
     # Report honestly. Previously this returned True unconditionally, so the process always
     # exited 0 and the runner could never gate anything.
-    return (
+    success = (
         test_stats["files_processed"] == len(files) and
         test_stats["telemetry_failed"] == 0 and
         test_stats["endpoints_failed"] == 0 and
@@ -498,6 +591,179 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         test_stats["saves_unreadable"] == 0 and
         test_stats["invariant_violations"] == 0
     )
+    return success, (endpoint_capture if capture_bodies else None)
+
+
+def base_cache_path(base_sha: str) -> Path:
+    """Cache file for a given base commit's capture.
+
+    Args:
+        base_sha (str): Full commit sha the capture was taken against.
+    """
+    return DIFF_CACHE_DIR / f"{base_sha}.json"
+
+
+def diff_report_path(base_sha: str) -> Path:
+    """Standalone, commit-tagged report file for a --base run - see run_diff for why this
+    exists separately from integration_test.log.
+
+    Args:
+        base_sha (str): Full commit sha the diff was run against.
+    """
+    return DIFF_CACHE_DIR / f"{base_sha}.report.txt"
+
+
+def run_base_capture(base_sha: str, config_file: str, telemetry_port: int, http_port: int, proto: str,
+                      coverage_enabled: bool) -> Dict[str, Any]:
+    """Get the base commit's endpoint capture, from cache or by replaying it in a worktree.
+
+    Args:
+        base_sha (str): Full commit sha to capture against.
+        config_file (str): Absolute path to the config file to launch the app with - must be
+            absolute since it is resolved relative to the worktree's cwd, not the repo root.
+        telemetry_port (int): UDP port the app is listening for telemetry on.
+        http_port (int): Port the app's web server is listening on.
+        proto (str): "http" or "https".
+        coverage_enabled (bool): Whether to wrap the launch in coverage.py.
+
+    Returns:
+        Dict[str, Any]: {file_stem: {url: normalized_body}}
+    """
+    cache_path = base_cache_path(base_sha)
+    if cache_path.exists():
+        logger.test_log(f"Using cached base capture: {cache_path}")
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    logger.test_log(f"No cached base capture for {base_sha[:12]} - replaying against a worktree checkout")
+    worktree = create_worktree(base_sha, PROJECT_ROOT)
+    try:
+        success, capture = main(
+            config_file=config_file,
+            telemetry_port=telemetry_port,
+            http_port=http_port,
+            proto=proto,
+            coverage_enabled=coverage_enabled,
+            capture_bodies=True,
+            open_browser=False,
+            app_cwd=worktree,
+        )
+        if not success:
+            logger.test_log("[WARN] Base commit run did not pass its own checks - "
+                             "the capture is still used for diffing, but treat any diff with suspicion.")
+    finally:
+        remove_worktree(worktree, PROJECT_ROOT)
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(capture, f)
+    logger.test_log(f"Cached base capture: {cache_path}")
+    return capture
+
+
+def run_diff(base_ref: str, config_file: str, telemetry_port: int, http_port: int, proto: str,
+             coverage_enabled: bool) -> bool:
+    """Run the --base A/B differential: capture the base commit, replay the working tree, diff.
+
+    Args:
+        base_ref (str): Anything git accepts as a commit-ish (sha, branch, tag).
+        config_file (str): Absolute path to the config file to launch the app with.
+        telemetry_port (int): UDP port the app is listening for telemetry on.
+        http_port (int): Port the app's web server is listening on.
+        proto (str): "http" or "https".
+        coverage_enabled (bool): Whether to wrap the launch in coverage.py.
+
+    Returns:
+        bool: True only if the working tree's own checks pass AND nothing diffed.
+    """
+    base_sha = resolve_commit(base_ref, PROJECT_ROOT)
+    logger.test_log(f"Diffing against base commit {base_sha} (resolved from '{base_ref}')")
+
+    base_capture = run_base_capture(base_sha, config_file, telemetry_port, http_port, proto, coverage_enabled)
+
+    success, current_capture = main(
+        config_file=config_file,
+        telemetry_port=telemetry_port,
+        http_port=http_port,
+        proto=proto,
+        coverage_enabled=coverage_enabled,
+        capture_bodies=True,
+        open_browser=True,
+    )
+
+    logger.test_log("Diffing captures...")
+
+    def _log_diff_progress(file_index: int, total_files: int, file_stem: str) -> None:
+        logger.test_log(f"  [{file_index}/{total_files}] Diffing {file_stem}")
+
+    violations, report = diff_captures(base_capture, current_capture, progress_cb=_log_diff_progress)
+    test_stats["diff_violations"] = violations
+    if report:
+        logger.test_log("\n" + "=" * 80)
+        logger.test_log(f"DIFF AGAINST {base_sha[:12]}")
+        logger.test_log("=" * 80)
+        for line in report:
+            logger.test_log(line)
+    else:
+        logger.test_log(f"No differences from base commit {base_sha[:12]}")
+
+    # integration_test.log is a fixed-name rotating file - the next run of any kind overwrites
+    # it. Write a standalone report keyed by base_sha so a diff result survives long enough to
+    # be looked at later, and doesn't get clobbered by the next --base run against a different
+    # commit.
+    report_path = diff_report_path(base_sha)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(f"base_commit: {base_sha}\n")
+        f.write(f"generated_at: {datetime.now().isoformat(timespec='seconds')}\n")
+        f.write(f"working_tree_checks_passed: {success}\n")
+        f.write(f"diff_violations: {violations}\n")
+        f.write("\n")
+        f.write("\n".join(report) if report else "No differences.")
+        f.write("\n")
+    logger.test_log(f"Diff report written to {report_path}")
+
+    return success and violations == 0
+
+
+def capture_base_only(base_ref: str, config_file: str, telemetry_port: int, http_port: int, proto: str,
+                       coverage_enabled: bool) -> bool:
+    """Capture and cache the base commit's replay, then stop - see --base-only.
+
+    Args:
+        base_ref (str): Anything git accepts as a commit-ish (sha, branch, tag).
+        config_file (str): Absolute path to the config file to launch the app with.
+        telemetry_port (int): UDP port the app is listening for telemetry on.
+        http_port (int): Port the app's web server is listening on.
+        proto (str): "http" or "https".
+        coverage_enabled (bool): Whether to wrap the launch in coverage.py.
+
+    Returns:
+        bool: True if the capture was written (or already cached).
+    """
+    base_sha = resolve_commit(base_ref, PROJECT_ROOT)
+    run_base_capture(base_sha, config_file, telemetry_port, http_port, proto, coverage_enabled)
+    logger.test_log(f"\nBase capture for {base_sha[:12]} is cached. "
+                     f"Run with --base {base_sha} (no --base-only) later to diff the working tree against it.")
+    return True
+
+
+def parse_cli_args() -> argparse.Namespace:
+    """Parse command-line arguments for the integration runner."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--coverage", action="store_true", help="Run the app under coverage.py")
+    parser.add_argument(
+        "--base", default=None, metavar="COMMIT",
+        help="Replay the same recordings against this commit (in a throwaway git worktree) "
+             "and diff its endpoint responses against the working tree's. See "
+             "state-mgmt-simplification.md's 'Regression harness' section for the rationale.")
+    parser.add_argument(
+        "--base-only", action="store_true",
+        help="With --base: only capture and cache the base commit's replay, then exit - skip "
+             "the working-tree run and diff. Lets the two ~30min runs be split across two "
+             "sessions; a later plain --base <same commit> run picks up the cache and only "
+             "pays for the working-tree side.")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
@@ -506,20 +772,43 @@ if __name__ == "__main__":
     if not IS_WINDOWS:
         signal.signal(signal.SIGTERM, cleanup_and_exit)
 
-    config_file = "integration_test_cfg.json"
-    settings = load_config_from_json(config_file)
-    coverage_enabled = "--coverage" in sys.argv
+    args = parse_cli_args()
+    if args.base_only and not args.base:
+        print("--base-only requires --base <commit>", file=sys.stderr)
+        sys.exit(2)
+
+    cli_config_file = str((PROJECT_ROOT / "integration_test_cfg.json").resolve())
+    settings = load_config_from_json(cli_config_file)
 
     start_time = time.perf_counter()
 
     try:
-        success = main(
-            config_file=config_file,
-            telemetry_port=settings.Network.telemetry_port,
-            http_port=settings.Network.server_port,
-            proto=settings.HTTPS.proto,
-            coverage_enabled=coverage_enabled
-        )
+        if args.base_only:
+            run_success = capture_base_only(
+                base_ref=args.base,
+                config_file=cli_config_file,
+                telemetry_port=settings.Network.telemetry_port,
+                http_port=settings.Network.server_port,
+                proto=settings.HTTPS.proto,
+                coverage_enabled=args.coverage,
+            )
+        elif args.base:
+            run_success = run_diff(
+                base_ref=args.base,
+                config_file=cli_config_file,
+                telemetry_port=settings.Network.telemetry_port,
+                http_port=settings.Network.server_port,
+                proto=settings.HTTPS.proto,
+                coverage_enabled=args.coverage,
+            )
+        else:
+            run_success, _ = main(
+                config_file=cli_config_file,
+                telemetry_port=settings.Network.telemetry_port,
+                http_port=settings.Network.server_port,
+                proto=settings.HTTPS.proto,
+                coverage_enabled=args.coverage,
+            )
     except KeyboardInterrupt:
         logger.test_log("\n[MAIN] KeyboardInterrupt caught")
         cleanup_and_exit()
@@ -530,4 +819,4 @@ if __name__ == "__main__":
     ms = int((elapsed - int(elapsed)) * 1000)
     logger.test_log(f"\nTotal execution time: {mm:02d}:{ss:02d}.{ms:03d}")
 
-    sys.exit(0 if success else 1)
+    sys.exit(0 if run_success else 1)

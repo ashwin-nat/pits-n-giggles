@@ -147,6 +147,7 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - `.claude/commands/release-notes.md` — Generate user-facing release notes from commits since the last tag. Use when preparing a release.
 - `.claude/commands/add-mcp-tool.md` — Scaffold a new MCP tool in `apps/mcp_server/`. Use when adding a new tool to the MCP server.
 - `.claude/commands/add-config-field.md` — Add a new config field with validation, subsystem wiring, and tests. Use when adding any new field to `png_config.json`.
+- `.claude/commands/diff-report.md` — Analyze (or run) `tests/integration_test/runner.py --base <commit>` and summarize what actually changed. Use when asked to check whether a refactor changed behavior, or to make sense of a `--base` diff report.
 
 ### IPC Pattern
 
