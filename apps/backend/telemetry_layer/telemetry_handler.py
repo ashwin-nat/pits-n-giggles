@@ -383,11 +383,18 @@ class F1TelemetryHandler:
                 return
 
             prev_sc_status = self.m_session_state_ref.m_session_info.m_safety_car_status
-            if prev_sc_status == SafetyCarType.FORMATION_LAP and packet.m_safetyCarStatus != SafetyCarType.FORMATION_LAP:
-                # Formation lap just ended - none of it belongs in the race data that follows.
-                self.m_logger.info("Formation lap ended (safety car status %s -> %s). Clearing data structures. UID %d",
-                                   prev_sc_status, packet.m_safetyCarStatus, packet.m_header.m_sessionUID)
-                self.clearAllDataStructures("Formation lap ended")
+            if prev_sc_status != packet.m_safetyCarStatus: # Safety car status changed
+                if packet.m_safetyCarStatus == SafetyCarType.FORMATION_LAP:
+                    # Diagnostic only - no clear here, just a marker to pair with the end-of-formation-lap
+                    # log below when checking the two land at the expected points in a replay.
+                    self.m_logger.silent("Formation lap started (safety car status %s -> %s). UID %d",
+                                    prev_sc_status, packet.m_safetyCarStatus, packet.m_header.m_sessionUID)
+                elif prev_sc_status == SafetyCarType.FORMATION_LAP:
+                    # Formation lap just ended - none of it belongs in the race data that follows.
+                    self.m_logger.silent("Formation lap ended (safety car status %s -> %s). "
+                                         "Clearing data structures. UID %d",
+                                    prev_sc_status, packet.m_safetyCarStatus, packet.m_header.m_sessionUID)
+                    self.clearAllDataStructures("Formation lap ended")
 
             await self.m_session_state_ref.processSessionUpdate(packet)
 
