@@ -41,11 +41,12 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
                           PacketCarTelemetryData, PacketEventData,
-                          PacketFinalClassificationData, PacketLapData,
-                          PacketLapPositionsData, PacketMotionData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus)
+                          PacketFinalClassificationData, PacketHeader,
+                          PacketLapData, PacketLapPositionsData,
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          ResultStatus)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          SessionChangeNotification,
                                          TyreDeltaMessage)
@@ -212,9 +213,32 @@ class SessionState(DummyFinalClassificationMixin):
         )
 
     @property
-    def game_ver_str(self) -> None:
+    def has_lap_data(self) -> bool:
+        """Checks if at least one driver has a recorded lap history.
+
+        A session fragment can satisfy is_data_available and still carry no lap history at
+        all - e.g. the handful of packets an outgoing session UID gets before the real
+        session's UID takes over. Every driver's session-history is None in that case, so
+        the fragment is worth nothing to a save.
+        """
+        return any(
+            obj and obj.m_packet_copies.m_packet_session_history
+            for obj in self.m_driver_data
+        )
+
+    @property
+    def game_ver_str(self) -> str:
         """Returns the game version string"""
         return f"{self.m_game_major_ver}.{self.m_game_minor_ver}"
+
+    def setGameVersion(self, header: PacketHeader) -> None:
+        """Set the game version from the packet header
+
+        Args:
+            header (PacketHeader): The packet header
+        """
+        self.m_game_major_ver = header.m_gameMajorVersion
+        self.m_game_minor_ver = header.m_gameMinorVersion
 
     def setRaceOngoing(self) -> None:
         """
@@ -850,6 +874,7 @@ class SessionState(DummyFinalClassificationMixin):
             packet (PacketSessionData): Session data packet
         """
 
+        self.setGameVersion(packet.m_header)
         session_changed = self._processSessionUpdateHelper(packet)
         self.m_session_info.processSessionUpdate(packet)
         if session_changed:

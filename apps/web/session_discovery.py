@@ -300,7 +300,7 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
         player = max(
             classification,
             key=lambda d: sum(
-                1 for l in d.get('session-history', {}).get('lap-history-data', [])
+                1 for l in (d.get('session-history') or {}).get('lap-history-data', [])
                 if l.get('lap-time-in-ms', 0) > 0
             ),
             default=None,
@@ -309,7 +309,9 @@ def _parse_session_metadata(path: Path, logger: PngLogger) -> Dict[str, Any]:
     result: Dict[str, Any] = {'session_info': session_info, 'is_spectator': is_spectator}
 
     if player:
-        sh = player.get('session-history', {})
+        # `or {}` not a default arg: the key is present-but-null in saves written for a
+        # session that ended before any SESSION_HISTORY packet arrived.
+        sh = player.get('session-history') or {}
         laps = sh.get('lap-history-data', [])
         driven = [l for l in laps if l.get('lap-time-in-ms', 0) > 0]
         result['valid_lap_count'] = len(driven)

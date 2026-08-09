@@ -995,6 +995,15 @@ class F1TelemetryHandler:
         if not self._shouldSaveData():
             return
 
+        # A UID change fires on any packet, so an outgoing "session" can be a lead-in blip of
+        # a dozen packets that never got a SESSION_HISTORY. That saves a file whose per-driver
+        # history is null throughout - nothing a real save would preserve, and the real
+        # session's own save follows seconds later anyway.
+        if not self.m_session_state_ref.has_lap_data:
+            self.m_logger.debug("Session %d has no lap data. Not saving just in case.", outgoing_session_uid)
+            report_session_save_skipped_from_child("no-lap-data")
+            return
+
         if self.m_save_task:
             self.m_logger.debug("A save task is already running.")
             return
