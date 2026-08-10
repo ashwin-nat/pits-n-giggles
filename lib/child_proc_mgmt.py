@@ -32,6 +32,15 @@ _PID_TAG_REGEX = re.compile(fr"{_PID_TAG_PREFIX}(\d+)>>")
 _INIT_COMPLETE_STR = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
 _IPC_PORT_TAG_PREFIX = "<<PNG_LAUNCHER_IPC_PORT:"
 _IPC_PORT_TAG_REGEX = re.compile(fr"{_IPC_PORT_TAG_PREFIX}(\d+)>>")
+_SESSION_SAVED_TAG_PREFIX = "<<PNG_SESSION_SAVED:"
+_SESSION_SAVED_TAG_REGEX = re.compile(fr"{_SESSION_SAVED_TAG_PREFIX}(.+?)>>")
+_SESSION_SAVE_SKIPPED_TAG_PREFIX = "<<PNG_SESSION_SAVE_SKIPPED:"
+_SESSION_SAVE_SKIPPED_TAG_REGEX = re.compile(fr"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}(.+?)>>")
+
+# The save tokens exist only for the integration runner, which is the only thing that ever
+# parses them. Off by default so a normal run - packaged or from source - stays quiet; the
+# runner opts in for the app it spawns.
+_SAVE_TOKENS_ENV_VAR = "PNG_SAVE_TOKENS"
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -75,3 +84,67 @@ def notify_parent_init_complete() -> None:
 def is_init_complete(line: str) -> bool:
     """Call this in the parent process to check if the child process has completed initialization."""
     return _INIT_COMPLETE_STR in line
+
+def enable_save_tokens() -> None:
+    """Call this in the integration runner before spawning the app, to have it announce
+    each session save on stdout.
+
+    Sets an env var rather than flipping a module global, because the announcing code runs
+    in the launcher's grandchildren - they inherit this without having to be told.
+    """
+    os.environ[_SAVE_TOKENS_ENV_VAR] = "1"
+
+def _save_tokens_enabled() -> bool:
+    """Whether session save tokens should be emitted in this process."""
+    return bool(os.environ.get(_SAVE_TOKENS_ENV_VAR))
+
+def report_session_saved_from_child(file_path: str) -> None:
+    """Call this in the child process after writing a session save to disk.
+
+    Emitted as a token rather than left to the log message, so consumers do not have to
+    match on prose that could be reworded. No-op unless the tokens are enabled.
+
+    Args:
+        file_path (str): Path the session was written to
+    """
+    if not _save_tokens_enabled():
+        return
+    print(f"{_SESSION_SAVED_TAG_PREFIX}{file_path}>>", flush=True)
+
+def extract_saved_path_from_line(line: str) -> Optional[str]:
+    """Parse a written session save path from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The path if the line carries the token, else None
+    """
+    match = _SESSION_SAVED_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_session_save_skipped_from_child(reason: str) -> None:
+    """Call this in the child process when a session save is deliberately not written.
+
+    Lets a consumer tell "nothing was saved because this session does not qualify" apart
+    from "the save failed", instead of inferring it from an absence. No-op unless the
+    tokens are enabled.
+
+    Args:
+        reason (str): Why the save was skipped
+    """
+    if not _save_tokens_enabled():
+        return
+    print(f"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}{reason}>>", flush=True)
+
+def extract_save_skipped_from_line(line: str) -> Optional[str]:
+    """Parse a skipped-save reason from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The reason if the line carries the token, else None
+    """
+    match = _SESSION_SAVE_SKIPPED_TAG_REGEX.search(line)
+    return match.group(1) if match else None

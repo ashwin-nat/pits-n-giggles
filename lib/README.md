@@ -30,7 +30,6 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `rate_limiter.py` | Rate limiting for event emissions |
 | `button_debouncer.py` | Debounce logic for UDP-triggered actions |
 | `event_counter.py` | Event counting utilities |
-| `pending_events.py` | Deferred event queue |
 | `custom_marker_tracker.py` | User-defined marker tracking |
 | `inter_task_communicator.py` | Cross-task message passing |
 | `child_proc_mgmt.py` | Child process lifecycle management |

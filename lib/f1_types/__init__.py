@@ -28,6 +28,7 @@ from .common import (ActualTyreCompound, F1Utils, GameMode, GearboxAssistMode,
                      SafetyCarType, SessionLength, SessionType, SessionType23,
                      SessionType24, TelemetrySetting, TrackID,
                      TractionControlAssistMode, VisualTyreCompound)
+from .constants import MAX_DRIVERS
 from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
                       get_team_id, get_team_id_class)
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
@@ -61,6 +62,9 @@ from .packet_16_car_telemetry2_data import CarTelemetry2Data, PacketCarTelemetry
 
 # Import other packet classes here
 __all__ = [
+    # Constants
+    "MAX_DRIVERS",
+
     # Base
     "F1PacketBase",
 

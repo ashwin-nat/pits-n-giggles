@@ -9,6 +9,13 @@ class DriverModalPopulator {
 
     populateLapTimesTab(tabPane) {
         const lapTimeHistory = this.data["lap-time-history"];
+        // Null until this driver's first session history packet arrives, and every session UID
+        // change reopens that window for every driver. Tab content is built eagerly in
+        // createTabContent, so throwing here takes down the whole modal, not just this tab.
+        if (!lapTimeHistory) {
+            this.populateDataNotAvailableMessage(tabPane, 'Lap time history is not available');
+            return;
+        }
         const lapHistoryData = lapTimeHistory["lap-history-data"];
 
         const leftPanePopulator = (leftDiv) => {
@@ -882,6 +889,13 @@ class DriverModalPopulator {
 
         if (!this.telemetryEnabled) {
             this.populateTelemetryDisabledMessage(tabPane);
+            return;
+        }
+
+        // Same nullability as lap-time-history, and F1TyreManager.updateData throws by design
+        // on null rather than rendering an empty state
+        if (!this.data["tyre-sets"]) {
+            this.populateDataNotAvailableMessage(tabPane, 'Tyre set data is not available');
             return;
         }
 

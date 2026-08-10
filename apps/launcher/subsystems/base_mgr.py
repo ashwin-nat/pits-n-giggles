@@ -610,6 +610,10 @@ class PngAppMgrBase(QObject):
 
             line = raw_line.rstrip()
 
+            # Forward everything to our own stdout, in addition to the handling below. A
+            # parent process (the integration runner) filters this for what it cares about.
+            print(line, flush=True)
+
             # ---------------------------------------------------------
             # 1. PID token
             # ---------------------------------------------------------

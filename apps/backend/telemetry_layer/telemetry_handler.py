@@ -33,16 +33,17 @@ from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.button_debouncer import ButtonDebouncer
+from lib.child_proc_mgmt import report_session_save_skipped_from_child
 from lib.config import CaptureSettings, OverlayId, PngSettings
 from lib.event_counter import EventCounter
-from lib.f1_types import (F1PacketType, PacketCarDamageData,
+from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetry2Data, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
                           PacketLapData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+                          PacketTyreSetsData, SafetyCarType)
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
     HudCycleMfdNotification, HudMfdInteractionNotification,
@@ -179,7 +180,6 @@ class F1TelemetryHandler:
         self.m_session_state_ref: SessionState = session_state
 
         self.m_last_session_uid: Optional[int] = None
-        self.m_data_cleared_this_session: bool = False
         self.m_final_classification_processed: bool = False
         self.m_capture_settings: CaptureSettings = settings.Capture
         self.m_button_debouncer: ButtonDebouncer = ButtonDebouncer(
@@ -339,6 +339,34 @@ class F1TelemetryHandler:
             if self.m_should_forward:
                 await AsyncInterTaskCommunicator().send("packet-forward", packet)
 
+        @self.m_manager.on_any_packet()
+        async def handleSessionUidGate(packet: F1PacketBase) -> None:
+            """Detect a session UID change on any packet, ahead of that packet's own typed
+            callback, and clear before anything merges it into per-type state.
+
+            # TODO: this clears on the first packet carrying a new UID, with no debounce.
+            # A single corrupt/stale header could in theory trigger a false clear - validate
+            # against the recorded multi-version replay captures in test_data/ before relying
+            # on this in the field, and reinstate a debounce (see session-uid-clearing-plan.md)
+            # if that turns up false clears.
+
+            Args:
+                packet: The parsed packet, of any type the manager is set up to dispatch.
+            """
+            new_uid = packet.m_header.m_sessionUID
+            old_uid = self.m_last_session_uid
+            if new_uid in (0, old_uid):
+                return  # menu packet, or no change
+
+            self.m_logger.warning("Session UID changed %s -> %s on a %s packet. Clearing data structures.",
+                                  old_uid, new_uid, packet.m_header.m_packetId.name)
+
+            if old_uid is not None:
+                self._saveJustInCaseIfNeeded(old_uid)
+
+            self.m_last_session_uid = new_uid
+            self.clearAllDataStructures(f"Session UID changed to {new_uid}")
+
         @self.m_manager.on_packet(F1PacketType.SESSION)
         async def handleSessionData(packet: PacketSessionData) -> None:
             """
@@ -353,11 +381,23 @@ class F1TelemetryHandler:
                 self.m_logger.info("Session duration is 0. clearing data structures. UID %d",
                                    packet.m_header.m_sessionUID)
                 self.clearAllDataStructures("Session duration is 0")
+                return
 
-            elif await self.m_session_state_ref.processSessionUpdate(packet):
-                self.m_logger.info("Session UID changed. clearing data structures. UID %d",
-                                   packet.m_header.m_sessionUID)
-                self.clearAllDataStructures("Session UID changed")
+            prev_sc_status = self.m_session_state_ref.m_session_info.m_safety_car_status
+            if prev_sc_status != packet.m_safetyCarStatus: # Safety car status changed
+                if packet.m_safetyCarStatus == SafetyCarType.FORMATION_LAP:
+                    # Diagnostic only - no clear here, just a marker to pair with the end-of-formation-lap
+                    # log below when checking the two land at the expected points in a replay.
+                    self.m_logger.silent("Formation lap started (safety car status %s -> %s). UID %d",
+                                    prev_sc_status, packet.m_safetyCarStatus, packet.m_header.m_sessionUID)
+                elif prev_sc_status == SafetyCarType.FORMATION_LAP:
+                    # Formation lap just ended - none of it belongs in the race data that follows.
+                    self.m_logger.silent("Formation lap ended (safety car status %s -> %s). "
+                                         "Clearing data structures. UID %d",
+                                    prev_sc_status, packet.m_safetyCarStatus, packet.m_header.m_sessionUID)
+                    self.clearAllDataStructures("Formation lap ended")
+
+            await self.m_session_state_ref.processSessionUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.LAP_DATA)
         async def processLapDataUpdate(packet: PacketLapData) -> None:
@@ -491,6 +531,17 @@ class F1TelemetryHandler:
                 packet (PacketSessionHistoryData): The session history update packet
             """
 
+            if packet.m_header.m_sessionUID == 0:
+                # Observed in the wild: a well-formed SESSION_HISTORY packet mid-session with
+                # UID 0 and m_carIdx/player index pointing at no real car - a placeholder the
+                # game emits in some states (e.g. spectating). Some of these have been linked
+                # to reports of bogus lap data, so drop rather than merge it into a real
+                # session's history.
+                self.m_logger.warning(
+                    "Dropping SESSION_HISTORY packet with UID 0. Car index %d, frame %d, num laps: %d",
+                    packet.m_carIdx, packet.m_header.m_frameIdentifier, packet.m_numLaps)
+                return
+
             # After end of session, the game will periodically send SESSION_HISTORY.
             # But for the purposes of auto hiding menu, lets not treat it as periodic
             self.m_session_state_ref.processSessionHistoryUpdate(packet)
@@ -573,13 +624,17 @@ class F1TelemetryHandler:
             """
             Handle and process the session start event
 
+            SSTA is unreliable - it can fire well before FINAL_CLASSIFICATION for the session
+            it is meant to end (the known F1 25 bug this exists to work around), and can be
+            missed entirely. Diagnostic logging only: clearing is owned solely by the
+            UID-change gate now, and so is the just-in-case autosave, which fires there off
+            the UID actually changing rather than off this unreliable event.
+
             Args:
                 packet (PacketEventData): The parsed object containing the session start packet's contents.
             """
 
-            self._handleSuspiciousSessionStart(packet.m_header.m_sessionUID)
-            self.m_last_session_uid = packet.m_header.m_sessionUID
-            self.clearAllDataStructures(f"SESSION_START event - UID {packet.m_header.m_sessionUID}")
+            self.m_logger.info("SESSION_START event received. %d", packet.m_header.m_sessionUID)
 
         async def handleButtonStatus(packet: PacketEventData) -> None:
             """
@@ -676,24 +731,13 @@ class F1TelemetryHandler:
             """
             Handle and process the start lights event
 
+            Diagnostic only - clearing is owned solely by the UID-change gate now.
+
             Args:
                 packet (PacketEventData): The parsed object containing the start lights packet's contents.
             """
-            # In case session start was missed, clear data structures
             start_lights_info: PacketEventData.StartLights = packet.mEventDetails
             self.m_logger.debug("Start lights event received. Lights = %s", start_lights_info.numLights)
-            if start_lights_info.numLights == 1:
-                session_uid = packet.m_header.m_sessionUID
-                if session_uid != self.m_last_session_uid:
-                    self.m_last_session_uid = session_uid
-                    self.m_data_cleared_this_session = False
-
-                if not self.m_data_cleared_this_session:
-                    self.m_logger.info("Session start was missed. Clearing data structures in start lights event. UID %d",
-                                   session_uid)
-                    self.clearAllDataStructures("Start lights event")
-                else:
-                    self.m_logger.debug("Not clearing data structures in start lights event")
 
         async def processFastestLapUpdate(packet: PacketEventData) -> None:
             """Update the data structures with the fastest lap
@@ -747,8 +791,8 @@ class F1TelemetryHandler:
         Args:
             reason (str): Reason for clearing
         """
-        self.m_session_state_ref.processSessionStarted(reason)
-        self.m_data_cleared_this_session = True
+        self.m_session_state_ref.clear(reason)
+        self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
@@ -811,6 +855,7 @@ class F1TelemetryHandler:
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
             self.m_logger.warning("Session type is None. Not saving data. Ignore if first session.")
+            report_session_save_skipped_from_child("session-type-unknown")
             return False
 
         if curr_session_type.isFpTypeSession() and self.m_capture_settings.post_fp_data_autosave:
@@ -821,7 +866,12 @@ class F1TelemetryHandler:
             return True
         if curr_session_type.isTimeTrialTypeSession() and self.m_capture_settings.post_tt_data_autosave:
             return True
-        return False # movie or story mode
+
+        # Either autosave is off for this session type, or it is a mode we never save (movie,
+        # story). Announce it, so a consumer can tell a deliberate skip from a failed save.
+        self.m_logger.debug("Not autosaving %s data - disabled for this session type", curr_session_type)
+        report_session_save_skipped_from_child(f"autosave-disabled:{curr_session_type}")
+        return False
 
     def _isUdpActionButtonPressed(self,
                                        buttons_event: PacketEventData.Buttons,
@@ -921,41 +971,56 @@ class F1TelemetryHandler:
             self.m_logger.silent('UDP action %d pressed - %s', code, name)
             await coro()
 
-    def _handleSuspiciousSessionStart(self, session_uid: int) -> None:
-        """Save data just in case when a suspicious session start event is received.
+    def _saveJustInCaseIfNeeded(self, outgoing_session_uid: int) -> None:
+        """Save the outgoing session's data before the UID-change gate clears it, if that
+        session never received a FINAL_CLASSIFICATION packet - the same data-loss risk the
+        F1 25 SSTA-before-final-classification bug caused, but detected directly instead of
+        guessed at from race-progress heuristics.
+
+        Caller's responsibility: only call this for a genuine UID change (i.e. there was a
+        prior session - not on the very first UID the app ever sees). Must be called before
+        m_last_session_uid is overwritten and before clearAllDataStructures runs, since
+        ManualSaveRsp snapshots session_state synchronously at construction time.
 
         Args:
-            session_uid (int): The session UID for which the suspicious session start event was received.
+            outgoing_session_uid (int): UID of the session about to be cleared.
         """
 
-        self.m_logger.info("SESSION_START event received. %d", session_uid)
-
         if not self.m_capture_settings.just_in_case_autosave:
+            return
+
+        if self.m_final_classification_processed:
             return
 
         if not self._shouldSaveData():
             return
 
-        if self.m_final_classification_processed:
-            self.m_logger.debug("Final classification already processed for this session. "
-                                "Not treating this session start as suspicious.")
+        # A UID change fires on any packet, so an outgoing "session" can be a lead-in blip of
+        # a dozen packets that never got a SESSION_HISTORY. That saves a file whose per-driver
+        # history is null throughout - nothing a real save would preserve, and the real
+        # session's own save follows seconds later anyway.
+        if not self.m_session_state_ref.has_lap_data:
+            self.m_logger.debug("Session %d has no lap data. Not saving just in case.", outgoing_session_uid)
+            report_session_save_skipped_from_child("no-lap-data")
             return
 
         if self.m_save_task:
             self.m_logger.debug("A save task is already running.")
             return
 
-        if self.m_session_state_ref.isSuspiciousSessionStart(session_uid):
-            try:
-                save_rsp = ManualSaveRsp(
-                    logger=self.m_logger,
-                    session_state=self.m_session_state_ref,
-                    reason="Just_in_case")
-            except ValueError as e:
-                self.m_logger.warning("Not saving just in case data for session %d: %s", session_uid, e)
-                return
-            self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(session_uid, save_rsp),
-                                                    name="Just in case save task")
+        self.m_logger.warning(
+            "Session %d ended without a final classification. Saving data just in case.",
+            outgoing_session_uid)
+        try:
+            save_rsp = ManualSaveRsp(
+                logger=self.m_logger,
+                session_state=self.m_session_state_ref,
+                reason="Just_in_case")
+        except ValueError as e:
+            self.m_logger.warning("Not saving just in case data for session %d: %s", outgoing_session_uid, e)
+            return
+        self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(outgoing_session_uid, save_rsp),
+                                                name="Just in case save task")
 
     async def _saveJustInCaseDataTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
         """Write the pre-prepared save data to disk.

@@ -27,6 +27,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from apps.backend.state_mgmt_layer.session_state import SessionState
+from lib.child_proc_mgmt import report_session_saved_from_child
 from lib.save_to_disk import save_json_to_file
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
@@ -113,6 +114,9 @@ class ManualSaveRsp:
         try:
             path = await save_json_to_file(self.m_final_json, self.m_file_name)
             self.m_logger.info("Wrote session info to %s", self.m_file_name)
+            # Every save - manual, post-session autosave and just-in-case - lands here, so this
+            # is the one place that has to announce it
+            report_session_saved_from_child(str(path))
             return {"status": "success", "message": f"Data saved to {path}"}
         except Exception as e:  # pylint: disable=broad-except
             self.m_logger.exception("Failed to write session info to %s", self.m_file_name)

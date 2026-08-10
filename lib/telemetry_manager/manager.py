@@ -72,6 +72,7 @@ class AsyncF1TelemetryManager:
         self.m_frame_gate: SessionFrameGate = SessionFrameGate(frame_gate_enabled)
 
         self.m_raw_packet_callback: Optional[Callable[[object], Awaitable[None]]] = None
+        self.m_any_packet_callback: Optional[F1TelemetryCallback] = None
 
     def on_packet(self, packet_type: F1PacketType):
         """Decorator to register a callback for a specific packet type
@@ -99,6 +100,27 @@ class AsyncF1TelemetryManager:
         """
         def decorator(callback: Callable[[object], Awaitable[None]]):
             self.m_raw_packet_callback = callback
+            return callback
+
+        return decorator
+
+    def on_any_packet(self):
+        """Decorator to register a callback that fires for every parsed packet, of any type,
+        after frame-gate filtering but before that packet's typed callback.
+
+        Only one callback can be registered at a time, same as on_raw_packet - registering a
+        second one silently replaces the first. If more than one consumer ever needs this hook,
+        fan them out from within a single registered callback.
+
+        A dropped packet never reaches this hook. Like on_packet, it only sees packet types the
+        factory was told to parse in the first place, i.e. types with a registered typed
+        callback of their own.
+
+        Returns:
+            Callable: The decorator function
+        """
+        def decorator(callback: Callable[[F1PacketBase], Awaitable[None]]):
+            self.m_any_packet_callback = callback
             return callback
 
         return decorator
@@ -167,6 +189,12 @@ class AsyncF1TelemetryManager:
                 len(raw_packet)
             )
             return
+
+        # Runs for every packet that reaches this point, ahead of its typed callback, so a
+        # consumer can act on the packet (e.g. detect a session change) before anything
+        # merges it into per-type state.
+        if self.m_any_packet_callback:
+            await self.m_any_packet_callback(parsed_obj)
 
         # Perform the registered callback
         try:

@@ -81,7 +81,7 @@ allure serve reports/allure-results
 | `tests_event_counter/` | Event counter and latency stat tests |
 | `ipc/` | IPC tests — ZeroMQ pub/sub, router/dealer, parent/child (serial) |
 | `tests_openf1/` | OpenF1 API tests — mock-based flow tests + live schema validation (`-m openf1`) |
-| `integration_test/` | Integration runner — starts the full app, not collected by pytest |
+| `integration_test/` | Integration runner — starts the full app, not collected by pytest. See [its README](integration_test/README.md) |
 
 ## Serial vs Parallel
 

@@ -145,8 +145,8 @@ class OvertakeRaceCtrlMsg(RaceCtrlMsgBase):
             message_type=MessageType.OVERTAKE,
             involved_drivers=[overtaker_index, overtaken_index],
             lap_number=lap_number)
-        self.overtaker_pitting: bool = False
-        self.overtaken_pitting: bool = False
+        self.overtaker_pitting: Optional[bool] = None
+        self.overtaken_pitting: Optional[bool] = None
 
     @property
     def overtaker_index(self) -> int:
