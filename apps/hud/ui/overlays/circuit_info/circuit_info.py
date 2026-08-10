@@ -57,6 +57,7 @@ class CircuitInfoOverlay(BaseOverlay):
 
     def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
         self.circuit_info_length = settings.HUD.circuit_info_length
+        self.circuit_info_minimal = settings.HUD.circuit_info_minimal
         super().__init__(settings, logger)
 
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
@@ -69,6 +70,14 @@ class CircuitInfoOverlay(BaseOverlay):
     def post_setup(self):
         """Set initial QML properties when the window is ready."""
         self._set_bar_width_property(self.circuit_info_length)
+        self.set_qml_property("minOverlayStyle", self.circuit_info_minimal)
+
+    @final
+    def set_locked_state(self, locked: bool):
+        """Set locked state."""
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
+        super().set_locked_state(locked)
+        self.set_qml_property("lockedMode", locked)
 
     def _register_handlers(self):
         @self.on_event("set_circuit_info_length")

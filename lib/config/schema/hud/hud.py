@@ -393,6 +393,17 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             }
         }
     )
+    circuit_info_minimal: bool = Field(
+        default=False,
+        description="Use minimal circuit info overlay",
+        json_schema_extra={
+            "ui": {
+                "type": "check_box",
+                "visible": True,
+                "group": "Circuit Info",
+            }
+        }
+    )
 
     # ============== PU OVERLAY ==============
     show_pu_info: bool = overlay_enable_field(description="Enable power unit overlay", group="Power Unit",

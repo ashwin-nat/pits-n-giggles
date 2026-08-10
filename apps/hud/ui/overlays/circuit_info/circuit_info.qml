@@ -10,9 +10,13 @@ Window {
 
     property real scaleFactor: 1.0
     property int barWidth: 1400          // settable: controls overlay width
-    readonly property int baseHeight: 80
+    property bool minOverlayStyle: false // settable: minimal overlay style
+    property bool lockedMode: true        // settable: false while user is editing overlay position
+    readonly property int minimalWidth: 220
+    readonly property int baseWidth: minOverlayStyle ? minimalWidth : barWidth
+    readonly property int baseHeight: minOverlayStyle ? 56 : 80
 
-    width: barWidth * scaleFactor
+    width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
 
     // Data inputs
@@ -61,13 +65,13 @@ Window {
     Item {
         id: scaledRoot
         anchors.centerIn: parent
-        width: root.barWidth
+        width: root.baseWidth
         height: root.baseHeight
 
         transform: Scale {
             xScale: root.scaleFactor
             yScale: root.scaleFactor
-            origin.x: root.barWidth / 2
+            origin.x: root.baseWidth / 2
             origin.y: root.baseHeight / 2
         }
 
@@ -129,7 +133,7 @@ Window {
                 height: primaryLabel.implicitHeight + 8
                 color: Qt.rgba(0, 0, 0, 0.6)
                 radius: 4
-                visible: primaryLabel.text.length > 0
+                visible: !root.minOverlayStyle && primaryLabel.text.length > 0
 
                 Text {
                     id: primaryLabel
@@ -156,7 +160,7 @@ Window {
                 height: secondaryLabel.implicitHeight + 8
                 color: Qt.rgba(0, 0, 0, 0.6)
                 radius: 4
-                visible: secondaryLabel.text.length > 0
+                visible: !root.minOverlayStyle && secondaryLabel.text.length > 0
 
                 Text {
                     id: secondaryLabel
@@ -173,6 +177,70 @@ Window {
                     visible: text.length > 0
                 }
             }
+
+            // ==========================================================
+            // MINIMAL BADGE  (broadcast-style: turn number + corner name,
+            // no progress bar)
+            // ==========================================================
+            Rectangle {
+                id: minimalBg
+                anchors.centerIn: parent
+                width: Math.max(minimalPrimaryLabel.implicitWidth, minimalSecondaryLabel.implicitWidth) + 24
+                height: minimalPrimaryLabel.implicitHeight + minimalSecondaryLabel.implicitHeight + 14
+                color: Qt.rgba(0, 0, 0, 0.6)
+                radius: 4
+                visible: root.minOverlayStyle && minimalPrimaryLabel.text.length > 0
+
+                readonly property var info: infoGroup.displayedInfo
+                readonly property bool hasSegment: !!info && (
+                    (info.below && info.below.length > 0) || (info.above && info.above.length > 0)
+                )
+
+                // Turn label when present (corner), else the segment name (straight).
+                // Normalizes the abbreviated single-turn form ("T10") to the full
+                // form ("Turn 10") so it matches "Turn N" / "Turns N-M" / straight names.
+                // While unlocked (user is positioning the overlay) with no live segment,
+                // fall back to placeholder text so the badge stays visible to drag/resize.
+                readonly property string primaryText: {
+                    if (hasSegment) {
+                        let raw = (info.below && info.below.length > 0) ? info.below : (info.above || "")
+                        const abbrev = raw.match(/^T(\d+)$/)
+                        if (abbrev) raw = "Turn " + abbrev[1]
+                        return raw.toUpperCase()
+                    }
+                    return root.lockedMode ? "" : "TURN 1"
+                }
+                readonly property string secondaryText: {
+                    if (hasSegment) return (info.below && info.below.length > 0) ? (info.above || "") : ""
+                    return root.lockedMode ? "" : "Sample Corner"
+                }
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    Text {
+                        id: minimalPrimaryLabel
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: minimalBg.primaryText
+                        color: "white"
+                        font.family: "Formula1"
+                        font.pixelSize: 22
+                        font.bold: true
+                    }
+
+                    Text {
+                        id: minimalSecondaryLabel
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: minimalBg.secondaryText
+                        color: Qt.rgba(1, 1, 1, 0.85)
+                        font.family: "Formula1"
+                        font.pixelSize: 16
+                        font.bold: false
+                        visible: text.length > 0
+                    }
+                }
+            }
         }
 
         // ==========================================================
@@ -180,6 +248,7 @@ Window {
         // ==========================================================
         Item {
             id: progressBarArea
+            visible: !root.minOverlayStyle
             x: 12
             y: 36
             width: parent.width - 24

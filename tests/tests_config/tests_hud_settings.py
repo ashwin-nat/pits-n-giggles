@@ -95,6 +95,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_circuit_info, True)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
         self.assertEqual(settings.circuit_info_length, 800)
+        self.assertEqual(settings.circuit_info_minimal, False)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         self.assertFalse(settings.timing_tower_relative_best_last_lap)
@@ -899,6 +900,29 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_length=1501)
         HudSettings(circuit_info_length=1500)
+
+    def test_circuit_info_minimal_validation(self):
+        """Test valid and invalid circuit_info_minimal values"""
+        # Default is False
+        hud_settings = HudSettings()
+        self.assertEqual(hud_settings.circuit_info_minimal, False)
+
+        # Explicit True
+        hud_settings = HudSettings(circuit_info_minimal=True)
+        self.assertEqual(hud_settings.circuit_info_minimal, True)
+
+        # Explicit False
+        hud_settings = HudSettings(circuit_info_minimal=False)
+        self.assertEqual(hud_settings.circuit_info_minimal, False)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal=420)
 
     def test_track_radar_range_m_default(self):
         """track_radar_range_m defaults to 25"""
