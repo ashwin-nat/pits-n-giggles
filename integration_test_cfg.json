@@ -17,7 +17,8 @@
         "post_quali_data_autosave": true,
         "post_fp_data_autosave": true,
         "post_tt_data_autosave": true,
-        "save_race_ctrl_msg": false,
+        "save_race_ctrl_msg": true,
+        "drop_pit_otk_msg": true,
         "just_in_case_autosave": true,
         "session_dir": "data"
     },
