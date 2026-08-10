@@ -25,14 +25,15 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import (get_ers_mode_color, get_ref_row,
-                             is_race_type_session)
-from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import (OverlayId, OverlaysFuelEstimationMode,
                         OverlaysSpeedUnit, PngSettings)
 from lib.f1_types.packet_7_car_status_data import CarStatusData
 from lib.logger import PngLogger
+
+from ....common import (get_ers_mode_color, get_ref_row,
+                        is_race_type_session)
+from ...hf_types import HudOverlayData
+from ..base.base_overlay import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

@@ -25,14 +25,15 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import get_ref_row
-from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger
 from lib.track_segment_info import (ComplexCornerSegmentInfo,
                                     CornerSegmentInfo, TrackSegmentsDatabase)
+
+from ....common import get_ref_row
+from ...hf_types import HudOverlayData
+from ..base.base_overlay import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 

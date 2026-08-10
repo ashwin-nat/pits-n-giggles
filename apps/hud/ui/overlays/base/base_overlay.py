@@ -35,16 +35,16 @@ from PySide6.QtGui import QCursor, QIcon, QMouseEvent, QScreen
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 
-from apps.hud.ui.infra.hf_types import HighFreqBase
 from lib.assets_loader import load_icon
 from lib.config import OverlayPosition, PngSettings
 from lib.logger import PngLogger
 from meta.meta import APP_NAME_SNAKE
 
+from ...hf_types import HighFreqBase
 from .qml_bridge import QmlBridge
 
 if TYPE_CHECKING:
-    from apps.hud.ui.infra.window_mgr import WindowManager
+    from ...infra.window_mgr import WindowManager
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 

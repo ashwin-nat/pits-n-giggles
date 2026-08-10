@@ -26,11 +26,11 @@ import math
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.ui.infra.hf_types import DriverMotionInfo, LiveSessionMotionInfo
-from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.config import OverlayId, PngSettings
 from lib.logger import PngLogger
 
+from ...hf_types import DriverMotionInfo, LiveSessionMotionInfo
+from ..base.base_overlay import BaseOverlay
 from ._glow_provider import RadarGlowImageProvider
 from ._radar_math import _RADAR_AREA_RATIO, car_px, to_radar_coords
 
