@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from PySide6.QtWidgets import QPushButton
 
-from lib.config import PngSettings
+from lib.config import CaptureSettings, PngSettings
 from lib.error_status import PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
@@ -129,11 +129,30 @@ class BackendAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"{self.DISPLAY_NAME} UDP action codes NO CHANGE")
 
-        # Update forwarding targets if changed — no restart needed
+        # Update forwarding targets if changed - no restart needed
         if self.curr_settings.diff(new_settings, {"Forwarding": []}):
             self.send_forwarding_config_change(new_settings.Forwarding.forwarding_targets)
         else:
             self.debug_log(f"{self.DISPLAY_NAME} Forwarding targets NO CHANGE")
+
+        # Update hot swappable capture settings if changed - no restart needed
+        if capture_diff := self.curr_settings.diff(new_settings, {
+            # Capture fields the backend can apply without a restart. Add a field here only after wiring it
+            # into F1TelemetryHandler.updateCaptureSettings or SessionState.updateCaptureSettings - anything
+            # else belongs in the restart required list in on_settings_change.
+            "Capture": [
+                "post_race_data_autosave",
+                "post_quali_data_autosave",
+                "post_fp_data_autosave",
+                "post_tt_data_autosave",
+                "save_race_ctrl_msg",
+                "just_in_case_autosave",
+            ],
+        }):
+            self.debug_log(f"{self.DISPLAY_NAME} Capture settings change: {json.dumps(capture_diff, indent=2)}")
+            self.send_capture_config_change(new_settings.Capture)
+        else:
+            self.debug_log(f"{self.DISPLAY_NAME} Capture settings NO CHANGE")
 
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
@@ -143,7 +162,9 @@ class BackendAppMgr(PngAppMgrBase):
                 "broker_router_port",
                 "enable_pkt_ordering",
             ],
-            "Capture" : [],
+            "Capture" : [
+                "session_dir",
+            ],
             "Display" : [
                 "local_telemetry_rate",
             ],
@@ -217,6 +238,24 @@ class BackendAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to update forwarding config: {rsp}")
         else:
             self.debug_log(f"Forwarding config change response: {rsp}")
+
+    def send_capture_config_change(self, capture_settings: CaptureSettings):
+        """Send updated capture settings to the backend without restarting it.
+
+        The whole section is sent; the backend picks out the fields it can apply live.
+        """
+        self.debug_log("Sending capture config change to backend...")
+        self._send_simple_config_change("capture-config-change",
+                                        {"capture": capture_settings.model_dump(mode="json")})
+
+    def _send_simple_config_change(self, command: str, value: dict):
+        """Send a simple config change command to the backend without restarting it."""
+        ipc_client = IpcClientSync(self.ipc_port)
+        rsp = ipc_client.request(command, value)
+        if not rsp or rsp.get("status") != "success":
+            self.error_log(f"Failed to update {command}: {rsp}")
+        else:
+            self.debug_log(f"{command} change response: {rsp}")
 
     def start_stop_callback(self):
         """Start or stop the backend application."""

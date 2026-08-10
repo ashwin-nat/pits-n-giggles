@@ -28,17 +28,20 @@ from typing import List
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.ipc import IpcServerAsync, IpcPublisherAsync, IpcDealerAsync
 from lib.child_proc_mgmt import report_ipc_port_from_child
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync, IpcServerAsync
+from lib.logger import PngLogger
 
-from .command_handlers import (handleForwardingConfigChange, handleGetStats, handleManualSave,
-                               handleHeartbeatMissed, handleShutdown, handleUdpActionCodeChange)
+from .command_handlers import (handleCaptureConfigChange,
+                               handleForwardingConfigChange, handleGetStats,
+                               handleHeartbeatMissed, handleManualSave,
+                               handleShutdown, handleUdpActionCodeChange)
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def registerIpcTask(
         run_ipc_server: bool,
-        logger: logging.Logger,
+        logger: PngLogger,
         session_state: SessionState,
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
@@ -49,7 +52,7 @@ def registerIpcTask(
 
     Args:
         run_ipc_server (bool): Whether to run the IPC server
-        logger (logging.Logger): Logger
+        logger (PngLogger): Logger
         session_state (SessionState): Handle to the session state object
         telemetry_handler (F1TelemetryHandler): Telemetry handler
         ipc_pub (IpcPublisherAsync): IPC publisher
@@ -85,6 +88,10 @@ def registerIpcTask(
     @server.on("forwarding-config-change")
     async def _handle_forwarding_config_change(args: dict):
         return await handleForwardingConfigChange(args, logger, telemetry_handler)
+
+    @server.on("capture-config-change")
+    async def _handle_capture_config_change(args: dict):
+        return await handleCaptureConfigChange(args, logger, telemetry_handler, session_state)
 
     @server.on_get_stats
     async def _handle_get_stats(_args: dict):

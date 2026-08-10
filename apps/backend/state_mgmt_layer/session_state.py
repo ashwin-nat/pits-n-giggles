@@ -35,7 +35,7 @@ from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
 from apps.backend.state_mgmt_layer.session_info import SessionInfo
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.config import PngSettings
+from lib.config import CaptureSettings, PngSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils, LapData,
                           PacketCarDamageData, PacketCarSetupData,
@@ -230,6 +230,17 @@ class SessionState(DummyFinalClassificationMixin):
     def game_ver_str(self) -> str:
         """Returns the game version string"""
         return f"{self.m_game_major_ver}.{self.m_game_minor_ver}"
+
+    def updateCaptureSettings(self, settings: CaptureSettings) -> None:
+        """Apply the capture settings owned by this layer.
+
+        Fields are assigned one by one on purpose - only the ones listed here are hot swappable.
+        Any capture field not assigned here still requires a backend restart to take effect.
+
+        Args:
+            settings (CaptureSettings): The new capture settings
+        """
+        self.m_save_race_ctrl_msgs = settings.save_race_ctrl_msg
 
     def setGameVersion(self, header: PacketHeader) -> None:
         """Set the game version from the packet header

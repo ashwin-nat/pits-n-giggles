@@ -248,6 +248,22 @@ class F1TelemetryHandler:
         self.m_udp_action_codes.update(key, val)
         self.m_logger.debug("Updated UDP action code %s to %s", key, val)
 
+    def updateCaptureSettings(self, settings: CaptureSettings) -> None:
+        """
+        Apply the capture settings owned by this layer.
+
+        Fields are assigned one by one on purpose - only the ones listed here are hot swappable.
+        Any capture field not assigned here still requires a backend restart to take effect.
+
+        Args:
+            settings (CaptureSettings): The new capture settings.
+        """
+        self.m_capture_settings.post_race_data_autosave = settings.post_race_data_autosave
+        self.m_capture_settings.post_quali_data_autosave = settings.post_quali_data_autosave
+        self.m_capture_settings.post_fp_data_autosave = settings.post_fp_data_autosave
+        self.m_capture_settings.post_tt_data_autosave = settings.post_tt_data_autosave
+        self.m_capture_settings.just_in_case_autosave = settings.just_in_case_autosave
+
     def set_udp_forwarder(self, forwarder: AsyncUDPForwarder) -> None:
         """Wire the forwarder instance created by setupForwarder into this handler.
 
