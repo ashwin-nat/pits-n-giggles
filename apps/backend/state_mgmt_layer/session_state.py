@@ -28,8 +28,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
-from apps.backend.state_mgmt_layer.dummy_final_classification import \
-    DummyFinalClassificationMixin
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from apps.backend.state_mgmt_layer.session_info import SessionInfo
@@ -37,7 +35,8 @@ from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.config import CaptureSettings, PngSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
-from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils, LapData,
+from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
+                          FinalClassificationData, LapData,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
                           PacketCarTelemetryData, PacketEventData,
@@ -62,7 +61,7 @@ from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class SessionState(DummyFinalClassificationMixin):
+class SessionState:
     """
     Enter ye this holy state,
     Where only the CPU may operate.
@@ -608,6 +607,24 @@ class SessionState(DummyFinalClassificationMixin):
                 entries.append((index, lap_data.m_totalDistance, lap_data.m_penalties))
         entries.sort(key=lambda x: (-x[1], x[2]))
         return {car_index: pos + 1 for pos, (car_index, _, _) in enumerate(entries)}
+
+    def _getDummyFinalClassificationPacket(self) -> PacketFinalClassificationData:
+        """Build a placeholder final classification packet for a session that never received a real
+        FINAL_CLASSIFICATION packet (e.g. a just-in-case save).
+
+        Returns:
+            PacketFinalClassificationData: A dummy final classification packet
+        """
+        packet = PacketFinalClassificationData.from_values(None, 0, [])
+        packet.m_numCars = self.m_num_active_cars
+        # Field values don't matter - buildFinalClassificationJSON only iterates over
+        # m_classificationData for its length; all real data comes from DataPerDriver. Hence the
+        # bare from_values call: every field but the packet format defaults to empty/unknown.
+        packet.m_classificationData = [
+            FinalClassificationData.from_values(packet_format=self.m_session_info.m_packet_format)
+            for _ in range(self.m_num_active_cars)
+        ]
+        return packet
 
     def buildFinalClassificationJSON(self) -> Dict[str, Any]:
         """
