@@ -27,15 +27,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
+from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
 from .https import HttpsSettings
-from .hud import HudSettings
+from .hud.hud import HudSettings
+from .mcp_cfg import McpSettings
 from .network import NetworkSettings
 from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
-from .mcp_cfg import McpSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 

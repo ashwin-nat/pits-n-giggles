@@ -27,7 +27,8 @@ import os
 from logging import Logger
 from typing import Dict, Optional
 
-from ..schema import OverlayPosition, PngSettings
+from ..schema.hud.layout import OverlayPosition
+from ..schema.png import PngSettings
 from .ini import load_config_from_ini
 from .json import load_config_from_json, save_config_to_json
 
