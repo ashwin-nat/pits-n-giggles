@@ -26,7 +26,7 @@ from aiohttp import ClientSession, TCPConnector
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
-from lib.child_proc_mgmt import (enable_save_tokens,
+from lib.child_proc_mgmt import (enable_integration_test_mode,
                                  extract_save_skipped_from_line,
                                  extract_saved_path_from_line)
 from lib.config import load_config_from_json
@@ -244,9 +244,10 @@ def start_app(config_file: str, port: int, coverage_enabled: bool, cwd: Optional
         cwd (Optional[Path]): Working directory to launch from - a git worktree checkout of a
             base commit, when driving a --base diff capture, or the repo root otherwise.
     """
-    # Off by default in the app, so opt in here. Inherited by the launcher and everything it
-    # spawns, which is where the saves actually happen.
-    enable_save_tokens()
+    # The app writes nothing to stdout by default. Opt in here, so the launcher forwards its
+    # children's output and the save tokens get emitted - both of which this runner parses.
+    # Inherited by the launcher and everything it spawns.
+    enable_integration_test_mode()
 
     app_cmd_base = [
         "-m", "apps.launcher",

@@ -38,7 +38,8 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QPushButton
 
 from lib.child_proc_mgmt import (extract_ipc_port_from_line,
-                                 extract_pid_from_line, is_init_complete)
+                                 extract_pid_from_line, is_init_complete,
+                                 is_integration_test_mode)
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_UNKNOWN,
                               PNG_ERROR_CODE_UNSUPPORTED_OS,
@@ -604,15 +605,21 @@ class PngAppMgrBase(QObject):
 
         self.debug_log(f"Capturing {self.DISPLAY_NAME} output...")
 
+        # Hoisted: this runs once per output line, and the env var cannot change mid-run
+        forward_to_stdout = is_integration_test_mode()
+
         for raw_line in stdout:
             if not raw_line:
                 break
 
             line = raw_line.rstrip()
 
-            # Forward everything to our own stdout, in addition to the handling below. A
-            # parent process (the integration runner) filters this for what it cares about.
-            print(line, flush=True)
+            # Forward everything to our own stdout, in addition to the handling below, so the
+            # integration runner can filter it for what it cares about. Nobody else reads it -
+            # the child's own log lines already reach png.log via info_log at the end of this
+            # loop - so outside that runner this is pure console noise, e.g. under a debugger.
+            if forward_to_stdout:
+                print(line, flush=True)
 
             # ---------------------------------------------------------
             # 1. PID token

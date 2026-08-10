@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pytest
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.child_proc_mgmt import (enable_save_tokens,
+from lib.child_proc_mgmt import (enable_integration_test_mode,
                                  extract_ipc_port_from_line,
                                  extract_pid_from_line,
                                  extract_save_skipped_from_line,
@@ -186,20 +186,20 @@ class TestIpcPortExtraction(TestChildProcMgmt):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-@pytest.fixture(name="save_tokens_off")
-def _save_tokens_off():
+@pytest.fixture(name="integration_mode_off")
+def _integration_mode_off():
     """Run with the save tokens in their default (off) state, and restore whatever the
     surrounding environment had afterwards.
 
-    enable_save_tokens sets a process-wide env var, so without this a test that enables
+    enable_integration_test_mode sets a process-wide env var, so without this a test that enables
     them leaks into every later test in the same worker.
     """
-    saved = os.environ.pop("PNG_SAVE_TOKENS", None)
+    saved = os.environ.pop("PNG_INTEGRATION_TEST", None)
     yield
     if saved is None:
-        os.environ.pop("PNG_SAVE_TOKENS", None)
+        os.environ.pop("PNG_INTEGRATION_TEST", None)
     else:
-        os.environ["PNG_SAVE_TOKENS"] = saved
+        os.environ["PNG_INTEGRATION_TEST"] = saved
 
 
 def _capture(fn, *args) -> str:
@@ -214,7 +214,7 @@ def _capture(fn, *args) -> str:
     (report_session_saved_from_child, "data/2026_01_01/race-info/Race_Monza.json"),
     (report_session_save_skipped_from_child, "no-lap-data"),
 ])
-def test_save_tokens_are_silent_by_default(save_tokens_off, report_fn, payload):
+def test_save_tokens_are_silent_by_default(integration_mode_off, report_fn, payload):
     """Only the integration runner parses these, so a normal run must print nothing."""
     assert _capture(report_fn, payload) == ""
 
@@ -225,15 +225,15 @@ def test_save_tokens_are_silent_by_default(save_tokens_off, report_fn, payload):
     (report_session_save_skipped_from_child, extract_save_skipped_from_line,
      "no-lap-data"),
 ])
-def test_save_token_round_trip_once_enabled(save_tokens_off, report_fn, extract_fn, payload):
+def test_save_token_round_trip_once_enabled(integration_mode_off, report_fn, extract_fn, payload):
     """What the child prints is what the parent parses back out."""
-    enable_save_tokens()
+    enable_integration_test_mode()
     assert extract_fn(_capture(report_fn, payload)) == payload
 
 
-def test_save_and_skipped_tokens_do_not_match_each_other(save_tokens_off):
+def test_save_and_skipped_tokens_do_not_match_each_other(integration_mode_off):
     """The two tokens must stay distinguishable - the runner counts them separately."""
-    enable_save_tokens()
+    enable_integration_test_mode()
     saved_line = _capture(report_session_saved_from_child, "some/path.json")
     skipped_line = _capture(report_session_save_skipped_from_child, "session-type-unknown")
 

@@ -130,8 +130,9 @@ def _clearFileIfRequired(file_name: str, max_size: int) -> None:
     if os.path.exists(file_name):
         file_size = os.path.getsize(file_name)
         if file_size > max_size:
+            # No print here - this runs before any handler is attached, so there is nowhere
+            # to log it, and stdout belongs to the launcher/child protocol
             os.remove(file_name)
-            print(f"File {file_name} cleared.")
 
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
