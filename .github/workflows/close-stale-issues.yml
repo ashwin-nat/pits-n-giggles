@@ -1,0 +1,95 @@
+name: Close Stale Issues
+
+on:
+  schedule:
+    - cron: '30 18 * * *'  # daily at midnight IST (18:30 UTC)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List what would be closed without closing it'
+        type: boolean
+        default: true
+
+jobs:
+  close-stale-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Close stale issues (skip owner-authored / owner-assigned)
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const STALE_DAYS = 14;
+            const OWNER_LOGIN = context.repo.owner;
+            const EXEMPT_LABELS = ['keep-open'];
+            const dryRun = context.eventName === 'workflow_dispatch'
+              && context.payload.inputs.dry_run === 'true';
+
+            const staleCutoff = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000);
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            for (const issue of issues) {
+              // listForRepo returns PRs too; close-stale-prs.yml owns those.
+              if (issue.pull_request) {
+                continue;
+              }
+
+              if (issue.user.login === OWNER_LOGIN) {
+                console.log(`Skipping #${issue.number}: authored by owner`);
+                continue;
+              }
+
+              const assignees = (issue.assignees || []).map((a) => a.login);
+              if (assignees.includes(OWNER_LOGIN)) {
+                console.log(`Skipping #${issue.number}: assigned to owner`);
+                continue;
+              }
+
+              const labels = (issue.labels || []).map((l) => (l.name || '').toLowerCase());
+              const exempt = EXEMPT_LABELS.find((l) => labels.includes(l));
+              if (exempt) {
+                console.log(`Skipping #${issue.number}: has exempt label '${exempt}'`);
+                continue;
+              }
+
+              const updatedAt = new Date(issue.updated_at);
+              if (updatedAt >= staleCutoff) {
+                continue;
+              }
+
+              if (dryRun) {
+                console.log(`[dry run] Would close #${issue.number}: "${issue.title}" (last updated ${issue.updated_at})`);
+                continue;
+              }
+
+              console.log(`Closing stale issue #${issue.number}: "${issue.title}" (last updated ${issue.updated_at})`);
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: [
+                  `This issue has been automatically closed after ${STALE_DAYS} days without any updates.`,
+                  '',
+                  'This is not a judgement on the report — this is a small hobby project and I keep the tracker',
+                  'limited to what I can actually act on. If this is still relevant, or you have the follow-up',
+                  'information that was asked for, please comment and reopen it.',
+                ].join('\n'),
+              });
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned',
+              });
+            }
