@@ -8,14 +8,18 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import pytest
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.child_proc_mgmt import (extract_ipc_port_from_line,
-                                 extract_pid_from_line, is_init_complete,
-                                 report_ipc_port_from_child,
-                                 report_pid_from_child)
+from lib.child_proc_mgmt import (enable_save_tokens,
+                                 extract_ipc_port_from_line,
+                                 extract_pid_from_line,
+                                 extract_save_skipped_from_line,
+                                 extract_saved_path_from_line,
+                                 is_init_complete, report_pid_from_child,
+                                 report_session_save_skipped_from_child,
+                                 report_session_saved_from_child)
 
-import pytest
 pytestmark = pytest.mark.serial
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -178,3 +182,66 @@ class TestIpcPortExtraction(TestChildProcMgmt):
         # Should return None because regex requires digits
         line = "<<PNG_LAUNCHER_IPC_PORT:abcd>>"
         self.assertIsNone(extract_ipc_port_from_line(line))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+@pytest.fixture(name="save_tokens_off")
+def _save_tokens_off():
+    """Run with the save tokens in their default (off) state, and restore whatever the
+    surrounding environment had afterwards.
+
+    enable_save_tokens sets a process-wide env var, so without this a test that enables
+    them leaks into every later test in the same worker.
+    """
+    saved = os.environ.pop("PNG_SAVE_TOKENS", None)
+    yield
+    if saved is None:
+        os.environ.pop("PNG_SAVE_TOKENS", None)
+    else:
+        os.environ["PNG_SAVE_TOKENS"] = saved
+
+
+def _capture(fn, *args) -> str:
+    """Call fn(*args) and return whatever it wrote to stdout."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        fn(*args)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize("report_fn, payload", [
+    (report_session_saved_from_child, "data/2026_01_01/race-info/Race_Monza.json"),
+    (report_session_save_skipped_from_child, "no-lap-data"),
+])
+def test_save_tokens_are_silent_by_default(save_tokens_off, report_fn, payload):
+    """Only the integration runner parses these, so a normal run must print nothing."""
+    assert _capture(report_fn, payload) == ""
+
+
+@pytest.mark.parametrize("report_fn, extract_fn, payload", [
+    (report_session_saved_from_child, extract_saved_path_from_line,
+     "data/2026_01_01/race-info/Race_Monza.json"),
+    (report_session_save_skipped_from_child, extract_save_skipped_from_line,
+     "no-lap-data"),
+])
+def test_save_token_round_trip_once_enabled(save_tokens_off, report_fn, extract_fn, payload):
+    """What the child prints is what the parent parses back out."""
+    enable_save_tokens()
+    assert extract_fn(_capture(report_fn, payload)) == payload
+
+
+def test_save_and_skipped_tokens_do_not_match_each_other(save_tokens_off):
+    """The two tokens must stay distinguishable - the runner counts them separately."""
+    enable_save_tokens()
+    saved_line = _capture(report_session_saved_from_child, "some/path.json")
+    skipped_line = _capture(report_session_save_skipped_from_child, "session-type-unknown")
+
+    assert extract_save_skipped_from_line(saved_line) is None
+    assert extract_saved_path_from_line(skipped_line) is None
+
+
+@pytest.mark.parametrize("extract_fn", [extract_saved_path_from_line, extract_save_skipped_from_line])
+def test_save_token_extraction_ignores_unrelated_lines(extract_fn):
+    assert extract_fn("just a normal log line") is None
+    assert extract_fn("") is None
