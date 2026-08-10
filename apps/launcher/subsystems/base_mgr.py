@@ -192,9 +192,21 @@ class PngAppMgrBase(QObject):
     START_BY_DEFAULT: bool = True
     SHOULD_DISPLAY: bool = True
 
+    # Set to True in the body of an intermediate class that carries behaviour but is never a
+    # subsystem in its own right, to exempt it from the identity check below - the concrete
+    # subclass still has to fill the fields in. Does not inherit; see __init_subclass__.
+    # A class keyword argument would be the natural fit, but the Shiboken metaclass behind
+    # QObject rejects those.
+    ABSTRACT: bool = False
+
     def __init_subclass__(cls, **kwargs):
         """Fail at import time if a subclass forgot to fill in the mandatory identity fields"""
         super().__init_subclass__(**kwargs)
+        # __dict__ holds only what this class's own body defined, so this asks "did THIS class
+        # say it is abstract?" - cls.ABSTRACT would also find a parent's True and wrongly let a
+        # concrete subclass skip the check. Most classes don't set it at all, hence the default.
+        if cls.__dict__.get("ABSTRACT", False):
+            return
         missing = [name for name, value in (
             ("MODULE_PATH", cls.MODULE_PATH),
             ("DISPLAY_NAME", cls.DISPLAY_NAME),

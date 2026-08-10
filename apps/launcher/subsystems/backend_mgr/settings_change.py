@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2026] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,75 +23,22 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
-from dataclasses import replace
-from typing import TYPE_CHECKING, List, Tuple
-
-from PySide6.QtWidgets import QPushButton
+from typing import List, Tuple
 
 from lib.config import CaptureSettings, PngSettings
-from lib.error_status import PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
-from .base_mgr import ExitReason, PngAppMgrBase, PngAppMgrConfig
+from ..base_mgr import PngAppMgrBase
 
-if TYPE_CHECKING:
-    from apps.launcher.gui import PngLauncherWindow
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+class BackendSettingsChangeBase(PngAppMgrBase):
+    """The settings-change half of BackendAppMgr: decides what a settings change means for the
+    backend - which fields can be pushed to the running child over IPC, and which need a restart -
+    and sends the live config change commands. Never instantiated on its own; BackendAppMgr
+    supplies the identity fields and the lifecycle/UI half."""
 
-class BackendAppMgr(PngAppMgrBase):
-    """Implementation of PngApp for backend services"""
-
-    MODULE_PATH = "apps.backend"
-    DISPLAY_NAME = "Core"
-    SHORT_NAME = "CORE"
-
-    def __init__(self,
-                 common_cfg: PngAppMgrConfig,
-                 replay_server: bool):
-        """Initialize the backend manager
-        :param common_cfg: Common configuration for the backend app manager
-        :param replay_server: Whether to run the replay server
-        """
-
-        extra_args = []
-        extra_args.append("--run-ipc-server")
-        if common_cfg.debug_mode:
-            extra_args.append("--debug")
-        if replay_server:
-            extra_args.append("--replay-server")
-        final_args = [*common_cfg.args, *extra_args]
-
-        config = replace(common_cfg,
-                         args=final_args,
-                         post_start_cb=self.post_start,
-                         post_stop_cb=self.post_stop
-        )
-
-        super().__init__(
-            config=config,
-        )
-        self.register_exit_reason(PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE, ExitReason(
-            code=PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE,
-            status="UDP Port Conflict",
-            title="UDP port in use",
-            message="The UDP port is already in use by another process. Please close the other process and try again or change the port.",
-            can_restart=False,
-            settings_field='Network -> "F1 UDP Telemetry Port"'
-        ))
-
-    def get_buttons(self) -> List[QPushButton]:
-        """Return a list of button objects directly
-        :return: List of button objects
-        """
-
-        self.start_stop_button = self.build_button(self.get_icon("start"), self.start_stop_callback, "Start")
-        self.manual_save_button = self.build_button(self.get_icon("save"), self.manual_save, "Manual Save")
-
-        return [
-            self.start_stop_button,
-            self.manual_save_button,
-        ]
+    ABSTRACT = True
 
     def on_settings_change(self, new_settings: PngSettings) -> bool:
         """Handle changes in settings for the backend application
@@ -139,7 +86,7 @@ class BackendAppMgr(PngAppMgrBase):
         if capture_diff := self.curr_settings.diff(new_settings, {
             # Capture fields the backend can apply without a restart. Add a field here only after wiring it
             # into F1TelemetryHandler.updateCaptureSettings or SessionState.updateCaptureSettings - anything
-            # else belongs in the restart required list in on_settings_change.
+            # else belongs in the restart required list below.
             "Capture": [
                 "post_race_data_autosave",
                 "post_quali_data_autosave",
@@ -186,42 +133,7 @@ class BackendAppMgr(PngAppMgrBase):
         # Restart if diff is not empty
         return bool(restart_required_fields_diff)
 
-    def post_start(self):
-        """Update buttons after app start"""
-        self.set_button_icon(self.start_stop_button, self.get_icon("stop"))
-        self.set_button_tooltip(self.start_stop_button, "Stop")
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.manual_save_button, True)
-
-    def post_stop(self):
-        """Update buttons after app stop"""
-        self.set_button_icon(self.start_stop_button, self.get_icon("start"))
-        self.set_button_tooltip(self.start_stop_button, "Start")
-        self.set_button_state(self.start_stop_button, True)
-        self.set_button_state(self.manual_save_button, False)
-
-    def manual_save(self):
-        """Send a manual save command to the backend."""
-        self.debug_log("Sending manual save command to backend...")
-        ipc_client = IpcClientSync(self.ipc_port)
-        rsp = ipc_client.request("manual-save", {})
-
-        status = rsp["status"]
-        message = rsp.get("message")
-
-        if status == "success":
-            self.info_log(f"Manual save success. Path {message}")
-            self.show_success("Manual Save Success", f"The session has been saved successfully at:\n{message}")
-
-        else:
-            error = rsp.get("error", "Unknown error")
-            message = rsp.get("message", "")
-            self.info_log(f"Error in manual save: error={error} message={message}")
-
-            error_details = "\n".join(filter(None, [error, message]))
-            self.show_error("Manual Save Error", error_details)
-
-    def send_udp_action_code_change(self, action_code_field: str, value: int):
+    def send_udp_action_code_change(self, action_code_field: str, value: int) -> None:
         """Send a UDP action code change command to the backend."""
         self.debug_log(f"Sending UDP action code change for {action_code_field} to backend...")
         ipc_client = IpcClientSync(self.ipc_port)
@@ -229,7 +141,7 @@ class BackendAppMgr(PngAppMgrBase):
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to change UDP action code: {rsp}")
 
-    def send_forwarding_config_change(self, targets: List[Tuple[str, int]]):
+    def send_forwarding_config_change(self, targets: List[Tuple[str, int]]) -> None:
         """Send updated forwarding targets to the backend without restarting it."""
         self.debug_log(f"Sending forwarding config change to backend. Targets: {targets}")
         ipc_client = IpcClientSync(self.ipc_port)
@@ -239,7 +151,7 @@ class BackendAppMgr(PngAppMgrBase):
         else:
             self.debug_log(f"Forwarding config change response: {rsp}")
 
-    def send_capture_config_change(self, capture_settings: CaptureSettings):
+    def send_capture_config_change(self, capture_settings: CaptureSettings) -> None:
         """Send updated capture settings to the backend without restarting it.
 
         The whole section is sent; the backend picks out the fields it can apply live.
@@ -248,7 +160,7 @@ class BackendAppMgr(PngAppMgrBase):
         self._send_simple_config_change("capture-config-change",
                                         {"capture": capture_settings.model_dump(mode="json")})
 
-    def _send_simple_config_change(self, command: str, value: dict):
+    def _send_simple_config_change(self, command: str, value: dict) -> None:
         """Send a simple config change command to the backend without restarting it."""
         ipc_client = IpcClientSync(self.ipc_port)
         rsp = ipc_client.request(command, value)
@@ -256,17 +168,3 @@ class BackendAppMgr(PngAppMgrBase):
             self.error_log(f"Failed to update {command}: {rsp}")
         else:
             self.debug_log(f"{command} change response: {rsp}")
-
-    def start_stop_callback(self):
-        """Start or stop the backend application."""
-        # disable the button. enable in post_start/post_stop
-        self.set_button_state(self.start_stop_button, False)
-        self.set_button_state(self.manual_save_button, False)
-        try:
-            # Call the start_stop method
-            self.start_stop("Stop button pressed")
-        except Exception as e: # pylint: disable=broad-exception-caught
-            # Log the error or handle it as needed
-            self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
-            # If no exception, it will be handled in post_start/post_stop
-            self.set_button_state(self.start_stop_button, True)
