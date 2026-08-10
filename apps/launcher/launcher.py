@@ -35,7 +35,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from apps.launcher.gui import PngLauncherWindow
-from lib.child_proc_mgmt import disable_save_tokens
 from lib.file_path import resolve_fixed_file, resolve_user_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
@@ -220,12 +219,6 @@ def entry_point() -> None:
         - Launching the main Tkinter application otherwise.
     """
     args: argparse.Namespace = parse_args()
-
-    # Only the integration runner consumes the session save tokens, and it never runs a
-    # packaged build. Turn them off here so they do not show up in the launcher log. Set
-    # before any subsystem is spawned, so the children inherit it.
-    if getattr(sys, "frozen", False):
-        disable_save_tokens()
 
     # Enforce single instance before doing anything else. Keep `lock` referenced for
     # the whole function lifetime so it is not garbage-collected (GC releases the lock).
