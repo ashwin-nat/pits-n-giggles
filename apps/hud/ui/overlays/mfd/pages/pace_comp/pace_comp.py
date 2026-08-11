@@ -30,6 +30,7 @@ from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, PngSettings
 from lib.f1_types import F1Utils
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -49,7 +50,23 @@ class PaceCompPage(MfdPageBase):
     # -- Event wiring ----------------------------------------------------------
 
     @final
+    def on_page_activated(self):
+        # Fresh page item, so its table model is empty; the next update has to
+        # rebuild it rather than patch rows that aren't there.
+        self._differ.invalidate()
+
+    @final
     def setup_page(self):
+        self._differ = TableDiffer(self._stats)
+
+        @self._differ.on_reset
+        def _push_table(rows: List[Dict[str, Any]]) -> None:
+            self.push_qml_property("tableRows", rows)
+
+        @self._differ.on_row_patch
+        def _push_row(index: int, row: Dict[str, Any]) -> None:
+            self.push_qml_property("rowPatch", {"index": index, "row": row})
+
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")
@@ -253,5 +270,5 @@ class PaceCompPage(MfdPageBase):
         self._set_rows([])
 
     def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
-        """Push row data to QML."""
-        self.set_qml_property("rows", rows)
+        """Diff row data against the last table; QML gets a reset or single-row patches."""
+        self._differ.update(rows)
