@@ -28,7 +28,7 @@ import lib.race_analyzer as RaceAnalyzer
 from apps.backend.state_mgmt_layer.session_state import SessionState
 
 from ..base import BaseAPI
-from .helpers import DriversListRsp
+from .helpers.drivers_list_rsp import DriversListRsp
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 

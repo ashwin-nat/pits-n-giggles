@@ -23,16 +23,16 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .base_page import MfdPageBase
-from .collapsed import CollapsedPage
-from .fuel import FuelInfoPage
-from .lap_times import LapTimesPage
+from .collapsed.collapsed import CollapsedPage
+from .fuel.fuel_page import FuelInfoPage
+from .lap_times.lap_times import LapTimesPage
 from .pace_comp.pace_comp import PaceCompPage
-from .pit_rejoin import PitRejoinPredictionPage
+from .pit_rejoin.pit_rejoin_page import PitRejoinPredictionPage
 from .standalone_host import StandalonePageHost
-from .traffic_monitor import TrafficMonitorPage
-from .tyre_sets import TyreSetsPage
-from .tyre_wear import TyreInfoPage
-from .weather import WeatherForecastPage
+from .traffic_monitor.traffic_monitor_page import TrafficMonitorPage
+from .tyre_sets.tyre_sets_page import TyreSetsPage
+from .tyre_wear.tyre_wear_page import TyreInfoPage
+from .weather.weather import WeatherForecastPage
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 

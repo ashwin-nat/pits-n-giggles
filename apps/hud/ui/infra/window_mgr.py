@@ -31,11 +31,12 @@ from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
                             qInstallMessageHandler)
 from PySide6.QtWidgets import QApplication
 
-from apps.hud.ui.infra.hf_types import HighFreqBase
-from apps.hud.ui.overlays import BaseOverlay
 from lib.event_counter import EventCounter
 from lib.logger import PngLogger
 from lib.mailbox import LatestSlot
+
+from ..hf_types import HighFreqBase
+from ..overlays import BaseOverlay
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 

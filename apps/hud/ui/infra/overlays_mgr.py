@@ -26,24 +26,22 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, Type
 
-from apps.hud.common import get_ref_row, get_ref_row_index, is_tt_session
-from apps.hud.ui.overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
-                                  InputTelemetryOverlay, LapTimerOverlay,
-                                  MfdOverlay, PuOverlay, TimingTowerOverlay,
-                                  TrackRadarOverlay)
-from apps.hud.ui.overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
-                                            MfdPageBase, PaceCompPage,
-                                            PitRejoinPredictionPage,
-                                            StandalonePageHost,
-                                            TrafficMonitorPage, TyreInfoPage,
-                                            TyreSetsPage, WeatherForecastPage)
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
-from .hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
+from ...common import get_ref_row, get_ref_row_index, is_tt_session
+from ..hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
+from ..overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
+                        InputTelemetryOverlay, LapTimerOverlay, MfdOverlay,
+                        PuOverlay, TimingTowerOverlay, TrackRadarOverlay)
+from ..overlays.mfd.pages import (FuelInfoPage, LapTimesPage, MfdPageBase,
+                                  PaceCompPage, PitRejoinPredictionPage,
+                                  StandalonePageHost, TrafficMonitorPage,
+                                  TyreInfoPage, TyreSetsPage,
+                                  WeatherForecastPage)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
