@@ -9,10 +9,14 @@
 // re-assigning a view's model destroys and re-creates all of them. Views bind
 // `model:` to this object and read row fields as delegate roles.
 //
-// Two constraints inherited from ListModel (dynamicRoles is off — it is slow):
+// Three constraints inherited from ListModel (dynamicRoles is off - it is slow):
 //   - roles are fixed by the first append(), so every row must carry the same
-//     key set; pad optional fields rather than omitting them.
+//     key set with the same value types; pad optional fields rather than
+//     omitting them, and don't mix e.g. a QML color with a Python "#rrggbb".
 //   - keys must be valid property names, so no hyphens.
+//   - rows must be flat. An array-valued field becomes a nested ListModel that
+//     delegates bind to by object identity, and set() does not reliably reach
+//     it - flatten such rows into one field per cell instead.
 import QtQuick
 
 ListModel {
@@ -38,7 +42,9 @@ ListModel {
     onRowPatchChanged: {
         if (!rowPatch || rowPatch.row === undefined)
             return;
-        if (rowPatch.index >= 0 && rowPatch.index < count)
-            set(rowPatch.index, rowPatch.row);
+        if (rowPatch.index < 0 || rowPatch.index >= count)
+            return;
+
+        set(rowPatch.index, rowPatch.row);
     }
 }

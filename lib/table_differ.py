@@ -24,6 +24,8 @@
 
 from typing import Any, Callable, List, Optional
 
+from lib.event_counter import EventCounter
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class TableDiffer:
@@ -40,9 +42,20 @@ class TableDiffer:
     Contract: callers must pass a freshly built list of freshly built rows and
     must not mutate either after the call. The list is stored by reference, so
     any later mutation silently corrupts the next diff.
+
+    Counts what it decided under __TABLE_DIFFER__ in the caller's EventCounter, which
+    nests under the owning overlay in the stats tree:
+        __RESET__       whole-table pushes (page activation, row-count change)
+        __PATCH__       rows patched, summed over all updates
+        __UNCHANGED__   updates that produced no work at all
+        __INVALIDATED__ times the stored table was dropped
     """
 
-    def __init__(self) -> None:
+    def __init__(self, stats: EventCounter) -> None:
+        """
+        stats : the owning component's counter, so table stats land beside its others
+        """
+        self._stats = stats
         self._rows: Optional[List[Any]] = None
         self._reset_cbs: List[Callable[[List[Any]], None]] = []
         self._patch_cbs: List[Callable[[int, Any], None]] = []
@@ -69,18 +82,27 @@ class TableDiffer:
         self._rows = new_rows
 
         if old_rows is None or len(old_rows) != len(new_rows):
+            self._stats.track_event("__TABLE_DIFFER__", "__RESET__")
             for cb in self._reset_cbs:
                 cb(new_rows)
             return
 
+        patched = 0
         for index, (old_row, new_row) in enumerate(zip(old_rows, new_rows)):
             if old_row != new_row:
+                patched += 1
                 for cb in self._patch_cbs:
                     cb(index, new_row)
+
+        if patched:
+            self._stats.track_event("__TABLE_DIFFER__", "__PATCH__", count=patched)
+        else:
+            self._stats.track_event("__TABLE_DIFFER__", "__UNCHANGED__")
 
     def invalidate(self) -> None:
         """Drop the stored table so the next update() always fires a reset.
 
         Call this whenever the UI target is (re)created and has lost its rows.
         """
+        self._stats.track_event("__TABLE_DIFFER__", "__INVALIDATED__")
         self._rows = None

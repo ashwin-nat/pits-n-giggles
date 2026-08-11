@@ -26,6 +26,7 @@ from typing import Any, Dict, List, NamedTuple, Union
 
 import pytest
 
+from lib.event_counter import EventCounter
 from lib.table_differ import TableDiffer
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -51,8 +52,12 @@ def calls() -> CallLog:
     return []
 
 @pytest.fixture
-def differ(calls: CallLog) -> TableDiffer:
-    obj = TableDiffer()
+def stats() -> EventCounter:
+    return EventCounter()
+
+@pytest.fixture
+def differ(calls: CallLog, stats: EventCounter) -> TableDiffer:
+    obj = TableDiffer(stats)
     obj.on_reset(lambda table: calls.append(Reset(table)))
     obj.on_row_patch(lambda index, row: calls.append(Patch(index, row)))
     return obj
@@ -144,7 +149,7 @@ def test_invalidate_on_a_fresh_differ_is_harmless(differ: TableDiffer, calls: Ca
 # -------------------------------------- TESTS: registration ---------------------------------------------------------
 
 def test_all_registered_callbacks_fire_in_registration_order() -> None:
-    differ = TableDiffer()
+    differ = TableDiffer(EventCounter())
     calls: List[Any] = []
     differ.on_reset(lambda table: calls.append(("first", Reset(table))))
     differ.on_reset(lambda table: calls.append(("second", Reset(table))))
@@ -162,7 +167,7 @@ def test_all_registered_callbacks_fire_in_registration_order() -> None:
     ]
 
 def test_registration_works_as_a_decorator_and_returns_fn_unchanged() -> None:
-    differ = TableDiffer()
+    differ = TableDiffer(EventCounter())
     calls: CallLog = []
 
     @differ.on_reset
@@ -181,7 +186,7 @@ def test_registration_works_as_a_decorator_and_returns_fn_unchanged() -> None:
     assert handle_patch.__name__ == "handle_patch"
 
 def test_differ_with_no_callbacks_still_tracks_state() -> None:
-    differ = TableDiffer()
+    differ = TableDiffer(EventCounter())
     differ.update(rows("a"))
 
     calls: CallLog = []
