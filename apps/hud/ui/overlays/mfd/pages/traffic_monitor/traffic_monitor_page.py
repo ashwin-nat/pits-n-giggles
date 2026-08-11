@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple, final
 from apps.hud.common import get_ers_mode_color, get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, PngSettings
+from lib.table_differ import TableDiffer
 from lib.track_segment_info import TrackSegmentsDatabase
 
 from .utils import get_traffic_window, resolve_location, sort_by_rel_distance
@@ -52,11 +53,22 @@ class TrafficMonitorPage(MfdPageBase):
 
     @final
     def on_page_activated(self):
-        pass
+        # Fresh page item, so its table model is empty; the next update has to
+        # rebuild it rather than patch rows that aren't there.
+        self._differ.invalidate()
 
     @final
     def setup_page(self):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
+        self._differ = TableDiffer(self._stats)
+
+        @self._differ.on_reset
+        def _push_table(rows: List[Dict[str, Any]]) -> None:
+            self.push_qml_property("tableRows", rows)
+
+        @self._differ.on_row_patch
+        def _push_row(index: int, row: Dict[str, Any]) -> None:
+            self.push_qml_property("rowPatch", {"index": index, "row": row})
 
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
@@ -106,15 +118,15 @@ class TrafficMonitorPage(MfdPageBase):
                 return
 
             window = get_traffic_window(sorted_entries, ref_pos, self.NUM_BEHIND)
-            self.set_qml_property("tableData", self._build_rows(window, ref_index, circuit_num))
+            self._differ.update(self._build_rows(window, ref_index, circuit_num))
             self.set_qml_property("viewState", "table")
 
     def _show_empty(self) -> None:
-        self.set_qml_property("tableData", [])
+        self._differ.update([])
         self.set_qml_property("viewState", "empty")
 
     def _show_in_garage(self) -> None:
-        self.set_qml_property("tableData", [])
+        self._differ.update([])
         self.set_qml_property("viewState", "inGarage")
 
     # ------------------------------------------------------------------------------------------------------------------

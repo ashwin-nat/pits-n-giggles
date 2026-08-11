@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
+import "../../../base"
 
 Rectangle {
     id: root
@@ -9,7 +10,17 @@ Rectangle {
 
     // States: "table" | "inGarage" | "empty"
     property string viewState: "empty"
-    property var tableData: []
+
+    // Written by Python via TableDiffer: tableRows is the whole table,
+    // rowPatch is { index, row } for a single changed row.
+    property var tableRows: []
+    property var rowPatch: ({})
+
+    DiffedTableModel {
+        id: tableModel
+        tableRows: root.tableRows
+        rowPatch: root.rowPatch
+    }
 
     property string iconSourcePrefixTeam: "../../../../../../../assets/team-logos/"
     readonly property var teamIcons: ({
@@ -83,21 +94,29 @@ Rectangle {
             ListView {
                 id: tableView
                 anchors.fill: parent
-                model: root.tableData
+                model: tableModel
                 interactive: false
                 clip: true
                 visible: root.viewState === "table"
 
                 delegate: Rectangle {
                     id: trafficRow
-                    required property var modelData
+                    required property string team
+                    required property string name
+                    required property string ersColor
+                    required property string ersPercent
+                    required property bool drs
+                    required property string relDist
+                    required property string relDistColor
+                    required property bool isRef
+                    required property string location
 
                     width: tableView.width
                     height: 35
                     color: "#80000000"
 
-                    border.color: trafficRow.modelData.isRef ? "white" : "transparent"
-                    border.width: trafficRow.modelData.isRef ? 2 : 0
+                    border.color: trafficRow.isRef ? "white" : "transparent"
+                    border.width: trafficRow.isRef ? 2 : 0
 
                     Rectangle {
                         anchors.top: parent.top
@@ -121,7 +140,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 width: 20
                                 height: 20
-                                source: root.teamIcons[trafficRow.modelData.team] || root.defaultTeamIcon
+                                source: root.teamIcons[trafficRow.team] || root.defaultTeamIcon
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true
                                 mipmap: true
@@ -132,7 +151,7 @@ Rectangle {
                         Text {
                             Layout.preferredWidth: 170
                             Layout.fillHeight: true
-                            text: trafficRow.modelData.name
+                            text: trafficRow.name
                             font.family: "Formula1"
                             font.pixelSize: 14
                             color: "white"
@@ -153,12 +172,12 @@ Rectangle {
                                 width: 6
                                 height: parent.height - 8
                                 radius: 2
-                                color: trafficRow.modelData.ersColor
+                                color: trafficRow.ersColor
                             }
 
                             Text {
                                 anchors.centerIn: parent
-                                text: trafficRow.modelData.ersPercent
+                                text: trafficRow.ersPercent
                                 font.family: "B612 Mono"
                                 font.pixelSize: 12
                                 color: "#dddddd"
@@ -173,7 +192,7 @@ Rectangle {
                                 width: 6
                                 height: parent.height - 8
                                 radius: 2
-                                color: trafficRow.modelData.drs ? "#00e676" : "#333333"
+                                color: trafficRow.drs ? "#00e676" : "#333333"
                             }
                         }
 
@@ -181,10 +200,10 @@ Rectangle {
                         Text {
                             Layout.preferredWidth: 55
                             Layout.fillHeight: true
-                            text: trafficRow.modelData.relDist
+                            text: trafficRow.relDist
                             font.family: "B612 Mono"
                             font.pixelSize: 12
-                            color: trafficRow.modelData.relDistColor
+                            color: trafficRow.relDistColor
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -193,7 +212,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            text: trafficRow.modelData.location
+                            text: trafficRow.location
                             font.family: "B612 Mono"
                             font.pixelSize: 12
                             color: "#aaaaaa"
