@@ -27,6 +27,7 @@ from typing import Any, Dict, List, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, PngSettings
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -37,6 +38,8 @@ class LapTimesPage(MfdPageBase):
     PAGE_QML_FILE: Path = Path(__file__).parent / "lap_times_page.qml"
 
     NUM_ROWS = 5
+    BLANK_TEXT = "---"
+    BLANK_COLOUR = "#808080"
 
     LAP_VALID_MASK = 1
     S1_VALID_MASK = 2
@@ -49,21 +52,38 @@ class LapTimesPage(MfdPageBase):
 
     @final
     def on_page_activated(self):
-        # Invalidate the cache
-        self._last_processed_data = []
+        # The page item is new and its table model is empty, so the next update
+        # must repopulate it in full rather than patch rows that aren't there.
+        # Seeding the blanks here also fixes the model's role types (all string)
+        # before any telemetry arrives.
+        self._differ.invalidate()
+        self._sync_table([self._blank_row() for _ in range(self.NUM_ROWS)])
+
+    def _sync_table(self, rows: List[Dict[str, Any]]) -> None:
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        update = self._differ.update(rows)
+        if update:
+            self.push_qml_property("tableUpdate", update)
+
+    def _blank_row(self) -> Dict[str, str]:
+        """A placeholder row of dashes, for padding and for the pre-telemetry table."""
+        return {
+            'lapText': self.BLANK_TEXT, 'lapColour': self.BLANK_COLOUR,
+            's1Text': self.BLANK_TEXT, 's1Colour': self.BLANK_COLOUR,
+            's2Text': self.BLANK_TEXT, 's2Colour': self.BLANK_COLOUR,
+            's3Text': self.BLANK_TEXT, 's3Colour': self.BLANK_COLOUR,
+            'timeText': self.BLANK_TEXT, 'timeColour': self.BLANK_COLOUR,
+        }
 
     @final
     def setup_page(self):
-        self._last_processed_data: List[Dict[str, Any]] = []
+        self._differ = TableDiffer(self._stats)
 
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
             """Populate the lap table with up to the last 5 laps. Leave remaining rows blank."""
             lap_time_history = data.get("lap-time-history", {})
             if not lap_time_history:
-                return
-
-            if self._last_processed_data == lap_time_history:
                 return
 
             history_data = lap_time_history.get("lap-time-history-data", [])
@@ -122,43 +142,22 @@ class LapTimesPage(MfdPageBase):
                 lap_time_col = self._get_cell_text_colour(
                                 lap_num, lap_time_ms, glob_best_lap_ms, pb_lap_num, lap_valid)
 
-                row = [
-                    {'text': str(lap_num), 'color': lap_num_col},
-                    {'text': s1_disp, 'color': s1_col},
-                    {'text': s2_disp, 'color': s2_col},
-                    {'text': s3_disp, 'color': s3_col},
-                    {'text': lap_disp, 'color': lap_time_col}
-                ]
-                all_rows.append(row)
+                all_rows.append({
+                    'lapText': str(lap_num), 'lapColour': lap_num_col,
+                    's1Text': s1_disp, 's1Colour': s1_col,
+                    's2Text': s2_disp, 's2Colour': s2_col,
+                    's3Text': s3_disp, 's3Colour': s3_col,
+                    'timeText': lap_disp, 'timeColour': lap_time_col,
+                })
 
             # Pad with empty rows if we have fewer than NUM_ROWS
             while len(all_rows) < self.NUM_ROWS:
-                all_rows.insert(0, [
-                    {'text': '---', 'color': '#808080'},
-                    {'text': '---', 'color': '#808080'},
-                    {'text': '---', 'color': '#808080'},
-                    {'text': '---', 'color': '#808080'},
-                    {'text': '---', 'color': '#808080'}
-                ])
+                all_rows.insert(0, self._blank_row())
 
-            self.set_qml_property("rows", all_rows)
-
-            # Update the cache
-            self._last_processed_data = lap_time_history
+            self._sync_table(all_rows)
 
     def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
                             pb_lap_num: int, isValid: bool) -> str:
-        """Get the text colour for a cell"""
-        if global_best_time_ms and (time_ms == global_best_time_ms):
-            return "magenta"
-        if pb_lap_num and (lap_num == pb_lap_num):
-            return "lime"
-        if not isValid:
-            return "red"
-        return "#e0e0e0"
-
-    def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
-                              pb_lap_num: int, isValid: bool) -> SyntaxError:
         """Get the text colour for a cell"""
         if global_best_time_ms and (time_ms == global_best_time_ms):
             return "magenta"

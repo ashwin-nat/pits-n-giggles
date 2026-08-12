@@ -39,6 +39,7 @@ def main() -> int:
         [str(qmllint), "--max-warnings", "0", *[str(f) for f in qml_files]],
         stdin=subprocess.DEVNULL,
     )
+    print(f"Linted {len(qml_files)} QML files under {QML_ROOT}. Return code: {result.returncode}")
     return result.returncode
 
 

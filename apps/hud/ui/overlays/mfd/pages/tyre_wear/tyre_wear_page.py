@@ -29,6 +29,7 @@ from apps.hud.common import get_ref_row
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, MfdTyreWearRateType, OverlayId, PngSettings
 from lib.logger import PngLogger
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -39,6 +40,9 @@ class TyreInfoPage(MfdPageBase):
     PAGE_QML_FILE: Path = Path(__file__).parent / "tyre_wear_page.qml"
 
     NUM_DECIMAL_PLACES = 2
+    NUM_WEAR_ROWS = 3
+    NO_LAP = -1              # lap_num on rows that are not a prediction
+    NO_WEAR = float('-inf')  # sentinel for "no data"; QML checks isFinite()
 
     KEY_LABELS = {
         'front-left':  'FL',
@@ -67,7 +71,14 @@ class TyreInfoPage(MfdPageBase):
         super().__init__(logger)
 
     @final
+    def on_page_activated(self):
+        # Fresh page item, so its table model is empty; the next update has to
+        # rebuild it rather than patch rows that aren't there.
+        self._differ.invalidate()
+
+    @final
     def setup_page(self):
+        self._differ = TableDiffer(self._stats)
 
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
@@ -189,6 +200,7 @@ class TyreInfoPage(MfdPageBase):
         """Update the wear table with current and predicted values."""
         rows_data = [{
             'label': 'curr',
+            'lap_num': curr_lap,
             'fl': curr_wear.get('front-left-wear', 0.0),
             'fr': curr_wear.get('front-right-wear', 0.0),
             'rl': curr_wear.get('rear-left-wear', 0.0),
@@ -226,20 +238,27 @@ class TyreInfoPage(MfdPageBase):
 
         # Sort non-curr rows by ascending lap number (closest-prediction snapping
         # can produce out-of-order results when predictions are sparse).
-        rows_data = rows_data[:1] + sorted(rows_data[1:], key=lambda r: r.get('lap_num', float('inf')))
+        rows_data = rows_data[:1] + sorted(rows_data[1:], key=lambda r: r['lap_num'])
 
         # Ensure we always have exactly 3 rows
-        while len(rows_data) < 3:
-            rows_data.append({
-                'label': '',
-                'fl': float('-inf'),  # Use -inf as sentinel for null/no data
-                'fr': float('-inf'),
-                'rl': float('-inf'),
-                'rr': float('-inf'),
-            })
+        while len(rows_data) < self.NUM_WEAR_ROWS:
+            rows_data.append(self._blank_row())
 
-        # Update QML table data
-        self.set_qml_property("wearTableData", rows_data[:3])
+        update = self._differ.update(rows_data[:self.NUM_WEAR_ROWS])
+        if update:
+            self.push_qml_property("tableUpdate", update)
+
+    def _blank_row(self) -> Dict[str, Any]:
+        """Padding row. Every key the real rows carry must be present: ListModel
+        roles are fixed by the first append(), so an absent one is unsettable."""
+        return {
+            'label': '',
+            'lap_num': self.NO_LAP,
+            'fl': self.NO_WEAR,
+            'fr': self.NO_WEAR,
+            'rl': self.NO_WEAR,
+            'rr': self.NO_WEAR,
+        }
 
     def _find_closest_prediction(self, predictions: List[Dict], target_lap: int) -> Optional[Dict]:
         """Find the prediction closest to the target lap."""
