@@ -263,9 +263,10 @@ class BaseOverlay(QmlBridge, QObject):
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
 
-        # Present smoothness/latency stats (all overlays): the timestamp must be
-        # captured at emission on the render thread — the DirectConnection handler
-        # touches nothing but the emit; only the value crosses to the GUI thread.
+        # Present stats: the timestamp must be captured at emission on the render
+        # thread - the DirectConnection handler touches nothing but the emit; only
+        # the value crosses to the GUI thread. Every overlay reports present
+        # latency; only animation overlays report smoothness (see _on_present).
         self._root.frameSwapped.connect(
             self._on_frame_swapped_render_thread, Qt.ConnectionType.DirectConnection)
         self._present_ts_signal.connect(self._on_present)
@@ -627,7 +628,7 @@ class BaseOverlay(QmlBridge, QObject):
     def _on_frame_swapped_render_thread(self) -> None:
         """RENDER-THREAD hook: capture the presentation timestamp at emission.
 
-        Must touch nothing but the emit — the value is marshaled to the GUI
+        Must touch nothing but the emit - the value is marshaled to the GUI
         thread via _present_ts_signal, so all stat state stays GUI-thread-only.
         Capturing here (not in a queued slot) keeps intervals measuring actual
         presentation cadence rather than GUI event-queue drain.
@@ -639,17 +640,21 @@ class BaseOverlay(QmlBridge, QObject):
         """GUI-thread record of a presented frame (timestamp from the render thread).
 
         Feeds two stats:
-        - "__PRESENT_SMOOTHNESS__": active-burst present intervals + hitches;
-          idle gaps reset the baseline instead of counting as misses.
+        - "__PRESENT_SMOOTHNESS__": active-burst present intervals + hitches.
+          Animation overlays only. An event-driven overlay presents when data
+          arrives, so nearly every interval is an idle gap the metric discards,
+          and the handful that survive are an artifact of two updates landing
+          close together rather than a measure of rendering health.
         - "__PRESENT_LATENCY__": change-to-present latency, one sample per swap
-          that displays a pending content change.
+          that displays a pending content change. Meaningful for every overlay.
         """
-        self._stats.track_present("__PRESENT_SMOOTHNESS__", "__PRESENT__",
-                                  swap_ts_ns, self._display_period_ns)
+        if self.is_animation_overlay:
+            self._stats.track_present("__PRESENT_SMOOTHNESS__", "__PRESENT__",
+                                      swap_ts_ns, self._display_period_ns)
         pending = self._pending_change_ns
         if pending is not None and pending <= swap_ts_ns:
             # A change stamped after this swap was emitted has not been presented
-            # yet — leave it pending for the next swap.
+            # yet - leave it pending for the next swap.
             self._pending_change_ns = None
             self._stats.track_packet_latency("__PRESENT_LATENCY__", "__TOTAL__",
                                              pending, swap_ts_ns)
