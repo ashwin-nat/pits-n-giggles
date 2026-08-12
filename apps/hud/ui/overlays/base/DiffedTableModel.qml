@@ -30,8 +30,13 @@ ListModel {
     property var tableUpdate: null
 
     onTableUpdateChanged: {
-        if (!tableUpdate || !tableUpdate.rows)
+        if (!tableUpdate)
             return;
+
+        if (!tableUpdate.rows) {
+            console.warn("DiffedTableModel: payload has no rows:", JSON.stringify(tableUpdate));
+            return;
+        }
 
         if (tableUpdate.kind === "reset") {
             clear();
@@ -40,13 +45,26 @@ ListModel {
             return;
         }
 
-        // Patches only ever apply to the table they were diffed against. One
-        // aimed at a stale or empty model is dropped; Python re-syncs by calling
-        // TableDiffer.invalidate() whenever the QML target is re-created.
+        if (tableUpdate.kind !== "patch") {
+            console.warn("DiffedTableModel: unknown payload kind:", tableUpdate.kind);
+            return;
+        }
+
+        // A patch aimed at a stale or empty model is dropped rather than applied
+        // to the wrong row. That leaves this model behind Python's table until
+        // the next reset, so say so -- once per payload, since a desynced table
+        // would otherwise warn per row per tick.
+        let dropped = 0;
         for (let i = 0; i < tableUpdate.rows.length; ++i) {
             const patch = tableUpdate.rows[i];
             if (patch && patch.row !== undefined && patch.index >= 0 && patch.index < count)
                 set(patch.index, patch.row);
+            else
+                ++dropped;
         }
+        if (dropped > 0)
+            console.warn("DiffedTableModel: dropped", dropped, "of", tableUpdate.rows.length,
+                         "patches against a model of", count,
+                         "rows -- this table is now behind Python until the next reset");
     }
 }
