@@ -62,14 +62,6 @@ class TrafficMonitorPage(MfdPageBase):
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[7] / "assets/track-segments")
         self._differ = TableDiffer(self._stats)
 
-        @self._differ.on_reset
-        def _push_table(rows: List[Dict[str, Any]]) -> None:
-            self.push_qml_property("tableRows", rows)
-
-        @self._differ.on_row_patch
-        def _push_row(index: int, row: Dict[str, Any]) -> None:
-            self.push_qml_property("rowPatch", {"index": index, "row": row})
-
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             table_entries: Optional[List] = data.get("table-entries")
@@ -118,15 +110,21 @@ class TrafficMonitorPage(MfdPageBase):
                 return
 
             window = get_traffic_window(sorted_entries, ref_pos, self.NUM_BEHIND)
-            self._differ.update(self._build_rows(window, ref_index, circuit_num))
+            self._sync_table(self._build_rows(window, ref_index, circuit_num))
             self.set_qml_property("viewState", "table")
 
+    def _sync_table(self, rows: List[Dict[str, Any]]) -> None:
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        update = self._differ.update(rows)
+        if update:
+            self.push_qml_property("tableUpdate", update)
+
     def _show_empty(self) -> None:
-        self._differ.update([])
+        self._sync_table([])
         self.set_qml_property("viewState", "empty")
 
     def _show_in_garage(self) -> None:
-        self._differ.update([])
+        self._sync_table([])
         self.set_qml_property("viewState", "inGarage")
 
     # ------------------------------------------------------------------------------------------------------------------

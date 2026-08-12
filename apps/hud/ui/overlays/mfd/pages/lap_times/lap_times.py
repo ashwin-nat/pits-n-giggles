@@ -57,7 +57,13 @@ class LapTimesPage(MfdPageBase):
         # Seeding the blanks here also fixes the model's role types (all string)
         # before any telemetry arrives.
         self._differ.invalidate()
-        self._differ.update([self._blank_row() for _ in range(self.NUM_ROWS)])
+        self._sync_table([self._blank_row() for _ in range(self.NUM_ROWS)])
+
+    def _sync_table(self, rows: List[Dict[str, Any]]) -> None:
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        update = self._differ.update(rows)
+        if update:
+            self.push_qml_property("tableUpdate", update)
 
     def _blank_row(self) -> Dict[str, str]:
         """A placeholder row of dashes, for padding and for the pre-telemetry table."""
@@ -72,14 +78,6 @@ class LapTimesPage(MfdPageBase):
     @final
     def setup_page(self):
         self._differ = TableDiffer(self._stats)
-
-        @self._differ.on_reset
-        def _push_table(rows: List[Dict[str, Any]]) -> None:
-            self.push_qml_property("tableRows", rows)
-
-        @self._differ.on_row_patch
-        def _push_row(index: int, row: Dict[str, Any]) -> None:
-            self.push_qml_property("rowPatch", {"index": index, "row": row})
 
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]):
@@ -156,7 +154,7 @@ class LapTimesPage(MfdPageBase):
             while len(all_rows) < self.NUM_ROWS:
                 all_rows.insert(0, self._blank_row())
 
-            self._differ.update(all_rows)
+            self._sync_table(all_rows)
 
     def _get_cell_text_colour(self, lap_num: int, time_ms: int, global_best_time_ms: int,
                             pb_lap_num: int, isValid: bool) -> str:

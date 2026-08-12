@@ -72,8 +72,8 @@ Item {
     /* ─────────────────────────────────────────────────────
      * DATA  (Python sets these)
      *
-     * Written by Python via TableDiffer: tableRows is the whole table,
-     * rowPatch is { index, row } for a single changed row.
+     * Written by Python as one TableDiffer payload per tick; DiffedTableModel
+     * applies it as a whole-table reset or a set of single-row patches.
      *
      * Each row is {
      *   position: string,
@@ -84,13 +84,11 @@ Item {
      * }
      * Not padded - the model holds exactly as many rows as Python sent.
      * ───────────────────────────────────────────────────── */
-    property var tableRows: []
-    property var rowPatch: ({})
+    property var tableUpdate: null
 
     DiffedTableModel {
         id: tableModel
-        tableRows: root.tableRows
-        rowPatch: root.rowPatch
+        tableUpdate: root.tableUpdate
     }
 
     /* ─────────────────────────────────────────────────────

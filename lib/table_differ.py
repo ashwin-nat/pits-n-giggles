@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Callable, List, Optional
+from typing import Any, Dict, List, Optional
 
 from lib.event_counter import EventCounter
 
@@ -32,12 +32,20 @@ class TableDiffer:
     """Row-granularity differ for table data pushed to a UI.
 
     A row is any `==`-comparable object; no particular shape is assumed. Each
-    `update()` either fires the reset hooks with the whole table, or fires the
-    row-patch hooks once per changed row index:
+    `update()` returns one payload describing everything that changed, or None
+    when nothing did:
 
     - no stored table (fresh, or after `invalidate()`), or a row-count change
-      -> reset
-    - same row count -> one patch per index where the row compares unequal
+      -> {"kind": "reset", "rows": [row, ...]}
+    - same row count -> {"kind": "patch", "rows": [{"index": i, "row": row}, ...]}
+      carrying only the indices whose row compares unequal
+
+    One payload per update means one QML property write per tick however many
+    rows moved, and resets and patches cannot arrive out of order, since they
+    travel through the same property.
+
+    Note that {"kind": "reset", "rows": []} means "empty the table" and is quite
+    different from None, which means "nothing to do".
 
     Contract: callers must pass a freshly built list of freshly built rows and
     must not mutate either after the call. The list is stored by reference, so
@@ -45,11 +53,15 @@ class TableDiffer:
 
     Counts what it decided under __TABLE_DIFFER__ in the caller's EventCounter, which
     nests under the owning overlay in the stats tree:
-        __RESET__       whole-table pushes (page activation, row-count change)
-        __PATCH__       rows patched, summed over all updates
-        __UNCHANGED__   updates that produced no work at all
-        __INVALIDATED__ times the stored table was dropped
+        __RESET__           whole-table pushes (page activation, row-count change)
+        __PATCH_NUM_ROWS__  rows patched, summed over all updates
+        __UNCHANGED__       updates that produced no work at all
+        __INVALIDATED__     times the stored table was dropped
     """
+
+    # Payload discriminator. The QML side compares against these same strings.
+    RESET = "reset"
+    PATCH = "patch"
 
     def __init__(self, stats: EventCounter) -> None:
         """
@@ -57,47 +69,30 @@ class TableDiffer:
         """
         self._stats = stats
         self._rows: Optional[List[Any]] = None
-        self._reset_cbs: List[Callable[[List[Any]], None]] = []
-        self._patch_cbs: List[Callable[[int, Any], None]] = []
-
-    # ------------------------------------------------------------------
-    # Callback registration (usable as a decorator or a plain call)
-    # ------------------------------------------------------------------
-    def on_reset(self, fn: Callable[[List[Any]], None]) -> Callable[[List[Any]], None]:
-        """Register a whole-table callback. Returns fn unchanged."""
-        self._reset_cbs.append(fn)
-        return fn
-
-    def on_row_patch(self, fn: Callable[[int, Any], None]) -> Callable[[int, Any], None]:
-        """Register a single-row callback, called as (index, row). Returns fn unchanged."""
-        self._patch_cbs.append(fn)
-        return fn
 
     # ------------------------------------------------------------------
     # Diffing
     # ------------------------------------------------------------------
-    def update(self, new_rows: List[Any]) -> None:
-        """Diff new_rows against the stored table and fire the matching hooks."""
+    def update(self, new_rows: List[Any]) -> Optional[Dict[str, Any]]:
+        """Diff new_rows against the stored table. Returns the payload, or None."""
         old_rows = self._rows
         self._rows = new_rows
 
         if old_rows is None or len(old_rows) != len(new_rows):
             self._stats.track_event("__TABLE_DIFFER__", "__RESET__")
-            for cb in self._reset_cbs:
-                cb(new_rows)
-            return
+            return {"kind": self.RESET, "rows": new_rows}
 
-        patched = 0
-        for index, (old_row, new_row) in enumerate(zip(old_rows, new_rows)):
-            if old_row != new_row:
-                patched += 1
-                for cb in self._patch_cbs:
-                    cb(index, new_row)
-
-        if patched:
-            self._stats.track_event("__TABLE_DIFFER__", "__PATCH__", count=patched)
-        else:
+        patches = [
+            {"index": index, "row": new_row}
+            for index, (old_row, new_row) in enumerate(zip(old_rows, new_rows))
+            if old_row != new_row
+        ]
+        if not patches:
             self._stats.track_event("__TABLE_DIFFER__", "__UNCHANGED__")
+            return None
+
+        self._stats.track_event("__TABLE_DIFFER__", "__PATCH_NUM_ROWS__", count=len(patches))
+        return {"kind": self.PATCH, "rows": patches}
 
     def invalidate(self) -> None:
         """Drop the stored table so the next update() always fires a reset.

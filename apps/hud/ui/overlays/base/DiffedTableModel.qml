@@ -1,11 +1,15 @@
 // ListModel driven by lib/table_differ.TableDiffer on the Python side.
 //
-// Python writes two root properties per table and this model turns them into
-// the matching ListModel operations:
-//   tableRows -> clear() + append() of every row  (whole-table reset)
-//   rowPatch  -> set(index, row)                  (one row changed)
+// Python writes one property per table -- the payload returned by
+// TableDiffer.update() -- and this model turns it into ListModel operations:
+//   { kind: "reset", rows: [row, ...] }           -> clear() + append() each
+//   { kind: "patch", rows: [{index, row}, ...] }  -> set(index, row) each
 //
-// The point is that set() re-renders only the one affected delegate, whereas
+// One property means one write per tick however many rows moved, and a reset can
+// never overtake patches produced before it. The "reset"/"patch" strings are
+// TableDiffer.RESET / TableDiffer.PATCH.
+//
+// The point is that set() re-renders only the affected delegate, whereas
 // re-assigning a view's model destroys and re-creates all of them. Views bind
 // `model:` to this object and read row fields as delegate roles.
 //
@@ -22,29 +26,27 @@ import QtQuick
 ListModel {
     id: tableModel
 
-    // Whole table, as pushed by the differ's reset hook.
-    property var tableRows: []
+    // Latest payload from TableDiffer.update(). Null until the first one lands.
+    property var tableUpdate: null
 
-    // Latest single-row update: { index: int, row: object }.
-    property var rowPatch: ({})
-
-    onTableRowsChanged: {
-        clear();
-        if (!tableRows)
-            return;
-        for (let i = 0; i < tableRows.length; ++i)
-            append(tableRows[i]);
-    }
-
-    // Patches only ever apply to the table they were diffed against. A patch
-    // arriving against a stale/empty model is dropped; Python re-syncs by
-    // calling TableDiffer.invalidate() whenever the QML target is re-created.
-    onRowPatchChanged: {
-        if (!rowPatch || rowPatch.row === undefined)
-            return;
-        if (rowPatch.index < 0 || rowPatch.index >= count)
+    onTableUpdateChanged: {
+        if (!tableUpdate || !tableUpdate.rows)
             return;
 
-        set(rowPatch.index, rowPatch.row);
+        if (tableUpdate.kind === "reset") {
+            clear();
+            for (let i = 0; i < tableUpdate.rows.length; ++i)
+                append(tableUpdate.rows[i]);
+            return;
+        }
+
+        // Patches only ever apply to the table they were diffed against. One
+        // aimed at a stale or empty model is dropped; Python re-syncs by calling
+        // TableDiffer.invalidate() whenever the QML target is re-created.
+        for (let i = 0; i < tableUpdate.rows.length; ++i) {
+            const patch = tableUpdate.rows[i];
+            if (patch && patch.row !== undefined && patch.index >= 0 && patch.index < count)
+                set(patch.index, patch.row);
+        }
     }
 }

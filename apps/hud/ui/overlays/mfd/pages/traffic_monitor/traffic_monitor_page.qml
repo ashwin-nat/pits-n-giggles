@@ -11,15 +11,13 @@ Rectangle {
     // States: "table" | "inGarage" | "empty"
     property string viewState: "empty"
 
-    // Written by Python via TableDiffer: tableRows is the whole table,
-    // rowPatch is { index, row } for a single changed row.
-    property var tableRows: []
-    property var rowPatch: ({})
+    // Written by Python as one TableDiffer payload per tick; DiffedTableModel
+    // applies it as a whole-table reset or a set of single-row patches.
+    property var tableUpdate: null
 
     DiffedTableModel {
         id: tableModel
-        tableRows: root.tableRows
-        rowPatch: root.rowPatch
+        tableUpdate: root.tableUpdate
     }
 
     property string iconSourcePrefixTeam: "../../../../../../../assets/team-logos/"

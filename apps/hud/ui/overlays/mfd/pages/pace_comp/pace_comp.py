@@ -59,14 +59,6 @@ class PaceCompPage(MfdPageBase):
     def setup_page(self):
         self._differ = TableDiffer(self._stats)
 
-        @self._differ.on_reset
-        def _push_table(rows: List[Dict[str, Any]]) -> None:
-            self.push_qml_property("tableRows", rows)
-
-        @self._differ.on_row_patch
-        def _push_row(index: int, row: Dict[str, Any]) -> None:
-            self.push_qml_property("rowPatch", {"index": index, "row": row})
-
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")
@@ -270,5 +262,7 @@ class PaceCompPage(MfdPageBase):
         self._set_rows([])
 
     def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
-        """Diff row data against the last table; QML gets a reset or single-row patches."""
-        self._differ.update(rows)
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        update = self._differ.update(rows)
+        if update:
+            self.push_qml_property("tableUpdate", update)

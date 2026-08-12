@@ -34,17 +34,15 @@ Item {
      * Python updates this ONLY
      * ----------------------------- */
 
-    // Whole table (reset) and single-row update (patch), written by Python via
-    // TableDiffer. Python seeds the blank rows on page activation, so every
-    // value in the model is a string and the roles keep the types they were
-    // given by the first append().
-    property var tableRows: []
-    property var rowPatch: ({})
+    // One payload per tick from TableDiffer, applied by DiffedTableModel.
+    // Python seeds the blank rows on page activation, so every value in the
+    // model is a string and the roles keep the types the first append() gave
+    // them.
+    property var tableUpdate: null
 
     DiffedTableModel {
         id: tableModel
-        tableRows: root.tableRows
-        rowPatch: root.rowPatch
+        tableUpdate: root.tableUpdate
     }
 
     /* -----------------------------
