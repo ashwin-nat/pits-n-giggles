@@ -60,6 +60,7 @@ jobs:
       tag:        ${{ steps.draft.outputs.tag }}
       release_id: ${{ steps.draft.outputs.release_id }}
       name:       ${{ steps.draft.outputs.name }}
+      prerelease: ${{ steps.draft.outputs.prerelease }}
 
     steps:
       - name: Locate draft release via GitHub API
@@ -84,9 +85,11 @@ jobs:
           TAG=$(echo "$RELEASES" | jq -r '.[0].tag_name')
           ID=$(echo  "$RELEASES" | jq -r '.[0].id')
           NAME=$(echo "$RELEASES" | jq -r '.[0].name')
+          PRERELEASE=$(echo "$RELEASES" | jq -r '.[0].prerelease')
 
-          echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
-          echo "release_id=$ID"  >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"               >> "$GITHUB_OUTPUT"
+          echo "release_id=$ID"         >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           {
             echo "name<<VT_NAME_EOF"
             echo "$NAME"
@@ -556,7 +559,12 @@ jobs:
       # recursive workflow runs from the default token) — so discord-release.yml
       # never fires on its own. workflow_dispatch is explicitly exempt from
       # that restriction, so dispatch it directly instead.
+      #
+      # Skipped for prereleases (betas/RCs): the workflow_dispatch path in
+      # discord-release.yml has no prerelease guard of its own, so this is
+      # the only place that keeps beta releases from pinging Discord.
       - name: Notify Discord via workflow_dispatch
+        if: needs.find-release.outputs.prerelease == 'false'
         run: |
           gh workflow run discord-release.yml \
             --repo "$GITHUB_REPOSITORY" \
