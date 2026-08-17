@@ -391,27 +391,35 @@ class BaseOverlay(QmlBridge, QObject):
             self.logger.warning("%s | Cannot set UI scale - root window not initialized", self.OVERLAY_ID)
 
     def animate_fade(self, show: bool):
-        if self._fade_anim is not None:
-            self._fade_anim.stop()
-
         target_opacity = self.opacity / 100.0
-        start, end = (0, target_opacity) if show else (target_opacity, 0)
+        end = target_opacity if show else 0.0
 
-        anim = QPropertyAnimation(self._root, b"opacity")
-        anim.setDuration(250)
-        anim.setStartValue(start)
-        anim.setEndValue(end)
+        if self._fade_anim is None:
+            # Parented to self._root so Qt owns its lifetime - avoids the animation's
+            # underlying C++ object being destroyed mid-flight if this Python reference
+            # were ever replaced while it is still running.
+            self._fade_anim = QPropertyAnimation(self._root, b"opacity", self._root)
+            self._fade_anim.setDuration(250)
+        else:
+            # Interrupt any in-flight fade so overlapping toggles (e.g. rapid button
+            # presses) can't leave two animations racing on the same opacity property.
+            self._fade_anim.stop()
+            try:
+                self._fade_anim.finished.disconnect()
+            except RuntimeError:
+                pass  # no slot was connected (e.g. previous call was a fade-in)
+
+        self._fade_anim.setStartValue(self._root.opacity())
+        self._fade_anim.setEndValue(end)
 
         if not show:
-            anim.finished.connect(self._on_fade_out_finished)
+            self._fade_anim.finished.connect(self._on_fade_out_finished)
         else:
-            self._root.setOpacity(0)
             self._root.setVisible(True)
             self._start_frame_timer()
             self._replay_cached_state()
 
-        self._fade_anim = anim
-        anim.start()
+        self._fade_anim.start()
 
     def _on_fade_out_finished(self):
         """Fade-out completed: hide the window and stop the render tick."""
