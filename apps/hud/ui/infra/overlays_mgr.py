@@ -22,13 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import os
 from typing import Any, Dict, List, Optional, Type
 
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
+from lib.logger import PngLogger
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
 
@@ -58,19 +58,21 @@ class OverlaysMgr:
     ]
 
     def __init__(self,
-                 logger: logging.Logger,
+                 logger: PngLogger,
                  settings: PngSettings,
                  debug: bool = False):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
-            logger (logging.Logger): Logger object
+            logger (PngLogger): Logger object
             settings (PngSettings): App Settings
             debug (bool, optional): Debug mode. Defaults to False.
         """
         if settings.Display.use_cpu_acceleration:
             os.environ["QT_QUICK_BACKEND"] = "software"
-            logger.debug("Using software backend")
+            logger.silent("Using software (CPU) Qt Quick backend")
+        else:
+            logger.silent("Using hardware (GPU) Qt Quick backend")
 
         self.logger = logger
         self.debug_mode = debug
@@ -107,7 +109,14 @@ class OverlaysMgr:
             else:
                 self.logger.debug("%s overlay is disabled", page_cls.OVERLAY_ID)
 
-        self.logger.debug("Overlays manager initialized")
+        # The enabled set is the first thing needed to make sense of a user's bug report,
+        # so it goes to the log file as one line rather than being spread over per-overlay
+        # debug lines. Silent, not info: info reaches the user-facing console.
+        self.logger.silent(
+            "Overlays manager initialized. %d overlay(s) enabled: %s",
+            len(self.window_manager.overlays),
+            ", ".join(sorted(self.window_manager.overlays)) or "(none)",
+        )
 
     def run(self):
         """Start the overlays manager"""
@@ -167,7 +176,7 @@ class OverlaysMgr:
     def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
 
-        self.logger.debug("Toggling overlays visibility. oid=%s", oid)
+        self.logger.silent("Toggling overlays visibility. oid=%s", oid or "(all)")
         if oid:
             self.window_manager.unicast_event(oid, '__toggle_visibility__', {}, high_prio=True)
         else:
@@ -243,14 +252,17 @@ class OverlaysMgr:
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
+        self.logger.silent("MFD next page requested")
         self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
     def prev_page(self):
         """Go to the previous page in MFD overlay"""
+        self.logger.silent("MFD prev page requested")
         self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'prev_page', {})
 
     def mfd_interact(self):
         """Interact with MFD overlay"""
+        self.logger.silent("MFD interaction requested")
         self.window_manager.emit_event('mfd_interact', {})
 
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]) -> Dict[str, Any]:

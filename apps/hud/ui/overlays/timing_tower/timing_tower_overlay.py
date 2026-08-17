@@ -65,6 +65,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.speed_unit = settings.HUD.overlays_speed_unit
         self.relative_best_last_lap = settings.HUD.timing_tower_relative_best_last_lap
         self.combined_tl_pens = settings.HUD.timing_tower_combined_tl_pens
+        self.curr_uid: Optional[int] = None
 
         self.column_order: List[str] = [
             col_id for col_id, _ in tt_col_options.sorted_enabled_cols()
@@ -113,6 +114,14 @@ class TimingTowerOverlay(BaseOverlay):
             Args:
                 data (Dict[str, Any]): The race table data from the server
             """
+            incoming_uid = data["session-uid"]
+            if self.curr_uid is None and incoming_uid is not None:
+                self.logger.debug("<<TIMING_TOWER>> Initializing first session UID: %s", incoming_uid)
+            elif incoming_uid != self.curr_uid:
+                self.logger.silent("<<TIMING_TOWER>> Session UID changed from %s to %s. Clearing overlay.",
+                                   self.curr_uid, incoming_uid)
+                self.clear()
+            self.curr_uid = incoming_uid
             session_type = data["event-type"]
 
             if is_tt_session(session_type):

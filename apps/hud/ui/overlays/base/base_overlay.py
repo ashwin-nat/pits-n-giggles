@@ -189,6 +189,7 @@ class BaseOverlay(QmlBridge, QObject):
         # Register default handlers
         self._register_default_handlers()
 
+        logger.silent("%s | Initialized overlay. ", self.OVERLAY_ID)
         logger.debug("%s initialized. Path=%s. "
                      "exists=%s", self.OVERLAY_ID, self.QML_FILE, self.QML_FILE.is_file())
 
@@ -283,24 +284,24 @@ class BaseOverlay(QmlBridge, QObject):
         self.update_window_flags()
 
         if self.locked and not self.telemetry_active:
-            self.logger.debug("%s locking overlay. But hiding it since telemetry is not active", self.OVERLAY_ID)
+            self.logger.silent("%s | locking overlay. But hiding it since telemetry is not active", self.OVERLAY_ID)
             self.set_visibility(False)
 
     def toggle_visibility(self):
         """Common handler for toggling visibility."""
         self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
         if self.get_visibility():
-            self.logger.debug('%s | Fading out overlay', self.OVERLAY_ID)
+            self.logger.silent('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
             self._user_hidden = True
         else:
-            self.logger.debug('%s | Fading in overlay', self.OVERLAY_ID)
+            self.logger.silent('%s | Fading in overlay', self.OVERLAY_ID)
             self.set_visibility(True)
             self._user_hidden = False
 
     def set_telemetry_active(self, active: bool):
         """Common handler for setting telemetry active state."""
-        self.logger.debug("%s set_telemetry_active: %s", self.OVERLAY_ID, active)
+        self.logger.silent("%s | set_telemetry_active: %s", self.OVERLAY_ID, active)
         self.telemetry_active = active
 
         if not self.locked:
@@ -751,7 +752,7 @@ class BaseOverlay(QmlBridge, QObject):
         @self.on_event("__set_locked_state__")
         def _set_locked(data: dict):
             locked = data.get('new-value', False)
-            self.logger.debug('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
+            self.logger.silent('%s | Setting locked state to %s', self.OVERLAY_ID, locked)
             self.set_locked_state(locked)
             if not locked:
                 self.set_visibility(True)

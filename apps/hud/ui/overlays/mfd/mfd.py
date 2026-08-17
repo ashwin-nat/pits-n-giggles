@@ -222,4 +222,4 @@ class MfdOverlay(BaseOverlay):
         self._current_index = (old + delta) % len(self._mfd_pages)
 
         self._apply_current_page()
-        self.logger.debug("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
+        self.logger.silent("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
