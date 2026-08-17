@@ -72,7 +72,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.fuel_est_mode = settings.HUD.overlays_fuel_estimation_mode
 
         self.team_logo_uris: defaultdict[str, str] = defaultdict(str)
-        self.tyre_icon_uris: Dict[str, str] = {}
+        self.tyre_icon_uris: defaultdict[str, str] = defaultdict(str)
 
         super().__init__(settings, logger)
 
@@ -290,7 +290,9 @@ class TimingTowerOverlay(BaseOverlay):
             "name": driver_info.get("name", "UNKNOWN"),
             "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type),
             "deltaToLeader": self._format_delta_to_leader(driver_info, delta_info, driver_idx, 0, session_type),
-            "tyreIcon": self.tyre_icon_uris.get(tyre_info.get("visual-tyre-compound", "UNKNOWN"), ""),
+            # Subscript, not .get(): the defaultdict's fallback icon only fires via __missing__,
+            # so an unmapped compound (e.g. "Unknown") would otherwise render a blank cell.
+            "tyreIcon": self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")],
             "tyreWear": self._format_tyre_wear(tyre_info, telemetry_public),
             "ers": self._format_ers(ers_info, telemetry_public),
             "ersMode": ers_mode,

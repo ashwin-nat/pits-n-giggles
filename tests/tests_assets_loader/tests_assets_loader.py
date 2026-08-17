@@ -102,6 +102,13 @@ class TestAssetsLoaderUriDicts:
         result = load_tyre_icons_uri_dict(relative_path=Path("custom") / "tyres")
         assert set(result.keys()) == _EXPECTED_TYRE_KEYS
 
+    def test_tyre_icons_uri_dict_default_for_unknown_compound(self):
+        result = load_tyre_icons_uri_dict()
+        default_uri = result["Unknown"]
+        assert isinstance(default_uri, str)
+        assert default_uri.startswith("file")
+        assert "default_tyre.svg" in default_uri
+
     def test_team_logos_uri_dict_keys(self):
         assert set(load_team_logos_uri_dict().keys()) == _EXPECTED_TEAM_KEYS
 
