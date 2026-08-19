@@ -53,6 +53,11 @@ class MfdTyreWearRateType(str, Enum):
     MAX = "Max"
     AVERAGE = "Average"
 
+class TimingTowerTyreInfoMode(str, Enum):
+    TYRE_AGE = "Tyre Age"
+    TYRE_WEAR = "Tyre Wear"
+    HYBRID = "Hybrid"
+
 class HudSettings(ConfigDiffMixin, BaseModel):
     ui_meta: ClassVar[Dict[str, Any]] = {
         "visible": True,
@@ -156,6 +161,25 @@ class HudSettings(ConfigDiffMixin, BaseModel):
                 "type" : "group_box",
                 "visible": True,
                 "group": "Timing Tower"
+            }
+        }
+    )
+    timing_tower_tyre_info_mode: TimingTowerTyreInfoMode = Field(
+        default=TimingTowerTyreInfoMode.HYBRID,
+        description="Timing tower tyre column content",
+        json_schema_extra={
+            "ui": {
+                "type": "radio_buttons",
+                "options": [e.value for e in TimingTowerTyreInfoMode],
+                "tooltips": {
+                    "Tyre Age":  "Always show tyre age in laps",
+                    "Tyre Wear": "Show max tyre wear %. Drivers with restricted telemetry show a dash, "
+                                 "since wear is not broadcast for them",
+                    "Hybrid":    "If the driver's telemetry is set to Public, show tyre wear %; "
+                                 "otherwise fall back to tyre age in laps",
+                },
+                "visible": True,
+                "group": "Timing Tower",
             }
         }
     )

@@ -31,7 +31,7 @@ from .schema.forwarding import ForwardingSettings
 from .schema.https import HttpsSettings
 from .schema.hud.hud import (HudSettings, MfdTyreWearRateType,
                              OverlaysFuelEstimationMode, OverlaysSpeedUnit,
-                             WeatherMFDUIType)
+                             TimingTowerTyreInfoMode, WeatherMFDUIType)
 from .schema.hud.layout import OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
@@ -69,6 +69,7 @@ __all__ = [
     'TimingTowerColSettings',
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
+    'TimingTowerTyreInfoMode',
     'OverlaysSpeedUnit',
     'OverlaysFuelEstimationMode',
 

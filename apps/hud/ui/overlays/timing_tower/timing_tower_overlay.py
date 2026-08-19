@@ -34,7 +34,8 @@ from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from lib.assets_loader import (load_team_logos_uri_dict,
                                load_tyre_icons_uri_dict)
 from lib.config import (OverlayId, OverlaysFuelEstimationMode,
-                        OverlaysSpeedUnit, PngSettings)
+                        OverlaysSpeedUnit, PngSettings,
+                        TimingTowerTyreInfoMode)
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger
 from lib.table_differ import TableDiffer
@@ -65,6 +66,7 @@ class TimingTowerOverlay(BaseOverlay):
         self.speed_unit = settings.HUD.overlays_speed_unit
         self.relative_best_last_lap = settings.HUD.timing_tower_relative_best_last_lap
         self.combined_tl_pens = settings.HUD.timing_tower_combined_tl_pens
+        self.tyre_info_mode = settings.HUD.timing_tower_tyre_info_mode
         self.curr_uid: Optional[int] = None
 
         self.column_order: List[str] = [
@@ -390,22 +392,28 @@ class TimingTowerOverlay(BaseOverlay):
         return self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type)
 
     def _format_tyre_wear(self, tyre_info: Dict[str, Any], telemetry_public: bool) -> str:
-        """Format tyre wear display.
+        """Format the tyre column contents, per the configured tyre info mode.
 
         Args:
             tyre_info: Tyre information dictionary
             telemetry_public: Whether telemetry is public
 
         Returns:
-            Formatted tyre wear string
+            Formatted tyre wear/age string
         """
-        wear = tyre_info.get("current-wear")
+        if self.tyre_info_mode is TimingTowerTyreInfoMode.TYRE_AGE:
+            return f"{tyre_info['tyre-age']}L"
+
+        wear = tyre_info["current-wear"]
         if telemetry_public and wear:
             max_wear = F1Utils.getMaxTyreWear(wear)
             return f"{F1Utils.formatFloat(max_wear['max-wear'], 0)}%"
 
-        tyre_age = tyre_info.get("tyre-age", 0)
-        return f"{tyre_age}L"
+        # Wear is unavailable. Hybrid falls back to age, wear-only mode shows a dash.
+        if self.tyre_info_mode is TimingTowerTyreInfoMode.TYRE_WEAR:
+            return "--"
+
+        return f"{tyre_info['tyre-age']}L"
 
     def _format_ers(self, ers_info: Dict[str, Any], telemetry_public: bool) -> str:
         """Format ERS display.

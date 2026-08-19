@@ -544,6 +544,7 @@ class HudAppMgr(PngAppMgrBase):
                 "show_timing_tower",
                 "timing_tower_max_rows",
                 "timing_tower_col_options",
+                "timing_tower_tyre_info_mode",
                 "timing_tower_relative_best_last_lap",
                 "timing_tower_combined_tl_pens",
                 "show_mfd",
