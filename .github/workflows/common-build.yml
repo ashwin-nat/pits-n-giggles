@@ -2,6 +2,12 @@ name: Build App for macOS and Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      debug_build:
+        description: 'Force debug logging on in the built app (intended for betas/RCs)'
+        type: boolean
+        default: false
+        required: false
   push:
     tags:
       - 'v*'
@@ -53,9 +59,21 @@ jobs:
         with:
           version: '10'
 
+      - name: Flag debug build
+        if: inputs.debug_build
+        run: |
+          echo "::warning::Debug build: --debug is baked in. Not suitable for a stable release."
+          echo "### Debug build" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built with \`--debug\`: the app always runs with debug logging enabled." >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
+
+      # `--debug` bakes the flag into the binary: the launcher and every subsystem it
+      # spawns then log at DEBUG level without the user passing anything. Note that
+      # debug mode also stops subsystems self-terminating on missed heartbeats.
+      # On tag pushes there are no inputs, so this resolves to an empty string.
       - name: Build with PyInstaller
         run: |
-          poetry run python scripts/build.py
+          poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
       - name: Prepare artifact

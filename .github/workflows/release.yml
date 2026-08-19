@@ -3,7 +3,17 @@
 # USAGE
 # -----
 # 1. Create a draft GitHub Release with the correct tag and release notes.
-# 2. Run this workflow manually from the Actions tab (no inputs required).
+# 2. Run this workflow manually from the Actions tab.
+#
+# INPUTS
+# ------
+#   debug_build (checkbox, default off)
+#     Builds with `scripts/build.py --debug`, which bakes the --debug flag into the
+#     binary: the launcher and every subsystem it spawns log at DEBUG level without
+#     the user passing anything. Intended for betas/RCs where you want diagnostics
+#     from testers. Leave it off for stable releases — besides the log volume, debug
+#     mode stops subsystems self-terminating after missed heartbeats, so a wedged
+#     child process lingers instead of exiting.
 #
 # The workflow will:
 #   - Auto-detect the single existing draft release (fails loudly if 0 or >1).
@@ -41,6 +51,12 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      debug_build:
+        description: 'Force debug logging on in the built app (intended for betas/RCs)'
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: write
@@ -160,8 +176,19 @@ jobs:
         with:
           version: '10'
 
+      - name: Flag debug build
+        if: inputs.debug_build
+        run: |
+          echo "::warning::Debug build: --debug is baked in. Not suitable for a stable release."
+          echo "### Debug build" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built with \`--debug\`: the app always runs with debug logging enabled." >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
+
+      # `--debug` bakes the flag into the binary: the launcher and every subsystem it
+      # spawns then log at DEBUG level without the user passing anything. Note that
+      # debug mode also stops subsystems self-terminating on missed heartbeats.
       - name: Build with PyInstaller
-        run: poetry run python scripts/build.py
+        run: poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
       - name: Smoke test
