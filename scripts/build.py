@@ -22,6 +22,7 @@
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+import argparse
 import subprocess
 import sys
 import os
@@ -36,7 +37,18 @@ def remove_dir_if_exists(path: str):
     if os.path.isdir(path):
         shutil.rmtree(path)
 
+def parse_args() -> argparse.Namespace:
+    """Parse build-time options."""
+    parser = argparse.ArgumentParser(description=f"Build {APP_NAME}")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Force debug logging on in the packaged app (it runs as if launched with --debug)",
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
     collect_dir = os.path.join("dist", COLLECT_DIR_NAME)
@@ -75,16 +87,20 @@ def main():
     )
 
     # 2. Run PyInstaller
-    subprocess.run(
-        [
-            sys.executable,
-            "-m", "PyInstaller",
-            "--clean",
-            "--noconfirm",
-            spec_path,
-        ],
-        check=True,
-    )
+    pyinstaller_cmd = [
+        sys.executable,
+        "-m", "PyInstaller",
+        "--clean",
+        "--noconfirm",
+        spec_path,
+    ]
+    if args.debug:
+        # PyInstaller splits its command line on `--` and hands the rest to the spec
+        # file as sys.argv[1:]. png.spec looks for --force-debug there.
+        pyinstaller_cmd += ["--", "--force-debug"]
+        print("build.py: --debug given; the packaged app will always run with --debug.")
+
+    subprocess.run(pyinstaller_cmd, check=True)
 
     # 3. Cleanup the custom COLLECT dir
     remove_dir_if_exists(collect_dir)

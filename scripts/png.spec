@@ -49,14 +49,52 @@ COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
 PROJECT_ROOT = os.path.abspath(".")
 
 # --------------------------------------------------------------------------------------------------
+# Debug builds
+#
+# Enabled by `python scripts/build.py --debug`, which forwards `-- --force-debug` to PyInstaller.
+# PyInstaller splits its command line on `--` and hands everything after it to the spec as
+# sys.argv[1:] (sys.argv[0] stays the spec path, so the sys.path insert above is unaffected).
+# Building the spec directly works too: `pyinstaller scripts/png.spec -- --force-debug`.
+#
+# The launcher only enables debug logging when it is started with --debug, and it forwards that
+# flag to every subsystem it spawns. When this is on, the runtime hook below appends --debug to
+# sys.argv at startup, so the packaged app behaves as if the user had passed it.
+#
+# Side effect worth knowing: with debug mode on, subsystems no longer self-terminate after missing
+# heartbeats (see apps/launcher/subsystems/base_mgr.py), so a wedged child process will linger
+# instead of exiting.
+# --------------------------------------------------------------------------------------------------
+
+FORCE_DEBUG_MODE = "--force-debug" in sys.argv[1:]
+
+# --------------------------------------------------------------------------------------------------
 # Runtime hook: inject PNG_VERSION env var before app starts
 # --------------------------------------------------------------------------------------------------
 
-runtime_hook_code = f'import os\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+runtime_hook_lines = [
+    "import os",
+    f'os.environ["PNG_VERSION"] = "{APP_VERSION}"',
+]
+
+if FORCE_DEBUG_MODE:
+    # Appended, never inserted: the frozen submodule dispatcher locates its module by
+    # the index of --module in sys.argv, so nothing before that may shift.
+    runtime_hook_lines += [
+        "import sys",
+        'if "--debug" not in sys.argv:',
+        '    sys.argv.append("--debug")',
+    ]
+
+runtime_hook_code = "\n".join(runtime_hook_lines) + "\n"
 runtime_hook_path = os.path.join(tempfile.gettempdir(), "png_runtime_hook.py")
 
 with open(runtime_hook_path, "w", encoding="utf-8") as f:
     f.write(runtime_hook_code)
+
+if FORCE_DEBUG_MODE:
+    print("=" * 80)
+    print("png.spec: FORCE_DEBUG_MODE is ON — this build always runs with --debug.")
+    print("=" * 80)
 
 # --------------------------------------------------------------------------------------------------
 # Entrypoint script
