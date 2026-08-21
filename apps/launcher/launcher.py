@@ -35,6 +35,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from apps.launcher.gui import PngLauncherWindow
+from apps.launcher.splash import splash_close
 from lib.file_path import resolve_fixed_file, resolve_user_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
@@ -191,6 +192,8 @@ def _acquire_single_instance_lock() -> QLockFile:
 
     if not lock.tryLock(100):  # ms; small grace for a racing startup
         # A non-stale lock is held by a live process -> another instance is running.
+        # Drop the splash first; it is always-on-top and would sit over the message box.
+        splash_close()
         # A QApplication must exist before a QMessageBox can be shown.
         app = QApplication.instance() or QApplication(sys.argv)
         # On Windows, set the AppUserModelID so the taskbar shows our icon, not Python's.
@@ -226,6 +229,8 @@ def entry_point() -> None:
 
     # Handle smoke test
     if args.smoke_test is not None:
+        # No window is ever shown on this path, so nothing else would dismiss the splash.
+        splash_close()
         smoke_test(args.smoke_test)
         sys.exit(0)
 

@@ -35,7 +35,12 @@ import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
+from PyInstaller.building.splash import Splash
 from meta.meta import APP_VERSION, APP_NAME_SNAKE
+
+# `scripts/` is on sys.path (see the insert above), so this resolves the same way meta.meta does.
+from gen_splash import render_splash
+from splash_position import use_cursor_monitor_centring
 
 # --------------------------------------------------------------------------------------------------
 # Core application info
@@ -47,6 +52,8 @@ ICON_PATH_MAC = "../assets/logo.icns"
 APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
 COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
 PROJECT_ROOT = os.path.abspath(".")
+
+IS_MACOS = platform.system() == "Darwin"
 
 # --------------------------------------------------------------------------------------------------
 # Debug builds
@@ -208,9 +215,44 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=None)
 
+# --------------------------------------------------------------------------------------------------
+# Splash screen
+#
+# This is a onefile build, so the bootloader must unpack the whole bundle into _MEIPASS before any
+# Python runs. That takes several seconds during which the user sees nothing at all. The splash
+# covers that gap, and the launcher closes it once the real window is on screen.
+#
+# PyInstaller's splash is one static PNG plus a single live text line - the Tcl script is generated
+# internally and has no hook for custom widgets. The whole design therefore lives in the image,
+# which gen_splash.py renders fresh each build so the version can never go stale.
+#
+# No text options are passed on purpose. Supplying text_pos switches on PyInstaller's live text
+# field, which in onefile mode the bootloader drives with the name of every file it extracts -
+# far more detail than is useful. Leaving it off makes the splash fully static, and the
+# "Loading..." line is baked into the image instead.
+#
+# Not available on macOS: PyInstaller raises SystemExit there because the splash needs a secondary
+# thread and macOS only allows UI work on the main one. CI builds macOS too, hence the guard.
+# --------------------------------------------------------------------------------------------------
+
+splash = None
+if IS_MACOS:
+    print("png.spec: macOS build - splash screen is not supported on this platform, skipping.")
+else:
+    # Must happen before Splash() is constructed - that is when the Tcl script is generated.
+    use_cursor_monitor_centring()
+    splash = Splash(
+        render_splash(os.path.join(PROJECT_ROOT, "build", "splash", "splash.png")),
+        binaries=a.binaries,
+        datas=a.datas,
+        always_on_top=True,
+    )
+
 exe = EXE(
     pyz,
     a.scripts,
+    # Onefile needs both the Splash target and its Tcl/Tk binaries in the EXE args.
+    *([splash, splash.binaries] if splash else []),
     a.binaries,
     a.zipfiles,
     a.datas,
@@ -230,7 +272,7 @@ exe = EXE(
     stderr=None,
 )
 
-if platform.system() == "Darwin":
+if IS_MACOS:
     from PyInstaller.building.build_main import BUNDLE
 
     app = BUNDLE(

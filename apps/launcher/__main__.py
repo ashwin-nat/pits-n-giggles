@@ -25,6 +25,10 @@ import sys
 import runpy
 import traceback
 
+# apps/launcher/__init__.py is empty and this module pulls in nothing, so importing it here does
+# not drag anything into the subsystem dispatch path below.
+from apps.launcher.splash import splash_close
+
 def _dispatch_frozen_submodule():
     """
     Dispatcher for running specific submodules when the app is packaged with PyInstaller.
@@ -43,6 +47,11 @@ def _dispatch_frozen_submodule():
         pits_n_giggles.exe --module apps.backend <...>
         pits_n_giggles.exe --module apps.web <...>
     """
+
+    # Subsystems are re-executions of the same onefile binary, so the bootloader runs again here.
+    # PyInstaller suppresses the splash in processes spawned via sys.executable, but closing it
+    # costs nothing and guarantees a subsystem restart can never flash a splash at the user.
+    splash_close()
 
     ALLOWED_MODULES = {
         "apps.backend",

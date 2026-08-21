@@ -30,6 +30,14 @@ import shutil
 import time
 from pathlib import Path
 
+# Run as `python scripts/build.py`, so sys.path[0] is scripts/ and the project root needs adding
+# before meta.meta can be imported.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from meta.meta import APP_VERSION  # pylint: disable=wrong-import-position
+
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
 
@@ -44,6 +52,12 @@ def parse_args() -> argparse.Namespace:
         "--debug",
         action="store_true",
         help="Force debug logging on in the packaged app (it runs as if launched with --debug)",
+    )
+    parser.add_argument(
+        "--ci",
+        action="store_true",
+        help="Mark this as a non-dev build: the splash screen shows meta.meta.APP_VERSION "
+             "instead of the git-derived dev string. Passed by the CI workflows.",
     )
     return parser.parse_args()
 
@@ -100,7 +114,20 @@ def main():
         pyinstaller_cmd += ["--", "--force-debug"]
         print("build.py: --debug given; the packaged app will always run with --debug.")
 
-    subprocess.run(pyinstaller_cmd, check=True)
+    # png.spec renders the splash image, which reads its version through lib/version.py. That
+    # returns $PNG_VERSION when set and otherwise a git-derived `dev_<branch>_<sha>_<state>`
+    # string, so an ad-hoc local build is visibly marked as one. --ci opts out of that
+    # marking; the CI workflows pass it. Without it a tagged CI build would read
+    # `dev_HEAD_<sha>_clean`, since Actions checks out a detached HEAD.
+    #
+    # This only affects the splash. The app's own version always comes from the runtime hook
+    # png.spec generates, which bakes in APP_VERSION regardless of this flag.
+    pyinstaller_env = dict(os.environ)
+    if args.ci:
+        pyinstaller_env["PNG_VERSION"] = APP_VERSION
+        print(f"build.py: --ci given; splash version stamped as {APP_VERSION}.")
+
+    subprocess.run(pyinstaller_cmd, check=True, env=pyinstaller_env)
 
     # 3. Cleanup the custom COLLECT dir
     remove_dir_if_exists(collect_dir)

@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
                                QWidget)
 
 from apps.launcher.logger import get_rotating_logger
+from apps.launcher.splash import splash_close
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       McpAppMgr, PngAppMgrBase,
                                       PngAppMgrConfig, WebAppMgr)
@@ -187,6 +188,8 @@ class PngLauncherWindow(QMainWindow):
         try:
             self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
         except PermissionError:
+            # Drop the always-on-top splash first, or this dialog opens underneath it.
+            splash_close()
             box = QMessageBox(
                 QMessageBox.Icon.Critical,
                 APP_NAME + " - " + self.ver_str,
@@ -746,6 +749,10 @@ class PngLauncherWindow(QMainWindow):
         """Run the application"""
         self.auto_start_subsystems()
         self.show()
+        # Paint the window before dismissing the splash, so there is no gap where neither is
+        # visible. auto_start_subsystems() above is part of what the splash is covering.
+        self.process_events()
+        splash_close()
         sys.exit(self.app.exec())
 
     def process_events(self):
