@@ -22,11 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject
 
 from lib.event_counter import EventCounter
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -106,6 +107,20 @@ class QmlBridge:
             return
         if self.push_qml_property(name, value):
             self._props[name] = value
+
+    def sync_table(self, differ: TableDiffer, name: str, rows: List[Any]) -> None:
+        """Diff rows and write the one payload QML applies, keeping the two in step.
+
+        push_qml_property() writes nothing while the target is missing, but
+        TableDiffer.update() has already advanced its baseline by the time we
+        find that out. Left alone, the differ would keep emitting patches
+        against rows QML never received, and QML drops patches it cannot place
+        - the table would stay behind until something else forced a reset.
+        Dropping the baseline instead makes the next update rebuild in full.
+        """
+        update = differ.update(rows)
+        if update and not self.push_qml_property(name, update):
+            differ.invalidate()
 
     def _notify_qml_content_changed(self) -> None:
         """Hook invoked after a real (non-cached) QML write. Default no-op.

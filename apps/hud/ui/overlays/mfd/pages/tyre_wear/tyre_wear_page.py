@@ -244,9 +244,7 @@ class TyreInfoPage(MfdPageBase):
         while len(rows_data) < self.NUM_WEAR_ROWS:
             rows_data.append(self._blank_row())
 
-        update = self._differ.update(rows_data[:self.NUM_WEAR_ROWS])
-        if update:
-            self.push_qml_property("tableUpdate", update)
+        self.sync_table(self._differ, "tableUpdate", rows_data[:self.NUM_WEAR_ROWS])
 
     def _blank_row(self) -> Dict[str, Any]:
         """Padding row. Every key the real rows carry must be present: ListModel
