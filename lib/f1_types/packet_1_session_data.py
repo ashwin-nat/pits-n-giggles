@@ -24,7 +24,8 @@
 import struct
 from typing import Any, Dict, List, Union
 
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
+                       F1SubPacketBase)
 from .common import (GameMode, GearboxAssistMode, RuleSet, SafetyCarType,
                      SessionLength, SessionType23, SessionType24, TrackID)
 from .header import PacketHeader
@@ -794,8 +795,12 @@ class PacketSessionData(F1PacketBase):
         "m_recurringRewindPrompt",
     )
 
-    class FormulaType(F1BaseEnum):
-        """An enumeration of formula types."""
+    class FormulaType(F1RawValueEnum):
+        """An enumeration of formula types.
+
+        Undeclared values from the game behave exactly like UNKNOWN, but retain the
+        incoming wire value in `raw_value`.
+        """
 
         F1_MODERN: int = 0
         F1_CLASSIC: int = 1
@@ -809,21 +814,13 @@ class PacketSessionData(F1PacketBase):
         F1_ELIMINATION: int = 9
         F1_26: int = 13
 
+        UNKNOWN: int = 255
+
         def __str__(self) -> str:
             """Return a human-readable string representation of the formula type."""
-            return {
-                PacketSessionData.FormulaType.F1_MODERN: "F1 Modern",
-                PacketSessionData.FormulaType.F1_CLASSIC: "F1 Classic",
-                PacketSessionData.FormulaType.F2: "F2",
-                PacketSessionData.FormulaType.F1_GENERIC: "F1 Generic",
-                PacketSessionData.FormulaType.BETA: "Beta",
-                PacketSessionData.FormulaType.SUPERCARS: "Supercars",
-                PacketSessionData.FormulaType.ESPORTS: "Esports",
-                PacketSessionData.FormulaType.F2_2021: "F2 2021",
-                PacketSessionData.FormulaType.F1_WORLD: "F1 World",
-                PacketSessionData.FormulaType.F1_ELIMINATION: "F1 Elimination",
-                PacketSessionData.FormulaType.F1_26: "F1 26",
-            }[self]
+            if self == PacketSessionData.FormulaType.UNKNOWN:
+                return f"Unknown ({self.raw_value})"
+            return self.name.replace('_', ' ').title()
 
         def is_f1(self) -> bool:
             """Check if the formula type is F1."""
@@ -834,6 +831,7 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.F1_WORLD,
                 PacketSessionData.FormulaType.F1_ELIMINATION,
                 PacketSessionData.FormulaType.F1_26,
+                PacketSessionData.FormulaType.UNKNOWN, # Treat unknown as F1. most likely it is F1
             ]
 
         def is_f2(self) -> bool:
@@ -842,6 +840,11 @@ class PacketSessionData(F1PacketBase):
                 PacketSessionData.FormulaType.F2,
                 PacketSessionData.FormulaType.F2_2021
             ]
+
+        @classmethod
+        def safeCast(cls, value: int) -> "PacketSessionData.FormulaType":
+            """Safely cast an integer to a FormulaType enum, returning UNKNOWN for invalid values."""
+            return super().safeCast(value, PacketSessionData.FormulaType.UNKNOWN)
 
     class RecoveryMode(F1BaseEnum):
         """
@@ -1459,7 +1462,7 @@ class PacketSessionData(F1PacketBase):
 
     def _base_json(self) -> Dict[str, Any]:
         """Return JSON dict for fields present in all packet formats."""
-        return {
+        ret = {
             "weather": str(self.m_weather),
             "track-temperature": self.m_trackTemperature,
             "air-temperature": self.m_airTemperature,
@@ -1510,6 +1513,11 @@ class PacketSessionData(F1PacketBase):
             "num-virtual-safety-car-periods": self.m_numVirtualSafetyCarPeriods,
             "num-red-flag-periods": self.m_numRedFlagPeriods,
         }
+        # Only present when the game sends a formula value we don't know about yet.
+        # Its absence keeps the JSON shape identical for every known formula
+        if self.m_formula.is_unknown():
+            ret["formula-raw"] = self.m_formula.raw_value
+        return ret
 
     def _f24_json(self) -> Dict[str, Any]:
         """Return JSON dict for F1 24+ fields."""

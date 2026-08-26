@@ -1452,6 +1452,11 @@ class SessionState:
                                f"Session Type: {str(packet.m_sessionType)}, "
                                f"Weather: {str(packet.m_weather)}, "
                                f"Total Laps: {packet.m_totalLaps}, ")
+            if packet.m_formula.is_unknown():
+                # The game has started sending a formula type we don't recognise. Treated as
+                # UNKNOWN everywhere, but log the raw value so it can be added to the enum
+                self.m_logger.warning("Unrecognised formula type from game: %d. "
+                                      "Treating as UNKNOWN", packet.m_formula.raw_value)
 
         self.m_ideal_pit_stop_window = packet.m_pitStopWindowIdealLap
 
