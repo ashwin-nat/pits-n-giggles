@@ -28,10 +28,22 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Inject PySide6 mocks before any lib.assets_loader import so Qt is never needed.
+# Qt stand-ins for QIcon/QFontDatabase, so no real Qt object is ever constructed.
+#
+# These are patched onto the two modules that import them rather than shoved
+# into sys.modules. The old approach put a MagicMock at 'PySide6' itself, which
+# leaked to every other test sharing the xdist worker - a mock is not a package,
+# so their "from PySide6.QtCore import ..." died with "'PySide6' is not a
+# package", and mocking a submodule of an already-loaded Qt crashed the
+# interpreter outright.
 _mock_qtgui = MagicMock()
-sys.modules.setdefault('PySide6', MagicMock())
-sys.modules['PySide6.QtGui'] = _mock_qtgui
+
+
+@pytest.fixture(autouse=True)
+def _patch_qt():
+    """Swap QIcon/QFontDatabase for the mocks, for the duration of each test."""
+    with patch('lib.assets_loader.icons.QIcon', _mock_qtgui.QIcon),          patch('lib.assets_loader.fonts.QFontDatabase', _mock_qtgui.QFontDatabase):
+        yield
 
 from lib.assets_loader.icons import (
     _get_resource_base,
