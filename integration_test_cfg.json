@@ -111,6 +111,7 @@
                 }
             }
         },
+        "timing_tower_tyre_info_mode": "Hybrid",
         "timing_tower_relative_best_last_lap": false,
         "timing_tower_combined_tl_pens": false,
         "timing_tower_toggle_udp_action_code": null,
@@ -247,8 +248,8 @@
                 "scale_factor": 1.0
             },
             "lap_times_standalone": {
-                "x": -1266,
-                "y": 284,
+                "x": -1161,
+                "y": 359,
                 "scale_factor": 1.0
             },
             "weather_standalone": {
@@ -257,8 +258,8 @@
                 "scale_factor": 1.0
             },
             "pit_rejoin_standalone": {
-                "x": -1277,
-                "y": 528,
+                "x": -1373,
+                "y": 570,
                 "scale_factor": 1.0
             },
             "tyre_sets_standalone": {
@@ -272,8 +273,8 @@
                 "scale_factor": 1.0
             },
             "traffic_monitor_standalone": {
-                "x": -855,
-                "y": 635,
+                "x": -684,
+                "y": 810,
                 "scale_factor": 1.0
             }
         }
