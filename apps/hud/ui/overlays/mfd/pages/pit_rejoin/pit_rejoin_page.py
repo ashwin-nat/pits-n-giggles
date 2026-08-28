@@ -28,7 +28,7 @@ from typing import Any, Dict, List, final
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              insert_relative_deltas_race, is_race_type_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings
 from lib.f1_types import F1Utils
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -38,6 +38,10 @@ class PitRejoinPredictionPage(MfdPageBase):
     OVERLAY_ID = OverlayId.PIT_REJOIN
     KEY = MfdPageId.PIT_REJOIN
     PAGE_QML_FILE: Path = Path(__file__).parent / "pit_rejoin_page.qml"
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.pit_rejoin_show_title
 
     @final
     def setup_page(self):

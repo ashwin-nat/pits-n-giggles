@@ -66,8 +66,8 @@ for typing convenience):
 - IPC slots `_handle_cmd` / `_handle_request` / `_handle_high_freq_data`, `response_signal`
 - Recipient filtering, visibility gating, cmd-pipeline latency tracking
 - HF channel: `subscribe_hf`, `_latest_hf`, seq/loss accounting, `_hf_pending`
-- Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
-  **constructor parameter**, never a base-class choice
+- Frame timer (`render_frame()`) — event-driven vs frame-driven is the leaf overlay's
+  **`ANIMATION_DRIVEN` class attr**, never a base-class choice
 - Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
 - `_qml_target` → `self._root` (the `QQuickWindow`)
 

@@ -94,7 +94,7 @@ gap_to_leader_interact_udp_action_code: Optional[int] = udp_action_field(
 )
 ```
 
-**e) Wire the enable flag into `enabled_overlay_ids()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+**e) Wire the enable flag into `enabled_overlays_by_id()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.GAP_TO_LEADER: self.show_gap_to_leader,
 ```
@@ -198,28 +198,36 @@ PAGES = [
 ```
 `PAGE_CLS_BY_KEY` is built automatically from `PAGES`.
 
-**b)** If the page has config kwargs, add an entry to `_get_page_kwargs`:
+**b)** If the page's `__init__` takes settings-derived kwargs, override `from_settings`
+on the page class itself (`apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.py`)
+— this is the single source of truth for "which settings does this page need",
+used by both `MfdOverlay` and `StandalonePageHost`:
 ```python
-GapToLeaderPage.KEY: {
-    "some_kwarg": settings.HUD.some_config_field,
-},
+@classmethod
+def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "GapToLeaderPage":
+    return cls(logger, some_kwarg=settings.HUD.some_config_field)
+```
+If the page's `__init__` takes only `logger`, skip this — the base class default
+(`cls(logger)`) already covers it.
+
+**c)** Also override `standalone_show_title(settings)` on the page class, returning the
+page's `show_title` setting — `OverlaysMgr` reads it when hosting the page standalone:
+```python
+@classmethod
+def standalone_show_title(cls, settings: PngSettings) -> bool:
+    return settings.HUD.gap_to_leader_show_title
 ```
 
 #### A10. Register as standalone in `OverlaysMgr` — `apps/hud/ui/infra/overlays_mgr.py`
 
-Import the class and add a `_register_page_host_if_enabled` call in the `# ---- MFD pages (standalone) ----` block:
+Import the class and add it to `STANDALONE_PAGE_CLASSES`. That is the whole change — the
+constructor loop reads the enable flag from `enabled_overlays_by_id()`, builds the page via
+`from_settings()`, and takes the title-bar flag from `standalone_show_title()`:
 ```python
-self._register_page_host_if_enabled(
-    enabled=settings.HUD.show_gap_to_leader,
-    page_cls=GapToLeaderPage,
-    overlay_cfg=settings.HUD.layout[OverlayId.GAP_TO_LEADER],
-    opacity=settings.HUD.overlays_opacity,
-    windowed_overlay=settings.HUD.use_windowed_overlays,
-    scale_factor=settings.HUD.layout[OverlayId.GAP_TO_LEADER].scale_factor,
-    show_title_bar=settings.HUD.gap_to_leader_show_title,
-    # any config kwargs:
-    # some_kwarg=settings.HUD.some_config_field,
-)
+STANDALONE_PAGE_CLASSES: List[Type[MfdPageBase]] = [
+    ...
+    GapToLeaderPage,
+]
 ```
 
 #### A11. PyInstaller spec — `scripts/png.spec`
@@ -293,7 +301,7 @@ OverlayId.FUEL_MONITOR: "Fuel Monitor",
 OverlayId.FUEL_MONITOR: OverlayPosition(x=<x>, y=<y>),
 ```
 
-Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.FUEL_MONITOR: self.show_fuel_monitor,
 ```
@@ -409,7 +417,14 @@ Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/<overlay_name>/<o
 
 #### B10. Register overlay in OverlaysMgr — `apps/hud/ui/infra/overlays_mgr.py`
 
-Read the file. Import the new class and add it to the overlay instantiation block following the pattern of existing overlays. Gate on `config.HUD.show_<overlay_name>`.
+Import the new class and add it to `OVERLAY_CLASSES`. That is the whole change — the
+constructor loop gates on `enabled_overlays_by_id()` and calls `cls(settings, logger)`:
+```python
+OVERLAY_CLASSES: List[Type[BaseOverlay]] = [
+    ...
+    GapToLeaderOverlay,
+]
+```
 
 #### B11. PyInstaller spec — `scripts/png.spec`
 

@@ -22,14 +22,15 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, final
 
 from apps.hud.common import get_ref_row, is_race_type_session
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId, OverlaysFuelEstimationMode
+from lib.config import (MfdPageId, OverlayId, OverlaysFuelEstimationMode,
+                        PngSettings)
 from lib.f1_types import F1Utils
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -40,7 +41,15 @@ class FuelInfoPage(MfdPageBase):
 
     MIN_FUEL = 0.2
 
-    def __init__(self, logger: logging.Logger, fuel_est_mode: OverlaysFuelEstimationMode):
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "FuelInfoPage":
+        return cls(logger, fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode)
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.fuel_info_show_title
+
+    def __init__(self, logger: PngLogger, fuel_est_mode: OverlaysFuelEstimationMode):
         self.fuel_est_mode = fuel_est_mode
         super().__init__(logger)
 

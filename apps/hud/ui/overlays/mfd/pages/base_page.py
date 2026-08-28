@@ -22,12 +22,13 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 
 from PySide6.QtQuick import QQuickItem
 
 from apps.hud.ui.overlays.base.qml_bridge import QmlBridge
+from lib.config import PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,7 +47,27 @@ class MfdPageBase(QmlBridge):
     PAGE_QML_FILE: Path = ""
     OVERLAY_ID: str = ""  # window identity used when hosted by StandalonePageHost
 
-    def __init__(self, logger: logging.Logger):
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "MfdPageBase":  # pylint: disable=unused-argument
+        """Construct this page from app settings.
+
+        Default: no page-specific config, just cls(logger). Pages whose __init__
+        takes settings-derived kwargs override this, so MfdOverlay and
+        OverlaysMgr both build the page the same way instead of each
+        duplicating "which settings does this page need" separately.
+        """
+        return cls(logger)
+
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        """Whether StandalonePageHost should show a title bar for this page.
+
+        Only required for pages registered in OverlaysMgr.STANDALONE_PAGE_CLASSES;
+        e.g. FuelInfoPage -> settings.HUD.fuel_info_show_title.
+        """
+        raise NotImplementedError
+
+    def __init__(self, logger: PngLogger):
         assert self.KEY, "KEY must be set in subclass"
         assert self.PAGE_QML_FILE, "PAGE_QML_FILE must be set in subclass"
         assert Path(self.PAGE_QML_FILE).exists(), f"PAGE_QML_FILE does not exist: {self.PAGE_QML_FILE}"

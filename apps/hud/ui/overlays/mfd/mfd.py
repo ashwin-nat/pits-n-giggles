@@ -22,22 +22,21 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, final
+from typing import Any, ClassVar, Dict, List, Optional, Type, final
 
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.overlays.base import BaseOverlay
+from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TrafficMonitorPage, TyreInfoPage,
                                             TyreSetsPage, WeatherForecastPage)
-from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
-                        WeatherMFDUIType)
+from lib.config import OverlayId, PngSettings
+from lib.logger import PngLogger
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,7 +45,7 @@ class MfdOverlay(BaseOverlay):
     OVERLAY_ID = OverlayId.MFD
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
-    PAGES: List[MfdPageBase] = [
+    PAGES: ClassVar[List[Type[MfdPageBase]]] = [
         CollapsedPage,
         FuelInfoPage,
         LapTimesPage,
@@ -59,30 +58,15 @@ class MfdOverlay(BaseOverlay):
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        settings: PngSettings,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-    ):
-        # Pages are created AFTER QML is loaded
+    def __init__(self, settings: PngSettings, logger: PngLogger):
+        # Pages are created AFTER QML is loaded (post_setup), but from_settings() needs
+        # settings again at that point, so it's kept around until then.
+        self._settings = settings
         self._mfd_pages: List[MfdPageBase] = []
         self._current_index = 0
         self._init_pages_order(settings)
 
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=None, # Telemetry based refreshes
-        )
+        super().__init__(settings, logger)
 
         self._register_page_event_handlers()
         self._init_cmd_handlers()
@@ -108,33 +92,13 @@ class MfdOverlay(BaseOverlay):
                 return
             self._mfd_pages[self._current_index].dispatch_event(event_type, data)
 
-    def _get_page_kwargs(self, settings: PngSettings) -> dict:
-        """Get initialization kwargs for pages from settings."""
-        return {
-            TyreInfoPage.KEY: {
-                "tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold,
-                "tyre_wear_rate_type": settings.HUD.mfd_tyre_wear_rate_type,
-            },
-            WeatherForecastPage.KEY: {"graph_based_ui": (
-                settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
-            FuelInfoPage.KEY: {
-                "fuel_est_mode": settings.HUD.overlays_fuel_estimation_mode,
-            },
-        }
-
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
-        page_kwargs = self._get_page_kwargs(settings)
-        self.enabled_pages: List[Dict[str, Any]] = [
-            {"key": MfdPageId.COLLAPSED, "cls": CollapsedPage, "position": 0, "kwargs": {}},
+        self.enabled_pages: List[Type[MfdPageBase]] = [
+            CollapsedPage,
             *[
-                {
-                    "key": key,
-                    "cls": self.PAGE_CLS_BY_KEY[key],
-                    "position": page_settings.position,
-                    "kwargs": page_kwargs.get(key, {})
-                }
-                for key, page_settings in settings.HUD.mfd_settings.sorted_enabled_pages()
+                self.PAGE_CLS_BY_KEY[key]
+                for key, _ in settings.HUD.mfd_settings.sorted_enabled_pages()
             ]
         ]
 
@@ -143,10 +107,8 @@ class MfdOverlay(BaseOverlay):
         """Init pages and QML properties after the window is ready."""
         self.root.pageLoaded.connect(self._on_page_loaded)
 
-        for page_info in self.enabled_pages:
-            cls = page_info["cls"]
-            kwargs = page_info.get("kwargs", {})
-            self._mfd_pages.append(cls(self.logger, **kwargs))
+        for cls in self.enabled_pages:
+            self._mfd_pages.append(cls.from_settings(self._settings, self.logger))
         self._current_index = 0
 
         # Set total pages in QML
