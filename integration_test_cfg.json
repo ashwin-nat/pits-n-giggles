@@ -18,6 +18,7 @@
         "post_fp_data_autosave": true,
         "post_tt_data_autosave": true,
         "save_race_ctrl_msg": true,
+        "drop_pit_otk_msg": true,
         "just_in_case_autosave": true,
         "session_dir": "data"
     },
@@ -173,7 +174,6 @@
         "show_circuit_info": true,
         "circuit_info_toggle_udp_action_code": null,
         "circuit_info_length": 800,
-        "circuit_info_minimal": false,
         "show_pu_info": true,
         "pu_display_harvest_info": true,
         "pu_toggle_udp_action_code": null,

@@ -38,7 +38,6 @@ from lib.config import (OverlayId, OverlaysFuelEstimationMode,
                         TimingTowerTyreInfoMode)
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger
-from lib.table_differ import TableDiffer
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -88,19 +87,8 @@ class TimingTowerOverlay(BaseOverlay):
         self.tyre_icon_uris = load_tyre_icons_uri_dict()
 
     @final
-    def pre_setup(self):
-        """Create the table differs before the window (and post_setup) exists."""
-        self._race_differ = TableDiffer(self._stats)
-        self._tt_differ = TableDiffer(self._stats)
-
-    @final
     def post_setup(self):
         """Set QML properties after the window is ready."""
-        # The window (and with it both table models) is new and empty, so the
-        # next update of each table has to rebuild it rather than patch rows.
-        self._race_differ.invalidate()
-        self._tt_differ.invalidate()
-
         self.set_qml_property("numRows", self.total_rows)
         self.set_qml_property("columnOrder", self.column_order)
         self.set_qml_property("showColHeader", self.show_col_header)
@@ -188,18 +176,12 @@ class TimingTowerOverlay(BaseOverlay):
     def _set_race_mode(self) -> None:
         """Switch QML to race mode and clear TT table."""
         self.set_qml_property("mode", "race")
-        self._sync_table(self._tt_differ, "ttTableUpdate", [])
+        self.set_qml_property("ttTableData", [])
 
     def _set_tt_mode(self, table_data: list) -> None:
         """Switch QML to time-trial mode and populate TT table."""
         self.set_qml_property("mode", "tt")
-        self._sync_table(self._tt_differ, "ttTableUpdate", table_data)
-
-    def _sync_table(self, differ: TableDiffer, name: str, rows: List[Dict[str, Any]]) -> None:
-        """Diff rows and, if anything moved, write the one payload QML applies."""
-        update = differ.update(rows)
-        if update:
-            self.push_qml_property(name, update)
+        self.set_qml_property("ttTableData", table_data)
 
     def _update_session_info(self, text: str):
         """Update the session info label in QML.
@@ -217,7 +199,7 @@ class TimingTowerOverlay(BaseOverlay):
         """
         self.set_qml_property("showError", True)
         self.set_qml_property("errorMessage", message)
-        self._sync_table(self._race_differ, "tableUpdate", [])
+        self.set_qml_property("tableData", [])
 
     def _update_table_data(self,
                            relevant_rows: List[Dict[str, Any]],
@@ -238,7 +220,7 @@ class TimingTowerOverlay(BaseOverlay):
         """
         # Hide error message
         self.set_qml_property("showError", False)
-        self._sync_table(self._race_differ, "tableUpdate", [
+        self.set_qml_property("tableData", [
             self._create_driver_row(
                 row_data, ref_index, session_type, fastest_index,
                 ref_best_lap_ms, ref_last_lap_ms,
@@ -285,10 +267,7 @@ class TimingTowerOverlay(BaseOverlay):
         is_sb = driver_idx == fastest_index
         last_lap_ms = last_lap_info.get("lap-time-ms")
         best_lap_ms = best_lap_info.get("lap-time-ms")
-        # bool(), not just the and-chain: with no last lap yet this is None, and
-        # a None never creates its ListModel role, which breaks every delegate
-        # that requires it.
-        is_pb = bool(last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
+        is_pb = (last_lap_ms and best_lap_ms and last_lap_ms == best_lap_ms)
 
         ers_mode = self._get_ers_mode(row_data)
         wing_dmg = self._format_wing_dmg(dmg_info, telemetry_public)
@@ -300,7 +279,7 @@ class TimingTowerOverlay(BaseOverlay):
             "teamIcon": self.team_logo_uris[driver_info.get("team", "UNKNOWN")],
             "name": driver_info.get("name", "UNKNOWN"),
             "delta": self._format_delta(driver_info, delta_info, driver_idx, ref_index, session_type),
-            "deltaToLeader": self._format_delta_to_leader(driver_info, delta_info, driver_idx, 0, session_type),
+            "delta-to-leader": self._format_delta_to_leader(driver_info, delta_info, driver_idx, 0, session_type),
             # Subscript, not .get(): the defaultdict's fallback icon only fires via __missing__,
             # so an unmapped compound (e.g. "Unknown") would otherwise render a blank cell.
             "tyreIcon": self.tyre_icon_uris[tyre_info.get("visual-tyre-compound", "UNKNOWN")],
@@ -582,7 +561,7 @@ class TimingTowerOverlay(BaseOverlay):
     def clear(self):
         """Clear all timing data."""
         self.set_qml_property("sessionInfo", "TIMING TOWER")
-        self._sync_table(self._race_differ, "tableUpdate", [])
+        self.set_qml_property("tableData", [])
         self.set_qml_property("showError", False)
         self._set_race_mode()
 
@@ -744,25 +723,25 @@ class TimingTowerOverlay(BaseOverlay):
         if not dataset or not dataset.get("is-valid"):
             return {
                 "label": label,
-                "lapTimeStr": "---",
-                "s1TimeStr": "---",
-                "s2TimeStr": "---",
-                "s3TimeStr": "---",
+                "lap-time-str": "---",
+                "s1-time-str": "---",
+                "s2-time-str": "---",
+                "s3-time-str": "---",
             }
         if pb_ms is not None and pb_ms["lap"] is not None:
             return {
                 "label": label,
-                "lapTimeStr": self._format_tt_delta(dataset.get("lap-time-ms"), pb_ms["lap"]),
-                "s1TimeStr": self._format_tt_delta(dataset.get("sector-1-time-ms"), pb_ms["s1"]),
-                "s2TimeStr": self._format_tt_delta(dataset.get("sector-2-time-in-ms"), pb_ms["s2"]),
-                "s3TimeStr": self._format_tt_delta(dataset.get("sector3-time-in-ms"), pb_ms["s3"]),
+                "lap-time-str": self._format_tt_delta(dataset.get("lap-time-ms"), pb_ms["lap"]),
+                "s1-time-str": self._format_tt_delta(dataset.get("sector-1-time-ms"), pb_ms["s1"]),
+                "s2-time-str": self._format_tt_delta(dataset.get("sector-2-time-in-ms"), pb_ms["s2"]),
+                "s3-time-str": self._format_tt_delta(dataset.get("sector3-time-in-ms"), pb_ms["s3"]),
             }
         return {
             "label": label,
-            "lapTimeStr": dataset.get("lap-time-str", "---"),
-            "s1TimeStr": dataset.get("sector-1-time-str", "---"),
-            "s2TimeStr": dataset.get("sector-2-time-str", "---"),
-            "s3TimeStr": dataset.get("sector-3-time-str", "---"),
+            "lap-time-str": dataset.get("lap-time-str", "---"),
+            "s1-time-str": dataset.get("sector-1-time-str", "---"),
+            "s2-time-str": dataset.get("sector-2-time-str", "---"),
+            "s3-time-str": dataset.get("sector-3-time-str", "---"),
         }
 
     def _get_tt_curr_lap(self, tt_data_outer: dict) -> dict:
@@ -778,10 +757,10 @@ class TimingTowerOverlay(BaseOverlay):
         if not current_lap_info:
             return {
                 "label": "Current",
-                "lapTimeStr": "---",
-                "s1TimeStr": "---",
-                "s2TimeStr": "---",
-                "s3TimeStr": "---",
+                "lap-time-str": "---",
+                "s1-time-str": "---",
+                "s2-time-str": "---",
+                "s3-time-str": "---",
             }
 
         lap_time_ms = current_lap_info.get("lap-time-ms")
@@ -791,10 +770,10 @@ class TimingTowerOverlay(BaseOverlay):
 
         return {
             "label": "Current",
-            "lapTimeStr": F1Utils.getLapTimeStr(lap_time_ms) if lap_time_ms is not None else "---",
-            "s1TimeStr": F1Utils.millisecondsToSecondsMilliseconds(sector1_time_ms) if sector1_time_ms is not None else "---",
-            "s2TimeStr": F1Utils.millisecondsToSecondsMilliseconds(sector2_time_ms) if sector2_time_ms is not None else "---",
-            "s3TimeStr": F1Utils.millisecondsToSecondsMilliseconds(sector3_time_ms) if sector3_time_ms is not None else "---",
+            "lap-time-str": F1Utils.getLapTimeStr(lap_time_ms) if lap_time_ms is not None else "---",
+            "s1-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector1_time_ms) if sector1_time_ms is not None else "---",
+            "s2-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector2_time_ms) if sector2_time_ms is not None else "---",
+            "s3-time-str": F1Utils.millisecondsToSecondsMilliseconds(sector3_time_ms) if sector3_time_ms is not None else "---",
         }
 
     def _get_tt_pb_lap(self, tt_data: dict) -> dict:

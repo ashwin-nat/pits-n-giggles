@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import "../../../base"
 
 Item {
     id: root
@@ -25,14 +24,7 @@ Item {
     property real   wearRate: 0.0
     property string wearRateTyre: ""
     property bool   telemetryDisabled: false
-    // One TableDiffer payload per tick; DiffedTableModel applies it as a
-    // whole-table reset or a set of single-row patches.
-    property var    tableUpdate: null
-
-    DiffedTableModel {
-        id: wearTableModel
-        tableUpdate: root.tableUpdate
-    }
+    property var    wearTableData: []
     property var    tyreCounts: ({
         "Soft": 0, "Medium": 0, "Hard": 0,
         "Super Soft": 0, "Inters": 0, "Wet": 0
@@ -262,7 +254,7 @@ Item {
                 clip: true
 
                 readonly property int    headerH: 28
-                readonly property int    numRows: wearTableModel.count
+                readonly property int    numRows: root.wearTableData.length
                 readonly property real   rowH:    numRows > 0 ? (height - headerH) / numRows : 36
                 readonly property real   colW:    width / 5
 
@@ -299,16 +291,12 @@ Item {
 
                     // Data rows
                     Repeater {
-                        model: wearTableModel
+                        model: root.wearTableData
 
                         delegate: Rectangle {
                             id: rowRect
+                            required property var modelData
                             required property int index
-                            required property string label
-                            required property real fl
-                            required property real fr
-                            required property real rl
-                            required property real rr
 
                             width: tableRect.width
                             height: tableRect.rowH
@@ -324,7 +312,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: rowRect.label
+                                        text: rowRect.modelData.label
                                         font.family: "Formula1"
                                         font.pixelSize: 12
                                         font.bold: true
@@ -333,10 +321,10 @@ Item {
                                 }
 
                                 // FL FR RL RR
-                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.fl }
-                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.fr }
-                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.rl }
-                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.rr }
+                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.modelData.fl }
+                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.modelData.fr }
+                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.modelData.rl }
+                                WearCell { width: tableRect.colW; height: parent.height; value: rowRect.modelData.rr }
                             }
                         }
                     }

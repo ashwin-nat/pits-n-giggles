@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
-import "../base"
 
 Window {
     id: root
@@ -90,7 +89,7 @@ Window {
         Text {
             property var rowData
             anchors.fill: parent
-            text: rowData ? rowData.deltaToLeader : ""
+            text: rowData ? rowData["delta-to-leader"] : ""
             font.family: "Consolas"
             font.pixelSize: 13
             color: "#ffffff"
@@ -278,7 +277,7 @@ Window {
         }
     }
 
-    readonly property int effectiveRows: Math.min(numRows, raceTableModel.count)
+    readonly property int effectiveRows: Math.min(numRows, tableData.length)
     readonly property bool colHeaderVisible: showColHeader && !showError && mode === "race"
     readonly property int baseHeight: headerHeight + (colHeaderVisible ? colHeaderHeight : 0) + (rowHeight * effectiveRows) + margins
 
@@ -289,25 +288,12 @@ Window {
 
     // Exposed properties for Python to set
     property string sessionInfo: "-- / --"
+    property var tableData: []
     property int referenceRow: -1
     property string errorMessage: ""
     property bool showError: false
     property string mode: "race"  // "race" or "tt"
-
-    // One TableDiffer payload per table per tick; DiffedTableModel applies each
-    // as a whole-table reset or a set of single-row patches.
-    property var tableUpdate: null
-    property var ttTableUpdate: null
-
-    DiffedTableModel {
-        id: raceTableModel
-        tableUpdate: root.tableUpdate
-    }
-
-    DiffedTableModel {
-        id: ttTableModel
-        tableUpdate: root.ttTableUpdate
-    }
+    property var ttTableData: []
 
     // TT mode column widths and dimensions
     readonly property int ttColLabel: 52
@@ -486,72 +472,12 @@ Window {
                         reuseItems: true
                         visible: !root.showError && root.mode === "race"
 
-                        model: raceTableModel
+                        model: root.tableData
 
                         delegate: Item {
                             id: rowItem
-
-                            // One required property per ListModel role. The
-                            // column components at root level read a single
-                            // rowData object, so the roles are gathered back
-                            // into one here; that keeps those components (and
-                            // the Loader wiring below) unchanged.
-                            required property int position
-                            required property string teamIcon
-                            required property string name
-                            required property string delta
-                            required property string deltaToLeader
-                            required property string tyreIcon
-                            required property string tyreWear
-                            required property string ers
-                            required property string ersMode
-                            required property string ersColor
-                            required property string overtakeBarColor
-                            required property string penalties
-                            required property int tlWarns
-                            required property bool isReference
-                            required property string bestLap
-                            required property string bestLapColor
-                            required property string lastLap
-                            required property string lastLapColor
-                            required property string wingDmg
-                            required property string wingDmgColor
-                            required property string speedTrap
-                            required property string fuel
-                            required property string fuelColor
-                            required property string driverStatus
-                            required property bool isSb
-                            required property bool isPb
-
-                            readonly property var rowData: ({
-                                position: rowItem.position,
-                                teamIcon: rowItem.teamIcon,
-                                name: rowItem.name,
-                                delta: rowItem.delta,
-                                deltaToLeader: rowItem.deltaToLeader,
-                                tyreIcon: rowItem.tyreIcon,
-                                tyreWear: rowItem.tyreWear,
-                                ers: rowItem.ers,
-                                ersMode: rowItem.ersMode,
-                                ersColor: rowItem.ersColor,
-                                overtakeBarColor: rowItem.overtakeBarColor,
-                                penalties: rowItem.penalties,
-                                tlWarns: rowItem.tlWarns,
-                                isReference: rowItem.isReference,
-                                bestLap: rowItem.bestLap,
-                                bestLapColor: rowItem.bestLapColor,
-                                lastLap: rowItem.lastLap,
-                                lastLapColor: rowItem.lastLapColor,
-                                wingDmg: rowItem.wingDmg,
-                                wingDmgColor: rowItem.wingDmgColor,
-                                speedTrap: rowItem.speedTrap,
-                                fuel: rowItem.fuel,
-                                fuelColor: rowItem.fuelColor,
-                                driverStatus: rowItem.driverStatus,
-                                isSb: rowItem.isSb,
-                                isPb: rowItem.isPb
-                            })
-
+                            required property var modelData
+                            property var rowData: rowItem.modelData
                             width: tableView.width
                             height: 28
 
@@ -742,16 +668,12 @@ Window {
                         }
 
                         Repeater {
-                            model: ttTableModel
+                            model: root.ttTableData
 
                             delegate: Item {
                                 id: ttRow
+                                required property var modelData
                                 required property int index
-                                required property string label
-                                required property string lapTimeStr
-                                required property string s1TimeStr
-                                required property string s2TimeStr
-                                required property string s3TimeStr
                                 width: parent ? parent.width : 0
                                 height: 28
 
@@ -779,7 +701,7 @@ Window {
                                     Text {
                                         width: root.ttColLabel
                                         height: parent.height
-                                        text: ttRow.label
+                                        text: ttRow.modelData.label
                                         font.family: "Formula1"
                                         font.pixelSize: 12
                                         color: "#aaaaaa"
@@ -788,7 +710,7 @@ Window {
                                     Text {
                                         width: root.ttColLapTime
                                         height: parent.height
-                                        text: ttRow.lapTimeStr
+                                        text: ttRow.modelData["lap-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 13
                                         color: "#ffffff"
@@ -798,7 +720,7 @@ Window {
                                     Text {
                                         width: root.ttColSector
                                         height: parent.height
-                                        text: ttRow.s1TimeStr
+                                        text: ttRow.modelData["s1-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"
@@ -808,7 +730,7 @@ Window {
                                     Text {
                                         width: root.ttColSector
                                         height: parent.height
-                                        text: ttRow.s2TimeStr
+                                        text: ttRow.modelData["s2-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"
@@ -818,7 +740,7 @@ Window {
                                     Text {
                                         width: root.ttColSector
                                         height: parent.height
-                                        text: ttRow.s3TimeStr
+                                        text: ttRow.modelData["s3-time-str"]
                                         font.family: "Consolas"
                                         font.pixelSize: 12
                                         color: "#cccccc"

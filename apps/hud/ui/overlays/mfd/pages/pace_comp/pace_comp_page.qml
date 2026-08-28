@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import "../../../base"
 
 Item {
     id: root
@@ -72,24 +71,16 @@ Item {
     /* ─────────────────────────────────────────────────────
      * DATA  (Python sets these)
      *
-     * Written by Python as one TableDiffer payload per tick; DiffedTableModel
-     * applies it as a whole-table reset or a set of single-row patches.
-     *
-     * Each row is {
+     * rows: list of {
      *   position: string,
      *   team:     string  (team name for icon lookup),
      *   name:     string,
      *   s1, s2, s3, lap: string  (absolute for ref, signed delta for others),
      *   isRef:    bool
      * }
-     * Not padded - the model holds exactly as many rows as Python sent.
+     * Not padded — Repeater model matches rows.length exactly.
      * ───────────────────────────────────────────────────── */
-    property var tableUpdate: null
-
-    DiffedTableModel {
-        id: tableModel
-        tableUpdate: root.tableUpdate
-    }
+    property var rows: []
 
     /* ─────────────────────────────────────────────────────
      * HELPERS
@@ -116,12 +107,12 @@ Item {
         color: "transparent"
 
         readonly property int  headerH: 28
-        readonly property real rowH: tableModel.count > 0 ? (height - headerH) / tableModel.count : 0
+        readonly property real rowH: root.rows.length > 0 ? (height - headerH) / root.rows.length : 0
 
         // Waiting for data
         Text {
             anchors.centerIn: parent
-            visible: tableModel.count === 0
+            visible: root.rows.length === 0
             text: "WAITING FOR DATA"
             font.family: "Formula1"
             font.pixelSize: 11
@@ -131,7 +122,7 @@ Item {
         Column {
             anchors.fill: parent
             spacing: 0
-            visible: tableModel.count > 0
+            visible: root.rows.length > 0
 
             /* ── HEADER ── */
             Row {
@@ -165,22 +156,18 @@ Item {
 
             /* ── DATA ROWS ── */
             Repeater {
-                model: tableModel
+                model: root.rows.length
 
                 delegate: Item {
                     id: rowItem
                     required property int index
-                    required property string position
-                    required property string team
-                    required property string name
-                    required property string s1
-                    required property string s2
-                    required property string s3
-                    required property string lap
-                    required property bool isRef
 
                     width: container.width
                     height: container.rowH
+
+                    property int  rowIndex: rowItem.index
+                    property var  rd:       root.rows[rowItem.rowIndex] || {}
+                    property bool isRef:    rd.isRef === true
 
                     // Row background
                     Rectangle {
@@ -208,7 +195,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.position || "—"
+                                    text:  rowItem.rd.position || "—"
                                     color: rowItem.isRef ? "white" : root.colText
                                     font.family: root.fontFamily
                                     font.pixelSize: root.fontSizeLabel
@@ -233,7 +220,7 @@ Item {
                                     }
                                     width: 16
                                     height: 16
-                                    source: root.teamIcons[rowItem.team] || root.defaultTeamIcon
+                                    source: root.teamIcons[rowItem.rd.team] || root.defaultTeamIcon
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true
                                     mipmap: true
@@ -247,7 +234,7 @@ Item {
                                         rightMargin:    4
                                         verticalCenter: parent.verticalCenter
                                     }
-                                    text:  rowItem.name || "—"
+                                    text:  rowItem.rd.name || "—"
                                     color: rowItem.isRef ? "white" : root.colText
                                     font.family: root.fontFamily
                                     font.pixelSize: root.fontSizeLabel
@@ -265,8 +252,8 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.s1 || "—"
-                                    color: root.deltaColor(rowItem.s1, rowItem.isRef)
+                                    text:  rowItem.rd.s1 || "—"
+                                    color: root.deltaColor(rowItem.rd.s1, rowItem.isRef)
                                     font.family: root.monoFontFamily
                                     font.pixelSize: root.fontSizeMono
                                 }
@@ -281,8 +268,8 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.s2 || "—"
-                                    color: root.deltaColor(rowItem.s2, rowItem.isRef)
+                                    text:  rowItem.rd.s2 || "—"
+                                    color: root.deltaColor(rowItem.rd.s2, rowItem.isRef)
                                     font.family: root.monoFontFamily
                                     font.pixelSize: root.fontSizeMono
                                 }
@@ -297,8 +284,8 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.s3 || "—"
-                                    color: root.deltaColor(rowItem.s3, rowItem.isRef)
+                                    text:  rowItem.rd.s3 || "—"
+                                    color: root.deltaColor(rowItem.rd.s3, rowItem.isRef)
                                     font.family: root.monoFontFamily
                                     font.pixelSize: root.fontSizeMono
                                 }
@@ -313,8 +300,8 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.lap || "—"
-                                    color: root.deltaColor(rowItem.lap, rowItem.isRef)
+                                    text:  rowItem.rd.lap || "—"
+                                    color: root.deltaColor(rowItem.rd.lap, rowItem.isRef)
                                     font.family: root.monoFontFamily
                                     font.pixelSize: root.fontSizeMono
                                     font.bold: true

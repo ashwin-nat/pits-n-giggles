@@ -28,7 +28,6 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `overtake_analyzer.py` | Overtake detection |
 | `rolling_history.py` | Rolling window data history |
 | `rate_limiter.py` | Rate limiting for event emissions |
-| `table_differ.py` | Row-granularity diffing of table data for UI patching |
 | `button_debouncer.py` | Debounce logic for UDP-triggered actions |
 | `event_counter.py` | Event counting utilities |
 | `custom_marker_tracker.py` | User-defined marker tracking |

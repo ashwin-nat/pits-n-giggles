@@ -40,9 +40,8 @@ class QmlBridge:
 
     Provides three things:
     - Stats: single EventCounter per component; get_stats(), _track_event().
-    - QML property writes: push_qml_property() (always writes) and
-      set_qml_property() (writes only on change), plus invalidate_qml_cache()
-      and _on_target_changed() (clears cache).
+    - Diff-based QML property caching: set_qml_property(), invalidate_qml_cache(),
+      _on_target_changed() (clears cache).
     - Event handler registry: on_event() decorator (always guarded on
       _qml_target is not None), dispatch_event(), get_handled_event_types(),
       handles_event().
@@ -74,38 +73,22 @@ class QmlBridge:
         """Call when qml_target changes to a new object; clears the prop cache."""
         self._props.clear()
 
-    def push_qml_property(self, name: str, value) -> bool:
-        """Write a property to qml_target unconditionally. Returns True if it landed.
-
-        For structured, high-churn values (table resets and row patches) where
-        Python-side logic already guarantees every write is a real change.
-        Caching those would be a correctness trap: a patch, then a reset, then
-        an identical patch is three distinct instructions to QML, and the
-        second patch must not be swallowed as a repeat of the first.
-
-        Silently does nothing when qml_target is None.
-        """
-        target = self._qml_target
-        if target is None:
-            self._stats.track_event("__PROPS_NO_TARGET__", name)
-            return False
-        target.setProperty(name, value)
-        self._stats.track_event("__PROPS__", name)
-        self._notify_qml_content_changed()
-        return True
-
     def set_qml_property(self, name: str, value) -> None:
         """Write a property to qml_target with diff-based caching.
 
         Silently does nothing when qml_target is None or the value is unchanged.
-        The cache only records writes that actually reached QML, so a write
-        dropped for want of a target cannot suppress the one that follows it.
         """
+        target = self._qml_target
+        if target is None:
+            self._stats.track_event("__PROPS_NO_TARGET__", name)
+            return
         if self._props.get(name, _UNSET) == value:
             self._stats.track_event("__PROPS_CACHED__", name)
             return
-        if self.push_qml_property(name, value):
-            self._props[name] = value
+        self._props[name] = value
+        target.setProperty(name, value)
+        self._stats.track_event("__PROPS__", name)
+        self._notify_qml_content_changed()
 
     def _notify_qml_content_changed(self) -> None:
         """Hook invoked after a real (non-cached) QML write. Default no-op.
