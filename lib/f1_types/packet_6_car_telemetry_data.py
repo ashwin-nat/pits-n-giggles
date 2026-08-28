@@ -54,6 +54,9 @@ class CarTelemetryData(F1SubPacketBase):
 
             Note:
                 The length of each list attribute should be 4, corresponding to the four wheels of the car.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

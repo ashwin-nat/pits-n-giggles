@@ -47,6 +47,9 @@ class TimeTrialDataSet(F1SubPacketBase):
         m_equalCarPerformance (bool): 0 = Realistic, 1 = Equal
         m_customSetup (bool): 0 = No, 1 = Yes
         m_valid (bool): 0 = invalid, 1 = valid
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
     COMPILED_PACKET_STRUCT = struct.Struct("<"
         "B" # uint8     m_carIdx;                   // Index of the car this data relates to

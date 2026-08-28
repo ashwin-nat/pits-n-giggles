@@ -41,6 +41,9 @@ class MarshalZone(F1SubPacketBase):
     Attributes:
         - m_zone_start (float): Fraction (0..1) of the way through the lap the marshal zone starts.
         - m_zone_flag (MarshalZone.MarshalZoneFlagType): Refer to the enum type for various options
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"
@@ -166,6 +169,9 @@ class WeatherForecastSample(F1SubPacketBase):
         - m_air_temperature (int): Air temperature in degrees Celsius.
         - m_air_temperature_change (AirTemperatureChange): Air temperature change
         - m_rain_percentage (int): Rain percentage (0-100).
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"
@@ -466,7 +472,11 @@ class WeatherForecastSample(F1SubPacketBase):
         )
 
 class ActiveAeroZone(F1SubPacketBase):
-    """A zone on the track where active aero is available (F1 2026+)."""
+    """A zone on the track where active aero is available (F1 2026+).
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
+    """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<ff")
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
@@ -497,7 +507,11 @@ class ActiveAeroZone(F1SubPacketBase):
 
 
 class DRSZone(F1SubPacketBase):
-    """A DRS zone on the track (F1 2026+)."""
+    """A DRS zone on the track (F1 2026+).
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
+    """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<ff")
     PACKET_LEN = COMPILED_PACKET_STRUCT.size

@@ -55,6 +55,9 @@ class CarMotionData(F1SubPacketBase):
         - m_yaw (float): Yaw angle in radians
         - m_pitch (float): Pitch angle in radians
         - m_roll (float): Roll angle in radians
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

@@ -41,6 +41,9 @@ class LiveryColour(F1SubPacketBase):
         m_red (int): Red component (0-255).
         m_green (int): Green component (0-255).
         m_blue (int): Blue component (0-255).
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"
@@ -115,6 +118,9 @@ class ParticipantData(F1SubPacketBase):
 
         Note:
             The m_platform attribute is an instance of Platform.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     GENERIC_TEAMS = {

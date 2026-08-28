@@ -66,6 +66,9 @@ class LapData(F1SubPacketBase):
         m_pitStopShouldServePen (uint8): Whether the car should serve a penalty at this stop.
         m_speedTrapFastestSpeed (float): Fastest speed trap speed in kmph.
         m_speedTrapFastestLap (uint8): Fastest speed trap lap number.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT_23 = struct.Struct("<"

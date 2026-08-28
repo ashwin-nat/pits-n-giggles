@@ -53,6 +53,9 @@ class FinalClassificationData(F1SubPacketBase):
 
     Note:
         The class is designed to parse and represent the final classification data for a car in a race.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

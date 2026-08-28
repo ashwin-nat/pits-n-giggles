@@ -57,6 +57,10 @@ class CarSetupData(F1SubPacketBase):
         m_frontRightTyrePressure (float): Front right tyre pressure (PSI).
         m_ballast (int): Ballast.
         m_fuelLoad (float): Fuel load.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
+        That being said, non POV player and non AI cars setups will be zeroed out always
     """
 
     COMPILED_PACKET_STRUCT_23 = struct.Struct("<"
