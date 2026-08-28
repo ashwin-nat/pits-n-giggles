@@ -188,12 +188,18 @@ class TimingTowerOverlay(BaseOverlay):
     def _set_race_mode(self) -> None:
         """Switch QML to race mode and clear TT table."""
         self.set_qml_property("mode", "race")
-        self.sync_table(self._tt_differ, "ttTableUpdate", [])
+        self._sync_table(self._tt_differ, "ttTableUpdate", [])
 
     def _set_tt_mode(self, table_data: list) -> None:
         """Switch QML to time-trial mode and populate TT table."""
         self.set_qml_property("mode", "tt")
-        self.sync_table(self._tt_differ, "ttTableUpdate", table_data)
+        self._sync_table(self._tt_differ, "ttTableUpdate", table_data)
+
+    def _sync_table(self, differ: TableDiffer, name: str, rows: List[Dict[str, Any]]) -> None:
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        update = differ.update(rows)
+        if update:
+            self.push_qml_property(name, update)
 
     def _update_session_info(self, text: str):
         """Update the session info label in QML.
@@ -211,7 +217,7 @@ class TimingTowerOverlay(BaseOverlay):
         """
         self.set_qml_property("showError", True)
         self.set_qml_property("errorMessage", message)
-        self.sync_table(self._race_differ, "tableUpdate", [])
+        self._sync_table(self._race_differ, "tableUpdate", [])
 
     def _update_table_data(self,
                            relevant_rows: List[Dict[str, Any]],
@@ -232,7 +238,7 @@ class TimingTowerOverlay(BaseOverlay):
         """
         # Hide error message
         self.set_qml_property("showError", False)
-        self.sync_table(self._race_differ, "tableUpdate", [
+        self._sync_table(self._race_differ, "tableUpdate", [
             self._create_driver_row(
                 row_data, ref_index, session_type, fastest_index,
                 ref_best_lap_ms, ref_last_lap_ms,
@@ -576,7 +582,7 @@ class TimingTowerOverlay(BaseOverlay):
     def clear(self):
         """Clear all timing data."""
         self.set_qml_property("sessionInfo", "TIMING TOWER")
-        self.sync_table(self._race_differ, "tableUpdate", [])
+        self._sync_table(self._race_differ, "tableUpdate", [])
         self.set_qml_property("showError", False)
         self._set_race_mode()
 

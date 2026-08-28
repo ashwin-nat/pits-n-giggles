@@ -263,4 +263,6 @@ class PaceCompPage(MfdPageBase):
 
     def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
         """Diff rows and, if anything moved, write the one payload QML applies."""
-        self.sync_table(self._differ, "tableUpdate", rows)
+        update = self._differ.update(rows)
+        if update:
+            self.push_qml_property("tableUpdate", update)
