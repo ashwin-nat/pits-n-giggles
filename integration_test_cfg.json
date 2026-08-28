@@ -198,8 +198,8 @@
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
-                "x": -1573,
-                "y": 225,
+                "x": 3006,
+                "y": -16,
                 "scale_factor": 1.0
             },
             "timing_tower": {
@@ -238,13 +238,13 @@
                 "scale_factor": 1.0
             },
             "fuel_info": {
-                "x": -422,
-                "y": 26,
+                "x": 3927,
+                "y": 533,
                 "scale_factor": 1.0
             },
             "tyre_info": {
-                "x": -1261,
-                "y": 24,
+                "x": 3957,
+                "y": 265,
                 "scale_factor": 1.0
             },
             "lap_times_standalone": {
@@ -253,8 +253,8 @@
                 "scale_factor": 1.0
             },
             "weather_standalone": {
-                "x": -850,
-                "y": 351,
+                "x": 3454,
+                "y": 616,
                 "scale_factor": 1.0
             },
             "pit_rejoin_standalone": {
@@ -263,13 +263,13 @@
                 "scale_factor": 1.0
             },
             "tyre_sets_standalone": {
-                "x": -1695,
-                "y": 403,
+                "x": 3501,
+                "y": 84,
                 "scale_factor": 1.0
             },
             "pace_comp_standalone": {
-                "x": -1900,
-                "y": 661,
+                "x": 3017,
+                "y": 460,
                 "scale_factor": 1.0
             },
             "traffic_monitor_standalone": {
@@ -308,8 +308,7 @@
         "Losail": 25.0,
         "Abu_Dhabi": 19.0,
         "Paul_Ricard": null,
-        "Portimao": null,
-        "Madrid": null
+        "Portimao": null
     },
     "TimeLossInPitsF2": {
         "Melbourne": null,
@@ -340,8 +339,7 @@
         "Losail": null,
         "Abu_Dhabi": null,
         "Paul_Ricard": null,
-        "Portimao": null,
-        "Madrid": null
+        "Portimao": null
     },
     "Prediction": {
         "weather_aware_prediction": true,
@@ -351,5 +349,9 @@
     "MCP": {
         "mcp_http_server_enable": true,
         "mcp_http_port": 4770
+    },
+    "SubSysCtrlCfg__": {
+        "heartbeat_interval": 5.0,
+        "num_missable_heartbeats": 3
     }
 }

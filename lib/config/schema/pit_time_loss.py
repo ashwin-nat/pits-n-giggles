@@ -35,9 +35,7 @@ from .diff import ConfigDiffMixin
 # Adding a new circuit: add one row. Contributing data for a game (new or existing):
 # add/fill in that game's key in the relevant rows. Nothing outside this dict changes.
 # Track names/order must stay stable since they are also the JSON keys in saved configs.
-# Inner dict is keyed by an open-ended game_key (see make_pit_time_loss_model below), so a
-# namedtuple/dataclass with fixed fields would break adding new games without code changes.
-PIT_TIME_LOSS_DEFAULTS: Dict[str, Dict[str, Optional[float]]] = {  # pylint: disable=consider-using-namedtuple-or-dataclass
+PIT_TIME_LOSS_DEFAULTS: Dict[str, Dict[str, Optional[float]]] = {
     "Melbourne":            {"f1": 18.0, "f2": None},
     "Shanghai":             {"f1": 22.0, "f2": None},
     "Suzuka":               {"f1": 22.0, "f2": None},

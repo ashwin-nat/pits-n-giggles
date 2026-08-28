@@ -29,20 +29,14 @@ Provides purpose-specific convenience methods using the WindowManager APIs.
 Inits and runs the overlay windows, while providing means of communicating with the windows.
 
 ### WindowManager API
-- `emit_event()` — send data to every overlay that handles the topic (per-topic signal
-  proxy; overlays that don't handle it are never connected, let alone woken). For a state
-  topic, publishes to that topic's mailbox slot and emits a payload-less doorbell instead
-  of carrying the data directly.
-- `unicast_event()` — send commands to a specific overlay, same per-topic proxy
-- `take_state_topic()` / `replay_state_topic()` — pull a state topic's mailbox for a given
-  overlay, coalescing (or unconditionally, for replay-on-show)
-- `send_high_freq_data()` — publish high-frequency sensor data to the per-type mailbox (skipped if unsubscribed)
-- `get_latest_hf_data()` — pull the latest published snapshot for a given HF type
+- `broadcast_data()` — send data to all overlays
+- `unicast_data()` — send commands to a specific overlay
+- `send_high_freq_data()` — send high-frequency sensor data
 - `request()` — synchronous request/response mechanism
 
 ### WindowManager Signals
-- one `_TopicSignal` per event type an overlay handles — only overlays that handle that
-  event are connected to it
+- `msg_signal`
+- `mgmt_high_freq_signal`
 - `mgmt_request_signal`
 - `mgmt_response_signal`
 - `_response_data`
@@ -69,10 +63,9 @@ for typing convenience):
 
 `BaseOverlay(QmlBridge, QObject)` owns the window and the process-facing transport:
 
-- IPC slots `_handle_cmd` / `_handle_request`, `response_signal`
+- IPC slots `_handle_cmd` / `_handle_request` / `_handle_high_freq_data`, `response_signal`
 - Recipient filtering, visibility gating, cmd-pipeline latency tracking
-- HF channel: `subscribe_hf`, `get_latest_hf_data` — pulls straight from `WindowManager`'s
-  shared mailbox (no per-sample cross-thread signal; seq/loss accounting lives at the write site)
+- HF channel: `subscribe_hf`, `_latest_hf`, seq/loss accounting, `_hf_pending`
 - Frame timer (`refresh_interval_ms`, `render_frame()`) — event-driven vs frame-driven is a
   **constructor parameter**, never a base-class choice
 - Default handlers: `__set_opacity__`, `get_window_stats`, `__set_visibility__`, etc.
@@ -100,10 +93,7 @@ Use for displays that will never live inside the MFD:
 ### MFD hosts (also subclass `BaseOverlay`)
 
 - **`MfdOverlay`** — the MFD carousel; constructs and hosts N `MfdPageBase` instances, routes
-  events to the active page via `dispatch_event`, composes `__PAGES__` stats. On every page
-  switch, replays the latest mailbox snapshot for each topic the newly activated page
-  handles (`replay_state_topic`) — the page-switch counterpart of `BaseOverlay`'s
-  replay-on-show, since the MFD window itself never goes invisible when cycling pages.
+  events to the active page via `dispatch_event`, composes `__PAGES__` stats
 - **`StandalonePageHost`** — generic host that shows exactly one `MfdPageBase` in its own
   always-on-top window (`standalone_wrapper.qml`); written once, never subclassed
 
@@ -115,13 +105,11 @@ Use for displays that will never live inside the MFD:
 events exclusively through their host calling `dispatch_event`.
 
 - `KEY`, `PAGE_QML_FILE`, `OVERLAY_ID` class attributes
-- Page-item lifecycle: `_on_page_activated`/`_on_page_deactivated` (internal state-clearers,
-  each calling the matching empty public hook), `is_active`
+- Page-item lifecycle: `_on_page_activated`, `on_page_deactivated`, `is_active`
 - `_qml_target` → `self._page_item` (the active `QQuickItem`)
 - `setup_page()` — abstract; concrete pages override with `@final`, register `@self.on_event`
   handlers, initialise business state
-- `on_page_activated()` / `on_page_deactivated()` — optional overrides; called after the
-  internal state-clearer has already run
+- `on_page_activated()` — optional override; called after the page item is live
 
 ### Concrete pages (subclass `MfdPageBase` and nothing else)
 

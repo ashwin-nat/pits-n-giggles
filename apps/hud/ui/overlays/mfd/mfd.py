@@ -22,22 +22,22 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import logging
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional, Type, final
+from typing import Any, Dict, List, Optional, final
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickItem
 
-from apps.hud.ui.overlays.base.base_overlay import BaseOverlay
-from apps.hud.ui.overlays.mfd.page_host import register_page_event_handlers
+from apps.hud.ui.overlays.base import BaseOverlay
 from apps.hud.ui.overlays.mfd.pages import (CollapsedPage, FuelInfoPage,
                                             LapTimesPage, MfdPageBase,
                                             PaceCompPage,
                                             PitRejoinPredictionPage,
                                             TrafficMonitorPage, TyreInfoPage,
                                             TyreSetsPage, WeatherForecastPage)
-from lib.config import OverlayId, PngSettings
-from lib.logger import PngLogger
+from lib.config import (MfdPageId, OverlayId, OverlayPosition, PngSettings,
+                        WeatherMFDUIType)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ class MfdOverlay(BaseOverlay):
     OVERLAY_ID = OverlayId.MFD
     QML_FILE: Path = Path(__file__).parent / "mfd.qml"
 
-    PAGES: ClassVar[List[Type[MfdPageBase]]] = [
+    PAGES: List[MfdPageBase] = [
         CollapsedPage,
         FuelInfoPage,
         LapTimesPage,
@@ -59,32 +59,82 @@ class MfdOverlay(BaseOverlay):
     ]
     PAGE_CLS_BY_KEY = {page.KEY: page for page in PAGES}
 
-    def __init__(self, settings: PngSettings, logger: PngLogger):
-        # Pages are created AFTER QML is loaded (post_setup), but from_settings() needs
-        # settings again at that point, so it's kept around until then.
-        self._settings = settings
+    def __init__(
+        self,
+        config: OverlayPosition,
+        settings: PngSettings,
+        logger: logging.Logger,
+        locked: bool,
+        opacity: int,
+        scale_factor: float,
+        windowed_overlay: bool,
+    ):
+        # Pages are created AFTER QML is loaded
         self._mfd_pages: List[MfdPageBase] = []
         self._current_index = 0
         self._init_pages_order(settings)
 
-        super().__init__(settings, logger)
+        super().__init__(
+            config=config,
+            logger=logger,
+            locked=locked,
+            opacity=opacity,
+            scale_factor=scale_factor,
+            windowed_overlay=windowed_overlay,
+            refresh_interval_ms=None, # Telemetry based refreshes
+        )
 
-        register_page_event_handlers(self, self._mfd_pages, self._active_page)
+        self._register_page_event_handlers()
         self._init_cmd_handlers()
 
-    def _active_page(self) -> Optional[MfdPageBase]:
-        """The page the carousel is currently showing, or None before pages exist."""
-        if not self._mfd_pages:
-            return None
-        return self._mfd_pages[self._current_index]
+    def _register_page_event_handlers(self):
+        """Automatically register all event handlers from all pages."""
+        # Collect all unique event types from all pages
+        all_event_types = set()
+        for page in self._mfd_pages:
+            all_event_types.update(page.get_handled_event_types())
+
+        for event_type in all_event_types:
+            self._register_broadcast_handler(event_type)
+
+        self.logger.debug("%s | Registered %d event handlers %s", self.OVERLAY_ID, len(all_event_types), all_event_types)
+
+    def _register_broadcast_handler(self, event_type: str):
+        """Register a handler that forwards an event to the active page."""
+        @self.on_event(event_type)
+        def _handler(data: Dict[str, Any]):
+            if not self._mfd_pages:
+                self.logger.warning("%s | Event '%s' received but no pages are initialised", self.OVERLAY_ID, event_type)
+                return
+            self._mfd_pages[self._current_index].dispatch_event(event_type, data)
+
+    def _get_page_kwargs(self, settings: PngSettings) -> dict:
+        """Get initialization kwargs for pages from settings."""
+        return {
+            TyreInfoPage.KEY: {
+                "tyre_wear_threshold": settings.HUD.mfd_tyre_wear_threshold,
+                "tyre_wear_rate_type": settings.HUD.mfd_tyre_wear_rate_type,
+            },
+            WeatherForecastPage.KEY: {"graph_based_ui": (
+                settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH)},
+            FuelInfoPage.KEY: {
+                "fuel_est_mode": settings.HUD.overlays_fuel_estimation_mode,
+            },
+        }
 
     def _init_pages_order(self, settings: PngSettings):
         """Initialize the order of the enabled pages in the MFD."""
-        self.enabled_pages: List[Type[MfdPageBase]] = [
-            CollapsedPage,
+        page_kwargs = self._get_page_kwargs(settings)
+        self.enabled_pages: List[Dict[str, Any]] = [
+            {"key": MfdPageId.COLLAPSED, "cls": CollapsedPage, "position": 0, "kwargs": {}},
             *[
-                self.PAGE_CLS_BY_KEY[key]
-                for key, _ in settings.HUD.mfd_settings.sorted_enabled_pages()
+                {
+                    "key": key,
+                    "cls": self.PAGE_CLS_BY_KEY[key],
+                    "position": page_settings.position,
+                    "kwargs": page_kwargs.get(key, {})
+                }
+                for key, page_settings in settings.HUD.mfd_settings.sorted_enabled_pages()
             ]
         ]
 
@@ -93,8 +143,10 @@ class MfdOverlay(BaseOverlay):
         """Init pages and QML properties after the window is ready."""
         self.root.pageLoaded.connect(self._on_page_loaded)
 
-        for cls in self.enabled_pages:
-            self._mfd_pages.append(cls.from_settings(self._settings, self.logger))
+        for page_info in self.enabled_pages:
+            cls = page_info["cls"]
+            kwargs = page_info.get("kwargs", {})
+            self._mfd_pages.append(cls(self.logger, **kwargs))
         self._current_index = 0
 
         # Set total pages in QML
@@ -105,10 +157,8 @@ class MfdOverlay(BaseOverlay):
 
     def _on_page_loaded(self, page_key: str, item: QQuickItem):
         """Called when a page is loaded completely"""
-        if not any(page.KEY == page_key for page in self._mfd_pages):
-            # Validate against the enabled pages, not the all-pages map: a valid-but-disabled
-            # key would otherwise pass this check and the sweep below would deactivate every
-            # active page while activating nothing.
+        page = self.PAGE_CLS_BY_KEY.get(page_key)
+        if not page:
             self.logger.debug("Ignoring stale load for %s", page_key)
             return
 
@@ -119,48 +169,16 @@ class MfdOverlay(BaseOverlay):
         for page in self._mfd_pages:
             if page.KEY == page_key:
                 page._on_page_activated(item)
-                self._replay_page_state(page)
             elif page.is_active:
-                page._on_page_deactivated()
-
-    def _replay_page_state(self, page: MfdPageBase) -> None:
-        """Redeliver the latest known snapshot for every topic the newly activated page
-        handles, so cycling to a page shows fresh content immediately instead of whatever
-        was last rendered (or nothing) until the next broadcast arrives.
-
-        This is the page-switch counterpart of BaseOverlay's replay-on-show (C4): the MFD
-        window itself never becomes hidden when cycling pages, so that path never fires here.
-        """
-        if self._window_manager is None:
-            return
-        for event_type in page.get_handled_event_types():
-            data = self._window_manager.replay_state_topic(self.OVERLAY_ID, event_type)
-            if data is None:
-                continue
-            try:
-                page.dispatch_event(event_type, data["__payload__"])
-            except Exception:  # pylint: disable=broad-exception-caught
-                self.logger.exception(
-                    "%s | Error replaying cached state for page '%s' topic '%s'",
-                    self.OVERLAY_ID, page.KEY, event_type,
-                )
+                page.on_page_deactivated()
 
     def _apply_current_page(self):
         """Apply the current page."""
-        assert 0 <= self._current_index < len(self._mfd_pages), (
-            f"{self.OVERLAY_ID} | current_index {self._current_index} out of range "
-            f"for {len(self._mfd_pages)} pages"
-        )
-        page = self._mfd_pages[self._current_index]
-
-        # Deactivate the outgoing page eagerly: currentPageQml flips below and the Loader
-        # destroys its item immediately, so without this the outgoing page would keep
-        # pointing at a dead item until the new page's pageLoaded fires. _on_page_loaded
-        # still sweeps as belt-and-braces for the fast-cycling race it was written for.
-        for other in self._mfd_pages:
-            if other is not page and other.is_active:
-                other._on_page_deactivated()
-
+        try:
+            page = self._mfd_pages[self._current_index]
+        except Exception as e: # pylint: disable=broad-exception-caught
+            self.logger.error("%s | Failed to apply current page: %s", self.OVERLAY_ID, e)
+            return
         qml_url = QUrl.fromLocalFile(str(page.PAGE_QML_FILE.resolve()))
 
         is_collapsed = (page.KEY == CollapsedPage.KEY)
@@ -182,11 +200,11 @@ class MfdOverlay(BaseOverlay):
         """Register command handlers."""
         @self.on_event("next_page")
         def _handle_next_page(_data: Dict[str, Any]):
-            self._step_page(1)
+            self._next_page()
 
         @self.on_event("prev_page")
         def _handle_prev_page(_data: Dict[str, Any]):
-            self._step_page(-1)
+            self._prev_page()
 
     @final
     def set_locked_state(self, locked):
@@ -196,7 +214,7 @@ class MfdOverlay(BaseOverlay):
         # width to configure.
         if not locked and self._current_index == 0:
             self.logger.debug("%s | Switching to next page before unlocking ...", self.OVERLAY_ID)
-            self._step_page(1)
+            self._next_page()
         super().set_locked_state(locked)
 
     @final
@@ -212,14 +230,36 @@ class MfdOverlay(BaseOverlay):
             "__PAGES__": page_stats,
         }
 
-    def _step_page(self, delta: int):
-        """Step the current page index by delta (wrapping) and apply it."""
+    def _next_page(self):
+        """Go to the next page in MFD overlay"""
         if not self._mfd_pages:
             self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
             return
 
         old = self._current_index
-        self._current_index = (old + delta) % len(self._mfd_pages)
+        self._current_index = (old + 1) % len(self._mfd_pages)
 
         self._apply_current_page()
         self.logger.silent("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
+
+    def _prev_page(self):
+        """Go to the previous page in MFD overlay"""
+        if not self._mfd_pages:
+            self.logger.error("%s | MFD initialised with no pages!", self.OVERLAY_ID)
+            return
+
+        old = self._current_index
+        self._current_index = (old - 1) % len(self._mfd_pages)
+
+        self._apply_current_page()
+        self.logger.silent("%s | Page %s -> %s", self.OVERLAY_ID, old, self._current_index)
+
+    @property
+    def current_page_item(self) -> Optional[QQuickItem]:
+        """Get the current page item."""
+        loader: Optional[QObject] = self.root.findChild(QObject, "pageLoader")
+        if not loader:
+            return None
+
+        item = loader.property("item")
+        return item if isinstance(item, QQuickItem) else None

@@ -27,7 +27,8 @@ from typing import Any, Dict, List, Optional, Type
 
 from lib.assets_loader import load_fonts
 from lib.child_proc_mgmt import notify_parent_init_complete
-from lib.config import OverlayPosition, PngSettings
+from lib.config import (OverlayId, OverlayPosition, PngSettings,
+                        WeatherMFDUIType)
 from lib.logger import PngLogger
 from lib.rate_limiter import RateLimiter
 from lib.wdt import WatchDogTimerSync
@@ -47,16 +48,6 @@ from .window_mgr import WindowManager
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class OverlaysMgr:
-
-    OVERLAY_CLASSES: List[Type[BaseOverlay]] = [
-        LapTimerOverlay, TimingTowerOverlay, InputTelemetryOverlay, TrackRadarOverlay,
-        HudOverlay, CircuitInfoOverlay, PuOverlay, MfdOverlay,
-    ]
-    STANDALONE_PAGE_CLASSES: List[Type[MfdPageBase]] = [
-        FuelInfoPage, TyreInfoPage, LapTimesPage, WeatherForecastPage,
-        PitRejoinPredictionPage, TyreSetsPage, PaceCompPage, TrafficMonitorPage,
-    ]
-
     def __init__(self,
                  logger: PngLogger,
                  settings: PngSettings,
@@ -90,24 +81,187 @@ class OverlaysMgr:
         self.window_manager = WindowManager(logger, notify_parent_init_complete)
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
 
-        enabled = settings.HUD.enabled_overlays_by_id()
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_lap_timer,
+            overlay_cls=LapTimerOverlay,
+            overlay_cfg=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[LapTimerOverlay.OVERLAY_ID].scale_factor,
+            min_overlay_style=settings.HUD.lap_timer_minimal,
+        )
 
-        for cls in self.OVERLAY_CLASSES:
-            if cls.OVERLAY_ID in enabled:
-                self.window_manager.register_overlay(cls.OVERLAY_ID, cls(settings, self.logger))
-            else:
-                self.logger.debug("%s overlay is disabled", cls.OVERLAY_ID)
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_timing_tower,
+            overlay_cls=TimingTowerOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[TimingTowerOverlay.OVERLAY_ID].scale_factor,
+            num_adjacent_cars=settings.HUD.timing_tower_num_adjacent_cars,
+            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+            speed_unit=settings.HUD.overlays_speed_unit,
+            tt_col_options=settings.HUD.timing_tower_col_options,
+            relative_best_last_lap=settings.HUD.timing_tower_relative_best_last_lap,
+            combined_tl_pens=settings.HUD.timing_tower_combined_tl_pens,
+        )
 
-        for page_cls in self.STANDALONE_PAGE_CLASSES:
-            if page_cls.OVERLAY_ID in enabled:
-                page = page_cls.from_settings(settings, self.logger)
-                host = StandalonePageHost(
-                    page, settings, self.logger,
-                    show_title_bar=page_cls.standalone_show_title(settings),
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_input_overlay,
+            overlay_cls=InputTelemetryOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[InputTelemetryOverlay.OVERLAY_ID].scale_factor,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            window_duration_sec=settings.HUD.input_overlay_buffer_duration_sec
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_track_radar_overlay,
+            overlay_cls=TrackRadarOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[TrackRadarOverlay.OVERLAY_ID].scale_factor,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            idle_opacity=settings.HUD.track_radar_idle_opacity,
+            radar_range_m=settings.HUD.track_radar_range_m,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_hud_overlay,
+            overlay_cls=HudOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[HudOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[HudOverlay.OVERLAY_ID].scale_factor,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+            speed_unit=settings.HUD.overlays_speed_unit,
+            fuel_estimation_mode=settings.HUD.overlays_fuel_estimation_mode,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_circuit_info,
+            overlay_cls=CircuitInfoOverlay,
+            opacity=settings.HUD.overlays_opacity,
+            overlay_cfg=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID],
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[CircuitInfoOverlay.OVERLAY_ID].scale_factor,
+            circuit_info_length=settings.HUD.circuit_info_length,
+            refresh_interval_ms=settings.Display.realtime_overlay_update_interval_ms,
+        )
+
+        # ---- MFD pages (standalone) ----
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_fuel_info,
+            page_cls=FuelInfoPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.FUEL_INFO],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.FUEL_INFO].scale_factor,
+            show_title_bar=settings.HUD.fuel_info_show_title,
+            fuel_est_mode=settings.HUD.overlays_fuel_estimation_mode,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_tyre_info,
+            page_cls=TyreInfoPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TYRE_INFO],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TYRE_INFO].scale_factor,
+            show_title_bar=settings.HUD.tyre_info_show_title,
+            tyre_wear_threshold=settings.HUD.mfd_tyre_wear_threshold,
+            tyre_wear_rate_type=settings.HUD.mfd_tyre_wear_rate_type,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_lap_times,
+            page_cls=LapTimesPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.LAP_TIMES],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.LAP_TIMES].scale_factor,
+            show_title_bar=settings.HUD.lap_times_show_title,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_weather,
+            page_cls=WeatherForecastPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.WEATHER],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.WEATHER].scale_factor,
+            graph_based_ui=(settings.HUD.mfd_weather_page_ui_type == WeatherMFDUIType.GRAPH),
+            show_title_bar=settings.HUD.weather_show_title,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_pit_rejoin,
+            page_cls=PitRejoinPredictionPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.PIT_REJOIN],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.PIT_REJOIN].scale_factor,
+            show_title_bar=settings.HUD.pit_rejoin_show_title,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_tyre_sets,
+            page_cls=TyreSetsPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TYRE_SETS],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TYRE_SETS].scale_factor,
+            show_title_bar=settings.HUD.tyre_sets_show_title,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_pace_comp,
+            page_cls=PaceCompPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.PACE_COMP],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.PACE_COMP].scale_factor,
+            show_title_bar=settings.HUD.pace_comp_show_title,
+        )
+
+        self._register_page_host_if_enabled(
+            enabled=settings.HUD.show_traffic_monitor,
+            page_cls=TrafficMonitorPage,
+            overlay_cfg=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[OverlayId.TRAFFIC_MONITOR].scale_factor,
+            show_title_bar=settings.HUD.traffic_monitor_show_title,
+        )
+
+        self._register_overlay_if_enabled(
+            enabled=settings.HUD.show_pu_info,
+            overlay_cls=PuOverlay,
+            overlay_cfg=settings.HUD.layout[PuOverlay.OVERLAY_ID],
+            opacity=settings.HUD.overlays_opacity,
+            windowed_overlay=settings.HUD.use_windowed_overlays,
+            scale_factor=settings.HUD.layout[PuOverlay.OVERLAY_ID].scale_factor,
+            show_harvest_info=settings.HUD.pu_display_harvest_info,
+        )
+
+        if settings.HUD.show_mfd:
+            self.window_manager.register_overlay(
+                MfdOverlay.OVERLAY_ID,
+                MfdOverlay(
+                    settings.HUD.layout[MfdOverlay.OVERLAY_ID],
+                    settings,
+                    self.logger,
+                    locked=True,
+                    opacity=settings.HUD.overlays_opacity,
+                    scale_factor=settings.HUD.layout[MfdOverlay.OVERLAY_ID].scale_factor,
+                    windowed_overlay=settings.HUD.use_windowed_overlays
                 )
-                self.window_manager.register_overlay(page_cls.OVERLAY_ID, host)
-            else:
-                self.logger.debug("%s overlay is disabled", page_cls.OVERLAY_ID)
+            )
+        else:
+            self.logger.debug("MFD overlay is disabled")
 
         # The enabled set is the first thing needed to make sense of a user's bug report,
         # so it goes to the log file as one line rather than being spread over per-overlay
@@ -132,8 +286,6 @@ class OverlaysMgr:
             self.wdt.stop()
         self.window_manager.stop()
 
-    # ------------------------------------- CONTROL REQUESTS -----------------------------------------------------------
-
     def get_overlay_stats(self) -> Dict[str, Any]:
         """Get current stats for all overlays
 
@@ -153,14 +305,14 @@ class OverlaysMgr:
         """
         return self.window_manager.get_stats()
 
-    # -------------------------------------- DATA EVENTS ---------------------------------------------------------------
+    # -------------------------------------- DATA HANDLERS -------------------------------------------------------------
 
     def race_table_update(self, data: Dict[str, Any]):
         """Handle race table update"""
         if self.wdt:
             self.wdt.kick()
         self._prep_race_table_data(data)
-        self.window_manager.emit_event('race_table_update', data)
+        self.window_manager.broadcast_data('race_table_update', data)
         self._handle_in_menu_status(data)
 
     def stream_overlays_update(self, data):
@@ -169,18 +321,18 @@ class OverlaysMgr:
         self._motion_update(data)
         self._hud_overlay_update(data)
         if self.rate_limiter.allows("stream-overlay-update"):
-            self.window_manager.emit_event('stream_overlay_update', data)
+            self.window_manager.broadcast_data('stream_overlay_update', data)
 
-    # -------------------------------------- CONTROL EVENTS ------------------------------------------------------------
+    # -------------------------------------- CONTROL HANDLERS ----------------------------------------------------------
 
     def toggle_overlays_visibility(self, oid: Optional[str] = ''):
         """Toggle overlays visibility"""
 
         self.logger.silent("Toggling overlays visibility. oid=%s", oid or "(all)")
         if oid:
-            self.window_manager.unicast_event(oid, '__toggle_visibility__', {}, high_prio=True)
+            self.window_manager.unicast_data(oid, '__toggle_visibility__', {}, high_prio=True)
         else:
-            self.window_manager.emit_event('__toggle_visibility__', {}, high_prio=True)
+            self.window_manager.broadcast_data('__toggle_visibility__', {}, high_prio=True)
 
     def on_locked_state_change(self, args: Dict[str, bool]):
         """Handle locked state change."""
@@ -202,7 +354,7 @@ class OverlaysMgr:
         # 2. Broadcast locked state
         # --------------------------------------------------
         try:
-            self.window_manager.emit_event("__set_locked_state__", args, high_prio=True)
+            self.window_manager.broadcast_data("__set_locked_state__", args, high_prio=True)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception("Failed to broadcast locked state")
             rsp["status"] = "error"
@@ -248,22 +400,22 @@ class OverlaysMgr:
     def set_overlays_opacity(self, opacity: int):
         """Set overlays opacity"""
         self.logger.debug("Setting overlays opacity to %s%%", opacity)
-        self.window_manager.emit_event('__set_opacity__', {'opacity': opacity}, high_prio=True)
+        self.window_manager.broadcast_data('__set_opacity__', {'opacity': opacity}, high_prio=True)
 
     def next_page(self):
         """Go to the next page in MFD overlay"""
         self.logger.silent("MFD next page requested")
-        self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'next_page', {})
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'next_page', {})
 
     def prev_page(self):
         """Go to the previous page in MFD overlay"""
         self.logger.silent("MFD prev page requested")
-        self.window_manager.unicast_event(MfdOverlay.OVERLAY_ID, 'prev_page', {})
+        self.window_manager.unicast_data(MfdOverlay.OVERLAY_ID, 'prev_page', {})
 
     def mfd_interact(self):
         """Interact with MFD overlay"""
         self.logger.silent("MFD interaction requested")
-        self.window_manager.emit_event('mfd_interact', {})
+        self.window_manager.broadcast_data('mfd_interact', {})
 
     def set_overlays_layout(self, layout: Dict[str, Dict[str, int]]) -> Dict[str, Any]:
         """Apply overlays layout to specified overlays
@@ -287,7 +439,7 @@ class OverlaysMgr:
 
         for overlay_id, overlay_layout in layout.items():
             try:
-                self.window_manager.unicast_event(
+                self.window_manager.unicast_data(
                     overlay_id,
                     "__set_config__",
                     overlay_layout,
@@ -310,11 +462,11 @@ class OverlaysMgr:
         """Set overlays scale factor to specified overlay"""
 
         self.logger.debug("Setting overlay %s scale factor to %s", oid, scale_factor)
-        self.window_manager.unicast_event(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
+        self.window_manager.unicast_data(oid, '__set_scale_factor__', {'scale_factor': scale_factor})
 
     def set_track_radar_idle_opacity(self, opacity: int):
         self.logger.debug("Setting track radar idle opacity to %s%%", opacity)
-        self.window_manager.unicast_event(
+        self.window_manager.unicast_data(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_idle_opacity',
             data={'opacity': opacity},
@@ -323,7 +475,7 @@ class OverlaysMgr:
 
     def set_track_radar_range(self, range_m: float):
         self.logger.debug("Setting track radar range to %sm", range_m)
-        self.window_manager.unicast_event(
+        self.window_manager.unicast_data(
             overlay_id=TrackRadarOverlay.OVERLAY_ID,
             event='set_track_radar_range',
             data={'range_m': range_m},
@@ -332,7 +484,7 @@ class OverlaysMgr:
 
     def set_circuit_info_length(self, length: int):
         self.logger.debug("Setting circuit info length to %spx", length)
-        self.window_manager.unicast_event(
+        self.window_manager.unicast_data(
             overlay_id=CircuitInfoOverlay.OVERLAY_ID,
             event='set_circuit_info_length',
             data={'length': length},
@@ -354,26 +506,84 @@ class OverlaysMgr:
         self.logger.debug("Requesting window stats for %s", overlay_id)
         return self.window_manager.request(overlay_id, "get_window_stats", timeout_ms=timeout_ms)
 
+    def _register_overlay_if_enabled(
+        self,
+        *,
+        enabled: bool,
+        overlay_cls: BaseOverlay,
+        overlay_cfg: OverlayPosition,
+        opacity: float,
+        windowed_overlay: bool,
+        **overlay_kwargs
+    ):
+        if not enabled:
+            self.logger.debug("%s overlay is disabled", overlay_cls.OVERLAY_ID)
+            return
+
+        self.window_manager.register_overlay(
+            overlay_cls.OVERLAY_ID,
+            overlay_cls(
+                overlay_cfg,
+                self.logger,
+                locked=True,
+                opacity=opacity,
+                windowed_overlay=windowed_overlay,
+                **overlay_kwargs
+            )
+        )
+
+    def _register_page_host_if_enabled(
+        self,
+        *,
+        enabled: bool,
+        page_cls: Type[MfdPageBase],
+        overlay_cfg: OverlayPosition,
+        opacity: float,
+        windowed_overlay: bool,
+        scale_factor: float,
+        show_title_bar: bool,
+        **page_kwargs
+    ):
+        """Register an MFD page as a standalone overlay window via StandalonePageHost."""
+        if not enabled:
+            self.logger.debug("%s overlay is disabled", page_cls.OVERLAY_ID)
+            return
+
+        page = page_cls(self.logger, **page_kwargs)
+        self.window_manager.register_overlay(
+            page_cls.OVERLAY_ID,
+            StandalonePageHost(
+                page,
+                overlay_cfg,
+                self.logger,
+                locked=True,
+                opacity=opacity,
+                scale_factor=scale_factor,
+                windowed_overlay=windowed_overlay,
+                show_title_bar=show_title_bar,
+            )
+        )
+
     def _input_telemetry_update(self, data: Dict[str, Any]):
         """Send input telemetry data to input telemetry overlay."""
-        self.window_manager.send_high_freq_data(InputTelemetryData, data)
+        self.window_manager.send_high_freq_data(InputTelemetryData.from_json(data))
 
     def _motion_update(self, data: Dict[str, Any]):
         """Send motion data to motion overlay."""
-        self.window_manager.send_high_freq_data(LiveSessionMotionInfo, data)
+        self.window_manager.send_high_freq_data(LiveSessionMotionInfo.from_json(data))
 
     def _hud_overlay_update(self, data: Dict[str, Any]):
         """Send HUD data to HUD overlay."""
-        self.window_manager.send_high_freq_data(HudOverlayData, data)
+        self.window_manager.send_high_freq_data(HudOverlayData.from_json(data))
 
     def _set_overlays_visibility(self, visible: bool):
-        self.window_manager.emit_event("__set_visibility__", {"visible": visible}, high_prio=True)
+        self.window_manager.broadcast_data("__set_visibility__", {"visible": visible}, high_prio=True)
 
     def _set_telemetry_active(self, active: bool):
         if active == self._telemetry_active:
             return
         self._telemetry_active = active
-        self.window_manager.emit_event("__set_telemetry_active__", {"active": active}, high_prio=True)
+        self.window_manager.broadcast_data("__set_telemetry_active__", {"active": active}, high_prio=True)
 
     def _wdt_status_callback(self, active: bool):
         """Watchdog status callback. Tracks local WDT (data arriving from core)."""
