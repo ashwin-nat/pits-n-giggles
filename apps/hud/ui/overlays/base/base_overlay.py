@@ -142,6 +142,7 @@ class BaseOverlay(QmlBridge, QObject):
         self._root: Optional[QQuickWindow] = None
         self._unlock_overlay: Optional[QQuickItem] = None
         self._fade_anim = None
+        self._fade_out_connected: bool = False
         self._pending_change_ns: Optional[int] = None  # newest QML content change not yet presented
         self._display_period_ns: int = _DEFAULT_DISPLAY_PERIOD_NS
         self._drag_pos: Optional[QPoint] = None
@@ -401,16 +402,19 @@ class BaseOverlay(QmlBridge, QObject):
             # Interrupt any in-flight fade so overlapping toggles (e.g. rapid button
             # presses) can't leave two animations racing on the same opacity property.
             self._fade_anim.stop()
-            try:
-                self._fade_anim.finished.disconnect()
-            except RuntimeError:
-                pass  # no slot was connected (e.g. previous call was a fade-in)
+            if self._fade_out_connected:
+                # Tracked explicitly rather than disconnect()-and-catch: PySide6 answers a
+                # no-op disconnect with a RuntimeWarning, not a RuntimeError, so the except
+                # never fired and every fade-in after a fade-in logged a spurious warning.
+                self._fade_anim.finished.disconnect(self._on_fade_out_finished)
+                self._fade_out_connected = False
 
         self._fade_anim.setStartValue(self._root.opacity())
         self._fade_anim.setEndValue(end)
 
         if not show:
             self._fade_anim.finished.connect(self._on_fade_out_finished)
+            self._fade_out_connected = True
         else:
             self._root.setVisible(True)
 
@@ -705,23 +709,6 @@ class BaseOverlay(QmlBridge, QObject):
     def _track_cmd_pipeline_latency(self, event_type: str, sent_ts_ns: int, recv_ts_ns: int) -> None:
         self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", "__TOTAL__", sent_ts_ns, recv_ts_ns)
         self._stats.track_packet_latency("__CMD_PIPELINE_LATENCY__", event_type, sent_ts_ns, recv_ts_ns)
-
-    # ------------------------------------------------------------------
-    # Stats (extends QmlBridge.get_stats)
-    # ------------------------------------------------------------------
-    def get_stats(self) -> dict:
-        """Get overlay runtime stats."""
-        stats = self._stats.get_stats()
-        if self._root and self.is_animation_overlay:
-            # Animation overlays must define these properties
-            stats["__FRAMES_RENDERED__"] = {
-                "type":               "__FRAMES_RENDERED__",
-                "fps":                self._root.property("faFps"),
-                "frame_time_ms":      self._root.property("faFrameTimeMs"),
-                "smooth_frame_time_ms": self._root.property("faSmoothFrameTimeMs"),
-                "frame_count":        self._root.property("faFrameCount"),
-            }
-        return stats
 
     # ------------------------------------------------------------------
     # Default handlers

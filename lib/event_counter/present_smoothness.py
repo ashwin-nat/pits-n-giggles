@@ -50,12 +50,16 @@ _MIN_BOUNDARY_NS: int = 100_000_000  # 100 ms
 class PresentSmoothnessStat(Stat):
     """Rendering smoothness tracker for on-demand presented frames.
 
-    Presented frames carry no rate contract - a window renders only when its
-    content changes - so raw intervals are only meaningful inside an "active
-    burst" of continuous rendering. A gap longer than the idle boundary
-    resets the baseline and records nothing: idle time is on-demand rendering
-    working, not jank. Within a burst, an interval longer than
-    _HITCH_FACTOR x display period counts as a hitch.
+    An overlay only draws when something changes, so it has no steady frame
+    rate to measure against. Gaps between frames are therefore only worth
+    timing while the overlay is actually drawing - a run of back-to-back
+    frames, called a burst here.
+
+    A gap bigger than the idle boundary means the overlay simply had nothing
+    to draw. That is the design working, not a stutter, so the gap is thrown
+    away and timing restarts from the next frame. Inside a burst, a gap more
+    than _HITCH_FACTOR times the display period means a frame the viewer would
+    have seen stutter, and is counted as a hitch.
 
     The display period is supplied per observation so a window that migrates
     between monitors with different refresh rates stays correctly calibrated.
