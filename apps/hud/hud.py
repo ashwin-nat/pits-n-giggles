@@ -24,8 +24,10 @@
 
 import argparse
 import ctypes
+import faulthandler
 import logging
 import sys
+from pathlib import Path
 
 from lib.child_proc_mgmt import report_pid_from_child
 from lib.config import PngSettings, load_config_from_json
@@ -38,6 +40,36 @@ from .listener.task import run_hud_update_threads
 from .ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+# Held open for the lifetime of the process: faulthandler writes to this file's
+# descriptor and must not have it closed out from under it.
+_STACK_DUMP_FILE = None
+
+def _enable_stack_dumps(logger: logging.Logger, interval_s: int = 5) -> None:
+    """Debug builds only: dump every thread's stack to a file on a timer.
+
+    A deadlock that involves the GIL cannot be diagnosed from Python. The logger is
+    stuck behind the same lock, and so is any watchdog written as a Python thread.
+    faulthandler's timer runs in a C thread and dumps without acquiring the GIL, so
+    it keeps firing while the interpreter is wedged.
+
+    Dumps are unconditional and untimestamped: dump N lands roughly interval_s * N
+    seconds after start, which is enough to line them up against png.log.
+    """
+    global _STACK_DUMP_FILE # pylint: disable=global-statement
+
+    path = Path("png_hud_stacks.log")
+    try:
+        # Not closed deliberately - see _STACK_DUMP_FILE.
+        _STACK_DUMP_FILE = open(path, "w", encoding="utf-8") # pylint: disable=consider-using-with
+    except OSError as e:
+        logger.warning("Could not open %s for stack dumps: %s", path, e)
+        return
+
+    # enable() covers hard crashes; dump_traceback_later() covers hangs.
+    faulthandler.enable(file=_STACK_DUMP_FILE, all_threads=True)
+    faulthandler.dump_traceback_later(interval_s, repeat=True, file=_STACK_DUMP_FILE)
+    logger.info("Debug mode: dumping thread stacks every %ss to %s", interval_s, path.resolve())
 
 def parseArgs() -> argparse.Namespace:
     """Parse the command line args and perform validation
@@ -95,6 +127,8 @@ def entry_point():
     report_pid_from_child()
     args = parseArgs()
     png_logger = get_logger("hud", args.debug, jsonl=True)
+    if args.debug:
+        _enable_stack_dumps(png_logger)
     configs = load_config_from_json(args.config_file, png_logger)
     try:
         main(
