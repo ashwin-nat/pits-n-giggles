@@ -45,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Force debug logging on in the packaged app (it runs as if launched with --debug)",
     )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Report the bare meta.py version. Without it the build is stamped with the "
+             "commit it was made from, so non-release builds are identifiable.",
+    )
     return parser.parse_args()
 
 def main():
@@ -94,11 +100,17 @@ def main():
         "--noconfirm",
         spec_path,
     ]
+    # PyInstaller splits its command line on `--` and hands the rest to the spec file as
+    # sys.argv[1:]. Renamed on the way through because PyInstaller has its own --debug.
+    spec_args = []
     if args.debug:
-        # PyInstaller splits its command line on `--` and hands the rest to the spec
-        # file as sys.argv[1:]. png.spec looks for --force-debug there.
-        pyinstaller_cmd += ["--", "--force-debug"]
+        spec_args.append("--force-debug")
         print("build.py: --debug given; the packaged app will always run with --debug.")
+    if args.release:
+        spec_args.append("--release-build")
+        print("build.py: --release given; the build reports the bare meta.py version.")
+    if spec_args:
+        pyinstaller_cmd += ["--", *spec_args]
 
     subprocess.run(pyinstaller_cmd, check=True)
 

@@ -190,8 +190,12 @@ jobs:
       # `--debug` bakes the flag into the binary: the launcher and every subsystem it
       # spawns then log at DEBUG level without the user passing anything. It changes
       # nothing else - heartbeat recovery behaves as it does in a stable build.
+      #
+      # `--release` is unconditional here: this is the only workflow that publishes,
+      # and it is what keeps the reported version equal to the tag. Every other build
+      # gets the commit appended so it cannot be mistaken for a release.
       - name: Build with PyInstaller
-        run: poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
+        run: poetry run python scripts/build.py --release ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
       - name: Smoke test

@@ -61,6 +61,32 @@ def get_version(use_meta_version: bool = False) -> str:
     return f"dev_{branch_name}_{latest_commit}_{working_tree_state}"
 
 
+def get_build_version(release_mode: bool = False) -> str:
+    """Build the version string to bake into a packaged app.
+
+    A release build reports the meta.py version and nothing else, so the string a user
+    quotes back matches the release tag exactly. Every other build appends the commit it
+    was made from, as a PEP 440 local segment so version comparisons still work.
+
+    Without this, a build off any branch claimed to be the release: three different 4.4.0
+    betas plus a handful of one-off CI builds all self-reported "4.4.0-beta.2", and a bug
+    report could not be tied to the code that produced it.
+
+    Args:
+        release_mode (bool): True for an actual tagged release build.
+
+    Returns:
+        str: Version string, e.g. "4.4.0" or "4.4.0+1df30cf" or "4.4.0+1df30cf.dirty".
+    """
+
+    if release_mode:
+        return APP_VERSION
+
+    _, latest_commit, working_tree_state = _get_git_metadata()
+    suffix = f"{latest_commit}.dirty" if working_tree_state == "dirty" else latest_commit
+    return f"{APP_VERSION}+{suffix}"
+
+
 def _get_git_metadata() -> tuple[str, str, str]:
     """Get branch, latest commit hash and working tree state from git.
 

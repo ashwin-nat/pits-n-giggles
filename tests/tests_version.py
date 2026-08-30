@@ -30,7 +30,10 @@ from requests.exceptions import RequestException
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.version import get_version, is_update_available
+import pytest
+from packaging import version as pkg_version
+
+from lib.version import get_build_version, get_version, is_update_available
 from meta.meta import APP_VERSION
 
 from tests_base import F1TelemetryUnitTestsBase
@@ -133,3 +136,42 @@ class TestGetVersion(F1TelemetryUnitTestsBase):
     @patch.dict(os.environ, {'PNG_VERSION': '3.0.0'})
     def test_env_value_takes_priority_over_use_meta_version(self):
         self.assertEqual(get_version(use_meta_version=True), '3.0.0')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_release_build_reports_the_bare_meta_version():
+    # The whole point of release mode: what the user quotes has to equal the tag.
+    with patch("lib.version._get_git_metadata") as mock_git_metadata:
+        assert get_build_version(release_mode=True) == APP_VERSION
+    mock_git_metadata.assert_not_called()
+
+
+@pytest.mark.parametrize("tree_state, expected_suffix", [
+    ("clean", "abc1234"),
+    ("unknown", "abc1234"),
+    ("dirty", "abc1234.dirty"),
+])
+def test_non_release_build_appends_the_commit(tree_state, expected_suffix):
+    with patch("lib.version._get_git_metadata", return_value=("main", "abc1234", tree_state)):
+        assert get_build_version() == f"{APP_VERSION}+{expected_suffix}"
+
+
+def test_non_release_build_survives_git_being_unavailable():
+    # _get_git_metadata degrades to "unknown" rather than raising; the build must not die
+    # just because it ran outside a checkout.
+    with patch("lib.version._get_git_metadata", return_value=("unknown", "unknown", "unknown")):
+        assert get_build_version() == f"{APP_VERSION}+unknown"
+
+
+@pytest.mark.parametrize("tree_state", ["clean", "dirty"])
+def test_build_version_stays_comparable(tree_state):
+    # is_update_available parses the running version, so a dev build must not break the
+    # update check. A PEP 440 local segment is ignored when ordering against a release.
+    with patch("lib.version._get_git_metadata", return_value=("main", "abc1234", tree_state)):
+        dev = pkg_version.parse(get_build_version())
+    assert dev.base_version == pkg_version.parse(APP_VERSION).base_version
+    assert not is_update_available(
+        get_build_version(release_mode=True),
+        [{"prerelease": False, "tag_name": f"v{APP_VERSION}"}],
+    )
