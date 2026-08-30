@@ -60,9 +60,9 @@ PROJECT_ROOT = os.path.abspath(".")
 # flag to every subsystem it spawns. When this is on, the runtime hook below appends --debug to
 # sys.argv at startup, so the packaged app behaves as if the user had passed it.
 #
-# Side effect worth knowing: with debug mode on, subsystems no longer self-terminate after missing
-# heartbeats (see apps/launcher/subsystems/base_mgr.py), so a wedged child process will linger
-# instead of exiting.
+# Debug mode changes logging only. Heartbeat handling is unaffected: a subsystem that stops
+# answering is still recovered (see apps/launcher/subsystems/base_mgr.py). Suppressing that is
+# a separate, dev-only opt-in, --no-heartbeat-stop, which no build ever bakes in.
 # --------------------------------------------------------------------------------------------------
 
 FORCE_DEBUG_MODE = "--force-debug" in sys.argv[1:]

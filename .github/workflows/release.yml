@@ -11,9 +11,9 @@
 #     Builds with `scripts/build.py --debug`, which bakes the --debug flag into the
 #     binary: the launcher and every subsystem it spawns log at DEBUG level without
 #     the user passing anything. Intended for betas/RCs where you want diagnostics
-#     from testers. Leave it off for stable releases — besides the log volume, debug
-#     mode stops subsystems self-terminating after missed heartbeats, so a wedged
-#     child process lingers instead of exiting.
+#     from testers. Leave it off for stable releases: the log volume is significant
+#     and there is a small performance cost. Heartbeat handling is unaffected, so a
+#     debug build still recovers a wedged subsystem the same way a stable one does.
 #
 # The workflow will:
 #   - Auto-detect the single existing draft release (fails loudly if 0 or >1).
@@ -188,8 +188,8 @@ jobs:
         shell: bash
 
       # `--debug` bakes the flag into the binary: the launcher and every subsystem it
-      # spawns then log at DEBUG level without the user passing anything. Note that
-      # debug mode also stops subsystems self-terminating on missed heartbeats.
+      # spawns then log at DEBUG level without the user passing anything. It changes
+      # nothing else - heartbeat recovery behaves as it does in a stable build.
       - name: Build with PyInstaller
         run: poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
