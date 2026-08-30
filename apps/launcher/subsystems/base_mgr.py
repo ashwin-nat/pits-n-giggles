@@ -607,6 +607,22 @@ class PngAppMgrBase(QObject):
         # Attempt restart. start() takes the state out of RESTARTING, on both its paths.
         self.start(f"Auto-restart attempt {self._restart_count}")
 
+    def _restart_after_hang(self):
+        """Restart a subsystem that stopped answering heartbeats.
+
+        Separate from _auto_restart, which handles a process that has already exited. Here
+        the child is still alive but wedged, so it cannot answer a graceful shutdown and has
+        to be killed first - restart() does that through _do_stop's terminate fallback before
+        bringing it back up.
+        """
+        self._restart_count += 1
+        self._lifecycle_stats.track_event("lifecycle", "auto_restart")
+        self.warning_log(
+            f"{self.DISPLAY_NAME} not responding - auto-restart attempt "
+            f"{self._restart_count}/{self.max_restart_attempts}"
+        )
+        self.restart("Heartbeat failure")
+
     def _capture_output(self, run: ProcessRun):
         """Capture subprocess output and react to structured launcher tokens.
 
@@ -810,7 +826,20 @@ class PngAppMgrBase(QObject):
                     f"{self.DISPLAY_NAME} missed {failed_count} heartbeats, stopping..."
                 )
                 self._lifecycle_stats.track_event("heartbeat", "fail_stop")
-                self.stop("Heartbeat failure")
+                # A hang is the case a restart helps most: unlike a crash the user gets no
+                # signal at all, just a window that quietly stopped updating. Gated the same
+                # way as a crash restart, so a subsystem that wedges repeatedly gives up
+                # rather than looping. There is no exit code to consult - the process has not
+                # exited - so UNKNOWN stands in, which is the same reason a crash with an
+                # unrecognised code uses and is marked restartable.
+                if self._should_auto_restart(PNG_ERROR_CODE_UNKNOWN):
+                    threading.Thread(
+                        target=self._restart_after_hang,
+                        daemon=True,
+                        name=f"{self.DISPLAY_NAME}-hang-restart"
+                    ).start()
+                else:
+                    self.stop("Heartbeat failure")
                 break
 
             run.stop_heartbeat.wait(self.heartbeat_interval)
