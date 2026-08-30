@@ -264,13 +264,11 @@ class BaseOverlay(QmlBridge, QObject):
         if self._refresh_interval_ms is not None:
             self._frame_timer.start(self._refresh_interval_ms)
 
-        # Present stats: the timestamp must be captured at emission on the render
-        # thread - the DirectConnection handler touches nothing but the emit; only
-        # the value crosses to the GUI thread. Every overlay reports present
-        # latency; only animation overlays report smoothness (see _on_present).
-        self._root.frameSwapped.connect(
-            self._on_frame_swapped_render_thread, Qt.ConnectionType.DirectConnection)
-        self._present_ts_signal.connect(self._on_present)
+        # DELIBERATELY NOT CONNECTED: frameSwapped with a DirectConnection ran this
+        # class's Python on Qt's render thread, which had to take the GIL to get in.
+        # _on_fade_out_finished holds the GIL while setVisible(False) blocks the GUI
+        # thread waiting on that same render thread - a deadlock that wedged the HUD.
+        # Present stats are off as a result; _on_present is now unreachable.
         self._root.screenChanged.connect(self._on_screen_changed)
         self._on_screen_changed(self._root.screen())
 
@@ -288,9 +286,16 @@ class BaseOverlay(QmlBridge, QObject):
             self.set_visibility(False)
 
     def toggle_visibility(self):
-        """Common handler for toggling visibility."""
+        """Common handler for toggling visibility.
+
+        Keyed off _user_hidden (intent) rather than get_visibility() (the window's
+        current physical state). A fade-out only calls setVisible(False) when it
+        completes, so for the 250ms it runs the window still reports visible - and
+        presses arriving inside that window would all pick the fade-out branch
+        again, leaving the overlay stuck hidden until the user stopped pressing.
+        """
         self.logger.debug('%s | Toggling visibility', self.OVERLAY_ID)
-        if self.get_visibility():
+        if not self._user_hidden:
             self.logger.silent('%s | Fading out overlay', self.OVERLAY_ID)
             self.set_visibility(False)
             self._user_hidden = True
@@ -633,16 +638,6 @@ class BaseOverlay(QmlBridge, QObject):
     def _reset_frame_timing(self) -> None:
         """Reset the frame timing baseline so hidden gaps are excluded from metrics."""
         self._stats.reset_frame_timing("__FRAMES_PRODUCER__", "__FRAME__")
-
-    def _on_frame_swapped_render_thread(self) -> None:
-        """RENDER-THREAD hook: capture the presentation timestamp at emission.
-
-        Must touch nothing but the emit - the value is marshaled to the GUI
-        thread via _present_ts_signal, so all stat state stays GUI-thread-only.
-        Capturing here (not in a queued slot) keeps intervals measuring actual
-        presentation cadence rather than GUI event-queue drain.
-        """
-        self._present_ts_signal.emit(perf_counter_ns())
 
     @Slot(object)
     def _on_present(self, swap_ts_ns: int) -> None:
