@@ -152,7 +152,8 @@ class PngLauncherWindow(QMainWindow):
                  debug_mode: bool,
                  replay_mode: bool,
                  integration_test_mode: bool,
-                 coverage_enabled: bool):
+                 coverage_enabled: bool,
+                 no_heartbeat_stop: bool = False):
 
         self.app = QApplication(sys.argv)
         super().__init__()
@@ -239,7 +240,8 @@ class PngLauncherWindow(QMainWindow):
             args=args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
-            integration_test_mode=integration_test_mode
+            integration_test_mode=integration_test_mode,
+            no_heartbeat_stop=no_heartbeat_stop
         )
 
         self.subsystems: List[PngAppMgrBase] = [

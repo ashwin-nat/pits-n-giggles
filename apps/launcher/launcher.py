@@ -101,6 +101,15 @@ def parse_args() -> argparse.Namespace:
         help="Enable coverage mode"
     )
 
+    # Dev aid: sitting on a breakpoint stops a subsystem answering heartbeats, and it
+    # would otherwise be stopped out from under the debugger. Never for shipped builds -
+    # it also disables recovery from a genuinely hung subsystem.
+    parser.add_argument(
+        "--no-heartbeat-stop",
+        action="store_true",
+        help="Do not stop a subsystem that misses heartbeats (for debugging; disables hang recovery)"
+    )
+
     return parser.parse_args()
 
 def resource_path(relative_path):
@@ -243,7 +252,8 @@ def entry_point() -> None:
         debug_mode=args.debug,
         replay_mode=args.replay_server,
         integration_test_mode=args.ipc_port is not None,
-        coverage_enabled=args.coverage
+        coverage_enabled=args.coverage,
+        no_heartbeat_stop=args.no_heartbeat_stop
     )
 
     ipc = None

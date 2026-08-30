@@ -150,6 +150,10 @@ class PngAppMgrConfig:
     max_restart_attempts: int = 3
     restart_delay: float = 2.0
     integration_test_mode: bool = False
+    # Dev aid only. A subsystem paused on a breakpoint stops answering heartbeats and
+    # would otherwise be stopped out from under the debugger. Never set for a shipped
+    # build: it also disables recovery from a genuinely hung subsystem.
+    no_heartbeat_stop: bool = False
 
 class PngAppMgrBase(QObject):
     """Base class for managing subsystem processes"""
@@ -235,6 +239,7 @@ class PngAppMgrBase(QObject):
         self.window = config.window
         self.args = config.args or []
         self.debug_mode = config.debug_mode
+        self.no_heartbeat_stop = config.no_heartbeat_stop
         self.coverage_enabled = config.coverage_enabled
         self.curr_settings = config.settings
         self.integration_test_mode = config.integration_test_mode
@@ -766,7 +771,9 @@ class PngAppMgrBase(QObject):
                 self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat exiting, subsystem is shutting down.")
                 break
 
-            self.debug_log(f"{self.DISPLAY_NAME}: Sending heartbeat to port {run.ipc_port}...")
+            # Only transitions are logged. A healthy subsystem beats every few seconds, and
+            # logging each one buried everything else - counts are in _lifecycle_stats if the
+            # totals are ever wanted.
             port = run.ipc_port
 
             if not port:
@@ -778,20 +785,27 @@ class PngAppMgrBase(QObject):
                 try:
                     rsp = IpcClientSync(port, self.heartbeat_timeout_ms).heartbeat()
                     if rsp.get("status") == "success":
+                        if failed_count:
+                            self.debug_log(
+                                f"{self.DISPLAY_NAME}: Heartbeat recovered after {failed_count} miss(es)"
+                            )
                         failed_count = 0
                         self._lifecycle_stats.track_event("heartbeat", "success")
-                        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat success response: {rsp} on port {port}")
                     else:
                         failed_count += 1
                         self._lifecycle_stats.track_event("heartbeat", "miss")
-                        self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat failed with response: {rsp} on port {port}")
+                        self.debug_log(
+                            f"{self.DISPLAY_NAME}: Heartbeat miss {failed_count} on port {port}: {rsp}"
+                        )
                 except Exception as e: # pylint: disable=broad-exception-caught
-                    self.debug_log(f"Heartbeat error: {e}")
-                    self._lifecycle_stats.track_event("heartbeat", "miss")
                     failed_count += 1
+                    self._lifecycle_stats.track_event("heartbeat", "miss")
+                    self.debug_log(f"{self.DISPLAY_NAME}: Heartbeat miss {failed_count}, error: {e}")
 
-            # Check for excessive failures
-            if failed_count > self.num_missable_heartbeats and not self.debug_mode:
+            # Check for excessive failures. Gated on its own flag rather than debug_mode: a
+            # debug build still needs to recover a hung subsystem, and only a developer
+            # sitting on a breakpoint wants that suppressed.
+            if failed_count > self.num_missable_heartbeats and not self.no_heartbeat_stop:
                 self.error_log(
                     f"{self.DISPLAY_NAME} missed {failed_count} heartbeats, stopping..."
                 )
