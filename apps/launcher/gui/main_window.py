@@ -55,6 +55,12 @@ from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopSubsystemTask, UpdateCheckTask
 
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+# Child log levels that are written to the log file but never shown in the console widget.
+# See lib/logger.py - SILENT is always emitted, SILENT_DEBUG only in debug mode.
+_CONSOLE_SUPPRESSED_LEVELS = frozenset({"SILENT", "SILENT_DEBUG"})
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class ShutdownDialog(QDialog):
@@ -633,7 +639,8 @@ class PngLauncherWindow(QMainWindow):
             text = obj['message']
             stack = obj.get("stack")
 
-            # In debug mode, treat SILENT logs as INFO
+            # In debug mode, treat SILENT logs as INFO. SILENT_DEBUG is deliberately left alone -
+            # it is file-only even in debug mode
             if level == "SILENT" and self.debug_mode:
                 level = "INFO"
 
@@ -648,10 +655,10 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, file_text, level, filename, lineno, src
             )
 
-            # ---------------- CONSOLE MESSAGE (skip if SILENT) ----------------
+            # ---------------- CONSOLE MESSAGE (skip if silent) ----------------
 
             console_msg = None
-            if level != "SILENT":
+            if level not in _CONSOLE_SUPPRESSED_LEVELS:
                 if stack:
                     console_text = f"{text} (stack trace written to log file)"
                 else:
@@ -674,7 +681,7 @@ class PngLauncherWindow(QMainWindow):
 
         # ---------------- WRITE OUTPUT ----------------
 
-        # Console (only if not SILENT)
+        # Console (only if not silent)
         if self.console and console_msg is not None:
             self.console.append_log(console_msg)
 

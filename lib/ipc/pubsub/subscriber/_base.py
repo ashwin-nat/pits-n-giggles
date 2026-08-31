@@ -96,7 +96,7 @@ class _IpcSubscriberStats:
         if message_id > expected_next:
             missed = message_id - expected_next
             self._track_missed_messages(topic, missed)
-            self.logger.debug(  # type: ignore[attr-defined]
+            self.logger.silent_debug(  # type: ignore[attr-defined]
                 "Detected %d missed messages on topic %s (expected %d, got %d)",
                 missed,
                 topic,
