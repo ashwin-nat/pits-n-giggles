@@ -148,6 +148,7 @@ class BaseOverlay(QmlBridge, QObject):
         self._root: Optional[QQuickWindow] = None
         self._unlock_overlay: Optional[QQuickItem] = None
         self._fade_anim = None
+        self._fade_out_connected: bool = False
         self._drag_pos: Optional[QPoint] = None
 
         self._refresh_interval_ms = refresh_interval_ms
@@ -410,16 +411,19 @@ class BaseOverlay(QmlBridge, QObject):
             # Interrupt any in-flight fade so overlapping toggles (e.g. rapid button
             # presses) can't leave two animations racing on the same opacity property.
             self._fade_anim.stop()
-            try:
-                self._fade_anim.finished.disconnect()
-            except RuntimeError:
-                pass  # no slot was connected (e.g. previous call was a fade-in)
+            if self._fade_out_connected:
+                # Tracked explicitly rather than disconnect()-and-catch: PySide6 answers a
+                # no-op disconnect with a RuntimeWarning, not a RuntimeError, so the except
+                # never fired and every fade-in after a fade-in logged a spurious warning.
+                self._fade_anim.finished.disconnect(self._on_fade_out_finished)
+                self._fade_out_connected = False
 
         self._fade_anim.setStartValue(self._root.opacity())
         self._fade_anim.setEndValue(end)
 
         if not show:
             self._fade_anim.finished.connect(self._on_fade_out_finished)
+            self._fade_out_connected = True
         else:
             self._root.setVisible(True)
             self._start_frame_timer()
