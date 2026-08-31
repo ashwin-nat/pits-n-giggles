@@ -419,7 +419,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     )
     circuit_info_minimal: bool = Field(
         default=False,
-        description="Use minimal circuit info overlay",
+        description="Use minimal circuit info overlay (F1TV inspired)",
         json_schema_extra={
             "ui": {
                 "type": "check_box",
