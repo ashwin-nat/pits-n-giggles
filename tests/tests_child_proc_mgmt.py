@@ -11,12 +11,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pytest
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.child_proc_mgmt import (enable_integration_test_mode,
+from lib.child_proc_mgmt import (_INTEGRATION_FAIL_TAG_PREFIX,
+                                 _SESSION_SAVE_SKIPPED_TAG_PREFIX,
+                                 _SESSION_SAVED_TAG_PREFIX,
+                                 extract_integration_fail_from_line,
                                  extract_ipc_port_from_line,
                                  extract_pid_from_line,
                                  extract_save_skipped_from_line,
                                  extract_saved_path_from_line,
-                                 is_init_complete, report_pid_from_child,
+                                 is_init_complete, report_integration_fail,
+                                 report_pid_from_child,
                                  report_session_save_skipped_from_child,
                                  report_session_saved_from_child)
 
@@ -186,62 +190,43 @@ class TestIpcPortExtraction(TestChildProcMgmt):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-@pytest.fixture(name="integration_mode_off")
-def _integration_mode_off():
-    """Run with the save tokens in their default (off) state, and restore whatever the
-    surrounding environment had afterwards.
-
-    enable_integration_test_mode sets a process-wide env var, so without this a test that enables
-    them leaks into every later test in the same worker.
-    """
-    saved = os.environ.pop("PNG_INTEGRATION_TEST", None)
-    yield
-    if saved is None:
-        os.environ.pop("PNG_INTEGRATION_TEST", None)
-    else:
-        os.environ["PNG_INTEGRATION_TEST"] = saved
-
-
-def _capture(fn, *args) -> str:
-    """Call fn(*args) and return whatever it wrote to stdout."""
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        fn(*args)
-    return buf.getvalue()
-
-
-@pytest.mark.parametrize("report_fn, payload", [
-    (report_session_saved_from_child, "data/2026_01_01/race-info/Race_Monza.json"),
-    (report_session_save_skipped_from_child, "no-lap-data"),
-])
-def test_save_tokens_are_silent_by_default(integration_mode_off, report_fn, payload):
-    """Only the integration runner parses these, so a normal run must print nothing."""
-    assert _capture(report_fn, payload) == ""
-
-
-@pytest.mark.parametrize("report_fn, extract_fn, payload", [
-    (report_session_saved_from_child, extract_saved_path_from_line,
+# Stdout tokens the child emits for the integration runner, as
+# (prefix, reporter, extractor, payload). Lines are built from the module's own prefix, so a
+# renamed tag fails here rather than silently passing against a literal nothing emits any more.
+TOKENS = [
+    (_SESSION_SAVED_TAG_PREFIX, report_session_saved_from_child, extract_saved_path_from_line,
      "data/2026_01_01/race-info/Race_Monza.json"),
-    (report_session_save_skipped_from_child, extract_save_skipped_from_line,
-     "no-lap-data"),
-])
-def test_save_token_round_trip_once_enabled(integration_mode_off, report_fn, extract_fn, payload):
+    (_SESSION_SAVE_SKIPPED_TAG_PREFIX, report_session_save_skipped_from_child,
+     extract_save_skipped_from_line, "no-lap-data"),
+    # Free-form message with punctuation - the non-greedy match has to return all of it.
+    (_INTEGRATION_FAIL_TAG_PREFIX, report_integration_fail, extract_integration_fail_from_line,
+     "HUD exited unexpectedly (code: 3221225477) | exiting with code -1073741819"),
+]
+
+TOKEN_IDS = [p.strip("<:") for p, _, _, _ in TOKENS]
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_token_round_trip(prefix, report_fn, extract_fn, payload):
     """What the child prints is what the parent parses back out."""
-    enable_integration_test_mode()
-    assert extract_fn(_capture(report_fn, payload)) == payload
+    assert extract_fn(f"{prefix}{payload}>>") == payload
 
 
-def test_save_and_skipped_tokens_do_not_match_each_other(integration_mode_off):
-    """The two tokens must stay distinguishable - the runner counts them separately."""
-    enable_integration_test_mode()
-    saved_line = _capture(report_session_saved_from_child, "some/path.json")
-    skipped_line = _capture(report_session_save_skipped_from_child, "session-type-unknown")
-
-    assert extract_save_skipped_from_line(saved_line) is None
-    assert extract_saved_path_from_line(skipped_line) is None
-
-
-@pytest.mark.parametrize("extract_fn", [extract_saved_path_from_line, extract_save_skipped_from_line])
-def test_save_token_extraction_ignores_unrelated_lines(extract_fn):
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_token_extraction_ignores_unrelated_lines(prefix, report_fn, extract_fn, payload):
+    """Noise, and the other tokens - the runner dispatches on these separately."""
     assert extract_fn("just a normal log line") is None
     assert extract_fn("") is None
+
+    for other_prefix, _, _, other_payload in TOKENS:
+        if other_prefix != prefix:
+            assert extract_fn(f"{other_prefix}{other_payload}>>") is None
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, prefix, report_fn,
+                                                       extract_fn, payload):
+    """A normal build must print nothing: report_integration_fail runs on the crash path."""
+    monkeypatch.delenv("PNG_INTEGRATION_TEST", raising=False)
+    report_fn(payload)
+    assert capsys.readouterr().out == ""

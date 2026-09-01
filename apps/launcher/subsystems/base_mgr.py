@@ -39,7 +39,8 @@ from PySide6.QtWidgets import QPushButton
 
 from lib.child_proc_mgmt import (extract_ipc_port_from_line,
                                  extract_pid_from_line, is_init_complete,
-                                 is_integration_test_mode)
+                                 is_integration_test_mode,
+                                 report_integration_fail)
 from lib.config import PngSettings
 from lib.error_status import (PNG_ERROR_CODE_UNKNOWN,
                               PNG_ERROR_CODE_UNSUPPORTED_OS,
@@ -49,6 +50,34 @@ from lib.ipc import IpcClientSync
 
 if TYPE_CHECKING:
     from apps.launcher.gui import PngLauncherWindow
+
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def _integration_exit_code(code: int) -> int:
+    """Coerce a child's exit code into something os._exit() will actually accept.
+
+    Windows reports a fatal exception as its NTSTATUS value (0xC0000005 and friends), which is
+    larger than C int and makes os._exit() raise - the process would then die with a traceback
+    and code 1, losing the very signature worth propagating. Passing the two's-complement
+    negative instead round-trips: the parent still observes the original unsigned value.
+
+    Zero is remapped, because this is only ever reached on a failure path and an exit code of 0
+    would report success to whoever is watching.
+
+    Args:
+        code: Raw exit code, as seen by the launcher.
+
+    Returns:
+        int: Value safe to hand to os._exit().
+    """
+    if code == 0:
+        return 1
+    if os.name == "nt":
+        return code - 0x100000000 if code > 0x7FFFFFFF else code
+    # POSIX keeps only the low 8 bits, so anything that would truncate to 0 (or is a negative
+    # signal code) is reported as a plain failure rather than a misleading one.
+    return code if 0 < code <= 0xFF else 1
+
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -740,7 +769,9 @@ class PngAppMgrBase(QObject):
         err_msg = f"{self.DISPLAY_NAME} exited unexpectedly (code: {ret_code})"
         self.error_log(err_msg)
         self._lifecycle_stats.track_event("lifecycle", "unexpected_exit")
-        self._integration_fail(err_msg)
+        # Propagate the child's own code so a crash signature (an access violation, say) reaches
+        # the test runner instead of being flattened into a bare 1.
+        self._integration_fail(err_msg, ret_code)
 
         reason = self.exit_reasons.get(ret_code, self.exit_reasons[PNG_ERROR_CODE_UNKNOWN])
         self._finalize_stop(AppState.CRASHED, label=reason.status)
@@ -992,8 +1023,14 @@ class PngAppMgrBase(QObject):
         """Display an error message box."""
         self.window.show_error(title, message)
 
-    def _integration_fail(self, message: str):
-        """Handle integration test failure by logging and exiting immediately."""
+    def _integration_fail(self, message: str, exit_code: int = 1):
+        """Handle integration test failure by logging and exiting immediately.
+
+        Args:
+            message: Why the run is being failed.
+            exit_code: Exit code to propagate, normally the dead child's own. Defaults to 1
+                for failures with no underlying process code, e.g. a child that never started.
+        """
         if not self.integration_test_mode:
             return
 
@@ -1001,6 +1038,15 @@ class PngAppMgrBase(QObject):
         # We do NOT attempt graceful Qt shutdown because CI should fail fast
         # and auto-restart must never mask instability.
         self.error_log(f"[INTEGRATION TEST MODE] {message}")
+
+        resolved = _integration_exit_code(exit_code)
+
+        # error_log hops to the GUI thread over a queued Qt signal, but this can run on the
+        # exit-monitor thread - the os._exit below kills the process long before that signal is
+        # delivered, so the only explanation for the exit never reaches the log. The token is
+        # synchronous and drained by the runner, so it survives.
+        report_integration_fail(f"{message} | exiting with code {resolved}")
+
         # os._exit required: child process must terminate immediately without
         # running atexit handlers or flushing stdio buffers from parent.
-        os._exit(1)
+        os._exit(resolved)

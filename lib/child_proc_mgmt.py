@@ -36,6 +36,8 @@ _SESSION_SAVED_TAG_PREFIX = "<<PNG_SESSION_SAVED:"
 _SESSION_SAVED_TAG_REGEX = re.compile(fr"{_SESSION_SAVED_TAG_PREFIX}(.+?)>>")
 _SESSION_SAVE_SKIPPED_TAG_PREFIX = "<<PNG_SESSION_SAVE_SKIPPED:"
 _SESSION_SAVE_SKIPPED_TAG_REGEX = re.compile(fr"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}(.+?)>>")
+_INTEGRATION_FAIL_TAG_PREFIX = "<<PNG_INTEGRATION_FAIL:"
+_INTEGRATION_FAIL_TAG_REGEX = re.compile(fr"{_INTEGRATION_FAIL_TAG_PREFIX}(.+?)>>")
 
 # Set by the integration runner on the app it spawns, and inherited by every process below
 # it. Gates the two things that exist only for that runner: the session save tokens here,
@@ -123,6 +125,33 @@ def extract_saved_path_from_line(line: str) -> Optional[str]:
         Optional[str]: The path if the line carries the token, else None
     """
     match = _SESSION_SAVED_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_integration_fail(message: str) -> None:
+    """Call this immediately before hard-exiting an integration test run.
+
+    The launcher's own logging reaches its file over a queued Qt signal, so a caller that
+    follows this with os._exit() kills the process before the reason is ever written. A token
+    on stdout is synchronous, thread-safe and drained by the runner, so it survives the exit.
+    No-op outside integration test mode.
+
+    Args:
+        message (str): Why the run is being failed, including the exit code
+    """
+    if not is_integration_test_mode():
+        return
+    print(f"{_INTEGRATION_FAIL_TAG_PREFIX}{message}>>", flush=True)
+
+def extract_integration_fail_from_line(line: str) -> Optional[str]:
+    """Parse an integration test failure reason from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The reason if the line carries the token, else None
+    """
+    match = _INTEGRATION_FAIL_TAG_REGEX.search(line)
     return match.group(1) if match else None
 
 def report_session_save_skipped_from_child(reason: str) -> None:

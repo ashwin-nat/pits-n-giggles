@@ -27,6 +27,7 @@ from aiohttp import ClientSession, TCPConnector
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from lib.child_proc_mgmt import (enable_integration_test_mode,
+                                 extract_integration_fail_from_line,
                                  extract_save_skipped_from_line,
                                  extract_saved_path_from_line)
 from lib.config import load_config_from_json
@@ -53,6 +54,7 @@ DIFF_CACHE_DIR = TEST_DATA_DIR / ".diff_cache"
 app_process: Optional[subprocess.Popen] = None
 exit_event: Optional[threading.Event] = None
 ipc_port: Optional[int] = None
+app_died_reported: bool = False  # so an app death is announced once, not per heartbeat
 
 # Test statistics
 test_stats = {
@@ -86,6 +88,68 @@ def send_ipc_shutdown(port: int) -> bool:
         return False
 
 
+# Windows reports a fatal exception as the raw NTSTATUS value, so an app that dies this way
+# leaves nothing on stderr and nothing in its own log - the exit code is the only evidence
+# there is. Worth decoding rather than printing a bare 10-digit number nobody recognises.
+_WINDOWS_FATAL_STATUS = {
+    0xC0000005: "STATUS_ACCESS_VIOLATION",
+    0xC0000017: "STATUS_NO_MEMORY",
+    0xC00000FD: "STATUS_STACK_OVERFLOW",
+    0xC0000135: "STATUS_DLL_NOT_FOUND",
+    0xC000013A: "STATUS_CONTROL_C_EXIT",
+    0xC0000142: "STATUS_DLL_INIT_FAILED",
+    0xC0000409: "STATUS_STACK_BUFFER_OVERRUN",
+}
+
+
+def describe_exit_code(code: Optional[int]) -> str:
+    """Render a process exit code alongside what it most likely means.
+
+    Args:
+        code: Popen.returncode, or None if the process is still running.
+
+    Returns:
+        str: Human-readable description, e.g. "3221225477 (0xC0000005 STATUS_ACCESS_VIOLATION)".
+    """
+    if code is None:
+        return "still running"
+    if code == 0:
+        return "0 (clean exit)"
+    if code < 0:
+        # POSIX: negative means terminated by signal.
+        return f"{code} (killed by signal {-code})"
+    if name := _WINDOWS_FATAL_STATUS.get(code):
+        return f"{code} (0x{code:08X} {name})"
+    return f"{code} (0x{code:08X})"
+
+
+def _report_if_app_died() -> bool:
+    """Log loudly, once, if the app process has exited underneath us.
+
+    A dead app turns every subsequent check into a failure, which buries the one fact that
+    matters - when it died and with what code - under hundreds of connection-refused lines.
+    Reported at the first failed heartbeat, which is the earliest the runner can notice.
+
+    Returns:
+        bool: True if the app has exited.
+    """
+    global app_died_reported
+
+    if app_process is None or app_process.poll() is None:
+        return False
+
+    if not app_died_reported:
+        app_died_reported = True
+        logger.test_log("=" * 80)
+        logger.test_log(
+            f"[FATAL] App process (PID={app_process.pid}) has exited. "
+            f"Exit code: {describe_exit_code(app_process.returncode)}"
+        )
+        logger.test_log("[FATAL] Everything reported as failing from here is a cascade.")
+        logger.test_log("=" * 80)
+    return True
+
+
 def kill_app(process: subprocess.Popen) -> None:
     """Force kill the application process."""
     if IS_WINDOWS:
@@ -95,12 +159,18 @@ def kill_app(process: subprocess.Popen) -> None:
             except Exception as e:
                 logger.test_log(f"[WARN] Could not terminate app: {e}")
         else:
-            logger.test_log(f"App already exited (PID={process.pid})")
+            logger.test_log(
+                f"App already exited (PID={process.pid}) exit code: "
+                f"{describe_exit_code(process.returncode)}"
+            )
     else:
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
-            logger.test_log("[WARN] App already exited")
+            process.poll()
+            logger.test_log(
+                f"[WARN] App already exited, exit code: {describe_exit_code(process.returncode)}"
+            )
 
 
 def cleanup_and_exit(signum=None, frame=None) -> None:
@@ -141,13 +211,14 @@ def send_heartbeat(
 
             if rsp.get("status") == "success":
                 failed_heartbeat_count = 0
-                logger.test_log(f"Integration test: Heartbeat response: {rsp}")
             else:
                 logger.test_log(f"Integration test: Heartbeat failed with response: {rsp}")
+                _report_if_app_died()
                 failed_heartbeat_count += 1
 
         except Exception as e:
             logger.test_log(f"Integration test: Error sending heartbeat: {e}")
+            _report_if_app_died()
             failed_heartbeat_count += 1
 
         if failed_heartbeat_count > num_missable_heartbeats:
@@ -315,6 +386,10 @@ def pump_app_output(process: subprocess.Popen, saved_paths: queue.Queue) -> None
         elif skip_reason := extract_save_skipped_from_line(line):
             test_stats["saves_skipped"] += 1
             logger.test_log(f"  [SKIP] Session not saved: {skip_reason}")
+        elif fail_reason := extract_integration_fail_from_line(line):
+            # The launcher's dying breath. It hard-exits straight after emitting this, so its
+            # own log file never receives it - this is the only place the reason survives.
+            logger.test_log(f"  [APP FAIL] {fail_reason}")
         # Anything else is discarded. The launcher already writes the consolidated
         # subsystem log to its own file; duplicating it here would just double it up.
 
@@ -457,6 +532,19 @@ def print_test_statistics() -> None:
         endpoint_success_rate = (test_stats['endpoints_passed'] / total_endpoints) * 100
         logger.test_log(f"Endpoint success rate:  {endpoint_success_rate:.1f}%")
 
+    # Called after shutdown, so the app has normally exited by now. A non-zero code here means
+    # the run's failures are wreckage from the app dying rather than genuine check failures -
+    # the distinction is invisible in the rates above, which just count everything sent at a
+    # dead port.
+    if app_process is not None:
+        app_process.poll()
+        code = app_process.returncode
+        logger.test_log(f"App exit code:          {describe_exit_code(code)}")
+        if code not in (0, None):
+            logger.test_log(
+                "  ^ app did not exit cleanly - failures above may be a cascade, not real"
+            )
+
     logger.test_log("=" * 80)
 
 
@@ -467,8 +555,13 @@ def reset_stats() -> None:
     base-commit app for the capture, once for the real working-tree run) - without this the
     two runs' numbers would accumulate into one another.
     """
+    global app_died_reported
+
     for key in test_stats:
         test_stats[key] = 0
+
+    # Each run gets its own app process, so a death in the second must still be announced.
+    app_died_reported = False
 
 
 def main(config_file: str, telemetry_port: int, http_port: int, proto: str, coverage_enabled: bool,
