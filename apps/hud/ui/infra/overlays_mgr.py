@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
 from typing import Any, Dict, List, Optional, Type
 
 from lib.assets_loader import load_fonts
@@ -68,12 +67,6 @@ class OverlaysMgr:
             settings (PngSettings): App Settings
             debug (bool, optional): Debug mode. Defaults to False.
         """
-        if settings.Display.use_cpu_acceleration:
-            os.environ["QT_QUICK_BACKEND"] = "software"
-            logger.silent("Using software (CPU) Qt Quick backend")
-        else:
-            logger.silent("Using hardware (GPU) Qt Quick backend")
-
         self.logger = logger
         self.debug_mode = debug
         self.running = False
@@ -87,7 +80,7 @@ class OverlaysMgr:
         ) if settings.Display.wdt_timeout is not None else None
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
-        self.window_manager = WindowManager(logger, notify_parent_init_complete)
+        self.window_manager = WindowManager(logger, settings, notify_parent_init_complete)
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
 
         enabled = settings.HUD.enabled_overlays_by_id()

@@ -31,6 +31,7 @@ from PySide6.QtCore import (QMetaObject, QMutex, QMutexLocker, QObject, Qt,
                             qInstallMessageHandler)
 from PySide6.QtWidgets import QApplication
 
+from lib.config import PngSettings
 from lib.event_counter import EventCounter
 from lib.logger import PngLogger
 from lib.mailbox import LatestSlot
@@ -62,16 +63,36 @@ class WindowManager(QObject):
     mgmt_request_signal = Signal(str, str, object)  # recipient, request_type, request_data
     mgmt_response_signal = Signal(str, object)     # request_type, response_data
 
-    def __init__(self, logger: PngLogger, post_init_cb: Optional[Callable[[], None]] = None):
+    def __init__(self,
+                 logger: PngLogger,
+                 settings: PngSettings,
+                 post_init_cb: Optional[Callable[[], None]] = None):
         """Initialize window manager.
 
         Args:
             logger: Logger
+            settings: App settings
+            post_init_cb: Called once the event loop is running
         """
-        os.environ.setdefault("QSG_RENDER_LOOP", "threaded")
+        # Every Qt environment variable is resolved here, in one place and before QApplication
+        # exists - Qt reads them while constructing it and ignores later changes.
+        if settings.Display.use_cpu_acceleration:
+            os.environ["QT_QUICK_BACKEND"] = "software"
+
+        # The threaded loop is the one #273 measured, but the software backend renders
+        # incorrectly under it: image textures intermittently fail to materialise, leaving SVG
+        # icons as blank boxes at the correct layout size. Which icons drop out varies by run and
+        # by machine - a race, not an unsupported feature. Read back off QT_QUICK_BACKEND rather
+        # than the config flag so an externally exported backend is covered too. Shipped blank
+        # icons on the software backend from v4.1.0 to v4.4.0-beta.3.
+        software_backend = os.environ.get("QT_QUICK_BACKEND") == "software"
+        os.environ.setdefault("QSG_RENDER_LOOP", "basic" if software_backend else "threaded")
+
         self.app = QApplication()
         super().__init__()
         self.logger = logger
+        self.logger.silent("Using %s Qt Quick backend",
+                           "software (CPU)" if software_backend else "hardware (GPU)")
         self.logger.silent("QSG_RENDER_LOOP = %s", os.environ.get("QSG_RENDER_LOOP", "(not set)"))
         self.overlays: Dict[str, BaseOverlay] = {}
         self._hf_slots: Dict[str, LatestSlot[HighFreqBase]] = {}  # hf_type -> mailbox; only created for subscribed types
