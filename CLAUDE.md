@@ -39,8 +39,10 @@ poetry run python scripts/qmllint.py
 # Build executable
 poetry run python scripts/build.py
 
-# Run coverage
-poetry run python scripts/coverage_ut.py
+# Unit test coverage (same invocation CI uses; results are uploaded to Codecov)
+poetry run pytest tests/ --cov=lib --cov-config=scripts/.coveragerc_ut --cov-report=term-missing
+
+# Integration test coverage
 poetry run python scripts/coverage_integration_tests.py
 
 # Build/refresh the graphify code knowledge graph (offline, no LLM)

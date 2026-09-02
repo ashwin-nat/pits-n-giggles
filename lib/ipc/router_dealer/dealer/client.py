@@ -453,7 +453,7 @@ class IpcDealerClient:
         try:
             self.socket.send_multipart([sender_id, ACK_SENTINEL], flags=zmq.NOBLOCK)
             self.stats.track_event("__ACK_SENT__", sender_id.decode("utf-8", errors="replace"))
-        except zmq.ZMQError as e:
+        except zmq.ZMQError as e:  # pragma: no cover - needs a socket faulted mid-send
             self.stats.track_event("__ERROR__", "ack_send_failed")
             self.logger.warning("IpcDealerClient [%s] failed to send ack: %s", self.identity, e)
 
@@ -461,24 +461,27 @@ class IpcDealerClient:
         try:
             self.socket.send_multipart([sender_id, req_id, orjson.dumps(reply)], flags=zmq.NOBLOCK)
             self.stats.track_event("__REPLY__", reply.get("status", "data"))
-        except zmq.ZMQError as e:
+        except zmq.ZMQError as e:  # pragma: no cover - needs a socket faulted mid-send
             self.stats.track_event("__ERROR__", "reply_send_failed")
             self.logger.warning("IpcDealerClient [%s] failed to send reply: %s", self.identity, e)
 
     def _close_sockets(self, poller: zmq.Poller) -> None:
+        # Every handler below is best-effort teardown with nothing to assert: the sockets are
+        # being discarded either way. Excluded from coverage rather than reached by mocking
+        # each close() into raising, which would only assert that pass does nothing.
         for sock in (self.socket, self._pipe_read):
             try:
                 poller.unregister(sock)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
                 pass
         for sock in (self.socket, self._pipe_read, self._pipe_write):
             try:
                 sock.close(linger=0)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
                 pass
         try:
             self._ctx.term()
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
             pass
 
     # ---------------------------------------------------------
@@ -490,7 +493,7 @@ class IpcDealerClient:
         with self._pipe_lock:
             try:
                 self._pipe_write.send_multipart([_PIPE_STOP], flags=zmq.NOBLOCK)
-            except zmq.ZMQError:
+            except zmq.ZMQError:  # pragma: no cover - the loop is stopping regardless
                 pass
 
     def get_stats(self) -> dict:

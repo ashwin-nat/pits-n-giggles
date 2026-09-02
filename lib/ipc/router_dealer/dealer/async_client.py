@@ -323,7 +323,7 @@ class IpcDealerAsync:
                         [dest_identity.encode(), _REPLY_REQUIRED, req_id, topic.encode(), payload]
                     )
                 self.stats.track_packet("__OUTGOING__", topic, len(dest_identity) + len(topic) + len(payload))
-            except zmq.ZMQError as e:
+            except zmq.ZMQError as e:  # pragma: no cover - needs a socket faulted mid-send
                 self.stats.track_event("__ERROR__", "send_failed")
                 self.logger.warning("IpcDealerAsync [%s] send error (req_id=%d) to %r: %s",
                                     self.identity, int.from_bytes(req_id, "big"), dest_identity, e)
@@ -361,23 +361,26 @@ class IpcDealerAsync:
                 pending.set_exception(asyncio.CancelledError("dealer closed"))
         self._pending_replies.clear()
 
+        # Best-effort teardown from here down: the task and sockets are being discarded either
+        # way, so these handlers have nothing to assert. Excluded rather than reached by
+        # mocking each call into raising.
         if self._recv_task is not None:
             self._recv_task.cancel()
             try:
                 await self._recv_task
-            except (asyncio.CancelledError, Exception):  # pylint: disable=broad-exception-caught
+            except (asyncio.CancelledError, Exception):  # pragma: no cover  # pylint: disable=broad-exception-caught
                 pass
             self._recv_task = None
 
         if self.socket:
             try:
                 self.socket.close(linger=0)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
                 pass
 
         try:
             self._ctx.term()
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
             pass
 
         self.logger.debug("IpcDealerAsync [%s] closed", self.identity)
