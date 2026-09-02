@@ -12,6 +12,12 @@ on:
     tags:
       - 'v*'
 
+# Checkout and artifact upload only. The artifact upload authenticates with the Actions
+# runtime token, not GITHUB_TOKEN, so it is unaffected by this. release.yml is the only
+# workflow that publishes, and it declares its own wider scope.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
