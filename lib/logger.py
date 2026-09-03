@@ -67,12 +67,17 @@ class PngLogger(logging.Logger):
         """Log a message that is kept out of the launcher console in normal mode. Always emitted;
         surfaces on the console as INFO in debug mode."""
         if self.isEnabledFor(SILENT_LEVEL):
+            # This method adds a stack frame between the caller and _log(); bump stacklevel so
+            # logging.findCaller() skips it and reports the real call site, not logger.py.
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
             self._log(SILENT_LEVEL, message, args, **kwargs)
 
     def silent_debug(self, message: str, *args, **kwargs) -> None:
         """Log a high-volume trace message. Dropped entirely unless debug mode is enabled, and even
         then it goes to the log file only - never to the launcher console."""
         if self.isEnabledFor(SILENT_DEBUG_LEVEL):
+            # See silent(): compensate for this wrapper frame so the caller's file/line is logged.
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
             self._log(SILENT_DEBUG_LEVEL, message, args, **kwargs)
 
 
