@@ -628,7 +628,7 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
         # Launch browser views. These are not decoration - they put the web server routes,
         # Socket.IO and the frontend JS through the run as well.
         logger.test_log("Launching driver view, engineer view and overlay clients")
-        webbrowser.open(f'{proto}://localhost:{http_port}/', new=2)
+        webbrowser.open(f'{proto}://localhost:{http_port}/live', new=2)
         webbrowser.open(f'{proto}://localhost:{http_port}/eng-view', new=2)
         webbrowser.open(f'{proto}://localhost:{http_port}/player-stream-overlay', new=2)
 
