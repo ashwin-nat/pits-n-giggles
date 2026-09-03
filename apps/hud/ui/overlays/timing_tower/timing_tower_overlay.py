@@ -159,14 +159,19 @@ class TimingTowerOverlay(BaseOverlay):
         fastest_index = data["fastest-lap-overall-driver-index"]
         relevant_rows = get_relevant_race_table_rows(table_entries, self.num_adjacent_cars, ref_index)
 
-        if is_race_type_session(session_type):
-            insert_relative_deltas_race(relevant_rows, ref_index)
-        elif not is_tt_session(session_type):
-            self._insert_relative_deltas_fp_quali(relevant_rows, ref_row)
-
         ref_lap_info = ref_row.get("lap-info", {})
         ref_best_lap_ms: Optional[int] = ref_lap_info.get("best-lap", {}).get("lap-time-ms")
         ref_last_lap_ms: Optional[int] = ref_lap_info.get("last-lap", {}).get("lap-time-ms")
+
+        if is_race_type_session(session_type):
+            insert_relative_deltas_race(relevant_rows, ref_index)
+        elif not is_tt_session(session_type):
+            # FP/Quali deltas are measured against the reference driver's best lap.
+            # Until the ref driver sets one, fall back to the P1 (session-leading)
+            # best lap so the rest of the field still shows a delta instead of blanks.
+            if ref_best_lap_ms is None:
+                ref_best_lap_ms = self._get_p1_best_lap_ms(data, table_entries)
+            self._insert_relative_deltas_fp_quali(relevant_rows, ref_best_lap_ms)
 
         # Update QML with data
         self._update_table_data(relevant_rows, ref_index, session_type, fastest_index,
@@ -594,26 +599,45 @@ class TimingTowerOverlay(BaseOverlay):
     def _insert_relative_deltas_fp_quali(
         self,
         relevant_rows: List[Dict[str, Any]],
-        ref_row: Dict[str, Any]
+        ref_best_lap_ms: Optional[int],
     ) -> None:
         """Insert relative deltas for FP/Quali mode.
 
         Args:
             relevant_rows (List[Dict[str, Any]]): List of relevant rows
-            ref_row (Dict[str, Any]): The reference row
+            ref_best_lap_ms (Optional[int]): Best lap (ms) every row is measured against
+                (the reference driver's, or the P1 best lap when the ref driver has none).
         """
-        if not ref_row:
-            self.logger.warning('<<TIMING_TOWER>> Reference row is None!')
-            return
-
-        ref_best_lap_ms = ref_row["lap-info"]["best-lap"]["lap-time-ms"]
-
         for row in relevant_rows:
             best_lap_ms = row["lap-info"]["best-lap"]["lap-time-ms"]
             if ref_best_lap_ms is None or best_lap_ms is None:
                 row["delta-info"]["relative-delta"] = 0
             else:
                 row["delta-info"]["relative-delta"] = best_lap_ms - ref_best_lap_ms
+
+    @staticmethod
+    def _get_p1_best_lap_ms(full_data: Dict[str, Any],
+                            table_entries: List[Dict[str, Any]]) -> Optional[int]:
+        """Return the best lap (ms) of the car currently in P1, or None if unavailable.
+
+        Args:
+            full_data (Dict[str, Any]): Full telemetry payload from the server.
+            table_entries (List[Dict[str, Any]]): Full position-sorted table entries.
+
+        Returns:
+            Optional[int]: P1's best lap time in milliseconds, or None.
+        """
+        fastest_lap = full_data.get("fastest-lap-overall")
+        if fastest_lap:
+            return fastest_lap
+
+        p1_row = next(
+            (row for row in table_entries if row.get("driver-info", {}).get("position") == 1),
+            None,
+        )
+        if not p1_row:
+            return None
+        return p1_row.get("lap-info", {}).get("best-lap", {}).get("lap-time-ms")
 
     def _get_overtake_bar_color(self, data: Dict[str, Any]) -> str:
         """Return the overtake bar colour for the driver.

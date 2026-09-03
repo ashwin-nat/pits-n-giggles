@@ -96,14 +96,15 @@ Item {
      * ───────────────────────────────────────────────────── */
     // Delta sign:  "+" → opponent faster → red (bad for ref)
     //              "-" → ref faster      → green
-    //              ref row values are absolute times → accent
+    //              ref row values are absolute times → white
+    //              other rows with no reference lap also show absolute times → colText
     function deltaColor(str, isRef) {
         if (isRef)  return "white"
         if (!str || str === "—" || str === "--:--") return colDim
         let first = str.charAt(0)
         if (first === "+") return colRed
         if (first === "-") return colGreen
-        return colDim
+        return colText
     }
 
     /* ─────────────────────────────────────────────────────
