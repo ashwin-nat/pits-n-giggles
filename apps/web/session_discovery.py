@@ -170,7 +170,7 @@ def formula_group_key(formula: str) -> str:
 
 def _get_clean_race_laps(player: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Port of getCleanRaceLaps from stats.ts: filters out lap 1, SC laps, pit laps, and outliers."""
-    sh = player.get('session-history', {})
+    sh = player.get('session-history') or {} # session-history may be null
     laps = sh.get('lap-history-data', [])
     per_lap_info = player.get('per-lap-info', [])
     tyre_set_history = player.get('tyre-set-history', [])
@@ -252,7 +252,7 @@ def _build_player_race_result(
 
     classification_data = data.get('classification-data', [])
     total_laps = _get_total_laps(session_info, classification_data)
-    sh = player.get('session-history', {})
+    sh = player.get('session-history') or {} # session-history may be null
     player_laps = (
         classification.get('num-laps')
         or sh.get('num-laps')
@@ -385,7 +385,7 @@ async def _parse_one(
             cache[cache_key] = {'mtime': mtime, 'data': parsed}
             return rel_path, parsed
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.silent("[%d/%d] failed - %s: %s", file_idx, total, rel_path, exc)
+            logger.exception("[%d/%d] failed - %s: %s", file_idx, total, rel_path, exc)
             return rel_path, exc
 
 
