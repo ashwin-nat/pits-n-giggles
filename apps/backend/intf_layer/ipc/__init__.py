@@ -40,7 +40,6 @@ from .command_handlers import (handleCaptureConfigChange,
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def registerIpcTask(
-        run_ipc_server: bool,
         logger: PngLogger,
         session_state: SessionState,
         telemetry_handler: F1TelemetryHandler,
@@ -51,7 +50,6 @@ def registerIpcTask(
     """Register the IPC task
 
     Args:
-        run_ipc_server (bool): Whether to run the IPC server
         logger (PngLogger): Logger
         session_state (SessionState): Handle to the session state object
         telemetry_handler (F1TelemetryHandler): Telemetry handler
@@ -59,10 +57,6 @@ def registerIpcTask(
         dealer (IpcDealerAsync): IPC dealer
         tasks (List[asyncio.Task]): List of tasks
     """
-
-    # Register the IPC task only if port is specified
-    if not run_ipc_server:
-        return
 
     logger.debug("Starting IPC server")
     server = IpcServerAsync(name="Backend")

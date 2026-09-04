@@ -28,7 +28,7 @@ import logging
 import os
 import sys
 import time
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from wsproto.connection import LocalProtocolError
 
@@ -54,15 +54,13 @@ class PngRunner:
     def __init__(self,
                  logger: logging.Logger,
                  config_file: str,
-                 replay_server: bool,
-                 run_ipc_server: bool = False) -> None:
+                 replay_server: bool) -> None:
         """Init the runner. Register necessary tasks
 
         Args:
             logger (logging.Logger): Logger object
             config_file (str): Path to the config file
             replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
-            run_ipc_server (bool): If true, runs the IPC server
         """
         self.m_logger: logging.Logger = logger
         self.m_config = load_config_from_json(config_file, logger)
@@ -88,7 +86,7 @@ class PngRunner:
             session_state=self.m_session_state,
             tasks=self.m_tasks
         )
-        self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer(run_ipc_server=run_ipc_server)
+        self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer()
         self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
         # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
@@ -105,12 +103,8 @@ class PngRunner:
             await AsyncInterTaskCommunicator().send('shutdown', {"reason" : "Main task was cancelled."})
             raise  # Ensure proper cancellation behavior
 
-    def _setupUiIntfLayer(self,
-        run_ipc_server: Optional[bool] = False) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
+    def _setupUiIntfLayer(self) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
         """Entry point to start publishing analysed telemetry over IPC.
-
-        Args:
-            run_ipc_server (bool, optional): Whether to run the IPC server. Defaults to False.
 
         Returns:
             Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and IPC dealer instances
@@ -125,7 +119,6 @@ class PngRunner:
             logger=self.m_logger,
             session_state=self.m_session_state,
             tasks=self.m_tasks,
-            run_ipc_server=run_ipc_server,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
         )
@@ -193,7 +186,6 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
     parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
-    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -211,7 +203,6 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
             logger=logger,
             config_file=args.config_file,
             replay_server=args.replay_server,
-            run_ipc_server=args.run_ipc_server,
         )
     except PngError as e:
         logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
