@@ -71,8 +71,7 @@
             "module": "apps.backend",
             "console": "integratedTerminal",
             "args": [
-                "--debug",
-                "--log-file-name", "png_backend_debug.log"
+                "--debug"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -84,8 +83,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--debug",
-                "--replay-server",
-                "--log-file-name", "png_backend_debug.log"
+                "--replay-server"
             ],
             "cwd": "${workspaceFolder}"
         },
