@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
@@ -73,7 +73,8 @@ def initUiIntfLayer(
     session_state: SessionState,
     tasks: List[asyncio.Task],
     shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
+    telemetry_handler: F1TelemetryHandler,
+    request_shutdown: Callable[[str], None]) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
     """Initialize the UI interface layer. The backend is a dumb core: it only publishes analysed
     telemetry over IPC and answers pull requests — apps/web owns all HTTP/Socket.IO serving.
 
@@ -84,6 +85,7 @@ def initUiIntfLayer(
         tasks (List[asyncio.Task]): List of tasks to be executed
         shutdown_event (asyncio.Event): Event to signal shutdown
         telemetry_handler (F1TelemetryHandler): Telemetry handler
+        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task
 
     Returns:
         Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and IPC dealer instances
@@ -121,7 +123,7 @@ def initUiIntfLayer(
     tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
                                      name="HUD Interaction Task"))
 
-    registerIpcTask(logger, session_state, telemetry_handler, ipc_pub, dealer, tasks)
+    registerIpcTask(logger, session_state, telemetry_handler, ipc_pub, dealer, tasks, request_shutdown)
     return ipc_pub, dealer
 
 async def lowFreqLocalUpdateTask(

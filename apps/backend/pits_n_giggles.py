@@ -68,6 +68,8 @@ class PngRunner:
         self.m_version: str = get_version()
 
         self.m_shutdown_event: asyncio.Event = asyncio.Event()
+        self.m_shutdown_requested: asyncio.Event = asyncio.Event()
+        self.m_shutdown_reason: str = "N/A"
 
         self.m_session_state: SessionState = initStateManagementLayer(
             logger=self.m_logger,
@@ -100,7 +102,7 @@ class PngRunner:
             await asyncio.gather(*self.m_tasks)
         except asyncio.CancelledError:
             self.m_logger.debug("Main task was cancelled.")
-            await AsyncInterTaskCommunicator().send('shutdown', {"reason" : "Main task was cancelled."})
+            self.requestShutdown("Main task was cancelled.")
             raise  # Ensure proper cancellation behavior
 
     def _setupUiIntfLayer(self) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
@@ -121,6 +123,7 @@ class PngRunner:
             tasks=self.m_tasks,
             shutdown_event=self.m_shutdown_event,
             telemetry_handler=self.m_telemetry_handler,
+            request_shutdown=self.requestShutdown,
         )
 
     def _getVersion(self) -> str:
@@ -132,16 +135,31 @@ class PngRunner:
 
         return os.environ.get('PNG_VERSION', 'dev')
 
+    def requestShutdown(self, reason: str) -> None:
+        """Signal the shutdown task to tear everything down.
+
+        Synchronous and non-blocking by design: the IPC shutdown handler calls this, and
+        IpcServerAsync only sends its reply once that handler returns. Doing the teardown
+        inline would hold up the launcher's shutdown acknowledgement.
+
+        Args:
+            reason (str): Why the shutdown was requested
+        """
+
+        self.m_shutdown_reason = reason
+        self.m_shutdown_requested.set()
+
     async def _shutdown_tasks(self) -> None:
         """Shutdown all the tasks and finish so that the event loop can terminate naturally
         """
 
         self.m_logger.debug("Starting shutdown task. Awaiting shutdown command...")
-        await AsyncInterTaskCommunicator().receive("shutdown")
-        self.m_logger.debug("Received shutdown command. Stopping tasks...")
+        await self.m_shutdown_requested.wait()
+        self.m_logger.debug("Received shutdown command. Reason: %s. Stopping tasks...", self.m_shutdown_reason)
 
         # Periodic UI update tasks and packet forwarder are listening to shutdown event
         self.m_shutdown_event.set()
+        # Releases the frontend-update, hud-notifier, packet-forward and external-api-update receivers
         await AsyncInterTaskCommunicator().unblock_receivers()
 
         # Explicitly stop the tasks

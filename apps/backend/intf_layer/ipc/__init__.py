@@ -24,7 +24,7 @@
 
 import asyncio
 import logging
-from typing import List
+from typing import Callable, List
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.telemetry_layer import F1TelemetryHandler
@@ -45,7 +45,8 @@ def registerIpcTask(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
         dealer: IpcDealerAsync,
-        tasks: List[asyncio.Task]
+        tasks: List[asyncio.Task],
+        request_shutdown: Callable[[str], None]
         ) -> None:
     """Register the IPC task
 
@@ -56,6 +57,7 @@ def registerIpcTask(
         ipc_pub (IpcPublisherAsync): IPC publisher
         dealer (IpcDealerAsync): IPC dealer
         tasks (List[asyncio.Task]): List of tasks
+        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task
     """
 
     logger.debug("Starting IPC server")
@@ -69,7 +71,7 @@ def registerIpcTask(
 
     @server.on_shutdown
     async def _handle_shutdown(args: dict):
-        return await handleShutdown(args, logger=logger)
+        return await handleShutdown(args, logger=logger, request_shutdown=request_shutdown)
 
     @server.on("manual-save")
     async def _handle_manual_save(_args: dict):

@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import os
+from typing import Callable
 
 from pydantic import ValidationError
 
@@ -31,8 +32,7 @@ from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import CaptureSettings
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcPublisherAsync
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync
 from lib.logger import PngLogger
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -50,12 +50,19 @@ async def handleManualSave(
         logger.exception("Unexpected error during manual save")
         return {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
 
-async def handleShutdown(msg: dict, logger: PngLogger) -> dict:
-    """Handle shutdown command"""
+async def handleShutdown(msg: dict, logger: PngLogger, request_shutdown: Callable[[str], None]) -> dict:
+    """Handle shutdown command
+
+    Args:
+        msg (dict): Command args
+        logger (PngLogger): Logger
+        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task. Must not block -
+            the IPC server only replies to the launcher once this handler returns.
+    """
 
     reason = msg.get('reason', 'N/A')
     logger.info("Received shutdown command. Reason: %s", reason)
-    await AsyncInterTaskCommunicator().send('shutdown', {"reason" : reason})
+    request_shutdown(reason)
     return {
         'status': 'success',
     }
@@ -63,7 +70,7 @@ async def handleShutdown(msg: dict, logger: PngLogger) -> dict:
 async def handleGetStats(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
-        ipc_dealer: AsyncInterTaskCommunicator,
+        ipc_dealer: IpcDealerAsync,
         ) -> dict:
     """Handle get-stats command."""
     return {
