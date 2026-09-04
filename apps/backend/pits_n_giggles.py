@@ -185,7 +185,6 @@ def parseArgs() -> argparse.Namespace:
     parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
-    parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
 
     # Parse the command-line arguments
     return parser.parse_args()
@@ -218,12 +217,7 @@ async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
 def entry_point():
     report_pid_from_child()
     args_obj = parseArgs()
-    png_logger = get_logger(
-        name="backend",
-        debug_mode=args_obj.debug,
-        file_path=args_obj.log_file_name,
-        jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
-    )
+    png_logger = get_logger(name="backend", debug_mode=args_obj.debug, jsonl=True)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
@@ -268,12 +262,7 @@ def entry_point():
 
 #     report_pid_from_child()
 #     args_obj = parseArgs()
-#     png_logger = get_logger(
-#         name="backend",
-#         debug_mode=args_obj.debug,
-#         file_path=args_obj.log_file_name,
-#         jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
-#     )
+#     png_logger = get_logger(name="backend", debug_mode=args_obj.debug, jsonl=True)
 #     if sys.platform == 'win32':
 #         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 #     try:
