@@ -35,7 +35,8 @@ import shutil
 import tempfile
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT, BUNDLE
-from meta.meta import APP_VERSION, APP_NAME_SNAKE
+from meta.meta import APP_NAME_SNAKE
+from lib.version import get_build_version
 
 # --------------------------------------------------------------------------------------------------
 # Core application info
@@ -44,19 +45,75 @@ from meta.meta import APP_VERSION, APP_NAME_SNAKE
 ICON_PATH = "../assets/favicon.ico"
 ICON_PATH_MAC = "../assets/logo.icns"
 
-APP_BASENAME = f"{APP_NAME_SNAKE}_{APP_VERSION}"
 COLLECT_DIR_NAME = f"{APP_NAME_SNAKE}_build_tmp"
 PROJECT_ROOT = os.path.abspath(".")
+
+# --------------------------------------------------------------------------------------------------
+# Build-time flags
+#
+# PyInstaller splits its command line on `--` and hands everything after it to the spec as
+# sys.argv[1:] (sys.argv[0] stays the spec path, so the sys.path insert above is unaffected).
+# scripts/build.py translates its own flags into these tokens; building the spec directly works
+# too: `pyinstaller scripts/png.spec -- --force-debug --release-build`.
+# --------------------------------------------------------------------------------------------------
+
+# Release builds: `python scripts/build.py --release`. Only the release workflow passes it.
+#
+# Off by default on purpose. Forgetting it mislabels a release as a dev build, which is noisy but
+# harmless; the reverse puts an untagged build into the world claiming to be the release, which is
+# how three different 4.4.0 betas all ended up self-reporting the same version.
+#
+# The only thing it changes is the version string, which lands in two places: the exe/app filename,
+# and PNG_VERSION, which the runtime hook below bakes in for lib/version.get_version() to read. A
+# non-release build carries the commit it was built from, so a log or a downloaded file identifies
+# the exact code behind it.
+
+RELEASE_MODE = "--release-build" in sys.argv[1:]
+BUILD_VERSION = get_build_version(RELEASE_MODE)
+APP_BASENAME = f"{APP_NAME_SNAKE}_{BUILD_VERSION}"
+
+# --------------------------------------------------------------------------------------------------
+# Debug builds: `python scripts/build.py --debug`.
+#
+# The launcher only enables debug logging when it is started with --debug, and it forwards that
+# flag to every subsystem it spawns. When this is on, the runtime hook below appends --debug to
+# sys.argv at startup, so the packaged app behaves as if the user had passed it.
+#
+# Debug mode changes logging only. Heartbeat handling is unaffected: a subsystem that stops
+# answering is still recovered (see apps/launcher/subsystems/base_mgr.py). Suppressing that is
+# a separate, dev-only opt-in, --no-heartbeat-stop, which no build ever bakes in.
+
+FORCE_DEBUG_MODE = "--force-debug" in sys.argv[1:]
 
 # --------------------------------------------------------------------------------------------------
 # Runtime hook: inject PNG_VERSION env var before app starts
 # --------------------------------------------------------------------------------------------------
 
-runtime_hook_code = f'import os\nos.environ["PNG_VERSION"] = "{APP_VERSION}"\n'
+runtime_hook_lines = [
+    "import os",
+    f'os.environ["PNG_VERSION"] = "{BUILD_VERSION}"',
+]
+
+if FORCE_DEBUG_MODE:
+    # Appended, never inserted: the frozen submodule dispatcher locates its module by
+    # the index of --module in sys.argv, so nothing before that may shift.
+    runtime_hook_lines += [
+        "import sys",
+        'if "--debug" not in sys.argv:',
+        '    sys.argv.append("--debug")',
+    ]
+
+runtime_hook_code = "\n".join(runtime_hook_lines) + "\n"
 runtime_hook_path = os.path.join(tempfile.gettempdir(), "png_runtime_hook.py")
 
 with open(runtime_hook_path, "w", encoding="utf-8") as f:
     f.write(runtime_hook_code)
+
+print("=" * 80)
+print(f"png.spec: building version {BUILD_VERSION} (release mode: {'ON' if RELEASE_MODE else 'OFF'})")
+if FORCE_DEBUG_MODE:
+    print("png.spec: FORCE_DEBUG_MODE is ON — this build always runs with --debug.")
+print("=" * 80)
 
 # --------------------------------------------------------------------------------------------------
 # Entrypoint script
@@ -92,7 +149,7 @@ def collect_directory(src_dir, dest_dir):
 hiddenimports = (
     collect_submodules("apps.launcher") +
     collect_submodules("apps.backend") +
-    collect_submodules("apps.save_viewer") +
+    collect_submodules("apps.web") +
     collect_submodules("apps.hud") +
     collect_submodules("apps.broker") +
     collect_submodules("apps.mcp_server")
@@ -128,7 +185,7 @@ def qml_file(path, filename):
 
 datas.extend([
     qml_file("apps/hud/ui/overlays/base", "OverlayBorder.qml"),
-    qml_file("apps/hud/ui/overlays/base", "FrameTelemetry.qml"),
+    qml_file("apps/hud/ui/overlays/base", "DiffedTableModel.qml"),
     qml_file("apps/hud/ui/overlays/track_radar", "track_radar.qml"),
     qml_file("apps/hud/ui/overlays/input_telemetry", "input_telemetry.qml"),
     qml_file("apps/hud/ui/overlays/timing_tower", "timing_tower.qml"),
@@ -181,7 +238,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     target_arch=None,
@@ -208,7 +265,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name=COLLECT_DIR_NAME,
 )

@@ -25,7 +25,7 @@
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Callable, Optional
 
 from PySide6.QtGui import QIcon
 
@@ -212,26 +212,33 @@ def load_team_logos_uri_dict(
     )
 
 def load_tyre_icons_uri_dict(relative_path: Optional[Path] = Path("assets") / "tyre-icons",
-) -> Dict[str, Path]:
-    """Get a dictionary of tyre icons file paths.
+) -> defaultdict[str, str]:
+    """Get a dictionary of tyre icons with a default icon for unknown compounds.
+
+    VisualTyreCompound stringifies unrecognised compound bytes to "Unknown", which has no
+    icon of its own - without the default, such a row renders a blank cell.
 
     Args:
         relative_path: Path to the tyre icons directory, relative to the project root or build bundle.
 
     Returns:
-        dict[str, Path]: A dictionary mapping visual compound names to their URI's
+        defaultdict[str, str]: A dictionary mapping visual compound names to their URI's
     """
 
     base = _get_resource_base() / relative_path
+    default_tyre_uri = (base / "default_tyre.svg").as_uri()
 
-    return {
-        "Soft": (base / "soft_tyre.svg").as_uri(),
-        "Super Soft": (base / "super_soft_tyre.svg").as_uri(),
-        "Medium": (base / "medium_tyre.svg").as_uri(),
-        "Hard": (base / "hard_tyre.svg").as_uri(),
-        "Inters": (base / "intermediate_tyre.svg").as_uri(),
-        "Wet": (base / "wet_tyre.svg").as_uri(),
-    }
+    return defaultdict(
+        lambda: default_tyre_uri,
+        {
+            "Soft": (base / "soft_tyre.svg").as_uri(),
+            "Super Soft": (base / "super_soft_tyre.svg").as_uri(),
+            "Medium": (base / "medium_tyre.svg").as_uri(),
+            "Hard": (base / "hard_tyre.svg").as_uri(),
+            "Inters": (base / "intermediate_tyre.svg").as_uri(),
+            "Wet": (base / "wet_tyre.svg").as_uri(),
+        },
+    )
 
 def _get_resource_base() -> Path:
     """Get the base path for loading resources. Handles pyinstaller build paths"""

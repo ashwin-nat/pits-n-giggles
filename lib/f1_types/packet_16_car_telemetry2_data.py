@@ -42,6 +42,9 @@ class CarTelemetry2Data(F1SubPacketBase):
         m_overtakeActivationDistance (int): Metres until Overtake Mode becomes available (0 = N/A).
         m_2026Regulations (bool): True if 2026 regulations applicable, False for pre-2026 vehicle.
         m_drivingWrongWay (bool): True if driving in wrong direction.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     class ActiveAeroMode(F1BaseEnum):

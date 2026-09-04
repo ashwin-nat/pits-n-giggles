@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
@@ -38,7 +39,7 @@ Item {
 
         Label {
             text: "BEST AVAILABLE SETS"
-            color: textDim
+            color: root.textDim
             font.pixelSize: 9
             font.family: "Formula1"
         }
@@ -54,12 +55,15 @@ Item {
                 model: 6
 
                 Rectangle {
+                    id: bestSetCell
+                    required property int index
+
                     Layout.fillWidth: true
                     Layout.preferredHeight: 55
                     radius: 2
-                    color: bgColor
+                    color: root.bgColor
 
-                    property var entry: index < bestSets.length ? bestSets[index] : null
+                    property var entry: bestSetCell.index < root.bestSets.length ? root.bestSets[bestSetCell.index] : null
 
                     RowLayout {
                         anchors.fill: parent
@@ -70,7 +74,7 @@ Item {
                             Layout.preferredWidth: 32
                             Layout.preferredHeight: 32
                             fillMode: Image.PreserveAspectFit
-                            source: entry && tyreIcons[entry.compound] ? tyreIcons[entry.compound] : ""
+                            source: bestSetCell.entry && root.tyreIcons[bestSetCell.entry.compound] ? root.tyreIcons[bestSetCell.entry.compound] : ""
                             smooth: true
                             antialiasing: true
                             mipmap: true
@@ -84,26 +88,26 @@ Item {
                                 font.pixelSize: 14
                                 font.family: "B612 Mono"
                                 text: {
-                                    if (!entry || entry.deltaS === undefined || entry.deltaS === null)
+                                    if (!bestSetCell.entry || bestSetCell.entry.deltaS === undefined || bestSetCell.entry.deltaS === null)
                                         return "---"
-                                    var v = entry.deltaS
+                                    var v = bestSetCell.entry.deltaS
                                     return (v > 0 ? "+" : "") + v.toFixed(3)
                                 }
                                 color: {
-                                    if (!entry || entry.deltaS === undefined || entry.deltaS === null)
-                                        return textDim
-                                    var d = entry.deltaS
-                                    if (d < -0.5) return primary
-                                    if (d < 0) return textColor
-                                    if (d < 0.5) return warning
-                                    return danger
+                                    if (!bestSetCell.entry || bestSetCell.entry.deltaS === undefined || bestSetCell.entry.deltaS === null)
+                                        return root.textDim
+                                    var d = bestSetCell.entry.deltaS
+                                    if (d < -0.5) return root.primary
+                                    if (d < 0) return root.textColor
+                                    if (d < 0.5) return root.warning
+                                    return root.danger
                                 }
                             }
 
                             Label {
                                 text: "s/lap"
                                 font.pixelSize: 9
-                                color: textDim
+                                color: root.textDim
                             }
                         }
 
@@ -114,9 +118,9 @@ Item {
         }
 
         Rectangle {
-            height: 1
+            Layout.preferredHeight: 1
             Layout.fillWidth: true
-            color: borderColor
+            color: root.borderColor
         }
 
         // =========================
@@ -125,7 +129,7 @@ Item {
 
         Label {
             text: "ACTUAL COMPOUNDS"
-            color: textDim
+            color: root.textDim
             font.pixelSize: 9
             font.family: "Formula1"
         }
@@ -137,12 +141,15 @@ Item {
             Layout.fillWidth: true
 
             Repeater {
-                model: compoundMappings
+                model: root.compoundMappings
 
                 Rectangle {
+                    id: compoundCell
+                    required property var modelData
+
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
-                    color: bgColor
+                    color: root.bgColor
 
                     RowLayout {
                         anchors.fill: parent
@@ -153,7 +160,7 @@ Item {
                             Layout.preferredWidth: 18
                             Layout.preferredHeight: 18
                             fillMode: Image.PreserveAspectFit
-                            source: tyreIcons[modelData.visualCompound]
+                            source: root.tyreIcons[compoundCell.modelData.visualCompound]
                             smooth: true
                             antialiasing: true
                             mipmap: true
@@ -162,8 +169,8 @@ Item {
                         Label {
                             font.pixelSize: 9
                             font.family: "B612 Mono"
-                            text: modelData.actualCompound
-                            color: primary
+                            text: compoundCell.modelData.actualCompound
+                            color: root.primary
                         }
 
                         Item { Layout.fillWidth: true }

@@ -110,7 +110,6 @@ class TestCaptureSettings(TestF1ConfigBase):
         capture_false = CaptureSettings(save_race_ctrl_msg=False)
         self.assertFalse(capture_false.save_race_ctrl_msg)
 
-        # Also test coercion from strings if you want
         capture_str_true = CaptureSettings(save_race_ctrl_msg="True")
         self.assertTrue(capture_str_true.save_race_ctrl_msg)
 

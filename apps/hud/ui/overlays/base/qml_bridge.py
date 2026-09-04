@@ -22,11 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from PySide6.QtCore import QObject
 
 from lib.event_counter import EventCounter
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -40,8 +41,9 @@ class QmlBridge:
 
     Provides three things:
     - Stats: single EventCounter per component; get_stats(), _track_event().
-    - Diff-based QML property caching: set_qml_property(), invalidate_qml_cache(),
-      _on_target_changed() (clears cache).
+    - QML property writes: push_qml_property() (always writes) and
+      set_qml_property() (writes only on change), plus invalidate_qml_cache()
+      and _on_target_changed() (clears cache).
     - Event handler registry: on_event() decorator (always guarded on
       _qml_target is not None), dispatch_event(), get_handled_event_types(),
       handles_event().
@@ -73,21 +75,59 @@ class QmlBridge:
         """Call when qml_target changes to a new object; clears the prop cache."""
         self._props.clear()
 
-    def set_qml_property(self, name: str, value) -> None:
-        """Write a property to qml_target with diff-based caching.
+    def push_qml_property(self, name: str, value) -> bool:
+        """Write a property to qml_target unconditionally. Returns True if it landed.
 
-        Silently does nothing when qml_target is None or the value is unchanged.
+        For structured, high-churn values (table resets and row patches) where
+        Python-side logic already guarantees every write is a real change.
+        Caching those would be a correctness trap: a patch, then a reset, then
+        an identical patch is three distinct instructions to QML, and the
+        second patch must not be swallowed as a repeat of the first.
+
+        Silently does nothing when qml_target is None.
         """
         target = self._qml_target
         if target is None:
             self._stats.track_event("__PROPS_NO_TARGET__", name)
-            return
+            return False
+        target.setProperty(name, value)
+        self._stats.track_event("__PROPS__", name)
+        self._notify_qml_content_changed()
+        return True
+
+    def set_qml_property(self, name: str, value) -> None:
+        """Write a property to qml_target with diff-based caching.
+
+        Silently does nothing when qml_target is None or the value is unchanged.
+        The cache only records writes that actually reached QML, so a write
+        dropped for want of a target cannot suppress the one that follows it.
+        """
         if self._props.get(name, _UNSET) == value:
             self._stats.track_event("__PROPS_CACHED__", name)
             return
-        self._props[name] = value
-        target.setProperty(name, value)
-        self._stats.track_event("__PROPS__", name)
+        if self.push_qml_property(name, value):
+            self._props[name] = value
+
+    def sync_table(self, differ: TableDiffer, name: str, rows: List[Any]) -> None:
+        """Diff rows and write the one payload QML applies, keeping the two in step.
+
+        push_qml_property() writes nothing while the target is missing, but
+        TableDiffer.update() has already advanced its baseline by the time we
+        find that out. Left alone, the differ would keep emitting patches
+        against rows QML never received, and QML drops patches it cannot place
+        - the table would stay behind until something else forced a reset.
+        Dropping the baseline instead makes the next update rebuild in full.
+        """
+        update = differ.update(rows)
+        if update and not self.push_qml_property(name, update):
+            differ.invalidate()
+
+    def _notify_qml_content_changed(self) -> None:
+        """Hook invoked after a real (non-cached) QML write. Default no-op.
+
+        Window-owning subclasses override this to stamp the change time for
+        change-to-present latency stats.
+        """
 
     def invalidate_qml_cache(self, *names: str) -> None:
         """Remove entries from the prop cache so next set_qml_property always pushes."""

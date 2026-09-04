@@ -46,6 +46,9 @@ class LobbyInfoData(F1SubPacketBase):
 
     Note:
         The class is designed to parse and represent lobby information data for a player.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT_23 = struct.Struct("<"

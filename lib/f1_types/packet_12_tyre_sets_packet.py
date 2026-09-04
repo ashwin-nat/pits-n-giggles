@@ -52,6 +52,11 @@ class TyreSetData(F1SubPacketBase):
 
         __str__(self) -> str:
             Returns a string representation of TyreSetData.
+
+    Restricted Telemetry:
+        Every field in this structure is zeroed for a player's own car when that
+        player has their "Your Telemetry" setting set to Restricted. You always
+        receive full data for the car you are driving.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

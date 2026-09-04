@@ -28,8 +28,9 @@ from typing import Any, Dict, List, Optional, final
 from apps.hud.common import (get_ref_row, get_relevant_race_table_rows,
                              is_race_type_session, is_tt_session)
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import MfdPageId, OverlayId
+from lib.config import MfdPageId, OverlayId, PngSettings
 from lib.f1_types import F1Utils
+from lib.table_differ import TableDiffer
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -42,10 +43,22 @@ class PaceCompPage(MfdPageBase):
 
     NUM_ADJ_CARS = 2
 
+    @classmethod
+    def standalone_show_title(cls, settings: PngSettings) -> bool:
+        return settings.HUD.pace_comp_show_title
+
     # -- Event wiring ----------------------------------------------------------
 
     @final
+    def on_page_activated(self):
+        # Fresh page item, so its table model is empty; the next update has to
+        # rebuild it rather than patch rows that aren't there.
+        self._differ.invalidate()
+
+    @final
     def setup_page(self):
+        self._differ = TableDiffer(self._stats)
+
         @self.on_event("race_table_update")
         def _handle_race_table_update(data: Dict[str, Any]) -> None:
             session_type = data.get("event-type", "")
@@ -83,8 +96,13 @@ class PaceCompPage(MfdPageBase):
         ref_s3_ms  = ref_times.get("s3-time-ms")
         ref_lap_ms = ref_times.get("lap-time-ms")
 
+        # With no reference lap there is nothing to delta against, so every row
+        # (not just the ref) falls back to showing absolute sector/lap times.
+        show_deltas = bool(ref_lap_ms)
+
         rows_data = [
-            self._build_row(row, ref_idx, ref_s1_ms, ref_s2_ms, ref_s3_ms, ref_lap_ms, lap_key)
+            self._build_row(row, ref_idx, ref_s1_ms, ref_s2_ms, ref_s3_ms, ref_lap_ms,
+                            lap_key, show_deltas)
             for row in relevant_rows
         ]
         self._set_rows(rows_data)
@@ -96,15 +114,17 @@ class PaceCompPage(MfdPageBase):
                    ref_s2_ms:  Optional[int],
                    ref_s3_ms:  Optional[int],
                    ref_lap_ms: Optional[int],
-                   lap_key: str) -> Dict[str, Any]:
+                   lap_key: str,
+                   show_deltas: bool) -> Dict[str, Any]:
         driver_info: Dict[str, Any] = row_data.get("driver-info", {})
         lap_times:   Dict[str, Any] = row_data.get("lap-info", {}).get(lap_key, {})
 
         is_ref = driver_info.get("index", -1) == ref_idx
 
-        if is_ref:
+        if is_ref or not show_deltas:
             s1_str, s2_str, s3_str, lap_str = self._format_ref_times(
-                ref_s1_ms, ref_s2_ms, ref_s3_ms, ref_lap_ms)
+                lap_times.get("s1-time-ms"), lap_times.get("s2-time-ms"),
+                lap_times.get("s3-time-ms"), lap_times.get("lap-time-ms"))
         else:
             s1_str, s2_str, s3_str, lap_str = self._format_delta_times(
                 lap_times, ref_s1_ms, ref_s2_ms, ref_s3_ms, ref_lap_ms)
@@ -249,5 +269,5 @@ class PaceCompPage(MfdPageBase):
         self._set_rows([])
 
     def _set_rows(self, rows: List[Dict[str, Any]]) -> None:
-        """Push row data to QML."""
-        self.set_qml_property("rows", rows)
+        """Diff rows and, if anything moved, write the one payload QML applies."""
+        self.sync_table(self._differ, "tableUpdate", rows)

@@ -25,7 +25,8 @@
 from .driver_mgr import DriverRaceControlManager
 from .factory import race_ctrl_event_msg_factory
 from .messages import (CarDamageRaceControlMessage, DriverAiStatusChange,
-                       DriverPittingRaceCtrlMsg, MessageType, RaceCtrlMsgBase,
+                       DriverPittingRaceCtrlMsg, MessageType,
+                       OvertakeRaceCtrlMsg, RaceCtrlMsgBase,
                        TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
 from .session_mgr import SessionRaceControlManager
 
@@ -44,4 +45,7 @@ __all__ = [
     "DriverPittingRaceCtrlMsg",
     "WingChangeRaceCtrlMsg",
     "TyreChangeRaceControlMessage",
+
+    # Event messages
+    "OvertakeRaceCtrlMsg",
 ]

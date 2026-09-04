@@ -53,6 +53,9 @@ class FinalClassificationData(F1SubPacketBase):
 
     Note:
         The class is designed to parse and represent the final classification data for a car in a race.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"
@@ -450,47 +453,50 @@ class FinalClassificationData(F1SubPacketBase):
     @classmethod
     def from_values(cls,
             packet_format: int,
-            position: int,
-            num_laps: int,
-            grid_position: int,
-            points: int,
-            num_pit_stops: int,
-            result_status: ResultStatus,
-            result_reason: ResultReason,
-            best_lap_time_in_ms: int,
-            total_race_time: float,
-            penalties_time: int,
-            num_penalties: int,
-            num_tyre_stints: int,
+            position: int = 0,
+            num_laps: int = 0,
+            grid_position: int = 0,
+            points: int = 0,
+            num_pit_stops: int = 0,
+            result_status: ResultStatus = ResultStatus.INVALID,
+            result_reason: ResultReason = ResultReason.INVALID,
+            best_lap_time_in_ms: int = 0,
+            total_race_time: float = 0.0,
+            penalties_time: int = 0,
+            num_penalties: int = 0,
+            num_tyre_stints: int = 0,
             # tyre_stints_actual,  # array of 8
-            tyre_stints_actual_0: ActualTyreCompound,
-            tyre_stints_actual_1: ActualTyreCompound,
-            tyre_stints_actual_2: ActualTyreCompound,
-            tyre_stints_actual_3: ActualTyreCompound,
-            tyre_stints_actual_4: ActualTyreCompound,
-            tyre_stints_actual_5: ActualTyreCompound,
-            tyre_stints_actual_6: ActualTyreCompound,
-            tyre_stints_actual_7: ActualTyreCompound,
+            tyre_stints_actual_0: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_1: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_2: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_3: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_4: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_5: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_6: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
+            tyre_stints_actual_7: ActualTyreCompound = ActualTyreCompound.UNKNOWN,
             # tyre_stints_visual,  # array of 8
-            tyre_stints_visual_0: VisualTyreCompound,
-            tyre_stints_visual_1: VisualTyreCompound,
-            tyre_stints_visual_2: VisualTyreCompound,
-            tyre_stints_visual_3: VisualTyreCompound,
-            tyre_stints_visual_4: VisualTyreCompound,
-            tyre_stints_visual_5: VisualTyreCompound,
-            tyre_stints_visual_6: VisualTyreCompound,
-            tyre_stints_visual_7: VisualTyreCompound,
+            tyre_stints_visual_0: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_1: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_2: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_3: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_4: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_5: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_6: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
+            tyre_stints_visual_7: VisualTyreCompound = VisualTyreCompound.UNKNOWN,
             # tyre_stints_end_laps,  # array of 8
-            tyre_stints_end_laps_0: int,
-            tyre_stints_end_laps_1: int,
-            tyre_stints_end_laps_2: int,
-            tyre_stints_end_laps_3: int,
-            tyre_stints_end_laps_4: int,
-            tyre_stints_end_laps_5: int,
-            tyre_stints_end_laps_6: int,
-            tyre_stints_end_laps_7: int) -> "FinalClassificationData":
+            tyre_stints_end_laps_0: int = 0,
+            tyre_stints_end_laps_1: int = 0,
+            tyre_stints_end_laps_2: int = 0,
+            tyre_stints_end_laps_3: int = 0,
+            tyre_stints_end_laps_4: int = 0,
+            tyre_stints_end_laps_5: int = 0,
+            tyre_stints_end_laps_6: int = 0,
+            tyre_stints_end_laps_7: int = 0) -> "FinalClassificationData":
         # sourcery skip: low-code-quality
         """Create a new FinalClassificationData object from the given values.
+
+        Every field except packet_format defaults to its empty/unknown value, so callers that only
+        need a placeholder entry - one that is counted but never read - can pass packet_format alone.
 
         Args:
             Too many args to list.

@@ -2,7 +2,6 @@
     "Network": {
         "telemetry_port": 20778,
         "server_port": 4768,
-        "save_viewer_port": 4769,
         "broker_xpub_port": 53838,
         "broker_xsub_port": 53835,
         "broker_router_port": 53836,
@@ -16,18 +15,19 @@
     "Capture": {
         "post_race_data_autosave": true,
         "post_quali_data_autosave": true,
-        "post_fp_data_autosave": false,
-        "post_tt_data_autosave": false,
-        "save_race_ctrl_msg": false,
+        "post_fp_data_autosave": true,
+        "post_tt_data_autosave": true,
+        "save_race_ctrl_msg": true,
         "just_in_case_autosave": true,
         "session_dir": "data"
     },
     "Display": {
-        "disable_browser_autoload": true,
+        "auto_open_dashboard": "Hub",
         "refresh_interval": 200,
         "local_telemetry_rate": 5,
         "realtime_overlay_fps": 60,
         "use_cpu_acceleration": false,
+        "save_viewer_poll_interval_secs": 10,
         "wdt_timeout": 5.0
     },
     "Privacy": {
@@ -111,6 +111,7 @@
                 }
             }
         },
+        "timing_tower_tyre_info_mode": "Hybrid",
         "timing_tower_relative_best_last_lap": false,
         "timing_tower_combined_tl_pens": false,
         "timing_tower_toggle_udp_action_code": null,
@@ -172,6 +173,7 @@
         "show_circuit_info": true,
         "circuit_info_toggle_udp_action_code": null,
         "circuit_info_length": 800,
+        "circuit_info_minimal": false,
         "show_pu_info": true,
         "pu_display_harvest_info": true,
         "pu_toggle_udp_action_code": null,
@@ -196,83 +198,83 @@
         "overlays_opacity": 100,
         "layout": {
             "lap_timer": {
-                "x": 3006,
-                "y": -16,
+                "x": -1573,
+                "y": 225,
                 "scale_factor": 1.0
             },
             "timing_tower": {
-                "x": 3293,
-                "y": -21,
+                "x": -1737,
+                "y": 17,
                 "scale_factor": 1.0
             },
             "mfd": {
-                "x": 2580,
-                "y": 220,
+                "x": -842,
+                "y": 27,
                 "scale_factor": 1.0
             },
             "input_telemetry": {
-                "x": 2576,
-                "y": 531,
+                "x": -863,
+                "y": 512,
                 "scale_factor": 1.0
             },
             "track_radar": {
-                "x": 2616,
-                "y": 670,
+                "x": -413,
+                "y": 421,
                 "scale_factor": 1.0
             },
             "hud_overlay": {
-                "x": 3913,
-                "y": 807,
+                "x": -525,
+                "y": 294,
                 "scale_factor": 1.0
             },
             "circuit_info": {
-                "x": 3099,
-                "y": 885,
+                "x": -1326,
+                "y": 895,
                 "scale_factor": 1.0
             },
             "pu": {
-                "x": 2578,
-                "y": -19,
+                "x": -1831,
+                "y": 217,
                 "scale_factor": 1.0
             },
             "fuel_info": {
-                "x": 3927,
-                "y": 533,
+                "x": -422,
+                "y": 26,
                 "scale_factor": 1.0
             },
             "tyre_info": {
-                "x": 3957,
-                "y": 265,
+                "x": -1261,
+                "y": 24,
                 "scale_factor": 1.0
             },
             "lap_times_standalone": {
-                "x": 3951,
-                "y": 11,
+                "x": -1161,
+                "y": 359,
                 "scale_factor": 1.0
             },
             "weather_standalone": {
-                "x": 3454,
-                "y": 616,
+                "x": -850,
+                "y": 351,
                 "scale_factor": 1.0
             },
             "pit_rejoin_standalone": {
-                "x": 3464,
-                "y": 343,
+                "x": -1373,
+                "y": 570,
                 "scale_factor": 1.0
             },
             "tyre_sets_standalone": {
-                "x": 3501,
-                "y": 84,
+                "x": -1695,
+                "y": 403,
                 "scale_factor": 1.0
             },
             "pace_comp_standalone": {
-                "x": 3017,
-                "y": 460,
+                "x": -1900,
+                "y": 661,
                 "scale_factor": 1.0
             },
             "traffic_monitor_standalone": {
-                "x": 3030,
-                "y": 183,
+                "x": -684,
+                "y": 810,
                 "scale_factor": 1.0
             }
         }
@@ -306,7 +308,8 @@
         "Losail": 25.0,
         "Abu_Dhabi": 19.0,
         "Paul_Ricard": null,
-        "Portimao": null
+        "Portimao": null,
+        "Madrid": null
     },
     "TimeLossInPitsF2": {
         "Melbourne": null,
@@ -337,7 +340,8 @@
         "Losail": null,
         "Abu_Dhabi": null,
         "Paul_Ricard": null,
-        "Portimao": null
+        "Portimao": null,
+        "Madrid": null
     },
     "Prediction": {
         "weather_aware_prediction": true,
@@ -347,9 +351,5 @@
     "MCP": {
         "mcp_http_server_enable": true,
         "mcp_http_port": 4770
-    },
-    "SubSysCtrlCfg__": {
-        "heartbeat_interval": 5.0,
-        "num_missable_heartbeats": 3
     }
 }

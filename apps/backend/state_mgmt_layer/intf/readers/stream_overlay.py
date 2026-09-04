@@ -29,7 +29,7 @@ from apps.backend.state_mgmt_layer.session_state import SessionState
 from lib.f1_types import CarStatusData
 
 from ..base import BaseAPI
-from .helpers import LapTimeHistory
+from .helpers.lap_time_history import LapTimeHistory
 
 # ------------------------- API - CLASSES ------------------------------------------------------------------------------
 

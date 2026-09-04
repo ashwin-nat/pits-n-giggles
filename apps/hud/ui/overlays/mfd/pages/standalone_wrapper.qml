@@ -16,12 +16,14 @@ Window {
 
     // A hosted page may declare a preferred standalone height via `standaloneHeight`
     // to hug its content instead of the full baseHeight. Pages that don't fall back.
+    // qmllint disable missing-property
     readonly property int pageHeight: {
         const it = pageContentLoader.item
         if (it && it.standaloneHeight !== undefined && it.standaloneHeight > 0)
             return it.standaloneHeight
         return baseHeight
     }
+    // qmllint enable missing-property
 
     width:  Math.round(baseWidth * scaleFactor)
     height: Math.round((pageHeight + (showTitleBar ? titleBarHeight : 0)) * scaleFactor)

@@ -70,7 +70,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import configparser
 import tempfile
 
-from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
+from lib.config import (AutoOpenDashboardMode, CaptureSettings, DisplaySettings, ForwardingSettings,
                         NetworkSettings, PngSettings,
                         PrivacySettings, StreamOverlaySettings,
                         load_config_from_ini, save_config_to_ini)
@@ -205,14 +205,13 @@ post_race_data_autosave = true
         self.assertEqual(config.Display.refresh_interval, 200)  # Default
         self.assertEqual(config.Display.local_telemetry_rate, 5)  # Default
         self.assertEqual(config.Display.realtime_overlay_fps, 60)  # Default
-        self.assertFalse(config.Display.disable_browser_autoload)  # Default
+        self.assertEqual(config.Display.auto_open_dashboard, AutoOpenDashboardMode.HUB)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
         self.assertEqual(config.Forwarding.target_1, "")  # Default
         self.assertTrue(config.Capture.post_quali_data_autosave)
         self.assertFalse(config.Capture.post_fp_data_autosave)
 
         self.assertFalse(config.Privacy.process_car_setup)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
 
     def test_missing_keys_in_existing_sections(self):
         """Test when sections exist but some keys are missing"""
@@ -241,10 +240,9 @@ target_1 = localhost:8080
 
         # Verify missing keys have default values
         self.assertEqual(config.Network.server_port, 4768)  # Default
-        self.assertEqual(config.Network.save_viewer_port, 4769)  # Default
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)  # Default
         self.assertEqual(config.Network.udp_custom_action_code, None)  # Default
-        self.assertFalse(config.Display.disable_browser_autoload)  # Default
+        self.assertEqual(config.Display.auto_open_dashboard, AutoOpenDashboardMode.HUB)  # Default
         self.assertFalse(config.Privacy.process_car_setup)  # Default
         self.assertEqual(config.Forwarding.target_2, "")  # Default
         self.assertEqual(config.Forwarding.target_3, "")  # Default
@@ -267,7 +265,6 @@ udp_custom_action_code = 5
 
         # Verify missing keys have defaults
         self.assertEqual(config.Network.server_port, 4768)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
 
     def test_empty_sections(self):
@@ -292,7 +289,6 @@ udp_custom_action_code = 5
         # All values should be defaults
         self.assertEqual(config.Network.telemetry_port, 20777)
         self.assertEqual(config.Network.server_port, 4768)
-        self.assertEqual(config.Network.save_viewer_port, 4769)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
         self.assertEqual(config.Network.udp_custom_action_code, None)
 
@@ -301,7 +297,7 @@ udp_custom_action_code = 5
         self.assertFalse(config.Capture.post_fp_data_autosave)
 
         self.assertEqual(config.Display.refresh_interval, 200)
-        self.assertFalse(config.Display.disable_browser_autoload)
+        self.assertEqual(config.Display.auto_open_dashboard, AutoOpenDashboardMode.HUB)
 
         self.assertFalse(config.Privacy.process_car_setup)
 
@@ -319,7 +315,7 @@ telemetry_port = 19999
 server_port = 6000
 
 [Display]
-disable_browser_autoload = true
+auto_open_dashboard = Disabled
 
 [Privacy]
 process_car_setup = true
@@ -334,12 +330,11 @@ target_2 = example.com:9090
         # Verify present values
         self.assertEqual(config.Network.telemetry_port, 19999)
         self.assertEqual(config.Network.server_port, 6000)
-        self.assertTrue(config.Display.disable_browser_autoload)
+        self.assertEqual(config.Display.auto_open_dashboard, AutoOpenDashboardMode.DISABLED)
         self.assertTrue(config.Privacy.process_car_setup)
         self.assertEqual(config.Forwarding.target_2, "example.com:9090")
 
         # Verify missing keys in present sections have defaults
-        self.assertEqual(config.Network.save_viewer_port, 4769)
         self.assertEqual(config.Network.udp_tyre_delta_action_code, None)
         self.assertEqual(config.Network.udp_custom_action_code, None)
         self.assertEqual(config.Display.refresh_interval, 200)
@@ -357,7 +352,7 @@ target_2 = example.com:9090
         ini_content = """
 [Display]
 refresh_interval = 200
-disable_browser_autoload = false
+auto_open_dashboard = Hub
 """
         file_path = self._create_ini_file(ini_content)
 
@@ -365,7 +360,7 @@ disable_browser_autoload = false
 
         # Verify the present section
         self.assertEqual(config.Display.refresh_interval, 200)
-        self.assertEqual(config.Display.disable_browser_autoload, False)
+        self.assertEqual(config.Display.auto_open_dashboard, AutoOpenDashboardMode.HUB)
 
         # Verify all other sections have defaults
         self.assertEqual(config.Network.telemetry_port, 20777)
@@ -403,7 +398,7 @@ target_1 = localhost:8080
         # Check that values which were missing are now present in the file
         self.assertIn("[Display]", saved_content)
         self.assertIn("refresh_interval = 200", saved_content)
-        self.assertIn("disable_browser_autoload = False", saved_content)
+        self.assertIn("auto_open_dashboard = Hub", saved_content)
 
         self.assertIn("[Privacy]", saved_content)
         self.assertIn("process_car_setup = False", saved_content)

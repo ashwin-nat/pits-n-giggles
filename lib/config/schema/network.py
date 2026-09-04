@@ -51,11 +51,6 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
         default=4768,
         port_type=PortType.TCP
     )
-    save_viewer_port: int = port_field(
-        f"{APP_NAME} Save Data Viewer Port",
-        default=4769,
-        port_type=PortType.TCP
-    )
     broker_xpub_port: int = port_field(
         "PitWall Downstream Port",
         default=53838,
@@ -96,7 +91,8 @@ class NetworkSettings(ConfigDiffMixin, BaseModel):
                     "IP address the HTTP and UDP servers bind to.\n"
                     "Use '0.0.0.0' to allow LAN access (default).\n"
                     "Use '127.0.0.1' to restrict to this machine only.\n"
-                    "WARNING: '0.0.0.0' exposes the server to all devices on your network.\n"
+                    "It is safe because the worst that can happen is that someone can see your F1 telemetry data.\n"
+                    "The server only supports read-only access by design.\n"
                     "Only IPv4 addresses are supported."
                 ]
             }

@@ -1,4 +1,6 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
+import "../../../base"
 
 Item {
     id: root
@@ -70,30 +72,39 @@ Item {
     /* ─────────────────────────────────────────────────────
      * DATA  (Python sets these)
      *
-     * rows: list of {
+     * Written by Python as one TableDiffer payload per tick; DiffedTableModel
+     * applies it as a whole-table reset or a set of single-row patches.
+     *
+     * Each row is {
      *   position: string,
      *   team:     string  (team name for icon lookup),
      *   name:     string,
      *   s1, s2, s3, lap: string  (absolute for ref, signed delta for others),
      *   isRef:    bool
      * }
-     * Not padded — Repeater model matches rows.length exactly.
+     * Not padded - the model holds exactly as many rows as Python sent.
      * ───────────────────────────────────────────────────── */
-    property var rows: []
+    property var tableUpdate: null
+
+    DiffedTableModel {
+        id: tableModel
+        tableUpdate: root.tableUpdate
+    }
 
     /* ─────────────────────────────────────────────────────
      * HELPERS
      * ───────────────────────────────────────────────────── */
     // Delta sign:  "+" → opponent faster → red (bad for ref)
     //              "-" → ref faster      → green
-    //              ref row values are absolute times → accent
+    //              ref row values are absolute times → white
+    //              other rows with no reference lap also show absolute times → colText
     function deltaColor(str, isRef) {
         if (isRef)  return "white"
         if (!str || str === "—" || str === "--:--") return colDim
-        var first = str.charAt(0)
+        let first = str.charAt(0)
         if (first === "+") return colRed
         if (first === "-") return colGreen
-        return colDim
+        return colText
     }
 
     /* ─────────────────────────────────────────────────────
@@ -102,16 +113,16 @@ Item {
     Rectangle {
         id: container
         anchors.fill: parent
-        anchors.margins: margins
+        anchors.margins: root.margins
         color: "transparent"
 
         readonly property int  headerH: 28
-        readonly property real rowH: rows.length > 0 ? (height - headerH) / rows.length : 0
+        readonly property real rowH: tableModel.count > 0 ? (height - headerH) / tableModel.count : 0
 
         // Waiting for data
         Text {
             anchors.centerIn: parent
-            visible: rows.length === 0
+            visible: tableModel.count === 0
             text: "WAITING FOR DATA"
             font.family: "Formula1"
             font.pixelSize: 11
@@ -121,7 +132,7 @@ Item {
         Column {
             anchors.fill: parent
             spacing: 0
-            visible: rows.length > 0
+            visible: tableModel.count > 0
 
             /* ── HEADER ── */
             Row {
@@ -129,20 +140,24 @@ Item {
                 height: container.headerH
 
                 Repeater {
-                    model: headers
+                    model: root.headers
 
                     Rectangle {
-                        width: container.width * colRatios[index]
+                        id: headerCell
+                        required property string modelData
+                        required property int index
+
+                        width: container.width * root.colRatios[headerCell.index]
                         height: container.headerH
                         color: "#2a2a2a"
-                        border.color: colGrid
+                        border.color: root.colGrid
 
                         Text {
                             anchors.centerIn: parent
-                            text: modelData
-                            color: colAccent
-                            font.family: fontFamily
-                            font.pixelSize: fontSizeLabel
+                            text: headerCell.modelData
+                            color: root.colAccent
+                            font.family: root.fontFamily
+                            font.pixelSize: root.fontSizeLabel
                             font.bold: true
                         }
                     }
@@ -151,29 +166,34 @@ Item {
 
             /* ── DATA ROWS ── */
             Repeater {
-                model: rows.length
+                model: tableModel
 
                 delegate: Item {
                     id: rowItem
+                    required property int index
+                    required property string position
+                    required property string team
+                    required property string name
+                    required property string s1
+                    required property string s2
+                    required property string s3
+                    required property string lap
+                    required property bool isRef
 
                     width: container.width
                     height: container.rowH
 
-                    property int  rowIndex: index
-                    property var  rd:       root.rows[rowIndex] || {}
-                    property bool isRef:    rd.isRef === true
-
                     // Row background
                     Rectangle {
                         anchors.fill: parent
-                        color: index % 2 === 0 ? "transparent" : colAltRow
+                        color: rowItem.index % 2 === 0 ? "transparent" : root.colAltRow
                     }
 
                     // White border for ref row (on top of everything)
                     Rectangle {
                         anchors.fill: parent
                         color: "transparent"
-                        border.color: rowItem.isRef ? "white" : colGrid
+                        border.color: rowItem.isRef ? "white" : root.colGrid
                         border.width: rowItem.isRef ? 2 : 0
                     }
 
@@ -182,27 +202,27 @@ Item {
 
                             /* POS */
                             Rectangle {
-                                width: container.width * colRatios[0]
+                                width: container.width * root.colRatios[0]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.rd.position || "—"
-                                    color: rowItem.isRef ? "white" : colText
-                                    font.family: fontFamily
-                                    font.pixelSize: fontSizeLabel
+                                    text:  rowItem.position || "—"
+                                    color: rowItem.isRef ? "white" : root.colText
+                                    font.family: root.fontFamily
+                                    font.pixelSize: root.fontSizeLabel
                                     font.bold: true
                                 }
                             }
 
                             /* DRIVER  (team logo + name) */
                             Rectangle {
-                                width: container.width * colRatios[1]
+                                width: container.width * root.colRatios[1]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
                                 clip: true
 
                                 Image {
@@ -214,7 +234,7 @@ Item {
                                     }
                                     width: 16
                                     height: 16
-                                    source: root.teamIcons[rowItem.rd.team] || root.defaultTeamIcon
+                                    source: root.teamIcons[rowItem.team] || root.defaultTeamIcon
                                     fillMode: Image.PreserveAspectFit
                                     smooth: true
                                     mipmap: true
@@ -228,10 +248,10 @@ Item {
                                         rightMargin:    4
                                         verticalCenter: parent.verticalCenter
                                     }
-                                    text:  rowItem.rd.name || "—"
-                                    color: rowItem.isRef ? "white" : colText
-                                    font.family: fontFamily
-                                    font.pixelSize: fontSizeLabel
+                                    text:  rowItem.name || "—"
+                                    color: rowItem.isRef ? "white" : root.colText
+                                    font.family: root.fontFamily
+                                    font.pixelSize: root.fontSizeLabel
                                     font.bold: rowItem.isRef
                                     elide: Text.ElideRight
                                 }
@@ -239,65 +259,65 @@ Item {
 
                             /* S1 */
                             Rectangle {
-                                width: container.width * colRatios[2]
+                                width: container.width * root.colRatios[2]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.rd.s1 || "—"
-                                    color: deltaColor(rowItem.rd.s1, rowItem.isRef)
-                                    font.family: monoFontFamily
-                                    font.pixelSize: fontSizeMono
+                                    text:  rowItem.s1 || "—"
+                                    color: root.deltaColor(rowItem.s1, rowItem.isRef)
+                                    font.family: root.monoFontFamily
+                                    font.pixelSize: root.fontSizeMono
                                 }
                             }
 
                             /* S2 */
                             Rectangle {
-                                width: container.width * colRatios[3]
+                                width: container.width * root.colRatios[3]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.rd.s2 || "—"
-                                    color: deltaColor(rowItem.rd.s2, rowItem.isRef)
-                                    font.family: monoFontFamily
-                                    font.pixelSize: fontSizeMono
+                                    text:  rowItem.s2 || "—"
+                                    color: root.deltaColor(rowItem.s2, rowItem.isRef)
+                                    font.family: root.monoFontFamily
+                                    font.pixelSize: root.fontSizeMono
                                 }
                             }
 
                             /* S3 */
                             Rectangle {
-                                width: container.width * colRatios[4]
+                                width: container.width * root.colRatios[4]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.rd.s3 || "—"
-                                    color: deltaColor(rowItem.rd.s3, rowItem.isRef)
-                                    font.family: monoFontFamily
-                                    font.pixelSize: fontSizeMono
+                                    text:  rowItem.s3 || "—"
+                                    color: root.deltaColor(rowItem.s3, rowItem.isRef)
+                                    font.family: root.monoFontFamily
+                                    font.pixelSize: root.fontSizeMono
                                 }
                             }
 
                             /* LAP */
                             Rectangle {
-                                width: container.width * colRatios[5]
+                                width: container.width * root.colRatios[5]
                                 height: parent.height
                                 color: "transparent"
-                                border.color: colGrid
+                                border.color: root.colGrid
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  rowItem.rd.lap || "—"
-                                    color: deltaColor(rowItem.rd.lap, rowItem.isRef)
-                                    font.family: monoFontFamily
-                                    font.pixelSize: fontSizeMono
+                                    text:  rowItem.lap || "—"
+                                    color: root.deltaColor(rowItem.lap, rowItem.isRef)
+                                    font.family: root.monoFontFamily
+                                    font.pixelSize: root.fontSizeMono
                                     font.bold: true
                                 }
                             }

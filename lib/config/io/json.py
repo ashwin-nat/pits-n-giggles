@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, Set, Tuple
 
 from pydantic import ValidationError
 
-from ..schema import PngSettings
+from ..schema.png import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

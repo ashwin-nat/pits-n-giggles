@@ -22,12 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .backend_mgr import BackendAppMgr
+from .backend_mgr.backend_mgr import BackendAppMgr
 from .base_mgr import PngAppMgrBase, PngAppMgrConfig
 from .broker_mgr import BrokerAppMgr
-from .hud_mgr import HudAppMgr
+from .hud_mgr.hud_mgr import HudAppMgr
 from .mcp_mgr import McpAppMgr
-from .save_viewer_mgr import SaveViewerAppMgr
+from .web_mgr import WebAppMgr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -38,5 +38,5 @@ __all__ = [
     "PngAppMgrBase",
     "PngAppMgrConfig",
     "McpAppMgr",
-    "SaveViewerAppMgr",
+    "WebAppMgr",
 ]

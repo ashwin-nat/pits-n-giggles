@@ -34,7 +34,8 @@ from lib.config import (OverlaysFuelEstimationMode, OverlaysSpeedUnit,
                         HudSettings, MfdPageId, MfdPageSettings, MfdSettings,
                         MfdTyreWearRateType, OverlayId, OverlayPosition,
                         TimingTowerColId, TimingTowerColOptions,
-                        TimingTowerColSettings, WeatherMFDUIType)
+                        TimingTowerColSettings, TimingTowerTyreInfoMode,
+                        WeatherMFDUIType)
 from lib.config.schema.hud.mfd import DEFAULT_PAGES
 from lib.config.schema.hud.timing_tower import DEFAULT_COLS
 
@@ -69,6 +70,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertFalse(cols[TimingTowerColId.SPEED_TRAP].enabled)
         self.assertFalse(cols[TimingTowerColId.FUEL].enabled)
         self.assertFalse(cols[TimingTowerColId.DRIVER_STATUS].enabled)
+        self.assertEqual(settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
         self.assertEqual(settings.show_mfd, True)
         self.assertEqual(settings.mfd_toggle_udp_action_code, None)
         self.assertEqual(settings.mfd_interaction_udp_action_code, None)
@@ -95,6 +97,7 @@ class TestHudSettings(TestF1ConfigBase):
         self.assertEqual(settings.show_circuit_info, True)
         self.assertEqual(settings.circuit_info_toggle_udp_action_code, None)
         self.assertEqual(settings.circuit_info_length, 800)
+        self.assertEqual(settings.circuit_info_minimal, False)
         self.assertEqual(settings.overlays_opacity, 100)
         self.assertEqual(settings.use_windowed_overlays, False)
         self.assertFalse(settings.timing_tower_relative_best_last_lap)
@@ -836,6 +839,44 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(AttributeError):
             HudSettings(mfd_tyre_wear_rate_type=MfdTyreWearRateType.UNKNOWN)
 
+    def test_timing_tower_tyre_info_mode_default(self):
+        hud_settings = HudSettings()
+        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
+
+    def test_timing_tower_tyre_info_mode_valid_values(self):
+        for value in TimingTowerTyreInfoMode:
+            hud_settings = HudSettings(timing_tower_tyre_info_mode=value)
+            self.assertEqual(hud_settings.timing_tower_tyre_info_mode, value)
+
+        hud_settings = HudSettings(timing_tower_tyre_info_mode="Tyre Age")
+        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.TYRE_AGE)
+
+        hud_settings = HudSettings(timing_tower_tyre_info_mode="Tyre Wear")
+        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.TYRE_WEAR)
+
+        hud_settings = HudSettings(timing_tower_tyre_info_mode="Hybrid")
+        self.assertEqual(hud_settings.timing_tower_tyre_info_mode, TimingTowerTyreInfoMode.HYBRID)
+
+    def test_timing_tower_tyre_info_mode_invalid_value(self):
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_tyre_info_mode="invalid")
+
+        # Case sensitive - a differently cased variant must not slip through
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_tyre_info_mode="tyre age")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_tyre_info_mode=None)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(timing_tower_tyre_info_mode=42)
+
+    def test_timing_tower_tyre_info_mode_diff(self):
+        old_settings = HudSettings()
+        new_settings = HudSettings(timing_tower_tyre_info_mode=TimingTowerTyreInfoMode.TYRE_WEAR)
+        diff = old_settings.diff(new_settings, ["timing_tower_tyre_info_mode"])
+        self.assertIn("timing_tower_tyre_info_mode", diff)
+
     def test_show_circuit_info(self):
         hud_settings = HudSettings(show_circuit_info=True)
         self.assertEqual(hud_settings.show_circuit_info, True)
@@ -899,6 +940,29 @@ class TestHudSettings(TestF1ConfigBase):
         with self.assertRaises(ValidationError):
             HudSettings(circuit_info_length=1501)
         HudSettings(circuit_info_length=1500)
+
+    def test_circuit_info_minimal_validation(self):
+        """Test valid and invalid circuit_info_minimal values"""
+        # Default is False
+        hud_settings = HudSettings()
+        self.assertEqual(hud_settings.circuit_info_minimal, False)
+
+        # Explicit True
+        hud_settings = HudSettings(circuit_info_minimal=True)
+        self.assertEqual(hud_settings.circuit_info_minimal, True)
+
+        # Explicit False
+        hud_settings = HudSettings(circuit_info_minimal=False)
+        self.assertEqual(hud_settings.circuit_info_minimal, False)
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal=None)  # type: ignore
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal="invalid")
+
+        with self.assertRaises(ValidationError):
+            HudSettings(circuit_info_minimal=420)
 
     def test_track_radar_range_m_default(self):
         """track_radar_range_m defaults to 25"""

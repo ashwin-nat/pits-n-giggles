@@ -8,14 +8,27 @@ import sys
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import pytest
 from tests_base import F1TelemetryUnitTestsBase
 
-from lib.child_proc_mgmt import (extract_ipc_port_from_line,
-                                 extract_pid_from_line, is_init_complete,
+from lib.child_proc_mgmt import (_INTEGRATION_FAIL_TAG_PREFIX,
+                                 _INTEGRATION_TEST_ENV_VAR,
+                                 _SESSION_SAVE_SKIPPED_TAG_PREFIX,
+                                 _SESSION_SAVED_TAG_PREFIX,
+                                 enable_integration_test_mode,
+                                 extract_integration_fail_from_line,
+                                 extract_ipc_port_from_line,
+                                 extract_pid_from_line,
+                                 extract_save_skipped_from_line,
+                                 extract_saved_path_from_line,
+                                 is_init_complete, is_integration_test_mode,
+                                 notify_parent_init_complete,
+                                 report_integration_fail,
                                  report_ipc_port_from_child,
-                                 report_pid_from_child)
+                                 report_pid_from_child,
+                                 report_session_save_skipped_from_child,
+                                 report_session_saved_from_child)
 
-import pytest
 pytestmark = pytest.mark.serial
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -178,3 +191,82 @@ class TestIpcPortExtraction(TestChildProcMgmt):
         # Should return None because regex requires digits
         line = "<<PNG_LAUNCHER_IPC_PORT:abcd>>"
         self.assertIsNone(extract_ipc_port_from_line(line))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# Stdout tokens the child emits for the integration runner, as
+# (prefix, reporter, extractor, payload). Lines are built from the module's own prefix, so a
+# renamed tag fails here rather than silently passing against a literal nothing emits any more.
+TOKENS = [
+    (_SESSION_SAVED_TAG_PREFIX, report_session_saved_from_child, extract_saved_path_from_line,
+     "data/2026_01_01/race-info/Race_Monza.json"),
+    (_SESSION_SAVE_SKIPPED_TAG_PREFIX, report_session_save_skipped_from_child,
+     extract_save_skipped_from_line, "no-lap-data"),
+    # Free-form message with punctuation - the non-greedy match has to return all of it.
+    (_INTEGRATION_FAIL_TAG_PREFIX, report_integration_fail, extract_integration_fail_from_line,
+     "HUD exited unexpectedly (code: 3221225477) | exiting with code -1073741819"),
+]
+
+TOKEN_IDS = [p.strip("<:") for p, _, _, _ in TOKENS]
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_token_round_trip(prefix, report_fn, extract_fn, payload):
+    """What the child prints is what the parent parses back out."""
+    assert extract_fn(f"{prefix}{payload}>>") == payload
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_token_extraction_ignores_unrelated_lines(prefix, report_fn, extract_fn, payload):
+    """Noise, and the other tokens - the runner dispatches on these separately."""
+    assert extract_fn("just a normal log line") is None
+    assert extract_fn("") is None
+
+    for other_prefix, _, _, other_payload in TOKENS:
+        if other_prefix != prefix:
+            assert extract_fn(f"{other_prefix}{other_payload}>>") is None
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, prefix, report_fn,
+                                                       extract_fn, payload):
+    """A normal build must print nothing: report_integration_fail runs on the crash path."""
+    monkeypatch.delenv(_INTEGRATION_TEST_ENV_VAR, raising=False)
+    report_fn(payload)
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+def test_reporters_emit_inside_integration_mode(monkeypatch, capsys, prefix, report_fn,
+                                                extract_fn, payload):
+    """The emit half of the round trip - what the runner's output pump actually reads.
+
+    The silence test above only pins the early return, so without this the print itself is
+    never executed and a broken token would ship green.
+    """
+    monkeypatch.setenv(_INTEGRATION_TEST_ENV_VAR, "1")
+    report_fn(payload)
+    line = capsys.readouterr().out.strip()
+    assert line == f"{prefix}{payload}>>"
+    assert extract_fn(line) == payload
+
+
+def test_enable_integration_test_mode_is_visible_to_the_reporters(monkeypatch):
+    """The runner sets this before spawning the app; children inherit it via the environment."""
+    monkeypatch.delenv(_INTEGRATION_TEST_ENV_VAR, raising=False)
+    assert not is_integration_test_mode()
+    enable_integration_test_mode()
+    assert is_integration_test_mode()
+
+
+def test_ipc_port_round_trip(capsys):
+    """Reported unconditionally - the launcher needs the port whatever the mode."""
+    report_ipc_port_from_child(5555)
+    assert extract_ipc_port_from_line(capsys.readouterr().out.strip()) == 5555
+
+
+def test_init_complete_round_trip(capsys):
+    """Also unconditional: the launcher blocks on this before marking a subsystem up."""
+    notify_parent_init_complete()
+    assert is_init_complete(capsys.readouterr().out.strip())

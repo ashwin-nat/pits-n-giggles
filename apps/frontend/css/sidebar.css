@@ -1,0 +1,177 @@
+/*
+  Shared navigation rail. Loaded standalone on both the vanilla Jinja pages and the React
+  save-viewer shell (injected into dist/index.html), so every rule is scoped under .png-sidebar
+  and defines its own custom properties instead of relying on each host page's :root — the two
+  shells style :root very differently (F1 dashboard vars vs Tailwind) and neither is guaranteed
+  to be present.
+*/
+
+.png-sidebar {
+  --png-sb-width: 220px;
+  --png-sb-width-collapsed: 56px;
+  --png-sb-bg: #0c0c12;
+  --png-sb-border: #2d2d3d;
+  --png-sb-text: #9090a0;
+  --png-sb-text-active: #ffffff;
+  --png-sb-accent: #e10600;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--png-sb-width);
+  height: 100vh;
+  background-color: var(--png-sb-bg);
+  border-right: 1px solid var(--png-sb-border);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px 8px;
+  gap: 4px;
+  z-index: 1000;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-sizing: border-box;
+  transition: width 0.15s ease;
+}
+
+.png-sidebar-collapsed {
+  --png-sb-width: var(--png-sb-width-collapsed);
+}
+
+.png-sidebar-collapsed .png-sidebar-label {
+  display: none;
+}
+
+.png-sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.png-sidebar-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.png-sidebar-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.png-sidebar-link {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: var(--png-sb-text);
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.png-sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--png-sb-text-active);
+}
+
+.png-sidebar-link-active {
+  background-color: rgba(225, 6, 0, 0.15);
+  color: var(--png-sb-text-active);
+}
+
+.png-sidebar-link-active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  border-radius: 0 3px 3px 0;
+  background-color: var(--png-sb-accent);
+}
+
+.png-sidebar-icon {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+}
+
+.png-sidebar-label {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.png-sidebar-toggle {
+  margin-top: auto;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--png-sb-text);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.png-sidebar-collapsed .png-sidebar-toggle {
+  align-self: center;
+}
+
+.png-sidebar-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--png-sb-text-active);
+}
+
+.png-sidebar-toggle-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.png-sidebar-toggle-icon-expand {
+  display: none;
+}
+
+.png-sidebar-collapsed .png-sidebar-toggle-icon-collapse {
+  display: none;
+}
+
+.png-sidebar-collapsed .png-sidebar-toggle-icon-expand {
+  display: block;
+}
+
+/* Reserve the rail's width so host-page content never renders underneath it. Also resets the
+   browser's default 8px body margin, which pages that don't load their own reset (e.g. home.html)
+   would otherwise show as a white border around the page. */
+body.png-has-sidebar {
+  margin: 0;
+  padding-left: 220px;
+  box-sizing: border-box;
+  transition: padding-left 0.15s ease;
+}
+
+body.png-sidebar-collapsed {
+  padding-left: 56px;
+}

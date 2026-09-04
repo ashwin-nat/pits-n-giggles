@@ -145,6 +145,76 @@ class F1CompareableEnum(F1BaseEnum):
             return self.value < other.value
         return NotImplemented
 
+class F1RawValueEnum(F1BaseEnum):
+    """
+    Base class for Enums whose wire values the game keeps extending without telling us.
+
+    A value that isn't a declared member yields a pseudo-member that is
+    indistinguishable from the enum's own UNKNOWN sentinel - same value, equal to
+    it, same hash, same str() - while additionally remembering the value that
+    actually came off the wire, via `raw_value`.
+
+    This keeps behaviour identical to a plain safeCast()-to-UNKNOWN, so all
+    unknown values still compare equal to each other and to UNKNOWN, while no
+    longer discarding the incoming value.
+
+    Note:
+        Derived Enums must declare an UNKNOWN member.
+        Compare members with `==`, never with `is`: two unknowns are equal but
+        are not the same object.
+    """
+
+    @classmethod
+    def _missing_(cls, value: Any) -> Optional["F1RawValueEnum"]:
+        """
+        Build a pseudo-member for an undeclared wire value.
+
+        Args:
+            value (Any): The unrecognised value.
+
+        Returns:
+            Optional[F1RawValueEnum]: A pseudo-member aliasing UNKNOWN, or None if
+                the value is not an int (letting the Enum machinery raise as usual).
+        """
+        if not isinstance(value, int) or isinstance(value, bool):
+            return None
+
+        pseudo = object.__new__(cls)
+        # Indistinguishable from the sentinel...
+        pseudo._value_ = cls.UNKNOWN._value_
+        pseudo._name_ = cls.UNKNOWN._name_
+        # ...except that it remembers what came off the wire
+        pseudo._raw_value_ = value
+        # One instance per raw value. Bounded by the width of the wire field
+        return cls._value2member_map_.setdefault(value, pseudo)
+
+    @property
+    def raw_value(self) -> int:
+        """The value as it came off the wire. Same as .value for declared members."""
+        return getattr(self, "_raw_value_", self._value_)
+
+    def is_unknown(self) -> bool:
+        """Whether this member came from a value the enum doesn't declare."""
+        return getattr(self, "_raw_value_", None) is not None
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        Check equality with another member of the same enum.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if both refer to the same enum value. All unknowns are equal.
+        """
+        if isinstance(other, self.__class__):
+            return self._value_ == other._value_
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        """Hash by enum value, so unknowns key identically to UNKNOWN."""
+        return hash((self.__class__, self._value_))
+
 class F1PacketBase:
     """
     Base class for parsed F1 telemetry packets.

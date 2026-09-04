@@ -22,22 +22,23 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 import os
+
+from pydantic import ValidationError
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer import F1TelemetryHandler
+from lib.config import CaptureSettings
 from lib.error_status import PNG_LOST_CONN_TO_PARENT
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-
 from lib.ipc import IpcPublisherAsync
-from ..telemetry_web_server import TelemetryWebServer
+from lib.logger import PngLogger
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 async def handleManualSave(
-        logger: logging.Logger,
+        logger: PngLogger,
         session_state: SessionState,
         ) -> dict:
     """Handle manual save command"""
@@ -49,7 +50,7 @@ async def handleManualSave(
         logger.exception("Unexpected error during manual save")
         return {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
 
-async def handleShutdown(msg: dict, logger: logging.Logger) -> dict:
+async def handleShutdown(msg: dict, logger: PngLogger) -> dict:
     """Handle shutdown command"""
 
     reason = msg.get('reason', 'N/A')
@@ -63,7 +64,6 @@ async def handleGetStats(
         telemetry_handler: F1TelemetryHandler,
         ipc_pub: IpcPublisherAsync,
         ipc_dealer: AsyncInterTaskCommunicator,
-        web_server: TelemetryWebServer,
         ) -> dict:
     """Handle get-stats command."""
     return {
@@ -72,13 +72,12 @@ async def handleGetStats(
             "ingress" : telemetry_handler.getStats(),
             "egress" : {
                 "ipc_pub" : ipc_pub.get_stats(),
-                "web_server" : web_server.get_stats(),
                 "dealer": ipc_dealer.get_stats(),
             }
         },
     }
 
-async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
+async def handleHeartbeatMissed(count: int, logger: PngLogger) -> dict:
     """Handle terminate command"""
 
     logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
@@ -88,7 +87,7 @@ async def handleHeartbeatMissed(count: int, logger: logging.Logger) -> dict:
 
 async def handleForwardingConfigChange(
         msg: dict,
-        logger: logging.Logger,
+        logger: PngLogger,
         telemetry_handler: F1TelemetryHandler) -> dict:
     """Handle forwarding-config-change command: update targets without restarting the backend."""
 
@@ -103,7 +102,7 @@ async def handleForwardingConfigChange(
 
 async def handleUdpActionCodeChange(
         msg: dict,
-        logger: logging.Logger,
+        logger: PngLogger,
         telemetry_handler: F1TelemetryHandler) -> dict:
     """Handle udp action code change command"""
 
@@ -118,4 +117,29 @@ async def handleUdpActionCodeChange(
     except Exception as e: # pylint: disable=broad-exception-caught
         logger.exception("Error updating udp action code: %s", e)
         return {'status': 'failure', 'message': f"Error updating udp action code: {e}"}
+    return {'status': 'success'}
+
+async def handleCaptureConfigChange(
+        msg: dict,
+        logger: PngLogger,
+        telemetry_handler: F1TelemetryHandler,
+        session_state: SessionState) -> dict:
+    """Handle capture-config-change command: update capture settings without restarting the backend.
+
+    The launcher sends the whole Capture section; each layer below picks out the fields it owns.
+    """
+
+    try:
+        capture_settings = CaptureSettings(**msg['capture'])
+    except (KeyError, TypeError, ValidationError) as e:
+        logger.error("Invalid capture config change payload: %s", e)
+        return {'status': 'failure', 'message': f"Invalid capture config change payload: {e}"}
+
+    logger.silent("Received capture config change command. Settings: %s", capture_settings)
+    try:
+        telemetry_handler.updateCaptureSettings(capture_settings)
+        session_state.updateCaptureSettings(capture_settings)
+    except Exception as e: # pylint: disable=broad-exception-caught
+        logger.exception("Error updating capture settings: %s", e)
+        return {'status': 'failure', 'message': f"Error updating capture settings: {e}"}
     return {'status': 'success'}

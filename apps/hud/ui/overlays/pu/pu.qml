@@ -278,7 +278,7 @@ Window {
                     Item { Layout.fillWidth: true }
                     Item {
                         Layout.preferredWidth: 120
-                        height: 16
+                        Layout.preferredHeight: 16
                         Text {
                             id:                     f126NrgMguk
                             anchors.right:          f126PwrMguk.left
@@ -322,7 +322,7 @@ Window {
                     Item { Layout.fillWidth: true }
                     Item {
                         Layout.preferredWidth: 120
-                        height: 16
+                        Layout.preferredHeight: 16
                         Text {
                             id:                     oldNrgMguk
                             anchors.right:          oldPwrMguk.left
@@ -437,7 +437,7 @@ Window {
                     Item { Layout.fillWidth: true }
                     Item {
                         Layout.preferredWidth: 120
-                        height: 16
+                        Layout.preferredHeight: 16
                         Text {
                             id:                     oldNrgMguh
                             anchors.right:          oldPwrMguh.left

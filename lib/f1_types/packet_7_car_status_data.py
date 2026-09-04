@@ -66,6 +66,22 @@ class CarStatusData(F1SubPacketBase):
 
     Note:
         The class uses enum classes for certain attributes for better readability and type safety.
+
+    Restricted Telemetry:
+        These fields are zeroed for a player's own car when that player has their
+        "Your Telemetry" setting set to Restricted.
+            - m_fuelInTank
+            - m_fuelCapacity
+            - m_fuelMix
+            - m_fuelRemainingLaps
+            - m_frontBrakeBias
+            - m_ersDeployMode
+            - m_ersStoreEnergy
+            - m_ersDeployedThisLap
+            - m_ersHarvestedThisLapMGUK
+            - m_ersHarvestedThisLapMGUH
+            - m_enginePowerICE
+            - m_enginePowerMGUK
     """
 
     MIN_FUEL_KG = 0.2 # Source: Trust me bro

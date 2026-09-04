@@ -12,6 +12,12 @@ on:
     tags:
       - 'v*'
 
+# Checkout and artifact upload only. The artifact upload authenticates with the Actions
+# runtime token, not GITHUB_TOKEN, so it is unaffected by this. release.yml is the only
+# workflow that publishes, and it declares its own wider scope.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -30,7 +36,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # Must stay in step with release.yml and with pyproject.toml's >=3.12,<3.14.
+          python-version: '3.12'
 
       - name: Install Poetry
         run: |
@@ -68,9 +75,13 @@ jobs:
         shell: bash
 
       # `--debug` bakes the flag into the binary: the launcher and every subsystem it
-      # spawns then log at DEBUG level without the user passing anything. Note that
-      # debug mode also stops subsystems self-terminating on missed heartbeats.
+      # spawns then log at DEBUG level without the user passing anything. It changes
+      # nothing else - heartbeat recovery behaves as it does in a stable build.
       # On tag pushes there are no inputs, so this resolves to an empty string.
+      #
+      # `--release` is deliberately never passed here: this workflow builds off
+      # arbitrary refs, so its output is stamped with the commit and is distinguishable
+      # from what release.yml publishes. Only release.yml builds a release.
       - name: Build with PyInstaller
         run: |
           poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}

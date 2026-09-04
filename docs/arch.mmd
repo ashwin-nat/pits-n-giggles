@@ -1,149 +1,91 @@
-%%{ init : { "theme" : "base", "themeVariables": {
-  "background": "#0b1020",
-  "primaryColor": "#1f6feb",
-  "primaryTextColor": "#e6edf3",
-  "secondaryColor": "#8250df",
-  "tertiaryColor": "#3fb950",
-  "lineColor": "#8b949e",
-  "edgeLabelBackground": "#0b1020",
-  "fontFamily": "Inter, JetBrains Mono, sans-serif",
-  "fontSize": "14px",
-  "clusterBkg": "#0d1117",
-  "clusterBorder": "#30363d"
-}} }%%
+%%{init: {'theme':'dark', 'themeVariables': {
+  'primaryColor':'#1e293b',
+  'primaryTextColor':'#e2e8f0',
+  'primaryBorderColor':'#475569',
+  'lineColor':'#94a3b8',
+  'secondaryColor':'#0f172a',
+  'tertiaryColor':'#1e293b',
+  'background':'#0f172a',
+  'mainBkg':'#1e293b',
+  'clusterBkg':'#1e293b',
+  'clusterBorder':'#334155',
+  'edgeLabelBackground':'#1e293b',
+  'titleColor':'#f1f5f9',
+  'fontSize':'15px'
+}}}%%
 
 %% ---------------------------------------------------------------------------
-%% pits_n_giggles — Clean Telemetry & UI Architecture
-%% Visual style: dark, neon-accented, left-to-right narrative flow
+%% Pits n' Giggles - high level process architecture
+%% The launcher is the entry point and owns every subsystem process.
+%% Thick edges = telemetry data path. Dashed = control / request path.
+%% For the HUD's internal structure, see hud-arch.mmd
 %% ---------------------------------------------------------------------------
+
 flowchart LR
 
-%% ===========================================================================
-%% External Systems
-%% ===========================================================================
-subgraph EXTERNAL[" External Systems"]
-  direction TB
-  F1_SIM[" F1 Simulator"]
-  EXT_TGT[" External Targets"]
-end
-
-%% ===========================================================================
-%% Core Telemetry Stack
-%% ===========================================================================
-subgraph CORE[" Telemetry Core"]
-  direction TB
-
-  subgraph TELEMETRY[" Telemetry Ingest"]
+subgraph EXT["External"]
     direction TB
-    UDP_RECV["UDP Receiver"]
-    PARSERS["Packet Parsers"]
-    PACKET_FWD["Packet Forwarder"]
-  end
+    GAME["F1 Game<br/><i>broadcasts telemetry over UDP / TCP</i>"]
+    FWD["Forwarding Targets<br/><i>other tools on the network</i>"]
+end
 
-  subgraph STATE[" State & Computation"]
+subgraph PNG["Pits n' Giggles"]
+    direction LR
+    MGRS["Launcher<br/><i>Qt GUI · single entry point</i><br/><i>one manager per subsystem:</i><br/><i>spawn · heartbeat · auto-restart</i><br/><i>settings push · stdout to consolidated log</i>"]
+
+    subgraph SUBSYS["Subsystem processes"]
+        direction LR
+        BACKEND["Backend<br/><i>parse packets · aggregate session state</i><br/><i>overtakes, collisions, tyre wear</i>"]
+        BROKER["Broker<br/><i>ZMQ pub/sub fan-out + router</i>"]
+        WEB["Web<br/><i>Quart + Socket.IO server</i>"]
+        HUD["HUD<br/><i>always-on-top Qt/QML overlays</i>"]
+        MCP["MCP Server<br/><i>live telemetry as MCP tools</i>"]
+    end
+end
+
+subgraph CLIENTS["Clients"]
     direction TB
-    COMP_ENGINE["Computation Engine"]
-    SHARED_STATE["Shared State"]
-    API_INTF["State Interface"]
-  end
-
-  subgraph INTF[" Core Interfaces"]
-    direction TB
-    HTTP["HTTP Server"]
-    SOCKETIO["Socket.IO"]
-    ZMQ_PUB["ZMQ Publisher"]
-    IPC["IPC Server"]
-  end
+    BROWSER["Browser<br/><i>driver &amp; engineer dashboards,<br/>save viewer, stream overlay</i>"]
+    AGENT["MCP Clients<br/><i>Claude and friends</i>"]
 end
 
-%% ===========================================================================
-%% Message Distribution
-%% ===========================================================================
-subgraph PITWALL[" PitWall Broker"]
-  direction TB
-  ZMQ_PROXY["ZMQ Proxy"]
-end
+%% -- launcher owns the subsystems (one manager per subsystem) --------------
+MGRS -.->|"req/rep"| BACKEND
+MGRS -.->|"req/rep"| BROKER
+MGRS -.->|"req/rep"| WEB
+MGRS -.->|"req/rep"| HUD
+MGRS -.->|"req/rep"| MCP
 
-%% ===========================================================================
-%% HUD Subsystem
-%% ===========================================================================
-subgraph HUD[" HUD Subsystem"]
-  direction TB
-  HUD_SUB["ZMQ Subscriber"]
-  HUD_SOCKETIO["Socket.IO"]
-  HUD_IPC["IPC Server"]
-  HUD_QT["Qt Overlays"]
-end
+%% -- ingest ---------------------------------------------------------------
+GAME ==>|"telemetry packets"| BACKEND
+BACKEND -.->|"raw packet forward"| FWD
 
-%% ===========================================================================
-%% Save Viewer
-%% ===========================================================================
-subgraph SAVE_VIEWER[" Save Viewer"]
-  direction TB
-  SV_IPC["IPC Server"]
-  SV_STATE["State"]
-  SV_HTTP["HTTP Server"]
-  SV_SOCKETIO["Socket.IO"]
-end
+%% -- state fan-out --------------------------------------------------------
+BACKEND ==>|"state updates (PUB)"| BROKER
+BROKER ==>|"SUB"| WEB
+BROKER ==>|"SUB"| HUD
+BROKER ==>|"SUB"| MCP
 
-%% ===========================================================================
-%% Web Clients
-%% ===========================================================================
-subgraph UI[" Web Clients"]
-  direction TB
-  STREAM_OVERLAY[" Stream Overlay"]
-  DRV_VIEW[" Driver Dashboard"]
-  ENG_VIEW[" Engineer Dashboard"]
-end
+%% -- pull requests back to the backend ------------------------------------
+WEB -.->|"driver-info / race-info"| BROKER
+HUD -.->|"overlay commands"| BROKER
+BROKER -.->|"router / dealer"| BACKEND
 
-%% ===========================================================================
-%% Primary Telemetry Flow (Hot Path)
-%% ===========================================================================
-F1_SIM ==> UDP_RECV ==> PARSERS ==> COMP_ENGINE ==> SHARED_STATE
-UDP_RECV -.-> PACKET_FWD -.-> EXT_TGT
+%% -- delivery -------------------------------------------------------------
+WEB ==>|"HTTP + Socket.IO"| BROWSER
+MCP ==>|"stdio / HTTP"| AGENT
 
-%% ===========================================================================
-%% Core State Fan-out
-%% ===========================================================================
-SHARED_STATE ==> API_INTF
-API_INTF ==> HTTP
-API_INTF ==> SOCKETIO
-API_INTF ==> ZMQ_PUB
+%% -- styles ---------------------------------------------------------------
+classDef external fill:#450a0a,stroke:#ef4444,color:#fca5a5,stroke-width:2px,font-weight:bold
+classDef mgr      fill:#2e1065,stroke:#a855f7,color:#d8b4fe,stroke-width:2px,font-weight:bold
+classDef backend  fill:#172554,stroke:#3b82f6,color:#93c5fd,stroke-width:2px,font-weight:bold
+classDef broker   fill:#422006,stroke:#f59e0b,color:#fcd34d,stroke-width:2px,font-weight:bold
+classDef consumer fill:#052e16,stroke:#22c55e,color:#86efac,stroke-width:2px,font-weight:bold
+classDef client   fill:#1e1b4b,stroke:#818cf8,color:#c7d2fe,stroke-width:2px
 
-%% ===========================================================================
-%% ZMQ Low-Latency Distribution
-%% ===========================================================================
-ZMQ_PUB ==> ZMQ_PROXY ==> HUD_SUB ==> HUD_QT
-
-%% ===========================================================================
-%% Socket.IO UI Distribution
-%% ===========================================================================
-SOCKETIO ==> HUD_SOCKETIO ==> HUD_QT
-SOCKETIO ==> STREAM_OVERLAY
-SOCKETIO ==> DRV_VIEW
-SOCKETIO ==> ENG_VIEW
-
-%% ===========================================================================
-%% Control & Playback Paths
-%% ===========================================================================
-IPC -.-> SV_IPC -.-> SV_STATE -.-> SV_SOCKETIO
-SV_HTTP ==> DRV_VIEW
-SV_SOCKETIO ==> DRV_VIEW
-HUD_IPC ==> HUD_QT
-
-%% ===========================================================================
-%% Styling
-%% ===========================================================================
-classDef external fill:#ff7b72,stroke:#ff7b72,color:#0b1020,font-weight:bold
-classDef core fill:#1f6feb,stroke:#58a6ff,color:#e6edf3,font-weight:bold
-classDef pitwall fill:#8250df,stroke:#a371f7,color:#e6edf3,font-weight:bold
-classDef hud fill:#3fb950,stroke:#56d364,color:#0b1020,font-weight:bold
-classDef save fill:#d29922,stroke:#f2cc60,color:#0b1020,font-weight:bold
-classDef ui fill:#db6d28,stroke:#ffa657,color:#0b1020,font-weight:bold
-
-class F1_SIM,EXT_TGT external
-class CORE,TELEMETRY,STATE,INTF core
-class PITWALL pitwall
-class HUD hud
-class SAVE_VIEWER save
-class UI ui
+class GAME,FWD external
+class MGRS mgr
+class BACKEND backend
+class BROKER broker
+class WEB,HUD,MCP consumer
+class BROWSER,AGENT client

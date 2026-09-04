@@ -11,9 +11,9 @@
 #     Builds with `scripts/build.py --debug`, which bakes the --debug flag into the
 #     binary: the launcher and every subsystem it spawns log at DEBUG level without
 #     the user passing anything. Intended for betas/RCs where you want diagnostics
-#     from testers. Leave it off for stable releases — besides the log volume, debug
-#     mode stops subsystems self-terminating after missed heartbeats, so a wedged
-#     child process lingers instead of exiting.
+#     from testers. Leave it off for stable releases: the log volume is significant
+#     and there is a small performance cost. Heartbeat handling is unaffected, so a
+#     debug build still recovers a wedged subsystem the same way a stable one does.
 #
 # The workflow will:
 #   - Auto-detect the single existing draft release (fails loudly if 0 or >1).
@@ -76,6 +76,7 @@ jobs:
       tag:        ${{ steps.draft.outputs.tag }}
       release_id: ${{ steps.draft.outputs.release_id }}
       name:       ${{ steps.draft.outputs.name }}
+      prerelease: ${{ steps.draft.outputs.prerelease }}
 
     steps:
       - name: Locate draft release via GitHub API
@@ -100,9 +101,11 @@ jobs:
           TAG=$(echo "$RELEASES" | jq -r '.[0].tag_name')
           ID=$(echo  "$RELEASES" | jq -r '.[0].id')
           NAME=$(echo "$RELEASES" | jq -r '.[0].name')
+          PRERELEASE=$(echo "$RELEASES" | jq -r '.[0].prerelease')
 
-          echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
-          echo "release_id=$ID"  >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"               >> "$GITHUB_OUTPUT"
+          echo "release_id=$ID"         >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           {
             echo "name<<VT_NAME_EOF"
             echo "$NAME"
@@ -185,10 +188,14 @@ jobs:
         shell: bash
 
       # `--debug` bakes the flag into the binary: the launcher and every subsystem it
-      # spawns then log at DEBUG level without the user passing anything. Note that
-      # debug mode also stops subsystems self-terminating on missed heartbeats.
+      # spawns then log at DEBUG level without the user passing anything. It changes
+      # nothing else - heartbeat recovery behaves as it does in a stable build.
+      #
+      # `--release` is unconditional here: this is the only workflow that publishes,
+      # and it is what keeps the reported version equal to the tag. Every other build
+      # gets the commit appended so it cannot be mistaken for a release.
       - name: Build with PyInstaller
-        run: poetry run python scripts/build.py ${{ inputs.debug_build && '--debug' || '' }}
+        run: poetry run python scripts/build.py --release ${{ inputs.debug_build && '--debug' || '' }}
         shell: bash
 
       - name: Smoke test
@@ -583,7 +590,12 @@ jobs:
       # recursive workflow runs from the default token) — so discord-release.yml
       # never fires on its own. workflow_dispatch is explicitly exempt from
       # that restriction, so dispatch it directly instead.
+      #
+      # Skipped for prereleases (betas/RCs): the workflow_dispatch path in
+      # discord-release.yml has no prerelease guard of its own, so this is
+      # the only place that keeps beta releases from pinging Discord.
       - name: Notify Discord via workflow_dispatch
+        if: needs.find-release.outputs.prerelease == 'false'
         run: |
           gh workflow run discord-release.yml \
             --repo "$GITHUB_REPOSITORY" \

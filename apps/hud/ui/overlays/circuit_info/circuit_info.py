@@ -22,17 +22,18 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, final
 
-from apps.hud.common import get_ref_row
-from apps.hud.ui.infra.hf_types import HudOverlayData
-from apps.hud.ui.overlays.base import BaseOverlay
-from lib.config import OverlayId, OverlayPosition
+from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
+from lib.logger import PngLogger
 from lib.track_segment_info import (ComplexCornerSegmentInfo,
                                     CornerSegmentInfo, TrackSegmentsDatabase)
+
+from ....common import get_ref_row
+from ...hf_types import HudOverlayData
+from ..base.base_overlay import BaseOverlay
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -47,6 +48,7 @@ class CircuitInfoOverlay(BaseOverlay):
     # Remember to update the spec file with the new QML path
     QML_FILE = Path(__file__).parent / "circuit_info.qml"
     OVERLAY_ID = OverlayId.CIRCUIT_INFO
+    ANIMATION_DRIVEN = True
 
     GREEN_SECTOR_COLOUR = "#28a745"
     YELLOW_SECTOR_COLOUR = "#ffc107"
@@ -54,28 +56,10 @@ class CircuitInfoOverlay(BaseOverlay):
     PURPLE_SECTOR_COLOUR = "#9b30ff"
     NA_SECTOR_COLOUR = "#888888"
 
-    def __init__(
-        self,
-        config: OverlayPosition,
-        logger: logging.Logger,
-        locked: bool,
-        opacity: int,
-        scale_factor: float,
-        windowed_overlay: bool,
-        circuit_info_length: int,
-        refresh_interval_ms: Optional[int] = None,  # Set none for event-driven rendering (low frequency)
-    ) -> None:
-
-        self.circuit_info_length = circuit_info_length
-        super().__init__(
-            config=config,
-            logger=logger,
-            locked=locked,
-            opacity=opacity,
-            scale_factor=scale_factor,
-            windowed_overlay=windowed_overlay,
-            refresh_interval_ms=refresh_interval_ms,
-        )
+    def __init__(self, settings: PngSettings, logger: PngLogger) -> None:
+        self.circuit_info_length = settings.HUD.circuit_info_length
+        self.circuit_info_minimal = settings.HUD.circuit_info_minimal
+        super().__init__(settings, logger)
 
         self.tracks_db = TrackSegmentsDatabase(Path(__file__).parents[5] / "assets/track-segments")
 
@@ -87,6 +71,14 @@ class CircuitInfoOverlay(BaseOverlay):
     def post_setup(self):
         """Set initial QML properties when the window is ready."""
         self._set_bar_width_property(self.circuit_info_length)
+        self.set_qml_property("minOverlayStyle", self.circuit_info_minimal)
+
+    @final
+    def set_locked_state(self, locked: bool):
+        """Set locked state."""
+        self.logger.debug('%s | [OVERRIDDEN HANDLER] Setting locked state to %s', self.OVERLAY_ID, locked)
+        super().set_locked_state(locked)
+        self.set_qml_property("lockedMode", locked)
 
     def _register_handlers(self):
         @self.on_event("set_circuit_info_length")

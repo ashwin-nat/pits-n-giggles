@@ -32,3 +32,6 @@ coverage_reports/
 *:Zone.Identifier
 *.db
 .pits_n_giggles.lock
+*.gz
+graphify-out/
+plans/

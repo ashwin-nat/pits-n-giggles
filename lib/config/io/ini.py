@@ -25,12 +25,13 @@
 import os
 import shutil
 from configparser import ConfigParser
+from enum import Enum
 from logging import Logger
-from typing import Any, Optional, Dict, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 from pydantic import ValidationError
 
-from ..schema import PngSettings
+from ..schema.png import PngSettings
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -92,7 +93,11 @@ def _stringify_dict(d: Any) -> Any:
     """
     if isinstance(d, dict):
         return {k: _stringify_dict(v) for k, v in d.items()}
-    return "" if d is None else str(d)
+    if d is None:
+        return ""
+    if isinstance(d, Enum):
+        return str(d.value)
+    return str(d)
 
 def _backup_invalid_file(path: str, logger: Optional[Logger]) -> None:
     """

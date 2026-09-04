@@ -28,9 +28,9 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `overtake_analyzer.py` | Overtake detection |
 | `rolling_history.py` | Rolling window data history |
 | `rate_limiter.py` | Rate limiting for event emissions |
+| `table_differ.py` | Row-granularity diffing of table data for UI patching |
 | `button_debouncer.py` | Debounce logic for UDP-triggered actions |
 | `event_counter.py` | Event counting utilities |
-| `pending_events.py` | Deferred event queue |
 | `custom_marker_tracker.py` | User-defined marker tracking |
 | `inter_task_communicator.py` | Cross-task message passing |
 | `child_proc_mgmt.py` | Child process lifecycle management |
@@ -41,7 +41,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 
 ## Purpose
 
-The `lib/` folder is not a standalone app. Instead, it provides reusable modules that the apps (`backend`, `hud`, `save_viewer`, `launcher`, `frontend`) can import.
+The `lib/` folder is not a standalone app. Instead, it provides reusable modules that the apps (`backend`, `web`, `hud`, `launcher`, `frontend`) can import.
 
 ## Usage Example
 

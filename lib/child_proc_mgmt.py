@@ -32,6 +32,19 @@ _PID_TAG_REGEX = re.compile(fr"{_PID_TAG_PREFIX}(\d+)>>")
 _INIT_COMPLETE_STR = "<<__PNG_SUBSYSTEM_INIT_COMPLETE__>>"
 _IPC_PORT_TAG_PREFIX = "<<PNG_LAUNCHER_IPC_PORT:"
 _IPC_PORT_TAG_REGEX = re.compile(fr"{_IPC_PORT_TAG_PREFIX}(\d+)>>")
+_SESSION_SAVED_TAG_PREFIX = "<<PNG_SESSION_SAVED:"
+_SESSION_SAVED_TAG_REGEX = re.compile(fr"{_SESSION_SAVED_TAG_PREFIX}(.+?)>>")
+_SESSION_SAVE_SKIPPED_TAG_PREFIX = "<<PNG_SESSION_SAVE_SKIPPED:"
+_SESSION_SAVE_SKIPPED_TAG_REGEX = re.compile(fr"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}(.+?)>>")
+_INTEGRATION_FAIL_TAG_PREFIX = "<<PNG_INTEGRATION_FAIL:"
+_INTEGRATION_FAIL_TAG_REGEX = re.compile(fr"{_INTEGRATION_FAIL_TAG_PREFIX}(.+?)>>")
+
+# Set by the integration runner on the app it spawns, and inherited by every process below
+# it. Gates the two things that exist only for that runner: the session save tokens here,
+# and the launcher re-printing its children's output on its own stdout (see base_mgr). Off
+# by default, so a normal run - packaged or from source - writes nothing to stdout beyond
+# the launcher/child handshake tokens, which go into a pipe rather than a console.
+_INTEGRATION_TEST_ENV_VAR = "PNG_INTEGRATION_TEST"
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -75,3 +88,94 @@ def notify_parent_init_complete() -> None:
 def is_init_complete(line: str) -> bool:
     """Call this in the parent process to check if the child process has completed initialization."""
     return _INIT_COMPLETE_STR in line
+
+def enable_integration_test_mode() -> None:
+    """Call this in the integration runner before spawning the app, to turn on the stdout
+    output that only that runner consumes.
+
+    Sets an env var rather than flipping a module global, because the code it gates runs in
+    the launcher and its grandchildren - they inherit this without having to be told.
+    """
+    os.environ[_INTEGRATION_TEST_ENV_VAR] = "1"
+
+def is_integration_test_mode() -> bool:
+    """Whether this process is running under the integration runner."""
+    return bool(os.environ.get(_INTEGRATION_TEST_ENV_VAR))
+
+def report_session_saved_from_child(file_path: str) -> None:
+    """Call this in the child process after writing a session save to disk.
+
+    Emitted as a token rather than left to the log message, so consumers do not have to
+    match on prose that could be reworded. No-op outside integration test mode.
+
+    Args:
+        file_path (str): Path the session was written to
+    """
+    if not is_integration_test_mode():
+        return
+    print(f"{_SESSION_SAVED_TAG_PREFIX}{file_path}>>", flush=True)
+
+def extract_saved_path_from_line(line: str) -> Optional[str]:
+    """Parse a written session save path from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The path if the line carries the token, else None
+    """
+    match = _SESSION_SAVED_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_integration_fail(message: str) -> None:
+    """Call this immediately before hard-exiting an integration test run.
+
+    The launcher's own logging reaches its file over a queued Qt signal, so a caller that
+    follows this with os._exit() kills the process before the reason is ever written. A token
+    on stdout is synchronous, thread-safe and drained by the runner, so it survives the exit.
+    No-op outside integration test mode.
+
+    Args:
+        message (str): Why the run is being failed, including the exit code
+    """
+    if not is_integration_test_mode():
+        return
+    print(f"{_INTEGRATION_FAIL_TAG_PREFIX}{message}>>", flush=True)
+
+def extract_integration_fail_from_line(line: str) -> Optional[str]:
+    """Parse an integration test failure reason from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The reason if the line carries the token, else None
+    """
+    match = _INTEGRATION_FAIL_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_session_save_skipped_from_child(reason: str) -> None:
+    """Call this in the child process when a session save is deliberately not written.
+
+    Lets a consumer tell "nothing was saved because this session does not qualify" apart
+    from "the save failed", instead of inferring it from an absence. No-op outside
+    integration test mode.
+
+    Args:
+        reason (str): Why the save was skipped
+    """
+    if not is_integration_test_mode():
+        return
+    print(f"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}{reason}>>", flush=True)
+
+def extract_save_skipped_from_line(line: str) -> Optional[str]:
+    """Parse a skipped-save reason from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The reason if the line carries the token, else None
+    """
+    match = _SESSION_SAVE_SKIPPED_TAG_REGEX.search(line)
+    return match.group(1) if match else None

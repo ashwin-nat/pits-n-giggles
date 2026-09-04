@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QGridLayout,
 from apps.launcher.logger import get_rotating_logger
 from apps.launcher.subsystems import (BackendAppMgr, BrokerAppMgr, HudAppMgr,
                                       McpAppMgr, PngAppMgrBase,
-                                      PngAppMgrConfig, SaveViewerAppMgr)
+                                      PngAppMgrConfig, WebAppMgr)
 from lib.assets_loader import load_fonts, load_icon
 from lib.config import (PngSettings, load_config_migrated,
                         maybe_migrate_legacy_hud_layout, save_config_to_json)
@@ -54,6 +54,12 @@ from .console import ConsoleWidget, LogSignals
 from .settings import SettingsWindow
 from .subsys_row import SubsystemCard
 from .tasks import SettingsChangeTask, StopSubsystemTask, UpdateCheckTask
+
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
+
+# Child log levels that are written to the log file but never shown in the console widget.
+# See lib/logger.py - SILENT is always emitted, SILENT_DEBUG only in debug mode.
+_CONSOLE_SUPPRESSED_LEVELS = frozenset({"SILENT", "SILENT_DEBUG"})
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -152,7 +158,8 @@ class PngLauncherWindow(QMainWindow):
                  debug_mode: bool,
                  replay_mode: bool,
                  integration_test_mode: bool,
-                 coverage_enabled: bool):
+                 coverage_enabled: bool,
+                 no_heartbeat_stop: bool = False):
 
         self.app = QApplication(sys.argv)
         super().__init__()
@@ -184,7 +191,21 @@ class PngLauncherWindow(QMainWindow):
         self.console = None
 
         # Setup logging
-        self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        try:
+            self.logger, self.log_file_path = get_rotating_logger(debug_mode=self.debug_mode)
+        except PermissionError:
+            box = QMessageBox(
+                QMessageBox.Icon.Critical,
+                APP_NAME + " - " + self.ver_str,
+                f"{APP_NAME} cannot write its files here and cannot start.\n\n"
+                "This usually happens when the app is launched from a Start Menu shortcut, "
+                "where it has no write permission.\n\n"
+                f"Please run {APP_NAME} directly from a dedicated folder instead.\n\n"
+                "(Create a folder, place the exe in it, and run it from there.)",
+            )
+            box.setWindowIcon(QIcon(logo_path))
+            box.exec()
+            sys.exit(1)
         self.log_signals = LogSignals()
         self.log_signals.log_message.connect(self._write_log)
         self.subsystems_short_names = set()
@@ -225,12 +246,13 @@ class PngLauncherWindow(QMainWindow):
             args=args,
             debug_mode=debug_mode,
             coverage_enabled=coverage_enabled,
-            integration_test_mode=integration_test_mode
+            integration_test_mode=integration_test_mode,
+            no_heartbeat_stop=no_heartbeat_stop
         )
 
         self.subsystems: List[PngAppMgrBase] = [
             BackendAppMgr(common_cfg, replay_server=replay_mode),
-            SaveViewerAppMgr(common_cfg),
+            WebAppMgr(common_cfg),
             HudAppMgr(common_cfg),
             BrokerAppMgr(common_cfg),
             McpAppMgr(common_cfg)
@@ -286,6 +308,7 @@ class PngLauncherWindow(QMainWindow):
             "website" : self._load_icon(icons_path_base / "website.svg"),
             "overlay-preview": self._load_icon(Path("assets") / "overlay-preview-icon.svg"),
             "close"          : self._load_icon(icons_path_base / "close-icon.svg"),
+            "import"         : self._load_icon(icons_path_base / "import.svg"),
         }
 
     def get_icon(self, key: str) -> Optional[QIcon]:
@@ -504,6 +527,7 @@ class PngLauncherWindow(QMainWindow):
         # subsystems write here; creating it now avoids coupling/races where the first
         # producer to run owns creation.
         Path(resolve_user_file("data")).mkdir(parents=True, exist_ok=True)
+        Path(resolve_user_file("data/import")).mkdir(parents=True, exist_ok=True)
 
         for subsystem in self.subsystems:
             if subsystem.get_start_by_default():
@@ -615,7 +639,8 @@ class PngLauncherWindow(QMainWindow):
             text = obj['message']
             stack = obj.get("stack")
 
-            # In debug mode, treat SILENT logs as INFO
+            # In debug mode, treat SILENT logs as INFO. SILENT_DEBUG is deliberately left alone -
+            # it is file-only even in debug mode
             if level == "SILENT" and self.debug_mode:
                 level = "INFO"
 
@@ -630,10 +655,10 @@ class PngLauncherWindow(QMainWindow):
                 timestamp, file_text, level, filename, lineno, src
             )
 
-            # ---------------- CONSOLE MESSAGE (skip if SILENT) ----------------
+            # ---------------- CONSOLE MESSAGE (skip if silent) ----------------
 
             console_msg = None
-            if level != "SILENT":
+            if level not in _CONSOLE_SUPPRESSED_LEVELS:
                 if stack:
                     console_text = f"{text} (stack trace written to log file)"
                 else:
@@ -656,7 +681,7 @@ class PngLauncherWindow(QMainWindow):
 
         # ---------------- WRITE OUTPUT ----------------
 
-        # Console (only if not SILENT)
+        # Console (only if not silent)
         if self.console and console_msg is not None:
             self.console.append_log(console_msg)
 

@@ -22,8 +22,11 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .readers import PeriodicUpdateData, RaceInfoData, DriverInfoRsp, StreamOverlayData
-from .writers import ManualSaveRsp
+from .readers.driver_info import DriverInfoRsp
+from .readers.periodic_update_data import PeriodicUpdateData
+from .readers.race_info import RaceInfoData
+from .readers.stream_overlay import StreamOverlayData
+from .writers.manual_save import ManualSaveRsp
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 

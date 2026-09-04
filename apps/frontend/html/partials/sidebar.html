@@ -1,0 +1,27 @@
+<nav class="png-sidebar" aria-label="Pits n' Giggles navigation">
+  <a class="png-sidebar-brand" href="/" title="Pits n' Giggles home">
+    <img class="png-sidebar-logo" src="/logo.png" alt="Pits n' Giggles">
+  </a>
+  <div class="png-sidebar-links">
+    <a class="png-sidebar-link{% if active_page == 'home' %} png-sidebar-link-active{% endif %}" href="/" title="Home">
+      <i class="bi bi-house-door-fill png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Home</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'live' %} png-sidebar-link-active{% endif %}" href="/live" title="Driver View (Live)">
+      <i class="bi bi-car-front-fill png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Driver View</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'eng-view' %} png-sidebar-link-active{% endif %}" href="/eng-view" title="Engineer View (Live)">
+      <i class="bi bi-wrench-adjustable png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Engineer View</span>
+    </a>
+    <a class="png-sidebar-link{% if active_page == 'save-viewer' %} png-sidebar-link-active{% endif %}" href="/save-viewer/" title="Save Data">
+      <i class="bi bi-floppy-fill png-sidebar-icon" aria-hidden="true"></i>
+      <span class="png-sidebar-label">Save Data</span>
+    </a>
+  </div>
+  <button type="button" class="png-sidebar-toggle" title="Collapse sidebar" aria-expanded="true">
+    <i class="bi bi-chevron-bar-left png-sidebar-toggle-icon png-sidebar-toggle-icon-collapse" aria-hidden="true"></i>
+    <i class="bi bi-chevron-bar-right png-sidebar-toggle-icon png-sidebar-toggle-icon-expand" aria-hidden="true"></i>
+  </button>
+</nav>

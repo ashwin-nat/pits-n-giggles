@@ -13,93 +13,96 @@
       "type": "corner",
       "start_m": 435,
       "end_m": 770,
-      "name": "",
+      "name": "Piquet",
       "corner_number": 1
     },
     {
       "type": "corner",
       "start_m": 980,
       "end_m": 1215,
-      "name": "",
+      "name": "Hamilton",
       "corner_number": 2
     },
     {
       "type": "corner",
       "start_m": 1225,
       "end_m": 1400,
-      "name": "",
+      "name": "Spring",
       "corner_number": 3
     },
     {
       "type": "corner",
       "start_m": 1680,
       "end_m": 1855,
-      "name": "",
+      "name": "Mansell",
       "corner_number": 4
     },
     {
       "type": "corner",
       "start_m": 1950,
       "end_m": 2150,
-      "name": "",
+      "name": "Mogyorod",
       "corner_number": 5
     },
     {
       "type": "complex_corner",
       "start_m": 2250,
       "end_m": 2470,
+      "name": "Driving Center",
       "corner_numbers": [
         6,
         7
       ]
     },
     {
-      "type": "corner",
+      "type": "complex_corner",
       "start_m": 2500,
-      "end_m": 2630,
-      "name": "",
-      "corner_number": 8
-    },
-    {
-      "type": "corner",
-      "start_m": 2650,
       "end_m": 2790,
-      "name": "",
-      "corner_number": 9
+      "name": "Buda/Pest",
+      "corner_numbers": [
+        8,
+        9
+      ]
     },
     {
       "type": "corner",
       "start_m": 2860,
       "end_m": 2990,
-      "name": "",
+      "name": "Danube",
       "corner_number": 10
     },
     {
       "type": "corner",
       "start_m": 3015,
       "end_m": 3205,
-      "name": "",
+      "name": "Alesi",
       "corner_number": 11
+    },
+    {
+      "type": "straight",
+      "start_m": 3205,
+      "end_m": 3400,
+      "name": "Back Straight"
     },
     {
       "type": "corner",
       "start_m": 3400,
       "end_m": 3600,
-      "name": "",
+      "name": "Schumacher",
       "corner_number": 12
     },
     {
       "type": "corner",
       "start_m": 3650,
       "end_m": 3900,
-      "name": "",
+      "name": "Senna",
       "corner_number": 13
     },
     {
       "type": "corner",
       "start_m": 3950,
       "end_m": 4220,
-      "name": "",
+      "name": "Szisz",
       "corner_number": 14
     },
     {

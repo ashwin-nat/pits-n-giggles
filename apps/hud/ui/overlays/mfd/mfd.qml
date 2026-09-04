@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 
@@ -34,7 +35,9 @@ Window {
     property bool useCollapseAnimation: false
 
     // Get title from loaded page
+    // qmllint disable missing-property
     readonly property string pageTitle: pageLoader.item && pageLoader.item.title !== undefined ? pageLoader.item.title : ""
+    // qmllint enable missing-property
     readonly property bool showTitleBar: pageTitle.length > 0 && !displayCollapsed
     readonly property bool showFooter: totalPages > 0 && !displayCollapsed
 
@@ -48,16 +51,16 @@ Window {
 
     // Smooth height animation when collapsing/expanding
     Behavior on height {
-        enabled: useCollapseAnimation
+        enabled: root.useCollapseAnimation
         NumberAnimation {
-            duration: collapseDuration
+            duration: root.collapseDuration
             easing.type: Easing.InOutCubic
         }
     }
 
     // Watch for page changes and animate
     onCurrentPageQmlChanged: {
-        if (currentPageQml == "") return;
+        if (currentPageQml.toString() === "") return;
 
         if (isAnimating) {
             // Queue the next transition
@@ -71,7 +74,7 @@ Window {
     }
 
     function startPageTransition() {
-        if (pageLoader.source == "") {
+        if (pageLoader.source.toString() === "") {
             // First load, no animation
             pageLoader.source = currentPageQml;
             displayCollapsed = collapsed;
@@ -112,7 +115,7 @@ Window {
         displayCollapsed = collapsed;
 
         // Process any pending transition
-        if (pendingPageQml != "") {
+        if (pendingPageQml.toString() !== "") {
             let pending = pendingPageQml;
             pendingPageQml = "";
             currentPageQml = pending;
@@ -132,11 +135,11 @@ Window {
             id: titleBar
             x: 0
             y: 0
-            width: baseWidth
-            height: titleBarHeight
+            width: root.baseWidth
+            height: root.titleBarHeight
             color: Qt.rgba(0, 0, 0, 0.3)
-            visible: showTitleBar
-            opacity: showTitleBar ? 1.0 : 0.0
+            visible: root.showTitleBar
+            opacity: root.showTitleBar ? 1.0 : 0.0
 
             Behavior on opacity {
                 NumberAnimation {
@@ -156,9 +159,9 @@ Window {
             Text {
                 x: 0
                 y: 0
-                width: baseWidth
-                height: titleBarHeight
-                text: pageTitle
+                width: root.baseWidth
+                height: root.titleBarHeight
+                text: root.pageTitle
                 color: "#FF0000"
                 font.family: "Formula1"
                 font.pixelSize: 13
@@ -171,9 +174,9 @@ Window {
         Loader {
             id: pageLoader
             objectName: "pageLoader"
-            width: baseWidth
-            height: displayCollapsed ? baseHeightCollapsed : baseHeightExpanded
-            anchors.top: showTitleBar ? titleBar.bottom : parent.top
+            width: root.baseWidth
+            height: root.displayCollapsed ? root.baseHeightCollapsed : root.baseHeightExpanded
+            anchors.top: root.showTitleBar ? titleBar.bottom : parent.top
             opacity: 1.0
 
             onLoaded: {
@@ -224,11 +227,11 @@ Window {
         // Page Indicator Footer
         Rectangle {
             id: footer
-            width: baseWidth
-            height: footerHeight
+            width: root.baseWidth
+            height: root.footerHeight
             anchors.top: pageLoader.bottom
             color: Qt.rgba(0, 0, 0, 0.3)
-            visible: showFooter
+            visible: root.showFooter
 
             // Top border
             Rectangle {
@@ -249,10 +252,13 @@ Window {
                     model: root.totalPages
 
                     Rectangle {
+                        id: indicatorDot
+                        required property int index
+
                         width: 12
                         height: 12
                         radius: 6
-                        color: index === root.currentPageIndex ?
+                        color: indicatorDot.index === root.currentPageIndex ?
                                Qt.rgba(245/255, 236/255, 235/255, 1.0) :
                                "transparent"
                         border.color: Qt.rgba(245/255, 236/255, 235/255, 1.0)

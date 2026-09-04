@@ -22,31 +22,38 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .io import (load_config_from_ini, load_config_from_json,
-                 load_config_migrated, maybe_migrate_legacy_hud_layout,
-                 save_config_to_ini, save_config_to_json)
-from .schema import (CaptureSettings, DisplaySettings, ForwardingSettings,
-                     HttpsSettings, OverlaysFuelEstimationMode,
-                     OverlaysSpeedUnit, HudSettings, MfdPageId,
-                     MfdPageSettings, MfdSettings, MfdTyreWearRateType,
-                     NetworkSettings, OverlayId, OverlayPosition,
-                     PitTimeLossF1, PitTimeLossF2, PngSettings,
-                     PredictionSettings, HarvestPowerSmoothing, PrivacySettings,
-                     StreamOverlaySettings, SubSysCtrl, TimingTowerColId,
-                     TimingTowerColOptions, TimingTowerColSettings,
-                     WeatherMFDUIType)
-from .types import FilePathStr
+from .io.ini import load_config_from_ini, save_config_to_ini
+from .io.json import load_config_from_json, save_config_to_json
+from .io.migration import load_config_migrated, maybe_migrate_legacy_hud_layout
+from .schema.capture import CaptureSettings
+from .schema.display import AutoOpenDashboardMode, DisplaySettings
+from .schema.forwarding import ForwardingSettings
+from .schema.https import HttpsSettings
+from .schema.hud.hud import (HudSettings, MfdTyreWearRateType,
+                             OverlaysFuelEstimationMode, OverlaysSpeedUnit,
+                             TimingTowerTyreInfoMode, WeatherMFDUIType)
+from .schema.hud.layout import OverlayId, OverlayPosition
+from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
+from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
+                                      TimingTowerColSettings)
+from .schema.network import NetworkSettings
+from .schema.pit_time_loss import PitTimeLossF1, PitTimeLossF2
+from .schema.png import PngSettings
+from .schema.prediction import HarvestPowerSmoothing, PredictionSettings
+from .schema.privacy import PrivacySettings
+from .schema.stream_overlay import StreamOverlaySettings
+from .types.file_path_str import FilePathStr
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     'CaptureSettings',
+    'AutoOpenDashboardMode',
     'DisplaySettings',
     'ForwardingSettings',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
-    'SubSysCtrl',
     'PngSettings',
     'PredictionSettings',
     'HarvestPowerSmoothing',
@@ -62,6 +69,7 @@ __all__ = [
     'TimingTowerColSettings',
     'WeatherMFDUIType',
     'MfdTyreWearRateType',
+    'TimingTowerTyreInfoMode',
     'OverlaysSpeedUnit',
     'OverlaysFuelEstimationMode',
 

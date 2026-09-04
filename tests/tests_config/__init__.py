@@ -39,7 +39,6 @@ from .tests_png_settings import TestPngSettings
 from .tests_prediction_settings import TestPredictionSettings, TestPngSettingsPrediction
 from .tests_privacy_settings import TestPrivacySettings
 from .tests_stream_overlay_settings import TestStreamOverlaySettings
-from .tests_subsysctrl import TestSubSysCtrl
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -62,7 +61,6 @@ __all__ = [
     "TestPitTimeLossF2",
     "TestPredictionSettings",
     "TestPngSettingsPrediction",
-    "TestSubSysCtrl",
     "TestHudSettings",
     "TestTimingTowerColConfig",
 

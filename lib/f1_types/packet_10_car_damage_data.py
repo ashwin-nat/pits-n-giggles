@@ -61,6 +61,28 @@ class CarDamageData(F1SubPacketBase):
 
     Note:
         The class is designed to parse and represent the car damage data packet.
+
+    Restricted Telemetry:
+        These fields are zeroed for a player's own car when that player has their
+        "Your Telemetry" setting set to Restricted.
+            - m_frontLeftWingDamage
+            - m_frontRightWingDamage
+            - m_rearWingDamage
+            - m_floorDamage
+            - m_diffuserDamage
+            - m_sidepodDamage
+            - m_engineDamage
+            - m_gearBoxDamage
+            - m_tyresWear (all four wheels)
+            - m_tyresDamage (all four wheels)
+            - m_brakesDamage (all four wheels)
+            - m_drsFault
+            - m_engineMGUHWear
+            - m_engineESWear
+            - m_engineCEWear
+            - m_engineICEWear
+            - m_engineMGUKWear
+            - m_engineTCWear
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

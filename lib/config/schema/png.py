@@ -27,17 +27,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .capture import CaptureSettings
 from .diff import ConfigDiffMixin
 from .display import DisplaySettings
-from .forwarding import ForwardingSettings, _LOCALHOST_ALIASES
+from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
 from .https import HttpsSettings
-from .hud import HudSettings
+from .hud.hud import HudSettings
+from .mcp_cfg import McpSettings
 from .network import NetworkSettings
-from .pit_time_loss_f1 import PitTimeLossF1
-from .pit_time_loss_f2 import PitTimeLossF2
+from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .prediction import PredictionSettings
 from .privacy import PrivacySettings
 from .stream_overlay import StreamOverlaySettings
-from .subsys_ctrl import SubSysCtrl
-from .mcp_cfg import McpSettings
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -50,11 +48,10 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     StreamOverlay: StreamOverlaySettings = Field(default_factory=StreamOverlaySettings, description="Stream Overlay")
     HTTPS: HttpsSettings = Field(default_factory=HttpsSettings, description="HTTPS")
     HUD: HudSettings = Field(default_factory=HudSettings, description="Overlays")
-    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")
-    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")
+    TimeLossInPitsF1: PitTimeLossF1 = Field(default_factory=PitTimeLossF1, description="Pit Time Loss F1")  # type: ignore[valid-type]
+    TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")  # type: ignore[valid-type]
     Prediction: PredictionSettings = Field(default_factory=PredictionSettings, description="Prediction")
     MCP: McpSettings = Field(default_factory=McpSettings, description="MCP")
-    SubSysCtrlCfg__: SubSysCtrl = Field(default_factory=SubSysCtrl, description="Subsys Control")
     model_config = ConfigDict(str_strip_whitespace=True)
 
     @model_validator(mode="after")

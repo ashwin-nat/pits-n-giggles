@@ -22,6 +22,7 @@
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+import argparse
 import subprocess
 import sys
 import os
@@ -36,7 +37,24 @@ def remove_dir_if_exists(path: str):
     if os.path.isdir(path):
         shutil.rmtree(path)
 
+def parse_args() -> argparse.Namespace:
+    """Parse build-time options."""
+    parser = argparse.ArgumentParser(description=f"Build {APP_NAME}")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Force debug logging on in the packaged app (it runs as if launched with --debug)",
+    )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Report the bare meta.py version. Without it the build is stamped with the "
+             "commit it was made from, so non-release builds are identifiable.",
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
     collect_dir = os.path.join("dist", COLLECT_DIR_NAME)
@@ -55,6 +73,7 @@ def main():
         )
     build_env = {
         **os.environ,
+        "VITE_BASE_PATH": "/save-viewer/",
         "VITE_EXTERNAL_LINK_TEMPLATE": "/legacy/{slug}",
         "VITE_EXTERNAL_LINK_LABEL": "Legacy View",
         "VITE_DISABLE_ANALYTICS": "true",
@@ -74,16 +93,26 @@ def main():
     )
 
     # 2. Run PyInstaller
-    subprocess.run(
-        [
-            sys.executable,
-            "-m", "PyInstaller",
-            "--clean",
-            "--noconfirm",
-            spec_path,
-        ],
-        check=True,
-    )
+    pyinstaller_cmd = [
+        sys.executable,
+        "-m", "PyInstaller",
+        "--clean",
+        "--noconfirm",
+        spec_path,
+    ]
+    # PyInstaller splits its command line on `--` and hands the rest to the spec file as
+    # sys.argv[1:]. Renamed on the way through because PyInstaller has its own --debug.
+    spec_args = []
+    if args.debug:
+        spec_args.append("--force-debug")
+        print("build.py: --debug given; the packaged app will always run with --debug.")
+    if args.release:
+        spec_args.append("--release-build")
+        print("build.py: --release given; the build reports the bare meta.py version.")
+    if spec_args:
+        pyinstaller_cmd += ["--", *spec_args]
+
+    subprocess.run(pyinstaller_cmd, check=True)
 
     # 3. Cleanup the custom COLLECT dir
     remove_dir_if_exists(collect_dir)

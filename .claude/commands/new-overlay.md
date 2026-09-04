@@ -94,7 +94,7 @@ gap_to_leader_interact_udp_action_code: Optional[int] = udp_action_field(
 )
 ```
 
-**e) Wire the enable flag into `enabled_overlay_ids()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+**e) Wire the enable flag into `enabled_overlays_by_id()`** (same file). Add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay appears in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.GAP_TO_LEADER: self.show_gap_to_leader,
 ```
@@ -175,6 +175,8 @@ class GapToLeaderPage(MfdPageBase):
 - Declare all QML properties that Python will set via `set_qml_property`
 - Copy structure from the nearest existing page QML
 
+Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.qml` and fix every warning before moving on — the CI qmllint job runs with `--max-warnings 0`, so any warning fails the build. Common fixes: add `pragma ComponentBehavior: Bound` and qualify property accesses with the root `id` when the file has Repeater/Loader delegates; give delegates their own `id` with `required property int index` / `required property var modelData` instead of relying on the bare `index`/`modelData` context properties.
+
 #### A8. Export from pages `__init__.py` — `apps/hud/ui/overlays/mfd/pages/__init__.py`
 
 Add the import and `__all__` entry:
@@ -196,12 +198,17 @@ PAGES = [
 ```
 `PAGE_CLS_BY_KEY` is built automatically from `PAGES`.
 
-**b)** If the page has config kwargs, add an entry to `_get_page_kwargs`:
+**b)** If the page's `__init__` takes settings-derived kwargs, override `from_settings`
+on the page class itself (`apps/hud/ui/overlays/mfd/pages/gap_to_leader/gap_to_leader_page.py`)
+— this is the single source of truth for "which settings does this page need",
+used by both `MfdOverlay` and `StandalonePageHost`:
 ```python
-GapToLeaderPage.KEY: {
-    "some_kwarg": settings.HUD.some_config_field,
-},
+@classmethod
+def from_settings(cls, settings: PngSettings, logger: logging.Logger) -> "GapToLeaderPage":
+    return cls(logger, some_kwarg=settings.HUD.some_config_field)
 ```
+If the page's `__init__` takes only `logger`, skip this — the base class default
+(`cls(logger)`) already covers it.
 
 #### A10. Register as standalone in `OverlaysMgr` — `apps/hud/ui/infra/overlays_mgr.py`
 
@@ -215,8 +222,7 @@ self._register_page_host_if_enabled(
     windowed_overlay=settings.HUD.use_windowed_overlays,
     scale_factor=settings.HUD.layout[OverlayId.GAP_TO_LEADER].scale_factor,
     show_title_bar=settings.HUD.gap_to_leader_show_title,
-    # any config kwargs:
-    # some_kwarg=settings.HUD.some_config_field,
+    settings=settings,
 )
 ```
 
@@ -291,7 +297,7 @@ OverlayId.FUEL_MONITOR: "Fuel Monitor",
 OverlayId.FUEL_MONITOR: OverlayPosition(x=<x>, y=<y>),
 ```
 
-Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlay_ids()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
+Then, in `lib/config/schema/hud/hud.py`, add one line to the explicit mapping in `HudSettings.enabled_overlays_by_id()` so the overlay shows up in the per-overlay reset menu when enabled. Map the `OverlayId` member to its `show_*` field directly — do **not** use `getattr`/dynamic attribute lookup:
 ```python
 OverlayId.FUEL_MONITOR: self.show_fuel_monitor,
 ```
@@ -390,18 +396,8 @@ Create two files:
 
 **`<overlay_name>.qml`**:
 - Minimal Rectangle root (`id: root`), transparent background, placeholder Text. Copy as much as possible from apps/hud/ui/overlays/template_overlay/template_overlay.qml
-- If the overlay animates continuously (drives per-frame rendering via FrameAnimation), add a `FrameTelemetry` component and expose its stats as aliases on the root Window. This enables `get_window_stats()` to include QML-side frame metrics automatically:
-  ```qml
-  import "../base"
 
-  property alias faFps:               frameTelemetry.fps
-  property alias faFrameTimeMs:       frameTelemetry.frameTimeMs
-  property alias faSmoothFrameTimeMs: frameTelemetry.smoothFrameTimeMs
-  property alias faFrameCount:        frameTelemetry.frameCount
-
-  FrameTelemetry { id: frameTelemetry }
-  ```
-  Event-driven overlays (no continuous animation) should omit this.
+Run `poetry run python scripts/qmllint.py apps/hud/ui/overlays/<overlay_name>/<overlay_name>.qml` and fix every warning before moving on — the CI qmllint job runs with `--max-warnings 0`, so any warning fails the build. Common fixes: add `pragma ComponentBehavior: Bound` and qualify property accesses with the root `id` when the file has Repeater/Loader delegates; give delegates their own `id` with `required property int index` / `required property var modelData` instead of relying on the bare `index`/`modelData` context properties.
 
 #### B10. Register overlay in OverlaysMgr — `apps/hud/ui/infra/overlays_mgr.py`
 
@@ -421,4 +417,5 @@ Do not edit this file. Tell the user to add the following entry to the `datas` l
 After completing all steps, report:
 - Files created
 - Files modified, with a one-line description of what changed in each
+- Confirmation that `poetry run python scripts/qmllint.py <path to new .qml file>` passes with 0 warnings
 - Remind user to: add the overlay position to `png_config.json` under the HUD layout section, and update `scripts/png.spec`

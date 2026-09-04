@@ -51,6 +51,9 @@ class LapHistoryData(F1SubPacketBase):
         - 0x02 bit set: Sector 1 valid
         - 0x04 bit set: Sector 2 valid
         - 0x08 bit set: Sector 3 valid
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     FULL_LAP_VALID_BIT_MASK = 0x01
@@ -272,6 +275,9 @@ class TyreStintHistoryData(F1SubPacketBase):
         m_endLap (uint8): Lap the tyre usage ends on (255 if current tyre).
         m_tyreActualCompound (ActualTyreCompound): Actual tyres used by this driver.
         m_tyreVisualCompound (VisualTyreCompound): Visual tyres used by this driver.
+
+    Restricted Telemetry:
+        None. No field in this structure is affected by the "Your Telemetry" setting.
     """
 
     COMPILED_PACKET_STRUCT = struct.Struct("<"

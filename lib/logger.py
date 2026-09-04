@@ -33,19 +33,52 @@ from meta.meta import APP_NAME_SNAKE
 
 # -------------------------------------- CUSTOM LOG LEVEL ---------------------------------------------------------------
 
+# Where each level ends up for a child process (launcher console widget vs. launcher log file).
+# Emission is decided here by the logger level set in get_logger(); console routing is decided by
+# the launcher in apps/launcher/gui/main_window.py -> PngLauncherWindow._write_log_child().
+#
+#   Level          | Normal mode                | Debug mode
+#   ---------------+----------------------------+-----------------------------------
+#   SILENT         | file only, tagged [SILENT] | console + file, tagged [INFO]
+#   SILENT_DEBUG   | not emitted at all         | file only, tagged [SILENT_DEBUG]
+#   DEBUG          | not emitted at all         | console + file
+#   INFO and above | console + file             | console + file
+#
+# Note: the SILENT -> INFO promotion in debug mode happens before the file line is formatted, so a
+# SILENT message lands in the log file tagged [INFO] in debug mode. SILENT_DEBUG keeps its own tag
+# in the file, so it stays greppable.
+
+SILENT_DEBUG_LEVEL = 12  # Between DEBUG (10) and SILENT (15)
 SILENT_LEVEL = 15  # Between DEBUG (10) and INFO (20)
 
+logging.addLevelName(SILENT_DEBUG_LEVEL, "SILENT_DEBUG")
 logging.addLevelName(SILENT_LEVEL, "SILENT")
 
 
 # -------------------------------------- LOGGER CLASS ------------------------------------------------------------------
 
 class PngLogger(logging.Logger):
-    """Custom logger with SILENT level support."""
+    """Custom logger with SILENT and SILENT_DEBUG level support.
+
+    See the routing table at the top of this module for where each level ends up.
+    """
 
     def silent(self, message: str, *args, **kwargs) -> None:
+        """Log a message that is kept out of the launcher console in normal mode. Always emitted;
+        surfaces on the console as INFO in debug mode."""
         if self.isEnabledFor(SILENT_LEVEL):
+            # This method adds a stack frame between the caller and _log(); bump stacklevel so
+            # logging.findCaller() skips it and reports the real call site, not logger.py.
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
             self._log(SILENT_LEVEL, message, args, **kwargs)
+
+    def silent_debug(self, message: str, *args, **kwargs) -> None:
+        """Log a high-volume trace message. Dropped entirely unless debug mode is enabled, and even
+        then it goes to the log file only - never to the launcher console."""
+        if self.isEnabledFor(SILENT_DEBUG_LEVEL):
+            # See silent(): compensate for this wrapper frame so the caller's file/line is logged.
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
+            self._log(SILENT_DEBUG_LEVEL, message, args, **kwargs)
 
 
 # Tell logging module to use our logger class
@@ -80,8 +113,8 @@ def get_logger(
 
     assert not logger.handlers, f"Logger '{name}' already initialized"
 
-    # DEBUG mode -> everything
-    # Normal mode -> SILENT and above
+    # DEBUG mode -> everything (DEBUG, SILENT_DEBUG, SILENT and above)
+    # Normal mode -> SILENT and above (SILENT_DEBUG is filtered out here)
     logger.setLevel(logging.DEBUG if debug_mode else SILENT_LEVEL)
 
     # Choose formatter
@@ -116,7 +149,7 @@ def get_null_logger() -> PngLogger:
 
     Use this as the default when no logger is injected into a component. A bare
     ``logging.getLogger()`` is not guaranteed to return a ``PngLogger`` (so it
-    may lack ``silent()``); this always does.
+    may lack ``silent()``/``silent_debug()``); this always does.
 
     Returns:
         PngLogger: A logger whose records go nowhere.
@@ -130,8 +163,9 @@ def _clearFileIfRequired(file_name: str, max_size: int) -> None:
     if os.path.exists(file_name):
         file_size = os.path.getsize(file_name)
         if file_size > max_size:
+            # No print here - this runs before any handler is attached, so there is nowhere
+            # to log it, and stdout belongs to the launcher/child protocol
             os.remove(file_name)
-            print(f"File {file_name} cleared.")
 
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
