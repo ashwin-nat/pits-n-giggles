@@ -92,7 +92,28 @@ class AsyncSubsystem(PngSubsystem):
             asyncio.Task: The created task
         """
 
-        task = asyncio.create_task(coro, name=name)
+        return self.adopt_task(asyncio.create_task(coro, name=name))
+
+    def adopt_task(self, task: asyncio.Task) -> asyncio.Task:
+        """Register a task that its own owner created.
+
+        Prefer add_task(). This exists for objects that hold their own task handle because
+        cancellation is how they stop - IpcPublisherAsync (close() cancels its reconnect task)
+        and F1TelemetryHandler (run() is a socket receive loop with no cooperative exit, and
+        stop() cancels it). Neither can hand over a bare coroutine.
+
+        Such a task still belongs in the registry, so that it is logged with the rest and so
+        that the subsystem comes down if it dies unexpectedly. The cost is that cancelling it
+        surfaces as a cancelled child in the gather, which is why the backend's shutdown ends
+        in CancelledError where the web app's completes normally.
+
+        Args:
+            task (asyncio.Task): An already-created task
+
+        Returns:
+            asyncio.Task: The same task, for convenience
+        """
+
         self._tasks.append(task)
         return task
 
@@ -211,7 +232,7 @@ class AsyncSubsystem(PngSubsystem):
         """
 
         if self.publisher is not None:
-            self._tasks.append(self.publisher.get_task())
+            self.adopt_task(self.publisher.get_task())
         if self.subscriber is not None:
             self.add_task(self.subscriber.run(), name="Broker Subscriber Task")
 
