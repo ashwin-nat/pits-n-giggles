@@ -22,17 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import os
-from typing import Callable
-
 from pydantic import ValidationError
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.telemetry_layer import F1TelemetryHandler
 from lib.config import CaptureSettings
-from lib.error_status import PNG_LOST_CONN_TO_PARENT
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync
 from lib.logger import PngLogger
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -49,48 +44,6 @@ async def handleManualSave(
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Unexpected error during manual save")
         return {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
-
-async def handleShutdown(msg: dict, logger: PngLogger, request_shutdown: Callable[[str], None]) -> dict:
-    """Handle shutdown command
-
-    Args:
-        msg (dict): Command args
-        logger (PngLogger): Logger
-        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task. Must not block -
-            the IPC server only replies to the launcher once this handler returns.
-    """
-
-    reason = msg.get('reason', 'N/A')
-    logger.info("Received shutdown command. Reason: %s", reason)
-    request_shutdown(reason)
-    return {
-        'status': 'success',
-    }
-
-async def handleGetStats(
-        telemetry_handler: F1TelemetryHandler,
-        ipc_pub: IpcPublisherAsync,
-        ipc_dealer: IpcDealerAsync,
-        ) -> dict:
-    """Handle get-stats command."""
-    return {
-        "status": "success",
-        "stats": {
-            "ingress" : telemetry_handler.getStats(),
-            "egress" : {
-                "ipc_pub" : ipc_pub.get_stats(),
-                "dealer": ipc_dealer.get_stats(),
-            }
-        },
-    }
-
-async def handleHeartbeatMissed(count: int, logger: PngLogger) -> dict:
-    """Handle terminate command"""
-
-    logger.error("Missed heartbeat %d times. This process has probably been orphaned. Terminating...", count)
-    # os._exit required: child process must terminate immediately without
-    # running atexit handlers or flushing stdio buffers from parent.
-    os._exit(PNG_LOST_CONN_TO_PARENT)
 
 async def handleForwardingConfigChange(
         msg: dict,

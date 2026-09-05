@@ -23,108 +23,14 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
-from typing import Callable, List, Tuple
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
-                                                RaceInfoData,
                                                 StreamOverlayData)
-from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.config import PngSettings
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
-from lib.periodic_task import periodic_task
-
-from .ipc import registerIpcTask
-from .request_handlers import handleDriverInfoRequest
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def _initDealer(
-    settings: PngSettings,
-    logger: logging.Logger,
-    session_state: SessionState) -> IpcDealerAsync:
-    dealer = IpcDealerAsync(
-        host="127.0.0.1",
-        port=settings.Network.broker_router_port,
-        identity=str(PngAppId.BACKEND),
-        logger=logger,
-    )
-
-    @dealer.route("driver-info-request")
-    async def _handle_driver_info_request(data: dict, sender: str) -> dict:
-        logger.debug("Received driver info request via router: %s from %s", data, sender)
-        result = handleDriverInfoRequest(session_state, data.get("index"))
-        if result.ok:
-            return {"ok": True, "data": result.data}
-        return {"ok": False, "error": result.detail, "error_code": result.error.name, "data": None}
-
-    @dealer.route("race-info-request")
-    async def _handle_race_info_request(_data: dict, sender: str) -> dict:
-        logger.debug("Received race info request via router from %s", sender)
-        return RaceInfoData(session_state).toJSON()
-
-    return dealer
-
-def initUiIntfLayer(
-    settings: PngSettings,
-    logger: logging.Logger,
-    session_state: SessionState,
-    tasks: List[asyncio.Task],
-    shutdown_event: asyncio.Event,
-    telemetry_handler: F1TelemetryHandler,
-    request_shutdown: Callable[[str], None]) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
-    """Initialize the UI interface layer. The backend is a dumb core: it only publishes analysed
-    telemetry over IPC and answers pull requests — apps/web owns all HTTP/Socket.IO serving.
-
-    Args:
-        settings (PngSettings): Png settings
-        logger (logging.Logger): Logger
-        session_state (SessionState): Handle to the session state
-        tasks (List[asyncio.Task]): List of tasks to be executed
-        shutdown_event (asyncio.Event): Event to signal shutdown
-        telemetry_handler (F1TelemetryHandler): Telemetry handler
-        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task
-
-    Returns:
-        Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and IPC dealer instances
-    """
-
-    ipc_pub = IpcPublisherAsync(logger=logger, port=settings.Network.broker_xsub_port)
-    tasks.append(ipc_pub.get_task())
-
-    dealer = _initDealer(settings, logger, session_state)
-    tasks.append(asyncio.create_task(dealer.start(), name="Backend Dealer Recv"))
-
-    # Setup periodic tasks
-    tasks.append(asyncio.create_task(
-        periodic_task(
-            settings.Display.local_telemetry_interval_ms,
-            shutdown_event,
-            logger,
-            lowFreqLocalUpdateTask,
-            session_state,
-            ipc_pub), name="Low Frequency Local Update Task"
-        ))
-    tasks.append(asyncio.create_task(
-        periodic_task(
-            settings.Display.hud_refresh_interval,
-            shutdown_event,
-            logger,
-            highFreqLocalUpdateTask,
-            session_state,
-            ipc_pub,
-            settings.StreamOverlay.show_sample_data_at_start), name="High Frequency Local Update Task"))
-
-    # Interrupt/event driven tasks
-    tasks.append(asyncio.create_task(frontEndMessageTask(dealer, shutdown_event),
-                                     name="Front End Message Task"))
-    tasks.append(asyncio.create_task(hudInteractionTask(dealer, shutdown_event),
-                                     name="HUD Interaction Task"))
-
-    registerIpcTask(logger, session_state, telemetry_handler, ipc_pub, dealer, tasks, request_shutdown)
-    return ipc_pub, dealer
 
 async def lowFreqLocalUpdateTask(
         session_state: SessionState,

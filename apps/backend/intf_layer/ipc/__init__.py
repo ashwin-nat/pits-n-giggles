@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2025] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,83 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Handlers for the launcher's management IPC commands.
+
+The server itself, and the shutdown / get-stats / heartbeat-missed handlers, are owned by
+`lib/subsystem`. What is left here is the backend's own commands, which it registers on
+`self.mgmt` in `BackendSubsystem.setup()`.
+"""
+
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-import logging
-from typing import Callable, List
-
-from apps.backend.state_mgmt_layer import SessionState
-from apps.backend.telemetry_layer import F1TelemetryHandler
-from lib.child_proc_mgmt import report_ipc_port_from_child
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync, IpcServerAsync
-from lib.logger import PngLogger
-
 from .command_handlers import (handleCaptureConfigChange,
-                               handleForwardingConfigChange, handleGetStats,
-                               handleHeartbeatMissed, handleManualSave,
-                               handleShutdown, handleUdpActionCodeChange)
-
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def registerIpcTask(
-        logger: PngLogger,
-        session_state: SessionState,
-        telemetry_handler: F1TelemetryHandler,
-        ipc_pub: IpcPublisherAsync,
-        dealer: IpcDealerAsync,
-        tasks: List[asyncio.Task],
-        request_shutdown: Callable[[str], None]
-        ) -> None:
-    """Register the IPC task
-
-    Args:
-        logger (PngLogger): Logger
-        session_state (SessionState): Handle to the session state object
-        telemetry_handler (F1TelemetryHandler): Telemetry handler
-        ipc_pub (IpcPublisherAsync): IPC publisher
-        dealer (IpcDealerAsync): IPC dealer
-        tasks (List[asyncio.Task]): List of tasks
-        request_shutdown (Callable[[str], None]): Signals the runner's shutdown task
-    """
-
-    logger.debug("Starting IPC server")
-    server = IpcServerAsync(name="Backend")
-    report_ipc_port_from_child(server.port)
-    logger.debug("Started IPC server on port %d", server.port)
-
-    @server.on_heartbeat_missed
-    async def _handle_heartbeat_missed(count: int):
-        return await handleHeartbeatMissed(count, logger=logger)
-
-    @server.on_shutdown
-    async def _handle_shutdown(args: dict):
-        return await handleShutdown(args, logger=logger, request_shutdown=request_shutdown)
-
-    @server.on("manual-save")
-    async def _handle_manual_save(_args: dict):
-        return await handleManualSave(logger=logger, session_state=session_state)
-
-    @server.on("udp-action-code-change")
-    async def _handle_udp_action_code_change(args: dict):
-        return await handleUdpActionCodeChange(args, logger, telemetry_handler)
-
-    @server.on("forwarding-config-change")
-    async def _handle_forwarding_config_change(args: dict):
-        return await handleForwardingConfigChange(args, logger, telemetry_handler)
-
-    @server.on("capture-config-change")
-    async def _handle_capture_config_change(args: dict):
-        return await handleCaptureConfigChange(args, logger, telemetry_handler, session_state)
-
-    @server.on_get_stats
-    async def _handle_get_stats(_args: dict):
-        return await handleGetStats(telemetry_handler, ipc_pub, dealer)
-
-    tasks.append(asyncio.create_task(server.run(), name="IPC Server"))
+                               handleForwardingConfigChange, handleManualSave,
+                               handleUdpActionCodeChange)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "registerIpcTask",
+    "handleCaptureConfigChange",
+    "handleForwardingConfigChange",
+    "handleManualSave",
+    "handleUdpActionCodeChange",
 ]
