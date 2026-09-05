@@ -56,9 +56,3 @@ def register_dealer_routes(
     @dealer.route("hud-mfd-interaction-notification")
     def _mfd_interaction_notification(_data: dict, _sender: str) -> None:
         overlays_mgr.mfd_interact()
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "register_dealer_routes",
-]

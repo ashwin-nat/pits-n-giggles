@@ -47,9 +47,3 @@ def register_subscriber_routes(
     @subscriber.route("stream-overlay-update")
     def _stream_overlay_update(data: dict) -> None:
         overlays_mgr.stream_overlays_update(data)
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "register_subscriber_routes",
-]

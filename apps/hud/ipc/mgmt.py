@@ -131,9 +131,3 @@ def register_mgmt_routes(
             overlays_mgr.set_circuit_info_length(length)
             return {"status": "success", "message": "set-circuit-info-length handler executed."}
         return {"status": "error", "message": "Missing length value in set-circuit-info-length command."}
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "register_mgmt_routes",
-]
