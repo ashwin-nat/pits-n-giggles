@@ -15,6 +15,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `race_ctrl/` | Race control message parsing and factory |
 | `delta/` | Lap delta and sector time computation |
 | `ipc/` | Inter-process communication between subsystems |
+| `subsystem/` | Child-side lifecycle base for launcher-managed subsystems (boot, handshake, heartbeat, stats, teardown) |
 | `socket_receiver/` | UDP socket wrapper for F1 telemetry packets |
 | `wdt/` | Watchdog timer for health monitoring |
 | `openf1/` | OpenF1 API integration |
