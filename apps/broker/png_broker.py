@@ -22,114 +22,81 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
-import logging
-import os
-import sys
+from typing import Any, Dict, Optional, override
 
-from lib.child_proc_mgmt import (notify_parent_init_complete,
-                                 report_ipc_port_from_child,
-                                 report_pid_from_child)
-from lib.config import PngSettings, load_config_from_json
-from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
-from lib.ipc import IpcPubSubBroker, IpcRouter, IpcServerSync
-from lib.logger import get_logger
-from meta.meta import APP_NAME
+from lib.ipc import IpcPubSubBroker, IpcRouter
+from lib.subsystem import SyncSubsystem
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-def parseArgs() -> argparse.Namespace:
-    """Parse the command line args and perform validation
+class BrokerSubsystem(SyncSubsystem):
+    """The Pit Wall - the ZeroMQ pub/sub broker and router that every other subsystem talks
+    through.
 
-    Returns:
-        argparse.Namespace: The parsed args namespace
+    Declares no data plane of its own: this process *is* the fabric, not a participant in it.
     """
 
-    # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} Pit Wall")
+    NAME = "pit_wall"
+    DESCRIPTION = "Pit Wall"
 
-    # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    def __init__(self) -> None:
+        """Construct the subsystem. Nothing is started until main() runs."""
 
-    # Parse the command-line arguments
-    return parser.parse_args()
+        super().__init__()
+        self.broker: Optional[IpcPubSubBroker] = None
+        self.router: Optional[IpcRouter] = None
 
-def main(logger: logging.Logger, config: PngSettings) -> None:
-    """Main function
+    @override
+    def setup(self) -> None:
+        """Start the pub/sub broker and the router, each in its own thread."""
 
-    Args:
-        logger (logging.Logger): Logger
-        config (PngSettings): Configurations
-    """
+        self.broker = IpcPubSubBroker(
+            xsub_port=self.settings.Network.broker_xsub_port,
+            xpub_port=self.settings.Network.broker_xpub_port,
+            logger=self.logger)
+        self.add_thread(self.broker.run_in_thread())
 
-    broker = IpcPubSubBroker(
-        xsub_port=config.Network.broker_xsub_port,
-        xpub_port=config.Network.broker_xpub_port,
-        logger=logger)
-    broker_thread = broker.run_in_thread()
+        self.router = IpcRouter(port=self.settings.Network.broker_router_port, logger=self.logger)
+        self.add_thread(self.router.run_in_thread())
 
-    router = IpcRouter(port=config.Network.broker_router_port, logger=logger)
-    router.run_in_thread()
+    @override
+    def run_forever(self) -> None:
+        """Wait until the launcher asks us to stop.
 
-    proc_mgr = IpcServerSync(
-        name="pitwall_ipc",
-        max_missed_heartbeats=3,
-        heartbeat_timeout=5.0,
-    )
-    report_ipc_port_from_child(proc_mgr.port)
-    notify_parent_init_complete()
+        The broker, the router and the management IPC server each service their own thread,
+        so the main thread has nothing to do but hold the process open.
+        """
 
-    @proc_mgr.on_shutdown
-    def _shutdown_handler(_args: dict) -> dict:
-        logger.debug("Received IPC shutdown. Shutting down the broker...")
-        broker.close()
-        router.close()
+        self.shutdown_event.wait()
+
+    @override
+    def collect_stats(self) -> Dict[str, Any]:
+        """Return broker and router throughput stats.
+
+        Returns:
+            Dict[str, Any]: Stats body
+        """
+
         return {
-            "status": "success",
+            "broker": self.broker.get_stats(),
+            "router": self.router.get_stats(),
         }
 
-    @proc_mgr.on_heartbeat_missed
-    def _heartbeat_missed_handler(count: int) -> None:
-        logger.warning("Missed heartbeat %s times. This process has probably been orphaned. Terminating...", count)
-        # os._exit required: child process must terminate immediately without
-        # running atexit handlers or flushing stdio buffers from parent.
-        os._exit(PNG_LOST_CONN_TO_PARENT)
+    @override
+    def on_shutdown(self, reason: str) -> None:
+        """Close both sockets, which lets their threads wind up.
 
-    @proc_mgr.on_get_stats
-    def _get_stats_handler(_args: dict) -> dict:
-        return {
-            "status": "success",
-            "stats": {
-                "broker": broker.get_stats(),
-                "router": router.get_stats(),
-            },
-        }
+        Args:
+            reason (str): Why the shutdown was requested
+        """
 
-    proc_mgr.serve()
-    broker_thread.join(timeout=3.0)
-    proc_mgr.close()
+        self.logger.debug("Shutting down the broker. Reason: %s", reason)
+        self.broker.close()
+        self.router.close()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
     """Entry point"""
 
-    report_pid_from_child()
-    args = parseArgs()
-    png_logger = get_logger("pit_wall", args.debug, jsonl=True)
-    configs = load_config_from_json(args.config_file, png_logger)
-    try:
-        main(
-            logger=png_logger,
-            config=configs)
-    except KeyboardInterrupt:
-        png_logger.info("Program interrupted by user.")
-    except PngError as e:
-        png_logger.exception("Terminating due to Error: %s with code %d", e, e.exit_code)
-        sys.exit(e.exit_code)
-    except Exception as e: # pylint: disable=broad-exception-caught
-        png_logger.exception("Error in main: %s", e)
-        sys.exit(1)
-
-    png_logger.info("PitWall application exiting normally.")
+    BrokerSubsystem.main()

@@ -24,6 +24,12 @@
 
 from enum import Enum
 
+# TODO: move PngAppId out to a top-level module (e.g. lib/app_id.py).
+# It is subsystem identity, not a router/dealer detail - lib/subsystem/ now declares it as
+# APP_ID on every subsystem, so consumers with no interest in the router still have to reach
+# into lib/ipc/router_dealer/ to name themselves. The enum stays re-exported from lib.ipc
+# either way, so the move is an import change rather than an API change.
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PngAppId(Enum):
