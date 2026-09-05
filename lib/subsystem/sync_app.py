@@ -84,6 +84,27 @@ class SyncSubsystem(PngSubsystem):
             reason (str): Why the shutdown was requested
         """
 
+    # -------------------------------------- MAY OVERRIDE --------------------------------------------------------------
+
+    def request_stop(self) -> None:
+        """Break out of run_forever(). Called from the IPC server's thread, not the main one.
+
+        The default sets shutdown_event, which is all a run_forever() that waits on that event
+        needs - the broker's does exactly that, and is currently its only waiter. Override when
+        the main loop is something else - a Qt event loop, say - that has to be told to quit.
+
+        An override only needs to call super() if something actually polls the event: _run()'s
+        finally sets it regardless, before on_shutdown(), so calling it here just sets it
+        earlier. The HUD skips it for that reason; a subsystem with threads watching the event
+        would want it.
+
+        Must not block: the IPC server only replies to the launcher once its shutdown handler
+        returns, and the teardown proper happens in on_shutdown() once run_forever() has
+        returned on the main thread.
+        """
+
+        self.shutdown_event.set()
+
     # -------------------------------------- THREAD REGISTRY -----------------------------------------------------------
 
     def add_thread(self, thread: threading.Thread) -> threading.Thread:
@@ -125,7 +146,7 @@ class SyncSubsystem(PngSubsystem):
             reason = args.get("reason", "N/A")
             self.logger.info("Received shutdown command. Reason: %s", reason)
             self._shutdown_reason = reason
-            self.shutdown_event.set()
+            self.request_stop()
             return {"status": "success"}
 
         @server.on_get_stats

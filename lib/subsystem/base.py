@@ -226,14 +226,19 @@ class PngSubsystem(ABC):
     def pre_boot(self, args: argparse.Namespace) -> None:
         """Run before the logger exists, for anything the rest of the boot depends on.
 
-        Paired with post_boot(), which is guaranteed to run in a finally.
+        Paired with on_exit(), which is guaranteed to run in a finally.
 
         Args:
             args (argparse.Namespace): Parsed args
         """
 
-    def post_boot(self) -> None:
-        """Undo whatever pre_boot() did. Runs in a finally, on every exit path."""
+    def on_exit(self) -> None:
+        """Undo whatever pre_boot() did. Runs in a finally, on every exit path.
+
+        Named for when it runs, which is last: after run_forever()/the task gather has returned
+        and after on_shutdown() has torn the subsystem down. It is not a pre-shutdown hook -
+        on_shutdown() is that.
+        """
 
     # -------------------------------------- BASE OWNED ----------------------------------------------------------------
 
@@ -344,7 +349,7 @@ class PngSubsystem(ABC):
             self.logger.exception("Error in main: %s", e)
             sys.exit(1)
         finally:
-            self.post_boot()
+            self.on_exit()
 
         self.logger.info("%s subsystem exiting normally.", self.NAME)
 

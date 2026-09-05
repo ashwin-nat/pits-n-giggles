@@ -22,166 +22,141 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
 import ctypes
-import logging
 import sys
+import threading
+from argparse import Namespace
+from typing import Any, Dict, Optional, override
 
-from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
-from lib.logger import get_logger
-from meta.meta import APP_NAME
+from lib.ipc import PngAppId
+from lib.subsystem import PubSubRole, SyncSubsystem
 
-from .ipc import run_ipc_task
-from .listener.task import run_hud_update_threads
+from .ipc.dealer import register_dealer_routes
+from .ipc.mgmt import register_mgmt_routes
+from .ipc.pubsub import register_subscriber_routes
 from .ui.infra import OverlaysMgr
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-def parseArgs() -> argparse.Namespace:
-    """Parse the command line args and perform validation
+class HudSubsystem(SyncSubsystem):
+    """The always-on-top in-game overlay.
 
-    Returns:
-        argparse.Namespace: The parsed args namespace
+    Renders broker telemetry into Qt overlay windows, and answers the launcher's overlay
+    control commands. Windows-only - see entry_point().
     """
 
-    # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} HUD")
+    NAME = "hud"
+    DESCRIPTION = "HUD"
+    # The HUD is only genuinely up once its overlay windows are shown, which happens inside the
+    # Qt loop, well after setup() returns. WindowManager emits the token from there instead.
+    READY_ON_SETUP_COMPLETE = False
 
-    # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    APP_ID = PngAppId.HUD
+    PUBSUB = PubSubRole.SUBSCRIBER
+    DEALER = True
 
-    # Parse the command-line arguments
-    return parser.parse_args()
+    def __init__(self) -> None:
+        """Construct the subsystem. Nothing is started until main() runs."""
 
-def main(logger: logging.Logger, config: PngSettings, debug_mode: bool) -> None:
-    """Main function
+        super().__init__()
+        self.overlays_mgr: Optional[OverlaysMgr] = None
+        self._winmm: Optional[Any] = None
 
-    Args:
-        logger (logging.Logger): Logger
-        config (PngSettings): Configurations
-        debug_mode (bool): Debug mode
-    """
+    # -------------------------------------- LIFECYCLE -----------------------------------------------------------------
 
-    overlays_mgr = OverlaysMgr(logger, config, debug=debug_mode)
+    @override
+    def pre_boot(self, args: Namespace) -> None:
+        """Request 1 ms system timer resolution so QTimer::PreciseTimer fires on time.
 
-    dealer_client, ipc_sub = run_hud_update_threads(
-        logger=logger,
-        overlays_mgr=overlays_mgr,
-        router_port=config.Network.broker_router_port,
-        xpub_port=config.Network.broker_xpub_port)
+        Windows default is 15.6 ms, which causes frame-budget misses at 30 FPS.
 
-    run_ipc_task(
-        logger=logger,
-        overlays_mgr=overlays_mgr,
-        dealer_client=dealer_client,
-        ipc_sub=ipc_sub)
+        Args:
+            args (Namespace): Parsed args
+        """
 
-    overlays_mgr.run()
+        self._winmm = ctypes.windll.winmm
+        self._winmm.timeBeginPeriod(1)
+
+    @override
+    def on_exit(self) -> None:
+        """Hand the system timer resolution back. Runs on every exit path."""
+
+        if self._winmm:
+            self._winmm.timeEndPeriod(1)
+
+    @override
+    def setup(self) -> None:
+        """Build the overlays and attach the three IPC surfaces to them."""
+
+        self.overlays_mgr = OverlaysMgr(
+            self.logger, self.settings, on_ready=self.notify_ready, debug=self.args.debug)
+
+        register_subscriber_routes(self.subscriber, self.overlays_mgr)
+        register_dealer_routes(self.dealer, self.overlays_mgr)
+        register_mgmt_routes(self.mgmt, self.logger, self.overlays_mgr)
+
+    @override
+    def run_forever(self) -> None:
+        """Run the Qt event loop. Returns once request_stop() quits it."""
+
+        self.overlays_mgr.run()
+
+    @override
+    def request_stop(self) -> None:
+        """Quit the Qt event loop so run_forever() returns.
+
+        Called from the IPC server's thread. A Qt loop cannot watch shutdown_event the way the
+        broker's run_forever() does, so it has to be told explicitly.
+
+        Handed to a thread because quitting Qt from outside its own thread takes ~200ms to come
+        back, and the IPC server only replies to the launcher once this returns. Teardown
+        proper still happens on the main thread once run_forever() unblocks.
+        """
+
+        # No super() call: nothing in the HUD polls shutdown_event - its subscriber and dealer
+        # threads are closed explicitly by the base - and _run() sets the event anyway before
+        # on_shutdown(). Add it back if this subsystem ever grows a thread that watches it.
+        threading.Thread(target=self.overlays_mgr.stop, daemon=True, name="HUD Qt Stop").start()
+
+    @override
+    def collect_stats(self) -> Dict[str, Any]:
+        """Return overlay, window manager and ingress stats.
+
+        Returns:
+            Dict[str, Any]: Stats body
+        """
+
+        return {
+            "overlays": self.overlays_mgr.get_overlay_stats(),
+            "window_mgr": self.overlays_mgr.get_window_mgr_stats(),
+            "ingress": {
+                "dealer": self.dealer.get_stats(),
+                "subscriber": self.subscriber.get_stats(),
+            },
+        }
+
+    @override
+    def on_shutdown(self, reason: str) -> None:
+        """Nothing left to tear down.
+
+        The Qt loop has already been quit by request_stop() - that is what let run_forever()
+        return - and the base closes the subscriber and dealer once this returns.
+
+        Args:
+            reason (str): Why the shutdown was requested
+        """
+
+        self.logger.debug("HUD stopped. Reason: %s", reason)
+
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
     """Entry point"""
+
+    # Guarded here rather than behind a base-class flag: platform gating is not expected to
+    # recur, and three lines in one file beat a capability that exists for a single case.
     if sys.platform != 'win32':
         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
 
-    # Request 1 ms system timer resolution so QTimer::PreciseTimer fires on time.
-    # Windows default is 15.6 ms, which causes frame-budget misses at 30 FPS.
-    winmm = ctypes.windll.winmm
-    winmm.timeBeginPeriod(1)
-
-    report_pid_from_child()
-    args = parseArgs()
-    png_logger = get_logger("hud", args.debug, jsonl=True)
-    configs = load_config_from_json(args.config_file, png_logger)
-    try:
-        main(
-            logger=png_logger,
-            config=configs,
-            debug_mode=args.debug)
-    except KeyboardInterrupt:
-        png_logger.info("Program interrupted by user.")
-    except Exception as e: # pylint: disable=broad-except
-        png_logger.exception("Error in main: %s", e)
-        sys.exit(1)
-    finally:
-        winmm.timeEndPeriod(1)
-
-    png_logger.info("HUD application exiting normally.")
-
-# ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
-
-# import yappi
-# import pstats
-
-# def save_pstats_report(html_filename, txt_filename):
-#     stats = pstats.Stats("hud_profile.prof")
-#     stats.sort_stats("cumulative")
-
-#     with open(html_filename, "w") as f:
-#         f.write("<html><head><title>Yappi HUD Profile</title></head><body><pre>")
-#         stats.stream = f
-#         stats.print_stats()
-#         f.write("</pre></body></html>")
-
-#     with open(txt_filename, "w") as f:
-#         stats.stream = f
-#         stats.print_stats()
-
-# def save_thread_report(filename):
-#     import threading
-#     thread_name_map = {t.ident: t.name for t in threading.enumerate()}
-#     ts = yappi.get_thread_stats()
-#     with open(filename, "w") as f:
-#         for t in ts:
-#             name = thread_name_map.get(t.id, t.name)
-#             f.write(
-#                 f"Thread {name} (id={t.id})\n"
-#                 f"  Total time : {t.ttot}\n"
-#                 f"  Scheduled  : {t.sched_count} times\n"
-#                 f"  Avg time   : {t.ttot / max(t.sched_count, 1)}\n"
-#                 "\n"
-#             )
-
-# def entry_point():
-#     """Entry point — profiler mode (swap with entry_point above to enable)"""
-#     if sys.platform != 'win32':
-#         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
-
-#     winmm = ctypes.windll.winmm
-#     winmm.timeBeginPeriod(1)
-
-#     yappi.set_clock_type("wall")  # or "cpu" for CPU-bound analysis
-#     yappi.start()
-
-#     report_pid_from_child()
-#     args = parseArgs()
-#     png_logger = get_logger("hud", args.debug, jsonl=True)
-#     configs = load_config_from_json(args.config_file, png_logger)
-
-#     try:
-#         main(
-#             logger=png_logger,
-#             config=configs,
-#             debug_mode=args.debug,
-#         )
-#     except KeyboardInterrupt:
-#         png_logger.info("Program interrupted by user.")
-#     except Exception as e:
-#         png_logger.exception("Error in main: %s", e)
-#         sys.exit(1)
-#     finally:
-#         yappi.stop()
-#         winmm.timeEndPeriod(1)
-
-#         # Global function stats (snakeviz-compatible)
-#         # Note: per-thread filtering via filter={"thread_id": t.id} produces
-#         # identical files on Windows — use hud_threads.txt for thread breakdown.
-#         yappi.get_func_stats().save("hud_profile.prof", type="pstat")
-
-#         save_pstats_report("hud_profile.html", "hud_profile.txt")
-#         save_thread_report("hud_threads.txt")
-
-#     png_logger.info("HUD application exiting normally.")
+    HudSubsystem.main()

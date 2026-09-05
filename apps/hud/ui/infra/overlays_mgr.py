@@ -22,10 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from lib.assets_loader import load_fonts
-from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import OverlayPosition, PngSettings
 from lib.logger import PngLogger
 from lib.rate_limiter import RateLimiter
@@ -59,12 +58,16 @@ class OverlaysMgr:
     def __init__(self,
                  logger: PngLogger,
                  settings: PngSettings,
+                 on_ready: Callable[[], None],
                  debug: bool = False):
         """Construct a new OverlaysMgr object. Ctor will init config files and windows
 
         Args:
             logger (PngLogger): Logger object
             settings (PngSettings): App Settings
+            on_ready (Callable[[], None]): Called by WindowManager once the overlay windows
+                are actually shown. The HUD is only genuinely up at that point, not when its
+                setup() returns, so it owns the timing of the init-complete token.
             debug (bool, optional): Debug mode. Defaults to False.
         """
         self.logger = logger
@@ -80,7 +83,7 @@ class OverlaysMgr:
         ) if settings.Display.wdt_timeout is not None else None
 
         assert settings.HUD.enabled, "HUD must be enabled to run overlays manager"
-        self.window_manager = WindowManager(logger, settings, notify_parent_init_complete)
+        self.window_manager = WindowManager(logger, settings, on_ready)
         load_fonts(debug_log_printer=self.logger.debug, error_log_printer=self.logger.error)
 
         enabled = settings.HUD.enabled_overlays_by_id()

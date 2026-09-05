@@ -41,7 +41,7 @@ class _StubSync(SyncSubsystem):
         self.shutdown_calls = 0
         self.shutdown_reasons = []
         self.pre_boot_calls = 0
-        self.post_boot_calls = 0
+        self.on_exit_calls = 0
 
     def should_run_mgmt_ipc(self, args):
         return False
@@ -52,8 +52,8 @@ class _StubSync(SyncSubsystem):
     def pre_boot(self, args):
         self.pre_boot_calls += 1
 
-    def post_boot(self):
-        self.post_boot_calls += 1
+    def on_exit(self):
+        self.on_exit_calls += 1
 
     def setup(self):
         self.setup_calls += 1
@@ -405,11 +405,11 @@ def test_benign_shutdown_exception_is_swallowed(monkeypatch):
 
     _Racy.main()  # must not raise
 
-def test_post_boot_runs_even_when_setup_raises(monkeypatch):
-    """post_boot() is guaranteed, so pre_boot()'s side effects are always undone."""
+def test_on_exit_runs_even_when_setup_raises(monkeypatch):
+    """on_exit() is guaranteed, so pre_boot()'s side effects are always undone."""
 
     class _Failing(_StubSync):
-        NAME = "failing_post_boot"
+        NAME = "failing_on_exit"
         DESCRIPTION = "Failing Post Boot"
 
         def setup(self):
@@ -431,7 +431,7 @@ def test_post_boot_runs_even_when_setup_raises(monkeypatch):
         _Failing.main()
 
     assert app_holder["app"].pre_boot_calls == 1
-    assert app_holder["app"].post_boot_calls == 1
+    assert app_holder["app"].on_exit_calls == 1
 
 # -------------------------------------- SYNC LIFECYCLE ----------------------------------------------------------------
 
