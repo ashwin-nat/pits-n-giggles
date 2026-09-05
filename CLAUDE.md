@@ -110,6 +110,7 @@ Reusable modules consumed by multiple apps:
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
 - **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
 - **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngAppId` for app identity
+- **`subsystem/`** — Child-side lifecycle base for launcher-managed subsystems (`PngSubsystem`, `AsyncSubsystem`, `SyncSubsystem`) — see "Subsystem Lifecycle" below
 - **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers
 - **`tyre_wear_extrapolator/`** — Linear regression tyre wear prediction
 - **`delta/`** — Lap delta calculations
@@ -160,6 +161,41 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - **Router/Dealer** — `IpcRouter` (server-side) paired with `IpcDealerClient`/`IpcDealerAsync` (client-side) for async many-to-one messaging.
 
 `PngAppId` enumerates all app identities; IPC sockets bind to OS-assigned ephemeral ports. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
+
+### Subsystem Lifecycle
+
+The launcher manages its five children like systemd units — spawn, handshake, heartbeat, shutdown, stats. `apps/launcher/subsystems/base_mgr.py` (`PngAppMgrBase`) is the parent side of that contract; `lib/subsystem/` is the child side. **Changes to either must not alter the wire contract with the other.**
+
+Every subsystem subclasses `AsyncSubsystem` (backend, web, mcp_server) or `SyncSubsystem` (broker, hud), and the base owns arg parsing, the logger, config loading, the handshake tokens, the management IPC server and its three built-in handlers, the stats envelope, the task/thread registry and the exception funnel. A subsystem fills in hooks — `setup()`, `collect_stats()`, `on_shutdown()`, and `run_forever()` for the sync variant — and declares what it needs:
+
+```python
+class WebSubsystem(AsyncSubsystem):
+    NAME = "web"
+    DESCRIPTION = "unified web app"
+    CONFIG_REQUIRED = True
+    READY_ON_SETUP_COMPLETE = False     # notify_ready() called later, by hand
+    APP_ID = PngAppId.WEB               # dealer identity; required when DEALER is True
+    PUBSUB = PubSubRole.SUBSCRIBER      # populates self.subscriber (PUBLISHER -> self.publisher)
+    DEALER = True                       # populates self.dealer
+```
+
+The declarations are opt-in: the base constructs what is declared, registers its task/thread, and closes it *after* `on_shutdown()` returns, so per-subsystem teardown order is preserved. It never registers a route and never merges data-plane stats into the payload — topic names, handler bodies and `collect_stats()` stay subsystem-owned.
+
+The three IPC flavours are exposed under their own names, each keeping its own vocabulary — there is deliberately **no abstraction over the three**:
+
+```python
+@self.mgmt.on("manual-save")                 # reqrep, the launcher's control channel
+@self.subscriber.route("race-table-update")  # pub/sub, the telemetry fabric
+@self.dealer.route("driver-info")            # router/dealer, between apps
+```
+
+Only `mgmt` is wrapped (`MgmtIpcHandle`, exposing just `.on()`); shutdown/get-stats/heartbeat-missed live in separate callback slots and a subsystem registering its own would silently *replace* the base's. `self.publisher`/`subscriber`/`dealer` are the library objects themselves, so they can be wrapped or handed onward (as `apps/mcp_server` does for its watchdog).
+
+Notes:
+- **`READY_ON_SETUP_COMPLETE = False` is the common case** (web, hud, mcp_server). The launcher only reaches `AppState.RUNNING` on the init-complete token, so a subsystem that is not usable until a socket is listening or windows are shown injects `notify_ready` into whatever owns that moment, as a mandatory callback.
+- **Register work through `add_task()` / `add_periodic()`**, not a threaded `tasks` list. `adopt_task()` exists only for objects whose stop mechanism *is* cancellation and which therefore hold their own handle.
+- `request_shutdown()` (async) and `request_stop()` (sync) are **non-blocking by design** — the mgmt IPC server only replies to the launcher once the handler returns.
+- **Do not run a subsystem standalone**; it fails the heartbeat check and self-terminates. `apps/mcp_server` is the one exception, via `should_run_mgmt_ipc()`, which gates the mgmt server and all three handshake tokens together — under stdio, stdout carries the MCP protocol and nothing else may touch it.
 
 ## graphify
 
