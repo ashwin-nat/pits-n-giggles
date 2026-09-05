@@ -386,25 +386,6 @@ def test_bare_exception_exits_one(monkeypatch):
 
     assert exc.value.code == 1
 
-def test_benign_shutdown_exception_is_swallowed(monkeypatch):
-    """A subsystem can name a teardown race that means "this was a normal exit"."""
-
-    class _Benign(Exception):
-        pass
-
-    class _Racy(_StubSync):
-        NAME = "racy"
-        DESCRIPTION = "Racy"
-        BENIGN_SHUTDOWN_EXCEPTIONS = (_Benign,)
-
-        def setup(self):
-            raise _Benign()
-
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", lambda *a, **k: None)
-
-    _Racy.main()  # must not raise
-
 def test_on_exit_runs_even_when_setup_raises(monkeypatch):
     """on_exit() is guaranteed, so pre_boot()'s side effects are always undone."""
 

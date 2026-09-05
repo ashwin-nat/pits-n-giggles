@@ -27,7 +27,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_ipc_port_from_child,
@@ -131,10 +131,6 @@ class PngSubsystem(ABC):
     PUBSUB: PubSubRole = PubSubRole.NONE
     # Whether to build a router/dealer client, exposed as self.dealer
     DEALER: bool = False
-    # Exception types that mean "this was a normal shutdown", logged and swallowed by the
-    # funnel. Lets a subsystem name a benign teardown race without lib/ having to import the
-    # library that raises it.
-    BENIGN_SHUTDOWN_EXCEPTIONS: Tuple[Type[BaseException], ...] = ()
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Fail at import time if a subclass forgot to fill in the mandatory identity fields"""
@@ -340,8 +336,6 @@ class PngSubsystem(ABC):
             self._run()
         except KeyboardInterrupt:
             self.logger.info("Program interrupted by user.")
-        except self.BENIGN_SHUTDOWN_EXCEPTIONS:
-            self.logger.info("Program shutdown gracefully.")
         except PngError as e:
             self.logger.exception("Terminating due to Error: %s with code %d", e, e.exit_code)
             sys.exit(e.exit_code)
