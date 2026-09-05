@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2026] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,119 +22,124 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
-import asyncio
-import logging
-import sys
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, Optional, override
 
-from lib.child_proc_mgmt import report_pid_from_child
-from lib.config import PngSettings, load_config_from_json
-from lib.error_status import PngError
 from lib.file_path import get_app_base_dir
-from lib.logger import get_logger
-from lib.periodic_task import periodic_task
+from lib.ipc import PngAppId
+from lib.subsystem import AsyncSubsystem, PubSubRole
 from lib.version import get_version
-from meta.meta import APP_NAME
+from lib.web_server import ClientType
 
-from .ipc_mgmt import init_ipc_task
-from .tasks import (initDealer, initSubscriber, raceTableEmitTask,
-                    streamOverlayEmitTask)
+from .tasks import raceTableEmitTask, streamOverlayEmitTask
 from .web_server import WebServer
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-def parseArgs() -> argparse.Namespace:
-    """Parse the command line args and perform validation
+class WebSubsystem(AsyncSubsystem):
+    """The unified web app - serves the live dashboards, save-viewer and home page.
 
-    Returns:
-        argparse.Namespace: The parsed args namespace
+    Consumes broker telemetry over pub/sub and bridges browser pulls to the backend over the
+    router/dealer channel.
     """
 
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} unified web app")
-    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    NAME = "web"
+    DESCRIPTION = "unified web app"
+    CONFIG_REQUIRED = True
+    # The web app is only genuinely up once its socket is listening, which happens well after
+    # setup() returns. WebServer emits the token from its post-start callback instead - the
+    # launcher only reaches AppState.RUNNING on that token, so sending it early would be a lie
+    # it acts on.
+    READY_ON_SETUP_COMPLETE = False
 
-    return parser.parse_args()
+    APP_ID = PngAppId.WEB
+    PUBSUB = PubSubRole.SUBSCRIBER
+    DEALER = True
 
-async def main(logger: logging.Logger, settings: PngSettings, version: str, debug_mode: bool) -> None:
-    """Main function
+    def __init__(self) -> None:
+        """Construct the subsystem. Nothing is started until main() runs."""
 
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        version (str): Version string
-        debug_mode (bool): Whether debug mode is enabled
-    """
-    tasks: List[asyncio.Task] = []
-    shutdown_event = asyncio.Event()
+        super().__init__()
+        self.web_server: Optional[WebServer] = None
 
-    logger.info("Starting web app, version=%s", version)
+    @override
+    async def setup(self) -> None:
+        """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
-    session_dir_setting = settings.Capture.session_dir_path
-    session_dir = session_dir_setting if session_dir_setting.is_absolute() \
-        else (get_app_base_dir() / session_dir_setting).resolve()
-    viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
-    logger.debug("Session directory: %s", session_dir)
-    logger.debug("Viewer directory: %s", viewer_dir)
+        self.logger.info("Starting web app, version=%s", self.version)
 
-    web_server = WebServer(settings=settings, ver_str=get_version(use_meta_version=True), logger=logger,
-                           session_dir=session_dir, viewer_dir=viewer_dir, debug_mode=debug_mode)
-    tasks.append(asyncio.create_task(web_server.run(), name="Web Server Task"))
+        session_dir_setting = self.settings.Capture.session_dir_path
+        session_dir = session_dir_setting if session_dir_setting.is_absolute() \
+            else (get_app_base_dir() / session_dir_setting).resolve()
+        viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
+        self.logger.debug("Session directory: %s", session_dir)
+        self.logger.debug("Viewer directory: %s", viewer_dir)
 
-    ipc_sub = initSubscriber(settings.Network.broker_xpub_port, logger, web_server)
-    tasks.append(asyncio.create_task(ipc_sub.run(), name="Broker Subscriber Task"))
+        self.web_server = WebServer(
+            settings=self.settings,
+            ver_str=get_version(use_meta_version=True),
+            logger=self.logger,
+            session_dir=session_dir,
+            viewer_dir=viewer_dir,
+            on_ready=self.notify_ready,
+            debug_mode=self.args.debug)
+        self.add_task(self.web_server.run(), name="Web Server Task")
 
-    dealer = initDealer(settings.Network.broker_router_port, logger, web_server)
-    tasks.append(asyncio.create_task(dealer.start(), name="Web Dealer Recv"))
+        # Broker telemetry. These only cache the latest payload - emission to browsers happens
+        # on the web server's own timer below, not at broker cadence.
+        @self.subscriber.route("race-table-update")
+        async def _race_table_update(data: Dict[str, Any]) -> None:
+            self.web_server.update_race_table_cache(data)
 
-    tasks.append(asyncio.create_task(
-        periodic_task(
-            settings.Display.refresh_interval,
-            shutdown_event,
-            logger,
-            raceTableEmitTask,
-            web_server), name="Race Table Emit Task"))
-    tasks.append(asyncio.create_task(
-        periodic_task(
-            settings.Display.refresh_interval,
-            shutdown_event,
-            logger,
-            streamOverlayEmitTask,
-            web_server), name="Stream Overlay Emit Task"))
+        @self.subscriber.route("stream-overlay-update")
+        async def _stream_overlay_update(data: Dict[str, Any]) -> None:
+            self.web_server.update_stream_overlay_cache(data)
 
-    init_ipc_task(logger, web_server, ipc_sub, dealer, shutdown_event, tasks)
+        # The backend's unsolicited push. The dealer is also handed to the web server, which
+        # uses it to bridge the /driver-info and /race-info pulls back to the backend.
+        @self.dealer.route("frontend-update")
+        async def _frontend_update(data: dict, _sender: str) -> None:
+            await self.web_server.send_to_clients_of_type(
+                event='frontend-update',
+                data=data,
+                client_type=ClientType.RACE_TABLE)
 
-    try:
-        logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
-        await asyncio.gather(*tasks)
-    except asyncio.CancelledError:
-        logger.debug("Main task was cancelled.")
-        await web_server.stop()
-        for task in tasks:
-            task.cancel()
-        raise  # Ensure proper cancellation behavior
-    except PngError as e:
-        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
-        sys.exit(e.exit_code)
+        self.web_server.set_dealer(self.dealer)
+
+        refresh_interval = self.settings.Display.refresh_interval
+        self.add_periodic(refresh_interval, raceTableEmitTask, self.web_server,
+                          name="Race Table Emit Task")
+        self.add_periodic(refresh_interval, streamOverlayEmitTask, self.web_server,
+                          name="Stream Overlay Emit Task")
+
+    @override
+    def collect_stats(self) -> Dict[str, Any]:
+        """Return web server, subscriber and dealer stats.
+
+        Returns:
+            Dict[str, Any]: Stats body
+        """
+
+        return {
+            "web_server": self.web_server.get_stats(),
+            "ipc_sub": self.subscriber.get_stats(),
+            "dealer": self.dealer.get_stats(),
+        }
+
+    @override
+    async def on_shutdown(self, reason: str) -> None:
+        """Stop the web server. The base closes the subscriber and dealer after this returns.
+
+        Args:
+            reason (str): Why the shutdown was requested
+        """
+
+        self.logger.debug("Shutting down the web server. Reason: %s", reason)
+        await self.web_server.stop()
+
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
     """Entry point"""
-    report_pid_from_child()
-    args = parseArgs()
-    png_logger = get_logger("web", args.debug, jsonl=True)
-    version = get_version()
-    settings = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    try:
-        asyncio.run(main(
-            logger=png_logger,
-            settings=settings,
-            version=version,
-            debug_mode=args.debug))
-    except KeyboardInterrupt:
-        png_logger.info("Program interrupted by user.")
-    except asyncio.CancelledError:
-        png_logger.info("Program shutdown gracefully.")
+
+    WebSubsystem.main()

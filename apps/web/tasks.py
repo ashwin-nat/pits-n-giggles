@@ -22,76 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import logging
-from typing import Any, Dict
-
-from lib.ipc import IpcDealerAsync, IpcSubscriberAsync, PngAppId
-from lib.web_server import ClientType
-
 from .web_server import WebServer
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def initSubscriber(
-        port: int,
-        logger: logging.Logger,
-        web_server: WebServer) -> IpcSubscriberAsync:
-    """Create the broker subscriber. Routes only cache the latest payload — emission to browsers
-    happens on the web server's own timer, not at broker cadence.
-
-    Args:
-        port (int): Broker XPUB port
-        logger (logging.Logger): Logger
-        web_server (WebServer): The web server whose cache gets updated
-
-    Returns:
-        IpcSubscriberAsync: The subscriber instance
-    """
-    ipc_sub = IpcSubscriberAsync(port=port, logger=logger)
-
-    @ipc_sub.route("race-table-update")
-    async def _handle_race_table_update(data: Dict[str, Any]) -> None:
-        web_server.update_race_table_cache(data)
-
-    @ipc_sub.route("stream-overlay-update")
-    async def _handle_stream_overlay_update(data: Dict[str, Any]) -> None:
-        web_server.update_stream_overlay_cache(data)
-
-    return ipc_sub
-
-def initDealer(
-        port: int,
-        logger: logging.Logger,
-        web_server: WebServer) -> IpcDealerAsync:
-    """Create the web subsystem's router/dealer client.
-
-    Handles the unsolicited `frontend-update` push from the backend, and is also used by
-    `WebServer` (via `set_dealer`) to bridge `/driver-info` and `/race-info` pulls.
-
-    Args:
-        port (int): Broker router port
-        logger (logging.Logger): Logger
-        web_server (WebServer): The web server to forward frontend-update messages to
-
-    Returns:
-        IpcDealerAsync: The dealer instance
-    """
-    dealer = IpcDealerAsync(
-        host="127.0.0.1",
-        port=port,
-        identity=str(PngAppId.WEB),
-        logger=logger,
-    )
-
-    @dealer.route("frontend-update")
-    async def _handle_frontend_update(data: dict, _sender: str) -> None:
-        await web_server.send_to_clients_of_type(
-            event='frontend-update',
-            data=data,
-            client_type=ClientType.RACE_TABLE)
-
-    web_server.set_dealer(dealer)
-    return dealer
 
 async def raceTableEmitTask(web_server: WebServer) -> None:
     """Emit the cached race-table-update payload verbatim, if any client is interested."""
