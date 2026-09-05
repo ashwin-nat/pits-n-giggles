@@ -22,11 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from lib.ipc import IpcSubscriberAsync
-from lib.logger import PngLogger
 from lib.wdt import WatchDogTimerAsync
 
 from .state import set_state_data
@@ -34,15 +32,22 @@ from .state import set_state_data
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class McpSubscriber:
-    def __init__(self, logger: PngLogger, port: int, timeout: float) -> None:
-        """Initialize the IPC server.
+    """Files broker telemetry into the state store, and tracks whether it is still arriving.
+
+    Wraps the subscriber the subsystem base built rather than opening its own, so the socket's
+    lifetime stays with the base like every other subsystem's. What is added here is the
+    watchdog: the MCP tools need to tell "no data yet" apart from "data, but stale", and only a
+    timer can answer that.
+    """
+
+    def __init__(self, subscriber: IpcSubscriberAsync, timeout: float) -> None:
+        """Attach routes and a watchdog to an existing subscriber.
 
         Args:
-            logger (PngLogger): Logger
-            port (int): IPC port
-            timeout (float): Connection timeout in seconds
+            subscriber (IpcSubscriberAsync): Broker subscriber, built and closed by the base
+            timeout (float): Seconds of silence before the stream counts as disconnected
         """
-        self.m_ipc_sub = IpcSubscriberAsync(port=port, logger=logger)
+        self.m_ipc_sub = subscriber
         set_state_data("connected", False)
         self.m_wdt = WatchDogTimerAsync(
             status_callback=self._wdt_callback,
@@ -69,14 +74,6 @@ class McpSubscriber:
             set_state_data("race-table-update", msg)
             self.m_wdt.kick()
 
-    async def run(self) -> None:
-        """Starts the IPC server."""
-        await self.m_ipc_sub.run()
-
-    async def close(self) -> None:
-        """Closes the IPC subscriber."""
-        self.m_ipc_sub.close()
-
     def _wdt_callback(self, active: bool) -> None:
         """Watchdog timer callback to update IPC activity state.
 
@@ -88,29 +85,3 @@ class McpSubscriber:
             self.m_ipc_sub.logger.info("Connected to data stream")
         else:
             self.m_ipc_sub.logger.warning("Disconnected from data stream")
-
-    def get_stats(self) -> dict:
-        """Get stats for the subscriber.
-
-        Returns:
-            dict: Stats dictionary
-        """
-        return self.m_ipc_sub.get_stats()
-
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
-
-def init_subscriber_task(port: int, logger: PngLogger, tasks: List[asyncio.Task]) -> McpSubscriber:
-    """Initialize the IPC task.
-
-    Args:
-        port (int): IPC port
-        logger (PngLogger): Logger
-        tasks (List[asyncio.Task]): List of tasks
-
-    Returns:
-        McpSubscriber: The MCP Subscriber instance
-    """
-    ipc_sub = McpSubscriber(logger, port, timeout=10.0)
-    tasks.append(asyncio.create_task(ipc_sub.run(), name="IPC Subscriber Task"))
-    tasks.append(asyncio.create_task(ipc_sub.m_wdt.run(), name="IPC Watchdog Task"))
-    return ipc_sub
