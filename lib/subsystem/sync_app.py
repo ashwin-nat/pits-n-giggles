@@ -42,6 +42,30 @@ class SyncSubsystem(PngSubsystem):
 
     The subsystems in this shape - the broker and the Qt HUD - start their own daemon threads
     from their own classes, so the base only holds handles in order to join them on teardown.
+
+    A concrete subsystem declares its shape with class variables, all defined on
+    PngSubsystem. Required:
+
+        NAME                     logger and management IPC server name, e.g. "hud"
+        DESCRIPTION              argparse description suffix, e.g. "HUD"
+        APP_ID                   PngAppId dealer identity - required only when DEALER is True
+
+    Optional. Each default is a real answer rather than a placeholder, so a subsystem that
+    wants it says nothing - the broker declares none of these, because being the fabric
+    rather than a participant in it is exactly what the defaults describe:
+
+        CONFIG_REQUIRED          False; True makes a missing config file fatal
+        READY_ON_SETUP_COMPLETE  True; False when the subsystem is not usable until later
+                                 and calls notify_ready() itself
+        PUBSUB                   PubSubRole.NONE; SUBSCRIBER populates self.subscriber.
+                                 PUBLISHER raises - there is no sync publisher
+        DEALER                   False; True populates self.dealer
+        HEARTBEAT_TIMEOUT        5.0 seconds
+        MAX_MISSED_HEARTBEATS    3
+
+    NAME, DESCRIPTION and the DEALER/APP_ID pairing are enforced at import time by
+    PngSubsystem.__init_subclass__. The rest are only read where they are used, and the
+    handle properties below assert if you reach for one this subsystem never declared.
     """
 
     ABSTRACT = True
