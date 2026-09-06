@@ -25,7 +25,6 @@
 import ctypes
 import sys
 import threading
-from argparse import Namespace
 from typing import Any, Dict, Optional, override
 
 from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
@@ -49,30 +48,25 @@ class HudSubsystem(SyncSubsystem[SubsystemArgs]):
     NAME = "hud"
     DESCRIPTION = "HUD"
     # The HUD is only genuinely up once its overlay windows are shown, which happens inside the
-    # Qt loop, well after setup() returns. WindowManager emits the token from there instead.
-    READY_ON_SETUP_COMPLETE = False
+    # Qt loop, well after the constructor returns. WindowManager emits the token from there.
+    READY_ON_START = False
 
     APP_ID = PngAppId.HUD
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
-    def __init__(self) -> None:
-        """Construct the subsystem. Nothing is started until main() runs."""
-
-        super().__init__()
-        self.overlays_mgr: Optional[OverlaysMgr] = None
-        self._winmm: Optional[Any] = None
+    # Set by pre_boot(), which the base constructor calls before this class's __init__ body
+    # runs. A `self._winmm = None` down there would overwrite the handle it just took, and
+    # on_exit() would then never hand the timer resolution back.
+    _winmm: Optional[Any] = None
 
     # -------------------------------------- LIFECYCLE -----------------------------------------------------------------
 
     @override
-    def pre_boot(self, args: SubsystemArgs) -> None:
+    def pre_boot(self) -> None:
         """Request 1 ms system timer resolution so QTimer::PreciseTimer fires on time.
 
         Windows default is 15.6 ms, which causes frame-budget misses at 30 FPS.
-
-        Args:
-            args (SubsystemArgs): Parsed args
         """
 
         self._winmm = ctypes.windll.winmm
@@ -85,10 +79,10 @@ class HudSubsystem(SyncSubsystem[SubsystemArgs]):
         if self._winmm:
             self._winmm.timeEndPeriod(1)
 
-    @override
-    def setup(self) -> None:
+    def __init__(self) -> None:
         """Build the overlays and attach the three IPC surfaces to them."""
 
+        super().__init__()
         self.overlays_mgr = OverlaysMgr(
             self.logger, self.settings, on_ready=self.notify_ready, debug=self.args.debug)
 
@@ -159,4 +153,4 @@ def entry_point():
     if sys.platform != 'win32':
         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
 
-    HudSubsystem.main()
+    HudSubsystem().main()

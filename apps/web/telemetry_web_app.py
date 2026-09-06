@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from pathlib import Path
-from typing import Any, Dict, Optional, override
+from typing import Any, Dict, override
 
 from lib.file_path import get_app_base_dir
 from lib.ipc import PngAppId
@@ -47,25 +47,19 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     DESCRIPTION = "unified web app"
     CONFIG_REQUIRED = True
     # The web app is only genuinely up once its socket is listening, which happens well after
-    # setup() returns. WebServer emits the token from its post-start callback instead - the
+    # construction returns. WebServer emits the token from its post-start callback instead - the
     # launcher only reaches AppState.RUNNING on that token, so sending it early would be a lie
     # it acts on.
-    READY_ON_SETUP_COMPLETE = False
+    READY_ON_START = False
 
     APP_ID = PngAppId.WEB
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
     def __init__(self) -> None:
-        """Construct the subsystem. Nothing is started until main() runs."""
-
-        super().__init__()
-        self.web_server: Optional[WebServer] = None
-
-    @override
-    async def setup(self) -> None:
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
+        super().__init__()
         self.logger.info("Starting web app, version=%s", self.version)
 
         session_dir_setting = self.settings.Capture.session_dir_path
@@ -142,4 +136,4 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
 def entry_point():
     """Entry point"""
 
-    WebSubsystem.main()
+    WebSubsystem().main()

@@ -47,17 +47,19 @@ than --config-file and --debug subclasses SubsystemArgs and points ARGS at the s
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .args import SubsystemArgs, arg
-from .async_app import AsyncSubsystem
+from .async_app import AddTask, AsyncSubsystem, SubsystemTask
 from .base import PngSubsystem, PubSubRole
 from .sync_app import SyncSubsystem
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    "AddTask",
     "arg",
     "AsyncSubsystem",
     "PngSubsystem",
     "PubSubRole",
     "SubsystemArgs",
+    "SubsystemTask",
     "SyncSubsystem",
 ]

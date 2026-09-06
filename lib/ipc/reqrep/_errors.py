@@ -48,7 +48,7 @@ def reserved_slot_error(server_name: str, slot: str, purpose: str, instead: str)
 
     return ValueError(
         f"{server_name}: a {slot} callback is already registered. This is a single slot "
-        f"reserved for {purpose}, filled by lib/subsystem before setup() runs, so a second "
+        f"reserved for {purpose}, filled by lib/subsystem as it constructs, so a second "
         f"registration would silently discard the base's and break that contract. "
         f"DO THIS INSTEAD: {instead} "
         f'(if you actually meant to add an unrelated launcher command, use .on("<command-name>")).')

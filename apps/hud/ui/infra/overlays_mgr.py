@@ -67,7 +67,7 @@ class OverlaysMgr:
             settings (PngSettings): App Settings
             on_ready (Callable[[], None]): Called by WindowManager once the overlay windows
                 are actually shown. The HUD is only genuinely up at that point, not when its
-                setup() returns, so it owns the timing of the init-complete token.
+                the subsystem is constructed, so it owns the timing of the init-complete token.
             debug (bool, optional): Debug mode. Defaults to False.
         """
         self.logger = logger

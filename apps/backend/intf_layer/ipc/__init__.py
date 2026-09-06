@@ -24,7 +24,7 @@
 
 The server itself, and the shutdown / get-stats / heartbeat-missed handlers, are owned by
 `lib/subsystem`. What is left here is the backend's own commands, which it registers on
-`self.mgmt` in `BackendSubsystem.setup()`.
+`self.mgmt` in `BackendSubsystem.__init__`.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------

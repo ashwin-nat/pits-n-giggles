@@ -55,7 +55,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     rather than a participant in it is exactly what the defaults describe:
 
         CONFIG_REQUIRED          False; True makes a missing config file fatal
-        READY_ON_SETUP_COMPLETE  True; False when the subsystem is not usable until later
+        READY_ON_START           True; False when the subsystem is not usable until later
                                  and calls notify_ready() itself
         PUBSUB                   PubSubRole.NONE; SUBSCRIBER populates self.subscriber.
                                  PUBLISHER raises - there is no sync publisher
@@ -78,17 +78,19 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         self._threads: List[threading.Thread] = []
         self._shutdown_reason: str = "N/A"
 
-        # Built by the base before setup() runs, per the PUBSUB / DEALER declarations.
-        # There is no sync publisher, so there is no self.publisher to match AsyncSubsystem's.
-        self._subscriber: Optional[IpcSubscriberSync] = None
-        self._dealer: Optional[IpcDealerClient] = None
-        self._mgmt_server: Optional[IpcServerSync] = None
+        # Built here, before the subclass's own __init__ body, so that it can attach handlers
+        # and start its threads alongside the rest of its wiring. These bind real sockets,
+        # which is why a subsystem is a process rather than an object you make several of.
+        #
+        # Each is assigned exactly once, from a builder that owns its own condition. They stay
+        # Optional because a subsystem may want neither endpoint - so None here means "this
+        # subsystem declared no such endpoint", never "not built yet". There is no sync
+        # publisher, so there is no self._publisher to match AsyncSubsystem's.
+        self._mgmt_server: Optional[IpcServerSync] = self._build_mgmt_ipc()
+        self._subscriber: Optional[IpcSubscriberSync] = self._build_subscriber()
+        self._dealer: Optional[IpcDealerClient] = self._build_dealer()
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
-
-    @abstractmethod
-    def setup(self) -> None:
-        """Build this subsystem's objects and register its threads."""
 
     @abstractmethod
     def run_forever(self) -> None:
@@ -169,8 +171,15 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
 
     # -------------------------------------- MANAGEMENT IPC ------------------------------------------------------------
 
-    def _build_mgmt_ipc(self) -> None:
-        """Stand up the management IPC server and wire the three base-owned handlers."""
+    def _build_mgmt_ipc(self) -> Optional[IpcServerSync]:
+        """Stand up the management IPC server and wire the three base-owned handlers.
+
+        Returns:
+            Optional[IpcServerSync]: The server, or None when this run has no launcher
+        """
+
+        if not self._mgmt_ipc_enabled:
+            return None
 
         self.logger.debug("Starting IPC server")
         server = IpcServerSync(
@@ -179,7 +188,6 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             heartbeat_timeout=self.HEARTBEAT_TIMEOUT,
             logger=self.logger,
         )
-        self._mgmt_server = server
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -199,26 +207,40 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         def _get_stats(args: dict) -> Dict[str, Any]:
             return self.build_stats_response(args)
 
-    def _build_data_plane(self) -> None:
-        """Construct whatever pub/sub and dealer endpoints this subsystem declared.
+        return server
 
-        Construction only - the base registers no routes. Topic names and handler bodies
-        belong to the subsystem, and it attaches them in setup().
+    # -------------------------------------- DATA PLANE ----------------------------------------------------------------
+    # Construction only - the base registers no routes. Topic names and handler bodies belong
+    # to the subsystem, and it attaches them in its own __init__.
+
+    def _build_subscriber(self) -> Optional[IpcSubscriberSync]:
+        """Returns:
+            Optional[IpcSubscriberSync]: The subscriber, or None unless PUBSUB is SUBSCRIBER
+
+        Raises:
+            NotImplementedError: If PUBSUB is PUBLISHER, which this variant cannot serve
         """
 
-        if self.PUBSUB is PubSubRole.SUBSCRIBER:
-            self._subscriber = IpcSubscriberSync(
-                port=self.settings.Network.broker_xpub_port, logger=self.logger)
-        elif self.PUBSUB is PubSubRole.PUBLISHER:
+        if self.PUBSUB is PubSubRole.PUBLISHER:
             raise NotImplementedError("No sync publisher exists; use AsyncSubsystem to publish")
+        if self.PUBSUB is not PubSubRole.SUBSCRIBER:
+            return None
+        return IpcSubscriberSync(
+            port=self.settings.Network.broker_xpub_port, logger=self.logger)
 
-        if self.DEALER:
-            self._dealer = IpcDealerClient(
-                host="127.0.0.1",
-                port=self.settings.Network.broker_router_port,
-                identity=str(self.APP_ID),
-                logger=self.logger,
-            )
+    def _build_dealer(self) -> Optional[IpcDealerClient]:
+        """Returns:
+            Optional[IpcDealerClient]: The dealer, or None unless DEALER is set
+        """
+
+        if not self.DEALER:
+            return None
+        return IpcDealerClient(
+            host="127.0.0.1",
+            port=self.settings.Network.broker_router_port,
+            identity=str(self.APP_ID),
+            logger=self.logger,
+        )
 
     def _start_ipc_threads(self) -> None:
         """Start a servicing thread for each IPC endpoint, and register it for join."""
@@ -227,7 +249,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             self._spawn_thread(self._subscriber.start, f"{self.NAME}-Subscriber")
         if self._dealer is not None:
             self._spawn_thread(self._dealer.start, f"{self.NAME}-Dealer")
-        if self._mgmt_ipc_enabled:
+        if self._mgmt_server is not None:
             # This one starts itself
             self.add_thread(self._mgmt_server.serve_in_thread())
 
@@ -255,18 +277,13 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     # -------------------------------------- RUN -----------------------------------------------------------------------
 
     def _run(self) -> None:
-        """Boot the subsystem, block in run_forever(), then tear down."""
+        """Start the base's IPC threads, block in run_forever(), then tear down.
 
-        # Built before setup() so the subsystem can attach its handlers there, via
-        # the mgmt/subscriber/dealer properties, alongside the rest of its wiring.
-        if self._mgmt_ipc_enabled:
-            self._build_mgmt_ipc()
-        self._build_data_plane()
-
-        self.setup()
+        Everything subsystem-specific was already built by the constructor.
+        """
 
         self._start_ipc_threads()
-        if self.READY_ON_SETUP_COMPLETE:
+        if self.READY_ON_START:
             self.notify_ready()
 
         try:

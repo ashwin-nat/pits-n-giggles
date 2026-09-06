@@ -22,6 +22,19 @@ from lib.subsystem.base import ArgsT
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def _boot_env(monkeypatch):
+    """Keep every subsystem constructed here off the real argv and the real config file.
+
+    A subsystem parses argv and loads config in its constructor, so without this each
+    construction would try to parse "-q", "tests/" and friends, and would read - or, for a
+    missing file, write - png_config.json in the repo root. Tests that care about particular
+    flags override the argv half with their own monkeypatch.setattr.
+    """
+
+    monkeypatch.setattr(sys, "argv", ["prog"])
+    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", lambda *a, **k: None)
+
 def _test_logger(owner) -> logging.Logger:
     """Per-instance logger.
 
@@ -43,22 +56,25 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
     NAME = "stub_sync"
     DESCRIPTION = "Stub Sync Subsystem"
 
+    # Counted by pre_boot() and on_exit(), both of which the base constructor can call before
+    # this __init__ body runs - so they have to exist on the class, not be assigned down there.
+    pre_boot_calls = 0
+    on_exit_calls = 0
+
     def __init__(self, stats=None):
         super().__init__()
         self._stats = stats if stats is not None else {}
         self.setup_calls = 0
         self.shutdown_calls = 0
         self.shutdown_reasons = []
-        self.pre_boot_calls = 0
-        self.on_exit_calls = 0
 
-    def should_run_mgmt_ipc(self, args):
+    def should_run_mgmt_ipc(self):
         return False
 
-    def make_logger(self, args):
+    def make_logger(self):
         return _test_logger(self)
 
-    def pre_boot(self, args):
+    def pre_boot(self):
         self.pre_boot_calls += 1
 
     def on_exit(self):
@@ -88,10 +104,10 @@ class _StubAsync(AsyncSubsystem):
         self.shutdown_calls = 0
         self.shutdown_reasons = []
 
-    def should_run_mgmt_ipc(self, args):
+    def should_run_mgmt_ipc(self):
         return False
 
-    def make_logger(self, args):
+    def make_logger(self):
         return _test_logger(self)
 
     async def setup(self):
@@ -155,14 +171,20 @@ def test_abstract_flag_does_not_inherit():
         class _Concrete(_Intermediate):  # pylint: disable=unused-variable
             DESCRIPTION = "Concrete"
 
-@pytest.mark.parametrize("missing", ["setup", "collect_stats", "on_shutdown", "run_forever"])
+@pytest.mark.parametrize("missing", ["collect_stats", "on_shutdown", "run_forever"])
 def test_missing_hook_cannot_be_instantiated(missing):
-    """A subsystem that omits any must-implement hook fails at instantiation."""
+    """A subsystem that omits any must-implement hook fails at instantiation.
+
+    setup() is not in this list because it no longer exists - a subsystem builds itself in
+    __init__. See test_setup_hook_is_gone.
+    """
 
     body = {
         "NAME": "incomplete",
         "DESCRIPTION": "Incomplete",
-        "setup": lambda self: None,
+        # Without this the constructor would bind a real management IPC socket and report a
+        # port to a launcher that is not there.
+        "should_run_mgmt_ipc": lambda self: False,
         "run_forever": lambda self: None,
         "collect_stats": lambda self: {},
         "on_shutdown": lambda self, reason: None,
@@ -173,13 +195,22 @@ def test_missing_hook_cannot_be_instantiated(missing):
     with pytest.raises(TypeError, match="abstract"):
         cls()
 
+def test_setup_hook_is_gone():
+    """There is no second construction phase: a subsystem builds itself in __init__.
+
+    Guards against setup() creeping back as an informal convention - the base would never call
+    it, so it would silently never run.
+    """
+
+    assert not hasattr(AsyncSubsystem, "setup")
+    assert not hasattr(SyncSubsystem, "setup")
+
 # -------------------------------------- PARSER ------------------------------------------------------------------------
 
 def test_base_flags_present(monkeypatch):
     """--config-file and --debug are pre-added by the base."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    args = _StubSync()._parse_args()
+    args = _StubSync().args
 
     assert args.config_file == "png_config.json"
     assert args.debug is False
@@ -196,7 +227,7 @@ def test_args_subclass_extras_merge_with_base_flags(monkeypatch):
         DESCRIPTION = "With Extras"
 
     monkeypatch.setattr(sys, "argv", ["prog", "--debug", "--replay-server", "--config-file", "other.json"])
-    args = _WithExtras()._parse_args()
+    args = _WithExtras().args
 
     assert isinstance(args, _ExtraArgs)
     assert args.debug is True
@@ -220,7 +251,7 @@ def test_underscored_field_becomes_dashed_flag(monkeypatch):
 
     monkeypatch.setattr(sys, "argv", ["prog", "--replay_server"])
     with pytest.raises(SystemExit):
-        _WithExtras()._parse_args()
+        _WithExtras()
 
 def test_unparameterized_subclass_falls_back_to_base_args(monkeypatch):
     """A subsystem with no extra flags inherits SubsystemArgs, not the unfilled TypeVar.
@@ -236,8 +267,7 @@ def test_unparameterized_subclass_falls_back_to_base_args(monkeypatch):
 
     assert _NoExtras.ARGS is SubsystemArgs
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    assert isinstance(_NoExtras()._parse_args(), SubsystemArgs)
+    assert isinstance(_NoExtras().args, SubsystemArgs)
 
 @pytest.mark.parametrize("argv, expected", [
     (["prog"], 0),
@@ -259,7 +289,7 @@ def test_non_bool_field_is_coerced_from_its_annotation(monkeypatch, argv, expect
         DESCRIPTION = "With Int"
 
     monkeypatch.setattr(sys, "argv", argv)
-    assert _WithInt()._parse_args().retries == expected
+    assert _WithInt().args.retries == expected
 
 def test_non_bool_field_rejects_a_value_of_the_wrong_type(monkeypatch):
     """argparse refuses a non-integer for an int field rather than passing the string through."""
@@ -274,7 +304,7 @@ def test_non_bool_field_rejects_a_value_of_the_wrong_type(monkeypatch):
 
     monkeypatch.setattr(sys, "argv", ["prog", "--retries", "abc"])
     with pytest.raises(SystemExit):
-        _WithInt()._parse_args()
+        _WithInt()
 
 def test_bool_defaulting_true_is_rejected():
     """store_true cannot express "on unless passed" - the flag could never switch it off."""
@@ -289,8 +319,7 @@ def test_bool_defaulting_true_is_rejected():
 def test_args_are_frozen(monkeypatch):
     """The parsed args are the invocation, not mutable state."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    args = _StubSync()._parse_args()
+    args = _StubSync().args
 
     with pytest.raises(FrozenInstanceError):
         args.debug = True
@@ -303,9 +332,7 @@ def test_no_tokens_reach_stdout_when_unmanaged(capsys, monkeypatch):
     In stdio mode stdout is the MCP transport, so a stray handshake token would corrupt it.
     """
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubSync()
-    app._bootstrap()
     app.notify_ready()
     app.report_mgmt_ipc_port(12345)
 
@@ -314,9 +341,7 @@ def test_no_tokens_reach_stdout_when_unmanaged(capsys, monkeypatch):
 def test_notify_ready_is_idempotent(capsys, monkeypatch):
     """Repeated notify_ready() calls emit the init-complete token exactly once."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubSync()
-    app._bootstrap()
     app._mgmt_ipc_enabled = True
 
     app.notify_ready()
@@ -326,17 +351,17 @@ def test_notify_ready_is_idempotent(capsys, monkeypatch):
     assert capsys.readouterr().out.count("__PNG_SUBSYSTEM_INIT_COMPLETE__") == 1
 
 def test_ready_not_emitted_when_subsystem_owns_the_timing(capsys, monkeypatch):
-    """READY_ON_SETUP_COMPLETE = False leaves the token for the subsystem to send itself."""
+    """READY_ON_START = False leaves the token for the subsystem to send itself."""
 
     class _LateReady(_StubSync):
         NAME = "late_ready"
         DESCRIPTION = "Late Ready"
-        READY_ON_SETUP_COMPLETE = False
+        READY_ON_START = False
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _LateReady()
-    app._bootstrap()
     app._mgmt_ipc_enabled = True
+    # The stub declined mgmt IPC, so there is no server for _run() to service.
+    monkeypatch.setattr(app, "_start_ipc_threads", lambda: None)
     app._run()
 
     assert "__PNG_SUBSYSTEM_INIT_COMPLETE__" not in capsys.readouterr().out
@@ -366,7 +391,6 @@ def test_heartbeat_missed_logs_and_exits(monkeypatch, caplog):
     """
 
     exits = []
-    monkeypatch.setattr(sys, "argv", ["prog"])
     monkeypatch.setattr("lib.subsystem.base.os._exit", exits.append)
 
     app = _StubSync()
@@ -458,11 +482,8 @@ def test_sync_publisher_is_rejected():
         DESCRIPTION = "Sync Publisher"
         PUBSUB = PubSubRole.PUBLISHER
 
-    app = _SyncPublisher()
-    app.settings = None
-
     with pytest.raises(NotImplementedError, match="sync publisher"):
-        app._build_data_plane()
+        _SyncPublisher()
 
 # -------------------------------------- EXCEPTION FUNNEL --------------------------------------------------------------
 
@@ -473,16 +494,62 @@ def test_png_error_exits_with_its_own_code(monkeypatch):
         NAME = "failing"
         DESCRIPTION = "Failing"
 
-        def setup(self):
+        def run_forever(self):
             raise PngError(42, "boom")
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", lambda *a, **k: None)
 
     with pytest.raises(SystemExit) as exc:
-        _Failing.main()
+        _Failing().main()
 
     assert exc.value.code == 42
+
+@pytest.mark.parametrize("raised, expected_code", [
+    (FileNotFoundError("no config"), 1),
+    (PngError(42, "boom"), 42),
+])
+def test_config_failure_in_the_constructor_exits_with_a_code(monkeypatch, raised, expected_code):
+    """A bad config file is reported and mapped, not thrown out of the constructor.
+
+    The load moved into __init__, which is outside main()'s funnel - so the constructor has to
+    do this reporting itself, or the launcher would see a bare traceback instead of an exit
+    code it can read.
+    """
+
+    class _BadConfig(_StubSync):
+        NAME = "bad_config"
+        DESCRIPTION = "Bad Config"
+
+    def _raise(*_args, **_kwargs):
+        raise raised
+
+    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", _raise)
+
+    with pytest.raises(SystemExit) as exc:
+        _BadConfig()
+
+    assert exc.value.code == expected_code
+
+def test_on_exit_runs_when_the_constructor_fails_on_config(monkeypatch):
+    """pre_boot() has already run by then, so its side effects still have to be undone."""
+
+    calls = []
+
+    class _BadConfig(_StubSync):
+        NAME = "bad_config_on_exit"
+        DESCRIPTION = "Bad Config On Exit"
+
+        def on_exit(self):
+            calls.append("on_exit")
+
+    def _raise(*_args, **_kwargs):
+        raise FileNotFoundError("no config")
+
+    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", _raise)
+
+    with pytest.raises(SystemExit):
+        _BadConfig()
+
+    assert calls == ["on_exit"]
 
 def test_bare_exception_exits_one(monkeypatch):
     """An unexpected exception -> SystemExit(1), logged with a traceback."""
@@ -491,29 +558,25 @@ def test_bare_exception_exits_one(monkeypatch):
         NAME = "failing_bare"
         DESCRIPTION = "Failing Bare"
 
-        def setup(self):
+        def run_forever(self):
             raise ValueError("unexpected")
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", lambda *a, **k: None)
 
     with pytest.raises(SystemExit) as exc:
-        _Failing.main()
+        _Failing().main()
 
     assert exc.value.code == 1
 
-def test_on_exit_runs_even_when_setup_raises(monkeypatch):
+def test_on_exit_runs_even_when_the_run_raises(monkeypatch):
     """on_exit() is guaranteed, so pre_boot()'s side effects are always undone."""
 
     class _Failing(_StubSync):
         NAME = "failing_on_exit"
         DESCRIPTION = "Failing Post Boot"
 
-        def setup(self):
+        def run_forever(self):
             raise ValueError("unexpected")
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-    monkeypatch.setattr("lib.subsystem.base.load_config_from_json", lambda *a, **k: None)
 
     app_holder = {}
     original_init = _Failing.__init__
@@ -525,7 +588,7 @@ def test_on_exit_runs_even_when_setup_raises(monkeypatch):
     monkeypatch.setattr(_Failing, "__init__", _capture_init)
 
     with pytest.raises(SystemExit):
-        _Failing.main()
+        _Failing().main()
 
     assert app_holder["app"].pre_boot_calls == 1
     assert app_holder["app"].on_exit_calls == 1
@@ -533,7 +596,7 @@ def test_on_exit_runs_even_when_setup_raises(monkeypatch):
 # -------------------------------------- SYNC LIFECYCLE ----------------------------------------------------------------
 
 def test_sync_teardown_runs_after_run_forever(monkeypatch):
-    """setup() -> run_forever() -> on_shutdown(), with the event set before teardown."""
+    """__init__ -> run_forever() -> on_shutdown(), with the event set before teardown."""
 
     order = []
 
@@ -541,8 +604,9 @@ def test_sync_teardown_runs_after_run_forever(monkeypatch):
         NAME = "ordered"
         DESCRIPTION = "Ordered"
 
-        def setup(self):
-            order.append("setup")
+        def __init__(self):
+            super().__init__()
+            order.append("__init__")
 
         def run_forever(self):
             order.append("run_forever")
@@ -551,17 +615,13 @@ def test_sync_teardown_runs_after_run_forever(monkeypatch):
             order.append("on_shutdown")
             assert self.shutdown_event.is_set()
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _Ordered()
-    app._bootstrap()
     app._run()
 
-    assert order == ["setup", "run_forever", "on_shutdown"]
+    assert order == ["__init__", "run_forever", "on_shutdown"]
 
 def test_sync_teardown_runs_even_when_run_forever_raises(monkeypatch):
     """A crash in the main loop still tears the subsystem down."""
-
-    monkeypatch.setattr(sys, "argv", ["prog"])
 
     class _Crashing(_StubSync):
         NAME = "crashing"
@@ -571,7 +631,6 @@ def test_sync_teardown_runs_even_when_run_forever_raises(monkeypatch):
             raise RuntimeError("crash")
 
     app = _Crashing()
-    app._bootstrap()
 
     with pytest.raises(RuntimeError):
         app._run()
@@ -583,32 +642,25 @@ def test_sync_teardown_runs_even_when_run_forever_raises(monkeypatch):
 async def test_add_task_registers_and_runs(monkeypatch):
     """add_task() puts work in the registry and the base gathers it."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubAsync()
-    app._bootstrap()
-    app.shutdown_event = asyncio.Event()
-    app._shutdown_requested = asyncio.Event()
 
     ran = []
 
     async def _work():
         ran.append(True)
 
-    task = app.add_task(_work(), name="Work")
-    await task
+    handle = app.add_task(_work(), name="Work")
 
+    assert handle in app._tasks
+    assert handle.name == "Work"
+
+    await handle.start()
     assert ran == [True]
-    assert task in app._tasks
-    assert task.get_name() == "Work"
 
 async def test_add_periodic_runs_until_shutdown(monkeypatch):
     """add_periodic() wires the base's shutdown_event into the periodic helper."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubAsync()
-    app._bootstrap()
-    app.shutdown_event = asyncio.Event()
-    app._shutdown_requested = asyncio.Event()
 
     ticks = []
 
@@ -617,18 +669,14 @@ async def test_add_periodic_runs_until_shutdown(monkeypatch):
         if len(ticks) >= 2:
             app.shutdown_event.set()
 
-    await app.add_periodic(1, _tick, name="Ticker")
+    await app.add_periodic(1, _tick, name="Ticker").start()
 
     assert len(ticks) >= 2
 
 async def test_request_shutdown_triggers_teardown_once(monkeypatch):
     """The teardown task wakes on request, sets the event, and calls on_shutdown once."""
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubAsync()
-    app._bootstrap()
-    app.shutdown_event = asyncio.Event()
-    app._shutdown_requested = asyncio.Event()
 
     teardown = asyncio.create_task(app._teardown_task())
     app.request_shutdown("test reason")
@@ -645,8 +693,6 @@ async def test_request_shutdown_does_not_block(monkeypatch):
     returns, so this is what keeps the launcher's stop acknowledgement prompt.
     """
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
-
     class _SlowTeardown(_StubAsync):
         NAME = "slow_teardown"
         DESCRIPTION = "Slow Teardown"
@@ -656,9 +702,6 @@ async def test_request_shutdown_does_not_block(monkeypatch):
             self.shutdown_calls += 1
 
     app = _SlowTeardown()
-    app._bootstrap()
-    app.shutdown_event = asyncio.Event()
-    app._shutdown_requested = asyncio.Event()
 
     teardown = asyncio.create_task(app._teardown_task())
     await asyncio.sleep(0)
@@ -679,17 +722,14 @@ async def test_teardown_task_is_gathered(monkeypatch):
     asyncio.run() would then cancel the teardown mid-flight.
     """
 
-    monkeypatch.setattr(sys, "argv", ["prog"])
     app = _StubAsync()
-    app._bootstrap()
-    app.shutdown_event = asyncio.Event()
-    app._shutdown_requested = asyncio.Event()
 
     app.add_task(app._teardown_task(), name="Shutdown Task")
 
-    assert "Shutdown Task" in [task.get_name() for task in app._tasks]
+    assert "Shutdown Task" in [handle.name for handle in app._tasks]
 
+    started = [handle.start() for handle in app._tasks]
     app.request_shutdown("done")
-    await asyncio.gather(*app._tasks)
+    await asyncio.gather(*started)
 
     assert app.shutdown_calls == 1

@@ -22,9 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, override
+from typing import Any, Dict, override
 
 from apps.backend.intf_layer import (frontEndMessageTask,
                                      highFreqLocalUpdateTask,
@@ -66,42 +65,32 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
     DEALER = True
 
     def __init__(self) -> None:
-        """Construct the subsystem. Nothing is started until main() runs."""
+        """Build the three backend layers and wire them to the IPC surfaces.
+
+        The base has already parsed args, built the logger, loaded config and stood up the IPC
+        handles, so everything below can be done here rather than in a second phase.
+        """
 
         super().__init__()
-        self.session_state: Optional[SessionState] = None
-        self.telemetry_handler: Optional[F1TelemetryHandler] = None
-
-    @override
-    async def setup(self) -> None:
-        """Build the three backend layers and wire them to the IPC surfaces."""
-
         self.logger.info(
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
             "on the screen before the race start - that is when the game starts sending telemetry data")
 
-        # The state and telemetry layers still take a task list rather than the registry. They
-        # create the tasks; the registry adopts them so they are gathered and logged with the rest.
-        layer_tasks: List[asyncio.Task] = []
-
-        self.session_state = initStateManagementLayer(
+        self.session_state: SessionState = initStateManagementLayer(
             logger=self.logger,
             settings=self.settings,
             ver_str=self.version,
-            tasks=layer_tasks,
+            add_task=self.add_task,
             shutdown_event=self.shutdown_event)
 
-        self.telemetry_handler = initTelemetryLayer(
+        self.telemetry_handler: F1TelemetryHandler = initTelemetryLayer(
             settings=self.settings,
             replay_server=self.args.replay_server,
             logger=self.logger,
             ver_str=self.version,
             shutdown_event=self.shutdown_event,
             session_state=self.session_state,
-            tasks=layer_tasks)
-
-        for task in layer_tasks:
-            self.adopt_task(task)
+            add_task=self.add_task)
 
         self._register_dealer_routes()
         self._register_mgmt_routes()
@@ -203,4 +192,4 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
 def entry_point():
     """Entry point"""
 
-    BackendSubsystem.main()
+    BackendSubsystem().main()

@@ -33,7 +33,74 @@ from lib.periodic_task import periodic_task
 
 from .base import ArgsT, PngSubsystem, PubSubRole
 
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+# The type of AsyncSubsystem.add_task, for code that registers work without owning the
+# subsystem - see apps/backend's layer inits, which take it as a parameter. Named for the
+# method it types, because it is that bound method and nothing else: call it, do not look for
+# attributes on it.
+AddTask = Callable[..., "SubsystemTask"]
+
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
+
+class SubsystemTask:
+    """One registered unit of work, held from registration until there is a loop to start it.
+
+    A subsystem registers its work in __init__, where asyncio.create_task() raises - so the
+    coroutine is held here and turned into a Task when _async_main() starts. Anything wanting
+    to cancel its own task keeps one of these rather than a raw Task, which does not exist yet
+    at registration time.
+    """
+
+    def __init__(self, coro: Optional[Awaitable[Any]], name: str) -> None:
+        """Hold a coroutine until the loop is up.
+
+        Args:
+            coro (Optional[Awaitable[Any]]): Coroutine to run. None when adopting a live task.
+            name (str): Task name, as it appears in logs
+        """
+
+        self._coro = coro
+        self._name = name
+        self._task: Optional[asyncio.Task] = None
+
+    @classmethod
+    def adopted(cls, task: asyncio.Task) -> "SubsystemTask":
+        """Wrap a Task its owner already created - see AsyncSubsystem.adopt_task().
+
+        Args:
+            task (asyncio.Task): An already-created task
+
+        Returns:
+            SubsystemTask: A handle already in the started state
+        """
+
+        handle = cls(None, task.get_name())
+        handle._task = task
+        return handle
+
+    @property
+    def name(self) -> str:
+        """str: Task name, readable before the task exists."""
+
+        return self._name
+
+    def start(self) -> asyncio.Task:
+        """Create the real task. Called by AsyncSubsystem once the loop is running.
+
+        Returns:
+            asyncio.Task: The running task
+        """
+
+        if self._task is None:
+            self._task = asyncio.create_task(self._coro, name=self._name)
+        return self._task
+
+    def cancel(self) -> None:
+        """Cancel the task. A no-op if the loop never got as far as starting it."""
+
+        if self._task is not None:
+            self._task.cancel()
 
 class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     """A subsystem whose main loop is an asyncio event loop.
@@ -52,7 +119,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     wants it says nothing:
 
         CONFIG_REQUIRED          False; True makes a missing config file fatal
-        READY_ON_SETUP_COMPLETE  True; False when the subsystem is not usable until later
+        READY_ON_START           True; False when the subsystem is not usable until later
                                  and calls notify_ready() itself
         PUBSUB                   PubSubRole.NONE; PUBLISHER populates self.publisher,
                                  SUBSCRIBER populates self.subscriber
@@ -68,28 +135,31 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     ABSTRACT = True
 
     def __init__(self) -> None:
-        """Construct the subsystem. The asyncio primitives are built once the loop is running."""
+        """Construct the subsystem. Nothing is started until main() runs."""
 
         super().__init__()
-        self._tasks: List[asyncio.Task] = []
-        self.shutdown_event: Optional[asyncio.Event] = None
-        self._shutdown_requested: Optional[asyncio.Event] = None
+        self._tasks: List[SubsystemTask] = []
+        # Safe to build with no loop running: asyncio.Event stopped capturing a loop at
+        # construction in 3.10, and binds lazily on the first wait(). SyncSubsystem has always
+        # built its threading.Event here.
+        self.shutdown_event: asyncio.Event = asyncio.Event()
+        self._shutdown_requested: asyncio.Event = asyncio.Event()
         self._shutdown_reason: str = "N/A"
 
-        # Built by the base before setup() runs, per the PUBSUB / DEALER declarations.
-        # A subsystem sits on at most one end of the pub/sub fabric, so exactly one of
-        # publisher / subscriber is ever non-None - but they are separate names so that
-        # neither the reader nor the IDE has to work out which one it is holding.
-        self._publisher: Optional[IpcPublisherAsync] = None
-        self._subscriber: Optional[IpcSubscriberAsync] = None
-        self._dealer: Optional[IpcDealerAsync] = None
-        self._mgmt_server: Optional[IpcServerAsync] = None
+        # Built here, before the subclass's own __init__ body, so that it can attach handlers
+        # and register tasks alongside the rest of its wiring. These bind real sockets, which
+        # is why a subsystem is a process rather than an object you make several of.
+        #
+        # Each is assigned exactly once, from a builder that owns its own condition. They stay
+        # Optional because a subsystem sits on at most one end of the pub/sub fabric and may
+        # want neither - so None here means "this subsystem declared no such endpoint", never
+        # "not built yet". The properties below turn that None into a readable assert.
+        self._mgmt_server: Optional[IpcServerAsync] = self._build_mgmt_ipc()
+        self._publisher: Optional[IpcPublisherAsync] = self._build_publisher()
+        self._subscriber: Optional[IpcSubscriberAsync] = self._build_subscriber()
+        self._dealer: Optional[IpcDealerAsync] = self._build_dealer()
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
-
-    @abstractmethod
-    async def setup(self) -> None:
-        """Build this subsystem's objects and register its tasks."""
 
     @abstractmethod
     async def on_shutdown(self, reason: str) -> None:
@@ -104,26 +174,29 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
 
     # -------------------------------------- TASK REGISTRY -------------------------------------------------------------
 
-    def add_task(self, coro: Awaitable[Any], name: str) -> asyncio.Task:
-        """Register a long-lived task. The base gathers it and cancels it on teardown.
+    def add_task(self, coro: Awaitable[Any], name: str) -> SubsystemTask:
+        """Register a long-lived task. The base starts it, gathers it, and cancels it on teardown.
+
+        Registration is deliberately separate from creation, so that this can be called from
+        __init__ - where there is no loop yet - as well as from inside one.
 
         Args:
             coro (Awaitable[Any]): Coroutine to run
             name (str): Task name, as it appears in logs
 
         Returns:
-            asyncio.Task: The created task
+            SubsystemTask: Handle to the registered task. Hold it only if you need to cancel.
         """
 
-        return self.adopt_task(asyncio.create_task(coro, name=name))
+        handle = SubsystemTask(coro, name)
+        self._tasks.append(handle)
+        return handle
 
-    def adopt_task(self, task: asyncio.Task) -> asyncio.Task:
-        """Register a task that its own owner created.
+    def adopt_task(self, task: asyncio.Task) -> SubsystemTask:
+        """Register a task that its own owner already created.
 
-        Prefer add_task(). This exists for objects that hold their own task handle because
-        cancellation is how they stop - IpcPublisherAsync (close() cancels its reconnect task)
-        and F1TelemetryHandler (run() is a socket receive loop with no cooperative exit, and
-        stop() cancels it). Neither can hand over a bare coroutine.
+        Prefer add_task(). This is for the one case that cannot hand over a bare coroutine:
+        IpcPublisherAsync creates its reconnect task itself, and close() cancels it.
 
         Such a task still belongs in the registry, so that it is logged with the rest and so
         that the subsystem comes down if it dies unexpectedly. The cost is that cancelling it
@@ -134,18 +207,19 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             task (asyncio.Task): An already-created task
 
         Returns:
-            asyncio.Task: The same task, for convenience
+            SubsystemTask: Handle wrapping it, already started
         """
 
-        self._tasks.append(task)
-        return task
+        handle = SubsystemTask.adopted(task)
+        self._tasks.append(handle)
+        return handle
 
     def add_periodic(self,
                      interval_ms: int,
                      task_coro: Callable[..., Awaitable[Any]],
                      *args,
                      name: str,
-                     **kwargs) -> asyncio.Task:
+                     **kwargs) -> SubsystemTask:
         """Register a task that runs task_coro every interval_ms until shutdown.
 
         Args:
@@ -156,7 +230,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             **kwargs: Keyword arguments for task_coro
 
         Returns:
-            asyncio.Task: The created task
+            SubsystemTask: Handle to the registered task
         """
 
         return self.add_task(
@@ -220,8 +294,15 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
 
     # -------------------------------------- MANAGEMENT IPC ------------------------------------------------------------
 
-    def _build_mgmt_ipc(self) -> None:
-        """Stand up the management IPC server and wire the three base-owned handlers."""
+    def _build_mgmt_ipc(self) -> Optional[IpcServerAsync]:
+        """Stand up the management IPC server and wire the three base-owned handlers.
+
+        Returns:
+            Optional[IpcServerAsync]: The server, or None when this run has no launcher
+        """
+
+        if not self._mgmt_ipc_enabled:
+            return None
 
         self.logger.debug("Starting IPC server")
         server = IpcServerAsync(
@@ -230,7 +311,6 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             heartbeat_timeout=self.HEARTBEAT_TIMEOUT,
             logger=self.logger,
         )
-        self._mgmt_server = server
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -249,27 +329,45 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         async def _get_stats(args: dict) -> Dict[str, Any]:
             return self.build_stats_response(args)
 
-    def _build_data_plane(self) -> None:
-        """Construct whatever pub/sub and dealer endpoints this subsystem declared.
+        return server
 
-        Construction only - the base registers no routes. Topic names and handler bodies
-        belong to the subsystem, and it attaches them in setup().
+    # -------------------------------------- DATA PLANE ----------------------------------------------------------------
+    # Construction only - the base registers no routes. Topic names and handler bodies belong
+    # to the subsystem, and it attaches them in its own __init__.
+
+    def _build_publisher(self) -> Optional[IpcPublisherAsync]:
+        """Returns:
+            Optional[IpcPublisherAsync]: The publisher, or None unless PUBSUB is PUBLISHER
         """
 
-        if self.PUBSUB is PubSubRole.PUBLISHER:
-            self._publisher = IpcPublisherAsync(
-                logger=self.logger, port=self.settings.Network.broker_xsub_port)
-        elif self.PUBSUB is PubSubRole.SUBSCRIBER:
-            self._subscriber = IpcSubscriberAsync(
-                port=self.settings.Network.broker_xpub_port, logger=self.logger)
+        if self.PUBSUB is not PubSubRole.PUBLISHER:
+            return None
+        return IpcPublisherAsync(
+            logger=self.logger, port=self.settings.Network.broker_xsub_port)
 
-        if self.DEALER:
-            self._dealer = IpcDealerAsync(
-                host="127.0.0.1",
-                port=self.settings.Network.broker_router_port,
-                identity=str(self.APP_ID),
-                logger=self.logger,
-            )
+    def _build_subscriber(self) -> Optional[IpcSubscriberAsync]:
+        """Returns:
+            Optional[IpcSubscriberAsync]: The subscriber, or None unless PUBSUB is SUBSCRIBER
+        """
+
+        if self.PUBSUB is not PubSubRole.SUBSCRIBER:
+            return None
+        return IpcSubscriberAsync(
+            port=self.settings.Network.broker_xpub_port, logger=self.logger)
+
+    def _build_dealer(self) -> Optional[IpcDealerAsync]:
+        """Returns:
+            Optional[IpcDealerAsync]: The dealer, or None unless DEALER is set
+        """
+
+        if not self.DEALER:
+            return None
+        return IpcDealerAsync(
+            host="127.0.0.1",
+            port=self.settings.Network.broker_router_port,
+            identity=str(self.APP_ID),
+            logger=self.logger,
+        )
 
     def _register_ipc_tasks(self) -> None:
         """Register the servicing task for each IPC endpoint.
@@ -286,7 +384,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         if self.DEALER:
             self.add_task(self._dealer.start(), name=f"{self.NAME} Dealer Recv")
 
-        if self._mgmt_ipc_enabled:
+        if self._mgmt_server is not None:
             self.add_task(self._mgmt_server.run(), name="IPC Server")
 
     async def _close_data_plane(self) -> None:
@@ -304,28 +402,20 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     # -------------------------------------- RUN -----------------------------------------------------------------------
 
     async def _async_main(self) -> None:
-        """Boot the subsystem inside the event loop and run until shutdown."""
-
-        self.shutdown_event = asyncio.Event()
-        self._shutdown_requested = asyncio.Event()
-
-        # Built before setup() so the subsystem can attach its handlers there, via
-        # the mgmt/publisher/subscriber/dealer properties, alongside the rest of its wiring.
-        if self._mgmt_ipc_enabled:
-            self._build_mgmt_ipc()
-        self._build_data_plane()
-
-        await self.setup()
+        """Start everything the constructor registered, and run until shutdown."""
 
         self.add_task(self._teardown_task(), name="Shutdown Task")
         self._register_ipc_tasks()
-        if self.READY_ON_SETUP_COMPLETE:
+
+        # The first point at which a Task can exist. Everything above only registered work.
+        started = [handle.start() for handle in self._tasks]
+        if self.READY_ON_START:
             self.notify_ready()
 
         self.logger.debug("Registered %d Tasks: %s",
-                          len(self._tasks), [task.get_name() for task in self._tasks])
+                          len(self._tasks), [handle.name for handle in self._tasks])
         try:
-            await asyncio.gather(*self._tasks)
+            await asyncio.gather(*started)
         except asyncio.CancelledError:
             self.logger.debug("Main task was cancelled.")
             self.request_shutdown("Main task was cancelled.")

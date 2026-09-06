@@ -89,7 +89,7 @@ class WebServer(BaseWebServer):
             session_dir (Path): Directory to scan for saved session JSON files.
             viewer_dir (Path): Directory containing the built f1-save-viewer React app.
             on_ready (Callable[[], None]): Called once the server is actually listening. This
-                subsystem is only genuinely up at that point, not when its setup() returns, so
+                subsystem is only genuinely up at that point, not when it finishes constructing, so
                 it owns the timing of the init-complete token.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """

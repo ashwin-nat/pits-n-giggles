@@ -22,7 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict, Optional, override
+from typing import Any, Dict, override
 
 from lib.ipc import IpcPubSubBroker, IpcRouter
 from lib.subsystem import SubsystemArgs, SyncSubsystem
@@ -40,16 +40,9 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
     DESCRIPTION = "Pit Wall"
 
     def __init__(self) -> None:
-        """Construct the subsystem. Nothing is started until main() runs."""
-
-        super().__init__()
-        self.broker: Optional[IpcPubSubBroker] = None
-        self.router: Optional[IpcRouter] = None
-
-    @override
-    def setup(self) -> None:
         """Start the pub/sub broker and the router, each in its own thread."""
 
+        super().__init__()
         self.broker = IpcPubSubBroker(
             xsub_port=self.settings.Network.broker_xsub_port,
             xpub_port=self.settings.Network.broker_xpub_port,
@@ -99,4 +92,4 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
 def entry_point():
     """Entry point"""
 
-    BrokerSubsystem.main()
+    BrokerSubsystem().main()

@@ -52,6 +52,7 @@ from lib.inter_task_communicator import (
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
+from lib.subsystem import AddTask, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
                                    telemetry_transport_factory)
 from lib.wdt import WatchDogTimerAsync
@@ -109,7 +110,7 @@ def setupTelemetryTask(
         session_state: SessionState,
         logger: PngLogger,
         ver_str: str,
-        tasks: List[asyncio.Task]) -> "F1TelemetryHandler":
+        add_task: AddTask) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
 
     Args:
@@ -118,7 +119,7 @@ def setupTelemetryTask(
         session_state (SessionState): Handle to the session state
         logger (PngLogger): Logger instance
         ver_str (str): Version string
-        tasks (List[asyncio.Task]): List of tasks to be executed
+        add_task (AddTask): The subsystem's add_task, which registers rather than starts
 
     Returns:
         F1TelemetryHandler: Telemetry handler server
@@ -131,9 +132,7 @@ def setupTelemetryTask(
         replay_server=replay_server,
         ver_str=ver_str,
     )
-    tasks.append(telemetry_server.getTask())
-    tasks.append(asyncio.create_task(telemetry_server.getWatchdogTask(), name="Watchdog Timer Task"))
-    tasks.append(asyncio.create_task(telemetry_server.getMenuWatchdogTask(), name="Menu Silence WDT Task"))
+    telemetry_server.register_tasks(add_task)
 
     return telemetry_server
 
@@ -215,24 +214,24 @@ class F1TelemetryHandler:
             toggle_pu_overlay=settings.HUD.pu_toggle_udp_action_code,
         )
 
-        self.m_manager_task: Optional[asyncio.Task] = None
+        self.m_manager_task: Optional[SubsystemTask] = None
         # Task handle because asyncio expects a handle to be saved,
         # otherwise it is not guaranteed to be run to completion without being garbage collected
         self.m_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
-    def getTask(self, name: Optional[str] = "Game Telemetry Listener Task") -> asyncio.Task:
-        """
-        Get the telemetry manager task.
+    def register_tasks(self, add_task: AddTask) -> None:
+        """Register this layer's three long-lived tasks with the subsystem.
+
+        The receive loop's handle is kept because stop() cancels it - run() is a socket receive
+        loop with no cooperative exit.
 
         Args:
-            name (Optional[str], optional): Name of the task. Defaults to "Game Telemetry Listener Task".
-
-        Returns:
-        asyncio.Task: The telemetry manager task.
+            add_task (AddTask): The subsystem's add_task, which registers rather than starts
         """
-        self.m_manager_task = asyncio.create_task(self.run(), name=name)
-        return self.m_manager_task
+        self.m_manager_task = add_task(self.run(), name="Game Telemetry Listener Task")
+        add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
+        add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
 
     def updateUdpActionCode(self, key: str, val: int) -> None:
         """

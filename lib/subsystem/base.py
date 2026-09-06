@@ -92,9 +92,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     ARGS: ClassVar[type[SubsystemArgs]] = SubsystemArgs
     # Passed to load_config_from_json(fail_if_missing=)
     CONFIG_REQUIRED: bool = False
-    # Whether the base emits the init-complete token once setup() returns. False for
+    # Whether the base emits the init-complete token as soon as the run starts. False for
     # subsystems that are only genuinely ready later - see notify_ready().
-    READY_ON_SETUP_COMPLETE: bool = True
+    READY_ON_START: bool = True
     # Management IPC heartbeat tuning. These were only ever pinned by the broker; the rest
     # took library defaults that happened to match.
     HEARTBEAT_TIMEOUT: float = 5.0
@@ -154,21 +154,49 @@ class PngSubsystem(ABC, Generic[ArgsT]):
                 cls.ARGS = params[0]
                 return
 
-    # Populated by _bootstrap(). Declared here rather than assigned None in __init__ so it
-    # types as the subsystem's own args dataclass everywhere, instead of Optional.
-    args: ArgsT
-
     def __init__(self) -> None:
-        """Construct the subsystem. Nothing is booted until main() runs."""
+        """Boot the subsystem: command line, then logger, then config.
 
-        self.logger: Optional[PngLogger] = None
-        self.settings: Optional[PngSettings] = None
-        self.version: str = ""
+        Takes no arguments, so a subsystem is constructed the same way everywhere -
+        BackendSubsystem().main(). Everything it needs, it reads.
+
+        By the time this returns, self.args, self.logger and self.settings are all populated,
+        so a subclass's own __init__ body can build from any of them. What it still cannot
+        reach are the IPC handles: those bind sockets and report a port to the launcher, which
+        is not constructor work, and they are built later from the settings loaded here.
+
+        Four hooks are called from here - pre_boot(), make_logger(), should_run_mgmt_ipc(), and
+        on_exit() if the config load fails. All four therefore run BEFORE the subclass's own
+        __init__ body, so an override must keep to class vars and to self.args / self.logger,
+        and whatever one of them sets must not be assigned over further down. HudSubsystem is
+        the worked example: its _winmm is a class attribute for exactly this reason.
+        """
+
+        self.args: ArgsT = self._parse_args()
         # The launcher's control channel, the pub/sub endpoints and the dealer are all built
         # by AsyncSubsystem / SyncSubsystem, which hold them privately and expose them through
         # properties at the concrete type.
-        self._mgmt_ipc_enabled: bool = False
+        self._mgmt_ipc_enabled: bool = self.should_run_mgmt_ipc()
         self._ready_notified: bool = False
+
+        self.pre_boot()
+        self.logger: PngLogger = self.make_logger()
+        if self._mgmt_ipc_enabled:
+            report_pid_from_child()
+
+        # Config is the one boot step that can meaningfully fail, so it gets the same
+        # treatment main() gives everything after it: a logged line and an exit code the
+        # launcher can read, rather than a traceback on stderr. It can only live here because
+        # the logger above already exists - and it has to unwind through on_exit(), since
+        # pre_boot() has run by now.
+        try:
+            self.version: str = get_version()
+            self.settings: PngSettings = load_config_from_json(
+                self.args.config_file, self.logger, fail_if_missing=self.CONFIG_REQUIRED)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception("Failed to load config: %s", e)
+            self.on_exit()
+            sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
 
@@ -186,27 +214,25 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- MAY OVERRIDE --------------------------------------------------------------
 
-    def make_logger(self, args: ArgsT) -> PngLogger:
+    def make_logger(self) -> PngLogger:
         """Build this subsystem's logger.
 
-        Args:
-            args (ArgsT): Parsed args
+        Called from __init__, so self.args is set but nothing else is.
 
         Returns:
             PngLogger: Logger. JSONL on stdout by default, which the launcher captures.
         """
 
-        return get_logger(self.NAME, args.debug, jsonl=True)
+        return get_logger(self.NAME, self.args.debug, jsonl=True)
 
-    def should_run_mgmt_ipc(self, args: ArgsT) -> bool:  # pylint: disable=unused-argument
+    def should_run_mgmt_ipc(self) -> bool:
         """Whether this run talks to a launcher at all.
 
         Gates the management IPC server *and* every handshake token, because a subsystem with
         no parent has nobody to send them to - and for MCP's stdio transport, stdout belongs
         to the protocol, so a stray token would corrupt it.
 
-        Args:
-            args (ArgsT): Parsed args
+        Called from __init__, so self.args is set but nothing else is - not even the logger.
 
         Returns:
             bool: True if managed by a launcher
@@ -214,21 +240,23 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
         return True
 
-    def pre_boot(self, args: ArgsT) -> None:
+    def pre_boot(self) -> None:
         """Run before the logger exists, for anything the rest of the boot depends on.
 
-        Paired with on_exit(), which is guaranteed to run in a finally.
-
-        Args:
-            args (ArgsT): Parsed args
+        Called from __init__, so self.args is set but nothing else is. Paired with on_exit(),
+        which is guaranteed to run in a finally.
         """
 
     def on_exit(self) -> None:
-        """Undo whatever pre_boot() did. Runs in a finally, on every exit path.
+        """Undo whatever pre_boot() did. Runs on every exit path.
 
         Named for when it runs, which is last: after run_forever()/the task gather has returned
         and after on_shutdown() has torn the subsystem down. It is not a pre-shutdown hook -
         on_shutdown() is that.
+
+        The one exception to "last" is a failed config load, which __init__ reports and exits
+        from - so this can also run before the subclass's own __init__ body has, and must not
+        assume anything that body sets exists.
         """
 
     # -------------------------------------- BASE OWNED ----------------------------------------------------------------
@@ -236,7 +264,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     def notify_ready(self) -> None:
         """Tell the launcher this subsystem is up. Idempotent.
 
-        Called automatically after setup() when READY_ON_SETUP_COMPLETE is True. Subsystems
+        Called automatically when the run starts, if READY_ON_START is True. Subsystems
         that are only genuinely usable later - once a socket is actually listening, or windows
         are actually shown - set that to False and call this themselves from the point that is
         true. The launcher only reaches AppState.RUNNING on this token, so emitting it early
@@ -299,35 +327,18 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         add_dataclass_args(parser, self.ARGS)
         return self.ARGS(**vars(parser.parse_args()))
 
-    def _bootstrap(self) -> None:
-        """Parse args and stand up the logger, before anything that can meaningfully fail."""
-
-        self.args = self._parse_args()
-        self._mgmt_ipc_enabled = self.should_run_mgmt_ipc(self.args)
-        self.pre_boot(self.args)
-        self.logger = self.make_logger(self.args)
-        if self._mgmt_ipc_enabled:
-            report_pid_from_child()
-
-    def _load_settings(self) -> None:
-        """Load config. Split from _bootstrap so failures land inside the exception funnel."""
-
-        self.version = get_version()
-        self.settings = load_config_from_json(
-            self.args.config_file, self.logger, fail_if_missing=self.CONFIG_REQUIRED)
-
     @abstractmethod
     def _run(self) -> None:
         """Drive this subsystem's main loop. Implemented by AsyncSubsystem / SyncSubsystem."""
 
-    @classmethod
-    def main(cls) -> None:
-        """Entry point. Boots the subsystem, runs it, and funnels every exit path."""
+    def main(self) -> None:
+        """Run until shutdown, funnelling every exit path.
 
-        self = cls()
-        self._bootstrap()
+        The constructor has already booted the subsystem, which is what makes this funnel able
+        to report at all: it is the step that produced the logger.
+        """
+
         try:
-            self._load_settings()
             self._run()
         except KeyboardInterrupt:
             self.logger.info("Program interrupted by user.")

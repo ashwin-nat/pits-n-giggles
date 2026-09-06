@@ -22,7 +22,6 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
 import logging
 import os
 import sys
@@ -68,88 +67,72 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
     DESCRIPTION = "MCP server"
     CONFIG_REQUIRED = True
     # The HTTP transport is only genuinely up once MCPBridge has bound its port, which happens
-    # inside run(), after setup() returns. A port conflict raises from there, so notifying early
+    # inside run(), well after construction. A port conflict raises from there, so notifying early
     # would tell the launcher RUNNING about a process that is about to die. MCPBridge emits the
     # token itself once the bind succeeds. In stdio mode notify_ready() is a no-op anyway.
-    READY_ON_SETUP_COMPLETE = False
+    READY_ON_START = False
 
     APP_ID = PngAppId.MCP
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
-    def __init__(self) -> None:
-        """Construct the subsystem. Nothing is started until main() runs."""
-
-        super().__init__()
-        self.mcp_bridge: Optional[MCPBridge] = None
-        self.mcp_subscriber: Optional[McpSubscriber] = None
-        self._mcp_task: Optional[asyncio.Task] = None
-
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
     @override
-    def should_run_mgmt_ipc(self, args: McpArgs) -> bool:
+    def should_run_mgmt_ipc(self) -> bool:
         """Whether a launcher spawned this run.
 
         Gates the management IPC server and all three handshake tokens. Unmanaged runs speak
         stdio, where stdout carries the MCP protocol - a stray token would corrupt it.
 
-        Args:
-            args (McpArgs): Parsed args
-
         Returns:
             bool: True if launcher-managed
         """
 
-        return args.managed
+        return self.args.managed
 
     @override
-    def pre_boot(self, args: McpArgs) -> None:
+    def pre_boot(self) -> None:
         """Move to the requested working directory and check the config is there.
 
         Both report failure on stderr and exit, because neither the logger nor a parent exists
         yet - and for an unmanaged run stderr stays the only channel the MCP client surfaces.
-
-        Args:
-            args (McpArgs): Parsed args
         """
 
-        if args.wd:
+        if self.args.wd:
             try:
-                os.chdir(args.wd)
+                os.chdir(self.args.wd)
             except FileNotFoundError:
-                print(f"Working directory does not exist: {args.wd}", file=sys.stderr)
+                print(f"Working directory does not exist: {self.args.wd}", file=sys.stderr)
                 sys.exit(1)
             except NotADirectoryError:
-                print(f"Not a directory: {args.wd}", file=sys.stderr)
+                print(f"Not a directory: {self.args.wd}", file=sys.stderr)
                 sys.exit(1)
 
         # CONFIG_REQUIRED makes load_config_from_json raise, but that lands in the base's funnel
         # and goes to the logger - which for an unmanaged run is a file nobody is watching.
-        if not args.managed and not os.path.exists(args.config_file):
-            print(f"Fatal: config file not found: {args.config_file}. "
+        if not self.args.managed and not os.path.exists(self.args.config_file):
+            print(f"Fatal: config file not found: {self.args.config_file}. "
                   f"Run the pits n giggles launcher first. CWD: {os.getcwd()}", file=sys.stderr)
             sys.exit(1)
 
     @override
-    def make_logger(self, args: McpArgs) -> PngLogger:
+    def make_logger(self) -> PngLogger:
         """Build the logger, and quieten the MCP libraries.
 
         Managed runs emit JSONL on stdout for the launcher to capture. Unmanaged runs cannot
         touch stdout at all, so they log to a file instead.
-
-        Args:
-            args (McpArgs): Parsed args
 
         Returns:
             PngLogger: Logger
         """
 
         # TODO: make rotating logging configurable
-        if args.managed:
-            logger = get_logger(self.NAME, args.debug, jsonl=True)
+        if self.args.managed:
+            logger = get_logger(self.NAME, self.args.debug, jsonl=True)
         else:
-            logger = get_logger(self.NAME, args.debug, jsonl=False, file_path=args.log_file)
+            logger = get_logger(
+                self.NAME, self.args.debug, jsonl=False, file_path=self.args.log_file)
 
         logging.getLogger("mcp.server").setLevel(logging.WARNING)
         logging.getLogger("mcp.client").setLevel(logging.WARNING)
@@ -157,10 +140,10 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
 
     # -------------------------------------- LIFECYCLE -----------------------------------------------------------------
 
-    @override
-    async def setup(self) -> None:
+    def __init__(self) -> None:
         """Build the MCP bridge and attach the watchdog-backed subscriber to the data stream."""
 
+        super().__init__()
         transport = "http" if self.args.managed else "stdio"
         self.logger.info("Starting MCP server, version %s transport %s...", self.version, transport)
 
@@ -209,4 +192,4 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
 def entry_point():
     """Entry point"""
 
-    McpSubsystem.main()
+    McpSubsystem().main()
