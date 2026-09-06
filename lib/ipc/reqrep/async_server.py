@@ -30,6 +30,8 @@ import zmq
 import zmq.asyncio
 import logging
 
+from ._errors import reserved_slot_error
+
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
 RouteCallback = Callable[[dict], Awaitable[dict[str, Any]]]
@@ -100,6 +102,11 @@ class IpcServerAsync:
         Registers an async callback to be called before shutdown.
         Callback must return a dict with 'status' and 'message' keys.
         """
+        if self._shutdown_callback is not None:
+            raise reserved_slot_error(
+                self.name, "shutdown", "the parent's shutdown handshake",
+                "implement on_shutdown(reason) on your subsystem - the base calls it during "
+                "teardown, before it closes the IPC sockets.")
         self._shutdown_callback = callback
 
     def register_get_stats_callback(self, callback: GetStatsCallback):
@@ -107,6 +114,11 @@ class IpcServerAsync:
         Registers an async callback to be called on get-stats command.
         Callback receives args dict and must return a stats dict.
         """
+        if self._get_stats_callback is not None:
+            raise reserved_slot_error(
+                self.name, "get-stats", "the parent's stats request",
+                "implement collect_stats() on your subsystem - the base wraps whatever it "
+                "returns in the response envelope the launcher expects.")
         self._get_stats_callback = callback
 
     def register_heartbeat_missed_callback(self, callback: HeartbeatCallback):
@@ -115,6 +127,15 @@ class IpcServerAsync:
         Callback receives the number of missed heartbeats.
         Registering this callback automatically enables heartbeat monitoring.
         """
+        # Unlike the other two, this slot starts out holding a default rather than None, so
+        # "already registered" means "no longer the default". Compared by equality, not
+        # identity: self._def_heartbeat_missed_callback is a bound method, and attribute access
+        # builds a fresh object every time, so `is not` would always be True.
+        if self._heartbeat_missed_callback != self._def_heartbeat_missed_callback:
+            raise reserved_slot_error(
+                self.name, "heartbeat-missed", "the parent's liveness check",
+                "override handle_heartbeat_missed(count) on your subsystem - the base's "
+                "default already logs and exits with PNG_LOST_CONN_TO_PARENT.")
         self._heartbeat_missed_callback = callback
 
     # -------------------------------------- ROUTING API ----------------------------------------------------------------

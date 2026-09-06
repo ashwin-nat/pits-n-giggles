@@ -565,3 +565,90 @@ class TestIpcParentChild(TestIPC):
 
         parent.close()
         child.close()
+
+class TestReservedCallbackSlots(TestIPC):
+    """The three lifecycle callbacks are single slots, not a route table.
+
+    Registering a second one used to overwrite the first with no error - which in a subsystem
+    meant silently discarding the base's launcher handler. They now refuse instead.
+    """
+
+    def test_duplicate_shutdown_callback_is_refused_async(self):
+        server = IpcServerAsync(port=None, name=self.id())
+        try:
+            async def cb(_args):
+                return {"status": "success"}
+
+            server.register_shutdown_callback(cb)
+            with self.assertRaises(ValueError) as ctx:
+                server.register_shutdown_callback(cb)
+
+            msg = str(ctx.exception)
+            self.assertIn(self.id(), msg, "the message should name the offending server")
+            self.assertIn("reserved", msg, "the message should say the slot is reserved")
+            self.assertIn('.on("<command-name>")', msg,
+                          "the message should point at the API the caller wanted")
+        finally:
+            server.close()
+
+    def test_duplicate_get_stats_callback_is_refused_async(self):
+        server = IpcServerAsync(port=None, name=self.id())
+        try:
+            async def cb(_args):
+                return {}
+
+            server.register_get_stats_callback(cb)
+            with self.assertRaises(ValueError):
+                server.register_get_stats_callback(cb)
+        finally:
+            server.close()
+
+    def test_duplicate_heartbeat_callback_is_refused_async(self):
+        """This slot starts out holding a default, so the guard compares against that."""
+        server = IpcServerAsync(port=None, name=self.id())
+        try:
+            async def cb(_count):
+                return None
+
+            server.register_heartbeat_missed_callback(cb)
+            with self.assertRaises(ValueError):
+                server.register_heartbeat_missed_callback(cb)
+        finally:
+            server.close()
+
+    def test_first_heartbeat_registration_is_allowed_async(self):
+        """Regression: the default in that slot must not read as 'already registered'."""
+        server = IpcServerAsync(port=None, name=self.id())
+        try:
+            async def cb(_count):
+                return None
+
+            server.register_heartbeat_missed_callback(cb)
+            self.assertIs(server._heartbeat_missed_callback, cb)
+        finally:
+            server.close()
+
+    def test_duplicate_callbacks_are_refused_sync(self):
+        server = IpcServerSync(port=get_free_tcp_port(), name=self.id())
+        try:
+            def shutdown_cb(_args):
+                return {"status": "success"}
+
+            def stats_cb(_args):
+                return {}
+
+            def hb_cb(_count):
+                return None
+
+            server.register_shutdown_callback(shutdown_cb)
+            server.register_get_stats_callback(stats_cb)
+            server.register_heartbeat_missed_callback(hb_cb)
+
+            with self.assertRaises(ValueError):
+                server.register_shutdown_callback(shutdown_cb)
+            with self.assertRaises(ValueError):
+                server.register_get_stats_callback(stats_cb)
+            with self.assertRaises(ValueError):
+                server.register_heartbeat_missed_callback(hb_cb)
+        finally:
+            server.close()
