@@ -64,6 +64,8 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
     PUBSUB = PubSubRole.PUBLISHER
     DEALER = True
 
+    PROFILE = False
+
     def __init__(self) -> None:
         """Build the three backend layers and wire them to the IPC surfaces.
 

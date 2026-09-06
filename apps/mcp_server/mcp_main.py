@@ -76,6 +76,8 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
+    PROFILE = False
+
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
     @override

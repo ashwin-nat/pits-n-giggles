@@ -39,6 +39,8 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
     NAME = "pit_wall"
     DESCRIPTION = "Pit Wall"
 
+    PROFILE = False
+
     def __init__(self) -> None:
         """Start the pub/sub broker and the router, each in its own thread."""
 

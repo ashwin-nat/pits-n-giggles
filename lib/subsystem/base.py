@@ -24,6 +24,7 @@
 
 import argparse
 import os
+import pstats
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
@@ -99,6 +100,10 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     # took library defaults that happened to match.
     HEARTBEAT_TIMEOUT: float = 5.0
     MAX_MISSED_HEARTBEATS: int = 3
+    # Dev aid. Every concrete subsystem restates this as False next to its other class vars, so
+    # turning a profile on is a one-word edit in the file you are already reading; set it here
+    # instead to cover all five at once.
+    PROFILE: bool = False
 
     # -------------------------------------- DATA PLANE ----------------------------------------------------------------
     # Opt-in. The base constructs whatever is declared here from settings, registers its
@@ -172,6 +177,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         the worked example: its _winmm is a class attribute for exactly this reason.
         """
 
+        # First, so the profile covers the whole boot - which is now most of the work.
+        self._profiler = self._start_profiler()
+
         self.args: ArgsT = self._parse_args()
         # The launcher's control channel, the pub/sub endpoints and the dealer are all built
         # by AsyncSubsystem / SyncSubsystem, which hold them privately and expose them through
@@ -196,6 +204,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception("Failed to load config: %s", e)
             self.on_exit()
+            self._stop_profiler()
             sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
@@ -313,6 +322,60 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
+    def _start_profiler(self) -> Optional[Any]:
+        """Start yappi if this subsystem sets PROFILE. Wall clock, so I/O waits show up.
+
+        yappi is imported inside the branch, so a normal boot neither imports it nor pays for
+        it - which is what lets this sit in the constructor of every subsystem.
+
+        Returns:
+            Optional[Any]: The yappi module while profiling, else None
+        """
+
+        if not self.PROFILE:
+            return None
+
+        import yappi  # pylint: disable=import-outside-toplevel
+        yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
+        yappi.start()
+        return yappi
+
+    def _stop_profiler(self) -> None:
+        """Write the profile out. Runs after teardown, so it covers the whole process.
+
+        Files are named after the subsystem: profiling two at once would otherwise have them
+        overwrite each other.
+        """
+
+        if self._profiler is None:
+            return
+
+        self._profiler.stop()
+
+        # Function-level stats for SnakeViz
+        prof_path = f"{self.NAME}_yappi.prof"
+        self._profiler.get_func_stats().save(prof_path, type="pstat")
+
+        # Don't strip directories, so full paths are included
+        # If you want the paths to be fully visible, just skip strip_dirs()
+        stats = pstats.Stats(prof_path)
+        stats.sort_stats("cumulative")
+
+        # Save as HTML
+        with open(f"{self.NAME}_yappi.html", "w", encoding="utf-8") as f:
+            f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
+            stats.stream = f
+            stats.print_stats()
+            f.write("</pre></body></html>")
+
+        # Save as TXT
+        with open(f"{self.NAME}_yappi.txt", "w", encoding="utf-8") as f:
+            stats.stream = f
+            stats.print_stats()
+
+        # Not print(): stdout is the launcher's JSONL channel, and MCP's stdio transport.
+        self.logger.info("Wrote profile: %s_yappi.{prof,txt,html}", self.NAME)
+
     def _parse_args(self) -> ArgsT:
         """Build the parser from ARGS' fields and parse into an instance of it.
 
@@ -350,5 +413,6 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             sys.exit(1)
         finally:
             self.on_exit()
+            self._stop_profiler()
 
         self.logger.info("%s subsystem exiting normally.", self.NAME)

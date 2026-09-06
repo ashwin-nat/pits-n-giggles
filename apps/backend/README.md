@@ -52,48 +52,7 @@ If an I/O-bound action is needed (e.g. logging, sending updates to the frontend,
 
 > ✅ This keeps the telemetry processing loop fast, avoids blocking, and ensures all I/O is handled in a centralized and isolated manner.
 
-## Profiling the backend
+## Profiling
 
-Follow these steps to profile Pits n' Giggles using Yappi:
-
-### 1. Enable Profiler Mode
-- Open your app's entry point.
-- **Comment out** the production `if __name__ == "__main__"` block in pits_n_giggles.py.
-- **Uncomment** the `PROFILER MODE` section just below it.
-
-### 2. Integration test runner script
-The profiler data will be saved when the script cleanly terminates the app in the end
-
-```bash
-poetry run python -m apps.backend --replay-server --debug
-````
-
-### 4. Play a Replay File
-
-Use the telemetry replayer to feed in a replay:
-
-```bash
-poetry run python -m apps.dev_tools.telemetry_replayer --file-name f1_24_sp_austria.f1pcap
-```
-
-### 5. Wait for Completion
-
-Once the replay finishes:
-
-* The backend will terminate automatically.
-* Yappi will generate two files:
-
-  * `yappi_profile.txt` (text output)
-  * `yappi_profile.html` (interactive profile viewer)
-
-### 6. Filter Your App's Code Only
-
-To grep only your app’s code and exclude libraries and virtual environments:
-
-```bash
-grep 'C:\\Users\\<your-username>\\Documents\\f1-telemetry\\pits-n-giggles\\' yappi_profile.txt
-```
-
-> **Note:**
-> If your virtual environment is located inside the code directory (e.g., `.venv/`), you may need to refine the grep further.
-For more advanced filtering, see the [grep documentation](https://www.gnu.org/software/grep/manual/grep.html).
+Profiling lives in `lib/subsystem/`, so it works for any of the five subsystems - not just this
+one. See the "Profiling" section of [`lib/README.md`](../../lib/README.md).

@@ -367,6 +367,40 @@ def test_ready_not_emitted_when_subsystem_owns_the_timing(capsys, monkeypatch):
     assert "__PNG_SUBSYSTEM_INIT_COMPLETE__" not in capsys.readouterr().out
     assert app._ready_notified is False
 
+# -------------------------------------- PROFILER ----------------------------------------------------------------------
+
+def test_profiler_is_off_and_costs_nothing(monkeypatch):
+    """PROFILE defaults False, and a normal boot must not even import yappi.
+
+    The import is inside the branch precisely so that every subsystem can carry this in its
+    constructor without paying for it.
+    """
+
+    monkeypatch.delitem(sys.modules, "yappi", raising=False)
+
+    app = _StubSync()
+
+    assert app.PROFILE is False
+    assert app._profiler is None
+    assert "yappi" not in sys.modules
+
+def test_profiler_writes_three_files_named_after_the_subsystem(tmp_path, monkeypatch):
+    """Files carry NAME, so profiling two subsystems at once does not have them collide."""
+
+    class _Profiled(_StubSync):
+        NAME = "profiled"
+        DESCRIPTION = "Profiled"
+        PROFILE = True
+
+    monkeypatch.chdir(tmp_path)
+    app = _Profiled()
+    assert app._profiler is not None
+
+    app._stop_profiler()
+
+    written = sorted(p.name for p in tmp_path.iterdir())
+    assert written == ["profiled_yappi.html", "profiled_yappi.prof", "profiled_yappi.txt"]
+
 # -------------------------------------- STATS ENVELOPE ----------------------------------------------------------------
 
 def test_stats_envelope_wraps_collect_stats():

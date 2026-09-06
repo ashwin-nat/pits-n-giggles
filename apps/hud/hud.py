@@ -55,6 +55,8 @@ class HudSubsystem(SyncSubsystem[SubsystemArgs]):
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
+    PROFILE = False
+
     # Set by pre_boot(), which the base constructor calls before this class's __init__ body
     # runs. A `self._winmm = None` down there would overwrite the handle it just took, and
     # on_exit() would then never hand the timer resolution back.

@@ -56,6 +56,8 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
+    PROFILE = False
+
     def __init__(self) -> None:
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
