@@ -31,7 +31,7 @@ from lib.ipc import (IpcDealerAsync, IpcPublisherAsync, IpcServerAsync,
                      IpcSubscriberAsync)
 from lib.periodic_task import periodic_task
 
-from .base import MgmtIpcHandle, PngSubsystem, PubSubRole
+from .base import PngSubsystem, PubSubRole
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -57,9 +57,9 @@ class AsyncSubsystem(PngSubsystem):
         # A subsystem sits on at most one end of the pub/sub fabric, so exactly one of
         # publisher / subscriber is ever non-None - but they are separate names so that
         # neither the reader nor the IDE has to work out which one it is holding.
-        self.publisher: Optional[IpcPublisherAsync] = None
-        self.subscriber: Optional[IpcSubscriberAsync] = None
-        self.dealer: Optional[IpcDealerAsync] = None
+        self._publisher: Optional[IpcPublisherAsync] = None
+        self._subscriber: Optional[IpcSubscriberAsync] = None
+        self._dealer: Optional[IpcDealerAsync] = None
         self._mgmt_server: Optional[IpcServerAsync] = None
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
@@ -140,6 +140,31 @@ class AsyncSubsystem(PngSubsystem):
             periodic_task(interval_ms, self.shutdown_event, self.logger, task_coro, *args, **kwargs),
             name=name)
 
+    # -------------------------------------- IPC HANDLES ---------------------------------------------------------------
+
+    @property
+    def mgmt(self) -> IpcServerAsync:
+        assert self._mgmt_server and self._mgmt_ipc_enabled, \
+            "Management IPC is not enabled for this run"
+        return self._mgmt_server
+
+    @property
+    def publisher(self) -> IpcPublisherAsync:
+        assert self._publisher and self.PUBSUB == PubSubRole.PUBLISHER, \
+            "Publisher is not built - check PUBSUB declaration"
+        return self._publisher
+
+    @property
+    def subscriber(self) -> IpcSubscriberAsync:
+        assert self._subscriber and self.PUBSUB == PubSubRole.SUBSCRIBER, \
+            "Subscriber is not built - check PUBSUB declaration"
+        return self._subscriber
+
+    @property
+    def dealer(self) -> IpcDealerAsync:
+        assert self._dealer and self.DEALER, "Dealer is not built - check DEALER declaration"
+        return self._dealer
+
     # -------------------------------------- SHUTDOWN ------------------------------------------------------------------
 
     def request_shutdown(self, reason: str) -> None:
@@ -183,7 +208,6 @@ class AsyncSubsystem(PngSubsystem):
             logger=self.logger,
         )
         self._mgmt_server = server
-        self.mgmt = MgmtIpcHandle(server)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -210,14 +234,14 @@ class AsyncSubsystem(PngSubsystem):
         """
 
         if self.PUBSUB is PubSubRole.PUBLISHER:
-            self.publisher = IpcPublisherAsync(
+            self._publisher = IpcPublisherAsync(
                 logger=self.logger, port=self.settings.Network.broker_xsub_port)
         elif self.PUBSUB is PubSubRole.SUBSCRIBER:
-            self.subscriber = IpcSubscriberAsync(
+            self._subscriber = IpcSubscriberAsync(
                 port=self.settings.Network.broker_xpub_port, logger=self.logger)
 
         if self.DEALER:
-            self.dealer = IpcDealerAsync(
+            self._dealer = IpcDealerAsync(
                 host="127.0.0.1",
                 port=self.settings.Network.broker_router_port,
                 identity=str(self.APP_ID),
@@ -231,13 +255,13 @@ class AsyncSubsystem(PngSubsystem):
         run() and start(). Picking the right one is done here, once.
         """
 
-        if self.publisher is not None:
-            self.adopt_task(self.publisher.get_task())
-        if self.subscriber is not None:
-            self.add_task(self.subscriber.run(), name="Broker Subscriber Task")
+        if self._publisher is not None:
+            self.adopt_task(self._publisher.get_task())
+        if self._subscriber is not None:
+            self.add_task(self._subscriber.run(), name="Broker Subscriber Task")
 
         if self.DEALER:
-            self.add_task(self.dealer.start(), name=f"{self.NAME} Dealer Recv")
+            self.add_task(self._dealer.start(), name=f"{self.NAME} Dealer Recv")
 
         if self._mgmt_ipc_enabled:
             self.add_task(self._mgmt_server.run(), name="IPC Server")
@@ -247,12 +271,12 @@ class AsyncSubsystem(PngSubsystem):
         subsystem's own teardown ordering is preserved."""
 
         # IpcPublisherAsync.close() is a coroutine; IpcSubscriberAsync.close() is not
-        if self.publisher is not None:
-            await self.publisher.close()
-        if self.subscriber is not None:
-            self.subscriber.close()
-        if self.dealer is not None:
-            await self.dealer.close()
+        if self._publisher is not None:
+            await self._publisher.close()
+        if self._subscriber is not None:
+            self._subscriber.close()
+        if self._dealer is not None:
+            await self._dealer.close()
 
     # -------------------------------------- RUN -----------------------------------------------------------------------
 
@@ -262,8 +286,8 @@ class AsyncSubsystem(PngSubsystem):
         self.shutdown_event = asyncio.Event()
         self._shutdown_requested = asyncio.Event()
 
-        # Built before setup() so the subsystem can attach its handlers to self.mgmt,
-        # self.publisher/subscriber and self.dealer there, alongside the rest of its wiring.
+        # Built before setup() so the subsystem can attach its handlers there, via
+        # the mgmt/publisher/subscriber/dealer properties, alongside the rest of its wiring.
         if self._mgmt_ipc_enabled:
             self._build_mgmt_ipc()
         self._build_data_plane()
@@ -293,9 +317,3 @@ class AsyncSubsystem(PngSubsystem):
             asyncio.run(self._async_main())
         except asyncio.CancelledError:
             self.logger.info("Program shutdown gracefully.")
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "AsyncSubsystem",
-]

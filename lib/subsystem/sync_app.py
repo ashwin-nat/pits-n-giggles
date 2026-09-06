@@ -24,11 +24,11 @@
 
 import threading
 from abc import abstractmethod
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, NoReturn, Optional
 
 from lib.ipc import IpcDealerClient, IpcServerSync, IpcSubscriberSync
 
-from .base import MgmtIpcHandle, PngSubsystem, PubSubRole
+from .base import PngSubsystem, PubSubRole
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -56,8 +56,8 @@ class SyncSubsystem(PngSubsystem):
 
         # Built by the base before setup() runs, per the PUBSUB / DEALER declarations.
         # There is no sync publisher, so there is no self.publisher to match AsyncSubsystem's.
-        self.subscriber: Optional[IpcSubscriberSync] = None
-        self.dealer: Optional[IpcDealerClient] = None
+        self._subscriber: Optional[IpcSubscriberSync] = None
+        self._dealer: Optional[IpcDealerClient] = None
         self._mgmt_server: Optional[IpcServerSync] = None
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
@@ -120,6 +120,29 @@ class SyncSubsystem(PngSubsystem):
         self._threads.append(thread)
         return thread
 
+    # -------------------------------------- IPC HANDLES ---------------------------------------------------------------
+
+    @property
+    def mgmt(self) -> IpcServerSync:
+        assert self._mgmt_server and self._mgmt_ipc_enabled, \
+            "Management IPC is not enabled for this run"
+        return self._mgmt_server
+
+    @property
+    def subscriber(self) -> IpcSubscriberSync:
+        assert self._subscriber and self.PUBSUB == PubSubRole.SUBSCRIBER, \
+            "Subscriber is not built - check PUBSUB declaration"
+        return self._subscriber
+
+    @property
+    def publisher(self) -> NoReturn:
+        raise NotImplementedError("No sync publisher exists; use AsyncSubsystem to publish")
+
+    @property
+    def dealer(self) -> IpcDealerClient:
+        assert self._dealer and self.DEALER, "Dealer is not built - check DEALER declaration"
+        return self._dealer
+
     # -------------------------------------- MANAGEMENT IPC ------------------------------------------------------------
 
     def _build_mgmt_ipc(self) -> None:
@@ -133,7 +156,6 @@ class SyncSubsystem(PngSubsystem):
             logger=self.logger,
         )
         self._mgmt_server = server
-        self.mgmt = MgmtIpcHandle(server)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -161,13 +183,13 @@ class SyncSubsystem(PngSubsystem):
         """
 
         if self.PUBSUB is PubSubRole.SUBSCRIBER:
-            self.subscriber = IpcSubscriberSync(
+            self._subscriber = IpcSubscriberSync(
                 port=self.settings.Network.broker_xpub_port, logger=self.logger)
         elif self.PUBSUB is PubSubRole.PUBLISHER:
             raise NotImplementedError("No sync publisher exists; use AsyncSubsystem to publish")
 
         if self.DEALER:
-            self.dealer = IpcDealerClient(
+            self._dealer = IpcDealerClient(
                 host="127.0.0.1",
                 port=self.settings.Network.broker_router_port,
                 identity=str(self.APP_ID),
@@ -177,10 +199,10 @@ class SyncSubsystem(PngSubsystem):
     def _start_ipc_threads(self) -> None:
         """Start a servicing thread for each IPC endpoint, and register it for join."""
 
-        if self.subscriber is not None:
-            self._spawn_thread(self.subscriber.start, f"{self.NAME}-Subscriber")
-        if self.dealer is not None:
-            self._spawn_thread(self.dealer.start, f"{self.NAME}-Dealer")
+        if self._subscriber is not None:
+            self._spawn_thread(self._subscriber.start, f"{self.NAME}-Subscriber")
+        if self._dealer is not None:
+            self._spawn_thread(self._dealer.start, f"{self.NAME}-Dealer")
         if self._mgmt_ipc_enabled:
             # This one starts itself
             self.add_thread(self._mgmt_server.serve_in_thread())
@@ -201,18 +223,18 @@ class SyncSubsystem(PngSubsystem):
         """Close the base-built endpoints. Runs only after on_shutdown() has returned, so the
         subsystem's own teardown ordering is preserved."""
 
-        if self.dealer is not None:
-            self.dealer.close()
-        if self.subscriber is not None:
-            self.subscriber.close()
+        if self._dealer is not None:
+            self._dealer.close()
+        if self._subscriber is not None:
+            self._subscriber.close()
 
     # -------------------------------------- RUN -----------------------------------------------------------------------
 
     def _run(self) -> None:
         """Boot the subsystem, block in run_forever(), then tear down."""
 
-        # Built before setup() so the subsystem can attach its handlers to self.mgmt,
-        # self.publisher/subscriber and self.dealer there, alongside the rest of its wiring.
+        # Built before setup() so the subsystem can attach its handlers there, via
+        # the mgmt/subscriber/dealer properties, alongside the rest of its wiring.
         if self._mgmt_ipc_enabled:
             self._build_mgmt_ipc()
         self._build_data_plane()
@@ -240,9 +262,3 @@ class SyncSubsystem(PngSubsystem):
             thread.join(timeout=THREAD_JOIN_TIMEOUT_SEC)
             if thread.is_alive():
                 self.logger.warning("Thread %s did not exit within %.1fs", thread.name, THREAD_JOIN_TIMEOUT_SEC)
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "SyncSubsystem",
-]

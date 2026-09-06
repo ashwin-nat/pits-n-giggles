@@ -23,27 +23,27 @@
 """Management routes - the launcher's overlay control commands.
 
 Shutdown, get-stats and heartbeat-missed are not here: those are owned by lib/subsystem, and
-MgmtIpcHandle deliberately does not expose them.
+registering a second handler for any of them now raises rather than silently replacing it.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import logging
 
-from lib.subsystem import MgmtIpcHandle
+from lib.ipc import IpcServerSync
 
 from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def register_mgmt_routes(
-        mgmt: MgmtIpcHandle,
+        mgmt: IpcServerSync,
         logger: logging.Logger,
         overlays_mgr: OverlaysMgr) -> None:
     """Register the overlay control commands the launcher sends.
 
     Args:
-        mgmt (MgmtIpcHandle): The subsystem's management IPC handle
+        mgmt (IpcServerSync): The subsystem's management IPC server
         logger (logging.Logger): Logger
         overlays_mgr (OverlaysMgr): Overlays manager
     """

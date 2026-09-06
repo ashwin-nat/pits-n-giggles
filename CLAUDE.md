@@ -189,7 +189,7 @@ The three IPC flavours are exposed under their own names, each keeping its own v
 @self.dealer.route("driver-info")            # router/dealer, between apps
 ```
 
-Only `mgmt` is wrapped (`MgmtIpcHandle`, exposing just `.on()`); shutdown/get-stats/heartbeat-missed live in separate callback slots and a subsystem registering its own would silently *replace* the base's. `self.publisher`/`subscriber`/`dealer` are the library objects themselves, so they can be wrapped or handed onward (as `apps/mcp_server` does for its watchdog).
+The management server arrives with three of its slots already filled by the base — shutdown, get-stats and heartbeat-missed are single callback values rather than route-table entries — so `lib/ipc/` refuses a second registration for any of them rather than letting it silently *replace* the base's. `publisher`/`subscriber`/`dealer` are properties returning the library objects themselves — their `route()` writes into a dict keyed by topic that the base never touches — so they can be wrapped or handed onward (as `apps/mcp_server` does for its watchdog). The underlying handles are private; the properties assert if you reach for one the subsystem never declared.
 
 Notes:
 - **`READY_ON_SETUP_COMPLETE = False` is the common case** (web, hud, mcp_server). The launcher only reaches `AppState.RUNNING` on the init-complete token, so a subsystem that is not usable until a socket is listening or windows are shown injects `notify_ready` into whatever owns that moment, as a mandatory callback.

@@ -27,14 +27,14 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_ipc_port_from_child,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
-from lib.ipc import IpcServerAsync, IpcServerSync, PngAppId
+from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
@@ -53,42 +53,6 @@ class PubSubRole(Enum):
     SUBSCRIBER = auto()
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
-
-class MgmtIpcHandle:
-    """The subsystem-facing view of the management IPC server, exposed as `self.mgmt`.
-
-    Deliberately exposes only `.on(cmd)`. The shutdown, get-stats and heartbeat-missed
-    callbacks live in separate slots on the IPC server rather than in its route table, so a
-    subsystem registering its own would silently *replace* the base's handler - no error, no
-    name collision, just a subsystem that stops answering the launcher correctly. Withholding
-    those three here makes that unrepresentable.
-
-    The pub/sub and dealer objects are exposed directly rather than wrapped, because they
-    carry no equivalent hazard - the base registers nothing on them.
-    """
-
-    __slots__ = ("_server",)
-
-    def __init__(self, server: Union[IpcServerAsync, IpcServerSync]) -> None:
-        """Wrap an IPC server.
-
-        Args:
-            server (Union[IpcServerAsync, IpcServerSync]): The management IPC server
-        """
-
-        self._server: Union[IpcServerAsync, IpcServerSync] = server
-
-    def on(self, cmd_name: str) -> Callable:
-        """Register a handler for a subsystem-specific command.
-
-        Args:
-            cmd_name (str): Command name, as sent by the launcher
-
-        Returns:
-            Callable: Decorator that registers the handler
-        """
-
-        return self._server.on(cmd_name)
 
 class PngSubsystem(ABC):
     """Base class for the child side of a launcher-managed subsystem.
@@ -159,12 +123,9 @@ class PngSubsystem(ABC):
         self.logger: Optional[PngLogger] = None
         self.settings: Optional[PngSettings] = None
         self.version: str = ""
-        # The launcher's control channel, as a restricted handle exposing only .on(cmd).
-        # self.publisher / self.subscriber / self.dealer are the library objects themselves -
-        # so their own vocabulary (.route(), .publish(), .fire(), .request()) stays available
-        # unchanged - and are declared in AsyncSubsystem / SyncSubsystem, where the types are
-        # concrete.
-        self.mgmt: Optional[MgmtIpcHandle] = None
+        # The launcher's control channel, the pub/sub endpoints and the dealer are all built
+        # by AsyncSubsystem / SyncSubsystem, which hold them privately and expose them through
+        # properties at the concrete type.
         self._mgmt_ipc_enabled: bool = False
         self._ready_notified: bool = False
 
@@ -346,11 +307,3 @@ class PngSubsystem(ABC):
             self.on_exit()
 
         self.logger.info("%s subsystem exiting normally.", self.NAME)
-
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
-
-__all__ = [
-    "MgmtIpcHandle",
-    "PngSubsystem",
-    "PubSubRole",
-]

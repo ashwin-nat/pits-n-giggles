@@ -12,8 +12,7 @@ import pytest
 
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
 from lib.ipc import PngAppId
-from lib.subsystem import (AsyncSubsystem, MgmtIpcHandle, PubSubRole,
-                           SyncSubsystem)
+from lib.subsystem import AsyncSubsystem, PubSubRole, SyncSubsystem
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------
 
@@ -277,29 +276,32 @@ def test_heartbeat_missed_logs_and_exits(monkeypatch, caplog):
 
 # -------------------------------------- ROUTE FACADE ------------------------------------------------------------------
 
-@pytest.mark.parametrize("blocked", ["on_shutdown", "on_get_stats", "on_heartbeat_missed"])
-def test_mgmt_handle_hides_the_lifecycle_callbacks(blocked):
-    """self.mgmt cannot reach the three base-owned handlers.
+def test_mgmt_exposes_the_management_server():
+    """self.mgmt is the server itself, so @self.mgmt.on(...) registers a launcher command.
 
-    They live in separate callback slots rather than the route table, so a subsystem
-    registering its own would silently replace the base's with no error.
+    The three reserved slots on it are protected at the library level now: registering a second
+    shutdown / get-stats / heartbeat-missed handler raises rather than silently replacing the
+    base's. See tests/ipc/tests_parent_child.py::TestReservedCallbackSlots.
     """
 
-    mgmt = MgmtIpcHandle(_FakeServer())
-
-    assert not hasattr(mgmt, blocked)
-
-def test_mgmt_handle_forwards_on():
-    """Subsystem-specific commands still register normally, via @self.mgmt.on(...)."""
-
     server = _FakeServer()
-    mgmt = MgmtIpcHandle(server)
+    app = _StubSync()
+    app._mgmt_ipc_enabled = True
+    app._mgmt_server = server
 
-    @mgmt.on("manual-save")
+    @app.mgmt.on("manual-save")
     def _handler(_args):
         return {}
 
     assert server.routes == ["manual-save"]
+
+def test_mgmt_refuses_when_mgmt_ipc_is_off():
+    """An unmanaged run has no launcher to answer, so there is no server to hand out."""
+
+    app = _StubSync()
+
+    with pytest.raises(AssertionError, match="Management IPC is not enabled"):
+        _ = app.mgmt
 
 # -------------------------------------- DATA PLANE DECLARATION --------------------------------------------------------
 
@@ -331,8 +333,18 @@ def test_data_plane_defaults_to_nothing():
 
     app = _StubSync()
 
-    assert app.subscriber is None
-    assert app.dealer is None
+    assert app._subscriber is None
+    assert app._dealer is None
+
+def test_undeclared_handles_raise_rather_than_return_none():
+    """The properties guard: reaching for a handle you never declared says so."""
+
+    app = _StubSync()
+
+    with pytest.raises(AssertionError, match="Subscriber is not built"):
+        _ = app.subscriber
+    with pytest.raises(AssertionError, match="Dealer is not built"):
+        _ = app.dealer
 
 def test_sync_publisher_is_rejected():
     """There is no sync publisher; declaring one is a mistake worth surfacing loudly."""

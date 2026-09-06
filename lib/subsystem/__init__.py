@@ -44,14 +44,13 @@ one's own vocabulary - there is no abstraction over the three:
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .async_app import AsyncSubsystem
-from .base import MgmtIpcHandle, PngSubsystem, PubSubRole
+from .base import PngSubsystem, PubSubRole
 from .sync_app import SyncSubsystem
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "AsyncSubsystem",
-    "MgmtIpcHandle",
     "PngSubsystem",
     "PubSubRole",
     "SyncSubsystem",
