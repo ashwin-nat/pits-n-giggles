@@ -24,11 +24,11 @@
 
 import threading
 from abc import abstractmethod
-from typing import Any, Callable, Dict, List, NoReturn, Optional
+from typing import Any, Callable, Dict, Generic, List, NoReturn, Optional
 
 from lib.ipc import IpcDealerClient, IpcServerSync, IpcSubscriberSync
 
-from .base import PngSubsystem, PubSubRole
+from .base import ArgsT, PngSubsystem, PubSubRole
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -37,7 +37,7 @@ THREAD_JOIN_TIMEOUT_SEC = 3.0
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class SyncSubsystem(PngSubsystem):
+class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     """A subsystem whose main loop is blocking rather than an event loop.
 
     The subsystems in this shape - the broker and the Qt HUD - start their own daemon threads

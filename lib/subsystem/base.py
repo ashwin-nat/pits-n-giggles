@@ -27,7 +27,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, get_args
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_ipc_port_from_child,
@@ -38,6 +38,14 @@ from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
 from lib.version import get_version
 from meta.meta import APP_NAME
+
+from .args import SubsystemArgs, add_dataclass_args
+
+# -------------------------------------- TYPES -------------------------------------------------------------------------
+
+# A subsystem names its args dataclass as a type parameter - AsyncSubsystem[McpArgs] - which
+# both types self.args and tells the base what to construct. One declaration, two jobs.
+ArgsT = TypeVar("ArgsT", bound=SubsystemArgs)
 
 # -------------------------------------- ENUMS -------------------------------------------------------------------------
 
@@ -54,13 +62,19 @@ class PubSubRole(Enum):
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class PngSubsystem(ABC):
+class PngSubsystem(ABC, Generic[ArgsT]):
     """Base class for the child side of a launcher-managed subsystem.
 
     Owns everything the launcher's contract requires - argument parsing, the logger, config
     loading, the handshake tokens, the management IPC server and its three built-in handlers,
     the stats envelope and the entry-point exception funnel - so that a subsystem only has to
     fill in what is actually specific to it.
+
+    Generic over its args dataclass, which a subsystem names in its class header:
+
+        class McpSubsystem(AsyncSubsystem[McpArgs]):
+
+    That single declaration both types self.args and tells the base what to construct.
 
     The parent side of this same contract lives in `apps/launcher/subsystems/base_mgr.py`
     (`PngAppMgrBase`). Changes here must not alter the wire contract with it.
@@ -72,6 +86,10 @@ class PngSubsystem(ABC):
     NAME: Optional[str] = None
     # argparse description suffix, e.g. "Realtime Telemetry Server"
     DESCRIPTION: Optional[str] = None
+    # Resolved by __init_subclass__ from the type parameter - do NOT assign this by hand.
+    # Subclass SubsystemArgs to add flags, then name the subclass as the type parameter; the
+    # parser is built from its fields, so there is no add_args() hook.
+    ARGS: ClassVar[type[SubsystemArgs]] = SubsystemArgs
     # Passed to load_config_from_json(fail_if_missing=)
     CONFIG_REQUIRED: bool = False
     # Whether the base emits the init-complete token once setup() returns. False for
@@ -100,6 +118,7 @@ class PngSubsystem(ABC):
         """Fail at import time if a subclass forgot to fill in the mandatory identity fields"""
 
         super().__init_subclass__(**kwargs)
+        cls._resolve_args_cls()
         # __dict__ holds only what this class's own body defined, so this asks "did THIS class
         # say it is abstract?" - cls.ABSTRACT would also find a parent's True and wrongly let a
         # concrete subclass skip the check.
@@ -116,10 +135,32 @@ class PngSubsystem(ABC):
         if cls.DEALER and cls.APP_ID is None:
             raise TypeError(f"{cls.__name__} sets DEALER but no APP_ID")
 
+    @classmethod
+    def _resolve_args_cls(cls) -> None:
+        """Set ARGS from the type parameter, e.g. AsyncSubsystem[McpArgs] -> McpArgs.
+
+        A subclass that does not parameterize keeps whatever its parent resolved to, which for
+        a subsystem with no extra flags is SubsystemArgs.
+        """
+
+        # cls.__dict__, NOT getattr: __orig_bases__ is inherited, so getattr on an
+        # unparameterized subclass hands back the PARENT's SyncSubsystem[~ArgsT] and would
+        # resolve to the TypeVar itself - after which _parse_args() would try to call it.
+        for base in cls.__dict__.get("__orig_bases__", ()):
+            params = get_args(base)
+            # An unfilled parameter is the TypeVar, not a dataclass. That is what
+            # SyncSubsystem[ArgsT] looks like: still generic, nothing to resolve.
+            if params and not isinstance(params[0], TypeVar):
+                cls.ARGS = params[0]
+                return
+
+    # Populated by _bootstrap(). Declared here rather than assigned None in __init__ so it
+    # types as the subsystem's own args dataclass everywhere, instead of Optional.
+    args: ArgsT
+
     def __init__(self) -> None:
         """Construct the subsystem. Nothing is booted until main() runs."""
 
-        self.args: Optional[argparse.Namespace] = None
         self.logger: Optional[PngLogger] = None
         self.settings: Optional[PngSettings] = None
         self.version: str = ""
@@ -145,18 +186,11 @@ class PngSubsystem(ABC):
 
     # -------------------------------------- MAY OVERRIDE --------------------------------------------------------------
 
-    def add_args(self, parser: argparse.ArgumentParser) -> None:
-        """Add subsystem-specific CLI arguments. --config-file and --debug are pre-added.
-
-        Args:
-            parser (argparse.ArgumentParser): Parser to extend
-        """
-
-    def make_logger(self, args: argparse.Namespace) -> PngLogger:
+    def make_logger(self, args: ArgsT) -> PngLogger:
         """Build this subsystem's logger.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (ArgsT): Parsed args
 
         Returns:
             PngLogger: Logger. JSONL on stdout by default, which the launcher captures.
@@ -164,7 +198,7 @@ class PngSubsystem(ABC):
 
         return get_logger(self.NAME, args.debug, jsonl=True)
 
-    def should_run_mgmt_ipc(self, args: argparse.Namespace) -> bool:  # pylint: disable=unused-argument
+    def should_run_mgmt_ipc(self, args: ArgsT) -> bool:  # pylint: disable=unused-argument
         """Whether this run talks to a launcher at all.
 
         Gates the management IPC server *and* every handshake token, because a subsystem with
@@ -172,7 +206,7 @@ class PngSubsystem(ABC):
         to the protocol, so a stray token would corrupt it.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (ArgsT): Parsed args
 
         Returns:
             bool: True if managed by a launcher
@@ -180,13 +214,13 @@ class PngSubsystem(ABC):
 
         return True
 
-    def pre_boot(self, args: argparse.Namespace) -> None:
+    def pre_boot(self, args: ArgsT) -> None:
         """Run before the logger exists, for anything the rest of the boot depends on.
 
         Paired with on_exit(), which is guaranteed to run in a finally.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (ArgsT): Parsed args
         """
 
     def on_exit(self) -> None:
@@ -251,19 +285,19 @@ class PngSubsystem(ABC):
 
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
-    def _parse_args(self) -> argparse.Namespace:
-        """Build the parser, let the subsystem extend it, and parse.
+    def _parse_args(self) -> ArgsT:
+        """Build the parser from ARGS' fields and parse into an instance of it.
+
+        argparse's dest names are the field names, so the namespace maps onto the dataclass
+        without a translation table.
 
         Returns:
-            argparse.Namespace: Parsed args
+            ArgsT: Parsed args, of whatever type the class header named
         """
 
         parser = argparse.ArgumentParser(description=f"{APP_NAME} {self.DESCRIPTION}")
-        parser.add_argument("--config-file", nargs="?", default="png_config.json",
-                            help="Configuration file name (optional)")
-        parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-        self.add_args(parser)
-        return parser.parse_args()
+        add_dataclass_args(parser, self.ARGS)
+        return self.ARGS(**vars(parser.parse_args()))
 
     def _bootstrap(self) -> None:
         """Parse args and stand up the logger, before anything that can meaningfully fail."""

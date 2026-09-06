@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, override
 
 from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
 from lib.ipc import PngAppId
-from lib.subsystem import PubSubRole, SyncSubsystem
+from lib.subsystem import PubSubRole, SubsystemArgs, SyncSubsystem
 
 from .ipc.dealer import register_dealer_routes
 from .ipc.mgmt import register_mgmt_routes
@@ -39,7 +39,7 @@ from .ui.infra import OverlaysMgr
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class HudSubsystem(SyncSubsystem):
+class HudSubsystem(SyncSubsystem[SubsystemArgs]):
     """The always-on-top in-game overlay.
 
     Renders broker telemetry into Qt overlay windows, and answers the launcher's overlay
@@ -66,13 +66,13 @@ class HudSubsystem(SyncSubsystem):
     # -------------------------------------- LIFECYCLE -----------------------------------------------------------------
 
     @override
-    def pre_boot(self, args: Namespace) -> None:
+    def pre_boot(self, args: SubsystemArgs) -> None:
         """Request 1 ms system timer resolution so QTimer::PreciseTimer fires on time.
 
         Windows default is 15.6 ms, which causes frame-budget misses at 30 FPS.
 
         Args:
-            args (Namespace): Parsed args
+            args (SubsystemArgs): Parsed args
         """
 
         self._winmm = ctypes.windll.winmm

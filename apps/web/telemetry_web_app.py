@@ -27,7 +27,7 @@ from typing import Any, Dict, Optional, override
 
 from lib.file_path import get_app_base_dir
 from lib.ipc import PngAppId
-from lib.subsystem import AsyncSubsystem, PubSubRole
+from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs
 from lib.version import get_version
 from lib.web_server import ClientType
 
@@ -36,7 +36,7 @@ from .web_server import WebServer
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class WebSubsystem(AsyncSubsystem):
+class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     """The unified web app - serves the live dashboards, save-viewer and home page.
 
     Consumes broker telemetry over pub/sub and bridges browser pulls to the backend over the

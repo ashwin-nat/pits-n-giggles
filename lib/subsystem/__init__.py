@@ -39,10 +39,14 @@ one's own vocabulary - there is no abstraction over the three:
     @self.dealer.route("driver-info")           # router/dealer, between apps
 
 ...and self.publisher.publish(topic, data) for the other end of the pub/sub fabric.
+
+Command-line flags are a dataclass rather than an argparse.Namespace: a subsystem needing more
+than --config-file and --debug subclasses SubsystemArgs and points ARGS at the subclass.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from .args import SubsystemArgs, arg
 from .async_app import AsyncSubsystem
 from .base import PngSubsystem, PubSubRole
 from .sync_app import SyncSubsystem
@@ -50,8 +54,10 @@ from .sync_app import SyncSubsystem
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    "arg",
     "AsyncSubsystem",
     "PngSubsystem",
     "PubSubRole",
+    "SubsystemArgs",
     "SyncSubsystem",
 ]

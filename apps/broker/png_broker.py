@@ -25,11 +25,11 @@
 from typing import Any, Dict, Optional, override
 
 from lib.ipc import IpcPubSubBroker, IpcRouter
-from lib.subsystem import SyncSubsystem
+from lib.subsystem import SubsystemArgs, SyncSubsystem
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class BrokerSubsystem(SyncSubsystem):
+class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
     """The Pit Wall - the ZeroMQ pub/sub broker and router that every other subsystem talks
     through.
 

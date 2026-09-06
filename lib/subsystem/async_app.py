@@ -25,17 +25,17 @@
 import asyncio
 import sys
 from abc import abstractmethod
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, Generic, List, Optional
 
 from lib.ipc import (IpcDealerAsync, IpcPublisherAsync, IpcServerAsync,
                      IpcSubscriberAsync)
 from lib.periodic_task import periodic_task
 
-from .base import PngSubsystem, PubSubRole
+from .base import ArgsT, PngSubsystem, PubSubRole
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class AsyncSubsystem(PngSubsystem):
+class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     """A subsystem whose main loop is an asyncio event loop.
 
     Owns the task registry and teardown, so a subsystem registers work with add_task() /

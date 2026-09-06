@@ -22,8 +22,8 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
 import asyncio
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, override
 
 from apps.backend.intf_layer import (frontEndMessageTask,
@@ -41,11 +41,17 @@ from apps.backend.state_mgmt_layer.intf import RaceInfoData
 from apps.backend.telemetry_layer import F1TelemetryHandler, initTelemetryLayer
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import PngAppId
-from lib.subsystem import AsyncSubsystem, PubSubRole
+from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs, arg
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-class BackendSubsystem(AsyncSubsystem):
+@dataclass(frozen=True)
+class BackendArgs(SubsystemArgs):
+    """The backend's flags, on top of the base --config-file and --debug."""
+
+    replay_server: bool = arg(False, "Enable the TCP replay debug server")
+
+class BackendSubsystem(AsyncSubsystem[BackendArgs]):
     """The dumb core - receives telemetry from the game, analyses it, and publishes the result.
 
     Has no HTTP server of its own: it publishes over pub/sub and answers pull requests over the
@@ -65,17 +71,6 @@ class BackendSubsystem(AsyncSubsystem):
         super().__init__()
         self.session_state: Optional[SessionState] = None
         self.telemetry_handler: Optional[F1TelemetryHandler] = None
-
-    @override
-    def add_args(self, parser: argparse.ArgumentParser) -> None:
-        """Add the backend's own CLI flags.
-
-        Args:
-            parser (argparse.ArgumentParser): Parser to extend
-        """
-
-        parser.add_argument('--replay-server', action='store_true',
-                            help="Enable the TCP replay debug server")
 
     @override
     async def setup(self) -> None:

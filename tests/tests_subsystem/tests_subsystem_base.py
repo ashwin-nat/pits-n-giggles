@@ -4,15 +4,21 @@ Native pytest style per tests/README.md: plain assert, parametrize, bare async d
 Nothing here binds a real IPC port, so these stay parallel-safe.
 """
 
+import argparse
 import asyncio
 import logging
 import sys
+from dataclasses import FrozenInstanceError, dataclass
+from typing import Generic
 
 import pytest
 
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
 from lib.ipc import PngAppId
-from lib.subsystem import AsyncSubsystem, PubSubRole, SyncSubsystem
+from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs,
+                           SyncSubsystem, arg)
+from lib.subsystem.args import add_dataclass_args
+from lib.subsystem.base import ArgsT
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------
 
@@ -27,8 +33,12 @@ def _test_logger(owner) -> logging.Logger:
     logger.addHandler(logging.NullHandler())
     return logger
 
-class _StubSync(SyncSubsystem):
-    """Minimal concrete SyncSubsystem that never talks to a launcher."""
+class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
+    """Minimal concrete SyncSubsystem that never talks to a launcher.
+
+    Stays generic so a test can subclass it and still name its own args dataclass. A concrete
+    intermediate would swallow the type parameter and pin every leaf to SubsystemArgs.
+    """
 
     NAME = "stub_sync"
     DESCRIPTION = "Stub Sync Subsystem"
@@ -174,22 +184,116 @@ def test_base_flags_present(monkeypatch):
     assert args.config_file == "png_config.json"
     assert args.debug is False
 
-def test_add_args_extras_merge_with_base_flags(monkeypatch):
+def test_args_subclass_extras_merge_with_base_flags(monkeypatch):
     """A subsystem's own flags parse alongside the base's, neither clobbering the other."""
 
-    class _WithExtras(_StubSync):
+    @dataclass(frozen=True)
+    class _ExtraArgs(SubsystemArgs):
+        replay_server: bool = arg(False, "Enable the TCP replay debug server")
+
+    class _WithExtras(_StubSync[_ExtraArgs]):
         NAME = "with_extras"
         DESCRIPTION = "With Extras"
-
-        def add_args(self, parser):
-            parser.add_argument("--replay-server", action="store_true")
 
     monkeypatch.setattr(sys, "argv", ["prog", "--debug", "--replay-server", "--config-file", "other.json"])
     args = _WithExtras()._parse_args()
 
+    assert isinstance(args, _ExtraArgs)
     assert args.debug is True
     assert args.replay_server is True
     assert args.config_file == "other.json"
+
+def test_underscored_field_becomes_dashed_flag(monkeypatch):
+    """replay_server is spelled --replay-server on the command line.
+
+    The launcher spawns children with the dashed spelling, so the derivation is part of the
+    wire contract rather than a cosmetic choice.
+    """
+
+    @dataclass(frozen=True)
+    class _ExtraArgs(SubsystemArgs):
+        replay_server: bool = arg(False, "help")
+
+    class _WithExtras(_StubSync[_ExtraArgs]):
+        NAME = "dashed"
+        DESCRIPTION = "Dashed"
+
+    monkeypatch.setattr(sys, "argv", ["prog", "--replay_server"])
+    with pytest.raises(SystemExit):
+        _WithExtras()._parse_args()
+
+def test_unparameterized_subclass_falls_back_to_base_args(monkeypatch):
+    """A subsystem with no extra flags inherits SubsystemArgs, not the unfilled TypeVar.
+
+    Regression: __orig_bases__ is inherited, so reading it with getattr rather than
+    cls.__dict__ hands back the PARENT's SyncSubsystem[~ArgsT]. ARGS would then be the TypeVar
+    itself, and _parse_args() would try to call it.
+    """
+
+    class _NoExtras(_StubSync):
+        NAME = "no_extras"
+        DESCRIPTION = "No Extras"
+
+    assert _NoExtras.ARGS is SubsystemArgs
+
+    monkeypatch.setattr(sys, "argv", ["prog"])
+    assert isinstance(_NoExtras()._parse_args(), SubsystemArgs)
+
+@pytest.mark.parametrize("argv, expected", [
+    (["prog"], 0),
+    (["prog", "--retries", "7"], 7),
+])
+def test_non_bool_field_is_coerced_from_its_annotation(monkeypatch, argv, expected):
+    """An int field parses as an int, with no type= written anywhere.
+
+    No subsystem currently declares a non-str, non-bool flag, so this is the only cover for
+    the generator handing argparse a type it derived rather than one a caller supplied.
+    """
+
+    @dataclass(frozen=True)
+    class _IntArgs(SubsystemArgs):
+        retries: int = arg(0, "How many times to retry")
+
+    class _WithInt(_StubSync[_IntArgs]):
+        NAME = "with_int"
+        DESCRIPTION = "With Int"
+
+    monkeypatch.setattr(sys, "argv", argv)
+    assert _WithInt()._parse_args().retries == expected
+
+def test_non_bool_field_rejects_a_value_of_the_wrong_type(monkeypatch):
+    """argparse refuses a non-integer for an int field rather than passing the string through."""
+
+    @dataclass(frozen=True)
+    class _IntArgs(SubsystemArgs):
+        retries: int = arg(0, "How many times to retry")
+
+    class _WithInt(_StubSync[_IntArgs]):
+        NAME = "with_bad_int"
+        DESCRIPTION = "With Bad Int"
+
+    monkeypatch.setattr(sys, "argv", ["prog", "--retries", "abc"])
+    with pytest.raises(SystemExit):
+        _WithInt()._parse_args()
+
+def test_bool_defaulting_true_is_rejected():
+    """store_true cannot express "on unless passed" - the flag could never switch it off."""
+
+    @dataclass(frozen=True)
+    class _BadArgs(SubsystemArgs):
+        already_on: bool = arg(True, "help")
+
+    with pytest.raises(TypeError, match="could switch off"):
+        add_dataclass_args(argparse.ArgumentParser(), _BadArgs)
+
+def test_args_are_frozen(monkeypatch):
+    """The parsed args are the invocation, not mutable state."""
+
+    monkeypatch.setattr(sys, "argv", ["prog"])
+    args = _StubSync()._parse_args()
+
+    with pytest.raises(FrozenInstanceError):
+        args.debug = True
 
 # -------------------------------------- TOKEN GATING ------------------------------------------------------------------
 

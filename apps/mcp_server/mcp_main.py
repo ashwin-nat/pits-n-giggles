@@ -22,16 +22,16 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
 import asyncio
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, override
 
 from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
-from lib.subsystem import AsyncSubsystem, PubSubRole
+from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs, arg
 
 from .mcp_server import MCPBridge
 from .subscriber import McpSubscriber
@@ -43,7 +43,19 @@ WDT_TIMEOUT_SEC = 10.0
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class McpSubsystem(AsyncSubsystem):
+@dataclass(frozen=True)
+class McpArgs(SubsystemArgs):
+    """The MCP server's flags, on top of the base --config-file and --debug.
+
+    --log-file and --wd have no callers in this repo: they are part of the contract with the
+    user's MCP client config, so their names and defaults are fixed.
+    """
+
+    managed: bool = arg(False, "Indicates if process is managed by parent")
+    log_file: str = arg("png_mcp_stdio.log", "Log file name")
+    wd: Optional[str] = arg(None, "Working directory")
+
+class McpSubsystem(AsyncSubsystem[McpArgs]):
     """Exposes live telemetry to MCP clients as tools.
 
     The only subsystem that also runs unmanaged. With a launcher it serves HTTP and speaks the
@@ -76,31 +88,14 @@ class McpSubsystem(AsyncSubsystem):
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
     @override
-    def add_args(self, parser: argparse.ArgumentParser) -> None:
-        """Add the MCP-specific arguments. --config-file and --debug are pre-added.
-
-        --log-file and --wd have no callers in this repo: they are part of the contract with the
-        user's MCP client config, so their names and defaults are fixed.
-
-        Args:
-            parser (argparse.ArgumentParser): Parser to extend
-        """
-
-        parser.add_argument("--managed", action="store_true",
-                            help="Indicates if process is managed by parent")
-        parser.add_argument("--log-file", type=str, default="png_mcp_stdio.log",
-                            help="Log file name")
-        parser.add_argument("--wd", type=str, default=None, help="Working directory")
-
-    @override
-    def should_run_mgmt_ipc(self, args: argparse.Namespace) -> bool:
+    def should_run_mgmt_ipc(self, args: McpArgs) -> bool:
         """Whether a launcher spawned this run.
 
         Gates the management IPC server and all three handshake tokens. Unmanaged runs speak
         stdio, where stdout carries the MCP protocol - a stray token would corrupt it.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (McpArgs): Parsed args
 
         Returns:
             bool: True if launcher-managed
@@ -109,14 +104,14 @@ class McpSubsystem(AsyncSubsystem):
         return args.managed
 
     @override
-    def pre_boot(self, args: argparse.Namespace) -> None:
+    def pre_boot(self, args: McpArgs) -> None:
         """Move to the requested working directory and check the config is there.
 
         Both report failure on stderr and exit, because neither the logger nor a parent exists
         yet - and for an unmanaged run stderr stays the only channel the MCP client surfaces.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (McpArgs): Parsed args
         """
 
         if args.wd:
@@ -137,14 +132,14 @@ class McpSubsystem(AsyncSubsystem):
             sys.exit(1)
 
     @override
-    def make_logger(self, args: argparse.Namespace) -> PngLogger:
+    def make_logger(self, args: McpArgs) -> PngLogger:
         """Build the logger, and quieten the MCP libraries.
 
         Managed runs emit JSONL on stdout for the launcher to capture. Unmanaged runs cannot
         touch stdout at all, so they log to a file instead.
 
         Args:
-            args (argparse.Namespace): Parsed args
+            args (McpArgs): Parsed args
 
         Returns:
             PngLogger: Logger
