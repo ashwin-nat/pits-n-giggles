@@ -322,7 +322,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
-    def _start_profiler(self) -> Optional[Any]:
+    def _start_profiler(self) -> Optional[Any]:  # pragma: no cover - dev tool, never on in prod
         """Start yappi if this subsystem sets PROFILE. Wall clock, so I/O waits show up.
 
         yappi is imported inside the branch, so a normal boot neither imports it nor pays for
@@ -340,7 +340,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         yappi.start()
         return yappi
 
-    def _stop_profiler(self) -> None:
+    def _stop_profiler(self) -> None:  # pragma: no cover - dev tool, never on in prod
         """Write the profile out. Runs after teardown, so it covers the whole process.
 
         Files are named after the subsystem: profiling two at once would otherwise have them

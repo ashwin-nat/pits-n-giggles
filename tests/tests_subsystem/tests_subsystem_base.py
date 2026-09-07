@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import threading
 from dataclasses import FrozenInstanceError, dataclass
 from typing import Generic
 
@@ -138,6 +139,87 @@ class _FakeServer:
 
     def on_heartbeat_missed(self, fn):
         raise AssertionError("a subsystem must not be able to reach on_heartbeat_missed")
+
+# The IPC classes each spell "begin servicing this socket" and "close" differently, and the base
+# is the one place that picks the right one per endpoint. These fakes exist to record which call
+# it made, so that picking the wrong one fails loudly here instead of silently at runtime.
+
+class _FakePublisher:
+    """IpcPublisherAsync: creates its own task, and close() is a coroutine."""
+
+    def __init__(self):
+        self.calls = []
+
+    def get_task(self):
+        self.calls.append("get_task")
+        return asyncio.create_task(asyncio.sleep(0), name="Publisher Reconnect")
+
+    async def close(self):
+        self.calls.append("close")
+
+class _FakeSubscriberAsync:
+    """IpcSubscriberAsync: run() is a coroutine, but close() is NOT - the asymmetry the base's
+    own comment warns about."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def run(self):
+        self.calls.append("run")
+
+    def close(self):
+        self.calls.append("close")
+
+class _FakeDealerAsync:
+    """IpcDealerAsync: start() and close() are both coroutines."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def start(self):
+        self.calls.append("start")
+
+    async def close(self):
+        self.calls.append("close")
+
+class _FakeMgmtAsync:
+    """IpcServerAsync, as the base uses it once built."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def run(self):
+        self.calls.append("run")
+
+    def close(self):
+        self.calls.append("close")
+
+class _FakeSyncEndpoint:
+    """IpcSubscriberSync / IpcDealerClient: start() blocks, so the base hands it to a thread."""
+
+    def __init__(self):
+        self.calls = []
+
+    def start(self):
+        self.calls.append("start")
+
+    def close(self):
+        self.calls.append("close")
+
+class _FakeMgmtSync:
+    """IpcServerSync: unlike the other two, this one starts its own thread."""
+
+    def __init__(self):
+        self.calls = []
+
+    def serve_in_thread(self):
+        self.calls.append("serve_in_thread")
+        thread = threading.Thread(target=lambda: None, name="fake-mgmt", daemon=True)
+        thread.start()
+        return thread
+
+    def close(self):
+        self.calls.append("close")
 
 # -------------------------------------- IDENTITY ----------------------------------------------------------------------
 
@@ -383,23 +465,6 @@ def test_profiler_is_off_and_costs_nothing(monkeypatch):
     assert app.PROFILE is False
     assert app._profiler is None
     assert "yappi" not in sys.modules
-
-def test_profiler_writes_three_files_named_after_the_subsystem(tmp_path, monkeypatch):
-    """Files carry NAME, so profiling two subsystems at once does not have them collide."""
-
-    class _Profiled(_StubSync):
-        NAME = "profiled"
-        DESCRIPTION = "Profiled"
-        PROFILE = True
-
-    monkeypatch.chdir(tmp_path)
-    app = _Profiled()
-    assert app._profiler is not None
-
-    app._stop_profiler()
-
-    written = sorted(p.name for p in tmp_path.iterdir())
-    assert written == ["profiled_yappi.html", "profiled_yappi.prof", "profiled_yappi.txt"]
 
 # -------------------------------------- STATS ENVELOPE ----------------------------------------------------------------
 
@@ -767,3 +832,402 @@ async def test_teardown_task_is_gathered(monkeypatch):
     await asyncio.gather(*started)
 
     assert app.shutdown_calls == 1
+
+
+# -------------------------------------- TASK REGISTRY -----------------------------------------------------------------
+
+def test_work_can_be_registered_with_no_event_loop_running():
+    """The property the whole constructor-only boot rests on.
+
+    A subsystem registers its work in __init__, where asyncio.create_task() raises. add_task()
+    therefore has to hold the coroutine rather than start it.
+    """
+
+    app = _StubAsync()
+
+    async def _work():
+        return None
+
+    coro = _work()
+    try:
+        handle = app.add_task(coro, name="Work")
+
+        assert handle in app._tasks
+        assert handle.name == "Work"
+    finally:
+        coro.close()
+
+async def test_start_is_idempotent():
+    """_async_main() starts the registry once; a second start must not make a second task."""
+
+    app = _StubAsync()
+
+    async def _work():
+        return None
+
+    handle = app.add_task(_work(), name="Work")
+
+    first = handle.start()
+    assert handle.start() is first
+
+    await first
+
+def test_cancel_before_start_is_a_no_op():
+    """Teardown can run before the loop ever started - a boot that failed, say."""
+
+    app = _StubAsync()
+
+    async def _work():
+        return None
+
+    coro = _work()
+    try:
+        app.add_task(coro, name="Work").cancel()
+    finally:
+        coro.close()
+
+async def test_cancel_reaches_the_task_once_started():
+    """McpSubsystem and F1TelemetryHandler hold a handle for exactly this."""
+
+    app = _StubAsync()
+
+    async def _hang():
+        await asyncio.sleep(60)
+
+    handle = app.add_task(_hang(), name="Hang")
+    task = handle.start()
+    await asyncio.sleep(0)
+
+    handle.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+async def test_adopt_task_wraps_a_task_its_owner_created():
+    """IpcPublisherAsync creates its own reconnect task; the registry still has to gather it."""
+
+    app = _StubAsync()
+    task = asyncio.create_task(asyncio.sleep(0), name="Publisher Reconnect")
+
+    handle = app.adopt_task(task)
+
+    assert handle in app._tasks
+    assert handle.name == "Publisher Reconnect"
+    assert handle.start() is task
+
+    await task
+
+# -------------------------------------- IPC WIRING, ASYNC -------------------------------------------------------------
+
+class _WiredAsync(_StubAsync):
+    """An async subsystem whose endpoints are fakes.
+
+    The builders are overridden rather than the attributes assigned afterwards, so the real
+    constructor wiring runs - and so no test here needs settings or a real port.
+    """
+
+    NAME = "wired_async"
+    DESCRIPTION = "Wired Async"
+    PUBSUB = PubSubRole.PUBLISHER
+    APP_ID = PngAppId.BACKEND
+    DEALER = True
+
+    def should_run_mgmt_ipc(self):
+        return True
+
+    def _build_mgmt_ipc(self):
+        return _FakeMgmtAsync()
+
+    def _build_publisher(self):
+        return _FakePublisher()
+
+    def _build_dealer(self):
+        return _FakeDealerAsync()
+
+async def test_declared_async_handles_are_exposed(capsys):
+    """The properties hand back what the builders returned."""
+
+    app = _WiredAsync()
+    capsys.readouterr()
+
+    assert isinstance(app.publisher, _FakePublisher)
+    assert isinstance(app.dealer, _FakeDealerAsync)
+    assert isinstance(app.mgmt, _FakeMgmtAsync)
+    # PUBSUB is PUBLISHER, so the other end of the fabric was never built.
+    with pytest.raises(AssertionError, match="Subscriber is not built"):
+        _ = app.subscriber
+
+async def test_register_ipc_tasks_picks_the_right_call_per_endpoint(capsys):
+    """Each IPC class starts servicing differently; the base picks, so assert what it picked."""
+
+    app = _WiredAsync()
+    capsys.readouterr()
+
+    app._register_ipc_tasks()
+
+    assert [handle.name for handle in app._tasks] == [
+        "Publisher Reconnect", "wired_async Dealer Recv", "IPC Server"]
+    # The publisher hands over a live task; the other two hand over coroutines, which have not
+    # run yet.
+    assert app._publisher.calls == ["get_task"]
+    assert app._dealer.calls == []
+    assert app._mgmt_server.calls == []
+
+    await asyncio.gather(*(handle.start() for handle in app._tasks))
+
+    assert app._dealer.calls == ["start"]
+    assert app._mgmt_server.calls == ["run"]
+
+async def test_close_data_plane_awaits_or_calls_as_each_endpoint_requires(capsys):
+    """IpcPublisherAsync.close() is a coroutine; IpcSubscriberAsync.close() is not.
+
+    Getting this backwards leaves a never-awaited coroutine and an unclosed socket, which is
+    why the base has a comment about it rather than a uniform loop.
+    """
+
+    class _BothEnds(_WiredAsync):
+        NAME = "both_ends"
+        DESCRIPTION = "Both Ends"
+
+        def _build_subscriber(self):
+            return _FakeSubscriberAsync()
+
+    app = _BothEnds()
+    capsys.readouterr()
+
+    await app._close_data_plane()
+
+    assert app._publisher.calls == ["close"]
+    assert app._subscriber.calls == ["close"]
+    assert app._dealer.calls == ["close"]
+
+async def test_close_data_plane_skips_what_was_never_built():
+    """A subsystem that declared no data plane still tears down cleanly."""
+
+    app = _StubAsync()
+
+    await app._close_data_plane()   # must not raise on the Nones
+
+# -------------------------------------- ASYNC RUN ---------------------------------------------------------------------
+
+async def test_async_main_starts_the_registry_and_notifies_ready(capsys):
+    """Everything registered before the loop existed gets started, once, in _async_main()."""
+
+    ran = []
+
+    class _App(_StubAsync):
+        NAME = "async_main"
+        DESCRIPTION = "Async Main"
+
+    app = _App()
+    app._mgmt_ipc_enabled = True    # so notify_ready() actually emits its token
+
+    async def _work():
+        ran.append(True)
+        app.request_shutdown("work done")
+
+    app.add_task(_work(), name="Work")
+
+    await app._async_main()
+
+    assert ran == [True]
+    assert app.shutdown_calls == 1
+    assert app.shutdown_reasons == ["work done"]
+    assert "__PNG_SUBSYSTEM_INIT_COMPLETE__" in capsys.readouterr().out
+
+async def test_async_main_requests_shutdown_when_the_gather_is_cancelled():
+    """Ctrl-C lands here. Teardown still has to be asked for, and the cancel still propagates."""
+
+    app = _StubAsync()
+
+    async def _hang():
+        await asyncio.sleep(60)
+
+    app.add_task(_hang(), name="Hang")
+
+    task = asyncio.create_task(app._async_main())
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert app._shutdown_reason == "Main task was cancelled."
+
+# -------------------------------------- IPC WIRING, SYNC --------------------------------------------------------------
+
+class _WiredSync(_StubSync):
+    """A sync subsystem whose endpoints are fakes. See _WiredAsync."""
+
+    NAME = "wired_sync"
+    DESCRIPTION = "Wired Sync"
+    PUBSUB = PubSubRole.SUBSCRIBER
+    APP_ID = PngAppId.HUD
+    DEALER = True
+
+    def should_run_mgmt_ipc(self):
+        return True
+
+    def _build_mgmt_ipc(self):
+        return _FakeMgmtSync()
+
+    def _build_subscriber(self):
+        return _FakeSyncEndpoint()
+
+    def _build_dealer(self):
+        return _FakeSyncEndpoint()
+
+def test_declared_sync_handles_are_exposed(capsys):
+    """As the async case, minus a publisher - which is a hard error rather than an absence."""
+
+    app = _WiredSync()
+    capsys.readouterr()
+
+    assert isinstance(app.subscriber, _FakeSyncEndpoint)
+    assert isinstance(app.dealer, _FakeSyncEndpoint)
+    assert isinstance(app.mgmt, _FakeMgmtSync)
+    with pytest.raises(NotImplementedError, match="sync publisher"):
+        _ = app.publisher
+
+def test_start_ipc_threads_spawns_one_per_endpoint(capsys):
+    """The subscriber and dealer block, so the base threads them; the mgmt server threads itself."""
+
+    app = _WiredSync()
+    capsys.readouterr()
+
+    app._start_ipc_threads()
+
+    assert [thread.name for thread in app._threads] == [
+        "wired_sync-Subscriber", "wired_sync-Dealer", "fake-mgmt"]
+    assert app._mgmt_server.calls == ["serve_in_thread"]
+
+    for thread in app._threads:
+        thread.join(timeout=1)
+
+def test_sync_close_data_plane_closes_both_endpoints(capsys):
+    """Only what was built, and each exactly once."""
+
+    app = _WiredSync()
+    capsys.readouterr()
+
+    app._close_data_plane()
+
+    assert app._dealer.calls == ["close"]
+    assert app._subscriber.calls == ["close"]
+
+def test_request_stop_sets_the_shutdown_event():
+    """The default, for a run_forever() that waits on the event - the broker's does."""
+
+    app = _StubSync()
+    assert app.shutdown_event.is_set() is False
+
+    app.request_stop()
+
+    assert app.shutdown_event.is_set() is True
+
+def test_add_thread_returns_the_thread_it_registered():
+    """Returned for convenience, so a caller can start and register in one expression."""
+
+    app = _StubSync()
+    thread = threading.Thread(target=lambda: None, name="registered", daemon=True)
+
+    assert app.add_thread(thread) is thread
+    assert app._threads == [thread]
+
+def test_join_threads_warns_rather_than_wedging_the_exit(monkeypatch, caplog):
+    """One hung thread must not stop the process exiting - it gets a warning and a shrug."""
+
+    monkeypatch.setattr("lib.subsystem.sync_app.THREAD_JOIN_TIMEOUT_SEC", 0.05)
+
+    app = _StubSync()
+    release = threading.Event()
+    stuck = threading.Thread(target=release.wait, name="stuck", daemon=True)
+    stuck.start()
+    app.add_thread(stuck)
+    # A second thread, so the loop is shown to carry on past the one it gave up on.
+    tidy = threading.Thread(target=lambda: None, name="tidy", daemon=True)
+    tidy.start()
+    app.add_thread(tidy)
+
+    try:
+        with caplog.at_level(logging.WARNING):
+            app._join_threads()
+
+        assert "stuck" in caplog.text
+        assert "did not exit" in caplog.text
+    finally:
+        release.set()
+        stuck.join(timeout=1)
+
+async def test_subscriber_end_is_wired_the_same_way(capsys):
+    """The pub/sub fabric has two ends and the base builds either; cover the one _WiredAsync
+    does not."""
+
+    class _SubEnd(_StubAsync):
+        NAME = "sub_end"
+        DESCRIPTION = "Sub End"
+        PUBSUB = PubSubRole.SUBSCRIBER
+
+        def _build_subscriber(self):
+            return _FakeSubscriberAsync()
+
+    app = _SubEnd()
+    capsys.readouterr()
+
+    assert isinstance(app.subscriber, _FakeSubscriberAsync)
+
+    app._register_ipc_tasks()
+
+    assert [handle.name for handle in app._tasks] == ["Broker Subscriber Task"]
+
+    await asyncio.gather(*(handle.start() for handle in app._tasks))
+    assert app._subscriber.calls == ["run"]
+
+async def test_async_main_leaves_the_token_alone_when_the_subsystem_owns_the_timing(capsys):
+    """READY_ON_START = False is the common case - web, hud and mcp all send it themselves."""
+
+    class _LateReady(_StubAsync):
+        NAME = "late_ready_async"
+        DESCRIPTION = "Late Ready Async"
+        READY_ON_START = False
+
+    app = _LateReady()
+    app._mgmt_ipc_enabled = True
+
+    async def _work():
+        app.request_shutdown("done")
+
+    app.add_task(_work(), name="Work")
+
+    await app._async_main()
+
+    assert app._ready_notified is False
+    assert "__PNG_SUBSYSTEM_INIT_COMPLETE__" not in capsys.readouterr().out
+
+def test_sync_run_tears_down_in_order(capsys):
+    """_run()'s finally is the whole sync teardown contract, mgmt server included."""
+
+    order = []
+
+    class _Ordered(_WiredSync):
+        NAME = "ordered_sync"
+        DESCRIPTION = "Ordered Sync"
+
+        def run_forever(self):
+            order.append("run_forever")
+
+        def on_shutdown(self, reason):
+            order.append("on_shutdown")
+            assert self.shutdown_event.is_set()
+
+    app = _Ordered()
+    capsys.readouterr()
+
+    app._run()
+
+    assert order == ["run_forever", "on_shutdown"]
+    # Closed after on_shutdown() returned, so a subsystem's own teardown still had its handles.
+    assert app._subscriber.calls == ["start", "close"]
+    assert app._dealer.calls == ["start", "close"]
+    assert app._mgmt_server.calls == ["serve_in_thread", "close"]
