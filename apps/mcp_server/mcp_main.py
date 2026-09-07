@@ -30,7 +30,8 @@ from typing import Any, Dict, Optional, override
 
 from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
-from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs, arg
+from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs, arg,
+                           run_subsystem)
 
 from .mcp_server import MCPBridge
 from .subscriber import McpSubscriber
@@ -194,4 +195,4 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
 def entry_point():
     """Entry point"""
 
-    McpSubsystem().main()
+    run_subsystem(McpSubsystem)

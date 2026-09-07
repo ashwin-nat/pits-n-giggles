@@ -25,7 +25,7 @@
 from typing import Any, Dict, override
 
 from lib.ipc import IpcPubSubBroker, IpcRouter
-from lib.subsystem import SubsystemArgs, SyncSubsystem
+from lib.subsystem import SubsystemArgs, SyncSubsystem, run_subsystem
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -94,4 +94,4 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
 def entry_point():
     """Entry point"""
 
-    BrokerSubsystem().main()
+    run_subsystem(BrokerSubsystem)

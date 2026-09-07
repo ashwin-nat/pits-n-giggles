@@ -17,7 +17,7 @@ import pytest
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
 from lib.ipc import PngAppId
 from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs,
-                           SyncSubsystem, arg)
+                           SyncSubsystem, arg, run_subsystem)
 from lib.subsystem.args import add_dataclass_args
 from lib.subsystem.base import ArgsT
 
@@ -1231,3 +1231,36 @@ def test_sync_run_tears_down_in_order(capsys):
     assert app._subscriber.calls == ["start", "close"]
     assert app._dealer.calls == ["start", "close"]
     assert app._mgmt_server.calls == ["serve_in_thread", "close"]
+
+def test_png_error_from_a_subclass_ctor_keeps_its_exit_code():
+    """A port conflict raised while constructing must still exit with its own code.
+
+    Regression: an entry point used to be `Subsystem().main()`, so construction raised before
+    main()'s funnel was entered. An escaped PngError is just an Exception, so the process
+    exited 1 - and the launcher maps 1 to the generic "Unknown" crash, losing the actionable
+    "UDP port in use, change Network -> F1 UDP Telemetry Port" dialog it registers for 102.
+    run_subsystem() puts construction inside the try, which is the whole point of it.
+    """
+
+    class _PortConflict(_StubSync):
+        NAME = "port_conflict"
+        DESCRIPTION = "Port Conflict"
+
+        def __init__(self):
+            super().__init__()
+            # Stands in for initTelemetryLayer() / IpcPubSubBroker() on a bound port.
+            raise PngError(102, "UDP telemetry port already in use")
+
+    with pytest.raises(SystemExit) as exc:
+        run_subsystem(_PortConflict)
+
+    assert exc.value.code == 102
+
+def test_run_subsystem_runs_a_healthy_subsystem():
+    """The normal path: construct, run to completion, tear down."""
+
+    class _Fine(_StubSync):
+        NAME = "runs_fine"
+        DESCRIPTION = "Runs Fine"
+
+    run_subsystem(_Fine)   # must not raise or exit

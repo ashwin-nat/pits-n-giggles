@@ -28,7 +28,9 @@ import pstats
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar, get_args
+from types import ModuleType
+from typing import (Any, ClassVar, Dict, Generic, NoReturn, Optional, TypeVar,
+                    get_args)
 
 from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_ipc_port_from_child,
@@ -178,7 +180,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         """
 
         # First, so the profile covers the whole boot - which is now most of the work.
-        self._profiler = self._start_profiler()
+        self._profiler: Optional[ModuleType] = self._start_profiler()
 
         self.args: ArgsT = self._parse_args()
         # The launcher's control channel, the pub/sub endpoints and the dealer are all built
@@ -192,20 +194,39 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         if self._mgmt_ipc_enabled:
             report_pid_from_child()
 
-        # Config is the one boot step that can meaningfully fail, so it gets the same
-        # treatment main() gives everything after it: a logged line and an exit code the
-        # launcher can read, rather than a traceback on stderr. It can only live here because
-        # the logger above already exists - and it has to unwind through on_exit(), since
-        # pre_boot() has run by now.
+        # Config is the boot step most likely to fail, and a bad file is a user problem rather
+        # than a crash - so it is reported and exited rather than thrown. It is handled here
+        # rather than in run_subsystem() because only here is the logger known to exist and
+        # pre_boot() known to have run.
         try:
             self.version: str = get_version()
             self.settings: PngSettings = load_config_from_json(
                 self.args.config_file, self.logger, fail_if_missing=self.CONFIG_REQUIRED)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception("Failed to load config: %s", e)
-            self.on_exit()
-            self._stop_profiler()
-            sys.exit(e.exit_code if isinstance(e, PngError) else 1)
+            self._report_fatal(e)
+
+    def _report_fatal(self, e: BaseException) -> NoReturn:
+        """Report a boot failure and exit with the code the launcher expects.
+
+        The launcher maps a child's exit code to a dialog - PngTelemetryPortInUseError's 102
+        becomes "UDP port in use" naming the setting to change. Letting the exception escape
+        instead would exit 1, which is the generic "Unknown" branch.
+
+        Call only once the logger exists and pre_boot() has run - the config load is the one
+        step that qualifies. Anything failing earlier than that has nothing to report through
+        and nothing to undo, and anything later is run_subsystem()'s to catch.
+
+        Args:
+            e (BaseException): The failure
+
+        Raises:
+            SystemExit: Always
+        """
+
+        self.logger.exception("Boot failed: %s", e)
+        self.on_exit()
+        self._stop_profiler()
+        sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
 
@@ -322,14 +343,14 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
-    def _start_profiler(self) -> Optional[Any]:  # pragma: no cover - dev tool, never on in prod
+    def _start_profiler(self) -> Optional[ModuleType]:  # pragma: no cover - dev tool, never on
         """Start yappi if this subsystem sets PROFILE. Wall clock, so I/O waits show up.
 
         yappi is imported inside the branch, so a normal boot neither imports it nor pays for
         it - which is what lets this sit in the constructor of every subsystem.
 
         Returns:
-            Optional[Any]: The yappi module while profiling, else None
+            Optional[ModuleType]: The yappi module while profiling, else None
         """
 
         if not self.PROFILE:
@@ -416,3 +437,27 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             self._stop_profiler()
 
         self.logger.info("%s subsystem exiting normally.", self.NAME)
+
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
+
+def run_subsystem(cls: type[PngSubsystem]) -> None:
+    """Construct a subsystem and run it. The whole body of an entry point.
+
+    Construction is inside the try on purpose. A subsystem binds its ports there - the
+    backend's UDP socket, the broker's XSUB/XPUB/ROUTER - and a conflict raises a PngError
+    carrying the exit code the launcher turns into an actionable dialog ("UDP port in use",
+    and which setting to change). main() cannot cover that: it only starts once construction
+    has already returned, so an escaped PngError would exit 1 and land in the launcher's
+    generic "Unknown" branch instead.
+
+    Nothing is logged here. There is no instance to log through when construction is what
+    failed, and the sites that raise these errors already log before raising.
+
+    Args:
+        cls (type[PngSubsystem]): The subsystem to run
+    """
+
+    try:
+        cls().main()
+    except PngError as e:
+        sys.exit(e.exit_code)

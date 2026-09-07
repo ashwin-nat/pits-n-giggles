@@ -29,7 +29,8 @@ from typing import Any, Dict, Optional, override
 
 from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
 from lib.ipc import PngAppId
-from lib.subsystem import PubSubRole, SubsystemArgs, SyncSubsystem
+from lib.subsystem import (PubSubRole, SubsystemArgs, SyncSubsystem,
+                           run_subsystem)
 
 from .ipc.dealer import register_dealer_routes
 from .ipc.mgmt import register_mgmt_routes
@@ -155,4 +156,4 @@ def entry_point():
     if sys.platform != 'win32':
         sys.exit(PNG_ERROR_CODE_UNSUPPORTED_OS)
 
-    HudSubsystem().main()
+    run_subsystem(HudSubsystem)

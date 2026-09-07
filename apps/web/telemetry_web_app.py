@@ -27,7 +27,8 @@ from typing import Any, Dict, override
 
 from lib.file_path import get_app_base_dir
 from lib.ipc import PngAppId
-from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs
+from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs,
+                           run_subsystem)
 from lib.version import get_version
 from lib.web_server import ClientType
 
@@ -138,4 +139,4 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
 def entry_point():
     """Entry point"""
 
-    WebSubsystem().main()
+    run_subsystem(WebSubsystem)

@@ -40,7 +40,8 @@ from apps.backend.state_mgmt_layer.intf import RaceInfoData
 from apps.backend.telemetry_layer import F1TelemetryHandler, initTelemetryLayer
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.ipc import PngAppId
-from lib.subsystem import AsyncSubsystem, PubSubRole, SubsystemArgs, arg
+from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs, arg,
+                           run_subsystem)
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
@@ -194,4 +195,4 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
 def entry_point():
     """Entry point"""
 
-    BackendSubsystem().main()
+    run_subsystem(BackendSubsystem)
