@@ -25,9 +25,9 @@ import struct
 from abc import ABC
 from typing import Any, Dict, Optional, Union
 
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
+                       F1SubPacketBase)
 from .common import SafetyCarEventType, SafetyCarType
-from .errors import UnsupportedValueError
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -51,13 +51,23 @@ class PacketEventData(F1PacketBase):
                                                             Refer PacketEventData.event_type_map
 
     """
-    class EventPacketType(F1BaseEnum):
+    class EventPacketType(F1RawValueEnum):
         """
         Enum class representing different event types.
+
+        An event code this codebase doesn't declare (the game adds new ones in patches)
+        casts to NONE rather than raising, with the code as it came off the wire kept in
+        `raw_value`. Test for one with `is_unknown()`, or for a declared code with
+        `isValid()`.
         """
 
         # None: No event
         NONE = "N/A"
+
+        # Alias of NONE, satisfying F1RawValueEnum's requirement for an UNKNOWN sentinel.
+        # An unrecognised event code is indistinguishable from "no event" on the wire -
+        # both carry no usable event details - so the two share a member.
+        UNKNOWN = "N/A"
 
         # Session Started: Sent when the session starts
         SESSION_STARTED = "SSTA"
@@ -1567,18 +1577,18 @@ class PacketEventData(F1PacketBase):
             packet (bytes): The incoming raw bytes
 
         Raises:
-            UnsupportedValueError: Unsupported event string code
+            struct.error: If the binary data does not match the expected format
         """
 
         super().__init__(header)
 
-        # Parse the event string and prep the enum. Decode with errors='replace' so that a
-        # non-ASCII code surfaces as an unsupported event type rather than a UnicodeDecodeError
+        # Parse the event string and prep the enum. Decoding with errors='replace' and
+        # casting through EventPacketType's unknown-value handling means an event code this
+        # codebase doesn't know about (a new one in a game patch) still yields a usable
+        # packet - m_eventCode compares equal to NONE, m_eventStringCode and
+        # m_eventCode.raw_value keep the code as it arrived - instead of dropping it
         self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(
             packet[:self.PACKET_LEN])[0].decode('ascii', errors='replace')
-        if not PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
-            self.m_eventCode = PacketEventData.EventPacketType.NONE
-            raise UnsupportedValueError("event string code", self.m_eventStringCode)
         self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
 
         # Parse the optional data, if any

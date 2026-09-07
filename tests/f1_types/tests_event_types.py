@@ -94,3 +94,47 @@ def test_collision_2026_roundtrip(severity: CollisionSeverity):
         },
     }
     assert not hasattr(parsed, "__dict__")
+
+
+# -------------------------------------- UNKNOWN EVENT CODES -----------------------------------------------------------
+
+def _parse_event_code(code: bytes, game_year: int = 25) -> PacketEventData:
+    """Build a raw event packet carrying an arbitrary 4-byte event code and parse it."""
+    header = _make_event_header(game_year)
+    return PacketEventData(header, code + b"\x00" * 32)
+
+
+@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW", b"1234"])
+def test_unknown_event_code_parses_instead_of_raising(code):
+    # The game adds event codes in patches; an undeclared one must still yield a usable
+    # packet rather than blowing up the parse
+    parsed = _parse_event_code(code)
+
+    assert parsed.m_eventCode == PacketEventData.EventPacketType.NONE
+    assert parsed.m_eventCode.is_unknown()
+    assert parsed.mEventDetails is None
+
+
+@pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW"])
+def test_unknown_event_code_is_preserved(code):
+    parsed = _parse_event_code(code)
+
+    assert parsed.m_eventStringCode == code.decode("ascii")
+    assert parsed.m_eventCode.raw_value == code.decode("ascii")
+    assert parsed.toJSON()["event-string-code"] == code.decode("ascii")
+
+
+def test_non_ascii_event_code_parses():
+    # Decoded with errors='replace', so a corrupt code degrades to an unknown event
+    # rather than a UnicodeDecodeError escaping the parser
+    parsed = _parse_event_code(b"\xff\xfe\xfd\xfc")
+
+    assert parsed.m_eventCode.is_unknown()
+    assert parsed.mEventDetails is None
+
+
+def test_known_event_codes_are_unaffected():
+    parsed = _parse_event_code(b"SSTA")
+
+    assert parsed.m_eventCode == PacketEventData.EventPacketType.SESSION_STARTED
+    assert not parsed.m_eventCode.is_unknown()
