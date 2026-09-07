@@ -27,6 +27,7 @@ from typing import Any, Dict, Optional, Union
 
 from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
 from .common import SafetyCarEventType, SafetyCarType
+from .errors import UnsupportedValueError
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -1566,18 +1567,19 @@ class PacketEventData(F1PacketBase):
             packet (bytes): The incoming raw bytes
 
         Raises:
-            TypeError: Unsupported event type
+            UnsupportedValueError: Unsupported event string code
         """
 
         super().__init__(header)
 
-        # Parse the event string and prep the enum
-        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(packet[:self.PACKET_LEN])[0].decode('ascii')
-        if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
-            self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
-        else:
+        # Parse the event string and prep the enum. Decode with errors='replace' so that a
+        # non-ASCII code surfaces as an unsupported event type rather than a UnicodeDecodeError
+        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(
+            packet[:self.PACKET_LEN])[0].decode('ascii', errors='replace')
+        if not PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
             self.m_eventCode = PacketEventData.EventPacketType.NONE
-            raise TypeError(f"Unsupported Event Type {self.m_eventCode}")
+            raise UnsupportedValueError("event string code", self.m_eventStringCode)
+        self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
 
         # Parse the optional data, if any
         if PacketEventData.event_type_map.get(self.m_eventCode):

@@ -22,6 +22,8 @@
 
 # ------------------------- IMPORTS -------------------------------------------------------------------------------------
 
+from typing import Any
+
 # ------------------------- ERROR CLASSES ------------------------------------------------------------------------------
 
 class InvalidPacketLengthError(Exception):
@@ -42,3 +44,17 @@ class PacketCountValidationError(Exception):
     """Raised when sub-packet count validation against max count fails"""
     def __init__(self, message):
         super().__init__(f"Packet count validation error. {message}")
+
+class UnsupportedValueError(Exception):
+    """
+    Raised when a packet field carries a value this codebase does not know how to handle,
+    and the packet cannot be meaningfully parsed without it.
+
+    Not necessarily corruption - the game introduces new values in patches. Prefer
+    F1BaseEnum.safeCast (or F1RawValueEnum) where an unknown value can be tolerated; raise
+    this only where parsing genuinely cannot continue.
+    """
+    def __init__(self, field: str, value: Any):
+        self.m_field = field
+        self.m_value = value
+        super().__init__(f"Unsupported value for {field}: {value!r}")
