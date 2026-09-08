@@ -26,8 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, override
 
 from lib.file_path import get_app_base_dir
-from lib.ipc import PngAppId
-from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs,
+from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
                            run_subsystem)
 from lib.version import get_version
 from lib.web_server import ClientType
@@ -51,7 +50,7 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     # it acts on.
     READY_ON_START = False
 
-    APP_ID = PngAppId.WEB
+    SUBSYS_ID = PngSubsysId.WEB
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 

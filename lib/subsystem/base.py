@@ -36,11 +36,11 @@ from lib.child_proc_mgmt import (notify_parent_init_complete,
                                  report_pid_from_child)
 from lib.config import PngSettings, load_config_from_json
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
-from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
 from lib.version import get_version
 
 from .args import SubsystemArgs, add_dataclass_args
+from .identity import PngSubsysId
 from .profiling import start_profiler, stop_profiler
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
@@ -86,8 +86,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # Which subsystem this is. The single identity declaration: the logger name, the management
     # IPC server name, the argparse description and - when DEALER is set - the ZMQ identity all
-    # come off it, so they cannot drift apart or be filled in inconsistently.
-    APP_ID: Optional[PngAppId] = None
+    # come off it, so they cannot drift apart or be filled in inconsistently. UNKNOWN rather
+    # than None, so every reader gets a PngSubsysId without narrowing an Optional first.
+    SUBSYS_ID: PngSubsysId = PngSubsysId.UNKNOWN
     # Resolved by __init_subclass__ from the type parameter - do NOT assign this by hand.
     # Subclass SubsystemArgs to add flags, then name the subclass as the type parameter; the
     # parser is built from its fields, so there is no add_args() hook.
@@ -124,8 +125,8 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         # concrete subclass skip the check.
         if cls.__dict__.get("ABSTRACT", False):
             return
-        if cls.APP_ID is None:
-            raise TypeError(f"{cls.__name__} must define: APP_ID")
+        if cls.SUBSYS_ID is PngSubsysId.UNKNOWN:
+            raise TypeError(f"{cls.__name__} must define: SUBSYS_ID")
 
     @classmethod
     def _resolve_args_cls(cls) -> None:
@@ -210,7 +211,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
         self.logger.exception("Boot failed: %s", e)
         self.on_exit()
-        stop_profiler(self._profiler, str(self.APP_ID), self.logger)
+        stop_profiler(self._profiler, str(self.SUBSYS_ID), self.logger)
         sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
@@ -238,7 +239,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             PngLogger: Logger. JSONL on stdout by default, which the launcher captures.
         """
 
-        return get_logger(str(self.APP_ID), self.args.debug, jsonl=True)
+        return get_logger(str(self.SUBSYS_ID), self.args.debug, jsonl=True)
 
     def should_run_mgmt_ipc(self) -> bool:
         """Whether this run talks to a launcher at all.
@@ -338,7 +339,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             ArgsT: Parsed args, of whatever type the class header named
         """
 
-        parser = argparse.ArgumentParser(description=str(self.APP_ID))
+        parser = argparse.ArgumentParser(description=str(self.SUBSYS_ID))
         add_dataclass_args(parser, self.ARGS)
         return self.ARGS(**vars(parser.parse_args()))
 
@@ -365,9 +366,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             sys.exit(1)
         finally:
             self.on_exit()
-            stop_profiler(self._profiler, str(self.APP_ID), self.logger)
+            stop_profiler(self._profiler, str(self.SUBSYS_ID), self.logger)
 
-        self.logger.info("%s subsystem exiting normally.", self.APP_ID)
+        self.logger.info("%s subsystem exiting normally.", self.SUBSYS_ID)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

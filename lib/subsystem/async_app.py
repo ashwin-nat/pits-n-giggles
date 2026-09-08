@@ -111,7 +111,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     A concrete subsystem declares its shape with class variables, all defined on
     PngSubsystem. Required:
 
-        APP_ID                   PngAppId member - the subsystem's whole identity: logger,
+        SUBSYS_ID                PngSubsysId member - the whole identity: logger,
                                  management IPC server, argparse, and the ZMQ dealer
 
     Optional. Each default is a real answer rather than a placeholder, so a subsystem that
@@ -124,7 +124,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
                                  SUBSCRIBER populates self.subscriber
         DEALER                   False; True populates self.dealer
 
-    APP_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
+    SUBSYS_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
     read where they are used, and the handle properties below assert if you reach for one
     this subsystem never declared.
     """
@@ -308,7 +308,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             return None
 
         self.logger.debug("Starting IPC server")
-        server = IpcServerAsync(name=str(self.APP_ID), logger=self.logger)
+        server = IpcServerAsync(name=str(self.SUBSYS_ID), logger=self.logger)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -363,7 +363,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         return IpcDealerAsync(
             host="127.0.0.1",
             port=self.settings.Network.broker_router_port,
-            identity=str(self.APP_ID),
+            identity=str(self.SUBSYS_ID),
             logger=self.logger,
         )
 
@@ -380,7 +380,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             self.add_task(self._subscriber.run(), name="Broker Subscriber Task")
 
         if self.DEALER:
-            self.add_task(self._dealer.start(), name=f"{self.APP_ID} Dealer Recv")
+            self.add_task(self._dealer.start(), name=f"{self.SUBSYS_ID} Dealer Recv")
 
         if self._mgmt_server is not None:
             self.add_task(self._mgmt_server.run(), name="IPC Server")

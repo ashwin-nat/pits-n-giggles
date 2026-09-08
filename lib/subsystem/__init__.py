@@ -49,6 +49,7 @@ than --config-file and --debug subclasses SubsystemArgs and points ARGS at the s
 from .args import SubsystemArgs, arg
 from .async_app import AddTask, AsyncSubsystem, SubsystemTask
 from .base import PngSubsystem, PubSubRole, run_subsystem
+from .identity import PngSubsysId
 from .sync_app import SyncSubsystem
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -57,6 +58,7 @@ __all__ = [
     "AddTask",
     "arg",
     "AsyncSubsystem",
+    "PngSubsysId",
     "PngSubsystem",
     "PubSubRole",
     "run_subsystem",

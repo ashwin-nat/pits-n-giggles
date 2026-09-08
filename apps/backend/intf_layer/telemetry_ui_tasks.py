@@ -28,7 +28,8 @@ from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
                                                 StreamOverlayData)
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync, PngAppId
+from lib.ipc import IpcDealerAsync, IpcPublisherAsync
+from lib.subsystem.identity import PngSubsysId
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -74,7 +75,7 @@ async def frontEndMessageTask(
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await dealer.fire(str(PngAppId.WEB), "frontend-update", message.toJSON())
+            await dealer.fire(str(PngSubsysId.WEB), "frontend-update", message.toJSON())
 
 async def hudInteractionTask(
     dealer: IpcDealerAsync,
@@ -88,4 +89,4 @@ async def hudInteractionTask(
 
     while not shutdown_event.is_set():
         if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())
+            await dealer.fire(str(PngSubsysId.HUD), str(message.m_message_type), message.toJSON())

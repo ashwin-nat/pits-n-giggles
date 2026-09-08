@@ -15,8 +15,7 @@ from typing import Generic
 import pytest
 
 from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
-from lib.ipc import PngAppId
-from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs,
+from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
                            SyncSubsystem, arg, run_subsystem)
 from lib.subsystem.args import add_dataclass_args
 from lib.subsystem.base import ArgsT
@@ -54,7 +53,7 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
     intermediate would swallow the type parameter and pin every leaf to SubsystemArgs.
     """
 
-    APP_ID = PngAppId.HUD
+    SUBSYS_ID = PngSubsysId.HUD
 
     # Counted by pre_boot() and on_exit(), both of which the base constructor can call before
     # this __init__ body runs - so they have to exist on the class, not be assigned down there.
@@ -96,7 +95,7 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
 class _StubAsync(AsyncSubsystem):
     """Minimal concrete AsyncSubsystem that never talks to a launcher."""
 
-    APP_ID = PngAppId.WEB
+    SUBSYS_ID = PngSubsysId.WEB
 
     def __init__(self):
         super().__init__()
@@ -221,18 +220,18 @@ class _FakeMgmtSync:
 
 # -------------------------------------- IDENTITY ----------------------------------------------------------------------
 
-def test_subclass_without_app_id_fails_at_import():
-    """A subsystem missing APP_ID is rejected when the class body is executed."""
+def test_subclass_without_subsys_id_fails_at_import():
+    """A subsystem missing SUBSYS_ID is rejected when the class body is executed."""
 
-    with pytest.raises(TypeError, match="APP_ID"):
+    with pytest.raises(TypeError, match="SUBSYS_ID"):
         class _NoAppId(SyncSubsystem):  # pylint: disable=unused-variable
             pass
 
 def test_abstract_intermediates_are_exempt():
     """AsyncSubsystem and SyncSubsystem carry behaviour but are not subsystems themselves."""
 
-    assert AsyncSubsystem.APP_ID is None
-    assert SyncSubsystem.APP_ID is None
+    assert AsyncSubsystem.SUBSYS_ID is PngSubsysId.UNKNOWN
+    assert SyncSubsystem.SUBSYS_ID is PngSubsysId.UNKNOWN
 
 def test_abstract_flag_does_not_inherit():
     """A concrete subclass of an ABSTRACT intermediate still has to fill the fields in."""
@@ -240,7 +239,7 @@ def test_abstract_flag_does_not_inherit():
     class _Intermediate(SyncSubsystem):
         ABSTRACT = True
 
-    with pytest.raises(TypeError, match="APP_ID"):
+    with pytest.raises(TypeError, match="SUBSYS_ID"):
         class _Concrete(_Intermediate):  # pylint: disable=unused-variable
             pass
 
@@ -253,7 +252,7 @@ def test_missing_hook_cannot_be_instantiated(missing):
     """
 
     body = {
-        "APP_ID": PngAppId.HUD,
+        "SUBSYS_ID": PngSubsysId.HUD,
         # Without this the constructor would bind a real management IPC socket and report a
         # port to a launcher that is not there.
         "should_run_mgmt_ipc": lambda self: False,
@@ -515,7 +514,7 @@ def test_mgmt_refuses_when_mgmt_ipc_is_off():
 
 # -------------------------------------- DATA PLANE DECLARATION --------------------------------------------------------
 
-def test_dealer_identity_comes_from_app_id():
+def test_dealer_identity_comes_from_subsys_id():
     """Declaring DEALER is enough: the identity is the one the subsystem already has.
 
     There is nothing to validate and nothing to disagree - a dealer cannot be built under a
@@ -525,7 +524,7 @@ def test_dealer_identity_comes_from_app_id():
     class _WithDealer(_StubSync):
         DEALER = True
 
-    assert str(_WithDealer.APP_ID) == "hud"
+    assert str(_WithDealer.SUBSYS_ID) == "hud"
 
 def test_data_plane_defaults_to_nothing():
     """A subsystem that declares no data plane gets none - the broker's case."""
@@ -885,7 +884,7 @@ class _WiredAsync(_StubAsync):
     """
 
     PUBSUB = PubSubRole.PUBLISHER
-    APP_ID = PngAppId.BACKEND
+    SUBSYS_ID = PngSubsysId.BACKEND
     DEALER = True
 
     def should_run_mgmt_ipc(self):
@@ -1014,7 +1013,7 @@ class _WiredSync(_StubSync):
     """A sync subsystem whose endpoints are fakes. See _WiredAsync."""
 
     PUBSUB = PubSubRole.SUBSCRIBER
-    APP_ID = PngAppId.HUD
+    SUBSYS_ID = PngSubsysId.HUD
     DEALER = True
 
     def should_run_mgmt_ipc(self):

@@ -46,7 +46,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     A concrete subsystem declares its shape with class variables, all defined on
     PngSubsystem. Required:
 
-        APP_ID                   PngAppId member - the subsystem's whole identity: logger,
+        SUBSYS_ID                PngSubsysId member - the whole identity: logger,
                                  management IPC server, argparse, and the ZMQ dealer
 
     Optional. Each default is a real answer rather than a placeholder, so a subsystem that
@@ -60,7 +60,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
                                  PUBLISHER raises - there is no sync publisher
         DEALER                   False; True populates self.dealer
 
-    APP_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
+    SUBSYS_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
     read where they are used, and the handle properties below assert if you reach for one
     this subsystem never declared.
     """
@@ -179,7 +179,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             return None
 
         self.logger.debug("Starting IPC server")
-        server = IpcServerSync(name=str(self.APP_ID), logger=self.logger)
+        server = IpcServerSync(name=str(self.SUBSYS_ID), logger=self.logger)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -230,7 +230,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         return IpcDealerClient(
             host="127.0.0.1",
             port=self.settings.Network.broker_router_port,
-            identity=str(self.APP_ID),
+            identity=str(self.SUBSYS_ID),
             logger=self.logger,
         )
 
@@ -238,9 +238,9 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         """Start a servicing thread for each IPC endpoint, and register it for join."""
 
         if self._subscriber is not None:
-            self._spawn_thread(self._subscriber.start, f"{self.APP_ID}-Subscriber")
+            self._spawn_thread(self._subscriber.start, f"{self.SUBSYS_ID}-Subscriber")
         if self._dealer is not None:
-            self._spawn_thread(self._dealer.start, f"{self.APP_ID}-Dealer")
+            self._spawn_thread(self._dealer.start, f"{self.SUBSYS_ID}-Dealer")
         if self._mgmt_server is not None:
             # This one starts itself
             self.add_thread(self._mgmt_server.serve_in_thread())

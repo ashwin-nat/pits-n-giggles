@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2026] [Ashwin Natarajan]
+# Copyright (c) [2024] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,31 +20,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Who each launcher-managed subsystem is.
+
+Lives with the lifecycle base rather than under lib/ipc/, because this is identity, not
+transport: lib/ipc/ never reads it, and only ever re-exported it. The router/dealer channel is
+one consumer of the id among several, not its owner.
+
+Imports nothing but enum, so a module that needs only to *address* a subsystem can import this
+directly without pulling in the rest of lib/subsystem.
+"""
+
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from enum import Enum
 
-# TODO: move PngAppId out to a top-level module (e.g. lib/app_id.py).
-# It is subsystem identity, not a router/dealer detail - lib/subsystem/ now declares it as
-# APP_ID on every subsystem, so consumers with no interest in the router still have to reach
-# into lib/ipc/router_dealer/ to name themselves. The enum stays re-exported from lib.ipc
-# either way, so the move is an import change rather than an API change.
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-class PngAppId(Enum):
+class PngSubsysId(Enum):
     """The launcher-managed subsystems, and the one identity each of them has.
 
     This is the single source of truth for who a subsystem is: the logger name, the management
     IPC server name, the argparse description, and - for the four that speak router/dealer -
-    the ZMQ identity all come off it. PngSubsystem declares one member as APP_ID and reads
+    the ZMQ identity all come off it. PngSubsystem declares one member as SUBSYS_ID and reads
     everything else from that, so the names cannot drift apart.
 
     The set is closed on purpose: these five are the processes the launcher spawns, so being a
     subsystem and having a member here are the same fact. PIT_WALL is the broker - it has an
     identity like the rest, but it is the pub/sub fabric itself and never addresses, or is
     addressed by, anyone over the router.
+
+    UNKNOWN is the base class's default, so that SUBSYS_ID is a PngSubsysId at every point rather
+    than an Optional that every reader has to narrow. A concrete subsystem that leaves it there
+    is rejected at import - see PngSubsystem.__init_subclass__.
     """
+
+    UNKNOWN = "unknown"
 
     BACKEND = "backend"
     HUD = "hud"

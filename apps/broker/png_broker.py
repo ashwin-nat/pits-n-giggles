@@ -24,8 +24,8 @@
 
 from typing import Any, Dict, override
 
-from lib.ipc import IpcPubSubBroker, IpcRouter, PngAppId
-from lib.subsystem import SubsystemArgs, SyncSubsystem, run_subsystem
+from lib.ipc import IpcPubSubBroker, IpcRouter
+from lib.subsystem import PngSubsysId, SubsystemArgs, SyncSubsystem, run_subsystem
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -36,7 +36,7 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
     Declares no data plane of its own: this process *is* the fabric, not a participant in it.
     """
 
-    APP_ID = PngAppId.PIT_WALL
+    SUBSYS_ID = PngSubsysId.PIT_WALL
 
     PROFILE = False
 

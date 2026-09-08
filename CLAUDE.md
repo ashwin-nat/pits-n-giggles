@@ -109,7 +109,7 @@ Reusable modules consumed by multiple apps:
 - **`telemetry_manager/`** — Async UDP/TCP receiver manager and packet parser factory
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
 - **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
-- **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngAppId` for app identity
+- **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngSubsysId` for app identity
 - **`subsystem/`** — Child-side lifecycle base for launcher-managed subsystems (`PngSubsystem`, `AsyncSubsystem`, `SyncSubsystem`) — see "Subsystem Lifecycle" below
 - **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers
 - **`tyre_wear_extrapolator/`** — Linear regression tyre wear prediction
@@ -160,7 +160,7 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - **Req/Rep** — `IpcClientSync` sends requests; `IpcServerSync`/`IpcServerAsync` handle them. Used for synchronous control commands (e.g. launcher → child process).
 - **Router/Dealer** — `IpcRouter` (server-side) paired with `IpcDealerClient`/`IpcDealerAsync` (client-side) for async many-to-one messaging.
 
-`PngAppId` enumerates all app identities; IPC sockets bind to OS-assigned ephemeral ports. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
+`PngSubsysId` enumerates all app identities; IPC sockets bind to OS-assigned ephemeral ports. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
 
 ### Subsystem Lifecycle
 
@@ -174,7 +174,7 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     DESCRIPTION = "unified web app"
     CONFIG_REQUIRED = True
     READY_ON_START = False     # notify_ready() called later, by hand
-    APP_ID = PngAppId.WEB               # dealer identity; required when DEALER is True
+    SUBSYS_ID = PngSubsysId.WEB               # dealer identity; required when DEALER is True
     PUBSUB = PubSubRole.SUBSCRIBER      # populates self.subscriber (PUBLISHER -> self.publisher)
     DEALER = True                       # populates self.dealer
 ```

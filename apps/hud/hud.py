@@ -28,8 +28,7 @@ import threading
 from typing import Any, Dict, Optional, override
 
 from lib.error_status import PNG_ERROR_CODE_UNSUPPORTED_OS
-from lib.ipc import PngAppId
-from lib.subsystem import (PubSubRole, SubsystemArgs, SyncSubsystem,
+from lib.subsystem import (PngSubsysId, PubSubRole, SubsystemArgs, SyncSubsystem,
                            run_subsystem)
 
 from .ipc.dealer import register_dealer_routes
@@ -50,7 +49,7 @@ class HudSubsystem(SyncSubsystem[SubsystemArgs]):
     # Qt loop, well after the constructor returns. WindowManager emits the token from there.
     READY_ON_START = False
 
-    APP_ID = PngAppId.HUD
+    SUBSYS_ID = PngSubsysId.HUD
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 

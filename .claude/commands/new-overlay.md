@@ -369,7 +369,7 @@ HUD_<ACTION>_NOTIFICATION = "hud-<action>-notification"
 
 `hudInteractionTask` in `apps/backend/intf_layer/telemetry_ui_tasks.py` forwards **any** ITC message on the `hud-notifier` queue to the HUD generically:
 ```python
-await dealer.fire(str(PngAppId.HUD), str(message.m_message_type), message.toJSON())
+await dealer.fire(str(PngSubsysId.HUD), str(message.m_message_type), message.toJSON())
 ```
 The router/dealer topic is the `MessageType` value you added in B6b, so no per-event mapping is needed. (This step used to edit a `client_event_mappings` table in `telemetry_web_server.py`, back when the HUD was a socketio client. That file and that mechanism are gone.)
 

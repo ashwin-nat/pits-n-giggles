@@ -28,10 +28,9 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, override
 
-from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
-from lib.subsystem import (AsyncSubsystem, PubSubRole, SubsystemArgs, arg,
-                           run_subsystem)
+from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
+                           arg, run_subsystem)
 
 from .mcp_server import MCPBridge
 from .subscriber import McpSubscriber
@@ -71,7 +70,7 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
     # token itself once the bind succeeds. In stdio mode notify_ready() is a no-op anyway.
     READY_ON_START = False
 
-    APP_ID = PngAppId.MCP
+    SUBSYS_ID = PngSubsysId.MCP
     PUBSUB = PubSubRole.SUBSCRIBER
     DEALER = True
 
@@ -130,10 +129,10 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
 
         # TODO: make rotating logging configurable
         if self.args.managed:
-            logger = get_logger(str(self.APP_ID), self.args.debug, jsonl=True)
+            logger = get_logger(str(self.SUBSYS_ID), self.args.debug, jsonl=True)
         else:
             logger = get_logger(
-                str(self.APP_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
+                str(self.SUBSYS_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
 
         logging.getLogger("mcp.server").setLevel(logging.WARNING)
         logging.getLogger("mcp.client").setLevel(logging.WARNING)
