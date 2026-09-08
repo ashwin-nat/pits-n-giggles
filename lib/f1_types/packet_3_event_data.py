@@ -28,6 +28,7 @@ from typing import Any, Dict, Optional, Union
 from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
                        F1SubPacketBase)
 from .common import SafetyCarEventType, SafetyCarType
+from .errors import UnsupportedValueError
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -40,8 +41,9 @@ class EventType(F1SubPacketBase, ABC):
 class PacketEventData(F1PacketBase):
     """Class representing the incoming PacketEventData message
 
-    An event code this codebase doesn't declare parses to EventPacketType.NONE rather than
-    raising - see EventPacketType.
+    An event code this codebase doesn't declare raises UnsupportedValueError, so the parser
+    factory drops the packet and logs the code rather than yielding an object with no
+    event in it.
 
     Attributes:
         m_header (PacketHeader) - Parsed header object
@@ -59,6 +61,9 @@ class PacketEventData(F1PacketBase):
         casts to NONE rather than raising, with the code as it came off the wire kept in
         `raw_value`. Test for one with `is_unknown()`, or for a declared code with
         `isValid()`.
+
+        Note this cast is deliberately tolerant so the offending code can be named in a
+        log; PacketEventData itself still rejects the packet - see its docstring.
         """
 
         # None: No event
@@ -1687,19 +1692,27 @@ class PacketEventData(F1PacketBase):
             packet (bytes): The incoming raw bytes
 
         Raises:
+            UnsupportedValueError: The event string code is one this codebase doesn't declare
             struct.error: If the binary data does not match the expected format
         """
 
         super().__init__(header)
 
-        # Parse the event string and prep the enum. Decoding with errors='replace' and
-        # casting through EventPacketType's unknown-value handling means an event code this
-        # codebase doesn't know about (a new one in a game patch) still yields a usable
-        # packet - m_eventCode compares equal to NONE, m_eventStringCode and
-        # m_eventCode.raw_value keep the code as it arrived - instead of dropping it
+        # Decode with errors='replace' and cast through EventPacketType's unknown-value
+        # handling, so a non-ASCII or unrecognised code arrives here as a normal unknown
+        # member rather than as a UnicodeDecodeError or a ValueError
         self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(
             packet[:self.PACKET_LEN])[0].decode('ascii', errors='replace')
         self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
+
+        # The packet itself is well formed here - it is the object that would not be. Every
+        # consumer assumes a PacketEventData identifies an event, so an unrecognised code
+        # leaves nothing to act on, and a None event would be indistinguishable from a
+        # legitimately payload-free one like CHEQUERED_FLAG. Raise instead, so the parser
+        # factory drops the packet and logs the code that arrived - which is how a newly
+        # added game event gets noticed rather than silently ignored
+        if self.m_eventCode.is_unknown():
+            raise UnsupportedValueError("event string code", self.m_eventStringCode)
 
         # Parse the optional data, if any
         if PacketEventData.event_type_map.get(self.m_eventCode):

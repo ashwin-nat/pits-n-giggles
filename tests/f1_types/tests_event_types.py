@@ -20,10 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import logging
 import random
 import pytest
 
-from lib.f1_types import PacketEventData, PacketHeader, F1PacketType
+from lib.f1_types import (F1PacketType, PacketEventData, PacketHeader,
+                          UnsupportedValueError)
+from lib.telemetry_manager.factory import PacketParserFactory
 from tests.f1_types.tests_parser_base import F1TypesTest
 
 Collision = PacketEventData.Collision
@@ -105,32 +108,42 @@ def _parse_event_code(code: bytes, game_year: int = 25) -> PacketEventData:
 
 
 @pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW", b"1234"])
-def test_unknown_event_code_parses_instead_of_raising(code):
-    # The game adds event codes in patches; an undeclared one must still yield a usable
-    # packet rather than blowing up the parse
-    parsed = _parse_event_code(code)
-
-    assert parsed.m_eventCode == PacketEventData.EventPacketType.NONE
-    assert parsed.m_eventCode.is_unknown()
-    assert parsed.mEventDetails is None
+def test_unknown_event_code_is_rejected(code):
+    # A PacketEventData is only meaningful if it identifies an event. An undeclared code
+    # leaves nothing to act on, so the object must not be constructed at all
+    with pytest.raises(UnsupportedValueError):
+        _parse_event_code(code)
 
 
 @pytest.mark.parametrize("code", [b"ZZZZ", b"XYZW"])
-def test_unknown_event_code_is_preserved(code):
-    parsed = _parse_event_code(code)
+def test_unknown_event_code_is_named_in_the_error(code):
+    # The offending code has to reach the log, otherwise a newly added game event is
+    # indistinguishable from silence
+    with pytest.raises(UnsupportedValueError) as exc_info:
+        _parse_event_code(code)
 
-    assert parsed.m_eventStringCode == code.decode("ascii")
-    assert parsed.m_eventCode.raw_value == code.decode("ascii")
-    assert parsed.toJSON()["event-string-code"] == code.decode("ascii")
+    assert exc_info.value.m_value == code.decode("ascii")
+    assert code.decode("ascii") in str(exc_info.value)
 
 
-def test_non_ascii_event_code_parses():
-    # Decoded with errors='replace', so a corrupt code degrades to an unknown event
-    # rather than a UnicodeDecodeError escaping the parser
-    parsed = _parse_event_code(b"\xff\xfe\xfd\xfc")
+def test_non_ascii_event_code_is_rejected():
+    # Decoded with errors='replace', so a corrupt code arrives as an ordinary unknown code
+    # and is rejected the same way, rather than as a UnicodeDecodeError
+    with pytest.raises(UnsupportedValueError):
+        _parse_event_code(b"\xff\xfe\xfd\xfc")
 
-    assert parsed.m_eventCode.is_unknown()
-    assert parsed.mEventDetails is None
+
+def test_unknown_event_code_does_not_pass_the_parser_factory():
+    # The factory has to swallow it: an exception escaping here would kill the receive loop
+    logger = logging.getLogger("tests_event_types")
+    logger.addHandler(logging.NullHandler())
+    factory = PacketParserFactory(set(F1PacketType), logger)
+
+    header = _make_event_header(game_year=25)
+    raw = header.to_bytes() + b"XYZW" + b"\x00" * 32
+
+    assert factory.parse(raw) is None
+    assert "XYZW" in factory.last_failure_reason
 
 
 def test_known_event_codes_are_unaffected():
