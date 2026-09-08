@@ -44,8 +44,6 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     router/dealer channel.
     """
 
-    NAME = "web"
-    DESCRIPTION = "unified web app"
     CONFIG_REQUIRED = True
     # The web app is only genuinely up once its socket is listening, which happens well after
     # construction returns. WebServer emits the token from its post-start callback instead - the

@@ -46,8 +46,6 @@ class HudSubsystem(SyncSubsystem[SubsystemArgs]):
     control commands. Windows-only - see entry_point().
     """
 
-    NAME = "hud"
-    DESCRIPTION = "HUD"
     # The HUD is only genuinely up once its overlay windows are shown, which happens inside the
     # Qt loop, well after the constructor returns. WindowManager emits the token from there.
     READY_ON_START = False

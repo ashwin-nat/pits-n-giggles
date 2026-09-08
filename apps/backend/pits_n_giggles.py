@@ -58,8 +58,6 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
     router/dealer channel, and apps/web owns all browser-facing serving.
     """
 
-    NAME = "backend"
-    DESCRIPTION = "Realtime Telemetry Server"
 
     APP_ID = PngAppId.BACKEND
     PUBSUB = PubSubRole.PUBLISHER

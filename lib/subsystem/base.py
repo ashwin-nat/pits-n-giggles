@@ -24,7 +24,6 @@
 
 import argparse
 import os
-import pstats
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum, auto
@@ -40,9 +39,9 @@ from lib.error_status import PNG_LOST_CONN_TO_PARENT, PngError
 from lib.ipc import PngAppId
 from lib.logger import PngLogger, get_logger
 from lib.version import get_version
-from meta.meta import APP_NAME
 
 from .args import SubsystemArgs, add_dataclass_args
+from .profiling import start_profiler, stop_profiler
 
 # -------------------------------------- TYPES -------------------------------------------------------------------------
 
@@ -85,10 +84,10 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- IDENTITY ------------------------------------------------------------------
 
-    # Logger name and management IPC server name, e.g. "backend", "hud", "web"
-    NAME: Optional[str] = None
-    # argparse description suffix, e.g. "Realtime Telemetry Server"
-    DESCRIPTION: Optional[str] = None
+    # Which subsystem this is. The single identity declaration: the logger name, the management
+    # IPC server name, the argparse description and - when DEALER is set - the ZMQ identity all
+    # come off it, so they cannot drift apart or be filled in inconsistently.
+    APP_ID: Optional[PngAppId] = None
     # Resolved by __init_subclass__ from the type parameter - do NOT assign this by hand.
     # Subclass SubsystemArgs to add flags, then name the subclass as the type parameter; the
     # parser is built from its fields, so there is no add_args() hook.
@@ -98,10 +97,6 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     # Whether the base emits the init-complete token as soon as the run starts. False for
     # subsystems that are only genuinely ready later - see notify_ready().
     READY_ON_START: bool = True
-    # Management IPC heartbeat tuning. These were only ever pinned by the broker; the rest
-    # took library defaults that happened to match.
-    HEARTBEAT_TIMEOUT: float = 5.0
-    MAX_MISSED_HEARTBEATS: int = 3
     # Dev aid. Every concrete subsystem restates this as False next to its other class vars, so
     # turning a profile on is a one-word edit in the file you are already reading; set it here
     # instead to cover all five at once.
@@ -113,8 +108,6 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     # ordering is preserved. It never registers a route and never merges these objects' stats
     # into the payload: topic names, handler bodies and collect_stats() stay subsystem-owned.
 
-    # Dealer identity on the router. Required when DEALER is True.
-    APP_ID: Optional[PngAppId] = None
     # Which end of the pub/sub fabric this subsystem sits on. PUBLISHER populates
     # self.publisher, SUBSCRIBER populates self.subscriber; only ever one of the two.
     PUBSUB: PubSubRole = PubSubRole.NONE
@@ -122,7 +115,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     DEALER: bool = False
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Fail at import time if a subclass forgot to fill in the mandatory identity fields"""
+        """Fail at import time if a subclass did not say which subsystem it is"""
 
         super().__init_subclass__(**kwargs)
         cls._resolve_args_cls()
@@ -131,16 +124,8 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         # concrete subclass skip the check.
         if cls.__dict__.get("ABSTRACT", False):
             return
-        missing = [name for name, value in (
-            ("NAME", cls.NAME),
-            ("DESCRIPTION", cls.DESCRIPTION),
-        ) if value is None]
-        if missing:
-            raise TypeError(f"{cls.__name__} must define: {', '.join(missing)}")
-        # A dealer connects to the router under an identity. Getting this wrong is a one-typo
-        # bug with confusing symptoms, so it is a declaration rather than a call argument.
-        if cls.DEALER and cls.APP_ID is None:
-            raise TypeError(f"{cls.__name__} sets DEALER but no APP_ID")
+        if cls.APP_ID is None:
+            raise TypeError(f"{cls.__name__} must define: APP_ID")
 
     @classmethod
     def _resolve_args_cls(cls) -> None:
@@ -180,7 +165,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         """
 
         # First, so the profile covers the whole boot - which is now most of the work.
-        self._profiler: Optional[ModuleType] = self._start_profiler()
+        self._profiler: Optional[ModuleType] = start_profiler(self.PROFILE)
 
         self.args: ArgsT = self._parse_args()
         # The launcher's control channel, the pub/sub endpoints and the dealer are all built
@@ -225,7 +210,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
         self.logger.exception("Boot failed: %s", e)
         self.on_exit()
-        self._stop_profiler()
+        stop_profiler(self._profiler, str(self.APP_ID), self.logger)
         sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
@@ -253,7 +238,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             PngLogger: Logger. JSONL on stdout by default, which the launcher captures.
         """
 
-        return get_logger(self.NAME, self.args.debug, jsonl=True)
+        return get_logger(str(self.APP_ID), self.args.debug, jsonl=True)
 
     def should_run_mgmt_ipc(self) -> bool:
         """Whether this run talks to a launcher at all.
@@ -343,60 +328,6 @@ class PngSubsystem(ABC, Generic[ArgsT]):
 
     # -------------------------------------- BOOT ----------------------------------------------------------------------
 
-    def _start_profiler(self) -> Optional[ModuleType]:  # pragma: no cover - dev tool, never on
-        """Start yappi if this subsystem sets PROFILE. Wall clock, so I/O waits show up.
-
-        yappi is imported inside the branch, so a normal boot neither imports it nor pays for
-        it - which is what lets this sit in the constructor of every subsystem.
-
-        Returns:
-            Optional[ModuleType]: The yappi module while profiling, else None
-        """
-
-        if not self.PROFILE:
-            return None
-
-        import yappi  # pylint: disable=import-outside-toplevel
-        yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
-        yappi.start()
-        return yappi
-
-    def _stop_profiler(self) -> None:  # pragma: no cover - dev tool, never on in prod
-        """Write the profile out. Runs after teardown, so it covers the whole process.
-
-        Files are named after the subsystem: profiling two at once would otherwise have them
-        overwrite each other.
-        """
-
-        if self._profiler is None:
-            return
-
-        self._profiler.stop()
-
-        # Function-level stats for SnakeViz
-        prof_path = f"{self.NAME}_yappi.prof"
-        self._profiler.get_func_stats().save(prof_path, type="pstat")
-
-        # Don't strip directories, so full paths are included
-        # If you want the paths to be fully visible, just skip strip_dirs()
-        stats = pstats.Stats(prof_path)
-        stats.sort_stats("cumulative")
-
-        # Save as HTML
-        with open(f"{self.NAME}_yappi.html", "w", encoding="utf-8") as f:
-            f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
-            stats.stream = f
-            stats.print_stats()
-            f.write("</pre></body></html>")
-
-        # Save as TXT
-        with open(f"{self.NAME}_yappi.txt", "w", encoding="utf-8") as f:
-            stats.stream = f
-            stats.print_stats()
-
-        # Not print(): stdout is the launcher's JSONL channel, and MCP's stdio transport.
-        self.logger.info("Wrote profile: %s_yappi.{prof,txt,html}", self.NAME)
-
     def _parse_args(self) -> ArgsT:
         """Build the parser from ARGS' fields and parse into an instance of it.
 
@@ -407,7 +338,7 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             ArgsT: Parsed args, of whatever type the class header named
         """
 
-        parser = argparse.ArgumentParser(description=f"{APP_NAME} {self.DESCRIPTION}")
+        parser = argparse.ArgumentParser(description=str(self.APP_ID))
         add_dataclass_args(parser, self.ARGS)
         return self.ARGS(**vars(parser.parse_args()))
 
@@ -434,9 +365,9 @@ class PngSubsystem(ABC, Generic[ArgsT]):
             sys.exit(1)
         finally:
             self.on_exit()
-            self._stop_profiler()
+            stop_profiler(self._profiler, str(self.APP_ID), self.logger)
 
-        self.logger.info("%s subsystem exiting normally.", self.NAME)
+        self.logger.info("%s subsystem exiting normally.", self.APP_ID)
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 

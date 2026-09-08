@@ -64,8 +64,6 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
     telemetry over pub/sub and pulls detail from the backend over the router/dealer channel.
     """
 
-    NAME = "mcp"
-    DESCRIPTION = "MCP server"
     CONFIG_REQUIRED = True
     # The HTTP transport is only genuinely up once MCPBridge has bound its port, which happens
     # inside run(), well after construction. A port conflict raises from there, so notifying early
@@ -132,10 +130,10 @@ class McpSubsystem(AsyncSubsystem[McpArgs]):
 
         # TODO: make rotating logging configurable
         if self.args.managed:
-            logger = get_logger(self.NAME, self.args.debug, jsonl=True)
+            logger = get_logger(str(self.APP_ID), self.args.debug, jsonl=True)
         else:
             logger = get_logger(
-                self.NAME, self.args.debug, jsonl=False, file_path=self.args.log_file)
+                str(self.APP_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
 
         logging.getLogger("mcp.server").setLevel(logging.WARNING)
         logging.getLogger("mcp.client").setLevel(logging.WARNING)

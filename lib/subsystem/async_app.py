@@ -111,9 +111,8 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     A concrete subsystem declares its shape with class variables, all defined on
     PngSubsystem. Required:
 
-        NAME                     logger and management IPC server name, e.g. "web"
-        DESCRIPTION              argparse description suffix, e.g. "unified web app"
-        APP_ID                   PngAppId dealer identity - required only when DEALER is True
+        APP_ID                   PngAppId member - the subsystem's whole identity: logger,
+                                 management IPC server, argparse, and the ZMQ dealer
 
     Optional. Each default is a real answer rather than a placeholder, so a subsystem that
     wants it says nothing:
@@ -124,12 +123,10 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         PUBSUB                   PubSubRole.NONE; PUBLISHER populates self.publisher,
                                  SUBSCRIBER populates self.subscriber
         DEALER                   False; True populates self.dealer
-        HEARTBEAT_TIMEOUT        5.0 seconds
-        MAX_MISSED_HEARTBEATS    3
 
-    NAME, DESCRIPTION and the DEALER/APP_ID pairing are enforced at import time by
-    PngSubsystem.__init_subclass__. The rest are only read where they are used, and the
-    handle properties below assert if you reach for one this subsystem never declared.
+    APP_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
+    read where they are used, and the handle properties below assert if you reach for one
+    this subsystem never declared.
     """
 
     ABSTRACT = True
@@ -192,11 +189,17 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         self._tasks.append(handle)
         return handle
 
-    def adopt_task(self, task: asyncio.Task) -> SubsystemTask:
+    def _adopt_task(self, task: asyncio.Task) -> SubsystemTask:
         """Register a task that its own owner already created.
 
-        Prefer add_task(). This is for the one case that cannot hand over a bare coroutine:
-        IpcPublisherAsync creates its reconnect task itself, and close() cancels it.
+        Private because add_task() is the registration API and this has one caller - the
+        publisher, below. Make it public again if a subsystem ever owns a task of its own that
+        it cannot hand over as a coroutine.
+
+        IpcPublisherAsync creates its reconnect task itself, and close() cancels it, so it
+        cannot hand over a bare coroutine. Giving it a run() coroutine instead was tried and
+        reverted: start() has 19 callers in tests/ipc/tests_pubsub.py that rely on it returning
+        immediately.
 
         Such a task still belongs in the registry, so that it is logged with the rest and so
         that the subsystem comes down if it dies unexpectedly. The cost is that cancelling it
@@ -305,12 +308,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             return None
 
         self.logger.debug("Starting IPC server")
-        server = IpcServerAsync(
-            name=self.NAME,
-            max_missed_heartbeats=self.MAX_MISSED_HEARTBEATS,
-            heartbeat_timeout=self.HEARTBEAT_TIMEOUT,
-            logger=self.logger,
-        )
+        server = IpcServerAsync(name=str(self.APP_ID), logger=self.logger)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -377,12 +375,12 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         """
 
         if self._publisher is not None:
-            self.adopt_task(self._publisher.get_task())
+            self._adopt_task(self._publisher.get_task())
         if self._subscriber is not None:
             self.add_task(self._subscriber.run(), name="Broker Subscriber Task")
 
         if self.DEALER:
-            self.add_task(self._dealer.start(), name=f"{self.NAME} Dealer Recv")
+            self.add_task(self._dealer.start(), name=f"{self.APP_ID} Dealer Recv")
 
         if self._mgmt_server is not None:
             self.add_task(self._mgmt_server.run(), name="IPC Server")

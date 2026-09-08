@@ -54,8 +54,7 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
     intermediate would swallow the type parameter and pin every leaf to SubsystemArgs.
     """
 
-    NAME = "stub_sync"
-    DESCRIPTION = "Stub Sync Subsystem"
+    APP_ID = PngAppId.HUD
 
     # Counted by pre_boot() and on_exit(), both of which the base constructor can call before
     # this __init__ body runs - so they have to exist on the class, not be assigned down there.
@@ -97,8 +96,7 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
 class _StubAsync(AsyncSubsystem):
     """Minimal concrete AsyncSubsystem that never talks to a launcher."""
 
-    NAME = "stub_async"
-    DESCRIPTION = "Stub Async Subsystem"
+    APP_ID = PngAppId.WEB
 
     def __init__(self):
         super().__init__()
@@ -223,25 +221,18 @@ class _FakeMgmtSync:
 
 # -------------------------------------- IDENTITY ----------------------------------------------------------------------
 
-def test_subclass_without_name_fails_at_import():
-    """A subsystem missing NAME is rejected when the class body is executed."""
+def test_subclass_without_app_id_fails_at_import():
+    """A subsystem missing APP_ID is rejected when the class body is executed."""
 
-    with pytest.raises(TypeError, match="NAME"):
-        class _NoName(SyncSubsystem):  # pylint: disable=unused-variable
-            DESCRIPTION = "No name"
-
-def test_subclass_without_description_fails_at_import():
-    """A subsystem missing DESCRIPTION is rejected when the class body is executed."""
-
-    with pytest.raises(TypeError, match="DESCRIPTION"):
-        class _NoDescription(SyncSubsystem):  # pylint: disable=unused-variable
-            NAME = "no_description"
+    with pytest.raises(TypeError, match="APP_ID"):
+        class _NoAppId(SyncSubsystem):  # pylint: disable=unused-variable
+            pass
 
 def test_abstract_intermediates_are_exempt():
     """AsyncSubsystem and SyncSubsystem carry behaviour but are not subsystems themselves."""
 
-    assert AsyncSubsystem.NAME is None
-    assert SyncSubsystem.NAME is None
+    assert AsyncSubsystem.APP_ID is None
+    assert SyncSubsystem.APP_ID is None
 
 def test_abstract_flag_does_not_inherit():
     """A concrete subclass of an ABSTRACT intermediate still has to fill the fields in."""
@@ -249,9 +240,9 @@ def test_abstract_flag_does_not_inherit():
     class _Intermediate(SyncSubsystem):
         ABSTRACT = True
 
-    with pytest.raises(TypeError, match="NAME"):
+    with pytest.raises(TypeError, match="APP_ID"):
         class _Concrete(_Intermediate):  # pylint: disable=unused-variable
-            DESCRIPTION = "Concrete"
+            pass
 
 @pytest.mark.parametrize("missing", ["collect_stats", "on_shutdown", "run_forever"])
 def test_missing_hook_cannot_be_instantiated(missing):
@@ -262,8 +253,7 @@ def test_missing_hook_cannot_be_instantiated(missing):
     """
 
     body = {
-        "NAME": "incomplete",
-        "DESCRIPTION": "Incomplete",
+        "APP_ID": PngAppId.HUD,
         # Without this the constructor would bind a real management IPC socket and report a
         # port to a launcher that is not there.
         "should_run_mgmt_ipc": lambda self: False,
@@ -305,8 +295,7 @@ def test_args_subclass_extras_merge_with_base_flags(monkeypatch):
         replay_server: bool = arg(False, "Enable the TCP replay debug server")
 
     class _WithExtras(_StubSync[_ExtraArgs]):
-        NAME = "with_extras"
-        DESCRIPTION = "With Extras"
+        pass
 
     monkeypatch.setattr(sys, "argv", ["prog", "--debug", "--replay-server", "--config-file", "other.json"])
     args = _WithExtras().args
@@ -328,8 +317,7 @@ def test_underscored_field_becomes_dashed_flag(monkeypatch):
         replay_server: bool = arg(False, "help")
 
     class _WithExtras(_StubSync[_ExtraArgs]):
-        NAME = "dashed"
-        DESCRIPTION = "Dashed"
+        pass
 
     monkeypatch.setattr(sys, "argv", ["prog", "--replay_server"])
     with pytest.raises(SystemExit):
@@ -344,8 +332,7 @@ def test_unparameterized_subclass_falls_back_to_base_args(monkeypatch):
     """
 
     class _NoExtras(_StubSync):
-        NAME = "no_extras"
-        DESCRIPTION = "No Extras"
+        pass
 
     assert _NoExtras.ARGS is SubsystemArgs
 
@@ -367,8 +354,7 @@ def test_non_bool_field_is_coerced_from_its_annotation(monkeypatch, argv, expect
         retries: int = arg(0, "How many times to retry")
 
     class _WithInt(_StubSync[_IntArgs]):
-        NAME = "with_int"
-        DESCRIPTION = "With Int"
+        pass
 
     monkeypatch.setattr(sys, "argv", argv)
     assert _WithInt().args.retries == expected
@@ -381,8 +367,7 @@ def test_non_bool_field_rejects_a_value_of_the_wrong_type(monkeypatch):
         retries: int = arg(0, "How many times to retry")
 
     class _WithInt(_StubSync[_IntArgs]):
-        NAME = "with_bad_int"
-        DESCRIPTION = "With Bad Int"
+        pass
 
     monkeypatch.setattr(sys, "argv", ["prog", "--retries", "abc"])
     with pytest.raises(SystemExit):
@@ -436,8 +421,6 @@ def test_ready_not_emitted_when_subsystem_owns_the_timing(capsys, monkeypatch):
     """READY_ON_START = False leaves the token for the subsystem to send itself."""
 
     class _LateReady(_StubSync):
-        NAME = "late_ready"
-        DESCRIPTION = "Late Ready"
         READY_ON_START = False
 
     app = _LateReady()
@@ -532,25 +515,17 @@ def test_mgmt_refuses_when_mgmt_ipc_is_off():
 
 # -------------------------------------- DATA PLANE DECLARATION --------------------------------------------------------
 
-def test_dealer_without_app_id_fails_at_import():
-    """A dealer needs an identity on the router; a typo there is a confusing bug."""
+def test_dealer_identity_comes_from_app_id():
+    """Declaring DEALER is enough: the identity is the one the subsystem already has.
 
-    with pytest.raises(TypeError, match="APP_ID"):
-        class _NoAppId(_StubSync):  # pylint: disable=unused-variable
-            NAME = "no_app_id"
-            DESCRIPTION = "No App Id"
-            DEALER = True
+    There is nothing to validate and nothing to disagree - a dealer cannot be built under a
+    different name than the logger and the management IPC server use.
+    """
 
-def test_dealer_with_app_id_is_accepted():
-    """Declaring both is enough - the base builds the dealer from settings."""
-
-    class _WithAppId(_StubSync):
-        NAME = "with_app_id"
-        DESCRIPTION = "With App Id"
+    class _WithDealer(_StubSync):
         DEALER = True
-        APP_ID = PngAppId.HUD
 
-    assert _WithAppId.APP_ID is PngAppId.HUD
+    assert str(_WithDealer.APP_ID) == "hud"
 
 def test_data_plane_defaults_to_nothing():
     """A subsystem that declares no data plane gets none - the broker's case."""
@@ -577,8 +552,6 @@ def test_sync_publisher_is_rejected():
     """There is no sync publisher; declaring one is a mistake worth surfacing loudly."""
 
     class _SyncPublisher(_StubSync):
-        NAME = "sync_publisher"
-        DESCRIPTION = "Sync Publisher"
         PUBSUB = PubSubRole.PUBLISHER
 
     with pytest.raises(NotImplementedError, match="sync publisher"):
@@ -590,8 +563,6 @@ def test_png_error_exits_with_its_own_code(monkeypatch):
     """PngError -> SystemExit(e.exit_code)."""
 
     class _Failing(_StubSync):
-        NAME = "failing"
-        DESCRIPTION = "Failing"
 
         def run_forever(self):
             raise PngError(42, "boom")
@@ -615,8 +586,7 @@ def test_config_failure_in_the_constructor_exits_with_a_code(monkeypatch, raised
     """
 
     class _BadConfig(_StubSync):
-        NAME = "bad_config"
-        DESCRIPTION = "Bad Config"
+        pass
 
     def _raise(*_args, **_kwargs):
         raise raised
@@ -634,8 +604,6 @@ def test_on_exit_runs_when_the_constructor_fails_on_config(monkeypatch):
     calls = []
 
     class _BadConfig(_StubSync):
-        NAME = "bad_config_on_exit"
-        DESCRIPTION = "Bad Config On Exit"
 
         def on_exit(self):
             calls.append("on_exit")
@@ -654,8 +622,6 @@ def test_bare_exception_exits_one(monkeypatch):
     """An unexpected exception -> SystemExit(1), logged with a traceback."""
 
     class _Failing(_StubSync):
-        NAME = "failing_bare"
-        DESCRIPTION = "Failing Bare"
 
         def run_forever(self):
             raise ValueError("unexpected")
@@ -670,8 +636,6 @@ def test_on_exit_runs_even_when_the_run_raises(monkeypatch):
     """on_exit() is guaranteed, so pre_boot()'s side effects are always undone."""
 
     class _Failing(_StubSync):
-        NAME = "failing_on_exit"
-        DESCRIPTION = "Failing Post Boot"
 
         def run_forever(self):
             raise ValueError("unexpected")
@@ -700,8 +664,6 @@ def test_sync_teardown_runs_after_run_forever(monkeypatch):
     order = []
 
     class _Ordered(_StubSync):
-        NAME = "ordered"
-        DESCRIPTION = "Ordered"
 
         def __init__(self):
             super().__init__()
@@ -723,8 +685,6 @@ def test_sync_teardown_runs_even_when_run_forever_raises(monkeypatch):
     """A crash in the main loop still tears the subsystem down."""
 
     class _Crashing(_StubSync):
-        NAME = "crashing"
-        DESCRIPTION = "Crashing"
 
         def run_forever(self):
             raise RuntimeError("crash")
@@ -793,8 +753,6 @@ async def test_request_shutdown_does_not_block(monkeypatch):
     """
 
     class _SlowTeardown(_StubAsync):
-        NAME = "slow_teardown"
-        DESCRIPTION = "Slow Teardown"
 
         async def on_shutdown(self, reason):
             await asyncio.sleep(0.5)
@@ -909,7 +867,7 @@ async def test_adopt_task_wraps_a_task_its_owner_created():
     app = _StubAsync()
     task = asyncio.create_task(asyncio.sleep(0), name="Publisher Reconnect")
 
-    handle = app.adopt_task(task)
+    handle = app._adopt_task(task)  # pylint: disable=protected-access
 
     assert handle in app._tasks
     assert handle.name == "Publisher Reconnect"
@@ -926,8 +884,6 @@ class _WiredAsync(_StubAsync):
     constructor wiring runs - and so no test here needs settings or a real port.
     """
 
-    NAME = "wired_async"
-    DESCRIPTION = "Wired Async"
     PUBSUB = PubSubRole.PUBLISHER
     APP_ID = PngAppId.BACKEND
     DEALER = True
@@ -966,7 +922,7 @@ async def test_register_ipc_tasks_picks_the_right_call_per_endpoint(capsys):
     app._register_ipc_tasks()
 
     assert [handle.name for handle in app._tasks] == [
-        "Publisher Reconnect", "wired_async Dealer Recv", "IPC Server"]
+        "Publisher Reconnect", "backend Dealer Recv", "IPC Server"]
     # The publisher hands over a live task; the other two hand over coroutines, which have not
     # run yet.
     assert app._publisher.calls == ["get_task"]
@@ -986,8 +942,6 @@ async def test_close_data_plane_awaits_or_calls_as_each_endpoint_requires(capsys
     """
 
     class _BothEnds(_WiredAsync):
-        NAME = "both_ends"
-        DESCRIPTION = "Both Ends"
 
         def _build_subscriber(self):
             return _FakeSubscriberAsync()
@@ -1016,8 +970,7 @@ async def test_async_main_starts_the_registry_and_notifies_ready(capsys):
     ran = []
 
     class _App(_StubAsync):
-        NAME = "async_main"
-        DESCRIPTION = "Async Main"
+        pass
 
     app = _App()
     app._mgmt_ipc_enabled = True    # so notify_ready() actually emits its token
@@ -1060,8 +1013,6 @@ async def test_async_main_requests_shutdown_when_the_gather_is_cancelled():
 class _WiredSync(_StubSync):
     """A sync subsystem whose endpoints are fakes. See _WiredAsync."""
 
-    NAME = "wired_sync"
-    DESCRIPTION = "Wired Sync"
     PUBSUB = PubSubRole.SUBSCRIBER
     APP_ID = PngAppId.HUD
     DEALER = True
@@ -1099,7 +1050,7 @@ def test_start_ipc_threads_spawns_one_per_endpoint(capsys):
     app._start_ipc_threads()
 
     assert [thread.name for thread in app._threads] == [
-        "wired_sync-Subscriber", "wired_sync-Dealer", "fake-mgmt"]
+        "hud-Subscriber", "hud-Dealer", "fake-mgmt"]
     assert app._mgmt_server.calls == ["serve_in_thread"]
 
     for thread in app._threads:
@@ -1165,8 +1116,6 @@ async def test_subscriber_end_is_wired_the_same_way(capsys):
     does not."""
 
     class _SubEnd(_StubAsync):
-        NAME = "sub_end"
-        DESCRIPTION = "Sub End"
         PUBSUB = PubSubRole.SUBSCRIBER
 
         def _build_subscriber(self):
@@ -1188,8 +1137,6 @@ async def test_async_main_leaves_the_token_alone_when_the_subsystem_owns_the_tim
     """READY_ON_START = False is the common case - web, hud and mcp all send it themselves."""
 
     class _LateReady(_StubAsync):
-        NAME = "late_ready_async"
-        DESCRIPTION = "Late Ready Async"
         READY_ON_START = False
 
     app = _LateReady()
@@ -1211,8 +1158,6 @@ def test_sync_run_tears_down_in_order(capsys):
     order = []
 
     class _Ordered(_WiredSync):
-        NAME = "ordered_sync"
-        DESCRIPTION = "Ordered Sync"
 
         def run_forever(self):
             order.append("run_forever")
@@ -1243,8 +1188,6 @@ def test_png_error_from_a_subclass_ctor_keeps_its_exit_code():
     """
 
     class _PortConflict(_StubSync):
-        NAME = "port_conflict"
-        DESCRIPTION = "Port Conflict"
 
         def __init__(self):
             super().__init__()
@@ -1260,7 +1203,6 @@ def test_run_subsystem_runs_a_healthy_subsystem():
     """The normal path: construct, run to completion, tear down."""
 
     class _Fine(_StubSync):
-        NAME = "runs_fine"
-        DESCRIPTION = "Runs Fine"
+        pass
 
     run_subsystem(_Fine)   # must not raise or exit

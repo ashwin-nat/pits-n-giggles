@@ -46,9 +46,8 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     A concrete subsystem declares its shape with class variables, all defined on
     PngSubsystem. Required:
 
-        NAME                     logger and management IPC server name, e.g. "hud"
-        DESCRIPTION              argparse description suffix, e.g. "HUD"
-        APP_ID                   PngAppId dealer identity - required only when DEALER is True
+        APP_ID                   PngAppId member - the subsystem's whole identity: logger,
+                                 management IPC server, argparse, and the ZMQ dealer
 
     Optional. Each default is a real answer rather than a placeholder, so a subsystem that
     wants it says nothing - the broker declares none of these, because being the fabric
@@ -60,12 +59,10 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         PUBSUB                   PubSubRole.NONE; SUBSCRIBER populates self.subscriber.
                                  PUBLISHER raises - there is no sync publisher
         DEALER                   False; True populates self.dealer
-        HEARTBEAT_TIMEOUT        5.0 seconds
-        MAX_MISSED_HEARTBEATS    3
 
-    NAME, DESCRIPTION and the DEALER/APP_ID pairing are enforced at import time by
-    PngSubsystem.__init_subclass__. The rest are only read where they are used, and the
-    handle properties below assert if you reach for one this subsystem never declared.
+    APP_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
+    read where they are used, and the handle properties below assert if you reach for one
+    this subsystem never declared.
     """
 
     ABSTRACT = True
@@ -182,12 +179,7 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             return None
 
         self.logger.debug("Starting IPC server")
-        server = IpcServerSync(
-            name=self.NAME,
-            max_missed_heartbeats=self.MAX_MISSED_HEARTBEATS,
-            heartbeat_timeout=self.HEARTBEAT_TIMEOUT,
-            logger=self.logger,
-        )
+        server = IpcServerSync(name=str(self.APP_ID), logger=self.logger)
         self.report_mgmt_ipc_port(server.port)
         self.logger.debug("Started IPC server on port %d", server.port)
 
@@ -246,9 +238,9 @@ class SyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         """Start a servicing thread for each IPC endpoint, and register it for join."""
 
         if self._subscriber is not None:
-            self._spawn_thread(self._subscriber.start, f"{self.NAME}-Subscriber")
+            self._spawn_thread(self._subscriber.start, f"{self.APP_ID}-Subscriber")
         if self._dealer is not None:
-            self._spawn_thread(self._dealer.start, f"{self.NAME}-Dealer")
+            self._spawn_thread(self._dealer.start, f"{self.APP_ID}-Dealer")
         if self._mgmt_server is not None:
             # This one starts itself
             self.add_thread(self._mgmt_server.serve_in_thread())

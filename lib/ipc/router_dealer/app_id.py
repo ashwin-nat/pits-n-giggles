@@ -33,11 +33,24 @@ from enum import Enum
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class PngAppId(Enum):
-    """Fixed ZMQ identities for PNG apps that connect to the router."""
+    """The launcher-managed subsystems, and the one identity each of them has.
+
+    This is the single source of truth for who a subsystem is: the logger name, the management
+    IPC server name, the argparse description, and - for the four that speak router/dealer -
+    the ZMQ identity all come off it. PngSubsystem declares one member as APP_ID and reads
+    everything else from that, so the names cannot drift apart.
+
+    The set is closed on purpose: these five are the processes the launcher spawns, so being a
+    subsystem and having a member here are the same fact. PIT_WALL is the broker - it has an
+    identity like the rest, but it is the pub/sub fabric itself and never addresses, or is
+    addressed by, anyone over the router.
+    """
+
     BACKEND = "backend"
     HUD = "hud"
     MCP = "mcp"
     WEB = "web"
+    PIT_WALL = "pit_wall"
 
     def __str__(self):
         return self.value
