@@ -153,31 +153,31 @@ def test_known_event_codes_are_unaffected():
     assert not parsed.m_eventCode.is_unknown()
 
 
-# -------------------------------------- PARTIAL MODE ENABLED ----------------------------------------------------------
+# -------------------------------------- PARTIAL AERO MODE ENABLED -----------------------------------------------------
 
-PartialModeEnabled = PacketEventData.PartialModeEnabled
-PartialModeReason = PacketEventData.PartialModeEnabled.Reason
+PartialAeroModeEnabled = PacketEventData.PartialAeroModeEnabled
+PartialAeroModeReason = PacketEventData.PartialAeroModeEnabled.Reason
 
 
-def _roundtrip_partial_mode(header: PacketHeader, reason_byte: int) -> PacketEventData:
-    """Serialize a PartialModeEnabled event to bytes and parse it back."""
-    details = PartialModeEnabled(bytes([reason_byte]), header.m_packetFormat)
+def _roundtrip_partial_aero_mode(header: PacketHeader, reason_byte: int) -> PacketEventData:
+    """Serialize a PartialAeroModeEnabled event to bytes and parse it back."""
+    details = PartialAeroModeEnabled(bytes([reason_byte]), header.m_packetFormat)
     generated = PacketEventData.from_values(
-        header, PacketEventData.EventPacketType.PARTIAL_MODE_ENABLED, details)
+        header, PacketEventData.EventPacketType.PARTIAL_AERO_MODE_ENABLED, details)
     raw = generated.to_bytes(include_header=True)
     parsed_header = PacketHeader(raw[:PacketHeader.PACKET_LEN])
     return PacketEventData(parsed_header, raw[PacketHeader.PACKET_LEN:])
 
 
 @pytest.mark.parametrize("reason", [
-    PartialModeReason.WET_TRACK,
-    PartialModeReason.SAFETY_CAR_DEPLOYED,
-    PartialModeReason.RED_FLAG,
+    PartialAeroModeReason.WET_TRACK,
+    PartialAeroModeReason.SAFETY_CAR_DEPLOYED,
+    PartialAeroModeReason.RED_FLAG,
 ])
-def test_partial_mode_enabled_roundtrip(reason):
-    parsed = _roundtrip_partial_mode(_make_event_header(game_year=25), reason.value)
+def test_partial_aero_mode_enabled_roundtrip(reason):
+    parsed = _roundtrip_partial_aero_mode(_make_event_header(game_year=25), reason.value)
 
-    assert parsed.m_eventCode == PacketEventData.EventPacketType.PARTIAL_MODE_ENABLED
+    assert parsed.m_eventCode == PacketEventData.EventPacketType.PARTIAL_AERO_MODE_ENABLED
     assert parsed.mEventDetails.m_reason == reason
     assert not parsed.mEventDetails.m_reason.is_unknown()
     assert parsed.toJSON() == {
@@ -188,19 +188,19 @@ def test_partial_mode_enabled_roundtrip(reason):
 
 
 @pytest.mark.parametrize("reason_byte", [3, 9, 200])
-def test_partial_mode_enabled_unknown_reason_roundtrips(reason_byte):
+def test_partial_aero_mode_enabled_unknown_reason_roundtrips(reason_byte):
     # An undeclared reason must survive the round trip as the byte that arrived, not
     # collapse onto the UNKNOWN sentinel's own value
-    parsed = _roundtrip_partial_mode(_make_event_header(game_year=25), reason_byte)
+    parsed = _roundtrip_partial_aero_mode(_make_event_header(game_year=25), reason_byte)
 
-    assert parsed.mEventDetails.m_reason == PartialModeReason.UNKNOWN
+    assert parsed.mEventDetails.m_reason == PartialAeroModeReason.UNKNOWN
     assert parsed.mEventDetails.m_reason.is_unknown()
     assert parsed.mEventDetails.m_reason.raw_value == reason_byte
     assert parsed.mEventDetails.to_bytes(2025) == bytes([reason_byte])
 
 
 @pytest.mark.parametrize("code, event_type", [
-    ("PMDI", PacketEventData.EventPacketType.PARTIAL_MODE_DISABLED),
+    ("PMDI", PacketEventData.EventPacketType.PARTIAL_AERO_MODE_DISABLED),
     ("OVEN", PacketEventData.EventPacketType.OVERTAKE_MODE_ENABLED),
     ("OVDI", PacketEventData.EventPacketType.OVERTAKE_MODE_DISABLED),
 ])

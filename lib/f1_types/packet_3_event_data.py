@@ -137,11 +137,11 @@ class PacketEventData(F1PacketBase):
         # Collion: Inter-car collision event
         COLLISION = "COLL"
 
-        # Partial Mode enabled: Race control have enabled Partial mode
-        PARTIAL_MODE_ENABLED = "PMEN"
+        # Partial Aero Mode enabled: Race control have enabled Partial aero mode
+        PARTIAL_AERO_MODE_ENABLED = "PMEN"
 
-        # Partial Mode disabled: Race control have disabled Partial mode
-        PARTIAL_MODE_DISABLED = "PMDI"
+        # Partial Aero Mode disabled: Race control have disabled Partial aero mode
+        PARTIAL_AERO_MODE_DISABLED = "PMDI"
 
         # Overtake enabled: Race control have enabled Overtake mode
         OVERTAKE_MODE_ENABLED = "OVEN"
@@ -1552,13 +1552,13 @@ class PacketEventData(F1PacketBase):
                 packet_format
             )
 
-    class PartialModeEnabled(EventType):
+    class PartialAeroModeEnabled(EventType):
         """
         The class representing the PARTIAL MODE ENABLED event. This is sent when race control
-        enables Partial mode.
+        enables Partial aero mode.
 
         Attributes:
-            m_reason (Reason): The reason Partial mode was enabled
+            m_reason (Reason): The reason Partial aero mode was enabled
         """
 
         COMPILED_PACKET_STRUCT = struct.Struct("<B")
@@ -1569,7 +1569,7 @@ class PacketEventData(F1PacketBase):
         )
 
         class Reason(F1RawValueEnum):
-            """The reason Partial mode was enabled.
+            """The reason Partial aero mode was enabled.
 
             The spec declares 0-2; anything else casts to UNKNOWN while keeping the
             incoming byte in `raw_value`.
@@ -1582,18 +1582,18 @@ class PacketEventData(F1PacketBase):
             UNKNOWN = 255
 
             def __str__(self):
-                if self == PacketEventData.PartialModeEnabled.Reason.UNKNOWN:
+                if self == PacketEventData.PartialAeroModeEnabled.Reason.UNKNOWN:
                     return f"Unknown ({self.raw_value})"
                 return self.name.replace("_", " ").title()
 
             @classmethod
-            def safeCast(cls, value: int) -> "PacketEventData.PartialModeEnabled.Reason":
+            def safeCast(cls, value: int) -> "PacketEventData.PartialAeroModeEnabled.Reason":
                 """Safely cast an integer to a Reason enum, returning UNKNOWN for invalid values."""
-                return super().safeCast(value, PacketEventData.PartialModeEnabled.Reason.UNKNOWN)
+                return super().safeCast(value, PacketEventData.PartialAeroModeEnabled.Reason.UNKNOWN)
 
         def __init__(self, data: bytes, _packet_format: int) -> None:
             """
-            Initializes a PartialModeEnabled object by unpacking the provided binary data.
+            Initializes a PartialAeroModeEnabled object by unpacking the provided binary data.
 
             Parameters:
                 data (bytes): Binary data to be unpacked.
@@ -1604,37 +1604,37 @@ class PacketEventData(F1PacketBase):
             """
 
             self.m_reason = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])[0]
-            self.m_reason = PacketEventData.PartialModeEnabled.Reason.safeCast(self.m_reason)
+            self.m_reason = PacketEventData.PartialAeroModeEnabled.Reason.safeCast(self.m_reason)
 
         def __str__(self) -> str:
             """
-            Returns a string representation of the PartialModeEnabled object.
+            Returns a string representation of the PartialAeroModeEnabled object.
 
             Returns:
                 str: String representation of the object.
             """
 
-            return f"PartialModeEnabled(reason={str(self.m_reason)})"
+            return f"PartialAeroModeEnabled(reason={str(self.m_reason)})"
 
         def toJSON(self) -> Dict[str, Any]:
             """
-            Convert the PartialModeEnabled instance to a JSON-compatible dictionary.
+            Convert the PartialAeroModeEnabled instance to a JSON-compatible dictionary.
 
             Returns:
-                Dict[str, Any]: JSON-compatible dictionary representing the PartialModeEnabled instance.
+                Dict[str, Any]: JSON-compatible dictionary representing the PartialAeroModeEnabled instance.
             """
 
             return {"reason": str(self.m_reason)}
 
-        def __eq__(self, other: "PacketEventData.PartialModeEnabled") -> bool:
+        def __eq__(self, other: "PacketEventData.PartialAeroModeEnabled") -> bool:
             """
-            Check if two PartialModeEnabled objects are equal.
+            Check if two PartialAeroModeEnabled objects are equal.
 
             Args:
-                other (PacketEventData.PartialModeEnabled): The other object to compare with.
+                other (PacketEventData.PartialAeroModeEnabled): The other object to compare with.
 
             Returns:
-                bool: True if the PartialModeEnabled objects are equal, False otherwise.
+                bool: True if the PartialAeroModeEnabled objects are equal, False otherwise.
             """
 
             return self.m_reason == other.m_reason
@@ -1667,10 +1667,10 @@ class PacketEventData(F1PacketBase):
         EventPacketType.OVERTAKE: Overtake,
         EventPacketType.SAFETY_CAR: SafetyCarEvent,
         EventPacketType.COLLISION: Collision,
-        EventPacketType.PARTIAL_MODE_ENABLED: PartialModeEnabled,
+        EventPacketType.PARTIAL_AERO_MODE_ENABLED: PartialAeroModeEnabled,
         # No payload struct in the spec for these three - the union isn't meaningfully
         # interpreted, same as CHEQUERED_FLAG/LIGHTS_OUT
-        EventPacketType.PARTIAL_MODE_DISABLED: None,
+        EventPacketType.PARTIAL_AERO_MODE_DISABLED: None,
         EventPacketType.OVERTAKE_MODE_ENABLED: None,
         EventPacketType.OVERTAKE_MODE_DISABLED: None,
     }
