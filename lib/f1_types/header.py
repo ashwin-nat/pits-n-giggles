@@ -263,3 +263,12 @@ class PacketHeader:
                            self.m_sessionTime, self.m_frameIdentifier,
                            self.m_overallFrameIdentifier, self.m_playerCarIndex,
                            self.m_secondaryPlayerCarIndex)
+
+    @property
+    def game_version(self) -> str:
+        """Returns the game version as a string in the format "X.Y".
+
+        Returns:
+            str: The game version.
+        """
+        return f"{self.m_gameMajorVersion}.{self.m_gameMinorVersion}"

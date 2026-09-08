@@ -36,7 +36,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, InvalidPacketLengthError,
                           PacketMotionExData, PacketParsingError,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData)
+                          PacketTyreSetsData, UnsupportedValueError)
 from lib.socket_receiver import TcpTransport, TelemetryTransport, UdpTransport
 
 from .exceptions import UnsupportedPacketFormat, UnsupportedPacketType
@@ -115,7 +115,8 @@ class PacketParserFactory:
         payload_raw = raw_packet[PacketHeader.PACKET_LEN:]
         try:
             packet = parser_cls(header, payload_raw)
-        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError, struct.error) as e:
+        except (InvalidPacketLengthError, PacketParsingError, PacketCountValidationError,
+                UnsupportedValueError, ValueError, TypeError, struct.error) as e:
             self._last_failure_reason = f"Packet parsing error: {str(e)}"
             self._logger.error("Cannot parse packet of type %s. Error = %s",
                                 str(header.m_packetId), str(e))

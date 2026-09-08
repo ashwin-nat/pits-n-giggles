@@ -553,7 +553,8 @@ class F1TelemetryHandler:
                 # game emits in some states (e.g. spectating). Some of these have been linked
                 # to reports of bogus lap data, so drop rather than merge it into a real
                 # session's history.
-                self.m_logger.warning(
+                # Make this silent because it seems to be very common in the game.
+                self.m_logger.silent_warning(
                     "Dropping SESSION_HISTORY packet with UID 0. Car index %d, frame %d, num laps: %d",
                     packet.m_carIdx, packet.m_header.m_frameIdentifier, packet.m_numLaps)
                 return

@@ -25,8 +25,10 @@ import struct
 from abc import ABC
 from typing import Any, Dict, Optional, Union
 
-from .base_pkt import F1BaseEnum, F1PacketBase, F1SubPacketBase
+from .base_pkt import (F1BaseEnum, F1PacketBase, F1RawValueEnum,
+                       F1SubPacketBase)
 from .common import SafetyCarEventType, SafetyCarType
+from .errors import UnsupportedValueError
 from .header import PacketHeader
 
 # --------------------- CLASS DEFINITIONS --------------------------------------
@@ -39,8 +41,9 @@ class EventType(F1SubPacketBase, ABC):
 class PacketEventData(F1PacketBase):
     """Class representing the incoming PacketEventData message
 
-    Raises:
-        TypeError: Unsupported event type
+    An event code this codebase doesn't declare raises UnsupportedValueError, so the parser
+    factory drops the packet and logs the code rather than yielding an object with no
+    event in it.
 
     Attributes:
         m_header (PacketHeader) - Parsed header object
@@ -50,13 +53,26 @@ class PacketEventData(F1PacketBase):
                                                             Refer PacketEventData.event_type_map
 
     """
-    class EventPacketType(F1BaseEnum):
+    class EventPacketType(F1RawValueEnum):
         """
         Enum class representing different event types.
+
+        An event code this codebase doesn't declare (the game adds new ones in patches)
+        casts to NONE rather than raising, with the code as it came off the wire kept in
+        `raw_value`. Test for one with `is_unknown()`, or for a declared code with
+        `isValid()`.
+
+        Note this cast is deliberately tolerant so the offending code can be named in a
+        log; PacketEventData itself still rejects the packet - see its docstring.
         """
 
         # None: No event
         NONE = "N/A"
+
+        # Alias of NONE, satisfying F1RawValueEnum's requirement for an UNKNOWN sentinel.
+        # An unrecognised event code is indistinguishable from "no event" on the wire -
+        # both carry no usable event details - so the two share a member.
+        UNKNOWN = "N/A"
 
         # Session Started: Sent when the session starts
         SESSION_STARTED = "SSTA"
@@ -120,6 +136,18 @@ class PacketEventData(F1PacketBase):
 
         # Collion: Inter-car collision event
         COLLISION = "COLL"
+
+        # Partial Aero Mode enabled: Race control have enabled Partial aero mode
+        PARTIAL_AERO_MODE_ENABLED = "PMEN"
+
+        # Partial Aero Mode disabled: Race control have disabled Partial aero mode
+        PARTIAL_AERO_MODE_DISABLED = "PMDI"
+
+        # Overtake enabled: Race control have enabled Overtake mode
+        OVERTAKE_MODE_ENABLED = "OVEN"
+
+        # Overtake disabled: Race control have disabled Overtake mode
+        OVERTAKE_MODE_DISABLED = "OVDI"
 
     class FastestLap(EventType):
         """
@@ -1524,6 +1552,98 @@ class PacketEventData(F1PacketBase):
                 packet_format
             )
 
+    class PartialAeroModeEnabled(EventType):
+        """
+        The class representing the PARTIAL MODE ENABLED event. This is sent when race control
+        enables Partial aero mode.
+
+        Attributes:
+            m_reason (Reason): The reason Partial aero mode was enabled
+        """
+
+        COMPILED_PACKET_STRUCT = struct.Struct("<B")
+        PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "m_reason",
+        )
+
+        class Reason(F1RawValueEnum):
+            """The reason Partial aero mode was enabled.
+
+            The spec declares 0-2; anything else casts to UNKNOWN while keeping the
+            incoming byte in `raw_value`.
+            """
+
+            WET_TRACK = 0
+            SAFETY_CAR_DEPLOYED = 1
+            RED_FLAG = 2
+
+            UNKNOWN = 255
+
+            def __str__(self):
+                if self == PacketEventData.PartialAeroModeEnabled.Reason.UNKNOWN:
+                    return f"Unknown ({self.raw_value})"
+                return self.name.replace("_", " ").title()
+
+            @classmethod
+            def safeCast(cls, value: int) -> "PacketEventData.PartialAeroModeEnabled.Reason":
+                """Safely cast an integer to a Reason enum, returning UNKNOWN for invalid values."""
+                return super().safeCast(value, PacketEventData.PartialAeroModeEnabled.Reason.UNKNOWN)
+
+        def __init__(self, data: bytes, _packet_format: int) -> None:
+            """
+            Initializes a PartialAeroModeEnabled object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                _packet_format (int): The packet format
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+
+            self.m_reason = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])[0]
+            self.m_reason = PacketEventData.PartialAeroModeEnabled.Reason.safeCast(self.m_reason)
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the PartialAeroModeEnabled object.
+
+            Returns:
+                str: String representation of the object.
+            """
+
+            return f"PartialAeroModeEnabled(reason={str(self.m_reason)})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the PartialAeroModeEnabled instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the PartialAeroModeEnabled instance.
+            """
+
+            return {"reason": str(self.m_reason)}
+
+        def __eq__(self, other: "PacketEventData.PartialAeroModeEnabled") -> bool:
+            """
+            Check if two PartialAeroModeEnabled objects are equal.
+
+            Args:
+                other (PacketEventData.PartialAeroModeEnabled): The other object to compare with.
+
+            Returns:
+                bool: True if the PartialAeroModeEnabled objects are equal, False otherwise.
+            """
+
+            return self.m_reason == other.m_reason
+
+        def to_bytes(self, _packet_format: int) -> bytes:
+            # raw_value, not value: an unrecognised reason must round-trip as the byte
+            # that arrived rather than collapsing to the UNKNOWN sentinel
+            return self.COMPILED_PACKET_STRUCT.pack(self.m_reason.raw_value)
+
     # Mappings between the event type and the type of object to parse into
     event_type_map: Dict[EventPacketType, Optional[EventType]] = {
         EventPacketType.SESSION_STARTED: None,
@@ -1546,7 +1666,13 @@ class PacketEventData(F1PacketBase):
         EventPacketType.RED_FLAG: None,
         EventPacketType.OVERTAKE: Overtake,
         EventPacketType.SAFETY_CAR: SafetyCarEvent,
-        EventPacketType.COLLISION: Collision
+        EventPacketType.COLLISION: Collision,
+        EventPacketType.PARTIAL_AERO_MODE_ENABLED: PartialAeroModeEnabled,
+        # No payload struct in the spec for these three - the union isn't meaningfully
+        # interpreted, same as CHEQUERED_FLAG/LIGHTS_OUT
+        EventPacketType.PARTIAL_AERO_MODE_DISABLED: None,
+        EventPacketType.OVERTAKE_MODE_ENABLED: None,
+        EventPacketType.OVERTAKE_MODE_DISABLED: None,
     }
 
     COMPILED_PACKET_STRUCT = struct.Struct("4s")
@@ -1566,18 +1692,27 @@ class PacketEventData(F1PacketBase):
             packet (bytes): The incoming raw bytes
 
         Raises:
-            TypeError: Unsupported event type
+            UnsupportedValueError: The event string code is one this codebase doesn't declare
+            struct.error: If the binary data does not match the expected format
         """
 
         super().__init__(header)
 
-        # Parse the event string and prep the enum
-        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(packet[:self.PACKET_LEN])[0].decode('ascii')
-        if PacketEventData.EventPacketType.isValid(self.m_eventStringCode):
-            self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
-        else:
-            self.m_eventCode = PacketEventData.EventPacketType.NONE
-            raise TypeError(f"Unsupported Event Type {self.m_eventCode}")
+        # Decode with errors='replace' and cast through EventPacketType's unknown-value
+        # handling, so a non-ASCII or unrecognised code arrives here as a normal unknown
+        # member rather than as a UnicodeDecodeError or a ValueError
+        self.m_eventStringCode = self.COMPILED_PACKET_STRUCT.unpack(
+            packet[:self.PACKET_LEN])[0].decode('ascii', errors='replace')
+        self.m_eventCode = PacketEventData.EventPacketType(self.m_eventStringCode)
+
+        # The packet itself is well formed here - it is the object that would not be. Every
+        # consumer assumes a PacketEventData identifies an event, so an unrecognised code
+        # leaves nothing to act on, and a None event would be indistinguishable from a
+        # legitimately payload-free one like CHEQUERED_FLAG. Raise instead, so the parser
+        # factory drops the packet and logs the code that arrived - which is how a newly
+        # added game event gets noticed rather than silently ignored
+        if self.m_eventCode.is_unknown():
+            raise UnsupportedValueError("event string code", self.m_eventStringCode)
 
         # Parse the optional data, if any
         if PacketEventData.event_type_map.get(self.m_eventCode):
