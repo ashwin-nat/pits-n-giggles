@@ -37,28 +37,32 @@ from meta.meta import APP_NAME_SNAKE
 # Emission is decided here by the logger level set in get_logger(); console routing is decided by
 # the launcher in apps/launcher/gui/main_window.py -> PngLauncherWindow._write_log_child().
 #
-#   Level          | Normal mode                | Debug mode
-#   ---------------+----------------------------+-----------------------------------
-#   SILENT         | file only, tagged [SILENT] | console + file, tagged [INFO]
-#   SILENT_DEBUG   | not emitted at all         | file only, tagged [SILENT_DEBUG]
-#   DEBUG          | not emitted at all         | console + file
-#   INFO and above | console + file             | console + file
+#   Level           | Normal mode                         | Debug mode
+#   ----------------+-------------------------------------+-----------------------------------
+#   SILENT_DEBUG    | not emitted at all                  | file only, tagged [SILENT_DEBUG]
+#   DEBUG           | not emitted at all                  | console + file
+#   SILENT          | file only, tagged [SILENT]          | console + file, tagged [INFO]
+#   SILENT_WARNING  | file only, tagged [SILENT_WARNING]  | console + file, tagged [WARNING]
+#   INFO and above  | console + file                      | console + file
 #
-# Note: the SILENT -> INFO promotion in debug mode happens before the file line is formatted, so a
-# SILENT message lands in the log file tagged [INFO] in debug mode. SILENT_DEBUG keeps its own tag
-# in the file, so it stays greppable.
+# Note: the SILENT -> INFO and SILENT_WARNING -> WARNING promotions in debug mode happen before the
+# file line is formatted, so those messages land in the log file tagged with the promoted level in
+# debug mode. SILENT_DEBUG is never promoted and keeps its own tag in the file, so it stays
+# greppable.
 
 SILENT_DEBUG_LEVEL = 12  # Between DEBUG (10) and SILENT (15)
 SILENT_LEVEL = 15  # Between DEBUG (10) and INFO (20)
+SILENT_WARNING_LEVEL = 25  # Between INFO (20) and WARNING (30)
 
 logging.addLevelName(SILENT_DEBUG_LEVEL, "SILENT_DEBUG")
 logging.addLevelName(SILENT_LEVEL, "SILENT")
+logging.addLevelName(SILENT_WARNING_LEVEL, "SILENT_WARNING")
 
 
 # -------------------------------------- LOGGER CLASS ------------------------------------------------------------------
 
 class PngLogger(logging.Logger):
-    """Custom logger with SILENT and SILENT_DEBUG level support.
+    """Custom logger with SILENT, SILENT_DEBUG and SILENT_WARNING level support.
 
     See the routing table at the top of this module for where each level ends up.
     """
@@ -79,6 +83,14 @@ class PngLogger(logging.Logger):
             # See silent(): compensate for this wrapper frame so the caller's file/line is logged.
             kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
             self._log(SILENT_DEBUG_LEVEL, message, args, **kwargs)
+
+    def silent_warning(self, message: str, *args, **kwargs) -> None:
+        """Log a warning that is kept out of the launcher console in normal mode. Always emitted;
+        surfaces on the console as WARNING in debug mode."""
+        if self.isEnabledFor(SILENT_WARNING_LEVEL):
+            # See silent(): compensate for this wrapper frame so the caller's file/line is logged.
+            kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
+            self._log(SILENT_WARNING_LEVEL, message, args, **kwargs)
 
 
 # Tell logging module to use our logger class

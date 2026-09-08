@@ -58,8 +58,16 @@ from .tasks import SettingsChangeTask, StopSubsystemTask, UpdateCheckTask
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
 # Child log levels that are written to the log file but never shown in the console widget.
-# See lib/logger.py - SILENT is always emitted, SILENT_DEBUG only in debug mode.
-_CONSOLE_SUPPRESSED_LEVELS = frozenset({"SILENT", "SILENT_DEBUG"})
+# See lib/logger.py - SILENT and SILENT_WARNING are always emitted, SILENT_DEBUG only in debug mode.
+_CONSOLE_SUPPRESSED_LEVELS = frozenset({"SILENT", "SILENT_DEBUG", "SILENT_WARNING"})
+
+# In debug mode a silent level is promoted to its standard counterpart, so it reaches the console
+# and reads normally in the log file. SILENT_DEBUG is deliberately absent - it stays file-only even
+# in debug mode.
+_DEBUG_MODE_LEVEL_PROMOTIONS = {
+    "SILENT": "INFO",
+    "SILENT_WARNING": "WARNING",
+}
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -639,10 +647,10 @@ class PngLauncherWindow(QMainWindow):
             text = obj['message']
             stack = obj.get("stack")
 
-            # In debug mode, treat SILENT logs as INFO. SILENT_DEBUG is deliberately left alone -
-            # it is file-only even in debug mode
-            if level == "SILENT" and self.debug_mode:
-                level = "INFO"
+            # In debug mode, promote the silent levels to their standard counterparts. SILENT_DEBUG
+            # is deliberately left alone - it is file-only even in debug mode
+            if self.debug_mode:
+                level = _DEBUG_MODE_LEVEL_PROMOTIONS.get(level, level)
 
             # ---------------- FILE MESSAGE (always written) ----------------
 
