@@ -58,6 +58,12 @@ class Shape(F1RawValueEnum):
         # Membership check that deliberately lumps unknowns in with one known value
         return self in [Shape.SQUARE, Shape.UNKNOWN]
 
+class Code(F1RawValueEnum):
+    """Stand-in for a str-valued enum whose source keeps inventing codes we don't declare."""
+    SMALL = "SMAL"
+    LARGE = "LARG"
+    UNKNOWN = "????"
+
 class PacketWithoutToJSON(F1PacketBase):
     def __init__(self, header):
         super().__init__(header)
@@ -250,9 +256,90 @@ class TestF1RawValueEnum:
         assert x == y
         assert x.raw_value != y.raw_value
 
-    def test_same_raw_value_is_cached(self):
-        assert Shape(50) is Shape(50)
+    def test_pseudo_members_do_not_grow_the_member_table(self):
+        # Pseudo-members are not interned, so the table stays exactly as declared no
+        # matter what arrives on the wire
+        before = len(Shape._value2member_map_)
+        for value in range(3, 250):
+            Shape(value)
+        assert len(Shape._value2member_map_) == before
+
+    def test_equal_unknowns_need_not_be_identical(self):
+        # The cost of not interning is identity, which the class contract already excludes
+        assert Shape(50) is not Shape(50)
+        assert Shape(50) == Shape(50)
+        assert Shape(50).raw_value == Shape(50).raw_value
 
     def test_safe_cast_preserves_raw_value(self):
         # safeCast is the path callers actually use
         assert Shape.safeCast(50, Shape.UNKNOWN).raw_value == 50
+
+class TestF1RawValueEnumStrValued:
+    """The same contract on a str-valued enum, where the sentinel's type is str."""
+
+    def test_declared_values_still_resolve(self):
+        assert Code("SMAL") is Code.SMALL
+
+    def test_unknown_code_resolves_to_the_sentinel(self):
+        assert Code("ZZZZ") == Code.UNKNOWN
+        assert Code("ZZZZ").is_unknown()
+
+    def test_raw_value_is_preserved(self):
+        assert Code("ZZZZ").raw_value == "ZZZZ"
+
+    def test_two_different_unknowns_are_equal_but_keep_raw_values(self):
+        x, y = Code("AAAA"), Code("BBBB")
+        assert x == y
+        assert x.raw_value != y.raw_value
+
+    def test_unknowns_hash_like_the_sentinel(self):
+        assert hash(Code("AAAA")) == hash(Code.UNKNOWN)
+
+    def test_pseudo_members_are_not_enumerated(self):
+        Code("ZZZZ")
+        assert list(Code) == [Code.SMALL, Code.LARGE, Code.UNKNOWN]
+
+    def test_int_still_raises_on_a_str_valued_enum(self):
+        # Mirror image of test_non_int_still_raises: a value of the wrong type is a type
+        # error, not an undeclared wire value
+        with pytest.raises(ValueError):
+            Code(1)
+
+    def test_unknown_str_values_are_not_interned(self):
+        # Unlike a fixed-width int field, the space of incoming strings is unbounded, so
+        # caching pseudo-members would let a corrupt stream grow the enum without limit
+        before = len(Code._value2member_map_)
+        for i in range(1000):
+            Code(f"{i:04d}")
+        assert len(Code._value2member_map_) == before
+
+    def test_uninterned_unknowns_are_still_equal_and_usable_as_keys(self):
+        # The cost of not interning is identity, which the class contract already excludes
+        assert Code("ZZZZ") is not Code("ZZZZ")
+        assert Code("ZZZZ") == Code("ZZZZ")
+        assert {Code.UNKNOWN: "unknown"}[Code("ZZZZ")] == "unknown"
+
+
+class TestF1RawValueEnumIsValid:
+    """isValid must keep meaning 'is a declared member' after an enum migrates onto
+    F1RawValueEnum, since call sites guard on it."""
+
+    @pytest.mark.parametrize("value", [1, 2, 255])
+    def test_declared_values_are_valid(self, value):
+        assert Shape.isValid(value)
+
+    @pytest.mark.parametrize("value", [3, 50, 254])
+    def test_undeclared_values_are_not_valid(self, value):
+        # Would be True if isValid still just asked "does the cast succeed?"
+        assert not Shape.isValid(value)
+
+    def test_wrong_type_is_not_valid(self):
+        assert not Shape.isValid("nope")
+
+    def test_declared_str_values_are_valid(self):
+        assert Code.isValid("SMAL")
+        assert not Code.isValid("ZZZZ")
+
+    def test_members_themselves_are_valid(self):
+        # Call sites pass members as well as raw values
+        assert Shape.isValid(Shape.CIRCLE)
