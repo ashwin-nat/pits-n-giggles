@@ -23,15 +23,24 @@
 
 import asyncio
 import os
+import struct
 import sys
+
+import pytest
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tests_base import F1TelemetryUnitTestsBase
 
+from lib.f1_types import PacketEventData, PacketHeader
 from lib.race_ctrl import (DriverRaceControlManager, MessageType,
                            RaceCtrlMsgBase, SessionRaceControlManager)
+from lib.race_ctrl.factory import race_ctrl_event_msg_factory
+from lib.race_ctrl.messages import (OvertakeModeDisabledRaceCtrlMsg,
+                                    OvertakeModeEnabledRaceCtrlMsg,
+                                    PartialAeroModeDisabledRaceCtrlMsg,
+                                    PartialAeroModeEnabledRaceCtrlMsg)
 from lib.race_ctrl.messages.driver_event_messages import (
     FastestLapRaceCtrlMsg, OvertakeRaceCtrlMsg)
 from lib.race_ctrl.messages.driver_status_messages import (
@@ -221,3 +230,56 @@ class TestRaceControlMessages(F1TelemetryUnitTestsBase):
         self.assertAlmostEqual(exported["lap-distance"], 512.5)
         self.assertEqual(exported["sector"], "S2")
         self.assertIsNone(exported["segment-info"])
+
+
+# -------------------------------------- 2026 SEASON PACK EVENTS -------------------------------------------------------
+
+_EVENT_HDR = struct.Struct("<HBBBBBQfIIBB")
+
+
+def _event_packet(code: bytes, payload: bytes = b"") -> PacketEventData:
+    """Build a parsed event packet carrying the given 4-byte code."""
+    header = PacketHeader(_EVENT_HDR.pack(2025, 25, 1, 0, 1, 3, 42, 1.0, 7, 7, 0, 255))
+    return PacketEventData(header, code + payload + b"\x00" * 32)
+
+
+@pytest.mark.parametrize("code, expected_cls, expected_type", [
+    (b"PMDI", PartialAeroModeDisabledRaceCtrlMsg, MessageType.PARTIAL_AERO_MODE_DISABLED),
+    (b"OVEN", OvertakeModeEnabledRaceCtrlMsg, MessageType.OVERTAKE_MODE_ENABLED),
+    (b"OVDI", OvertakeModeDisabledRaceCtrlMsg, MessageType.OVERTAKE_MODE_DISABLED),
+])
+def test_season8_no_payload_events_map_to_race_ctrl_messages(code, expected_cls, expected_type):
+    msg = race_ctrl_event_msg_factory(_event_packet(code), lap_number=12)
+
+    assert isinstance(msg, expected_cls)
+    assert msg.message_type is expected_type
+    # The frontend keys its detail renderers off this exact string
+    assert msg.toJSON({})["message-type"] == str(expected_type)
+
+
+@pytest.mark.parametrize("reason_byte, expected_reason", [
+    (0, "Wet Track"),
+    (1, "Safety Car Deployed"),
+    (2, "Red Flag"),
+])
+def test_partial_aero_mode_enabled_maps_with_its_reason(reason_byte, expected_reason):
+    msg = race_ctrl_event_msg_factory(_event_packet(b"PMEN", bytes([reason_byte])), lap_number=5)
+
+    assert isinstance(msg, PartialAeroModeEnabledRaceCtrlMsg)
+    assert msg.message_type is MessageType.PARTIAL_AERO_MODE_ENABLED
+    assert msg.toJSON({})["reason"] == expected_reason
+
+
+def test_partial_aero_mode_enabled_undeclared_reason_reaches_the_ui():
+    # An undeclared reason must still render something meaningful rather than vanishing
+    msg = race_ctrl_event_msg_factory(_event_packet(b"PMEN", b"\x63"), lap_number=5)
+
+    assert msg.toJSON({})["reason"] == "Unknown (99)"
+
+
+def test_overtake_mode_is_distinct_from_an_overtake():
+    # OVERTAKE is one car passing another; OVERTAKE_MODE_* are session-wide toggles
+    msg = race_ctrl_event_msg_factory(_event_packet(b"OVEN"), lap_number=1)
+
+    assert msg.message_type is not MessageType.OVERTAKE
+    assert msg.message_type is MessageType.OVERTAKE_MODE_ENABLED
