@@ -40,8 +40,8 @@ class EventType(F1SubPacketBase, ABC):
 class PacketEventData(F1PacketBase):
     """Class representing the incoming PacketEventData message
 
-    Raises:
-        TypeError: Unsupported event type
+    An event code this codebase doesn't declare parses to EventPacketType.NONE rather than
+    raising - see EventPacketType.
 
     Attributes:
         m_header (PacketHeader) - Parsed header object
@@ -131,6 +131,18 @@ class PacketEventData(F1PacketBase):
 
         # Collion: Inter-car collision event
         COLLISION = "COLL"
+
+        # Partial Mode enabled: Race control have enabled Partial mode
+        PARTIAL_MODE_ENABLED = "PMEN"
+
+        # Partial Mode disabled: Race control have disabled Partial mode
+        PARTIAL_MODE_DISABLED = "PMDI"
+
+        # Overtake enabled: Race control have enabled Overtake mode
+        OVERTAKE_MODE_ENABLED = "OVEN"
+
+        # Overtake disabled: Race control have disabled Overtake mode
+        OVERTAKE_MODE_DISABLED = "OVDI"
 
     class FastestLap(EventType):
         """
@@ -1535,6 +1547,98 @@ class PacketEventData(F1PacketBase):
                 packet_format
             )
 
+    class PartialModeEnabled(EventType):
+        """
+        The class representing the PARTIAL MODE ENABLED event. This is sent when race control
+        enables Partial mode.
+
+        Attributes:
+            m_reason (Reason): The reason Partial mode was enabled
+        """
+
+        COMPILED_PACKET_STRUCT = struct.Struct("<B")
+        PACKET_LEN = COMPILED_PACKET_STRUCT.size
+
+        __slots__ = (
+            "m_reason",
+        )
+
+        class Reason(F1RawValueEnum):
+            """The reason Partial mode was enabled.
+
+            The spec declares 0-2; anything else casts to UNKNOWN while keeping the
+            incoming byte in `raw_value`.
+            """
+
+            WET_TRACK = 0
+            SAFETY_CAR_DEPLOYED = 1
+            RED_FLAG = 2
+
+            UNKNOWN = 255
+
+            def __str__(self):
+                if self == PacketEventData.PartialModeEnabled.Reason.UNKNOWN:
+                    return f"Unknown ({self.raw_value})"
+                return self.name.replace("_", " ").title()
+
+            @classmethod
+            def safeCast(cls, value: int) -> "PacketEventData.PartialModeEnabled.Reason":
+                """Safely cast an integer to a Reason enum, returning UNKNOWN for invalid values."""
+                return super().safeCast(value, PacketEventData.PartialModeEnabled.Reason.UNKNOWN)
+
+        def __init__(self, data: bytes, _packet_format: int) -> None:
+            """
+            Initializes a PartialModeEnabled object by unpacking the provided binary data.
+
+            Parameters:
+                data (bytes): Binary data to be unpacked.
+                _packet_format (int): The packet format
+
+            Raises:
+                struct.error: If the binary data does not match the expected format.
+            """
+
+            self.m_reason = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])[0]
+            self.m_reason = PacketEventData.PartialModeEnabled.Reason.safeCast(self.m_reason)
+
+        def __str__(self) -> str:
+            """
+            Returns a string representation of the PartialModeEnabled object.
+
+            Returns:
+                str: String representation of the object.
+            """
+
+            return f"PartialModeEnabled(reason={str(self.m_reason)})"
+
+        def toJSON(self) -> Dict[str, Any]:
+            """
+            Convert the PartialModeEnabled instance to a JSON-compatible dictionary.
+
+            Returns:
+                Dict[str, Any]: JSON-compatible dictionary representing the PartialModeEnabled instance.
+            """
+
+            return {"reason": str(self.m_reason)}
+
+        def __eq__(self, other: "PacketEventData.PartialModeEnabled") -> bool:
+            """
+            Check if two PartialModeEnabled objects are equal.
+
+            Args:
+                other (PacketEventData.PartialModeEnabled): The other object to compare with.
+
+            Returns:
+                bool: True if the PartialModeEnabled objects are equal, False otherwise.
+            """
+
+            return self.m_reason == other.m_reason
+
+        def to_bytes(self, _packet_format: int) -> bytes:
+            # raw_value, not value: an unrecognised reason must round-trip as the byte
+            # that arrived rather than collapsing to the UNKNOWN sentinel
+            return self.COMPILED_PACKET_STRUCT.pack(self.m_reason.raw_value)
+
     # Mappings between the event type and the type of object to parse into
     event_type_map: Dict[EventPacketType, Optional[EventType]] = {
         EventPacketType.SESSION_STARTED: None,
@@ -1557,7 +1661,13 @@ class PacketEventData(F1PacketBase):
         EventPacketType.RED_FLAG: None,
         EventPacketType.OVERTAKE: Overtake,
         EventPacketType.SAFETY_CAR: SafetyCarEvent,
-        EventPacketType.COLLISION: Collision
+        EventPacketType.COLLISION: Collision,
+        EventPacketType.PARTIAL_MODE_ENABLED: PartialModeEnabled,
+        # No payload struct in the spec for these three - the union isn't meaningfully
+        # interpreted, same as CHEQUERED_FLAG/LIGHTS_OUT
+        EventPacketType.PARTIAL_MODE_DISABLED: None,
+        EventPacketType.OVERTAKE_MODE_ENABLED: None,
+        EventPacketType.OVERTAKE_MODE_DISABLED: None,
     }
 
     COMPILED_PACKET_STRUCT = struct.Struct("4s")
