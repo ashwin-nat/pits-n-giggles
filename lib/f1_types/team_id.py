@@ -292,6 +292,17 @@ class TeamID26(TeamID):
     MCLAREN_26 = 484
     AUDI_26 = 485
     CADILLAC_26 = 486
+    ART_GP_26 = 489
+    CAMPOS_26 = 490
+    RODIN_MOTORSPORT_26 = 491
+    AIX_RACING_26 = 492
+    DAMS_26 = 493
+    HITECH_26 = 494
+    MP_MOTORSPORT_26 = 495
+    PREMA_26 = 496
+    TRIDENT_26 = 497
+    VAN_AMERSFOORT_RACING_26 = 498
+    INVICTA_26 = 499
     MY_TEAM_26 = 65535
 
     def __str__(self) -> str:

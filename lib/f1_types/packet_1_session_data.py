@@ -1235,7 +1235,7 @@ class PacketSessionData(F1PacketBase):
                 data[offset:offset + self.PACKET_LEN_SECTION_5]
             )
             self.m_weekendStructure = [
-                SessionType24(s) for s in
+                SessionType24.safeCast(s) for s in
                 (ws0, ws1, ws2, ws3, ws4, ws5, ws6, ws7, ws8, ws9, ws10, ws11)[:self.m_numSessionsInWeekend]
             ]
             return offset + self.PACKET_LEN_SECTION_5

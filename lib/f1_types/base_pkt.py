@@ -158,6 +158,13 @@ class F1RawValueEnum(F1BaseEnum):
     unknown values still compare equal to each other and to UNKNOWN, while no
     longer discarding the incoming value.
 
+    Works for both int-valued enums (most wire fields) and str-valued ones (e.g. the
+    four-character event codes in packet 3).
+
+    Migrating an enum onto this class is just a base-class change plus an UNKNOWN member;
+    declared members behave exactly as they did before, so migrated and unmigrated enums
+    can be mixed freely.
+
     Note:
         Derived Enums must declare an UNKNOWN member.
         Compare members with `==`, never with `is`: two unknowns are equal but
@@ -173,23 +180,51 @@ class F1RawValueEnum(F1BaseEnum):
             value (Any): The unrecognised value.
 
         Returns:
-            Optional[F1RawValueEnum]: A pseudo-member aliasing UNKNOWN, or None if
-                the value is not an int (letting the Enum machinery raise as usual).
+            Optional[F1RawValueEnum]: A pseudo-member aliasing UNKNOWN, or None if the
+                value is not of the sentinel's own type (letting the Enum machinery raise
+                as usual).
         """
-        if not isinstance(value, int) or isinstance(value, bool):
+        # Only a value of the sentinel's own type can be a wire value this enum simply
+        # hasn't declared yet. On an int-valued enum a str is a type error, not a new
+        # value, and must still raise
+        if isinstance(value, bool) or not isinstance(value, type(cls.UNKNOWN._value_)):
             return None
 
+        # Pseudo-members are deliberately not interned into the enum's member table, so
+        # that the table stays exactly as declared no matter what arrives on the wire.
+        # Members are compared with `==` and never with `is`, so a fresh instance per
+        # lookup is indistinguishable from a cached one
         pseudo = object.__new__(cls)
         # Indistinguishable from the sentinel...
         pseudo._value_ = cls.UNKNOWN._value_
         pseudo._name_ = cls.UNKNOWN._name_
         # ...except that it remembers what came off the wire
         pseudo._raw_value_ = value
-        # One instance per raw value. Bounded by the width of the wire field
-        return cls._value2member_map_.setdefault(value, pseudo)
+        return pseudo
+
+    @classmethod
+    def isValid(cls, value: Any) -> bool:
+        """
+        Check whether the given value is one this enum actually declares.
+
+        Overridden because the inherited implementation asks "does cls(value) succeed?",
+        which is always True here - undeclared values resolve to a pseudo-member instead
+        of raising. Keeping the original meaning matters for migration: call sites that
+        guard on isValid() behave the same before and after an enum moves onto this class.
+
+        Args:
+            value (Any): The value to validate.
+
+        Returns:
+            bool: True if the value maps to a declared member.
+        """
+        try:
+            return not cls(value).is_unknown()
+        except (ValueError, TypeError):
+            return False
 
     @property
-    def raw_value(self) -> int:
+    def raw_value(self) -> Any:
         """The value as it came off the wire. Same as .value for declared members."""
         return getattr(self, "_raw_value_", self._value_)
 
