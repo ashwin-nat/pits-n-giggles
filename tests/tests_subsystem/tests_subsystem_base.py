@@ -9,8 +9,8 @@ import asyncio
 import logging
 import sys
 import threading
-from dataclasses import FrozenInstanceError, dataclass
-from typing import Generic
+from dataclasses import FrozenInstanceError, dataclass, field
+from typing import Generic, Optional
 
 import pytest
 
@@ -371,6 +371,43 @@ def test_non_bool_field_rejects_a_value_of_the_wrong_type(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["prog", "--retries", "abc"])
     with pytest.raises(SystemExit):
         _WithInt()
+
+@pytest.mark.parametrize("argv, expected", [
+    (["prog"], None),
+    (["prog", "--wd", "C:/tmp"], "C:/tmp"),
+])
+def test_optional_field_is_coerced_by_its_inner_type(monkeypatch, argv, expected):
+    """An Optional[str] flag coerces with str, not with the Union itself.
+
+    argparse calls type= on the raw string, and a Union is not callable. It accepts
+    type=Optional[str] silently at construction and --help renders fine, so the failure only
+    appears when the flag is actually passed - "invalid Optional value". McpArgs.wd is the live
+    case, and it has no callers in this repo, so nothing else would catch it.
+    """
+
+    @dataclass(frozen=True)
+    class _OptArgs(SubsystemArgs):
+        wd: Optional[str] = arg(None, "Working directory")
+
+    class _WithOpt(_StubSync[_OptArgs]):
+        pass
+
+    monkeypatch.setattr(sys, "argv", argv)
+    assert _WithOpt().args.wd == expected
+
+def test_field_without_a_default_is_rejected():
+    """Every subsystem flag is optional - the launcher passes only the ones it needs.
+
+    default_factory is how a field reaches the generator with no default: a bare annotation
+    would already have been rejected by dataclass itself, for following a defaulted base field.
+    """
+
+    @dataclass(frozen=True)
+    class _NoDefaultArgs(SubsystemArgs):
+        tags: tuple = field(default_factory=tuple)
+
+    with pytest.raises(TypeError, match="has no default"):
+        add_dataclass_args(argparse.ArgumentParser(), _NoDefaultArgs)
 
 def test_bool_defaulting_true_is_rejected():
     """store_true cannot express "on unless passed" - the flag could never switch it off."""
