@@ -32,7 +32,7 @@ from .constants import MAX_DRIVERS
 from .team_id import (TeamID, TeamID23, TeamID24, TeamID25, TeamID26,
                       get_team_id, get_team_id_class)
 from .errors import (InvalidPacketLengthError, PacketCountValidationError,
-                     PacketParsingError, UnsupportedValueError)
+                     PacketParsingError)
 from .header import F1PacketType, PacketHeader
 from .packet_0_car_motion_data import CarMotionData, PacketMotionData
 from .packet_1_session_data import (MarshalZone, PacketSessionData,
@@ -76,7 +76,6 @@ __all__ = [
     "InvalidPacketLengthError",
     "PacketParsingError",
     "PacketCountValidationError",
-    "UnsupportedValueError",
     "ResultStatus",
     "ResultReason",
     "SessionType",
