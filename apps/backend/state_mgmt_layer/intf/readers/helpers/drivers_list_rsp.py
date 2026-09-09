@@ -416,7 +416,6 @@ class DriversListRsp(BaseAPI):
     def _getDeltaInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract delta information section for JSON response."""
         return {
-            "delta": driver_data.m_lap_info.m_delta_to_car_in_front,
             "delta-to-car-in-front": driver_data.m_lap_info.m_delta_to_car_in_front,
             "delta-to-leader": driver_data.m_lap_info.m_delta_to_leader,
         }
