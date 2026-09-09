@@ -455,6 +455,23 @@ def _create_weather_forecast_data(session_info: Dict[str, Any]) -> List[Dict[str
         for sample in session_info["weather-forecast-samples"]
     ]
 
+def _get_total_delta_ms(lap_data: Dict[str, Any], field: str) -> int:
+    """Recombine the two halves of one of the game's delta fields.
+
+    The game splits each delta across a uint16 millisecond field and a whole-minute field, so
+    anything past 65.535s needs both. Saves written before the minute half was recorded have no
+    such key and fall back to the millisecond half alone.
+
+    Args:
+        lap_data: The saved lap-data section for one driver
+        field: The delta's key prefix, e.g. "delta-to-race-leader"
+
+    Returns:
+        The delta in milliseconds
+    """
+    return lap_data[f"{field}-in-ms"] + (lap_data.get(f"{field}-minutes", 0) * 60000)
+
+
 def _create_driver_entry(
     data_per_driver: Dict[str, Any],
     best_s1_time: int,
@@ -480,17 +497,14 @@ def _create_driver_entry(
     index = data_per_driver["index"]
     position = data_per_driver["track-position"]
 
-    # Calculate delta times. The game splits the gap across a uint16 millisecond field and a
-    # whole-minute field, so anything past 65.535s needs both halves. Saves written before the
-    # minute field was recorded simply have no key, and fall back to the millisecond half alone.
+    # Calculate delta times. The leader has nobody ahead, so both gaps are zero for it.
     if position == 1:
-        delta_relative = 0
+        delta_to_leader = 0
+        delta_to_car_in_front = 0
     else:
         lap_data = data_per_driver["lap-data"]
-        delta_relative = (
-            lap_data["delta-to-race-leader-in-ms"] +
-            (lap_data.get("delta-to-race-leader-minutes", 0) * 60000)
-        )
+        delta_to_leader = _get_total_delta_ms(lap_data, "delta-to-race-leader")
+        delta_to_car_in_front = _get_total_delta_ms(lap_data, "delta-to-car-in-front")
 
     # Driver status and flags
     is_fastest = (index == fastest_lap_driver_index)
@@ -525,8 +539,8 @@ def _create_driver_entry(
             "drs": False,
         },
         "delta-info": {
-            "delta": delta_relative,
-            "delta-to-leader": delta_relative,
+            "delta-to-car-in-front": delta_to_car_in_front,
+            "delta-to-leader": delta_to_leader,
         },
         "ers-info": {
             "ers-percent": f'{F1Utils.formatFloat(ers_perc)}%',
