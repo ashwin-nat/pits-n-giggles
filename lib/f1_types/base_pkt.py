@@ -316,7 +316,7 @@ class F1SubPacketBase:
             )
 
         if fields is None:
-            fields = self.__slots__ # pylint: disable=no-member
+            fields = self.__slots__
 
         changes: Dict[str, Dict[str, Any]] = {}
         for field in fields:
