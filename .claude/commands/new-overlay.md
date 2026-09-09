@@ -119,8 +119,9 @@ In `on_settings_change`, inside the `udp_action_codes_diff` block under `"HUD"`,
 Follow the same three-file pattern as the generic overlay steps 5–8 below for:
 - `apps/backend/telemetry_layer/telemetry_handler.py` — `UdpActionCodes` dataclass + `_MAP` + `handleButtonStatus`
 - `lib/inter_task_communicator.py` — new notification dataclass + `MessageType` value
-- `apps/backend/intf_layer/telemetry_web_server.py` — add socketio event to HUD client mappings
-- `apps/hud/listener/client.py` — add `@self.on(...)` handler
+- `apps/hud/ipc/dealer.py` — add `@dealer.route(...)` handler
+
+The backend needs no forwarding change: `hudInteractionTask` fires every `hud-notifier` message at the HUD generically, using the `MessageType` value as the topic.
 
 #### A7. Create the page class — `apps/hud/ui/overlays/mfd/pages/gap_to_leader/`
 
@@ -364,22 +365,23 @@ class Hud<Action>Notification:
 HUD_<ACTION>_NOTIFICATION = "hud-<action>-notification"
 ```
 
-#### B7. Backend emits new socketio events — `apps/backend/intf_layer/telemetry_web_server.py`
+#### B7. Backend forwarding — nothing to do
 
-Read the file. In the `client_event_mappings` for `ClientType.HUD`, add the new socketio event name(s) from step B6b so the backend forwards them to HUD clients:
+`hudInteractionTask` in `apps/backend/intf_layer/telemetry_ui_tasks.py` forwards **any** ITC message on the `hud-notifier` queue to the HUD generically:
 ```python
-'hud-<action>-notification',
+await dealer.fire(str(PngSubsysId.HUD), str(message.m_message_type), message.toJSON())
 ```
-(Skip this step if there are no extra interactions — the toggle reuses the existing `hud-toggle-notification` event via `_processToggleHud`.)
+The router/dealer topic is the `MessageType` value you added in B6b, so no per-event mapping is needed. (This step used to edit a `client_event_mappings` table in `telemetry_web_server.py`, back when the HUD was a socketio client. That file and that mechanism are gone.)
 
-#### B8. HUD socketio handlers — `apps/hud/listener/client.py`
+#### B8. HUD dealer handlers — `apps/hud/ipc/dealer.py`
 
-Read the file. For each extra interaction (not toggle — that's already handled generically by `toggle_overlays_visibility`), register a new `@self.on(...)` handler following the pattern of `handle_hud_cycle_mfd_notification`:
+Read the file. For each extra interaction (not toggle — that's already handled generically by `toggle_overlays_visibility`), register a route inside `register_dealer_routes`, following the pattern of `_cycle_mfd_notification`:
 ```python
-@self.on('hud-<action>-notification')
-def handle_hud_<action>_notification(data):
-    self.m_overlays_mgr.<action>(<overlay_name>)
+@dealer.route("hud-<action>-notification")
+def _<action>_notification(_data: dict, _sender: str) -> None:
+    overlays_mgr.<action>()
 ```
+Note the two-argument signature — router/dealer handlers receive `(data, sender)`. Take `data` (rather than `_data`) only if the payload carries something you need, as `_toggle_notification` does for `oid`.
 
 #### B9. Overlay class — `apps/hud/ui/overlays/<overlay_name>/`
 

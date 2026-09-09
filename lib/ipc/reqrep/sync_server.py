@@ -29,6 +29,8 @@ from typing import Any, Callable, Optional
 
 import zmq
 
+from ._errors import reserved_slot_error
+
 # -------------------------------------- TYPES -----------------------------------------------------------------------
 
 RouteCallback = Callable[[dict], dict[str, Any]]
@@ -98,6 +100,11 @@ class IpcServerSync:
         Registers a callback to be called on shutdown command.
         :param callback: Function to call on shutdown command.
         """
+        if self._shutdown_callback is not None:
+            raise reserved_slot_error(
+                self.name, "shutdown", "the parent's shutdown handshake",
+                "implement on_shutdown(reason) on your subsystem - the base calls it during "
+                "teardown, before it closes the IPC sockets.")
         self._shutdown_callback = callback
 
     def register_get_stats_callback(self, callback: GetStatsCallback) -> None:
@@ -105,6 +112,11 @@ class IpcServerSync:
         Registers a callback to be called on get-stats command.
         :param callback: Function to call on get-stats command. Receives args dict, returns stats dict.
         """
+        if self._get_stats_callback is not None:
+            raise reserved_slot_error(
+                self.name, "get-stats", "the parent's stats request",
+                "implement collect_stats() on your subsystem - the base wraps whatever it "
+                "returns in the response envelope the launcher expects.")
         self._get_stats_callback = callback
 
     def register_heartbeat_missed_callback(self, callback: HeartbeatCallback) -> None:
@@ -113,6 +125,11 @@ class IpcServerSync:
         Callback receives the number of missed heartbeats.
         Registering this callback automatically enables heartbeat monitoring.
         """
+        if self._heartbeat_missed_callback is not None:
+            raise reserved_slot_error(
+                self.name, "heartbeat-missed", "the parent's liveness check",
+                "override handle_heartbeat_missed(count) on your subsystem - the base's "
+                "default already logs and exits with PNG_LOST_CONN_TO_PARENT.")
         self._heartbeat_missed_callback = callback
 
     # -------------------------------------- ROUTING API ----------------------------------------------------------------

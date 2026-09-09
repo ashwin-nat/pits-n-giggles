@@ -20,23 +20,39 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Router/dealer routes - button-press notifications pushed by the backend."""
+
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .web_server import WebServer
+from lib.ipc import IpcDealerClient
+
+from ..ui.infra import OverlaysMgr
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-async def raceTableEmitTask(web_server: WebServer) -> None:
-    """Emit the cached race-table-update payload verbatim, if any client is interested."""
-    if web_server.m_race_table_cache is not None and web_server.is_any_client_interested_in_event('race-table-update'):
-        await web_server.send_to_clients_interested_in_event(
-            event='race-table-update',
-            data=web_server.m_race_table_cache)
+def register_dealer_routes(
+        dealer: IpcDealerClient,
+        overlays_mgr: OverlaysMgr) -> None:
+    """Register the notifications the backend fires when a mapped button is pressed.
 
-async def streamOverlayEmitTask(web_server: WebServer) -> None:
-    """Emit the cached stream-overlay-update payload verbatim, if any client is interested."""
-    if web_server.m_stream_overlay_cache is not None and \
-            web_server.is_any_client_interested_in_event('stream-overlay-update'):
-        await web_server.send_to_clients_interested_in_event(
-            event='stream-overlay-update',
-            data=web_server.m_stream_overlay_cache)
+    Args:
+        dealer (IpcDealerClient): Router/dealer client, built by the subsystem base
+        overlays_mgr (OverlaysMgr): Overlays manager
+    """
+
+    @dealer.route("hud-toggle-notification")
+    def _toggle_notification(data: dict, _sender: str) -> None:
+        oid = data.get("message", {}).get("oid") if isinstance(data, dict) else None
+        overlays_mgr.toggle_overlays_visibility(oid)
+
+    @dealer.route("hud-cycle-mfd-notification")
+    def _cycle_mfd_notification(_data: dict, _sender: str) -> None:
+        overlays_mgr.next_page()
+
+    @dealer.route("hud-prev-page-mfd-notification")
+    def _prev_page_notification(_data: dict, _sender: str) -> None:
+        overlays_mgr.prev_page()
+
+    @dealer.route("hud-mfd-interaction-notification")
+    def _mfd_interaction_notification(_data: dict, _sender: str) -> None:
+        overlays_mgr.mfd_interact()

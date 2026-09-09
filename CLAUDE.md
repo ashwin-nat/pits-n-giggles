@@ -109,7 +109,8 @@ Reusable modules consumed by multiple apps:
 - **`telemetry_manager/`** — Async UDP/TCP receiver manager and packet parser factory
 - **`socket_receiver/`** — Base, UDP, TCP receiver implementations
 - **`config/`** — Config loading from `png_config.json`/`app_settings.ini`; Pydantic validation models
-- **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngAppId` for app identity
+- **`ipc/`** — ZeroMQ-based IPC with three patterns: pub/sub (`IpcPubSubBroker`, `IpcPublisherAsync`, `IpcSubscriber*`), req/rep (`IpcServer*`, `IpcClientSync`), and router/dealer (`IpcRouter`, `IpcDealerClient`, `IpcDealerAsync`); also provides `PngSubsysId` for app identity
+- **`subsystem/`** — Child-side lifecycle base for launcher-managed subsystems (`PngSubsystem`, `AsyncSubsystem`, `SyncSubsystem`) — see "Subsystem Lifecycle" below
 - **`race_ctrl/`** — Race control event tracking: pit stops, car damage, tyre/wing changes; per-driver and per-session managers
 - **`tyre_wear_extrapolator/`** — Linear regression tyre wear prediction
 - **`delta/`** — Lap delta calculations
@@ -159,7 +160,50 @@ These files define step-by-step procedures for common dev tasks. Read the releva
 - **Req/Rep** — `IpcClientSync` sends requests; `IpcServerSync`/`IpcServerAsync` handle them. Used for synchronous control commands (e.g. launcher → child process).
 - **Router/Dealer** — `IpcRouter` (server-side) paired with `IpcDealerClient`/`IpcDealerAsync` (client-side) for async many-to-one messaging.
 
-`PngAppId` enumerates all app identities; IPC sockets bind to OS-assigned ephemeral ports. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
+`PngSubsysId` enumerates all app identities; IPC sockets bind to OS-assigned ephemeral ports. The broker (`apps/broker/`) uses ZeroMQ independently for external multi-client forwarding.
+
+### Subsystem Lifecycle
+
+The launcher manages its five children like systemd units — spawn, handshake, heartbeat, shutdown, stats. `apps/launcher/subsystems/base_mgr.py` (`PngAppMgrBase`) is the parent side of that contract; `lib/subsystem/` is the child side. **Changes to either must not alter the wire contract with the other.**
+
+Every subsystem subclasses `AsyncSubsystem` (backend, web, mcp_server) or `SyncSubsystem` (broker, hud), and the base owns arg parsing, the logger, config loading, the handshake tokens, the management IPC server and its three built-in handlers, the stats envelope, the task/thread registry and the exception funnel. A subsystem fills in hooks — `collect_stats()`, `on_shutdown()`, and `run_forever()` for the sync variant — and declares what it needs:
+
+```python
+class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
+    NAME = "web"
+    DESCRIPTION = "unified web app"
+    CONFIG_REQUIRED = True
+    READY_ON_START = False     # notify_ready() called later, by hand
+    SUBSYS_ID = PngSubsysId.WEB               # dealer identity; required when DEALER is True
+    PUBSUB = PubSubRole.SUBSCRIBER      # populates self.subscriber (PUBLISHER -> self.publisher)
+    DEALER = True                       # populates self.dealer
+```
+
+The type parameter names the subsystem's args dataclass — a subclass of `SubsystemArgs` when it has extra flags (`AsyncSubsystem[McpArgs]`), `SubsystemArgs` itself when it does not. That one declaration both types `self.args` and tells the base what to build the parser from; there is no `add_args()` hook.
+
+**There is one construction phase, not two — no `setup()` hook.** An entry point is `Subsystem().main()`. The base constructor takes no arguments and boots in order: parse argv, `pre_boot()`, build the logger, load config, build the IPC handles. So by the time a subclass's own `__init__` body runs, `self.args`, `self.logger`, `self.settings`, `self.mgmt`, `self.subscriber`/`self.publisher` and `self.dealer` all exist, and it builds everything it owns right there. `main()` is then an ordinary instance method holding the exception funnel for the run itself.
+
+`add_task()` / `add_periodic()` register work rather than starting it — they return a `SubsystemTask` handle and the base calls `asyncio.create_task()` once the loop is up, which is what lets registration happen in a constructor. Hold the handle only if you need to cancel that task yourself (`McpSubsystem`, `F1TelemetryHandler`). Code that registers work without owning the subsystem takes `add_task` as a `AddTask` parameter — that is how the backend's telemetry and state layers register theirs.
+
+Three consequences worth knowing. The config load is inside the constructor, so the constructor does its own reporting — a bad config logs and exits with a code rather than throwing a traceback at the launcher. `pre_boot()`, `make_logger()`, `should_run_mgmt_ipc()` and `on_exit()` are all called *before* the subclass `__init__` body, so an override must keep to class vars and `self.args`/`self.logger`, and nothing that body assigns may clobber what they set — `HudSubsystem._winmm` is a class attribute for exactly this reason. And constructing a subsystem binds real sockets, so it is a process, not an object you make several of in one interpreter.
+
+The declarations are opt-in: the base constructs what is declared, registers its task/thread, and closes it *after* `on_shutdown()` returns, so per-subsystem teardown order is preserved. It never registers a route and never merges data-plane stats into the payload — topic names, handler bodies and `collect_stats()` stay subsystem-owned.
+
+The three IPC flavours are exposed under their own names, each keeping its own vocabulary — there is deliberately **no abstraction over the three**:
+
+```python
+@self.mgmt.on("manual-save")                 # reqrep, the launcher's control channel
+@self.subscriber.route("race-table-update")  # pub/sub, the telemetry fabric
+@self.dealer.route("driver-info")            # router/dealer, between apps
+```
+
+The management server arrives with three of its slots already filled by the base — shutdown, get-stats and heartbeat-missed are single callback values rather than route-table entries — so `lib/ipc/` refuses a second registration for any of them rather than letting it silently *replace* the base's. `publisher`/`subscriber`/`dealer` are properties returning the library objects themselves — their `route()` writes into a dict keyed by topic that the base never touches — so they can be wrapped or handed onward (as `apps/mcp_server` does for its watchdog). The underlying handles are private; the properties assert if you reach for one the subsystem never declared.
+
+Notes:
+- **`READY_ON_START = False` is the common case** (web, hud, mcp_server). The launcher only reaches `AppState.RUNNING` on the init-complete token, so a subsystem that is not usable until a socket is listening or windows are shown injects `notify_ready` into whatever owns that moment, as a mandatory callback.
+- **Register work through `add_task()` / `add_periodic()`**, not a threaded `tasks` list. `adopt_task()` exists only for objects whose stop mechanism *is* cancellation and which therefore hold their own handle.
+- `request_shutdown()` (async) and `request_stop()` (sync) are **non-blocking by design** — the mgmt IPC server only replies to the launcher once the handler returns.
+- **Do not run a subsystem standalone**; it fails the heartbeat check and self-terminates. `apps/mcp_server` is the one exception, via `should_run_mgmt_ipc()`, which gates the mgmt server and all three handshake tokens together — under stdio, stdout carries the MCP protocol and nothing else may touch it.
 
 ## graphify
 

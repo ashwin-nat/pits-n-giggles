@@ -15,6 +15,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `race_ctrl/` | Race control message parsing and factory |
 | `delta/` | Lap delta and sector time computation |
 | `ipc/` | Inter-process communication between subsystems |
+| `subsystem/` | Child-side lifecycle base for launcher-managed subsystems (boot, handshake, heartbeat, stats, teardown) |
 | `socket_receiver/` | UDP socket wrapper for F1 telemetry packets |
 | `wdt/` | Watchdog timer for health monitoring |
 | `openf1/` | OpenF1 API integration |
@@ -56,3 +57,56 @@ lap = LapData.from_dict(raw_lap_data)
 - Keep this folder free of any UI code or app-specific logic.
 - All shared logic that may be used across two or more apps should live here.
 - No introducing internal dependencies like logger into this. If logging is required, pass the logger object
+## Profiling
+
+Any subsystem can be profiled with [yappi](https://github.com/sumerc/yappi). It is off, and
+there is no flag or launcher toggle — set the class var and put it back when you are done.
+
+### 1. Turn it on
+
+Edit `PROFILE` on the subsystem you care about:
+
+```python
+class BackendSubsystem(AsyncSubsystem[BackendArgs]):
+    NAME = "backend"
+    PROFILE = True          # <-- revert before committing
+```
+
+Setting it on `PngSubsystem` instead profiles all five at once. That works — output files are
+named after the subsystem, so they do not overwrite each other — but five wall-clock profiles of
+processes that mostly wait on each other is rarely what you want.
+
+The profile covers the whole process: the constructor (args, config, IPC binds, and everything
+the subsystem builds), the run, and teardown. `yappi` is imported inside the `if`, so a normal
+boot neither imports it nor pays for it.
+
+### 2. Run through the launcher
+
+```bash
+poetry run python -m apps.launcher --replay-server
+poetry run python -m apps.dev_tools.telemetry_replayer --file-name f1_24_sp_austria.f1pcap
+```
+
+Files are written when the subsystem exits cleanly, so let the replay finish and stop the
+launcher normally — killing it skips teardown and you get nothing.
+
+### 3. Read the output
+
+Three files land in the working directory, named after the subsystem:
+
+| File | What it is |
+|---|---|
+| `<name>_yappi.prof` | pstat format — open with `snakeviz <name>_yappi.prof` |
+| `<name>_yappi.txt` | Cumulative-sorted text |
+| `<name>_yappi.html` | The same text in a `<pre>` block |
+
+Clock type is wall, not CPU, so I/O waits are included — which is usually the point for
+subsystems that spend their time on sockets.
+
+Full paths are kept rather than stripped, so you can filter down to this repo's own frames:
+
+```bash
+grep "$(pwd)" backend_yappi.txt
+```
+
+If your virtualenv lives inside the repo, narrow the pattern further to exclude `.venv/`.

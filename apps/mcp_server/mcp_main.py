@@ -22,148 +22,174 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
-import asyncio
 import logging
 import os
 import sys
-from typing import List
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, override
 
-from lib.child_proc_mgmt import (notify_parent_init_complete,
-                                 report_pid_from_child)
-from lib.config import PngSettings, load_config_from_json
-from lib.error_status import PngError
-from lib.ipc import IpcDealerAsync, PngAppId
-from lib.logger import get_logger
-from lib.version import get_version
-from meta.meta import APP_NAME
+from lib.logger import PngLogger, get_logger
+from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
+                           arg, run_subsystem)
 
 from .mcp_server import MCPBridge
-from .mgmt import init_ipc_task
-from .subscriber import init_subscriber_task
+from .subscriber import McpSubscriber
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
-def parseArgs() -> argparse.Namespace:
-    """Parse the command line args and perform validation
+# How long the data stream may go quiet before the subscriber reports itself disconnected
+WDT_TIMEOUT_SEC = 10.0
 
-    Returns:
-        argparse.Namespace: The parsed args namespace
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
+
+@dataclass(frozen=True)
+class McpArgs(SubsystemArgs):
+    """The MCP server's flags, on top of the base --config-file and --debug.
+
+    --log-file and --wd have no callers in this repo: they are part of the contract with the
+    user's MCP client config, so their names and defaults are fixed.
     """
 
-    # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} MCP server")
+    managed: bool = arg(False, "Indicates if process is managed by parent")
+    log_file: str = arg("png_mcp_stdio.log", "Log file name")
+    wd: Optional[str] = arg(None, "Working directory")
 
-    # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument("--managed", action="store_true", help="Indicates if process is managed by parent")
-    parser.add_argument("--log-file", type=str, default="png_mcp_stdio.log", help="Log file name")
-    parser.add_argument("--wd", type=str, default=None, help="Working directory")
+class McpSubsystem(AsyncSubsystem[McpArgs]):
+    """Exposes live telemetry to MCP clients as tools.
 
-    # Parse the command-line arguments
-    return parser.parse_args()
-
-async def main(logger: logging.Logger, settings: PngSettings, version: str, managed: bool) -> None:
-    """Main function
-
-    Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        version (str): Version string
-        managed (bool): Whether process is managed by parent
+    The only subsystem that also runs unmanaged. With a launcher it serves HTTP and speaks the
+    full handshake; standalone it serves stdio, where stdout belongs to the MCP protocol and
+    nothing else may be written to it - see should_run_mgmt_ipc(). Either way it consumes broker
+    telemetry over pub/sub and pulls detail from the backend over the router/dealer channel.
     """
-    tasks: List[asyncio.Task] = []
-    transport = "http" if managed else "stdio"
-    ipc_sub = init_subscriber_task(port=settings.Network.broker_xpub_port, logger=logger, tasks=tasks)
-    dealer = IpcDealerAsync(
-        host="127.0.0.1",
-        port=settings.Network.broker_router_port,
-        identity=str(PngAppId.MCP),
-        logger=logger,
-    )
-    tasks.append(asyncio.create_task(dealer.start(), name="MCP Dealer Recv"))
-    mcp_bridge = MCPBridge(
-        dealer=dealer,
-        logger=logger,
-        version=version,
-        transport=transport,
-        port=settings.MCP.mcp_http_port
-    )
-    mcp_task = asyncio.create_task(mcp_bridge.run(), name="MCP Server Task")
-    tasks.append(mcp_task)
 
-    if managed:
-        logger.debug("Managed mode enabled")
-        init_ipc_task(logger, tasks, ipc_sub, dealer, mcp_bridge, mcp_task)
-        notify_parent_init_complete()
-    else:
-        logger.debug("Unmanaged mode; skipping IPC initialization")
+    CONFIG_REQUIRED = True
+    # The HTTP transport is only genuinely up once MCPBridge has bound its port, which happens
+    # inside run(), well after construction. A port conflict raises from there, so notifying early
+    # would tell the launcher RUNNING about a process that is about to die. MCPBridge emits the
+    # token itself once the bind succeeds. In stdio mode notify_ready() is a no-op anyway.
+    READY_ON_START = False
 
-    try:
-        logger.debug("Registered %d Tasks: %s", len(tasks), [task.get_name() for task in tasks])
-        await asyncio.gather(*tasks)
-    except asyncio.CancelledError:
-        logger.debug("Main task was cancelled.")
-        for task in tasks:
-            task.cancel()
-        await dealer.close()
-        raise  # Ensure proper cancellation behavior
-    except PngError as e:
-        logger.error(f"Terminating due to Error: {e} with code {e.exit_code}")
-        sys.exit(e.exit_code)
+    SUBSYS_ID = PngSubsysId.MCP
+    PUBSUB = PubSubRole.SUBSCRIBER
+    DEALER = True
 
+    PROFILE = False
 
-def _entry_point():
-    """Entry point"""
-    args = parseArgs()
+    # -------------------------------------- BOOT ----------------------------------------------------------------------
 
-    if args.wd:
-        try:
-            os.chdir(args.wd)
-        except FileNotFoundError:
-            print(f"Working directory does not exist: {args.wd}", file=sys.stderr)
+    @override
+    def should_run_mgmt_ipc(self) -> bool:
+        """Whether a launcher spawned this run.
+
+        Gates the management IPC server and all three handshake tokens. Unmanaged runs speak
+        stdio, where stdout carries the MCP protocol - a stray token would corrupt it.
+
+        Returns:
+            bool: True if launcher-managed
+        """
+
+        return self.args.managed
+
+    @override
+    def pre_boot(self) -> None:
+        """Move to the requested working directory and check the config is there.
+
+        Both report failure on stderr and exit, because neither the logger nor a parent exists
+        yet - and for an unmanaged run stderr stays the only channel the MCP client surfaces.
+        """
+
+        if self.args.wd:
+            try:
+                os.chdir(self.args.wd)
+            except FileNotFoundError:
+                print(f"Working directory does not exist: {self.args.wd}", file=sys.stderr)
+                sys.exit(1)
+            except NotADirectoryError:
+                print(f"Not a directory: {self.args.wd}", file=sys.stderr)
+                sys.exit(1)
+
+        # CONFIG_REQUIRED makes load_config_from_json raise, but that lands in the base's funnel
+        # and goes to the logger - which for an unmanaged run is a file nobody is watching.
+        if not self.args.managed and not os.path.exists(self.args.config_file):
+            print(f"Fatal: config file not found: {self.args.config_file}. "
+                  f"Run the pits n giggles launcher first. CWD: {os.getcwd()}", file=sys.stderr)
             sys.exit(1)
-        except NotADirectoryError:
-            print(f"Not a directory: {args.wd}", file=sys.stderr)
-            sys.exit(1)
 
-    # TODO: make rotating logging configurable
-    if args.managed:
-        png_logger = get_logger("mcp", args.debug, jsonl=True) # Emit JSONL to stdout. Parent process will capture.
-        report_pid_from_child()
-    else:
-        png_logger = get_logger("mcp", args.debug, jsonl=False, file_path=args.log_file)
+    @override
+    def make_logger(self) -> PngLogger:
+        """Build the logger, and quieten the MCP libraries.
 
-    logging.getLogger("mcp.server").setLevel(logging.WARNING)
-    logging.getLogger("mcp.client").setLevel(logging.WARNING)
+        Managed runs emit JSONL on stdout for the launcher to capture. Unmanaged runs cannot
+        touch stdout at all, so they log to a file instead.
 
-    version = get_version()
+        Returns:
+            PngLogger: Logger
+        """
 
-    configs = load_config_from_json(args.config_file, png_logger, fail_if_missing=True)
-    transport = "http" if args.managed else "stdio"
-    png_logger.info("Starting %s MCP server, version %s transport %s...", APP_NAME, version, transport)
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    try:
-        asyncio.run(main(
-            logger=png_logger,
-            settings=configs,
-            version=version,
-            managed=args.managed
-            ))
-    except KeyboardInterrupt:
-        png_logger.info("Program interrupted by user.")
-        sys.exit(0)
-    except asyncio.CancelledError:
-        png_logger.info("Program shutdown gracefully.")
-        sys.exit(0)
+        # TODO: make rotating logging configurable
+        if self.args.managed:
+            logger = get_logger(str(self.SUBSYS_ID), self.args.debug, jsonl=True)
+        else:
+            logger = get_logger(
+                str(self.SUBSYS_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
+
+        logging.getLogger("mcp.server").setLevel(logging.WARNING)
+        logging.getLogger("mcp.client").setLevel(logging.WARNING)
+        return logger
+
+    # -------------------------------------- LIFECYCLE -----------------------------------------------------------------
+
+    def __init__(self) -> None:
+        """Build the MCP bridge and attach the watchdog-backed subscriber to the data stream."""
+
+        super().__init__()
+        transport = "http" if self.args.managed else "stdio"
+        self.logger.info("Starting MCP server, version %s transport %s...", self.version, transport)
+
+        self.mcp_subscriber = McpSubscriber(self.subscriber, timeout=WDT_TIMEOUT_SEC)
+        self.add_task(self.mcp_subscriber.m_wdt.run(), name="IPC Watchdog Task")
+
+        self.mcp_bridge = MCPBridge(
+            dealer=self.dealer,
+            logger=self.logger,
+            version=self.version,
+            transport=transport,
+            on_ready=self.notify_ready,
+            port=self.settings.MCP.mcp_http_port,
+        )
+        # Held because run() has no cooperative exit - both transports block until cancelled.
+        self._mcp_task = self.add_task(self.mcp_bridge.run(), name="MCP Server Task")
+
+    @override
+    def collect_stats(self) -> Dict[str, Any]:
+        """Return subscriber, MCP and dealer stats.
+
+        Returns:
+            Dict[str, Any]: Stats body
+        """
+
+        return {
+            "INGRESS": self.subscriber.get_stats(),
+            "MCP": self.mcp_bridge.get_stats(),
+            "DEALER": self.dealer.get_stats(),
+        }
+
+    @override
+    async def on_shutdown(self, reason: str) -> None:
+        """Stop the watchdog and the MCP server. The base closes the sockets after this returns.
+
+        Args:
+            reason (str): Why the shutdown was requested
+        """
+
+        self.logger.info("Shutting down MCP. Reason: %s", reason)
+        self.mcp_subscriber.m_wdt.stop()
+        self._mcp_task.cancel()
+
+# -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
-    try:
-        _entry_point()
-    except FileNotFoundError as e:
-        # stderr is correct for stdio transport failures
-        print(f"Fatal: config file not found: {e}. Run the pits n giggles launcher first. CWD: {os.getcwd()}",
-              file=sys.stderr)
-        sys.exit(1)
+    """Entry point"""
+
+    run_subsystem(McpSubsystem)

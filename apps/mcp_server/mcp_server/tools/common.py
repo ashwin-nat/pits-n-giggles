@@ -25,9 +25,9 @@
 import logging
 from typing import Any, Dict, Optional
 
-from lib.ipc import IpcDealerAsync, PngAppId
-
 from apps.mcp_server.state import get_state_data
+from lib.ipc import IpcDealerAsync
+from lib.subsystem.identity import PngSubsysId
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ async def fetch_driver_info(
     """
 
     reply = await dealer.request(
-        str(PngAppId.BACKEND),
+        str(PngSubsysId.BACKEND),
         "driver-info-request",
         {"index": driver_index},
     )

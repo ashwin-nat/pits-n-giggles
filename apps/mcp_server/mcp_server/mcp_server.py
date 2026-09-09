@@ -112,6 +112,7 @@ TYRE WEAR THRESHOLDS:
         dealer: IpcDealerAsync,
         logger: logging.Logger,
         version: str,
+        on_ready: Callable[[], None],
         *,
         transport: TransportType = "stdio",
         host: str = "127.0.0.1",
@@ -123,6 +124,9 @@ TYRE WEAR THRESHOLDS:
         self.host = host
         self.port = port
         self.dealer = dealer
+        # Mandatory, not defaulted: reporting readiness is part of the launcher contract, and a
+        # default would let a caller silently skip it.
+        self.on_ready = on_ready
 
         self.stats = EventCounter()
 
@@ -514,6 +518,12 @@ TYRE WEAR THRESHOLDS:
 
                 # Since we're running uvicorn ourselves, we need to lay hands on FastMCP's internals for cleanup
                 server = uvicorn.Server(config)
+
+                # The port is ours from here, so this is the first honest moment to claim
+                # readiness. Anything earlier would tell the launcher RUNNING before the bind
+                # above has had its chance to fail.
+                self.on_ready()
+
                 async with self.mcp._lifespan_manager():
                     await server.serve(sockets=[sock])
 

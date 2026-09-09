@@ -24,9 +24,9 @@
 
 import asyncio
 import logging
-from typing import List
 
 from lib.config import PngSettings
+from lib.subsystem import AddTask
 
 from .telemetry_state import initSessionState, SessionState
 from .external_api import initExternalApiTask
@@ -37,7 +37,7 @@ def initStateManagementLayer(
     logger: logging.Logger,
     settings: PngSettings,
     ver_str: str,
-    tasks: List[asyncio.Task],
+    add_task: AddTask,
     shutdown_event: asyncio.Event) -> SessionState:
     """Initialise the state management layer
 
@@ -45,12 +45,13 @@ def initStateManagementLayer(
         logger (logging.Logger): Logger
         settings (PngSettings): Settings
         ver_str (str): Version string
-        tasks (List[asyncio.Task]): List of tasks
+        add_task (AddTask): The subsystem's add_task, which registers rather than starts
         shutdown_event (asyncio.Event): Shutdown event
 
     Returns:
         SessionState: Handle to the session state data structure
     """
     ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
-    initExternalApiTask(logger=logger, tasks=tasks, shutdown_event=shutdown_event, session_state_ref=ref)
+    initExternalApiTask(logger=logger, add_task=add_task, shutdown_event=shutdown_event,
+                        session_state_ref=ref)
     return ref
