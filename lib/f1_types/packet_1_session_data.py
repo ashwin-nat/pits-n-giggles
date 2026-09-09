@@ -190,14 +190,14 @@ class WeatherForecastSample(F1SubPacketBase):
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     __slots__ = (
-        "m_session_type",
-        "m_time_offset",
+        "m_sessionType",
+        "m_timeOffset",
         "m_weather",
-        "m_track_temperature",
-        "m_track_temperature_change",
-        "m_air_temperature",
-        "m_air_temperature_change",
-        "m_rain_percentage",
+        "m_trackTemperature",
+        "m_trackTemperatureChange",
+        "m_airTemperature",
+        "m_airTemperatureChange",
+        "m_rainPercentage",
     )
 
     class WeatherCondition(F1BaseEnum):

@@ -73,6 +73,7 @@ class TyreSetData(F1SubPacketBase):
     PACKET_LEN = COMPILED_PACKET_STRUCT.size
 
     __slots__ = (
+        "m_packetFormat",
         "m_actualTyreCompound",
         "m_visualTyreCompound",
         "m_wear",

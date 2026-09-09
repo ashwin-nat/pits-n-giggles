@@ -103,6 +103,7 @@ class FinalClassificationData(F1SubPacketBase):
     PACKET_LEN_25 = COMPILED_PACKET_STRUCT_25.size
 
     __slots__ = (
+        "m_packetFormat",
         "m_position",
         "m_numLaps",
         "m_gridPosition",

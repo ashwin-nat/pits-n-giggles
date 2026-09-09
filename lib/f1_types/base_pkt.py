@@ -286,6 +286,10 @@ class F1SubPacketBase:
     All derived classes must use __slots__.
     """
 
+    # F1PacketBase can guarantee that m_header is present,
+    # F1SubPacketBase cannot make any such guarantees. Hence the empty __slots__ tuple
+    __slots__ = ()
+
     @abstractmethod
     def toJSON(self) -> Dict[str, Any]:
         raise NotImplementedError(f"{self.__class__.__name__} must implement toJSON()")
