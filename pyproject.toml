@@ -66,4 +66,8 @@ pytest-cov = "^6.1"
 pytest-xdist = "^3.6"
 pytest-asyncio = "^0.24"
 allure-pytest = "^2.13"
+diff-cover = "^10.5.1"
+# Pinned only to keep requests quiet: diff-cover asks for chardet>=3.0.0 with no upper bound,
+# and requests asserts chardet<6.0.0 at import, so an unconstrained resolve warns on every run.
+chardet = "^5.2.0"
 

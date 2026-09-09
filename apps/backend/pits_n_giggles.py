@@ -22,288 +22,174 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import argparse
-import asyncio
-import logging
-import os
-import sys
-import time
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, override
 
-from wsproto.connection import LocalProtocolError
-
-from apps.backend.intf_layer import initUiIntfLayer
+from apps.backend.intf_layer import (frontEndMessageTask,
+                                     highFreqLocalUpdateTask,
+                                     hudInteractionTask,
+                                     lowFreqLocalUpdateTask)
+from apps.backend.intf_layer.ipc import (handleCaptureConfigChange,
+                                         handleForwardingConfigChange,
+                                         handleManualSave,
+                                         handleUdpActionCodeChange)
+from apps.backend.intf_layer.request_handlers import handleDriverInfoRequest
 from apps.backend.state_mgmt_layer import (SessionState,
                                            initStateManagementLayer)
-from apps.backend.telemetry_layer import initTelemetryLayer
-from lib.child_proc_mgmt import notify_parent_init_complete, report_pid_from_child
-from lib.config import load_config_from_json
-from lib.error_status import PngError
+from apps.backend.state_mgmt_layer.intf import RaceInfoData
+from apps.backend.telemetry_layer import F1TelemetryHandler, initTelemetryLayer
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync
-from lib.logger import get_logger
-from lib.version import get_version
-from meta.meta import APP_NAME
-
-# -------------------------------------- GLOBALS -----------------------------------------------------------------------
+from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
+                           arg, run_subsystem)
 
 # -------------------------------------- CLASS  DEFINITIONS ------------------------------------------------------------
 
-class PngRunner:
-    """Pits n' Giggles Backend Runner"""
-    def __init__(self,
-                 logger: logging.Logger,
-                 config_file: str,
-                 replay_server: bool,
-                 run_ipc_server: bool = False) -> None:
-        """Init the runner. Register necessary tasks
+@dataclass(frozen=True)
+class BackendArgs(SubsystemArgs):
+    """The backend's flags, on top of the base --config-file and --debug."""
 
-        Args:
-            logger (logging.Logger): Logger object
-            config_file (str): Path to the config file
-            replay_server (bool): If true, runs in TCP debug mode, else UDP live mode
-            run_ipc_server (bool): If true, runs the IPC server
-        """
-        self.m_logger: logging.Logger = logger
-        self.m_config = load_config_from_json(config_file, logger)
-        self.m_tasks: List[asyncio.Task] = []
-        self.m_version: str = get_version()
+    replay_server: bool = arg(False, "Enable the TCP replay debug server")
 
-        self.m_shutdown_event: asyncio.Event = asyncio.Event()
+class BackendSubsystem(AsyncSubsystem[BackendArgs]):
+    """The dumb core - receives telemetry from the game, analyses it, and publishes the result.
 
-        self.m_session_state: SessionState = initStateManagementLayer(
-            logger=self.m_logger,
-            settings=self.m_config,
-            ver_str=self.m_version,
-            tasks=self.m_tasks,
-            shutdown_event=self.m_shutdown_event
-        )
+    Has no HTTP server of its own: it publishes over pub/sub and answers pull requests over the
+    router/dealer channel, and apps/web owns all browser-facing serving.
+    """
 
-        self.m_telemetry_handler = initTelemetryLayer(
-            settings=self.m_config,
-            replay_server=replay_server,
-            logger=self.m_logger,
-            ver_str=self.m_version,
-            shutdown_event=self.m_shutdown_event,
-            session_state=self.m_session_state,
-            tasks=self.m_tasks
-        )
-        self.m_ipc_pub, self.m_ipc_dealer = self._setupUiIntfLayer(run_ipc_server=run_ipc_server)
-        self.m_tasks.append(asyncio.create_task(self._shutdown_tasks(), name="Shutdown Task"))
-        # self.m_tasks.append(asyncio.create_task(self._start_event_loop_monitor(), name="Event Loop Monitor"))
 
-        # Run all tasks concurrently
-        self.m_logger.debug("Registered %d Tasks: %s", len(self.m_tasks), [task.get_name() for task in self.m_tasks])
-        notify_parent_init_complete()
+    SUBSYS_ID = PngSubsysId.BACKEND
+    PUBSUB = PubSubRole.PUBLISHER
+    DEALER = True
 
-    async def run(self) -> None:
-        """Main entry point to run the application."""
-        try:
-            await asyncio.gather(*self.m_tasks)
-        except asyncio.CancelledError:
-            self.m_logger.debug("Main task was cancelled.")
-            await AsyncInterTaskCommunicator().send('shutdown', {"reason" : "Main task was cancelled."})
-            raise  # Ensure proper cancellation behavior
+    PROFILE = False
 
-    def _setupUiIntfLayer(self,
-        run_ipc_server: Optional[bool] = False) -> Tuple[IpcPublisherAsync, IpcDealerAsync]:
-        """Entry point to start publishing analysed telemetry over IPC.
+    def __init__(self) -> None:
+        """Build the three backend layers and wire them to the IPC surfaces.
 
-        Args:
-            run_ipc_server (bool, optional): Whether to run the IPC server. Defaults to False.
-
-        Returns:
-            Tuple[IpcPublisherAsync, IpcDealerAsync]: IPC publisher and IPC dealer instances
+        The base has already parsed args, built the logger, loaded config and stood up the IPC
+        handles, so everything below can be done here rather than in a second phase.
         """
 
-        self.m_logger.info(
+        super().__init__()
+        self.logger.info(
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
             "on the screen before the race start - that is when the game starts sending telemetry data")
 
-        return initUiIntfLayer(
-            settings=self.m_config,
-            logger=self.m_logger,
-            session_state=self.m_session_state,
-            tasks=self.m_tasks,
-            run_ipc_server=run_ipc_server,
-            shutdown_event=self.m_shutdown_event,
-            telemetry_handler=self.m_telemetry_handler,
-        )
+        self.session_state: SessionState = initStateManagementLayer(
+            logger=self.logger,
+            settings=self.settings,
+            ver_str=self.version,
+            add_task=self.add_task,
+            shutdown_event=self.shutdown_event)
 
-    def _getVersion(self) -> str:
-        """Get the version string from env variable
+        self.telemetry_handler: F1TelemetryHandler = initTelemetryLayer(
+            settings=self.settings,
+            replay_server=self.args.replay_server,
+            logger=self.logger,
+            ver_str=self.version,
+            shutdown_event=self.shutdown_event,
+            session_state=self.session_state,
+            add_task=self.add_task)
+
+        self._register_dealer_routes()
+        self._register_mgmt_routes()
+        self._register_publish_tasks()
+
+    def _register_dealer_routes(self) -> None:
+        """Answer the pull requests apps/web bridges from the browser."""
+
+        @self.dealer.route("driver-info-request")
+        async def _driver_info_request(data: dict, sender: str) -> dict:
+            self.logger.debug("Received driver info request via router: %s from %s", data, sender)
+            result = handleDriverInfoRequest(self.session_state, data.get("index"))
+            if result.ok:
+                return {"ok": True, "data": result.data}
+            return {"ok": False, "error": result.detail, "error_code": result.error.name, "data": None}
+
+        @self.dealer.route("race-info-request")
+        async def _race_info_request(_data: dict, sender: str) -> dict:
+            self.logger.debug("Received race info request via router from %s", sender)
+            return RaceInfoData(self.session_state).toJSON()
+
+    def _register_mgmt_routes(self) -> None:
+        """Commands the launcher sends when the user changes settings or asks for a save."""
+
+        @self.mgmt.on("manual-save")
+        async def _manual_save(_args: dict) -> dict:
+            return await handleManualSave(logger=self.logger, session_state=self.session_state)
+
+        @self.mgmt.on("udp-action-code-change")
+        async def _udp_action_code_change(args: dict) -> dict:
+            return await handleUdpActionCodeChange(args, self.logger, self.telemetry_handler)
+
+        @self.mgmt.on("forwarding-config-change")
+        async def _forwarding_config_change(args: dict) -> dict:
+            return await handleForwardingConfigChange(args, self.logger, self.telemetry_handler)
+
+        @self.mgmt.on("capture-config-change")
+        async def _capture_config_change(args: dict) -> dict:
+            return await handleCaptureConfigChange(
+                args, self.logger, self.telemetry_handler, self.session_state)
+
+    def _register_publish_tasks(self) -> None:
+        """The periodic publishes, plus the two event-driven forwarders."""
+
+        self.add_periodic(
+            self.settings.Display.local_telemetry_interval_ms,
+            lowFreqLocalUpdateTask,
+            self.session_state,
+            self.publisher,
+            name="Low Frequency Local Update Task")
+
+        self.add_periodic(
+            self.settings.Display.hud_refresh_interval,
+            highFreqLocalUpdateTask,
+            self.session_state,
+            self.publisher,
+            self.settings.StreamOverlay.show_sample_data_at_start,
+            name="High Frequency Local Update Task")
+
+        self.add_task(frontEndMessageTask(self.dealer, self.shutdown_event),
+                      name="Front End Message Task")
+        self.add_task(hudInteractionTask(self.dealer, self.shutdown_event),
+                      name="HUD Interaction Task")
+
+    @override
+    def collect_stats(self) -> Dict[str, Any]:
+        """Return ingress (telemetry in) and egress (IPC out) stats.
 
         Returns:
-            str: Version string
+            Dict[str, Any]: Stats body
         """
 
-        return os.environ.get('PNG_VERSION', 'dev')
+        return {
+            "ingress": self.telemetry_handler.getStats(),
+            "egress": {
+                "ipc_pub": self.publisher.get_stats(),
+                "dealer": self.dealer.get_stats(),
+            },
+        }
 
-    async def _shutdown_tasks(self) -> None:
-        """Shutdown all the tasks and finish so that the event loop can terminate naturally
+    @override
+    async def on_shutdown(self, reason: str) -> None:
+        """Release the ITC receivers and stop the telemetry handler.
+
+        The base closes the publisher and dealer once this returns.
+
+        Args:
+            reason (str): Why the shutdown was requested
         """
 
-        self.m_logger.debug("Starting shutdown task. Awaiting shutdown command...")
-        await AsyncInterTaskCommunicator().receive("shutdown")
-        self.m_logger.debug("Received shutdown command. Stopping tasks...")
-
-        # Periodic UI update tasks and packet forwarder are listening to shutdown event
-        self.m_shutdown_event.set()
+        self.logger.debug("Shutting down the backend. Reason: %s", reason)
+        # Releases the frontend-update, hud-notifier, packet-forward and external-api-update
+        # receivers from their await, so their tasks can see the shutdown event and exit.
         await AsyncInterTaskCommunicator().unblock_receivers()
-
-        # Explicitly stop the tasks
-        await self.m_telemetry_handler.stop()
-        await self.m_ipc_pub.close()
-        await self.m_ipc_dealer.close()
-        await asyncio.sleep(1)
-
-        self.m_logger.debug("Tasks stopped. Exiting...")
-
-    async def _start_event_loop_monitor(self, threshold: float = 0.1) -> None:
-        """
-        Logs a warning whenever the event loop is blocked
-        longer than `threshold` seconds.
-
-        Default threshold = 100ms (0.1s).
-        """
-
-        last = time.perf_counter()
-        while not self.m_shutdown_event.is_set():
-            await asyncio.sleep(0)  # yield to let loop run
-            now = time.perf_counter()
-            diff = now - last
-            if diff > threshold:
-                self.m_logger.warning("[HOGGING] Event loop blocked for %.4f seconds", diff)
-            last = now
-
-# -------------------------------------- FUNCTION DEFINITIONS ----------------------------------------------------------
-
-def parseArgs() -> argparse.Namespace:
-    """Parse the command line args
-
-    Returns:
-        argparse.Namespace: The parsed args namespace
-    """
-
-    # Initialize the ArgumentParser
-    parser = argparse.ArgumentParser(description=f"{APP_NAME} Realtime Telemetry Server")
-
-    # Add command-line arguments with default values
-    parser.add_argument("--config-file", nargs="?", default="png_config.json", help="Configuration file name (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-    parser.add_argument('--replay-server', action='store_true', help="Enable the TCP replay debug server")
-    parser.add_argument('--log-file-name', type=str, default=None, help="Log file name")
-    parser.add_argument('--run-ipc-server', action='store_true', help="Run IPC server on OS assigned port")
-
-    # Parse the command-line arguments
-    return parser.parse_args()
-
-async def main(logger: logging.Logger, args: argparse.Namespace) -> None:
-    """Entry point for the application.
-
-    Args:
-        logger (logging.Logger): Logger object
-        args (argparse.Namespace): Parsed command-line arguments.
-    """
-
-    try:
-        app = PngRunner(
-            logger=logger,
-            config_file=args.config_file,
-            replay_server=args.replay_server,
-            run_ipc_server=args.run_ipc_server,
-        )
-    except PngError as e:
-        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
-        sys.exit(e.exit_code)
-    try:
-        await app.run()
-    except PngError as e:
-        logger.error("Terminating due to Error: %s with code %s", e, e.exit_code)
-        sys.exit(e.exit_code)
+        await self.telemetry_handler.stop()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------
 
 def entry_point():
-    report_pid_from_child()
-    args_obj = parseArgs()
-    png_logger = get_logger(
-        name="backend",
-        debug_mode=args_obj.debug,
-        file_path=args_obj.log_file_name,
-        jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
-    )
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    try:
-        asyncio.run(main(png_logger, args_obj))
-    except KeyboardInterrupt:
-        png_logger.info("Program interrupted by user.")
-    except asyncio.CancelledError:
-        png_logger.info("Program shutdown gracefully.")
-    except LocalProtocolError: # race condition that occurs occasionally during shutdown. safe to ignore
-        png_logger.info("Program shutdown gracefully.")
-    except Exception as e: # pylint: disable=broad-exception-caught
-        png_logger.exception("Error in main: %s", e)
-        sys.exit(1)
+    """Entry point"""
 
-# ---------------------------------------- PROFILER MODE ---------------------------------------------------------------
-
-# import yappi
-# import pstats
-
-# def save_pstats_report(html_filename, txt_filename):
-#     stats = pstats.Stats("yappi_profile.prof")
-
-#     # Don't strip directories, so full paths are included
-#     # If you want the paths to be fully visible, just skip strip_dirs()
-#     stats.sort_stats("cumulative")
-
-#     # Save as HTML
-#     with open(html_filename, "w") as f:
-#         f.write("<html><head><title>Yappi Profile</title></head><body><pre>")
-#         stats.stream = f
-#         stats.print_stats()
-#         f.write("</pre></body></html>")
-
-#     # Save as TXT
-#     with open(txt_filename, "w") as f:
-#         stats.stream = f
-#         stats.print_stats()
-
-# def entry_point():
-#     yappi.set_clock_type("wall")  # Use "cpu" for CPU-bound tasks
-#     yappi.start()
-
-#     report_pid_from_child()
-#     args_obj = parseArgs()
-#     png_logger = get_logger(
-#         name="backend",
-#         debug_mode=args_obj.debug,
-#         file_path=args_obj.log_file_name,
-#         jsonl=not bool(args_obj.log_file_name) # Emit jsonl if no log file (this happens only in launcher mode)
-#     )
-#     if sys.platform == 'win32':
-#         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-#     try:
-#         asyncio.run(main(png_logger, args_obj))
-#     except KeyboardInterrupt:
-#         png_logger.info("Program interrupted by user.")
-#     except asyncio.CancelledError:
-#         png_logger.info("Program shutdown gracefully.")
-#     except Exception as e:
-#         png_logger.exception("Error in main: %s", e)
-#         sys.exit(1)
-#     finally:
-#         yappi.stop()
-
-#         # Save function-level stats for SnakeViz
-#         yappi.get_func_stats().save("yappi_profile.prof", type="pstat")
-#         print("Saved function profile as yappi_profile.prof (compatible with snakeviz)")
-
-#         # Generate reports
-#         save_pstats_report("yappi_profile.html", "yappi_profile.txt")
-
-#         print("Generated reports:")
-#         print(" - yappi_profile.html")
-#         print(" - yappi_profile.txt")
+    run_subsystem(BackendSubsystem)

@@ -54,6 +54,10 @@ class MessageType(Enum):
     TYRE_CHANGE = auto()
     DRIVER_AI_STATUS_CHANGE = auto()
     FLASHBACK = auto()
+    PARTIAL_AERO_MODE_ENABLED = auto()
+    PARTIAL_AERO_MODE_DISABLED = auto()
+    OVERTAKE_MODE_ENABLED = auto()
+    OVERTAKE_MODE_DISABLED = auto()
 
     def __str__(self) -> str:
         return self.name

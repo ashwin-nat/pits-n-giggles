@@ -22,8 +22,12 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .telemetry_ui_tasks import initUiIntfLayer
+from .telemetry_ui_tasks import (frontEndMessageTask, highFreqLocalUpdateTask,
+                                 hudInteractionTask, lowFreqLocalUpdateTask)
 
 __all__ = [
-    "initUiIntfLayer",
+    "frontEndMessageTask",
+    "highFreqLocalUpdateTask",
+    "hudInteractionTask",
+    "lowFreqLocalUpdateTask",
 ]

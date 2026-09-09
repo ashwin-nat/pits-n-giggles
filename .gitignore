@@ -28,6 +28,7 @@ png-venv/
 .coverage.*
 htmlcov/
 coverage_reports/
+reports/
 *.diff
 *:Zone.Identifier
 *.db

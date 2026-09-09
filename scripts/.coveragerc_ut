@@ -4,6 +4,7 @@ omit =
     */__init__.py
     */tests/*
     lib/f1_types/constants.py
+    lib/subsystem/identity.py
 source =
     lib
 

@@ -91,6 +91,70 @@ class DrsDisabledRaceCtrlMsg(RaceCtrlMsgBase):
             "reason": self.reason
         }
 
+class PartialAeroModeEnabledRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, reason: str, lap_number: Optional[int] = None) -> None:
+        """Partial aero mode enabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            reason (str): Reason for enabling Partial aero mode.
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.PARTIAL_AERO_MODE_ENABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+        self.reason: str = reason
+
+    def toJSON(self, _driver_info_dict: Optional[Dict[int, dict]] = None) -> Dict[str, Any]:
+        return {
+            **super().toJSON(_driver_info_dict),
+            "reason": self.reason
+        }
+
+class PartialAeroModeDisabledRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Partial aero mode disabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.PARTIAL_AERO_MODE_DISABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+class OvertakeModeEnabledRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Overtake mode enabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.OVERTAKE_MODE_ENABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+
+class OvertakeModeDisabledRaceCtrlMsg(RaceCtrlMsgBase):
+    def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
+        """Overtake mode disabled message
+
+        Args:
+            timestamp (float): Time at which the message was issued (seconds).
+            lap_number (Optional[int], optional): Lap number. Defaults to None.
+        """
+        super().__init__(
+            timestamp=timestamp,
+            message_type=MessageType.OVERTAKE_MODE_DISABLED,
+            involved_drivers=[],
+            lap_number=lap_number)
+
 class ChequeredFlagRaceCtrlMsg(RaceCtrlMsgBase):
     def __init__(self, timestamp: float, lap_number: Optional[int] = None) -> None:
         """Chequered flag message

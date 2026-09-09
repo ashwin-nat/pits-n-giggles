@@ -47,6 +47,75 @@ start reports/coverage/index.html   # Windows
 open reports/coverage/index.html    # macOS
 ```
 
+Alongside `index.html`, coverage.py also writes `function_index.html` and
+`class_index.html` — the same data grouped per function and per class, which is the
+quicker way to find an untested method on a class that is otherwise well covered.
+
+Worst-covered modules as text, from whatever `.coverage` is already on disk:
+
+```bash
+poetry run coverage report --rcfile=scripts/.coveragerc_ut --sort=cover --skip-covered
+```
+
+Everything below is optional and reads the same `.coverage` file — none of it needs a
+second test run.
+
+### Directory-Level Rollup and Trend (optional)
+
+coverage.py's own HTML index is a flat file list. For per-directory numbers
+(`lib.ipc.pubsub`, `lib.subsystem`, ...) plus a coverage trend chart, render the
+Cobertura XML with [ReportGenerator](https://github.com/danielpalme/ReportGenerator).
+It is a .NET tool but language-agnostic, and needs the .NET SDK installed once:
+
+```bash
+dotnet tool install -g dotnet-reportgenerator-globaltool
+```
+
+Then, after any run that produced a `.coverage`:
+
+```bash
+poetry run coverage xml -i --rcfile=scripts/.coveragerc_ut -o reports/coverage.xml
+
+reportgenerator \
+    -reports:reports/coverage.xml \
+    -targetdir:reports/coverage-rg \
+    -historydir:reports/coverage-history \
+    -reporttypes:"Html_Dark;MarkdownSummaryGithub" \
+    -title:"Pits n' Giggles - lib coverage"
+
+start reports/coverage-rg/index.html
+```
+
+`coverage xml` maps each directory under `lib/` to a Cobertura `<package>`, which is
+what gives the per-directory table. Keeping `-historydir` across runs appends one point
+per invocation, so the trend chart fills in over time — delete the directory to reset
+it. `MarkdownSummaryGithub` also writes `reports/coverage-rg/SummaryGithub.md`, handy
+for pasting into a PR. Method coverage is a paid ReportGenerator feature and shows as
+unavailable; line and branch coverage are not.
+
+### Diff Coverage (optional)
+
+Coverage over only the lines a branch changed. `diff-cover` is already in the dev group,
+so no extra install:
+
+```bash
+poetry run coverage xml -i --rcfile=scripts/.coveragerc_ut -o reports/coverage.xml
+
+poetry run diff-cover reports/coverage.xml \
+    --compare-branch=main \
+    --html-report reports/diff-coverage.html
+```
+
+This is the more useful number when reviewing a refactor: the whole-repo percentage
+barely moves, but it will show newly written lines that no test touches.
+
+`-i` on `coverage xml` is deliberate in both cases. It skips entries pointing at source
+files that no longer exist, which otherwise abort the report after a branch switch or a
+refactor that deleted a module. If a report comes out thinner than expected, re-run the
+suite for fresh data rather than trusting a stale `.coverage`.
+
+Everything written under `reports/` is gitignored.
+
 ## Allure Report (local)
 
 Requires the Allure CLI installed separately (pick any one):

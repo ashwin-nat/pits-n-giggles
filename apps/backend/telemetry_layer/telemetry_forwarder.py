@@ -29,18 +29,19 @@ from typing import List, Tuple
 
 from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
+from lib.subsystem import AddTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupForwarder(forwarding_targets: List[Tuple[str, int]],
-                   tasks: List[asyncio.Task],
+                   add_task: AddTask,
                    shutdown_event: asyncio.Event,
                    logger: logging.Logger) -> AsyncUDPForwarder:
     """Init the forwarding task and return the forwarder so targets can be updated at runtime.
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Initial forwarding targets (may be empty)
-        tasks (List[asyncio.Task]): List of tasks
+        add_task (AddTask): The subsystem's add_task, which registers rather than starts
         shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
 
@@ -49,8 +50,7 @@ def setupForwarder(forwarding_targets: List[Tuple[str, int]],
     """
 
     udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
-    tasks.append(asyncio.create_task(udpForwardingTask(udp_forwarder, shutdown_event, logger),
-                                     name="UDP Forwarder Task"))
+    add_task(udpForwardingTask(udp_forwarder, shutdown_event, logger), name="UDP Forwarder Task")
     logger.debug("UDP Forwarder task registered. Initial targets=%s", forwarding_targets)
     return udp_forwarder
 

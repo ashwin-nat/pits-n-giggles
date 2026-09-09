@@ -40,12 +40,11 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketCarDamageData, PacketCarSetupData,
                           PacketCarStatusData, PacketCarTelemetry2Data,
                           PacketCarTelemetryData, PacketEventData,
-                          PacketFinalClassificationData, PacketHeader,
-                          PacketLapData, PacketLapPositionsData,
-                          PacketMotionData, PacketParticipantsData,
-                          PacketSessionData, PacketSessionHistoryData,
-                          PacketTimeTrialData, PacketTyreSetsData,
-                          ResultStatus)
+                          PacketFinalClassificationData, PacketLapData,
+                          PacketLapPositionsData, PacketMotionData,
+                          PacketParticipantsData, PacketSessionData,
+                          PacketSessionHistoryData, PacketTimeTrialData,
+                          PacketTyreSetsData, ResultStatus)
 from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
                                          SessionChangeNotification,
                                          TyreDeltaMessage)
@@ -102,10 +101,9 @@ class SessionState:
         'm_power_filter_window_size',
         'm_custom_markers_history',
         'm_first_session_update_received',
-        'm_version',
+        'm_png_version',
         'm_pkt_fmt',
-        'm_game_major_ver',
-        'm_game_minor_ver',
+        'm_game_version',
         'm_connected_to_sim',
         'm_race_ctrl',
         'm_flashback_occurred',
@@ -143,10 +141,9 @@ class SessionState:
         self.m_overtakes_history = OvertakesHistory()
         self.m_session_info: SessionInfo = SessionInfo(settings, logger)
         self.m_first_session_update_received: bool = False
-        self.m_version: str = ver_str
+        self.m_png_version: str = ver_str
         self.m_pkt_fmt: Optional[int] = None
-        self.m_game_major_ver: Optional[int] = None
-        self.m_game_minor_ver: Optional[int] = None
+        self.m_game_version: Optional[str] = None
 
         # Config params
         self.m_process_car_setups: bool = settings.Privacy.process_car_setup
@@ -194,8 +191,7 @@ class SessionState:
 
         self.m_pkt_count = 0
         self.m_pkt_fmt = None
-        self.m_game_major_ver = None
-        self.m_game_minor_ver = None
+        self.m_game_version = None
 
         # No need to clear config params
 
@@ -225,11 +221,6 @@ class SessionState:
             for obj in self.m_driver_data
         )
 
-    @property
-    def game_ver_str(self) -> str:
-        """Returns the game version string"""
-        return f"{self.m_game_major_ver}.{self.m_game_minor_ver}"
-
     def updateCaptureSettings(self, settings: CaptureSettings) -> None:
         """Apply the capture settings owned by this layer.
 
@@ -240,15 +231,6 @@ class SessionState:
             settings (CaptureSettings): The new capture settings
         """
         self.m_save_race_ctrl_msgs = settings.save_race_ctrl_msg
-
-    def setGameVersion(self, header: PacketHeader) -> None:
-        """Set the game version from the packet header
-
-        Args:
-            header (PacketHeader): The packet header
-        """
-        self.m_game_major_ver = header.m_gameMajorVersion
-        self.m_game_minor_ver = header.m_gameMinorVersion
 
     def setRaceOngoing(self) -> None:
         """
@@ -719,8 +701,8 @@ class SessionState:
         # Finally, race control messages and app version
         if self.m_save_race_ctrl_msgs:
             final_json['race-control'] = self.getRaceControlMessagesJSON(driver_info_dict)
-        final_json['version'] = self.m_version
-        final_json['game-version'] = self.game_ver_str
+        final_json['version'] = self.m_png_version
+        final_json['game-version'] = self.m_game_version
         return final_json
 
     def processCarDamageUpdate(self, packet: PacketCarDamageData) -> None:
@@ -902,7 +884,6 @@ class SessionState:
             packet (PacketSessionData): Session data packet
         """
 
-        self.setGameVersion(packet.m_header)
         session_changed = self._processSessionUpdateHelper(packet)
         self.m_session_info.processSessionUpdate(packet)
         if session_changed:
@@ -1438,6 +1419,7 @@ class SessionState:
         """
 
         session_changed = False
+        self.m_game_version = packet.m_header.game_version
         self.m_pkt_fmt = packet.m_header.m_packetFormat
         if not self.m_first_session_update_received:
             # This is the first session update for this session. log the session info only once
@@ -1451,7 +1433,8 @@ class SessionState:
                                f"Track: {str(packet.m_trackId)}, "
                                f"Session Type: {str(packet.m_sessionType)}, "
                                f"Weather: {str(packet.m_weather)}, "
-                               f"Total Laps: {packet.m_totalLaps}, ")
+                               f"Total Laps: {packet.m_totalLaps}, "
+                               f"Game Version: {packet.m_header.game_version}, ")
             if packet.m_formula.is_unknown():
                 # The game has started sending a formula type we don't recognise. Treated as
                 # UNKNOWN everywhere, but log the raw value so it can be added to the enum

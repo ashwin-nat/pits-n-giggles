@@ -28,15 +28,15 @@ import time
 import webbrowser
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from quart import send_file, url_for
 from watchfiles import awatch
 
-from lib.child_proc_mgmt import notify_parent_init_complete
 from lib.config import AutoOpenDashboardMode, PngSettings
-from lib.ipc import IpcDealerAsync, PngAppId
+from lib.ipc import IpcDealerAsync
 from lib.logger import PngLogger
+from lib.subsystem.identity import PngSubsysId
 from lib.web_server import BaseWebServer, ClientType
 
 from .save_viewer_state import (getDriverInfoFrom, getRaceInfoFrom,
@@ -78,6 +78,7 @@ class WebServer(BaseWebServer):
                  logger: PngLogger,
                  session_dir: Path,
                  viewer_dir: Path,
+                 on_ready: Callable[[], None],
                  debug_mode: bool = False):
         """
         Initialize the WebServer.
@@ -88,6 +89,9 @@ class WebServer(BaseWebServer):
             logger (PngLogger): The logger instance.
             session_dir (Path): Directory to scan for saved session JSON files.
             viewer_dir (Path): Directory containing the built f1-save-viewer React app.
+            on_ready (Callable[[], None]): Called once the server is actually listening. This
+                subsystem is only genuinely up at that point, not when it finishes constructing, so
+                it owns the timing of the init-complete token.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
         """
         super().__init__(
@@ -102,6 +106,7 @@ class WebServer(BaseWebServer):
             cert_path=settings.HTTPS.cert_path,
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)
+        self.m_on_ready: Callable[[], None] = on_ready
         self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
@@ -201,7 +206,7 @@ class WebServer(BaseWebServer):
                 if data is None:
                     return {'error': 'Session not found'}, HTTPStatus.NOT_FOUND
                 return getRaceInfoFrom(data), HTTPStatus.OK
-            rsp = await self.m_dealer.request(str(PngAppId.BACKEND), "race-info-request", {})
+            rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "race-info-request", {})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
             return rsp, HTTPStatus.OK
@@ -220,7 +225,7 @@ class WebServer(BaseWebServer):
                 if driver_info := getDriverInfoFrom(data, int(index)):
                     return driver_info, HTTPStatus.OK
                 return {'error': 'Invalid parameter value', 'message': 'Invalid index'}, HTTPStatus.NOT_FOUND
-            rsp = await self.m_dealer.request(str(PngAppId.BACKEND), "driver-info-request", {"index": index})
+            rsp = await self.m_dealer.request(str(PngSubsysId.BACKEND), "driver-info-request", {"index": index})
             if rsp.get("status") == "error":
                 return {'error': rsp.get("reason", "backend unavailable")}, HTTPStatus.SERVICE_UNAVAILABLE
             if rsp.get("ok"):
@@ -382,7 +387,7 @@ class WebServer(BaseWebServer):
 
     async def _post_start(self) -> None:
         """Function to be called after the server starts serving."""
-        notify_parent_init_complete()
+        self.m_on_ready()
 
         @self.m_app.after_serving
         async def _stop_watch_loop() -> None:

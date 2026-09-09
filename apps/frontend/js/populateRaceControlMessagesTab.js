@@ -140,6 +140,12 @@ const detailRenderers = {
     return `Driver: ${getDriverDetailsStr(d ?? null)}, Lap: ${lap} - State changed from ${stateLabel(oldState)} to ${stateLabel(newState)}`;
   },
   FLASHBACK: () => '---',
+  PARTIAL_AERO_MODE_ENABLED: ({ reason }) =>
+      `Reason: ${reason}`,
+  PARTIAL_AERO_MODE_DISABLED: () => '---',
+  // Session-wide race control toggles, distinct from OVERTAKE above (one car passing another)
+  OVERTAKE_MODE_ENABLED: () => '---',
+  OVERTAKE_MODE_DISABLED: () => '---',
 
   DEFAULT: msg => `Type: ${msg['message-type']} - Placeholder details.`
 };

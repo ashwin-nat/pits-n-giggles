@@ -24,10 +24,12 @@
 
 import asyncio
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from lib.inter_task_communicator import AsyncInterTaskCommunicator, SessionChangeNotification
 from lib.openf1 import getMostRecentPoleLap
+
+from lib.subsystem import AddTask
 
 from .telemetry_state import SessionState
 
@@ -35,18 +37,18 @@ from .telemetry_state import SessionState
 
 def initExternalApiTask(
     logger: logging.Logger,
-    tasks: List[asyncio.Task],
+    add_task: AddTask,
     shutdown_event: asyncio.Event,
     session_state_ref: SessionState) -> None:
     """Initialise the state management layer
 
     Args:
         logger (logging.Logger): Logger
-        tasks (List[asyncio.Task]): List of tasks
+        add_task (AddTask): The subsystem's add_task, which registers rather than starts
         shutdown_event (asyncio.Event): Shutdown event
         session_state_ref (SessionState): Reference to the session state
     """
-    tasks.append(asyncio.create_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task"))
+    add_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task")
 
 async def externalApiTask(
         logger: logging.Logger,

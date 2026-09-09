@@ -31,7 +31,10 @@ from .messages import (ChequeredFlagRaceCtrlMsg, CollisionRaceCtrlMsg,
                        DrsDisabledRaceCtrlMsg, DrsEnabledRaceCtrlMsg,
                        DtPenServedRaceCtrlMsg, FastestLapRaceCtrlMsg,
                        FlashBackRaceCtrlMsg, LightsOutRaceCtrlMsg,
-                       OvertakeRaceCtrlMsg, PenaltyRaceCtrlMsg,
+                       OvertakeModeDisabledRaceCtrlMsg,
+                       OvertakeModeEnabledRaceCtrlMsg, OvertakeRaceCtrlMsg,
+                       PartialAeroModeDisabledRaceCtrlMsg,
+                       PartialAeroModeEnabledRaceCtrlMsg, PenaltyRaceCtrlMsg,
                        RaceCtrlMsgBase, RaceWinnerRaceCtrlMsg,
                        RedFlagRaceCtrlMsg, RetirementRaceCtrlMsg,
                        SafetyCarRaceCtrlMsg, SessionEndRaceCtrlMsg,
@@ -139,6 +142,21 @@ def race_ctrl_event_msg_factory(packet: PacketEventData, lap_number: int) -> Opt
 
         case PacketEventData.EventPacketType.FLASHBACK:
             return FlashBackRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.PARTIAL_AERO_MODE_ENABLED:
+            partial_aero_mode: PacketEventData.PartialAeroModeEnabled = packet.mEventDetails
+            return PartialAeroModeEnabledRaceCtrlMsg(timestamp=time.time(),
+                                                 reason=str(partial_aero_mode.m_reason),
+                                                 lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.PARTIAL_AERO_MODE_DISABLED:
+            return PartialAeroModeDisabledRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.OVERTAKE_MODE_ENABLED:
+            return OvertakeModeEnabledRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
+
+        case PacketEventData.EventPacketType.OVERTAKE_MODE_DISABLED:
+            return OvertakeModeDisabledRaceCtrlMsg(timestamp=time.time(), lap_number=lap_number)
 
         case _:
             return None

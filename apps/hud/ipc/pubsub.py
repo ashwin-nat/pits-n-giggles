@@ -20,18 +20,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""Pub/sub routes - the broker telemetry the overlays render."""
+
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from enum import Enum
+from lib.ipc import IpcSubscriberSync
 
-# -------------------------------------- CLASSES -----------------------------------------------------------------------
+from ..ui.infra import OverlaysMgr
 
-class PngAppId(Enum):
-    """Fixed ZMQ identities for PNG apps that connect to the router."""
-    BACKEND = "backend"
-    HUD = "hud"
-    MCP = "mcp"
-    WEB = "web"
+# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-    def __str__(self):
-        return self.value
+def register_subscriber_routes(
+        subscriber: IpcSubscriberSync,
+        overlays_mgr: OverlaysMgr) -> None:
+    """Register the broker topics the overlays render.
+
+    Args:
+        subscriber (IpcSubscriberSync): Broker subscriber, built by the subsystem base
+        overlays_mgr (OverlaysMgr): Overlays manager
+    """
+
+    @subscriber.route("race-table-update")
+    def _race_table_update(data: dict) -> None:
+        overlays_mgr.race_table_update(data)
+
+    @subscriber.route("stream-overlay-update")
+    def _stream_overlay_update(data: dict) -> None:
+        overlays_mgr.stream_overlays_update(data)
