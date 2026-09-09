@@ -117,6 +117,7 @@ class CarSetupData(F1SubPacketBase):
     PACKET_LEN_24 = COMPILED_PACKET_STRUCT_24.size
 
     __slots__ = (
+        "m_packetFormat",
         "m_frontWing",
         "m_rearWing",
         "m_onThrottle",
