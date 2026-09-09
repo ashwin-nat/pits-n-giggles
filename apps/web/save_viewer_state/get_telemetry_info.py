@@ -480,11 +480,17 @@ def _create_driver_entry(
     index = data_per_driver["index"]
     position = data_per_driver["track-position"]
 
-    # Calculate delta times
+    # Calculate delta times. The game splits the gap across a uint16 millisecond field and a
+    # whole-minute field, so anything past 65.535s needs both halves. Saves written before the
+    # minute field was recorded simply have no key, and fall back to the millisecond half alone.
     if position == 1:
         delta_relative = 0
     else:
-        delta_relative = data_per_driver["lap-data"]["delta-to-race-leader-in-ms"]
+        lap_data = data_per_driver["lap-data"]
+        delta_relative = (
+            lap_data["delta-to-race-leader-in-ms"] +
+            (lap_data.get("delta-to-race-leader-minutes", 0) * 60000)
+        )
 
     # Driver status and flags
     is_fastest = (index == fastest_lap_driver_index)
