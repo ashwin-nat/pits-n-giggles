@@ -214,6 +214,8 @@ class LapData(F1SubPacketBase):
         "m_pitStopShouldServePen",
         "m_speedTrapFastestSpeed",
         "m_speedTrapFastestLap",
+        "m_deltaToCarInFrontMinutes",
+        "m_deltaToRaceLeaderMinutes",
     )
 
     class DriverStatus(F1BaseEnum):
