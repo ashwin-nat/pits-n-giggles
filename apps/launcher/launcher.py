@@ -35,7 +35,8 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from apps.launcher.gui import PngLauncherWindow
-from lib.file_path import resolve_fixed_file, resolve_user_file
+from apps.launcher.smoke import run_smoke_test
+from lib.file_path import resolve_fixed_file
 from lib.ipc import IpcServerSync
 from lib.version import get_version
 from meta.meta import APP_NAME, APP_NAME_SNAKE
@@ -52,17 +53,25 @@ def parse_args() -> argparse.Namespace:
 
     Returns:
         argparse.Namespace: Parsed command-line arguments containing:
-            - smoke_test (Optional[str]): Name or mode for smoke testing, if provided.
+            - smoke_test (bool): True to construct every subsystem, report, and exit.
+            - smoke_report (Optional[str]): Where to write the smoke-test JSON report.
             - debug (bool): True if debug mode is enabled, False otherwise.
     """
     parser = argparse.ArgumentParser(description=f"Launch {APP_NAME}")
 
-    # Smoke test requires an argument if provided
+    # Construct every subsystem in smoke mode, aggregate the exit codes, and exit 0/1.
     parser.add_argument(
         "--smoke-test",
-        required=False,
-        help="Run smoke test with a required mode or test name",
-        metavar="TEST_NAME"
+        action="store_true",
+        help="Construct every subsystem, write a report, and exit without running the app"
+    )
+
+    parser.add_argument(
+        "--smoke-report",
+        default=None,
+        metavar="PATH",
+        help="Where --smoke-test writes its JSON report "
+             "(default: png_smoke_report.json in the user data dir)"
     )
 
     # Debug mode is an optional boolean flag
@@ -150,17 +159,6 @@ def _cleanup_temp_icon():
             pass
         _temp_icon_file = None
 
-def smoke_test(file_content: str) -> None:
-    """Create a test file at the log file path. (CWD for windows, ~/Library/Application Support/pits_n_giggles for mac)
-        Parent process is responsible to test if the file exists.
-
-        Args:
-            file_content (str): The content to write to the file.
-    """
-    path = resolve_user_file("png_smoke_test.txt")
-    with open(path, "w", encoding='utf-8') as f:
-        f.write(file_content)
-
 atexit.register(_cleanup_temp_icon)
 
 # -------------------------------------- CONSTANTS ---------------------------------------------------------------------
@@ -224,19 +222,20 @@ def entry_point() -> None:
     Main entry point for the Pits n' Giggles application.
 
     Handles:
-        - Running smoke tests if the --smoke-test flag is provided.
-        - Launching the main Tkinter application otherwise.
+        - Running the smoke test if the --smoke-test flag is provided.
+        - Launching the main application otherwise.
     """
     args: argparse.Namespace = parse_args()
+
+    # A smoke run constructs every subsystem and exits. It must happen before the
+    # single-instance lock: _acquire_single_instance_lock() pops a modal "already running"
+    # dialog when any instance of the app is live, which a smoke run must never block on.
+    if args.smoke_test:
+        run_smoke_test(args.smoke_report)  # NoReturn
 
     # Enforce single instance before doing anything else. Keep `lock` referenced for
     # the whole function lifetime so it is not garbage-collected (GC releases the lock).
     lock = _acquire_single_instance_lock()  # pylint: disable=unused-variable
-
-    # Handle smoke test
-    if args.smoke_test is not None:
-        smoke_test(args.smoke_test)
-        sys.exit(0)
 
     # Set AppUserModelID to ensure correct taskbar icon in dev mode
     if os.name == "nt":  # Only on Windows

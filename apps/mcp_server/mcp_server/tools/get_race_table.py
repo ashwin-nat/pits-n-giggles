@@ -241,7 +241,7 @@ def _get_race_table_info_driver(entry: Dict[str, Any]) -> Dict[str, Any]:
             "position": driver_info.get("position"),
             "index": driver_info.get("index"),
             "is_player": driver_info.get("is-player"),
-            "delta_to_leader_ms": delta_info_dict.get("delta-to-leader-ms"),
+            "delta_to_leader_ms": delta_info_dict.get("delta-to-leader"),
         },
         "lap_info": {
             "last_lap_time_ms": last_lap_dict.get("lap-time-ms"),

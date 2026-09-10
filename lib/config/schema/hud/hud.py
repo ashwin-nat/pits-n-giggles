@@ -651,6 +651,19 @@ class HudSettings(ConfigDiffMixin, BaseModel):
     def next_mfd_page_udp_action_code(self) -> Optional[int]:
         return self.cycle_mfd_udp_action_code
 
+    def enable_all_overlays(self) -> None:
+        """Turn on every overlay and every MFD page, in place.
+
+        The smoke test uses this: constructing an overlay or MFD page loads its bundled QML,
+        so with everything on a file dropped from ``png.spec`` fails the run instead of
+        slipping through because that feature happened to be off by default.
+        """
+        for field_name, field in type(self).model_fields.items():
+            if field.json_schema_extra.get("ui", {}).get("overlay_enable", False):
+                setattr(self, field_name, True)
+        for page in self.mfd_settings.pages.values():
+            page.enabled = True
+
     def enabled_overlays_by_id(self) -> list[OverlayId]:
         """Return the enabled overlays, in OverlayId declaration order."""
         enabled = {

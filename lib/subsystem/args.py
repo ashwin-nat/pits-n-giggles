@@ -134,3 +134,4 @@ class SubsystemArgs:
 
     config_file: str = arg("png_config.json", "Configuration file name (optional)", nargs="?")
     debug: bool = arg(False, "Enable debug mode")
+    smoke_test: bool = arg(False, "Construct the subsystem, then exit without running it")

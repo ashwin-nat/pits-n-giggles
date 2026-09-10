@@ -109,6 +109,7 @@ class LobbyInfoData(F1SubPacketBase):
     PACKET_LEN_26 = COMPILED_PACKET_STRUCT_26.size
 
     __slots__ = (
+        "m_packetFormat",
         "m_aiControlled",
         "m_teamId",
         "m_nationality",
@@ -138,7 +139,7 @@ class LobbyInfoData(F1SubPacketBase):
             packet_format (int): The packet format version.
         """
 
-        self.packet_format = packet_format
+        self.m_packetFormat = packet_format
         self._parse(data, packet_format)
         self._cast_enums(packet_format)
 
@@ -252,7 +253,7 @@ class LobbyInfoData(F1SubPacketBase):
         """
 
         return (
-            self.packet_format == other.packet_format and
+            self.m_packetFormat == other.m_packetFormat and
             self.m_aiControlled == other.m_aiControlled and
             self.m_teamId == other.m_teamId and
             self.m_nationality == other.m_nationality and
@@ -285,7 +286,7 @@ class LobbyInfoData(F1SubPacketBase):
             bytes: Raw data representing the LobbyInfoData instance.
         """
 
-        if self.packet_format == 2023:
+        if self.m_packetFormat == 2023:
             return self.COMPILED_PACKET_STRUCT_23.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -295,7 +296,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_carNumber,
                 self.m_readyStatus.value,
             )
-        if self.packet_format == 2024:
+        if self.m_packetFormat == 2024:
             return self.COMPILED_PACKET_STRUCT_24.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -308,7 +309,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.packet_format == 2025:
+        if self.m_packetFormat == 2025:
             return self.COMPILED_PACKET_STRUCT_25.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -321,7 +322,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_techLevel,
                 self.m_readyStatus.value,
             )
-        if self.packet_format >= 2026:
+        if self.m_packetFormat >= 2026:
             return self.COMPILED_PACKET_STRUCT_26.pack(
                 self.m_aiControlled,
                 self.m_teamId.value,
@@ -335,7 +336,7 @@ class LobbyInfoData(F1SubPacketBase):
                 self.m_readyStatus.value,
             )
 
-        raise NotImplementedError(f"Unsupported packet format: {self.packet_format}")
+        raise NotImplementedError(f"Unsupported packet format: {self.m_packetFormat}")
 
     @classmethod
     def from_values(cls,

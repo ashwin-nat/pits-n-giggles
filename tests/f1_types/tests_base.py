@@ -343,3 +343,38 @@ class TestF1RawValueEnumIsValid:
     def test_members_themselves_are_valid(self):
         # Call sites pass members as well as raw values
         assert Shape.isValid(Shape.CIRCLE)
+
+def test_subpacket_instances_are_fully_slotted():
+    class TestSubPacket(F1SubPacketBase):
+        __slots__ = ("value",)
+
+        def __init__(self):
+            self.value = 42
+
+        def toJSON(self):
+            return {"value": self.value}
+
+    packet = TestSubPacket()
+
+    assert not hasattr(packet, "__dict__")
+
+    with pytest.raises(AttributeError):
+        packet.undeclared_attribute = 123
+
+def test_packet_instances_are_fully_slotted():
+    class TestPacket(F1PacketBase):
+        __slots__ = ()
+
+        def __init__(self, header):
+            super().__init__(header)
+
+        def toJSON(self, include_header=False):
+            return {}
+
+    packet = TestPacket(None)
+
+    assert not hasattr(packet, "__dict__")
+
+    with pytest.raises(AttributeError):
+        packet.undeclared_attribute = 123
+

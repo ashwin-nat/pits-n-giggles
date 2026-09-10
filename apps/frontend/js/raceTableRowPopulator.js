@@ -80,7 +80,7 @@ class RaceTableRowPopulator {
         const deltaInfo = this.rowData["delta-info"];
         const deltaCell = this.row.insertCell();
         if (g_pref_relativeDelta) {
-            deltaCell.textContent = formatDelta(deltaInfo["delta"]);
+            deltaCell.textContent = formatDelta(deltaInfo["delta-to-car-in-front"]);
         } else {
             deltaCell.textContent = formatDelta(deltaInfo["delta-to-leader"]);
         }

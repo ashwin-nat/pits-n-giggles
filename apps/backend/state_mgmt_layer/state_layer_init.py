@@ -28,7 +28,7 @@ import logging
 from lib.config import PngSettings
 from lib.subsystem import AddTask
 
-from .telemetry_state import initSessionState, SessionState
+from .session_state import SessionState
 from .external_api import initExternalApiTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
@@ -51,7 +51,11 @@ def initStateManagementLayer(
     Returns:
         SessionState: Handle to the session state data structure
     """
-    ref = initSessionState(logger=logger, settings=settings, ver_str=ver_str)
+    ref =  SessionState(
+        logger,
+        settings,
+        ver_str
+    )
     initExternalApiTask(logger=logger, add_task=add_task, shutdown_event=shutdown_event,
                         session_state_ref=ref)
     return ref

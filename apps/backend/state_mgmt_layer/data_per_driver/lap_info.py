@@ -90,11 +90,8 @@ class LapInfo:
 
     def processLapDataUpdate(self, lap_data: LapData) -> None:
         """Update the lap information based on the provided lap data object"""
-        self.m_delta_to_car_in_front = lap_data.m_deltaToCarInFrontInMS
-        self.m_delta_to_leader = (
-            lap_data.m_deltaToRaceLeaderInMS +
-            (lap_data.m_deltaToRaceLeaderMinutes * 60000)
-        )
+        self.m_delta_to_car_in_front = lap_data.deltaToFrontTotalMs
+        self.m_delta_to_leader = lap_data.deltaToLeaderTotalMs
 
         self.m_curr_lap_ms = lap_data.m_currentLapTimeInMS
         self.m_curr_lap_invalid = lap_data.m_currentLapInvalid

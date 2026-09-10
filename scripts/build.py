@@ -23,12 +23,19 @@
 # ----------------------------------------------------------------------------------------------------------------------
 
 import argparse
+import json
 import subprocess
 import sys
 import os
 import shutil
 import time
 from pathlib import Path
+
+# Run as `python scripts/build.py`, so only scripts/ is on sys.path. The smoke-test mode
+# imports apps.launcher.smoke for its report renderer; put the repo root on the path first.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from apps.launcher.smoke import render_report_text
 
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
@@ -51,10 +58,111 @@ def parse_args() -> argparse.Namespace:
         help="Report the bare meta.py version. Without it the build is stamped with the "
              "commit it was made from, so non-release builds are identifiable.",
     )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Skip the build. Run the launcher's --smoke-test against the existing dist/ "
+             "artifact (or --from-source), render the report, and exit with its status.",
+    )
+    parser.add_argument(
+        "--from-source",
+        action="store_true",
+        help="With --smoke-test, run `python -m apps.launcher` instead of a built artifact.",
+    )
     return parser.parse_args()
+
+def _find_artifact_cmd() -> list:
+    """Command prefix that launches the built app in dist/. Exits if there is none."""
+    if sys.platform == "darwin":
+        bundles = sorted(Path("dist").glob("*.app"))
+        if not bundles:
+            raise SystemExit("smoke test: no .app in dist/ - run build.py first")
+        return [str(bundles[0] / "Contents" / "MacOS" / bundles[0].stem)]
+    exes = sorted(Path("dist").glob("*.exe"))
+    if not exes:
+        raise SystemExit("smoke test: no .exe in dist/ - run build.py first")
+    return [str(exes[0])]
+
+def _append_step_summary(report: "dict | None", returncode: int) -> None:
+    """Append a markdown table for the report to $GITHUB_STEP_SUMMARY. No-op when unset."""
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_file:
+        return
+
+    lines = ["## Smoke test", ""]
+    if report is None:
+        lines.append(f"No report written; launcher exited {returncode}.")
+    else:
+        verdict = "PASS" if report["passed"] else "FAIL"
+        frozen = " (frozen)" if report["frozen"] else ""
+        lines += [
+            f"`{report['version']}` on `{report['platform']}`{frozen} - **{verdict}**", "",
+            "| Subsystem | Status | Exit | Time |", "|---|---|---|---|",
+        ]
+        for r in report["results"]:
+            code = "" if r.get("exit_code") is None else r["exit_code"]
+            dur = "" if r.get("duration_sec") is None else f"{r['duration_sec']}s"
+            lines.append(f"| {r['name']} | {r['status']} | {code} | {dur} |")
+        for r in report["results"]:
+            if r["status"] in ("FAIL", "TIMEOUT") and r.get("output"):
+                lines += ["", f"<details><summary>{r['name']} output</summary>", "",
+                          "```", r["output"].strip(), "```", "</details>"]
+
+    with open(summary_file, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+SMOKE_DIR = "smoke-report"
+
+def run_smoke_test(from_source: bool = False) -> int:
+    """Run the launcher's --smoke-test, write the results to ./smoke-report/, return its code.
+
+    Nothing about the report goes to this process's stdout - on a fail-fast matrix the
+    first OS to fail cancels the other mid-step, truncating whatever it had printed. Instead
+    everything lands in ./smoke-report/ (wiped first, kept afterwards) for CI to upload and
+    `cat` afterwards:
+
+      report.json          - the machine-readable report
+      png_smoke.log        - every child's full stdout, aggregated by the launcher smoke driver
+      summary.txt          - the rendered table + failing subsystems' output tails
+      launcher-output.txt  - the captured launcher output, only when no report was produced
+
+    The child's stdout is captured, not inherited: a frozen Windows build is a console=False
+    GUI binary and prints nothing a shell can see. The $GITHUB_STEP_SUMMARY markdown is
+    written before returning so it survives a non-zero exit.
+    """
+    app_cmd = [sys.executable, "-m", "apps.launcher"] if from_source else _find_artifact_cmd()
+
+    source = "source" if from_source else app_cmd[0]
+    print(f"Running smoke test ({source}) ...", flush=True)
+
+    shutil.rmtree(SMOKE_DIR, ignore_errors=True)
+    os.makedirs(SMOKE_DIR, exist_ok=True)
+    report_path = os.path.join(SMOKE_DIR, "report.json")
+
+    result = subprocess.run(
+        [*app_cmd, "--smoke-test", "--smoke-report", report_path],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
+
+    report = None
+    if os.path.exists(report_path):
+        with open(report_path, encoding="utf-8") as f:
+            report = json.load(f)
+
+    if report is not None:
+        with open(os.path.join(SMOKE_DIR, "summary.txt"), "w", encoding="utf-8") as f:
+            f.write(render_report_text(report) + "\n")
+    else:
+        with open(os.path.join(SMOKE_DIR, "launcher-output.txt"), "w", encoding="utf-8") as f:
+            f.write(result.stdout or "")
+
+    _append_step_summary(report, result.returncode)
+    return result.returncode
 
 def main():
     args = parse_args()
+    if args.smoke_test:
+        sys.exit(run_smoke_test(from_source=args.from_source))
+
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
     collect_dir = os.path.join("dist", COLLECT_DIR_NAME)

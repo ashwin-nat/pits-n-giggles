@@ -214,6 +214,8 @@ class LapData(F1SubPacketBase):
         "m_pitStopShouldServePen",
         "m_speedTrapFastestSpeed",
         "m_speedTrapFastestLap",
+        "m_deltaToCarInFrontMinutes",
+        "m_deltaToRaceLeaderMinutes",
     )
 
     class DriverStatus(F1BaseEnum):
@@ -424,7 +426,9 @@ class LapData(F1SubPacketBase):
             "sector-2-time-minutes": self.m_sector2TimeMinutes,
             "sector-2-time-str": F1Utils.getLapTimeStrSplit(self.m_sector2TimeMinutes, self.m_sector2TimeInMS),
             "delta-to-car-in-front-in-ms": self.m_deltaToCarInFrontInMS,
+            "delta-to-car-in-front-minutes": self.m_deltaToCarInFrontMinutes,
             "delta-to-race-leader-in-ms": self.m_deltaToRaceLeaderInMS,
+            "delta-to-race-leader-minutes": self.m_deltaToRaceLeaderMinutes,
             "lap-distance": self.m_lapDistance,
             "total-distance": self.m_totalDistance,
             "safety-car-delta": self.m_safetyCarDelta,
@@ -649,6 +653,16 @@ class LapData(F1SubPacketBase):
 
         # Calculate S3 as remaining time after S1 and S2
         return self.m_currentLapTimeInMS - (self.s1TimeMS + self.s2TimeMS)
+
+    @property
+    def deltaToFrontTotalMs(self) -> int:
+        """Return the total delta to car in front in ms."""
+        return self.m_deltaToCarInFrontInMS + (self.m_deltaToCarInFrontMinutes * 60000)
+
+    @property
+    def deltaToLeaderTotalMs(self) -> int:
+        """Return the total delta to race leader in ms."""
+        return self.m_deltaToRaceLeaderInMS + (self.m_deltaToRaceLeaderMinutes * 60000)
 
     def _is_active_with_valid_time(self) -> bool:
         """Check if result is active and has valid current lap time."""
