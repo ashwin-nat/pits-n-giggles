@@ -347,6 +347,23 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     def _run(self) -> None:
         """Drive this subsystem's main loop. Implemented by AsyncSubsystem / SyncSubsystem."""
 
+    def _exit_smoke_ok(self) -> NoReturn:
+        """Construction succeeded. Report and leave without running anything.
+
+        os._exit, not sys.exit, on purpose - so the flushes are mandatory. By this point the
+        constructor has left live daemon threads (the broker's xsub/xpub and router threads),
+        a QApplication with overlay windows that never had an event loop (HUD), and
+        registered-but-never-awaited coroutines in self._tasks (every AsyncSubsystem). Unwinding
+        normally would emit "coroutine was never awaited" warnings and run Qt destructors for a
+        loop that never ran. handle_heartbeat_missed() takes the same hard exit for the same
+        reason.
+        """
+
+        self.logger.info("Smoke test: %s constructed successfully", self.SUBSYS_ID)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(0)
+
     def main(self) -> None:
         """Run until shutdown, funnelling every exit path.
 
@@ -355,6 +372,8 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         """
 
         try:
+            if self.args.smoke_test:
+                self._exit_smoke_ok()   # NoReturn
             self._run()
         except KeyboardInterrupt:
             self.logger.info("Program interrupted by user.")

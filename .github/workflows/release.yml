@@ -121,7 +121,7 @@ jobs:
     needs: find-release
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false   # let both OSes finish so both smoke reports upload
       matrix:
         os: [windows-latest, macos-latest]
     env:
@@ -199,31 +199,21 @@ jobs:
         shell: bash
 
       - name: Smoke test
-        run: |
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            APP_PATH=$(find dist -name "*.app" | head -n 1)
-            TEST_FILE="$HOME/Library/Application Support/pits_n_giggles/png_smoke_test.txt"
-            open -W "$APP_PATH" --args --smoke-test "hello-smoke"
-            if [ ! -f "$TEST_FILE" ]; then
-              echo "Smoke test failed: $TEST_FILE not found"
-              exit 1
-            fi
-          else
-            EXE_PATH=$(find dist -name "*.exe" | head -n 1)
-            TEST_FILE="./png_smoke_test.txt"
-            "$EXE_PATH" --smoke-test "hello-smoke"
-            TIMEOUT=10; ELAPSED=0; INTERVAL=0.5
-            while [ ! -f "$TEST_FILE" ] && (( $(echo "$ELAPSED < $TIMEOUT" | bc -l) )); do
-              sleep $INTERVAL
-              ELAPSED=$(echo "$ELAPSED + $INTERVAL" | bc)
-            done
-            if [ ! -f "$TEST_FILE" ]; then
-              echo "Smoke test failed: $TEST_FILE not found after ${TIMEOUT}s"
-              exit 1
-            fi
-          fi
-          echo "Smoke test passed!"
+        run: poetry run python scripts/build.py --smoke-test
         shell: bash
+
+      - name: Show smoke report
+        if: always()
+        run: cat smoke-report/*.txt 2>/dev/null || echo "no smoke report produced"
+        shell: bash
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report-${{ runner.os }}
+          path: smoke-report/
+          if-no-files-found: warn
 
       - name: Prepare artifact
         id: prep

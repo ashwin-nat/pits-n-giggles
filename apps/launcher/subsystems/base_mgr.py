@@ -79,6 +79,42 @@ def _integration_exit_code(code: int) -> int:
     return code if 0 < code <= 0xFF else 1
 
 
+def build_launch_command(module_path: str, args: List[str],
+                         coverage_enabled: bool = False) -> List[str]:
+    """Build the subprocess command that starts one launcher-managed subsystem.
+
+    Module-level so callers without a live manager instance (the smoke-test driver) spawn
+    children through the identical frozen / coverage / dev dispatch.
+
+    Args:
+        module_path: The subsystem's importable module path (e.g. "apps.backend").
+        args: Extra arguments appended verbatim after the dispatch prefix.
+        coverage_enabled: Wrap the child in `coverage run --parallel-mode` (dev only).
+
+    Returns:
+        List[str]: argv for subprocess.
+    """
+    if getattr(sys, "frozen", False):
+        # PyInstaller frozen executable
+        cmd = [sys.executable, "--module", module_path]
+    elif coverage_enabled:
+        # Coverage mode
+        cmd = [
+            sys.executable,
+            '-m', 'coverage',
+            'run',
+            '--parallel-mode',
+            '--rcfile', 'scripts/.coveragerc_integration',
+            '-m', module_path
+        ]
+    else:
+        # Normal Python execution
+        cmd = [sys.executable, "-m", module_path]
+
+    cmd.extend(args)
+    return cmd
+
+
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class AppState(Enum):
@@ -379,26 +415,7 @@ class PngAppMgrBase(QObject):
 
     def get_launch_command(self) -> List[str]:
         """Build the subprocess launch command"""
-        if getattr(sys, "frozen", False):
-            # PyInstaller frozen executable
-            cmd = [sys.executable, "--module", self.MODULE_PATH]
-        elif self.coverage_enabled:
-            # Coverage mode
-            cmd = [
-                sys.executable,
-                '-m', 'coverage',
-                'run',
-                '--parallel-mode',
-                '--rcfile', 'scripts/.coveragerc_integration',
-                '-m', self.MODULE_PATH
-            ]
-        else:
-            # Normal Python execution
-            cmd = [sys.executable, "-m", self.MODULE_PATH]
-
-        # Add additional arguments
-        cmd.extend(self.args)
-        return cmd
+        return build_launch_command(self.MODULE_PATH, self.args, self.coverage_enabled)
 
     def start(self, reason: str):
         """Start the subsystem process"""

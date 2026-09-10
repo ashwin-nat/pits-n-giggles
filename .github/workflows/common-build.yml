@@ -22,6 +22,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false   # let both OSes finish so both smoke reports upload
       matrix:
         os: [windows-latest, macos-latest]
     env:
@@ -110,34 +111,16 @@ jobs:
           name: ${{ steps.prep-artifact.outputs.artifact_name }}
           path: ${{ steps.prep-artifact.outputs.artifact_path }}
       - name: Run Smoke Test
-        run: |
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            APP_PATH=$(find dist -name "*.app" | head -n 1)
-            TEST_FILE="$HOME/Library/Application Support/pits_n_giggles/png_smoke_test.txt"
-            # Launch app in smoke test mode with dummy content
-            open -W "$APP_PATH" --args --smoke-test "hello-smoke"
-            # Verify the file was created
-            if [ ! -f "$TEST_FILE" ]; then
-              echo "Smoke test failed: $TEST_FILE not found"
-              exit 1
-            fi
-          else
-            EXE_PATH=$(find dist -name "*.exe" | head -n 1)
-            TEST_FILE="./png_smoke_test.txt"
-            # Launch app in smoke test mode with dummy content
-            "$EXE_PATH" --smoke-test "hello-smoke"
-            # Wait for file creation with polling (timeout: 10s)
-            TIMEOUT=10
-            INTERVAL=0.5
-            ELAPSED=0
-            while [ ! -f "$TEST_FILE" ] && [ "$(echo "$ELAPSED < $TIMEOUT" | bc)" -eq 1 ]; do
-              sleep $INTERVAL
-              ELAPSED=$(echo "$ELAPSED + $INTERVAL" | bc)
-            done
-            if [ ! -f "$TEST_FILE" ]; then
-              echo "Smoke test failed: $TEST_FILE not found after $TIMEOUT seconds"
-              exit 1
-            fi
-          fi
-          echo "Smoke test passed!"
+        run: poetry run python scripts/build.py --smoke-test
         shell: bash
+      - name: Show smoke report
+        if: always()
+        run: cat smoke-report/*.txt 2>/dev/null || echo "no smoke report produced"
+        shell: bash
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report-${{ runner.os }}
+          path: smoke-report/
+          if-no-files-found: warn

@@ -15,6 +15,7 @@ launch.json
 *.exe
 build/*
 dist/*
+smoke-report/
 png-venv/
 .idea/
 .vercel
