@@ -107,7 +107,7 @@ def _run_one(name: str, module: str, extra: list, supported: bool, config_file: 
     report never have to special-case a shape.
     """
     row = {"name": name, "module": module, "exit_code": None,
-           "duration_sec": None, "output": ""}
+           "duration_sec": None, "output": "", "output_full": ""}
 
     if not supported:
         return {**row, "status": "SKIPPED", "reason": f"not supported on {sys.platform}"}
@@ -126,7 +126,10 @@ def _run_one(name: str, module: str, extra: list, supported: bool, config_file: 
             "status": "PASS" if ok else "TIMEOUT" if code is None else "FAIL",
             "exit_code": code,
             "duration_sec": round(time.monotonic() - started, 2),
-            "output": "" if ok else output[-_OUTPUT_TAIL_CHARS:]}
+            # `output` is the tail kept in the JSON report for inline rendering; the full
+            # capture goes to the aggregate log on disk (see run_smoke_test).
+            "output": "" if ok else output[-_OUTPUT_TAIL_CHARS:],
+            "output_full": output}
 
 
 def _fmt(value: object, unit: str = "") -> str:
@@ -168,12 +171,20 @@ def run_smoke_test(report_path: Optional[str] = None) -> NoReturn:
             ``resolve_user_file("png_smoke_report.json")`` so a bare ``--smoke-test`` works by hand.
     """
     report_path = report_path or resolve_user_file("png_smoke_report.json")
+    log_path = os.path.join(os.path.dirname(report_path) or ".", "png_smoke.log")
     tmpdir = tempfile.mkdtemp(prefix="png_smoke_")
     try:
         config_file = _write_throwaway_config(tmpdir)
         results = [_run_one(*entry, config_file) for entry in SUBSYSTEMS]
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
+
+    # In a normal run the launcher aggregates every child's stdout to disk; here the smoke
+    # driver is that aggregator. Pop output_full so the JSON report keeps only the tail.
+    with open(log_path, "w", encoding="utf-8") as f:
+        for r in results:
+            f.write(f"===== {r['name']} ({r['module']}) - {r['status']} =====\n")
+            f.write((r.pop("output_full", "") or "").rstrip() + "\n\n")
 
     ran = {r["name"] for r in results if r["status"] != "SKIPPED"}
     passed = ran == EXPECTED and all(r["status"] == "PASS"
@@ -199,5 +210,6 @@ def run_smoke_test(report_path: Optional[str] = None) -> NoReturn:
     if "coverage_error" in report:
         print(f"\nCOVERAGE ERROR: ran {sorted(ran)}, expected {sorted(EXPECTED)}")
     print(f"\nReport: {report_path}")
+    print(f"Log:    {log_path}")
 
     sys.exit(0 if passed else 1)

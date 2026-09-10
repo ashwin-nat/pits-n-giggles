@@ -28,7 +28,6 @@ import subprocess
 import sys
 import os
 import shutil
-import tempfile
 import time
 from pathlib import Path
 
@@ -112,6 +111,8 @@ def _append_step_summary(report: "dict | None", returncode: int) -> None:
     with open(summary_file, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
+SMOKE_DIR = "smoke-report"
+
 def run_smoke_test(from_source: bool = False) -> int:
     """Run the launcher's --smoke-test, render the JSON report, return the launcher's exit code.
 
@@ -121,25 +122,34 @@ def run_smoke_test(from_source: bool = False) -> int:
     The captured child output is only shown as a fallback when no report was written (a crash
     before the report is dumped). The markdown summary for $GITHUB_STEP_SUMMARY is written
     before returning so it survives a non-zero exit.
+
+    Everything lands in ./smoke-report/ (wiped first, kept afterwards) so CI can upload it:
+    report.json, png_smoke.log (every child's full stdout, aggregated by the launcher's
+    smoke driver), and launcher-output.txt when no report was produced.
     """
     app_cmd = [sys.executable, "-m", "apps.launcher"] if from_source else _find_artifact_cmd()
 
     source = "source" if from_source else app_cmd[0]
     print(f"Running smoke test ({source}) ...\n", flush=True)
 
-    with tempfile.TemporaryDirectory() as tmp:
-        report_path = os.path.join(tmp, "png_smoke_report.json")
-        result = subprocess.run(
-            [*app_cmd, "--smoke-test", "--smoke-report", report_path],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
-        report = None
-        if os.path.exists(report_path):
-            with open(report_path, encoding="utf-8") as f:
-                report = json.load(f)
+    shutil.rmtree(SMOKE_DIR, ignore_errors=True)
+    os.makedirs(SMOKE_DIR, exist_ok=True)
+    report_path = os.path.join(SMOKE_DIR, "report.json")
+
+    result = subprocess.run(
+        [*app_cmd, "--smoke-test", "--smoke-report", report_path],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
+
+    report = None
+    if os.path.exists(report_path):
+        with open(report_path, encoding="utf-8") as f:
+            report = json.load(f)
 
     if report is not None:
         print(render_report_text(report))
     else:
+        with open(os.path.join(SMOKE_DIR, "launcher-output.txt"), "w", encoding="utf-8") as f:
+            f.write(result.stdout or "")
         print(f"No smoke report written; launcher exited {result.returncode}.")
         print("--- launcher output ---")
         print(result.stdout or "(none)")

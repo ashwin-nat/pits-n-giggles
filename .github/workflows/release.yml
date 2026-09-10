@@ -202,6 +202,14 @@ jobs:
         run: poetry run python scripts/build.py --smoke-test
         shell: bash
 
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report-${{ runner.os }}
+          path: smoke-report/
+          if-no-files-found: warn
+
       - name: Prepare artifact
         id: prep
         run: |
