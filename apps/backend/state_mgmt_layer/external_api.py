@@ -31,7 +31,7 @@ from lib.openf1 import getMostRecentPoleLap
 
 from lib.subsystem import AddTask
 
-from .telemetry_state import SessionState
+from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
