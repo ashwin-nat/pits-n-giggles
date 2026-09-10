@@ -175,3 +175,86 @@ body.png-has-sidebar {
 body.png-sidebar-collapsed {
   padding-left: 56px;
 }
+
+/* --- Mobile: the rail becomes a bottom tab bar ---------------------------------
+   Below this breakpoint a fixed left rail eats too much width and overlaps the
+   save-viewer's own left <aside>. The same <nav> reflows into a bottom bar
+   (four icons + short labels, full width) that stays clear of any left-edge UI.
+   The wordmark and the collapse toggle have no place in a bottom bar and are
+   dropped; the desktop collapsed/expanded state is irrelevant here. */
+@media (max-width: 768px) {
+  body.png-has-sidebar,
+  body.png-sidebar-collapsed {
+    padding-left: 0;
+    padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+    transition: none;
+  }
+
+  .png-sidebar,
+  .png-sidebar.png-sidebar-collapsed {
+    --png-sb-width: 100%;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    padding: 4px 0 env(safe-area-inset-bottom, 0px);
+    gap: 0;
+    border-right: none;
+    border-top: 1px solid var(--png-sb-border);
+    transition: none;
+  }
+
+  .png-sidebar-brand,
+  .png-sidebar-toggle {
+    display: none;
+  }
+
+  .png-sidebar-links {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 0;
+  }
+
+  .png-sidebar-link {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: 0;
+  }
+
+  /* Labels always show on mobile, even when the desktop state is "collapsed". */
+  .png-sidebar-collapsed .png-sidebar-label {
+    display: block;
+  }
+
+  .png-sidebar-label {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .png-sidebar-icon {
+    width: auto;
+    font-size: 20px;
+  }
+
+  /* Active state: no tinted block, just brighter text + a short bar on the top edge. */
+  .png-sidebar-link-active {
+    background-color: transparent;
+  }
+
+  .png-sidebar-link-active::before {
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+  }
+}

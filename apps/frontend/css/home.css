@@ -153,3 +153,11 @@
   color: #b8b8c8;
   white-space: nowrap;
 }
+
+/* The tip's fixed "Settings -> Display -> ..." path can't wrap and overflows a phone;
+   it's a launcher hint that matters least on mobile, so drop it there entirely. */
+@media (max-width: 768px) {
+  .png-home-tip {
+    display: none;
+  }
+}
