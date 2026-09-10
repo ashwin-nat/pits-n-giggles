@@ -72,6 +72,8 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
         """
 
         super().__init__()
+        # TEMP: deliberate smoke-test failure to exercise the CI failure path. REVERT.
+        raise RuntimeError("deliberate smoke-test failure in BackendSubsystem.__init__")
         self.logger.info(
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
             "on the screen before the race start - that is when the game starts sending telemetry data")

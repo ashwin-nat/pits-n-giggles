@@ -60,6 +60,8 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
         super().__init__()
+        # TEMP: deliberate smoke-test failure to exercise the CI failure path. REVERT.
+        raise RuntimeError("deliberate smoke-test failure in WebSubsystem.__init__")
         self.logger.info("Starting web app, version=%s", self.version)
 
         session_dir_setting = self.settings.Capture.session_dir_path
