@@ -32,6 +32,12 @@ import tempfile
 import time
 from pathlib import Path
 
+# Run as `python scripts/build.py`, so only scripts/ is on sys.path. The smoke-test mode
+# imports apps.launcher.smoke for its report renderer; put the repo root on the path first.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from apps.launcher.smoke import render_report_text
+
 APP_NAME = "pits_n_giggles"  # or load from the spec file dynamically if needed
 COLLECT_DIR_NAME = f"{APP_NAME}_build_tmp"
 
@@ -109,9 +115,12 @@ def _append_step_summary(report: "dict | None", returncode: int) -> None:
 def run_smoke_test(from_source: bool = False) -> int:
     """Run the launcher's --smoke-test, render the JSON report, return the launcher's exit code.
 
-    The launcher already prints a plain-text table to stdout (inherited here, so it lands in
-    the CI step log); this only adds the markdown summary for $GITHUB_STEP_SUMMARY, which
-    survives the step exiting non-zero as long as it is written first.
+    The child's own stdout is captured, not inherited: a frozen Windows build is a
+    console=False GUI binary and prints nothing a shell can see, so the table has to be
+    rendered here from the JSON report to be visible in the CI step log on every platform.
+    The captured child output is only shown as a fallback when no report was written (a crash
+    before the report is dumped). The markdown summary for $GITHUB_STEP_SUMMARY is written
+    before returning so it survives a non-zero exit.
     """
     app_cmd = [sys.executable, "-m", "apps.launcher"] if from_source else _find_artifact_cmd()
 
@@ -121,11 +130,19 @@ def run_smoke_test(from_source: bool = False) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         report_path = os.path.join(tmp, "png_smoke_report.json")
         result = subprocess.run(
-            [*app_cmd, "--smoke-test", "--smoke-report", report_path], check=False)
+            [*app_cmd, "--smoke-test", "--smoke-report", report_path],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
         report = None
         if os.path.exists(report_path):
             with open(report_path, encoding="utf-8") as f:
                 report = json.load(f)
+
+    if report is not None:
+        print(render_report_text(report))
+    else:
+        print(f"No smoke report written; launcher exited {result.returncode}.")
+        print("--- launcher output ---")
+        print(result.stdout or "(none)")
 
     _append_step_summary(report, result.returncode)
     return result.returncode

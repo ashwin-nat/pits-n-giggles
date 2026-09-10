@@ -134,7 +134,7 @@ def _fmt(value: object, unit: str = "") -> str:
     return "" if value is None else f"{value}{unit}"
 
 
-def _render_text(report: dict) -> str:
+def render_report_text(report: dict) -> str:
     """Render the report as a plain-text table for stdout."""
     rows = report["results"]
     counts = Counter(r["status"] for r in rows)
@@ -195,7 +195,7 @@ def run_smoke_test(report_path: Optional[str] = None) -> NoReturn:
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    print(_render_text(report))
+    print(render_report_text(report))
     if "coverage_error" in report:
         print(f"\nCOVERAGE ERROR: ran {sorted(ran)}, expected {sorted(EXPECTED)}")
     print(f"\nReport: {report_path}")
