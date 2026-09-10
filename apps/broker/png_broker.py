@@ -44,6 +44,8 @@ class BrokerSubsystem(SyncSubsystem[SubsystemArgs]):
         """Start the pub/sub broker and the router, each in its own thread."""
 
         super().__init__()
+        # TEMP: deliberate smoke-test failure to exercise the CI failure path. REVERT.
+        raise RuntimeError("deliberate smoke-test failure in BrokerSubsystem.__init__")
         self.broker = IpcPubSubBroker(
             xsub_port=self.settings.Network.broker_xsub_port,
             xpub_port=self.settings.Network.broker_xpub_port,
