@@ -81,10 +81,15 @@ EXPECTED = {
 def _write_throwaway_config(tmpdir: str) -> str:
     """Write a full-defaults config with every feature on into ``tmpdir``.
 
-    Defaults already satisfy every construct-only requirement except the MCP HTTP server, which
-    is off by default - forced on here so ``McpSubsystem`` builds its HTTP transport. ``HUD.enabled``
-    is left alone: it already defaults True on every platform, and the schema has no OS-specific
-    rule that would rewrite the file on the mac runner.
+    Two things are forced beyond the defaults:
+
+    - ``MCP.mcp_http_server_enable`` (off by default) so ``McpSubsystem`` builds its HTTP transport.
+    - every HUD overlay and MFD page, via ``HudSettings.enable_all_overlays()`` - a default-off
+      overlay or page never constructs, so its bundled QML is never loaded, so a file dropped
+      from ``png.spec`` would slip past the smoke test.
+
+    ``HUD.enabled`` itself is left alone: it already defaults True on every platform, and the
+    schema has no OS-specific rule that would rewrite the file on the mac runner.
 
     Args:
         tmpdir: Directory to write ``png_config.json`` into.
@@ -94,6 +99,7 @@ def _write_throwaway_config(tmpdir: str) -> str:
     """
     settings = PngSettings()
     settings.MCP.mcp_http_server_enable = True
+    settings.HUD.enable_all_overlays()
     path = os.path.join(tmpdir, "png_config.json")
     save_config_to_json(settings, path)
     return path
