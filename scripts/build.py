@@ -23,10 +23,12 @@
 # ----------------------------------------------------------------------------------------------------------------------
 
 import argparse
+import json
 import subprocess
 import sys
 import os
 import shutil
+import tempfile
 import time
 from pathlib import Path
 
@@ -51,10 +53,88 @@ def parse_args() -> argparse.Namespace:
         help="Report the bare meta.py version. Without it the build is stamped with the "
              "commit it was made from, so non-release builds are identifiable.",
     )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Skip the build. Run the launcher's --smoke-test against the existing dist/ "
+             "artifact (or --from-source), render the report, and exit with its status.",
+    )
+    parser.add_argument(
+        "--from-source",
+        action="store_true",
+        help="With --smoke-test, run `python -m apps.launcher` instead of a built artifact.",
+    )
     return parser.parse_args()
+
+def _find_artifact_cmd() -> list:
+    """Command prefix that launches the built app in dist/. Exits if there is none."""
+    if sys.platform == "darwin":
+        bundles = sorted(Path("dist").glob("*.app"))
+        if not bundles:
+            raise SystemExit("smoke test: no .app in dist/ - run build.py first")
+        return [str(bundles[0] / "Contents" / "MacOS" / bundles[0].stem)]
+    exes = sorted(Path("dist").glob("*.exe"))
+    if not exes:
+        raise SystemExit("smoke test: no .exe in dist/ - run build.py first")
+    return [str(exes[0])]
+
+def _append_step_summary(report: "dict | None", returncode: int) -> None:
+    """Append a markdown table for the report to $GITHUB_STEP_SUMMARY. No-op when unset."""
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_file:
+        return
+
+    lines = ["## Smoke test", ""]
+    if report is None:
+        lines.append(f"No report written; launcher exited {returncode}.")
+    else:
+        verdict = "PASS" if report["passed"] else "FAIL"
+        frozen = " (frozen)" if report["frozen"] else ""
+        lines += [
+            f"`{report['version']}` on `{report['platform']}`{frozen} - **{verdict}**", "",
+            "| Subsystem | Status | Exit | Time |", "|---|---|---|---|",
+        ]
+        for r in report["results"]:
+            code = "" if r.get("exit_code") is None else r["exit_code"]
+            dur = "" if r.get("duration_sec") is None else f"{r['duration_sec']}s"
+            lines.append(f"| {r['name']} | {r['status']} | {code} | {dur} |")
+        for r in report["results"]:
+            if r["status"] in ("FAIL", "TIMEOUT") and r.get("output"):
+                lines += ["", f"<details><summary>{r['name']} output</summary>", "",
+                          "```", r["output"].strip(), "```", "</details>"]
+
+    with open(summary_file, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+def run_smoke_test(from_source: bool = False) -> int:
+    """Run the launcher's --smoke-test, render the JSON report, return the launcher's exit code.
+
+    The launcher already prints a plain-text table to stdout (inherited here, so it lands in
+    the CI step log); this only adds the markdown summary for $GITHUB_STEP_SUMMARY, which
+    survives the step exiting non-zero as long as it is written first.
+    """
+    app_cmd = [sys.executable, "-m", "apps.launcher"] if from_source else _find_artifact_cmd()
+
+    source = "source" if from_source else app_cmd[0]
+    print(f"Running smoke test ({source}) ...\n", flush=True)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        report_path = os.path.join(tmp, "png_smoke_report.json")
+        result = subprocess.run(
+            [*app_cmd, "--smoke-test", "--smoke-report", report_path], check=False)
+        report = None
+        if os.path.exists(report_path):
+            with open(report_path, encoding="utf-8") as f:
+                report = json.load(f)
+
+    _append_step_summary(report, result.returncode)
+    return result.returncode
 
 def main():
     args = parse_args()
+    if args.smoke_test:
+        sys.exit(run_smoke_test(from_source=args.from_source))
+
     script_dir = os.path.dirname(__file__)
     spec_path = os.path.join(script_dir, "png.spec")
     collect_dir = os.path.join("dist", COLLECT_DIR_NAME)
