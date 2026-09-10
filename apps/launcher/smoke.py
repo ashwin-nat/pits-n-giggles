@@ -118,6 +118,8 @@ def _run_one(name: str, module: str, extra: list, supported: bool, config_file: 
     if not supported:
         return {**row, "status": "SKIPPED", "reason": f"not supported on {sys.platform}"}
 
+    # cmd is built entirely from in-repo constants (MODULE_PATH class vars) and paths this
+    # process created - no external input reaches it.
     cmd = build_launch_command(module, ["--config-file", config_file, "--smoke-test", *extra])
     started = time.monotonic()
     try:
@@ -125,7 +127,13 @@ def _run_one(name: str, module: str, extra: list, supported: bool, config_file: 
                               text=True, timeout=_TIMEOUT_SEC, check=False)
         code, output = proc.returncode, proc.stdout
     except subprocess.TimeoutExpired as e:
-        code, output = None, e.output or ""
+        # TimeoutExpired.output can come back as bytes even under text=True.
+        code, output = None, e.output.decode(errors="replace") if isinstance(e.output, bytes) \
+            else (e.output or "")
+    except OSError as e:
+        # The child could not be started at all (bad interpreter, permissions). Record it as a
+        # failure rather than letting it abort the whole sequential run.
+        code, output = 1, f"failed to start {module}: {e}"
 
     ok = code == 0
     return {**row,
@@ -177,7 +185,9 @@ def run_smoke_test(report_path: Optional[str] = None) -> NoReturn:
             ``resolve_user_file("png_smoke_report.json")`` so a bare ``--smoke-test`` works by hand.
     """
     report_path = report_path or resolve_user_file("png_smoke_report.json")
-    log_path = os.path.join(os.path.dirname(report_path) or ".", "png_smoke.log")
+    report_dir = os.path.dirname(report_path) or "."
+    os.makedirs(report_dir, exist_ok=True)
+    log_path = os.path.join(report_dir, "png_smoke.log")
     tmpdir = tempfile.mkdtemp(prefix="png_smoke_")
     try:
         config_file = _write_throwaway_config(tmpdir)
