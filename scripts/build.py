@@ -114,23 +114,26 @@ def _append_step_summary(report: "dict | None", returncode: int) -> None:
 SMOKE_DIR = "smoke-report"
 
 def run_smoke_test(from_source: bool = False) -> int:
-    """Run the launcher's --smoke-test, render the JSON report, return the launcher's exit code.
+    """Run the launcher's --smoke-test, write the results to ./smoke-report/, return its code.
 
-    The child's own stdout is captured, not inherited: a frozen Windows build is a
-    console=False GUI binary and prints nothing a shell can see, so the table has to be
-    rendered here from the JSON report to be visible in the CI step log on every platform.
-    The captured child output is only shown as a fallback when no report was written (a crash
-    before the report is dumped). The markdown summary for $GITHUB_STEP_SUMMARY is written
-    before returning so it survives a non-zero exit.
+    Nothing about the report goes to this process's stdout - on a fail-fast matrix the
+    first OS to fail cancels the other mid-step, truncating whatever it had printed. Instead
+    everything lands in ./smoke-report/ (wiped first, kept afterwards) for CI to upload and
+    `cat` afterwards:
 
-    Everything lands in ./smoke-report/ (wiped first, kept afterwards) so CI can upload it:
-    report.json, png_smoke.log (every child's full stdout, aggregated by the launcher's
-    smoke driver), and launcher-output.txt when no report was produced.
+      report.json          - the machine-readable report
+      png_smoke.log        - every child's full stdout, aggregated by the launcher smoke driver
+      summary.txt          - the rendered table + failing subsystems' output tails
+      launcher-output.txt  - the captured launcher output, only when no report was produced
+
+    The child's stdout is captured, not inherited: a frozen Windows build is a console=False
+    GUI binary and prints nothing a shell can see. The $GITHUB_STEP_SUMMARY markdown is
+    written before returning so it survives a non-zero exit.
     """
     app_cmd = [sys.executable, "-m", "apps.launcher"] if from_source else _find_artifact_cmd()
 
     source = "source" if from_source else app_cmd[0]
-    print(f"Running smoke test ({source}) ...\n", flush=True)
+    print(f"Running smoke test ({source}) ...", flush=True)
 
     shutil.rmtree(SMOKE_DIR, ignore_errors=True)
     os.makedirs(SMOKE_DIR, exist_ok=True)
@@ -146,13 +149,11 @@ def run_smoke_test(from_source: bool = False) -> int:
             report = json.load(f)
 
     if report is not None:
-        print(render_report_text(report))
+        with open(os.path.join(SMOKE_DIR, "summary.txt"), "w", encoding="utf-8") as f:
+            f.write(render_report_text(report) + "\n")
     else:
         with open(os.path.join(SMOKE_DIR, "launcher-output.txt"), "w", encoding="utf-8") as f:
             f.write(result.stdout or "")
-        print(f"No smoke report written; launcher exited {result.returncode}.")
-        print("--- launcher output ---")
-        print(result.stdout or "(none)")
 
     _append_step_summary(report, result.returncode)
     return result.returncode

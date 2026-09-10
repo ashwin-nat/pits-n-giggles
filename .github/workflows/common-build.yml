@@ -22,6 +22,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false   # let both OSes finish so both smoke reports upload
       matrix:
         os: [windows-latest, macos-latest]
     env:
@@ -111,6 +112,10 @@ jobs:
           path: ${{ steps.prep-artifact.outputs.artifact_path }}
       - name: Run Smoke Test
         run: poetry run python scripts/build.py --smoke-test
+        shell: bash
+      - name: Show smoke report
+        if: always()
+        run: cat smoke-report/*.txt 2>/dev/null || echo "no smoke report produced"
         shell: bash
       - name: Upload smoke report
         if: always()

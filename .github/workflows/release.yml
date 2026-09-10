@@ -121,7 +121,7 @@ jobs:
     needs: find-release
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false   # let both OSes finish so both smoke reports upload
       matrix:
         os: [windows-latest, macos-latest]
     env:
@@ -200,6 +200,11 @@ jobs:
 
       - name: Smoke test
         run: poetry run python scripts/build.py --smoke-test
+        shell: bash
+
+      - name: Show smoke report
+        if: always()
+        run: cat smoke-report/*.txt 2>/dev/null || echo "no smoke report produced"
         shell: bash
 
       - name: Upload smoke report
