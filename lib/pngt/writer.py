@@ -28,6 +28,7 @@ import zipfile
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 
@@ -39,7 +40,7 @@ from .manifest import HEADER_FORMAT, HEADER_VERSION
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
 def write_session(
-    dest_path: Path | str,
+    dest_path: Union[Path, str],
     session: SessionMetadata,
     sensors: list[SensorConfig],
     dtypes: dict[str, SensorDtype],

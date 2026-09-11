@@ -36,6 +36,7 @@ import json
 import os
 import zipfile
 from pathlib import Path
+from typing import Optional, Union
 
 from .dto import DeleteLapsResult, MarkLapGoodResult, SessionBest
 from .exceptions import DriverNotFoundError, MalformedSessionError
@@ -44,7 +45,7 @@ from .manifest import validate_pngt_zip
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
 def delete_laps(
-    pngt_path: Path | str,
+    pngt_path: Union[Path, str],
     driver_index: int,
     lap_numbers: list[int],
 ) -> DeleteLapsResult:
@@ -119,7 +120,7 @@ def delete_laps(
 
 
 def mark_lap_good(
-    pngt_path: Path | str,
+    pngt_path: Union[Path, str],
     driver_index: int,
     lap_number: int,
 ) -> MarkLapGoodResult:
@@ -162,7 +163,7 @@ def mark_lap_good(
 
 
 def rename_session(
-    pngt_path: Path | str,
+    pngt_path: Union[Path, str],
     new_name: str,
 ) -> None:
     """Sets session.json's session_name to new_name. session_uid and every other
@@ -201,7 +202,7 @@ def _recompute_session_totals(
     drivers_raw: dict,
     changed_driver_index: int,
     changed_driver_laps: list[dict],
-) -> tuple[int, SessionBest | None]:
+) -> tuple[int, Optional[SessionBest]]:
     """Recomputes laps.count and session_best across every driver, using
     changed_driver_laps in place of changed_driver_index's on-disk laps.json
     (which hasn't been rewritten yet) and reading every other driver's laps.json

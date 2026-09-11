@@ -25,6 +25,7 @@
 import json
 import zipfile
 from pathlib import Path
+from typing import Union
 
 from .exceptions import (InvalidHeaderError, NotAZipFileError,
                          UnsupportedFormatError, UnsupportedVersionError)
@@ -39,7 +40,7 @@ ZIP_MAGIC = b"PK\x03\x04"
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
-def validate_pngt_zip(path: Path | str) -> zipfile.ZipFile:
+def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:
     """Validates a .pngt file per the format spec's mandatory open sequence: sniff
     ZIP magic bytes, open as a ZipFile, read header.json, assert format then
     version. Returns the open ZipFile positioned for further reads by the caller —

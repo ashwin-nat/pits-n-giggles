@@ -24,6 +24,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -82,7 +83,7 @@ class SessionMetadata:
     timestamp: str  # ISO-8601, passed through verbatim, never parsed
     track: TrackInfo
     laps_count: int
-    session_best: SessionBest | None
+    session_best: Optional[SessionBest]
 
 @dataclass(frozen=True)
 class DriverRecord:
@@ -91,14 +92,14 @@ class DriverRecord:
     team: str
     is_ai: bool
     car_number: int
-    nationality: str | None
-    platform: str | None
+    nationality: Optional[str]
+    platform: Optional[str]
     is_telemetry_public: bool
 
 @dataclass(frozen=True)
 class LapMetadata:
     lap_number: int
-    lap_time_ms: int | None
+    lap_time_ms: Optional[int]
     valid: bool
     tyre_compound: str
     tyre_laps: int
@@ -124,7 +125,7 @@ class CompletedLap:
 class DriverExportData:
     driver_index: int
     completed_laps: list[CompletedLap]
-    in_progress_lap: CompletedLap | None = None
+    in_progress_lap: Optional[CompletedLap] = None
 
     def __post_init__(self) -> None:
         # Whether a lap is "in progress" is this object's own structure (which field it's
@@ -143,7 +144,7 @@ class DeleteLapsResult:
     deleted_lap_numbers: list[int]
     driver_folder_removed: bool
     new_laps_count: int
-    new_session_best: SessionBest | None
+    new_session_best: Optional[SessionBest]
 
 @dataclass(frozen=True)
 class MarkLapGoodResult:

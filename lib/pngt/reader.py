@@ -27,6 +27,7 @@ import zipfile
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 
@@ -46,13 +47,13 @@ class ParsedSession:
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
-def read_header(path: Path | str) -> None:
+def read_header(path: Union[Path, str]) -> None:
     """Cheap validity check only — raises if the file isn't a well-formed .pngt
     archive, otherwise returns None."""
     validate_pngt_zip(path).close()
 
 
-def read_manifest(path: Path | str) -> list[SensorConfig]:
+def read_manifest(path: Union[Path, str]) -> list[SensorConfig]:
     """Reads the sensor registry from manifest.json."""
     zf = validate_pngt_zip(path)
     try:
@@ -61,7 +62,7 @@ def read_manifest(path: Path | str) -> list[SensorConfig]:
         zf.close()
 
 
-def read_session(path: Path | str) -> ParsedSession:
+def read_session(path: Union[Path, str]) -> ParsedSession:
     """Reads header.json + manifest.json + session.json + drivers.json into a
     ParsedSession."""
     zf = validate_pngt_zip(path)
@@ -76,7 +77,7 @@ def read_session(path: Path | str) -> ParsedSession:
         zf.close()
 
 
-def read_driver_laps(path: Path | str, driver_index: int) -> list[LapMetadata]:
+def read_driver_laps(path: Union[Path, str], driver_index: int) -> list[LapMetadata]:
     """Reads lap metadata for one driver. A Restricted driver has no folder on disk —
     this is expected, documented behavior, so it returns [] rather than raising."""
     zf = validate_pngt_zip(path)
@@ -90,7 +91,7 @@ def read_driver_laps(path: Path | str, driver_index: int) -> list[LapMetadata]:
         zf.close()
 
 
-def read_lap_telemetry(path: Path | str, driver_index: int, lap_number: int) -> dict:
+def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: int) -> dict:
     """Reads one lap's telemetry arrays. Returns exactly the array names present in
     that .npz file — no assumption of a fixed sensor set, so older files with fewer
     sensors and newer files with unrecognized sensor keys both work with zero
