@@ -36,13 +36,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.pngt import (CompletedLap, DriverExportData, DriverNotFoundError,
                       DriverRecord, InvalidHeaderError, InvalidManifestError,
-                      LapMetadata, NotAZipFileError, SensorConfig,
-                      SensorDtype, SensorType, SessionBest,
+                      LapMetadata, MalformedSessionError, NotAZipFileError,
+                      SensorConfig, SensorDtype, SensorType, SessionBest,
                       SessionMetadata, TrackInfo, UnsupportedFormatError,
                       UnsupportedVersionError, delete_laps, mark_lap_good,
                       read_driver_laps, read_header, read_lap_telemetry,
                       read_manifest, read_session, rename_session,
                       suggest_filename, write_session)
+from lib.pngt.dtypes import missing_value
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Fixtures
@@ -247,6 +248,36 @@ def test_rejects_missing_header_keys(tmp_path):
     with pytest.raises(InvalidHeaderError):
         read_header(dest)
 
+
+def test_rejects_missing_header_entry(tmp_path):
+    # A well-formed ZIP that simply has no header.json member at all.
+    dest = tmp_path / "no_header.pngt"
+    with zipfile.ZipFile(dest, "w") as zf:
+        zf.writestr("manifest.json", json.dumps({"sensors": {}}))
+    with pytest.raises(InvalidHeaderError):
+        read_header(dest)
+
+
+def test_rejects_malformed_header_json(tmp_path):
+    dest = tmp_path / "malformed_header.pngt"
+    with zipfile.ZipFile(dest, "w") as zf:
+        zf.writestr("header.json", b"not valid json {")
+    with pytest.raises(InvalidHeaderError):
+        read_header(dest)
+
+
+def test_rejects_corrupt_zip_discovered_after_open(tmp_path, monkeypatch):
+    # A ZIP that opens fine but whose central directory/entries are corrupt enough
+    # that reading from it raises zipfile.BadZipFile -- still NotAZipFileError from
+    # the caller's point of view, not a raw zipfile.BadZipFile.
+    dest = tmp_path / "session.pngt"
+    with zipfile.ZipFile(dest, "w") as zf:
+        zf.writestr("header.json", json.dumps({"format": "pngt", "version": 1}))
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", lambda self, name, *a, **kw: (_ for _ in ()).throw(zipfile.BadZipFile))
+    with pytest.raises(NotAZipFileError):
+        read_header(dest)
+
 # ----------------------------------------------------------------------------------------------------------------------
 # manifest.json (sensor registry) validation
 # ----------------------------------------------------------------------------------------------------------------------
@@ -271,6 +302,22 @@ def test_manifest_missing_raises_invalid_manifest_error(tmp_path):
         read_manifest(stripped)
     with pytest.raises(InvalidManifestError):
         read_session(stripped)
+
+
+def test_manifest_not_valid_json_raises_invalid_manifest_error(tmp_path):
+    # manifest.json entry present but its bytes aren't valid JSON at all -- distinct
+    # from a well-formed-but-incomplete sensor entry.
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def corrupt_manifest(name, data):
+        return b"not valid json {" if name == "manifest.json" else data
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=corrupt_manifest)
+
+    with pytest.raises(InvalidManifestError):
+        read_manifest(patched)
 
 
 def test_manifest_malformed_sensor_entry_raises_invalid_manifest_error(tmp_path):
@@ -312,6 +359,98 @@ def test_manifest_invalid_sensor_type_raises_invalid_manifest_error(tmp_path):
 
     with pytest.raises(InvalidManifestError):
         read_manifest(patched)
+
+# ----------------------------------------------------------------------------------------------------------------------
+# session.json / drivers.json / laps.json malformed-input handling
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_read_session_missing_session_json_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    stripped = tmp_path / "stripped.pngt"
+    _strip_entry(dest, stripped, "session.json")
+
+    with pytest.raises(MalformedSessionError):
+        read_session(stripped)
+
+
+def test_read_session_malformed_session_json_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def corrupt_session(name, data):
+        return b"not valid json {" if name == "session.json" else data
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=corrupt_session)
+
+    with pytest.raises(MalformedSessionError):
+        read_session(patched)
+
+
+def test_read_session_missing_required_field_in_session_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def drop_track(name, data):
+        if name != "session.json":
+            return data
+        obj = json.loads(data)
+        del obj["track"]
+        return json.dumps(obj).encode("utf-8")
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=drop_track)
+
+    with pytest.raises(MalformedSessionError):
+        read_session(patched)
+
+
+def test_read_session_missing_required_field_in_driver_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def drop_car_number(name, data):
+        if name != "drivers.json":
+            return data
+        obj = json.loads(data)
+        del obj["drivers"][0]["car_number"]
+        return json.dumps(obj).encode("utf-8")
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=drop_car_number)
+
+    with pytest.raises(MalformedSessionError):
+        read_session(patched)
+
+
+def test_read_driver_laps_missing_required_field_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def drop_valid(name, data):
+        if name != "drivers/01/laps.json":
+            return data
+        obj = json.loads(data)
+        del obj["laps"][0]["valid"]
+        return json.dumps(obj).encode("utf-8")
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=drop_valid)
+
+    with pytest.raises(MalformedSessionError):
+        read_driver_laps(patched, 1)
+
+
+def test_read_lap_telemetry_missing_lap_raises_driver_not_found(tmp_path):
+    # Same exception as an unknown driver_index -- from read_lap_telemetry's point of
+    # view, a missing entry for either reason looks identical: the .npz just isn't there.
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    with pytest.raises(DriverNotFoundError):
+        read_lap_telemetry(dest, 1, 99)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Restricted drivers
@@ -465,6 +604,20 @@ def test_default_good_lap_respects_caller_marked_lap(tmp_path):
     assert laps[1].is_good is True   # caller's choice preserved
     assert laps[2].is_good is False  # not auto-promoted since a lap was already marked good
 
+
+def test_default_good_lap_leaves_laps_unchanged_when_none_are_valid(tmp_path):
+    # No valid lap to promote -- _apply_default_good_lap must return the laps as-is
+    # rather than raising or picking an invalid one.
+    session = sample_session()
+    drivers = sample_drivers()
+    lap1 = _lap(1, None, False, "Medium", 1, False, True, [0.0, 100.0], [100.0, 110.0], [1, 1], [20.0, 21.0])
+    driver_data = {1: DriverExportData(driver_index=1, completed_laps=[lap1])}
+    dest = tmp_path / "session.pngt"
+    write_session(dest, session, sample_sensors(), sample_dtypes(), drivers, driver_data)
+
+    laps = read_driver_laps(dest, 1)
+    assert laps[0].is_good is False
+
 # ----------------------------------------------------------------------------------------------------------------------
 # suggest_filename
 # ----------------------------------------------------------------------------------------------------------------------
@@ -537,6 +690,17 @@ def test_write_session_rejects_duplicate_sensor_keys(tmp_path):
     with pytest.raises(ValueError):
         write_session(tmp_path / "session.pngt", sample_session(), dupe_sensors, dtypes,
                        sample_drivers(), sample_driver_data())
+
+
+def test_write_session_rejects_driver_data_missing_for_public_driver(tmp_path):
+    # The mirror of test_restricted_driver_in_driver_data_rejected: a public-telemetry
+    # driver with no driver_data entry at all must also fail fast, not be silently
+    # written with zero laps.
+    drivers = sample_drivers()  # driver 1 is public, driver 2 is restricted
+    incomplete_driver_data = {}  # driver 1's entry omitted entirely
+    with pytest.raises(ValueError):
+        write_session(tmp_path / "session.pngt", sample_session(), sample_sensors(), sample_dtypes(),
+                       drivers, incomplete_driver_data)
 
 
 def test_write_session_does_not_validate_session_type(tmp_path):
@@ -699,6 +863,18 @@ def test_delete_laps_raises_for_unknown_driver(tmp_path):
     with pytest.raises(DriverNotFoundError):
         delete_laps(dest, 55, [1])
 
+
+def test_delete_laps_skips_restricted_driver_during_recompute(tmp_path):
+    # _recompute_session_totals iterates every driver in drivers.json, including
+    # restricted ones with no drivers/{idx}/ folder at all -- that must be skipped,
+    # not treated as a malformed/missing laps.json.
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    result = delete_laps(dest, 1, [1])
+
+    assert result.new_laps_count == 2  # driver 1's remaining laps only; driver 2 contributes nothing
+
 # ----------------------------------------------------------------------------------------------------------------------
 # mark_lap_good
 # ----------------------------------------------------------------------------------------------------------------------
@@ -759,3 +935,40 @@ def test_rename_session_updates_name_only(tmp_path):
     assert parsed.session.track == session.track
     assert parsed.session.laps_count == session.laps_count
     assert parsed.drivers == sample_drivers()
+
+
+def test_rename_session_missing_session_json_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    stripped = tmp_path / "stripped.pngt"
+    _strip_entry(dest, stripped, "session.json")
+
+    with pytest.raises(MalformedSessionError):
+        rename_session(stripped, "New Name")
+
+
+def test_rename_session_malformed_session_json_raises_malformed(tmp_path):
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def corrupt_session(name, data):
+        return b"not valid json {" if name == "session.json" else data
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=corrupt_session)
+
+    with pytest.raises(MalformedSessionError):
+        rename_session(patched, "New Name")
+
+# ----------------------------------------------------------------------------------------------------------------------
+# dtypes.missing_value
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_missing_value_returns_nan_for_float32():
+    assert np.isnan(missing_value(SensorDtype.FLOAT32))
+
+
+@pytest.mark.parametrize("dtype", [SensorDtype.INT8, SensorDtype.INT16, SensorDtype.INT64])
+def test_missing_value_returns_minus_one_for_integer_dtypes(dtype):
+    assert missing_value(dtype) == -1
