@@ -7,7 +7,7 @@
       "type": "straight",
       "start_m": 0,
       "end_m": 344,
-      "name": "Pit Straight"
+      "name": "Recta Principal"
     },
     {
       "type": "complex_corner",
@@ -27,50 +27,52 @@
     },
     {
       "type": "corner",
-      "start_m": 1190,
-      "end_m": 1470,
+      "start_m": 1095,
+      "end_m": 1380,
       "name": "",
       "corner_number": 4
     },
     {
       "type": "complex_corner",
-      "start_m": 1470,
+      "start_m": 1400,
       "end_m": 1600,
-      "name": "El Bunker",
       "corner_numbers": [
         5,
         6
       ]
     },
     {
-      "type": "corner",
-      "start_m": 1680,
-      "end_m": 1800,
-      "name": "",
-      "corner_number": 7
+      "type": "straight",
+      "start_m": 1600,
+      "end_m": 1790,
+      "name": "Subida de las Cárcavas"
     },
     {
       "type": "complex_corner",
-      "start_m": 1800,
+      "start_m": 1790,
       "end_m": 2030,
+      "name": "El Búnker",
       "corner_numbers": [
-        8,
-        9
+        7,
+        8
       ]
     },
     {
       "type": "corner",
-      "start_m": 2150,
-      "end_m": 2290,
+      "start_m": 2050,
+      "end_m": 2130,
       "name": "",
-      "corner_number": 10
+      "corner_number": 9
     },
     {
-      "type": "corner",
-      "start_m": 2290,
-      "end_m": 2450,
-      "name": "",
-      "corner_number": 11
+      "type": "complex_corner",
+      "start_m": 2150,
+      "end_m": 2470,
+      "name": "La Chicane",
+      "corner_numbers": [
+        10,
+        11
+      ]
     },
     {
       "type": "corner",
@@ -81,28 +83,34 @@
     },
     {
       "type": "corner",
-      "start_m": 3200,
-      "end_m": 3355,
+      "start_m": 3150,
+      "end_m": 3370,
       "name": "",
       "corner_number": 13
     },
     {
       "type": "complex_corner",
       "start_m": 3420,
-      "end_m": 4050,
+      "end_m": 3900,
       "name": "Las Enlazadas de Valdebebas",
       "corner_numbers": [
         14,
         15,
-        16,
-        17
+        16
       ]
+    },
+    {
+      "type": "corner",
+      "start_m": 3900,
+      "end_m": 4050,
+      "name": "",
+      "corner_number": 17
     },
     {
       "type": "corner",
       "start_m": 4150,
       "end_m": 4300,
-      "name": "",
+      "name": "Norte",
       "corner_number": 18
     },
     {
@@ -128,16 +136,16 @@
     },
     {
       "type": "corner",
-      "start_m": 5150,
+      "start_m": 5120,
       "end_m": 5280,
-      "name": "",
+      "name": "El Parque",
       "corner_number": 22
     },
     {
       "type": "straight",
       "start_m": 5280,
       "end_m": 5411,
-      "name": "Pit Straight"
+      "name": "Recta Principal"
     }
   ],
   "sectors": {
