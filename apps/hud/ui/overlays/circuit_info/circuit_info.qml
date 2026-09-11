@@ -12,9 +12,13 @@ Window {
     property int barWidth: 1400          // settable: controls overlay width
     property bool minOverlayStyle: false // settable: minimal overlay style
     property bool lockedMode: true        // settable: false while user is editing overlay position
-    readonly property int minimalWidth: 220
+    readonly property int minimalWidthFloor: 220
+    readonly property int minimalWidthCeiling: 340
+    // Grows to fit the minimal badge's content (long corner/straight names), clamped to a
+    // sane range; beyond the ceiling the secondary label wraps instead of growing further.
+    readonly property int minimalWidth: Math.max(minimalWidthFloor, Math.min(minimalWidthCeiling, Math.ceil(minimalBg.width)))
     readonly property int baseWidth: minOverlayStyle ? minimalWidth : barWidth
-    readonly property int baseHeight: minOverlayStyle ? 56 : 80
+    readonly property int baseHeight: minOverlayStyle ? Math.max(56, Math.ceil(minimalBg.height) + 8) : 80
 
     width: baseWidth * scaleFactor
     height: baseHeight * scaleFactor
@@ -185,11 +189,14 @@ Window {
             Rectangle {
                 id: minimalBg
                 anchors.centerIn: parent
-                width: Math.max(minimalPrimaryLabel.implicitWidth, minimalSecondaryLabel.implicitWidth) + 24
+                // Label widths are already capped (see below), so this simply wraps them in padding.
+                width: Math.max(minimalPrimaryLabel.width, minimalSecondaryLabel.width) + 24
                 height: minimalPrimaryLabel.implicitHeight + minimalSecondaryLabel.implicitHeight + 14
                 color: Qt.rgba(0, 0, 0, 0.6)
                 radius: 4
                 visible: root.minOverlayStyle && minimalPrimaryLabel.text.length > 0
+
+                readonly property real maxLabelWidth: root.minimalWidthCeiling - 24
 
                 readonly property var info: infoGroup.displayedInfo
                 readonly property bool hasSegment: !!info && (
@@ -222,6 +229,11 @@ Window {
                     Text {
                         id: minimalPrimaryLabel
                         anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(implicitWidth, minimalBg.maxLabelWidth)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
                         text: minimalBg.primaryText
                         color: "white"
                         font.family: "Formula1"
@@ -232,6 +244,11 @@ Window {
                     Text {
                         id: minimalSecondaryLabel
                         anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(implicitWidth, minimalBg.maxLabelWidth)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
                         text: minimalBg.secondaryText
                         color: Qt.rgba(1, 1, 1, 0.85)
                         font.family: "Formula1"
