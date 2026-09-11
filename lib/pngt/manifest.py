@@ -55,12 +55,21 @@ def validate_pngt_zip(path: Path | str) -> zipfile.ZipFile:
     if magic != ZIP_MAGIC:
         raise NotAZipFileError(path)
 
-    zf = zipfile.ZipFile(path)  # pylint: disable=consider-using-with
+    try:
+        zf = zipfile.ZipFile(path)  # pylint: disable=consider-using-with
+    except zipfile.BadZipFile as exc:
+        # Magic bytes matched but the archive structure itself is truncated/corrupt --
+        # still "not a valid ZIP file" from the caller's point of view.
+        raise NotAZipFileError(path) from exc
+
     try:
         raw = zf.read(HEADER_ENTRY)
     except KeyError as exc:
         zf.close()
         raise InvalidHeaderError(path, f"{HEADER_ENTRY} is missing") from exc
+    except zipfile.BadZipFile as exc:
+        zf.close()
+        raise NotAZipFileError(path) from exc
 
     try:
         header = json.loads(raw)

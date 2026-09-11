@@ -127,9 +127,16 @@ def _apply_default_good_lap(laps: list[CompletedLap]) -> list[CompletedLap]:
 def _validate_sensors(sensors: list[SensorConfig], dtypes: dict[str, SensorDtype]) -> None:
     # sensor.type's own validity is enforced by SensorConfig's own __post_init__ -- it's
     # an invariant of that object alone. What's left here can't move to a constructor:
-    # `sensors` and `dtypes` are two independent write_session() arguments, so agreement
-    # between them can only be checked once both exist together.
+    # duplicate keys are a property of the whole `sensors` list, not any one SensorConfig,
+    # and dtypes-agreement spans two independent write_session() arguments -- both can
+    # only be checked once the full list (and dtypes) exist together.
+    seen_keys = set()
     for sensor in sensors:
+        if sensor.key in seen_keys:
+            # manifest.json's {key: {...}} dict would otherwise silently keep only the
+            # last of these -- a caller must never lose a sensor definition silently.
+            raise ValueError(f"Duplicate sensor key {sensor.key!r} in sensors")
+        seen_keys.add(sensor.key)
         if sensor.key not in dtypes:
             raise ValueError(f"Sensor {sensor.key!r} has no entry in dtypes; dtype is required for write_session()")
 

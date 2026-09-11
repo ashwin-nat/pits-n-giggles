@@ -20,6 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""
+This module is not thread-safe or process-safe.
+Locking is the consumer's responsibility, if needed.
+
+Every function here is synchronous, blocking disk I/O (a full archive rebuild for
+delete_laps/mark_lap_good/rename_session). An async caller must not call these
+directly on the event loop -- wrap with asyncio.to_thread(), as
+apps/web/session_discovery.py already does for its own sync disk-heavy functions.
+"""
+
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json

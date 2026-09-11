@@ -215,6 +215,15 @@ def test_rejects_non_zip_file(tmp_path):
         read_header(dest)
 
 
+def test_rejects_truncated_zip_with_valid_magic(tmp_path):
+    # Magic bytes alone aren't enough -- a corrupt/truncated archive past the header
+    # must still come back as NotAZipFileError, not a raw zipfile.BadZipFile.
+    dest = tmp_path / "truncated.pngt"
+    dest.write_bytes(b"PK\x03\x04" + b"\x00" * 20)
+    with pytest.raises(NotAZipFileError):
+        read_header(dest)
+
+
 def test_rejects_wrong_format(tmp_path):
     dest = tmp_path / "wrong_format.pngt"
     with zipfile.ZipFile(dest, "w") as zf:
@@ -517,6 +526,16 @@ def test_write_session_rejects_sensor_missing_from_dtypes(tmp_path):
     incomplete_dtypes = {k: v for k, v in sample_dtypes().items() if k != "widget_speed"}
     with pytest.raises(ValueError):
         write_session(tmp_path / "session.pngt", sample_session(), sample_sensors(), incomplete_dtypes,
+                       sample_drivers(), sample_driver_data())
+
+
+def test_write_session_rejects_duplicate_sensor_keys(tmp_path):
+    # manifest.json's {key: {...}} dict would otherwise silently keep only the last of
+    # a duplicate-keyed pair, discarding a sensor definition the caller expected written.
+    dupe_sensors = sample_sensors() + [dataclasses.replace(sample_sensors()[0], label="Duplicate")]
+    dtypes = sample_dtypes()
+    with pytest.raises(ValueError):
+        write_session(tmp_path / "session.pngt", sample_session(), dupe_sensors, dtypes,
                        sample_drivers(), sample_driver_data())
 
 
