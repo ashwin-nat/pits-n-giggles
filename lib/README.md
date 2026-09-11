@@ -14,6 +14,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `tyre_wear_extrapolator/` | Weather-aware tyre wear regression and prediction |
 | `race_ctrl/` | Race control message parsing and factory |
 | `delta/` | Lap delta and sector time computation |
+| `pngt/` | `.pngt` session file format — read/write for the ZIP-based telemetry session container |
 | `ipc/` | Inter-process communication between subsystems |
 | `subsystem/` | Child-side lifecycle base for launcher-managed subsystems (boot, handshake, heartbeat, stats, teardown) |
 | `socket_receiver/` | UDP socket wrapper for F1 telemetry packets |
