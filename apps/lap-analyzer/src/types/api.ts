@@ -22,7 +22,7 @@ export interface Session {
   trackId: number;
   trackName: string;
   date: string; // ISO 8601
-  type: "Race" | "Qualifying" | "Practice";
+  type: string; // e.g. "Race", "Qualifying", "Practice" -- open set, sim has ~18 session types
   appVersion: string;
   gameYear: number;
   formula: string;

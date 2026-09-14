@@ -73,14 +73,11 @@ interface ParsedArchive {
 }
 
 // session_type is documented in the pngt format spec as an intentionally open
-// string (new sim session types must not require a format change). The
-// shared Session type models it as a closed union for UI convenience; this
-// only capitalizes the raw value rather than validating it against the union,
-// so an unrecognized value still round-trips instead of throwing.
+// string (new sim session types must not require a format change) -- this
+// only capitalizes the raw value, it does not validate it against a fixed set.
 function titleCaseSessionType(raw: string): Session["type"] {
   const words = raw.split(/[_\s]+/).filter(Boolean);
-  const titled = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-  return titled as Session["type"];
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
 function pad(n: number, width: number): string {
@@ -188,7 +185,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       carNumber: d.car_number,
       nationality: d.nationality,
       platform: d.platform,
-      telemetrySettings: d.telemetry_settings === "Restricted" ? "Restricted" : "Public",
+      telemetrySettings: d.telemetry_settings === "Public" ? "Public" : "Restricted",
     }));
 
     return { label: this.label, entries, session, drivers };
