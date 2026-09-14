@@ -1,0 +1,27 @@
+{
+  "name": "lap-analyzer",
+  "version": "0.1.0",
+  "description": "Telemetry Visualizer (Lap Analyzer) for Pits n' Giggles",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "pnpm": ">=10.26.0"
+  },
+  "scripts": {
+    "dev:manual-test": "tsx src/dev/manual-test.ts",
+    "sync-segments": "tsx scripts/sync-segments.ts",
+    "test:sync-segments": "tsx --test scripts/sync-segments.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "npyjs": "1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.5.1",
+    "tsx": "4.23.13",
+    "typescript": "~5.9.3",
+    "vite": "8.3.0"
+  }
+}
