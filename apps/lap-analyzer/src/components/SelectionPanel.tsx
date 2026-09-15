@@ -3,23 +3,10 @@ import { SessionSelector } from "./SessionSelector";
 import { SessionInfo } from "./SessionInfo";
 import { DriverSelector } from "./DriverSelector";
 import { LapSelector } from "./LapSelector";
+import { SensorSelector } from "./SensorSelector";
 
 interface SelectionPanelProps {
   variant: "primary" | "reference";
-}
-
-// Placeholder stand-in for a selector not yet built. Each one is replaced by
-// its real component in a later Phase 4 commit -- this establishes the
-// cascading enabled/disabled flow ahead of the components that fill it in.
-function SelectorPlaceholder({ name, disabled }: { name: string; disabled: boolean }) {
-  return (
-    <div
-      className={`rounded border border-dashed border-slate-700 p-2 text-xs text-slate-500 ${disabled ? "opacity-40" : ""}`}
-    >
-      {name}
-      {disabled && " (disabled)"}
-    </div>
-  );
 }
 
 // Cascading selectors for one lap (primary or reference). See the frontend
@@ -45,7 +32,7 @@ export function SelectionPanel({ variant }: SelectionPanelProps) {
       {selection.sessionId !== null && <SessionInfo sessionId={selection.sessionId} />}
       <DriverSelector selection={selection} onChange={setSelection} disabled={!sessionSelected} />
       <LapSelector selection={selection} onChange={setSelection} disabled={!driverSelected} />
-      {variant === "primary" && <SelectorPlaceholder name="SensorSelector" disabled={!lapSelected} />}
+      {variant === "primary" && <SensorSelector selection={selection} onChange={setSelection} disabled={!lapSelected} />}
     </div>
   );
 }
