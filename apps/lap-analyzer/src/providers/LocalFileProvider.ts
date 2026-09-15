@@ -48,7 +48,7 @@ interface DriversJson {
     car_number: number;
     nationality: string | null;
     platform: string | null;
-    telemetry_settings: string;
+    is_telemetry_public: boolean;
   }>;
 }
 
@@ -185,7 +185,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       carNumber: d.car_number,
       nationality: d.nationality,
       platform: d.platform,
-      telemetrySettings: d.telemetry_settings === "Public" ? "Public" : "Restricted",
+      telemetrySettings: d.is_telemetry_public ? "Public" : "Restricted",
     }));
 
     return { label: this.label, entries, session, drivers };
