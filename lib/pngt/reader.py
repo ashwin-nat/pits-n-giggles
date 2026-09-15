@@ -172,7 +172,6 @@ def _dict_to_driver(raw: dict, path) -> DriverRecord:
             driver_index=raw["driver_index"],
             name=raw["name"],
             team=raw["team"],
-            is_ai=raw["is_ai"],
             car_number=raw["car_number"],
             nationality=raw.get("nationality"),
             platform=raw.get("platform"),

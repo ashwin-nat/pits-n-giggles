@@ -69,7 +69,7 @@ session = SessionMetadata(
 )
 sensors = [SensorConfig(key="speed", label="Speed", unit="km/h", type=SensorType.CONTINUOUS)]
 dtypes = {"speed": SensorDtype.FLOAT32}
-drivers = [DriverRecord(driver_index=0, name="Driver 1", team="Red Bull Racing", is_ai=False,
+drivers = [DriverRecord(driver_index=0, name="Driver 1", team="Red Bull Racing",
                          car_number=1, nationality="NL", platform="Steam", is_telemetry_public=True)]
 lap = CompletedLap(
     metadata=LapMetadata(lap_number=1, lap_time_ms=105812, valid=True, tyre_compound="Soft",

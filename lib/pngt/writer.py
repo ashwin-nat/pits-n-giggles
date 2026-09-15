@@ -213,7 +213,6 @@ def _driver_to_dict(driver: DriverRecord) -> dict:
         "driver_index": driver.driver_index,
         "name": driver.name,
         "team": driver.team,
-        "is_ai": driver.is_ai,
         "car_number": driver.car_number,
         "nationality": driver.nationality,
         "platform": driver.platform,

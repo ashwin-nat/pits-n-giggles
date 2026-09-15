@@ -91,9 +91,9 @@ def sample_dtypes():
 
 def sample_drivers():
     return [
-        DriverRecord(driver_index=1, name="Test Driver A", team="Nullteam", is_ai=False,
+        DriverRecord(driver_index=1, name="Test Driver A", team="Nullteam",
                      car_number=44, nationality="GB", platform="Steam", is_telemetry_public=True),
-        DriverRecord(driver_index=2, name="Test Driver B", team="Voidteam", is_ai=False,
+        DriverRecord(driver_index=2, name="Test Driver B", team="Voidteam",
                      car_number=7, nationality=None, platform=None, is_telemetry_public=False),
     ]
 
@@ -763,9 +763,9 @@ def test_driver_export_data_rejects_in_progress_lap_marked_valid():
 
 def _two_driver_dataset():
     drivers = [
-        DriverRecord(driver_index=1, name="Test Driver A", team="Nullteam", is_ai=False,
+        DriverRecord(driver_index=1, name="Test Driver A", team="Nullteam",
                      car_number=44, nationality="GB", platform="Steam", is_telemetry_public=True),
-        DriverRecord(driver_index=2, name="Test Driver C", team="Emptyteam", is_ai=False,
+        DriverRecord(driver_index=2, name="Test Driver C", team="Emptyteam",
                      car_number=7, nationality=None, platform=None, is_telemetry_public=True),
     ]
     d1_lap1 = _lap(1, 100000, True, "Medium", 1, False, True, [0.0, 100.0], [100.0, 110.0], [1, 1], [20.0, 21.0])

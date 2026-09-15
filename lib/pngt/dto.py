@@ -90,7 +90,6 @@ class DriverRecord:
     driver_index: int
     name: str
     team: str
-    is_ai: bool
     car_number: int
     nationality: Optional[str]
     platform: Optional[str]

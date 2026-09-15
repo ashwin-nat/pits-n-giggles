@@ -35,7 +35,6 @@ export interface Driver {
   index: number;
   name: string;
   team: string;
-  isAi: boolean;
   carNumber: number;
   nationality: string | null;
   platform: string | null;

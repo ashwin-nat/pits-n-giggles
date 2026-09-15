@@ -44,7 +44,6 @@ interface DriversJson {
     driver_index: number;
     name: string;
     team: string;
-    is_ai: boolean;
     car_number: number;
     nationality: string | null;
     platform: string | null;
@@ -181,7 +180,6 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       index: d.driver_index,
       name: d.name,
       team: d.team,
-      isAi: d.is_ai,
       carNumber: d.car_number,
       nationality: d.nationality,
       platform: d.platform,
