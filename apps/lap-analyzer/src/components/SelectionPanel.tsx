@@ -1,4 +1,6 @@
 import { useTelemetryStore } from "../store/telemetryStore";
+import { SessionSelector } from "./SessionSelector";
+import { SessionInfo } from "./SessionInfo";
 
 interface SelectionPanelProps {
   variant: "primary" | "reference";
@@ -22,6 +24,9 @@ function SelectorPlaceholder({ name, disabled }: { name: string; disabled: boole
 // spec's SelectionPanel section for the enabled-when table.
 export function SelectionPanel({ variant }: SelectionPanelProps) {
   const selection = useTelemetryStore((state) => (variant === "primary" ? state.primary : state.reference));
+  const setPrimary = useTelemetryStore((state) => state.setPrimary);
+  const setReference = useTelemetryStore((state) => state.setReference);
+  const setSelection = variant === "primary" ? setPrimary : setReference;
 
   if (selection === null) {
     // Only reachable if ReferencePanel renders this before reference is set.
@@ -34,8 +39,8 @@ export function SelectionPanel({ variant }: SelectionPanelProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <SelectorPlaceholder name="SessionSelector" disabled={false} />
-      {sessionSelected && <SelectorPlaceholder name="SessionInfo" disabled={false} />}
+      <SessionSelector selection={selection} onChange={setSelection} />
+      {selection.sessionId !== null && <SessionInfo sessionId={selection.sessionId} />}
       <SelectorPlaceholder name="DriverSelector" disabled={!sessionSelected} />
       <SelectorPlaceholder name="LapSelector" disabled={!driverSelected} />
       {variant === "primary" && <SelectorPlaceholder name="SensorSelector" disabled={!lapSelected} />}
