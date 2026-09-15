@@ -1,6 +1,7 @@
 import { useTelemetryStore } from "../store/telemetryStore";
 import { SessionSelector } from "./SessionSelector";
 import { SessionInfo } from "./SessionInfo";
+import { DriverSelector } from "./DriverSelector";
 
 interface SelectionPanelProps {
   variant: "primary" | "reference";
@@ -41,7 +42,7 @@ export function SelectionPanel({ variant }: SelectionPanelProps) {
     <div className="flex flex-col gap-3">
       <SessionSelector selection={selection} onChange={setSelection} />
       {selection.sessionId !== null && <SessionInfo sessionId={selection.sessionId} />}
-      <SelectorPlaceholder name="DriverSelector" disabled={!sessionSelected} />
+      <DriverSelector selection={selection} onChange={setSelection} disabled={!sessionSelected} />
       <SelectorPlaceholder name="LapSelector" disabled={!driverSelected} />
       {variant === "primary" && <SelectorPlaceholder name="SensorSelector" disabled={!lapSelected} />}
     </div>
