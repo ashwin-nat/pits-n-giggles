@@ -2,6 +2,7 @@ import { useTelemetryStore } from "../store/telemetryStore";
 import { SessionSelector } from "./SessionSelector";
 import { SessionInfo } from "./SessionInfo";
 import { DriverSelector } from "./DriverSelector";
+import { LapSelector } from "./LapSelector";
 
 interface SelectionPanelProps {
   variant: "primary" | "reference";
@@ -43,7 +44,7 @@ export function SelectionPanel({ variant }: SelectionPanelProps) {
       <SessionSelector selection={selection} onChange={setSelection} />
       {selection.sessionId !== null && <SessionInfo sessionId={selection.sessionId} />}
       <DriverSelector selection={selection} onChange={setSelection} disabled={!sessionSelected} />
-      <SelectorPlaceholder name="LapSelector" disabled={!driverSelected} />
+      <LapSelector selection={selection} onChange={setSelection} disabled={!driverSelected} />
       {variant === "primary" && <SelectorPlaceholder name="SensorSelector" disabled={!lapSelected} />}
     </div>
   );
