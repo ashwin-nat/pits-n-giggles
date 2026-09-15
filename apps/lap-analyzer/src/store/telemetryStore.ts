@@ -45,7 +45,12 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
       // still take effect, so reset to empty first and apply the patch on
       // top of that, rather than on top of the old state.
       if ("sessionId" in patch && patch.sessionId !== state.primary.sessionId) {
-        return { primary: { ...emptySelection, ...patch } };
+        // A reference lap must share primary's circuit+formula (see
+        // SessionSelector's restrictToSessionId) -- an active reference's
+        // session may no longer qualify once primary's session changes, so
+        // drop it rather than leave it pointing at a now-invalid session.
+        // The user re-adds a reference under the new circuit+formula.
+        return { primary: { ...emptySelection, ...patch }, reference: null };
       }
       return { primary: { ...state.primary, ...patch } };
     }),

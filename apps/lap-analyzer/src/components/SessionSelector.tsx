@@ -6,6 +6,11 @@ import type { SelectionState } from "../types/store";
 interface SessionSelectorProps {
   selection: SelectionState;
   onChange: (patch: Partial<SelectionState>) => void;
+  // When set (reference variant), the track/formula filters are hidden and
+  // the session list is restricted to sessions sharing this session's
+  // circuit and formula -- a reference lap must come from the same
+  // circuit+formula as primary, so there's no point offering the choice.
+  restrictToSessionId?: string | null;
 }
 
 const ALL_TRACKS = "__all_tracks__";
@@ -23,23 +28,32 @@ function formulaLabel(session: Session): string {
   return `${session.formula} ${session.gameYear}`.trim();
 }
 
-export function SessionSelector({ selection, onChange }: SessionSelectorProps) {
+export function SessionSelector({ selection, onChange, restrictToSessionId }: SessionSelectorProps) {
   const { data: sessions, isLoading, error } = useSessions();
   const [trackFilter, setTrackFilter] = useState(ALL_TRACKS);
   const [formulaFilter, setFormulaFilter] = useState(ALL_FORMULAS);
 
+  const restricted = restrictToSessionId !== undefined;
+  const restrictToSession = restricted ? sessions?.find((s) => s.id === restrictToSessionId) : undefined;
+
   const tracks = useMemo(() => Array.from(new Set((sessions ?? []).map((s) => s.trackName))).sort(), [sessions]);
   const formulas = useMemo(() => Array.from(new Set((sessions ?? []).map(formulaLabel))).sort(), [sessions]);
 
-  const filtered = useMemo(
-    () =>
-      (sessions ?? []).filter((s) => {
-        const trackOk = trackFilter === ALL_TRACKS || s.trackName === trackFilter;
-        const formulaOk = formulaFilter === ALL_FORMULAS || formulaLabel(s) === formulaFilter;
-        return trackOk && formulaOk;
-      }),
-    [sessions, trackFilter, formulaFilter]
-  );
+  const filtered = useMemo(() => {
+    if (restricted) {
+      if (restrictToSession === undefined) {
+        return [];
+      }
+      return (sessions ?? []).filter(
+        (s) => s.trackId === restrictToSession.trackId && formulaLabel(s) === formulaLabel(restrictToSession)
+      );
+    }
+    return (sessions ?? []).filter((s) => {
+      const trackOk = trackFilter === ALL_TRACKS || s.trackName === trackFilter;
+      const formulaOk = formulaFilter === ALL_FORMULAS || formulaLabel(s) === formulaFilter;
+      return trackOk && formulaOk;
+    });
+  }, [sessions, trackFilter, formulaFilter, restricted, restrictToSession]);
 
   if (isLoading) {
     return <div className="h-16 animate-pulse rounded bg-slate-800" />;
@@ -54,32 +68,34 @@ export function SessionSelector({ selection, onChange }: SessionSelectorProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
-        <select
-          value={trackFilter}
-          onChange={(e) => setTrackFilter(e.target.value)}
-          className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
-        >
-          <option value={ALL_TRACKS}>All Tracks</option>
-          {tracks.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <select
-          value={formulaFilter}
-          onChange={(e) => setFormulaFilter(e.target.value)}
-          className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
-        >
-          <option value={ALL_FORMULAS}>All Formulas</option>
-          {formulas.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!restricted && (
+        <div className="flex gap-2">
+          <select
+            value={formulaFilter}
+            onChange={(e) => setFormulaFilter(e.target.value)}
+            className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+          >
+            <option value={ALL_FORMULAS}>All Formulas</option>
+            {formulas.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+          <select
+            value={trackFilter}
+            onChange={(e) => setTrackFilter(e.target.value)}
+            className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+          >
+            <option value={ALL_TRACKS}>All Tracks</option>
+            {tracks.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <select
         value={selection.sessionId ?? ""}
         onChange={(e) => onChange({ sessionId: e.target.value || null })}
