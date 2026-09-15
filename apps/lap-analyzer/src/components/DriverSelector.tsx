@@ -11,10 +11,11 @@ interface DriverSelectorProps {
 
 function driverLabel(driver: Driver): string {
   const prefix = driver.telemetrySettings === "Restricted" ? "🔒" : "🔓";
+  // No [AI] tag: is_ai was removed from the data entirely (unreliable at the
+  // sim level -- m_aiControlled flips true on pause/disconnect, m_driverId
+  // can't be checked against a max in single-player/co-op). Revisit if a
+  // more reliable AI-detection signal ever surfaces.
   const parts = [`#${driver.carNumber}`, driver.name];
-  if (driver.isAi) {
-    parts.push("[AI]");
-  }
   return `${prefix} ${parts.join(" ")}`;
 }
 
