@@ -32,7 +32,7 @@ export interface TelemetryStore {
 
   // Chart viewport -- shared across all chart lanes. null = full lap visible.
   viewport: Viewport | null;
-  setViewport: (viewport: Viewport) => void;
+  setViewport: (viewport: Viewport | null) => void;
 
   // Active track section -- drives both pill highlight and focus zone overlay.
   // null = full lap / no active section.
@@ -47,9 +47,11 @@ export interface TelemetryStore {
   incidentsPanelOpen: boolean;
   toggleIncidentsPanel: () => void;
 
-  // Clears all selection/UI state -- called when a new .pngt file is loaded,
-  // since the previous file's sessionId/driverIndex/lapNumber mean nothing
-  // in the new one.
+  // Clears primary/reference selection plus viewport/activeSection -- for
+  // when the underlying provider itself changes (a new file loaded), where
+  // every distance/index in the old state may no longer mean anything
+  // against the new data. Leaves showDelta/incidentsPanelOpen alone -- those
+  // are user display preferences, not data tied to the loaded session.
   reset: () => void;
 }
 
@@ -57,16 +59,28 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
   primary: emptySelection,
   setPrimary: (patch) =>
     set((state) => {
-      const nextPrimary = applySelectionPatch(state.primary, patch);
-      if (nextPrimary.sessionId === state.primary.sessionId) {
-        return { primary: nextPrimary };
+      // Changing sessionId invalidates any stale driverIndex/lapNumber/sensors
+      // left over from the previous session's manifest -- but values passed
+      // in this same patch (e.g. selecting session + driver together) must
+      // still take effect, so reset to empty first and apply the patch on
+      // top of that, rather than on top of the old state.
+      if ("sessionId" in patch && patch.sessionId !== state.primary.sessionId) {
+        // A reference lap must share primary's circuit+formula (see
+        // SessionSelector's restrictToSessionId) -- an active reference's
+        // session may no longer qualify once primary's session changes, so
+        // drop it rather than leave it pointing at a now-invalid session.
+        // The user re-adds a reference under the new circuit+formula.
+        // viewport/activeSection are distance-in-metres state scoped to the
+        // *old* circuit -- a shorter new track can leave both pointing past
+        // the end of the real data (empty chart, focus zone off-screen).
+        return { primary: { ...emptySelection, ...patch }, reference: null, viewport: null, activeSection: null };
       }
       // A reference lap must share primary's circuit+formula (see
       // SessionSelector's restrictToSessionId) -- an active reference's
       // session may no longer qualify once primary's session changes, so
       // drop it rather than leave it pointing at a now-invalid session.
       // The user re-adds a reference under the new circuit+formula.
-      return { primary: nextPrimary, reference: null };
+      return { primary: applySelectionPatch(state.primary, patch), reference: null };
     }),
 
   reference: null,
@@ -90,13 +104,5 @@ export const useTelemetryStore = create<TelemetryStore>((set) => ({
   incidentsPanelOpen: false,
   toggleIncidentsPanel: () => set((state) => ({ incidentsPanelOpen: !state.incidentsPanelOpen })),
 
-  reset: () =>
-    set({
-      primary: emptySelection,
-      reference: null,
-      viewport: null,
-      activeSection: null,
-      showDelta: false,
-      incidentsPanelOpen: false,
-    }),
+  reset: () => set({ primary: emptySelection, reference: null, viewport: null, activeSection: null }),
 }));

@@ -38,3 +38,4 @@ reports/
 graphify-out/
 plans/
 *.pngt
+!apps/lap-analyzer/test-fixtures/sample-session.pngt

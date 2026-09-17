@@ -15,6 +15,7 @@
     "dev:manual-test": "tsx src/dev/manual-test.ts",
     "sync-segments": "tsx scripts/sync-segments.ts",
     "test:sync-segments": "tsx --test scripts/sync-segments.test.ts",
+    "test:chart-math": "tsx --test src/lib/interpolation.test.ts src/lib/rateOfChange.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "npyjs": "1.2.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "uplot": "1.6.32",
     "zustand": "5.0.15"
   },
   "devDependencies": {
