@@ -371,6 +371,33 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         info = self.tracker.get_segment_info(1500)
         self.assertEqual(info.type, "complex_corner")
 
+    # --- segment_id ------------------------------------------------------------------------
+
+    def test_segment_id_matches_array_position(self):
+        """segment_id reflects the segment's position in the loaded segment array."""
+        self.assertEqual(self.tracker.get_segment_info(100).segment_id, 0)    # La Source
+        self.assertEqual(self.tracker.get_segment_info(300).segment_id, 1)    # Eau Rouge
+        self.assertEqual(self.tracker.get_segment_info(600).segment_id, 2)    # Kemmel Straight
+        self.assertEqual(self.tracker.get_segment_info(1300).segment_id, 3)   # unnamed corner
+        self.assertEqual(self.tracker.get_segment_info(1600).segment_id, 4)   # Pouhon
+
+    def test_segment_id_stable_across_repeated_lookups(self):
+        """Repeated lookups of the same position return the same segment_id."""
+        first = self.tracker.get_segment_info(100).segment_id
+        second = self.tracker.get_segment_info(100).segment_id
+        self.assertEqual(first, second)
+
+    def test_segment_id_restamped_on_reload(self):
+        """Reloading track data re-stamps segment_id consistently with the new array order."""
+        reordered = self._track([
+            {"type": "straight", "name": "New Straight", "start_m": 0, "end_m": 500},
+            {"type": "corner", "name": "New Corner", "start_m": 500, "end_m": 700, "corner_number": 1},
+        ])
+        self.tracker.load_track_data(reordered)
+
+        self.assertEqual(self.tracker.get_segment_info(100).segment_id, 0)
+        self.assertEqual(self.tracker.get_segment_info(600).segment_id, 1)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 

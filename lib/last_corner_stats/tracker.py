@@ -1,0 +1,86 @@
+# MIT License
+#
+# Copyright (c) [2026] [Ashwin Natarajan]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+
+from typing import Optional
+
+from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
+from lib.track_segments_classifier.types import (BaseSegmentInfo,
+                                                  ComplexCornerSegmentInfo,
+                                                  CornerSegmentInfo)
+
+from .types import LastCornerStats, TelemetrySample
+
+# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+
+_CORNER_TYPES = (CornerSegmentInfo.TYPE, ComplexCornerSegmentInfo.TYPE)
+
+
+class LastCornerTracker:
+    """
+    Tracks the minimum speed through the most recently completed corner (or
+    complex corner), for live HUD display of "previous corner" stats.
+
+    Public API:
+      - update(circuit_pos_m: float, speed_kmph: int)
+      - stats() -> Optional[LastCornerStats]
+      - reset()
+    """
+
+    def __init__(self, classifier: TrackSegmentsClassifier) -> None:
+        self._classifier = classifier
+        self._current_segment: Optional[BaseSegmentInfo] = None
+        self._current_min_speed: Optional[int] = None
+        self._published: Optional[LastCornerStats] = None
+
+    def update(self, sample: TelemetrySample) -> None:
+        """Process one high-frequency telemetry sample."""
+        segment = self._classifier.get_segment_info(sample.circuit_pos_m)
+        is_corner = segment and segment.type in _CORNER_TYPES
+
+        if is_corner:
+            if (not self._current_segment) or (self._current_segment.segment_id != segment.segment_id):
+                # Entering a (new) corner: drop the old published result, start fresh.
+                self._current_segment = segment
+                self._current_min_speed = sample.speed_kmph
+                self._published = None
+            else:
+                self._current_min_speed = min(self._current_min_speed, sample.speed_kmph)
+        elif self._current_segment:
+            # Left the corner we were accumulating: publish it.
+            self._published = LastCornerStats(
+                segment=self._current_segment,
+                min_speed_kmph=self._current_min_speed,
+            )
+            self._current_segment = None
+            self._current_min_speed = None
+
+    def stats(self) -> Optional[LastCornerStats]:
+        """Return the most recently completed corner's stats, or None if none should be displayed."""
+        return self._published
+
+    def reset(self) -> None:
+        """Clear all accumulated and published state."""
+        self._current_segment = None
+        self._current_min_speed = None
+        self._published = None

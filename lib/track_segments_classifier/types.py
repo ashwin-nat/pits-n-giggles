@@ -53,6 +53,7 @@ class BaseSegmentInfo(BaseModel):
     name: str
     start_m: float
     end_m: float
+    segment_id: int = -1
 
     @model_validator(mode="after")
     def _check_range(self) -> "BaseSegmentInfo":
@@ -160,3 +161,11 @@ class TrackData(BaseModel):
                     f"segment {i} overlaps previous: start_m={curr.start_m} < previous end_m={prev.end_m}"
                 )
         return segments
+
+    @model_validator(mode="after")
+    def _stamp_segment_ids(self) -> "TrackData":
+        self.segments = [
+            seg.model_copy(update={"segment_id": idx})
+            for idx, seg in enumerate(self.segments)
+        ]
+        return self
