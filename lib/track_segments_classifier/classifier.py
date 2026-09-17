@@ -113,10 +113,15 @@ class TrackSegmentsClassifier:
         """
         Return the track segment corresponding to the given lap position.
 
+        Requires `load_track_data` to have been called first; there is no
+        meaningful segment lookup on an unloaded classifier.
+
         Parameters
         ----------
         lap_distance : float
-            Current lap position in meters.
+            Current lap position in meters. May be negative or exceed
+            track_length (e.g. sim-emitted values during outlaps); the
+            position is normalized onto the lap before lookup.
 
         Returns
         -------
@@ -124,14 +129,19 @@ class TrackSegmentsClassifier:
             Strongly typed segment information if the position falls within
             a defined segment, otherwise None.
         """
-        if self._last_segment and self._last_segment.contains(lap_distance):
+        norm_dist = self._normalize_lap_distance(lap_distance)
+        if self._last_segment and self._last_segment.contains(norm_dist):
             return self._last_segment
-        self._last_segment = self._get_segment_info_impl(lap_distance)
+        self._last_segment = self._get_segment_info_impl(norm_dist)
         return self._last_segment
 
     def get_sector(self, lap_distance: float) -> Optional[LapData.Sector]:
         """
         Return the sector corresponding to the given lap position.
+
+        Requires `load_track_data` to have been called first (this returns
+        None gracefully rather than asserting, since sector data is optional
+        even when a track is loaded).
 
         Parameters
         ----------
@@ -150,13 +160,14 @@ class TrackSegmentsClassifier:
 
         s = self._track_data.sectors
         track_length = self._track_data.track_length
-        if lap_distance == track_length:
-            lap_distance = 0
-        if 0 <= lap_distance < s.s1:
+        norm_dist = self._normalize_lap_distance(lap_distance)
+        if norm_dist == track_length:
+            norm_dist = 0
+        if 0 <= norm_dist < s.s1:
             return LapData.Sector.SECTOR1
-        if s.s1 <= lap_distance < s.s2:
+        if s.s1 <= norm_dist < s.s2:
             return LapData.Sector.SECTOR2
-        if s.s2 <= lap_distance < track_length:
+        if s.s2 <= norm_dist < track_length:
             return LapData.Sector.SECTOR3
         return None
 
@@ -174,3 +185,18 @@ class TrackSegmentsClassifier:
             return None
 
         return seg
+
+    def _normalize_lap_distance(self, lap_distance: float) -> float:
+        """
+        Normalize lap distance to the range [0, track_length).
+
+        Sim telemetry legitimately emits negative lap_distance values during
+        outlaps, and values can also land exactly on/just past track_length
+        at the start/finish line; both wrap onto the lap rather than being
+        treated as out-of-range.
+        """
+        assert self._track_data and self._track_data.track_length, (
+            "load_track_data() must be called before any get_* lookup"
+        )
+        track_length = self._track_data.track_length
+        return lap_distance % track_length

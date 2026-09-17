@@ -24,7 +24,7 @@
 
 from typing import Optional
 
-from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
+from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.track_segments_classifier.types import (BaseSegmentInfo,
                                                   ComplexCornerSegmentInfo,
                                                   CornerSegmentInfo)
@@ -47,15 +47,25 @@ class LastCornerTracker:
       - reset()
     """
 
-    def __init__(self, classifier: TrackSegmentsClassifier) -> None:
-        self._classifier = classifier
+    def __init__(self, seg_db: TrackSegmentsDatabase) -> None:
+        self._seg_db = seg_db
         self._current_segment: Optional[BaseSegmentInfo] = None
         self._current_min_speed: Optional[int] = None
         self._published: Optional[LastCornerStats] = None
+        self._circuit_num: Optional[int] = None
 
     def update(self, sample: TelemetrySample) -> None:
         """Process one high-frequency telemetry sample."""
-        segment = self._classifier.get_segment_info(sample.circuit_pos_m)
+        if self._circuit_num is None:
+            self._circuit_num = sample.circuit_num
+        else:
+            assert self._circuit_num == sample.circuit_num, (
+                f"LastCornerTracker is bound to circuit_num={self._circuit_num}, "
+                f"got {sample.circuit_num}. A circuit change implies a new session, "
+                "which gets a new tracker instance - it is never expected mid-lifetime."
+            )
+
+        segment = self._seg_db.get_segment_info(sample.circuit_num, sample.circuit_pos_m)
         is_corner = segment and segment.type in _CORNER_TYPES
 
         if is_corner:
@@ -80,7 +90,13 @@ class LastCornerTracker:
         return self._published
 
     def reset(self) -> None:
-        """Clear all accumulated and published state."""
+        """
+        Clear all accumulated and published state.
+
+        Does not clear the bound circuit_num: the circuit is a tracker-lifetime
+        invariant (see update()), not corner-tracking state - a flashback or
+        similar mid-session reset does not change which circuit is loaded.
+        """
         self._current_segment = None
         self._current_min_speed = None
         self._published = None

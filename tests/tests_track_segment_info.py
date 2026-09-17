@@ -216,10 +216,37 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
         self.assertIsNone(info)
 
     def test_no_track_loaded(self):
-        """Calling lookup without loading data returns None."""
+        """Calling get_segment_info before load_track_data is a caller error (enforced precondition)."""
         tracker = TrackSegmentsClassifier()
-        info = tracker.get_segment_info(100)
-        self.assertIsNone(info)
+        with self.assertRaises(AssertionError):
+            tracker.get_segment_info(100)
+
+    # --- Lap wraparound (sim outlap negatives / start-finish line) -------------------------
+
+    def test_negative_position_wraps_onto_last_segment(self):
+        """Sim-emitted negative lap_distance (e.g. during an outlap) wraps onto the end of the lap."""
+        segments = [
+            {"type": "straight", "name": "A", "start_m": 0,    "end_m": 6900},
+            {"type": "corner",   "name": "B", "start_m": 6900, "end_m": 7000, "corner_number": 1},
+        ]
+        tracker = TrackSegmentsClassifier()
+        tracker.load_track_data(self._track(segments))
+
+        info = tracker.get_segment_info(-1)  # -1 % 7000 == 6999
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.name, "B")
+
+    def test_position_at_exactly_track_length_wraps_to_zero(self):
+        """Position exactly at track_length wraps to the start of the lap (0)."""
+        segments = [
+            {"type": "corner", "name": "Start Corner", "start_m": 0, "end_m": 200, "corner_number": 1},
+        ]
+        tracker = TrackSegmentsClassifier()
+        tracker.load_track_data(self._track(segments))
+
+        info = tracker.get_segment_info(7000)  # == track_length -> wraps to 0
+        self.assertIsInstance(info, CornerSegmentInfo)
+        self.assertEqual(info.name, "Start Corner")
 
     # --- Validation: missing required base fields -----------------------------------------
 
@@ -412,7 +439,9 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
             "segments": [
                 {"type": "straight", "name": "Start Straight", "start_m": 0,   "end_m": 400},
                 {"type": "corner",   "name": "Turn One",       "start_m": 400, "end_m": 600, "corner_number": 1},
-                {"type": "straight", "name": "Back Straight",  "start_m": 600, "end_m": 1000},
+                {"type": "straight", "name": "Back Straight",  "start_m": 600, "end_m": 900},
+                # 900-1000 is an intentional gap: with lap-distance wraparound, a track that
+                # covers its full length has no "outside all segments" position left to test.
             ],
         }
         self.tracker = TrackSegmentsClassifier()
@@ -440,14 +469,14 @@ class TestLastSegmentCache(F1TelemetryUnitTestsBase):
         self.assertEqual(info.name, "Start Straight")
 
     def test_cache_miss_after_segment_then_gap_returns_none(self):
-        """Moving from a cached segment into a gap/out-of-range position returns None, not the stale segment."""
+        """Moving from a cached segment into a gap position returns None, not the stale segment."""
         self.tracker.get_segment_info(100)
-        info = self.tracker.get_segment_info(5000)
+        info = self.tracker.get_segment_info(950)  # falls in the intentional 900-1000 gap
         self.assertIsNone(info)
 
     def test_lookup_after_none_recovers_correct_segment(self):
         """A lookup that misses (returns None) does not poison later lookups that should hit."""
-        self.tracker.get_segment_info(5000)
+        self.tracker.get_segment_info(950)  # falls in the intentional 900-1000 gap
         info = self.tracker.get_segment_info(450)
         self.assertEqual(info.name, "Turn One")
 
@@ -643,13 +672,13 @@ class TestGetSector(F1TelemetryUnitTestsBase):
         """Position exactly at track_length wraps to lap start and returns SECTOR1."""
         self.assertEqual(self.tracker.get_sector(3000), LapData.Sector.SECTOR1)
 
-    def test_beyond_track_length_returns_none(self):
-        """Position beyond track_length returns None."""
-        self.assertIsNone(self.tracker.get_sector(5000))
+    def test_beyond_track_length_wraps_to_correct_sector(self):
+        """Position beyond track_length wraps onto the lap and returns the corresponding sector."""
+        self.assertEqual(self.tracker.get_sector(5000), LapData.Sector.SECTOR3)  # 5000 % 3000 == 2000
 
-    def test_negative_position_returns_none(self):
-        """Negative position returns None."""
-        self.assertIsNone(self.tracker.get_sector(-1))
+    def test_negative_position_wraps_to_correct_sector(self):
+        """Negative position (e.g. sim outlap) wraps onto the end of the lap and returns the correct sector."""
+        self.assertEqual(self.tracker.get_sector(-1), LapData.Sector.SECTOR3)  # -1 % 3000 == 2999
 
     # --- No data --------------------------------------------------------------------------
 
@@ -865,9 +894,9 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         sector = self.db.get_sector(3, 800)
         self.assertEqual(sector, LapData.Sector.SECTOR3)
 
-    def test_get_sector_beyond_track_length_returns_none(self):
-        """get_sector returns None for a position beyond track_length."""
-        self.assertIsNone(self.db.get_sector(3, 9999))
+    def test_get_sector_beyond_track_length_wraps_to_correct_sector(self):
+        """get_sector wraps a position beyond track_length onto the lap."""
+        self.assertEqual(self.db.get_sector(3, 9999), LapData.Sector.SECTOR3)  # 9999 % 1000 == 999
 
     def test_get_sector_unknown_circuit_returns_none(self):
         """get_sector returns None for an unknown circuit number."""

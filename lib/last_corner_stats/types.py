@@ -33,6 +33,7 @@ from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
 @dataclass(frozen=True, slots=True)
 class TelemetrySample:
     """One high-frequency telemetry sample fed into LastCornerTracker.update()."""
+    circuit_num: int
     circuit_pos_m: float
     speed_kmph: int
 
@@ -42,3 +43,12 @@ class LastCornerStats:
     """Statistics for the most recently completed corner."""
     segment: Union[CornerSegmentInfo, ComplexCornerSegmentInfo]
     min_speed_kmph: int
+
+    def to_dict(self) -> dict:
+        """Convert to a JSON-serializable dict."""
+        segment_dict = self.segment.to_dict()
+        segment_dict["segment_id"] = self.segment.segment_id
+        return {
+            "segment": segment_dict,
+            "min_speed_kmph": self.min_speed_kmph,
+        }

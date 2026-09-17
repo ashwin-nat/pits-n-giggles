@@ -21,8 +21,10 @@
 # SOFTWARE.
 # pylint: skip-file
 
+import json
 import os
 import sys
+import tempfile
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -30,15 +32,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pytest
 
 from lib.last_corner_stats import LastCornerStats, LastCornerTracker, TelemetrySample
-from lib.track_segments_classifier import TrackSegmentsClassifier
+from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
                                                   CornerSegmentInfo)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+CIRCUIT_NUM = 12
+
 TRACK_DATA = {
     "circuit_name": "Circuit de Spa-Francorchamps",
-    "circuit_number": 12,
+    "circuit_number": CIRCUIT_NUM,
     "track_length": 7004,
     "segments": [
         {
@@ -85,19 +89,21 @@ TRACK_DATA = {
 
 
 @pytest.fixture
-def classifier() -> TrackSegmentsClassifier:
-    c = TrackSegmentsClassifier()
-    c.load_track_data(TRACK_DATA)
-    return c
+def seg_db() -> TrackSegmentsDatabase:
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = os.path.join(tmp_dir, "spa.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(TRACK_DATA, fh)
+        yield TrackSegmentsDatabase(tmp_dir)
 
 
 @pytest.fixture
-def tracker(classifier: TrackSegmentsClassifier) -> LastCornerTracker:
-    return LastCornerTracker(classifier)
+def tracker(seg_db: TrackSegmentsDatabase) -> LastCornerTracker:
+    return LastCornerTracker(seg_db)
 
 
-def _update(tracker: LastCornerTracker, circuit_pos_m: float, speed_kmph: int) -> None:
-    tracker.update(TelemetrySample(circuit_pos_m=circuit_pos_m, speed_kmph=speed_kmph))
+def _update(tracker: LastCornerTracker, circuit_pos_m: float, speed_kmph: int, circuit_num: int = CIRCUIT_NUM) -> None:
+    tracker.update(TelemetrySample(circuit_num=circuit_num, circuit_pos_m=circuit_pos_m, speed_kmph=speed_kmph))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -191,7 +197,7 @@ def test_reset_clears_accumulating_and_published_state(tracker: LastCornerTracke
     assert stats.min_speed_kmph == 200
 
 
-def test_repeated_visits_to_same_corner_are_isolated(tracker: LastCornerTracker, classifier: TrackSegmentsClassifier):
+def test_repeated_visits_to_same_corner_are_isolated(tracker: LastCornerTracker):
     # First lap through La Source
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 100, speed_kmph=90)
@@ -211,3 +217,45 @@ def test_repeated_visits_to_same_corner_are_isolated(tracker: LastCornerTracker,
     second_stats = tracker.stats()
     assert second_stats.segment.name == "La Source"
     assert second_stats.min_speed_kmph == 130
+
+
+def test_circuit_num_is_bound_on_first_update(tracker: LastCornerTracker):
+    """circuit_num is inferred from the first sample and does not need to be passed again explicitly."""
+    _update(tracker, 10, speed_kmph=200, circuit_num=CIRCUIT_NUM)
+    _update(tracker, 100, speed_kmph=90, circuit_num=CIRCUIT_NUM)
+    _update(tracker, 250, speed_kmph=300, circuit_num=CIRCUIT_NUM)
+    assert tracker.stats().min_speed_kmph == 90
+
+
+def test_circuit_num_change_raises_assertion_error(tracker: LastCornerTracker):
+    """A circuit_num change mid-lifetime is a caller bug (should get a new tracker instead)."""
+    _update(tracker, 10, speed_kmph=200, circuit_num=CIRCUIT_NUM)
+    with pytest.raises(AssertionError):
+        _update(tracker, 100, speed_kmph=90, circuit_num=CIRCUIT_NUM + 1)
+
+
+def test_reset_does_not_clear_bound_circuit_num(tracker: LastCornerTracker):
+    """reset() clears corner-tracking state but not the circuit_num a tracker is bound to."""
+    _update(tracker, 10, speed_kmph=200, circuit_num=CIRCUIT_NUM)
+    tracker.reset()
+    with pytest.raises(AssertionError):
+        _update(tracker, 100, speed_kmph=90, circuit_num=CIRCUIT_NUM + 1)
+
+
+def test_stats_to_dict_uses_segment_to_dict_and_includes_segment_id(tracker: LastCornerTracker):
+    """to_dict() must reuse the segment's own to_dict() (not leak all pydantic fields) but still expose segment_id."""
+    _update(tracker, 10, speed_kmph=200)
+    _update(tracker, 100, speed_kmph=90)
+    _update(tracker, 250, speed_kmph=300)
+
+    stats = tracker.stats()
+    result = stats.to_dict()
+
+    assert result["min_speed_kmph"] == 90
+    assert result["segment"]["type"] == "corner"
+    assert result["segment"]["name"] == "La Source"
+    assert result["segment"]["corner_number"] == 1
+    assert result["segment"]["segment_id"] == stats.segment.segment_id
+    # start_m/end_m are internal to the classifier, not part of the curated wire format.
+    assert "start_m" not in result["segment"]
+    assert "end_m" not in result["segment"]
