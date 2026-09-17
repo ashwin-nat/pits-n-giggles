@@ -31,7 +31,7 @@ from .types import BaseSegmentInfo, SectorBoundaries, TrackData
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
-class TrackSegments:
+class TrackSegmentsClassifier:
     """
     Utility class for determining track segment information from lap position.
 

@@ -24,7 +24,7 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib.track_segment_info import TrackSegmentsDatabase
+from lib.track_segments_classifier import TrackSegmentsDatabase
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 

@@ -55,7 +55,7 @@ from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            OvertakeRaceCtrlMsg, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
-from lib.track_segment_info import TrackSegmentsDatabase
+from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
