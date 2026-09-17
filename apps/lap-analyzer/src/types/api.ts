@@ -61,4 +61,6 @@ export interface TrackSection {
   label: string;
   distanceStart: number;
   distanceEnd: number;
+  type: "straight" | "corner" | "complex_corner";
+  cornerNumbers: number[]; // empty for straights
 }
