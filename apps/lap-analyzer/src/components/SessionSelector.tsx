@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSessions } from "../hooks/useSessions";
+import { LoadingSkeleton, ErrorMessage } from "./selectorStates";
 import type { Session } from "../types/api";
 import type { SelectionState } from "../types/store";
 
@@ -44,8 +45,12 @@ export function SessionSelector({ selection, onChange, restrictToSessionId }: Se
       if (restrictToSession === undefined) {
         return [];
       }
+      // Formula only, not gameYear -- each formula is a regulation era, not
+      // tied to a specific year, and there may be gaps between recorded
+      // years for the same circuit+formula. Year is cosmetic here (it still
+      // drives the separate, combined "F1 2025"-style filter option below).
       return (sessions ?? []).filter(
-        (s) => s.trackId === restrictToSession.trackId && formulaLabel(s) === formulaLabel(restrictToSession)
+        (s) => s.trackId === restrictToSession.trackId && s.formula === restrictToSession.formula
       );
     }
     return (sessions ?? []).filter((s) => {
@@ -56,14 +61,10 @@ export function SessionSelector({ selection, onChange, restrictToSessionId }: Se
   }, [sessions, trackFilter, formulaFilter, restricted, restrictToSession]);
 
   if (isLoading) {
-    return <div className="h-16 animate-pulse rounded bg-slate-800" />;
+    return <LoadingSkeleton className="h-16" />;
   }
   if (error) {
-    return (
-      <p className="text-xs text-red-400">
-        Failed to load sessions: {error instanceof Error ? error.message : String(error)}
-      </p>
-    );
+    return <ErrorMessage what="sessions" error={error} />;
   }
 
   return (

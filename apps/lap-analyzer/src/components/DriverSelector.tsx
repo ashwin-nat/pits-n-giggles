@@ -1,5 +1,6 @@
 import { useDrivers } from "../hooks/useDrivers";
 import { getTeamColor } from "../lib/teamColors";
+import { DisabledSelect, LoadingSkeleton, ErrorMessage } from "./selectorStates";
 import type { Driver } from "../types/api";
 import type { SelectionState } from "../types/store";
 
@@ -25,21 +26,13 @@ export function DriverSelector({ selection, onChange, disabled }: DriverSelector
   const { data: drivers, isLoading, error } = useDrivers(selection.sessionId);
 
   if (disabled) {
-    return (
-      <select disabled className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-sm text-slate-600">
-        <option>Select a session first</option>
-      </select>
-    );
+    return <DisabledSelect message="Select a session first" />;
   }
   if (isLoading) {
-    return <div className="h-8 animate-pulse rounded bg-slate-800" />;
+    return <LoadingSkeleton />;
   }
   if (error) {
-    return (
-      <p className="text-xs text-red-400">
-        Failed to load drivers: {error instanceof Error ? error.message : String(error)}
-      </p>
-    );
+    return <ErrorMessage what="drivers" error={error} />;
   }
 
   return (

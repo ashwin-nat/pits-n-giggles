@@ -3,17 +3,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProviderContext, type ActiveProvider } from "./providers/ProviderContext";
 import { LocalFileProvider } from "./providers/LocalFileProvider";
 import { Layout } from "./components/layout/Layout";
+import { useTelemetryStore } from "./store/telemetryStore";
 
 const queryClient = new QueryClient();
 
 export function App() {
   const [active, setActive] = useState<ActiveProvider | null>(null);
+  const resetSelection = useTelemetryStore((state) => state.reset);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file === undefined) {
       return;
     }
+    // A new file's sessionId/driverIndex/lapNumber share nothing with the
+    // previous one's -- drop any selection left over from it rather than
+    // leaving the sidebar cascade pointing at now-meaningless ids.
+    resetSelection();
     setActive({ provider: new LocalFileProvider(file), id: crypto.randomUUID() });
   }
 

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useDrivers } from "../hooks/useDrivers";
 import { useLaps } from "../hooks/useLaps";
 import { useSessions } from "../hooks/useSessions";
+import { DisabledSelect, LoadingSkeleton, ErrorMessage } from "./selectorStates";
 import type { Lap } from "../types/api";
 import type { SelectionState } from "../types/store";
 
@@ -79,11 +80,7 @@ export function LapSelector({ selection, onChange, disabled }: LapSelectorProps)
   const sessionBest = session?.sessionBest ?? null;
 
   if (disabled) {
-    return (
-      <select disabled className="rounded border border-slate-800 bg-slate-900 px-2 py-1 text-sm text-slate-600">
-        <option>Select a driver first</option>
-      </select>
-    );
+    return <DisabledSelect message="Select a driver first" />;
   }
 
   if (restricted) {
@@ -97,11 +94,9 @@ export function LapSelector({ selection, onChange, disabled }: LapSelectorProps)
   return (
     <div className="flex flex-col gap-2">
       {isLoading ? (
-        <div className="h-8 animate-pulse rounded bg-slate-800" />
+        <LoadingSkeleton />
       ) : error ? (
-        <p className="text-xs text-red-400">
-          Failed to load laps: {error instanceof Error ? error.message : String(error)}
-        </p>
+        <ErrorMessage what="laps" error={error} />
       ) : (
         <select
           value={selection.lapNumber ?? ""}
@@ -115,6 +110,7 @@ export function LapSelector({ selection, onChange, disabled }: LapSelectorProps)
             const isSessionBest =
               sessionBest !== null &&
               lap.lapTime === sessionBest.lapTimeMs &&
+              lap.lapNumber === sessionBest.lapNumber &&
               selection.driverIndex === sessionBest.driverIndex;
             const isPersonalBest = !isSessionBest && lap.lapTime !== null && lap.lapTime === personalBestMs;
             const color = isSessionBest ? SESSION_BEST_COLOR : isPersonalBest ? PERSONAL_BEST_COLOR : undefined;
