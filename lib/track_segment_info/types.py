@@ -63,6 +63,8 @@ class BaseSegmentInfo(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         raise NotImplementedError
 
+    def contains(self, lap_distance: float) -> bool:
+        return self.start_m <= lap_distance < self.end_m
 
 class StraightSegmentInfo(BaseSegmentInfo):
     TYPE: ClassVar[str] = "straight"

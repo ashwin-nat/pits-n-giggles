@@ -374,6 +374,84 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+class TestLastSegmentCache(F1TelemetryUnitTestsBase):
+    """Exercises the _last_segment cache added to TrackSegments.get_segment_info."""
+
+    def setUp(self):
+        self.track_data = {
+            "circuit_name": "Cache Test Circuit",
+            "circuit_number": 1,
+            "track_length": 1000,
+            "segments": [
+                {"type": "straight", "name": "Start Straight", "start_m": 0,   "end_m": 400},
+                {"type": "corner",   "name": "Turn One",       "start_m": 400, "end_m": 600, "corner_number": 1},
+                {"type": "straight", "name": "Back Straight",  "start_m": 600, "end_m": 1000},
+            ],
+        }
+        self.tracker = TrackSegments()
+        self.tracker.load_track_data(self.track_data)
+
+    def test_repeated_lookup_same_segment_returns_same_object(self):
+        """Consecutive lookups within the same segment hit the cache and return the same instance."""
+        first = self.tracker.get_segment_info(50)
+        second = self.tracker.get_segment_info(60)
+        self.assertIsNotNone(first)
+        self.assertIs(first, second)
+
+    def test_lookup_advancing_to_next_segment_updates_cache(self):
+        """Moving lap_distance forward into a new segment returns the new segment, not the cached one."""
+        first = self.tracker.get_segment_info(100)
+        second = self.tracker.get_segment_info(450)
+        self.assertEqual(first.name, "Start Straight")
+        self.assertEqual(second.name, "Turn One")
+        self.assertIsNot(first, second)
+
+    def test_lookup_moving_backward_updates_cache(self):
+        """Lap distance moving backward (e.g. new lap) still resolves to the correct segment."""
+        self.tracker.get_segment_info(700)
+        info = self.tracker.get_segment_info(50)
+        self.assertEqual(info.name, "Start Straight")
+
+    def test_cache_miss_after_segment_then_gap_returns_none(self):
+        """Moving from a cached segment into a gap/out-of-range position returns None, not the stale segment."""
+        self.tracker.get_segment_info(100)
+        info = self.tracker.get_segment_info(5000)
+        self.assertIsNone(info)
+
+    def test_lookup_after_none_recovers_correct_segment(self):
+        """A lookup that misses (returns None) does not poison later lookups that should hit."""
+        self.tracker.get_segment_info(5000)
+        info = self.tracker.get_segment_info(450)
+        self.assertEqual(info.name, "Turn One")
+
+    def test_cache_reset_on_reload_track_data(self):
+        """Loading new track data must not let a cached segment from the old track leak through."""
+        # Populate the cache with a segment from the first track (0-400 -> Start Straight).
+        self.tracker.get_segment_info(100)
+
+        other_track = {
+            "circuit_name": "Other Circuit",
+            "circuit_number": 2,
+            "track_length": 500,
+            "segments": [
+                {"type": "corner", "name": "Only Corner", "start_m": 0, "end_m": 500, "corner_number": 1},
+            ],
+        }
+        self.tracker.load_track_data(other_track)
+
+        info = self.tracker.get_segment_info(100)
+        self.assertEqual(info.name, "Only Corner")
+
+    def test_boundary_transition_end_exclusive_via_cache(self):
+        """Landing exactly on a segment's end_m must not be served by the stale cached segment."""
+        first = self.tracker.get_segment_info(300)
+        self.assertEqual(first.name, "Start Straight")
+        second = self.tracker.get_segment_info(400)
+        self.assertEqual(second.name, "Turn One")
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 class TestSegmentDict(F1TelemetryUnitTestsBase):
 
     def test_straight_named_Dict(self):

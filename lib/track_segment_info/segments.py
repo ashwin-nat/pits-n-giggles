@@ -43,6 +43,7 @@ class TrackSegments:
         self._track_data: Optional[TrackData] = None
         self._segments: List[BaseSegmentInfo] = []
         self._starts: List[float] = []  # sorted start_m values, parallel to _segments
+        self._last_segment: Optional[BaseSegmentInfo] = None # Cache
 
     @property
     def circuit_name(self) -> Optional[str]:
@@ -99,6 +100,7 @@ class TrackSegments:
         self._track_data = TrackData.model_validate(track_data)
         self._segments = list(self._track_data.segments)
         self._starts = [seg.start_m for seg in self._segments]
+        self._last_segment = None
 
     @property
     def sectors(self) -> Optional[SectorBoundaries]:
@@ -122,20 +124,10 @@ class TrackSegments:
             Strongly typed segment information if the position falls within
             a defined segment, otherwise None.
         """
-
-        if not self._starts:
-            return None
-
-        # Find the rightmost segment whose start_m <= lap_distance
-        idx = bisect.bisect_right(self._starts, lap_distance) - 1
-        if idx < 0:
-            return None
-
-        seg = self._segments[idx]
-        if lap_distance >= seg.end_m:
-            return None
-
-        return seg
+        if self._last_segment and self._last_segment.contains(lap_distance):
+            return self._last_segment
+        self._last_segment = self._get_segment_info_impl(lap_distance)
+        return self._last_segment
 
     def get_sector(self, lap_distance: float) -> Optional[LapData.Sector]:
         """
@@ -167,3 +159,18 @@ class TrackSegments:
         if s.s2 <= lap_distance < track_length:
             return LapData.Sector.SECTOR3
         return None
+
+    def _get_segment_info_impl(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
+        if not self._starts:
+            return None
+
+        # Find the rightmost segment whose start_m <= lap_distance
+        idx = bisect.bisect_right(self._starts, lap_distance) - 1
+        if idx < 0:
+            return None
+
+        seg = self._segments[idx]
+        if lap_distance >= seg.end_m:
+            return None
+
+        return seg
