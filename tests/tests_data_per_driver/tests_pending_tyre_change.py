@@ -98,6 +98,7 @@ def _driver() -> DataPerDriver:
         weather_aware_prediction=False,
         tyre_wear_window_size=None,
         harvest_power_window_size=5,
+        track_segments_db=MagicMock(),
     )
     obj.m_driver_info.telemetry_setting = True
     obj.m_lap_info.m_current_lap = START_LAP

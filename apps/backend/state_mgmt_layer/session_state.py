@@ -302,6 +302,9 @@ class SessionState:
             if not should_recompute_fastest_lap:
                 should_recompute_fastest_lap = self._shouldRecomputeFastestLap(driver_obj)
 
+            if self.m_session_info.m_track:
+                driver_obj.updateLastCornerStatsTracker(self.m_session_info.m_track, lap_data.m_lapDistance)
+
         self.m_num_active_cars = num_active_cars
         self.m_flashback_occurred = False # Reset flashback flag since it must've been processed by now
 
@@ -1345,7 +1348,8 @@ class SessionState:
                 state_ref=self,
                 weather_aware_prediction=self.m_weather_aware_prediction,
                 tyre_wear_window_size=self.m_tyre_wear_window_size,
-                harvest_power_window_size=self.m_power_filter_window_size)
+                harvest_power_window_size=self.m_power_filter_window_size,
+                track_segments_db=self.m_track_segments_db)
             self.m_driver_data[index] = obj
             self.m_race_ctrl.register_driver(index, obj.m_race_ctrl)
         return obj

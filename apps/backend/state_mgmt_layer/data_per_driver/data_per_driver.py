@@ -33,9 +33,11 @@ from lib.delta import LapDeltaManager
 from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SessionType,
                           TrackID)
+from lib.last_corner_stats import LastCornerTracker, TelemetrySample
 from lib.race_ctrl import (CarDamageRaceControlMessage,
                            DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
+from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
 from .car_info import CarInfo
@@ -107,6 +109,7 @@ class DataPerDriver:
                                                     set already recorded in the stint history.
         m_race_ctrl (DriverRaceControlManager): Manager for race control messages specific to the driver.
         m_delta_mgr (LapDeltaManager): Lap delta manager
+        m_last_corner_tracker (LastCornerTracker): Tracks stats regarding last corner
     """
 
     __slots__ = (
@@ -126,6 +129,7 @@ class DataPerDriver:
         "m_current_set_last_seen_lap",
         "m_race_ctrl",
         "m_delta_mgr",
+        "m_last_corner_tracker",
         "m_state_ref",
     )
 
@@ -161,7 +165,8 @@ class DataPerDriver:
                  state_ref: "SessionState",
                  weather_aware_prediction: bool,
                  tyre_wear_window_size: Optional[int],
-                 harvest_power_window_size: int):
+                 harvest_power_window_size: int,
+                 track_segments_db: TrackSegmentsDatabase) -> None:
         """
         Init the data per driver fields
 
@@ -173,6 +178,7 @@ class DataPerDriver:
             weather_aware_prediction (bool): Enable weather-aware tyre wear prediction
             tyre_wear_window_size (Optional[int]): Sliding window size for tyre wear regression
             harvest_power_window_size (int): Sliding window size for power harvest
+            track_segments_db (TrackSegmentsDatabase): Database for track segments classification
         """
 
         self.m_index = index
@@ -212,6 +218,9 @@ class DataPerDriver:
 
         # Lap delta
         self.m_delta_mgr: LapDeltaManager = LapDeltaManager()
+
+        # Last corner tracker
+        self.m_last_corner_tracker: LastCornerTracker = LastCornerTracker(seg_db=track_segments_db)
 
         # State/parent ref
         self.m_state_ref: "SessionState" = state_ref
@@ -1464,3 +1473,18 @@ class DataPerDriver:
                     "Driver %s - unexpected damage decrease for %s: %s - %s",
                     str(self), field, old, new
                 )
+
+    def updateLastCornerStatsTracker(self, track_id: TrackID, lap_dist: float) -> None:
+        """Update the last corner stats tracker
+
+        Args:
+            track_id (TrackID): The track ID
+            lap_dist (float): The lap distance
+        """
+
+        if pkt := self.m_packet_copies.m_packet_car_telemetry:
+            self.m_last_corner_tracker.update(TelemetrySample(
+                circuit_num=track_id.value,
+                circuit_pos_m=lap_dist,
+                speed_kmph=pkt.m_speed
+            ))
