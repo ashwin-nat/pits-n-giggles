@@ -9,17 +9,29 @@
     "pnpm": ">=10.26.0"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "dev:manual-test": "tsx src/dev/manual-test.ts",
     "sync-segments": "tsx scripts/sync-segments.ts",
     "test:sync-segments": "tsx --test scripts/sync-segments.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.102.8",
     "fflate": "0.8.3",
-    "npyjs": "1.2.0"
+    "npyjs": "1.2.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.5.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "4.3.3",
     "tsx": "4.23.13",
     "typescript": "~5.9.3",
     "vite": "8.3.0"

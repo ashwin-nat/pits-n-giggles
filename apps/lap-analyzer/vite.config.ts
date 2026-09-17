@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-// Placeholder for Phase 3 (React shell). Phase 2 has no UI yet; existing dev
-// scripts run through tsx directly rather than a Vite dev server.
-export default defineConfig({});
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
