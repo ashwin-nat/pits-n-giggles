@@ -26,6 +26,7 @@ from .base_page import MfdPageBase
 from .collapsed.collapsed import CollapsedPage
 from .fuel.fuel_page import FuelInfoPage
 from .lap_times.lap_times import LapTimesPage
+from .last_corner_stats.last_corner_stats_page import LastCornerStatsPage
 from .pace_comp.pace_comp import PaceCompPage
 from .pit_rejoin.pit_rejoin_page import PitRejoinPredictionPage
 from .standalone_host import StandalonePageHost
@@ -48,4 +49,5 @@ __all__ = [
     "WeatherForecastPage",
     "PaceCompPage",
     "TrafficMonitorPage",
+    "LastCornerStatsPage",
 ]

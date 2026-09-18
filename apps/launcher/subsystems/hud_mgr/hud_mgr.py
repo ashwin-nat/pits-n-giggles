@@ -578,6 +578,7 @@ class HudAppMgr(PngAppMgrBase):
                 "pace_comp_show_title",
                 "show_traffic_monitor",
                 "traffic_monitor_show_title",
+                "show_last_corner_stats",
             ],
             "Network": [
                 "broker_xpub_port",
