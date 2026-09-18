@@ -26,7 +26,10 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, final
 
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
-from lib.config import OverlayId, PngSettings
+from lib.config import OverlayId, OverlaysSpeedUnit, PngSettings
+from lib.logger import PngLogger
+
+_KMPH_TO_MPH = 0.621371
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -35,13 +38,24 @@ class LastCornerStatsPage(MfdPageBase):
     """Last Corner Stats standalone overlay (not part of the MFD carousel).
 
     Shows the minimum speed through the most recently completed corner (or
-    complex corner). Stays on-screen unchanged while the car is on a straight;
-    clears the moment a new corner starts, since no complete stats exist for
-    it yet.
+    complex corner). Keeps showing that data across a new corner starting to
+    accumulate — LastCornerTracker only clears last_pub_data on reset(), not
+    on corner entry — so the strip never blanks out mid-corner.
     """
     OVERLAY_ID = OverlayId.LAST_CORNER_STATS
     KEY = "last_corner_stats"
     PAGE_QML_FILE: Path = Path(__file__).parent / "last_corner_stats_page.qml"
+
+    def __init__(self, logger: PngLogger, speed_unit: OverlaysSpeedUnit = OverlaysSpeedUnit.KMPH):
+        # Set before super().__init__ - it calls setup_page(), which doesn't
+        # need this directly, but _format_min_speed (called from event
+        # handlers registered there) does.
+        self._speed_unit = speed_unit
+        super().__init__(logger)
+
+    @classmethod
+    def from_settings(cls, settings: PngSettings, logger: PngLogger) -> "LastCornerStatsPage":
+        return cls(logger, speed_unit=settings.HUD.overlays_speed_unit)
 
     @classmethod
     def standalone_show_title(cls, settings: PngSettings) -> bool:
@@ -53,12 +67,17 @@ class LastCornerStatsPage(MfdPageBase):
     def setup_page(self):
         @self.on_event("stream_overlay_update")
         def _handle_stream_overlay_update(data: Dict[str, Any]) -> None:
-            last_corner_stats = data.get("last-corner-stats")
-            if not last_corner_stats:
+            last_corner_stats = data.get("last-corner-stats") or {}
+            # Independent of last_pub_data - a corner can be mid-accumulation
+            # while the strip still shows the previous corner's stats.
+            self.set_qml_property("isAccumulating", bool(last_corner_stats.get("is_accumulating")))
+
+            last_pub_data = last_corner_stats.get("last_pub_data")
+            if not last_pub_data:
                 self._show_no_data()
                 return
 
-            self._show_data(last_corner_stats)
+            self._show_data(last_pub_data)
 
     # -- QML updates -------------------------------------------------------
 
@@ -74,7 +93,7 @@ class LastCornerStatsPage(MfdPageBase):
         self.set_qml_property("hasName", bool(corner_name))
         self.set_qml_property("cornerLabel", corner_label)
         self.set_qml_property("cornerName", corner_name.upper())
-        self.set_qml_property("minSpeedText", self._format_min_speed(min_speed_kmph))
+        self.set_qml_property("minSpeedText", self._format_min_speed(min_speed_kmph, self._speed_unit))
 
     # -- Formatting helpers --------------------------------------------------
 
@@ -93,5 +112,9 @@ class LastCornerStatsPage(MfdPageBase):
         return label, name
 
     @staticmethod
-    def _format_min_speed(min_speed_kmph: Any) -> str:
-        return f"{min_speed_kmph} km/h" if min_speed_kmph is not None else "---"
+    def _format_min_speed(min_speed_kmph: Any, speed_unit: OverlaysSpeedUnit) -> str:
+        if min_speed_kmph is None:
+            return "---"
+        if speed_unit == OverlaysSpeedUnit.MPH:
+            return f"{round(min_speed_kmph * _KMPH_TO_MPH)} mph"
+        return f"{min_speed_kmph} km/h"

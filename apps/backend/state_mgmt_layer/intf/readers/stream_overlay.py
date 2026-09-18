@@ -407,9 +407,7 @@ class StreamOverlayData(BaseAPI):
         if not self.m_ref_obj:
             return {}
 
-        if last_corner_stats := self.m_ref_obj.m_last_corner_tracker.stats():
-            return last_corner_stats.to_dict()
-        return {}
+        return self.m_ref_obj.m_last_corner_tracker.stats().to_dict()
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
         """Dump this object into JSON

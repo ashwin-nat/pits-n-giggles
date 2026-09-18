@@ -31,7 +31,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
 
-from lib.last_corner_stats import LastCornerStats, LastCornerTracker, TelemetrySample
+from lib.last_corner_stats import (LastCornerStats, LastCornerStatsSnapshot,
+                                    LastCornerTracker, TelemetrySample)
 from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
                                                   CornerSegmentInfo)
@@ -107,26 +108,35 @@ def _update(tracker: LastCornerTracker, circuit_pos_m: float, speed_kmph: int, c
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-def test_stats_none_before_any_updates(tracker: LastCornerTracker):
-    assert tracker.stats() is None
+def test_stats_empty_before_any_updates(tracker: LastCornerTracker):
+    snapshot = tracker.stats()
+    assert isinstance(snapshot, LastCornerStatsSnapshot)
+    assert snapshot.is_accumulating is False
+    assert snapshot.last_pub_data is None
 
 
 def test_straight_only_samples_never_produce_stats(tracker: LastCornerTracker):
     for pos in (250, 500, 800, 1100):
         _update(tracker, pos, speed_kmph=300)
-    assert tracker.stats() is None
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is False
+    assert snapshot.last_pub_data is None
 
 
 def test_corner_completion_publishes_min_speed(tracker: LastCornerTracker):
     # Enter and traverse La Source (0-200m)
     for pos, speed in [(10, 200), (50, 120), (100, 90), (150, 130), (190, 250)]:
         _update(tracker, pos, speed_kmph=speed)
-    assert tracker.stats() is None  # still inside corner
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is True
+    assert snapshot.last_pub_data is None  # still inside corner, nothing published yet
 
     # Leave onto Kemmel Straight
     _update(tracker, 250, speed_kmph=300)
 
-    stats = tracker.stats()
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is False
+    stats = snapshot.last_pub_data
     assert stats is not None
     assert isinstance(stats, LastCornerStats)
     assert isinstance(stats.segment, CornerSegmentInfo)
@@ -135,10 +145,12 @@ def test_corner_completion_publishes_min_speed(tracker: LastCornerTracker):
     assert stats.min_speed_kmph == 90
 
 
-def test_stats_none_while_still_inside_corner(tracker: LastCornerTracker):
+def test_is_accumulating_true_while_still_inside_corner(tracker: LastCornerTracker):
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 50, speed_kmph=100)
-    assert tracker.stats() is None
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is True
+    assert snapshot.last_pub_data is None
 
 
 def test_stats_available_on_straight_after_corner(tracker: LastCornerTracker):
@@ -146,31 +158,50 @@ def test_stats_available_on_straight_after_corner(tracker: LastCornerTracker):
     _update(tracker, 100, speed_kmph=90)
     _update(tracker, 250, speed_kmph=300)  # leave onto straight
     _update(tracker, 500, speed_kmph=310)  # still on straight
-    stats = tracker.stats()
-    assert stats is not None
-    assert stats.min_speed_kmph == 90
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is False
+    assert snapshot.last_pub_data is not None
+    assert snapshot.last_pub_data.min_speed_kmph == 90
 
 
-def test_entering_next_corner_clears_previous_stats_immediately(tracker: LastCornerTracker):
+def test_entering_next_corner_keeps_previous_stats_until_completion(tracker: LastCornerTracker):
+    """Previous behaviour cleared last_pub_data the instant a new corner started;
+    now it must stay put - only reset() clears it - so the HUD keeps showing
+    something instead of blanking while the next corner is being driven."""
     # Complete La Source
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 100, speed_kmph=90)
     _update(tracker, 250, speed_kmph=300)
-    assert tracker.stats() is not None
+    first_stats = tracker.stats().last_pub_data
+    assert first_stats is not None
+    assert first_stats.segment.name == "La Source"
 
-    # Enter Eau Rouge (next corner) -> published stats clear immediately
+    # Enter Eau Rouge (next corner) -> now accumulating, but last_pub_data unchanged
     _update(tracker, 1250, speed_kmph=280)
-    assert tracker.stats() is None
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is True
+    assert snapshot.last_pub_data is first_stats
+    assert snapshot.last_pub_data.segment.name == "La Source"
+
+    # Complete Eau Rouge -> last_pub_data now updates to the new corner
+    _update(tracker, 1450, speed_kmph=320)
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is False
+    assert snapshot.last_pub_data.segment.name == "Eau Rouge"
+    assert snapshot.last_pub_data.min_speed_kmph == 280
 
 
 def test_complex_corner_tracked_like_a_corner(tracker: LastCornerTracker):
     for pos, speed in [(2050, 200), (2200, 150), (2350, 220)]:
         _update(tracker, pos, speed_kmph=speed)
-    assert tracker.stats() is None  # still inside complex corner
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is True
+    assert snapshot.last_pub_data is None  # still inside complex corner
 
     _update(tracker, 2450, speed_kmph=300)  # onto finish straight
 
-    stats = tracker.stats()
+    snapshot = tracker.stats()
+    stats = snapshot.last_pub_data
     assert stats is not None
     assert isinstance(stats.segment, ComplexCornerSegmentInfo)
     assert stats.segment.name == "Pouhon"
@@ -182,19 +213,42 @@ def test_reset_clears_accumulating_and_published_state(tracker: LastCornerTracke
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 100, speed_kmph=90)
     _update(tracker, 250, speed_kmph=300)
-    assert tracker.stats() is not None
+    assert tracker.stats().last_pub_data is not None
 
     tracker.reset()
-    assert tracker.stats() is None
+    snapshot = tracker.stats()
+    assert snapshot.is_accumulating is False
+    assert snapshot.last_pub_data is None
 
     # Resuming mid-corner after reset should still accumulate correctly.
     _update(tracker, 1250, speed_kmph=280)
     _update(tracker, 1300, speed_kmph=200)
     _update(tracker, 1450, speed_kmph=320)
-    stats = tracker.stats()
+    stats = tracker.stats().last_pub_data
     assert stats is not None
     assert stats.segment.name == "Eau Rouge"
     assert stats.min_speed_kmph == 200
+
+
+def test_reset_is_the_only_thing_that_clears_last_pub_data(tracker: LastCornerTracker):
+    """Cycle through several corners without ever calling reset() - last_pub_data
+    must only ever move forward to the newest completed corner, never to None."""
+    _update(tracker, 10, speed_kmph=200)
+    _update(tracker, 100, speed_kmph=90)
+    _update(tracker, 250, speed_kmph=300)
+    assert tracker.stats().last_pub_data.segment.name == "La Source"
+
+    _update(tracker, 1250, speed_kmph=280)  # enter Eau Rouge
+    assert tracker.stats().last_pub_data.segment.name == "La Source"  # unchanged
+
+    _update(tracker, 1450, speed_kmph=320)  # leave Eau Rouge
+    assert tracker.stats().last_pub_data.segment.name == "Eau Rouge"
+
+    _update(tracker, 2050, speed_kmph=200)  # enter Pouhon
+    assert tracker.stats().last_pub_data.segment.name == "Eau Rouge"  # still unchanged
+
+    tracker.reset()
+    assert tracker.stats().last_pub_data is None
 
 
 def test_repeated_visits_to_same_corner_are_isolated(tracker: LastCornerTracker):
@@ -202,19 +256,19 @@ def test_repeated_visits_to_same_corner_are_isolated(tracker: LastCornerTracker)
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 100, speed_kmph=90)
     _update(tracker, 250, speed_kmph=300)
-    first_stats = tracker.stats()
+    first_stats = tracker.stats().last_pub_data
     assert first_stats.min_speed_kmph == 90
 
     # Traverse the rest of the lap back to the start (simulating a new lap)
     _update(tracker, 1250, speed_kmph=280)  # Eau Rouge
     _update(tracker, 1450, speed_kmph=300)  # Back Straight, publishes Eau Rouge
-    assert tracker.stats().segment.name == "Eau Rouge"
+    assert tracker.stats().last_pub_data.segment.name == "Eau Rouge"
 
     # Second visit to La Source, different min speed this time
     _update(tracker, 10, speed_kmph=210)
     _update(tracker, 100, speed_kmph=130)
     _update(tracker, 250, speed_kmph=300)
-    second_stats = tracker.stats()
+    second_stats = tracker.stats().last_pub_data
     assert second_stats.segment.name == "La Source"
     assert second_stats.min_speed_kmph == 130
 
@@ -224,7 +278,7 @@ def test_circuit_num_is_bound_on_first_update(tracker: LastCornerTracker):
     _update(tracker, 10, speed_kmph=200, circuit_num=CIRCUIT_NUM)
     _update(tracker, 100, speed_kmph=90, circuit_num=CIRCUIT_NUM)
     _update(tracker, 250, speed_kmph=300, circuit_num=CIRCUIT_NUM)
-    assert tracker.stats().min_speed_kmph == 90
+    assert tracker.stats().last_pub_data.min_speed_kmph == 90
 
 
 def test_circuit_num_change_raises_assertion_error(tracker: LastCornerTracker):
@@ -243,12 +297,13 @@ def test_reset_does_not_clear_bound_circuit_num(tracker: LastCornerTracker):
 
 
 def test_stats_to_dict_uses_segment_to_dict_and_includes_segment_id(tracker: LastCornerTracker):
-    """to_dict() must reuse the segment's own to_dict() (not leak all pydantic fields) but still expose segment_id."""
+    """LastCornerStats.to_dict() must reuse the segment's own to_dict() (not leak all
+    pydantic fields) but still expose segment_id."""
     _update(tracker, 10, speed_kmph=200)
     _update(tracker, 100, speed_kmph=90)
     _update(tracker, 250, speed_kmph=300)
 
-    stats = tracker.stats()
+    stats = tracker.stats().last_pub_data
     result = stats.to_dict()
 
     assert result["min_speed_kmph"] == 90
@@ -259,3 +314,24 @@ def test_stats_to_dict_uses_segment_to_dict_and_includes_segment_id(tracker: Las
     # start_m/end_m are internal to the classifier, not part of the curated wire format.
     assert "start_m" not in result["segment"]
     assert "end_m" not in result["segment"]
+
+
+def test_snapshot_to_dict_shape(tracker: LastCornerTracker):
+    # No data yet: last_pub_data serializes to None, not omitted.
+    empty = tracker.stats().to_dict()
+    assert empty == {"is_accumulating": False, "last_pub_data": None}
+
+    _update(tracker, 10, speed_kmph=200)
+    _update(tracker, 100, speed_kmph=90)
+    _update(tracker, 250, speed_kmph=300)
+
+    populated = tracker.stats().to_dict()
+    assert populated["is_accumulating"] is False
+    assert populated["last_pub_data"]["min_speed_kmph"] == 90
+    assert populated["last_pub_data"]["segment"]["name"] == "La Source"
+
+    # Entering the next corner flips is_accumulating but keeps last_pub_data.
+    _update(tracker, 1250, speed_kmph=280)
+    mid_next_corner = tracker.stats().to_dict()
+    assert mid_next_corner["is_accumulating"] is True
+    assert mid_next_corner["last_pub_data"]["segment"]["name"] == "La Source"

@@ -29,7 +29,7 @@ from lib.track_segments_classifier.types import (BaseSegmentInfo,
                                                   ComplexCornerSegmentInfo,
                                                   CornerSegmentInfo)
 
-from .types import LastCornerStats, TelemetrySample
+from .types import LastCornerStats, LastCornerStatsSnapshot, TelemetrySample
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ class LastCornerTracker:
 
     Public API:
       - update(circuit_pos_m: float, speed_kmph: int)
-      - stats() -> Optional[LastCornerStats]
+      - stats() -> LastCornerStatsSnapshot
       - reset()
     """
 
@@ -70,10 +70,10 @@ class LastCornerTracker:
 
         if is_corner:
             if (not self._current_segment) or (self._current_segment.segment_id != segment.segment_id):
-                # Entering a (new) corner: drop the old published result, start fresh.
+                # Entering a (new) corner: start fresh accumulation. The previously
+                # published result is left in place - it's only cleared by reset().
                 self._current_segment = segment
                 self._current_min_speed = sample.speed_kmph
-                self._published = None
             else:
                 self._current_min_speed = min(self._current_min_speed, sample.speed_kmph)
         elif self._current_segment:
@@ -85,9 +85,18 @@ class LastCornerTracker:
             self._current_segment = None
             self._current_min_speed = None
 
-    def stats(self) -> Optional[LastCornerStats]:
-        """Return the most recently completed corner's stats, or None if none should be displayed."""
-        return self._published
+    def stats(self) -> LastCornerStatsSnapshot:
+        """Return the current tracker snapshot.
+
+        last_pub_data holds the most recently completed corner's stats and
+        stays populated across a new corner starting to accumulate - only
+        reset() clears it. is_accumulating reports whether a corner is being
+        driven right now, independent of last_pub_data.
+        """
+        return LastCornerStatsSnapshot(
+            is_accumulating=self._current_segment is not None,
+            last_pub_data=self._published,
+        )
 
     def reset(self) -> None:
         """

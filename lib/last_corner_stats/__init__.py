@@ -23,12 +23,13 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .tracker import LastCornerTracker
-from .types import LastCornerStats, TelemetrySample
+from .types import LastCornerStats, LastCornerStatsSnapshot, TelemetrySample
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
     "LastCornerTracker",
     "LastCornerStats",
+    "LastCornerStatsSnapshot",
     "TelemetrySample",
 ]

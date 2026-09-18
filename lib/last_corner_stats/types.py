@@ -23,7 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
                                                   CornerSegmentInfo)
@@ -51,4 +51,25 @@ class LastCornerStats:
         return {
             "segment": segment_dict,
             "min_speed_kmph": self.min_speed_kmph,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class LastCornerStatsSnapshot:
+    """LastCornerTracker.stats() return value.
+
+    last_pub_data is the most recently completed corner's stats and is kept
+    around across a new corner starting to accumulate - it is only cleared by
+    reset(). is_accumulating tells the consumer whether a corner is currently
+    being driven (there is no complete data for it yet), independent of
+    whether last_pub_data happens to be populated.
+    """
+    is_accumulating: bool
+    last_pub_data: Optional[LastCornerStats]
+
+    def to_dict(self) -> dict:
+        """Convert to a JSON-serializable dict."""
+        return {
+            "is_accumulating": self.is_accumulating,
+            "last_pub_data": self.last_pub_data.to_dict() if self.last_pub_data else None,
         }
