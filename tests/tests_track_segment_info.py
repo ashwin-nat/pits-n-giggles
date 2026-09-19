@@ -47,7 +47,10 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
     @staticmethod
     def _track(segments: list) -> dict:
         """Wrap segments in a minimal valid top-level track dict."""
-        return {"circuit_name": "Test Circuit", "circuit_number": 99, "track_length": 7000, "segments": segments}
+        return {
+            "circuit_name": "Test Circuit", "circuit_number": 99, "track_length": 7000,
+            "segments": segments, "sectors": {"s1": 2300, "s2": 5000},
+        }
 
     def setUp(self):
         self.track_data = {
@@ -89,7 +92,8 @@ class TestTrackSegments(F1TelemetryUnitTestsBase):
                     "end_m": 1800,
                     "corner_numbers": [6, 7],
                 },
-            ]
+            ],
+            "sectors": {"s1": 2332, "s2": 5011},
         }
 
         self.tracker = TrackSegments()
@@ -473,16 +477,14 @@ class TestGetSector(F1TelemetryUnitTestsBase):
     _TRACK_LENGTH = 3000
 
     @staticmethod
-    def _track_with_sectors(sectors=None, track_length=3000):
-        data = {
+    def _track_with_sectors(sectors, track_length=3000):
+        return {
             "circuit_name": "Sector Test Circuit",
             "circuit_number": 1,
             "track_length": track_length,
             "segments": [],
+            "sectors": sectors,
         }
-        if sectors is not None:
-            data["sectors"] = sectors
-        return data
 
     def setUp(self):
         self.tracker = TrackSegments()
@@ -548,11 +550,14 @@ class TestGetSector(F1TelemetryUnitTestsBase):
 
     # --- No data --------------------------------------------------------------------------
 
-    def test_no_sectors_key_returns_none(self):
-        """get_sector returns None when sectors key is absent from track data."""
+    def test_sectors_missing_key_raises(self):
+        """sectors is now a required field -- a track with no sectors key at all
+        fails validation instead of loading with sector lookups disabled."""
         tracker = TrackSegments()
-        tracker.load_track_data(self._track_with_sectors(sectors=None))
-        self.assertIsNone(tracker.get_sector(100))
+        data = self._track_with_sectors({"s1": self._S1, "s2": self._S2})
+        del data["sectors"]
+        with self.assertRaises(ValidationError):
+            tracker.load_track_data(data)
 
     def test_no_track_loaded_returns_none(self):
         """get_sector returns None when no track data has been loaded."""
@@ -620,6 +625,7 @@ _CIRCUIT_A = {
         {"type": "straight", "name": "Main Straight", "start_m": 0,   "end_m": 500},
         {"type": "corner",   "name": "Turn One",      "start_m": 500, "end_m": 700, "corner_number": 1},
     ],
+    "sectors": {"s1": 300, "s2": 700},
 }
 
 _CIRCUIT_B = {
@@ -629,6 +635,7 @@ _CIRCUIT_B = {
     "segments": [
         {"type": "corner", "name": "Hairpin", "start_m": 0, "end_m": 300, "corner_number": 1},
     ],
+    "sectors": {"s1": 100, "s2": 250},
 }
 
 _CIRCUIT_C = {
@@ -768,6 +775,6 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
         """get_sector returns None for an unknown circuit number."""
         self.assertIsNone(self.db.get_sector(999, 100))
 
-    def test_get_sector_no_sectors_in_circuit_returns_none(self):
-        """get_sector returns None for a circuit with no sector data."""
-        self.assertIsNone(self.db.get_sector(1, 100))
+    def test_get_sector_circuit_a_sector_1(self):
+        """sectors is now mandatory -- every loaded circuit has real sector data."""
+        self.assertEqual(self.db.get_sector(1, 100), LapData.Sector.SECTOR1)
