@@ -29,10 +29,12 @@ equivalence is what Phase 6's exit criterion ("no behavioural difference between
 LocalFileProvider and RemoteApiProvider") actually depends on.
 """
 
+import numpy as np
 import pytest
 
 from apps.web.lap_analyzer_api import (driver_to_api, lap_to_api,
                                        session_to_api,
+                                       telemetry_points_to_api,
                                        title_case_session_type)
 from apps.web.pngt_discovery import PngtSessionEntry
 from lib.pngt import (DriverRecord, LapMetadata, SensorConfig, SensorType,
@@ -120,3 +122,67 @@ def test_lap_to_api_out_lap_no_time():
     result = lap_to_api(lap)
     assert result['lapTime'] is None
     assert result['valid'] is False
+
+
+def test_telemetry_points_maps_lap_distance_and_requested_sensors():
+    lap_distance = np.array([0.0, 1.7, 3.3], dtype=np.float32)
+    arrays = {
+        'lap_distance': lap_distance,
+        'speed': np.array([112.3, 114.1, 116.8], dtype=np.float32),
+        'gear': np.array([4, 4, 5], dtype=np.int8),
+    }
+    points = telemetry_points_to_api(lap_distance, arrays, ['speed', 'gear'])
+
+    assert len(points) == 3
+    assert points[0]['lapDistance'] == pytest.approx(0.0)
+    assert points[1]['speed'] == pytest.approx(114.1, rel=1e-4)
+    assert points[2]['gear'] == 5
+    # numpy scalars must not leak through -- Quart's default JSON provider can't
+    # serialize them.
+    assert isinstance(points[0]['lapDistance'], float)
+    assert isinstance(points[2]['gear'], int)
+
+
+def test_telemetry_points_only_includes_requested_sensors():
+    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
+    arrays = {
+        'lap_distance': lap_distance,
+        'speed': np.array([100.0, 110.0], dtype=np.float32),
+        'throttle': np.array([0.5, 0.6], dtype=np.float32),
+    }
+    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
+
+    assert set(points[0].keys()) == {'lapDistance', 'speed'}
+
+
+def test_telemetry_points_omits_sensor_missing_from_this_laps_arrays():
+    """A sensor requested (valid per the session manifest) but absent from this
+    particular lap's own npz -- e.g. an older recording -- is omitted per point,
+    matching LocalFileProvider.ts's getTelemetry(), not set to null."""
+    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
+    arrays = {'lap_distance': lap_distance}
+    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
+
+    assert points[0] == {'lapDistance': 0.0}
+    assert 'speed' not in points[0]
+
+
+def test_telemetry_points_float32_nan_becomes_null():
+    """float32's own missing-sample sentinel (NaN) must become JSON null -- literal
+    NaN has no representation in standard JSON and JS's JSON.parse rejects it."""
+    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
+    arrays = {'lap_distance': lap_distance, 'speed': np.array([100.0, np.nan], dtype=np.float32)}
+    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
+
+    assert points[1]['speed'] is None
+
+
+def test_telemetry_points_int_missing_sentinel_passed_through():
+    """The integer dtypes' missing-sample sentinel (-1) is NOT converted to null --
+    it's indistinguishable from a genuine value (e.g. reverse gear) at this layer,
+    and LocalFileProvider.ts makes the same choice."""
+    lap_distance = np.array([0.0, 100.0], dtype=np.float32)
+    arrays = {'lap_distance': lap_distance, 'gear': np.array([1, -1], dtype=np.int8)}
+    points = telemetry_points_to_api(lap_distance, arrays, ['gear'])
+
+    assert points[1]['gear'] == -1

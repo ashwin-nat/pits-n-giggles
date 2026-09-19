@@ -39,7 +39,10 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 from watchfiles import awatch
 
-from .lap_analyzer_api import driver_to_api, lap_to_api, session_to_api
+from lib.pngt import DriverNotFoundError, PngtError, read_lap_telemetry
+
+from .lap_analyzer_api import (driver_to_api, lap_to_api, session_to_api,
+                               telemetry_points_to_api)
 from .pngt_discovery import CACHE_FILE, PngtSessionEntry, build_pngt_session_list
 from .session_discovery import CACHE_FILE as JSON_CACHE_FILE
 
@@ -68,6 +71,77 @@ def _lap_analyzer_error(code: str, message: str) -> Dict[str, Any]:
     section) -- distinct from the save-viewer routes' plain {'error': 'string'}
     convention, since the two are independently specced APIs."""
     return {'error': {'code': code, 'message': message}}
+
+
+class _TelemetryRequestError(Exception):
+    """Raised by the validation helpers below to short-circuit
+    apiLapAnalyzerTelemetry with a specific API error response -- caught once, at
+    the top of the route handler, instead of a chain of early `return`s."""
+
+    def __init__(self, code: str, message: str, status: HTTPStatus) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status = status
+
+
+def _resolve_telemetry_session(session_id: str) -> PngtSessionEntry:
+    entry = _by_slug.get(session_id)
+    if entry is None:
+        raise _TelemetryRequestError(
+            'SESSION_NOT_FOUND', f'Unknown session id: {session_id}', HTTPStatus.NOT_FOUND)
+    return entry
+
+
+def _check_telemetry_driver(entry: PngtSessionEntry, driver_index: int) -> None:
+    driver = next((d for d in entry.drivers if d.driver_index == driver_index), None)
+    if driver is None:
+        raise _TelemetryRequestError(
+            'DRIVER_NOT_FOUND', f'Driver {driver_index} not in session {entry.slug}', HTTPStatus.NOT_FOUND)
+    if not driver.is_telemetry_public:
+        raise _TelemetryRequestError(
+            'TELEMETRY_RESTRICTED', f'Driver {driver_index} has restricted telemetry', HTTPStatus.FORBIDDEN)
+
+
+def _resolve_telemetry_sensors(entry: PngtSessionEntry, sensors_param: str) -> List[str]:
+    sensors = [s.strip() for s in sensors_param.split(',') if s.strip()]
+    if not sensors:
+        raise _TelemetryRequestError(
+            'INVALID_SENSOR', 'sensors query parameter is required', HTTPStatus.BAD_REQUEST)
+    manifest_keys = {s.key for s in entry.sensors}
+    unknown = [s for s in sensors if s not in manifest_keys]
+    if unknown:
+        raise _TelemetryRequestError(
+            'INVALID_SENSOR', f'Unknown sensor key(s) not in session manifest: {", ".join(unknown)}',
+            HTTPStatus.BAD_REQUEST)
+    return sensors
+
+
+def _read_telemetry_arrays(
+    server: "WebServer", entry: PngtSessionEntry, driver_index: int, lap_number: int,
+) -> Dict[str, Any]:
+    full_path = server.m_session_dir / entry.rel_path
+    try:
+        arrays = read_lap_telemetry(full_path, driver_index, lap_number)
+    except DriverNotFoundError as exc:
+        # read_lap_telemetry raises this for any missing drivers/{i}/lap_{n}.npz
+        # entry, whether the driver or the lap number is what's actually wrong --
+        # the driver is already validated by _check_telemetry_driver(), so at this
+        # point it's the lap.
+        raise _TelemetryRequestError(
+            'LAP_NOT_FOUND', f'Lap {lap_number} not recorded for driver {driver_index}', HTTPStatus.NOT_FOUND
+        ) from exc
+    except PngtError as exc:
+        server.m_logger.exception("Lap-analyzer telemetry: failed to read %s: %s", full_path, exc)
+        raise _TelemetryRequestError(
+            'INTERNAL_ERROR', 'Failed to read telemetry from the recording', HTTPStatus.INTERNAL_SERVER_ERROR
+        ) from exc
+
+    if arrays.get('lap_distance') is None:
+        server.m_logger.error("Lap-analyzer telemetry: %s is missing its lap_distance array", full_path)
+        raise _TelemetryRequestError(
+            'INTERNAL_ERROR', 'Recorded lap is missing its lap_distance array', HTTPStatus.INTERNAL_SERVER_ERROR)
+    return arrays
 
 
 def define_lap_analyzer_routes(server: "WebServer") -> None:
@@ -112,6 +186,25 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         # an error, matching LocalFileProvider's getLaps() behaviour.
         laps = entry.laps_by_driver.get(driver_index, [])
         return server.jsonify([lap_to_api(lap) for lap in laps]), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/telemetry/<session_id>/<int:driver_index>/<int:lap_number>')
+    async def apiLapAnalyzerTelemetry(session_id: str, driver_index: int, lap_number: int):
+        await _cache_ready.wait()
+        try:
+            entry = _resolve_telemetry_session(session_id)
+            _check_telemetry_driver(entry, driver_index)
+            sensors = _resolve_telemetry_sensors(entry, server.request.args.get('sensors', ''))
+            arrays = _read_telemetry_arrays(server, entry, driver_index, lap_number)
+        except _TelemetryRequestError as exc:
+            return _lap_analyzer_error(exc.code, exc.message), exc.status
+
+        points = telemetry_points_to_api(arrays['lap_distance'], arrays, sensors)
+        return server.jsonify({
+            'sessionId': session_id,
+            'driverIndex': driver_index,
+            'lapNumber': lap_number,
+            'points': points,
+        }), HTTPStatus.OK
 
 
 async def rebuild_lap_analyzer_cache(server: "WebServer") -> None:

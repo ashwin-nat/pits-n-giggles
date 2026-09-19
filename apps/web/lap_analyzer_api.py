@@ -39,7 +39,10 @@ Driver type (types/api.ts) already reflects this: it has no isAi field either.
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from typing import Any, Dict
+import math
+from typing import Any, Dict, List
+
+import numpy as np
 
 from lib.pngt import DriverRecord, LapMetadata, SensorConfig
 
@@ -111,3 +114,45 @@ def lap_to_api(lap: LapMetadata) -> Dict[str, Any]:
         'pitOutLap': lap.pit_out_lap,
         'isGood': lap.is_good,
     }
+
+
+def _to_json_value(value: Any) -> Any:
+    """One raw npz sample -> a JSON-safe Python value.
+
+    float32's own missing-sample sentinel is NaN (see lib/pngt/dtypes.py) -- that
+    becomes None here, since literal NaN has no representation in standard JSON and
+    would fail to parse on the browser side (Quart's default JSON provider emits the
+    bare `NaN` token, which JS's own `JSON.parse` rejects). The integer dtypes' own
+    missing-sample sentinel, -1, is passed through unchanged: it's indistinguishable
+    from a genuine sensor value at this layer (e.g. gear == -1 for reverse), and
+    LocalFileProvider.ts makes the same choice not to special-case it -- converting
+    it here would be a real behavioural difference between the two providers, not a
+    fix.
+    """
+    native = value.item() if hasattr(value, 'item') else value
+    if isinstance(native, float) and math.isnan(native):
+        return None
+    return native
+
+
+def telemetry_points_to_api(
+    lap_distance: np.ndarray,
+    sensor_arrays: Dict[str, np.ndarray],
+    sensors: List[str],
+) -> List[Dict[str, Any]]:
+    """Build the API's TelemetryPoint[] shape from one lap's raw npz arrays.
+
+    Mirrors LocalFileProvider.ts's getTelemetry(): a requested sensor key entirely
+    absent from `sensor_arrays` (an older or narrower recording than the session's
+    current manifest) is simply omitted from every point, not set to null -- null is
+    reserved for a *present* array's own missing-sample value (see _to_json_value).
+    """
+    points: List[Dict[str, Any]] = []
+    for i, distance in enumerate(lap_distance):
+        point: Dict[str, Any] = {'lapDistance': _to_json_value(distance)}
+        for sensor in sensors:
+            array = sensor_arrays.get(sensor)
+            if array is not None:
+                point[sensor] = _to_json_value(array[i])
+        points.append(point)
+    return points
