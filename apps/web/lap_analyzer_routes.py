@@ -35,14 +35,16 @@ WebServer exists per process, so there's nothing per-instance state would buy he
 import asyncio
 import time
 from http import HTTPStatus
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from watchfiles import awatch
 
 from lib.pngt import DriverNotFoundError, PngtError, read_lap_telemetry
+from lib.track_segment_info import TrackSegmentsDatabase
 
 from .lap_analyzer_api import (driver_to_api, lap_to_api, session_to_api,
-                               telemetry_points_to_api)
+                               telemetry_points_to_api, track_section_to_api)
 from .pngt_discovery import CACHE_FILE, PngtSessionEntry, build_pngt_session_list
 from .session_discovery import CACHE_FILE as JSON_CACHE_FILE
 
@@ -55,6 +57,12 @@ _sessions_cache: List[PngtSessionEntry] = []
 _by_slug: Dict[str, PngtSessionEntry] = {}
 _cache_ready = asyncio.Event()
 _watch_stop = asyncio.Event()
+
+# Track segment data (assets/track-segments/*.json) is static and unrelated to any
+# recorded session -- unlike the pngt cache above, it needs no watch loop and no
+# readiness event. Built once at import time, same as session_state.py's own
+# TrackSegmentsDatabase construction.
+_track_segments_db = TrackSegmentsDatabase(Path(__file__).resolve().parents[2] / "assets" / "track-segments")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -205,6 +213,16 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
             'lapNumber': lap_number,
             'points': points,
         }), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/tracks/<int:track_id>/sections')
+    async def apiLapAnalyzerTrackSections(track_id: int):
+        # No pngt cache wait -- track segment data is static and independent of any
+        # recorded session. An unknown track_id returns 200 with an empty array,
+        # not a 404, matching LocalFileProvider's getTrackSections() (see
+        # lap_analyzer_api.track_section_to_api's docstring).
+        track = _track_segments_db.get(track_id)
+        sections = [track_section_to_api(seg) for seg in track.segments] if track is not None else []
+        return server.jsonify(sections), HTTPStatus.OK
 
 
 async def rebuild_lap_analyzer_cache(server: "WebServer") -> None:

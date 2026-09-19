@@ -152,6 +152,8 @@ _REQUIRED_DRIVER_KEYS = {"index", "name", "team", "carNumber", "nationality", "p
 _REQUIRED_LAP_KEYS = {
     "lapNumber", "lapTime", "valid", "tyreCompound", "tyreLaps", "pitInLap", "pitOutLap", "isGood",
 }
+_REQUIRED_TRACK_SECTION_KEYS = {"label", "distanceStart", "distanceEnd", "type", "cornerNumbers"}
+_VALID_SECTION_TYPES = {"straight", "corner", "complex_corner"}
 
 
 def run_lap_analyzer(base_url: str) -> None:
@@ -299,6 +301,41 @@ def run_lap_analyzer(base_url: str) -> None:
             _check("Missing sensors param returns 400 with INVALID_SENSOR", False, str(exc))
     else:
         _check("Missing sensors param returns 400 with INVALID_SENSOR", False, "no session/driver/lap available")
+
+    track_id = sessions[0].get("trackId") if sessions else None
+    print(f"\n[LA-9] GET /tracks/<id>/sections — expect 200 + non-empty array (trackId={track_id!r})")
+    if track_id is not None:
+        try:
+            r = _get(session, f"{base_url}/tracks/{track_id}/sections")
+            ok = r.status_code == 200
+            sections = r.json() if ok else []
+            _check("GET /tracks/<id>/sections returns 200 with non-empty array",
+                  ok and isinstance(sections, list) and len(sections) > 0,
+                  f"got {r.status_code}" if not ok else "expected non-empty array")
+            if sections:
+                missing = [
+                    s.get("label", "<no-label>") for s in sections
+                    if not _REQUIRED_TRACK_SECTION_KEYS.issubset(s.keys())
+                ]
+                _check(f"All track section objects have required keys {sorted(_REQUIRED_TRACK_SECTION_KEYS)}",
+                      len(missing) == 0, f"missing keys for: {missing}" if missing else "")
+                bad_types = [s["type"] for s in sections if s.get("type") not in _VALID_SECTION_TYPES]
+                _check(f"All track section types are one of {sorted(_VALID_SECTION_TYPES)}",
+                      len(bad_types) == 0, f"unexpected types: {bad_types}" if bad_types else "")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _check("GET /tracks/<id>/sections returns 200 with non-empty array", False, str(exc))
+    else:
+        _check("GET /tracks/<id>/sections returns 200 with non-empty array", False, "no trackId available")
+
+    print("\n[LA-10] GET /tracks/999999999/sections — expect 200 + [] (not 404)")
+    try:
+        r = _get(session, f"{base_url}/tracks/999999999/sections")
+        ok = r.status_code == 200
+        body = r.json() if ok else None
+        _check("Unknown trackId returns 200 with an empty array",
+              ok and body == [], f"got {r.status_code}, body={body!r}" if not (ok and body == []) else "")
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        _check("Unknown trackId returns 200 with an empty array", False, str(exc))
 
 
 def main() -> None:

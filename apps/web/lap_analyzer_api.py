@@ -45,6 +45,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from lib.pngt import DriverRecord, LapMetadata, SensorConfig
+from lib.track_segment_info.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
 
@@ -156,3 +157,27 @@ def telemetry_points_to_api(
                 point[sensor] = _to_json_value(array[i])
         points.append(point)
     return points
+
+
+def track_section_to_api(segment: BaseSegmentInfo) -> Dict[str, Any]:
+    """Maps one lib/track_segment_info segment to the API's TrackSection shape.
+
+    Mirrors apps/lap-analyzer/src/lib/segments.ts's toSections() field for
+    field, including corner_numbers derivation -- one-element list for a
+    plain corner, the full tuple for a complex corner, empty for a straight.
+    No "Full Lap"/"Sector N" synthesis here; see that module's own comment on
+    why sector/track-length data is a separate, not-yet-served concept.
+    """
+    if segment.type == "corner":
+        corner_numbers = [segment.corner_number]
+    elif segment.type == "complex_corner":
+        corner_numbers = list(segment.corner_numbers)
+    else:
+        corner_numbers = []
+    return {
+        'label': segment.name,
+        'distanceStart': segment.start_m,
+        'distanceEnd': segment.end_m,
+        'type': segment.type,
+        'cornerNumbers': corner_numbers,
+    }
