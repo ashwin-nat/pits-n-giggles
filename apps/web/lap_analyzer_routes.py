@@ -58,6 +58,7 @@ if TYPE_CHECKING:
 
 # -------------------------------------- MODULE STATE --------------------------------------------------------------
 
+_analyzer_dir: Path = Path()
 _sessions_cache: List[PngtSessionEntry] = []
 _by_slug: Dict[str, PngtSessionEntry] = {}
 _cache_ready = asyncio.Event()
@@ -70,6 +71,13 @@ _watch_stop = asyncio.Event()
 _track_segments_db = TrackSegmentsDatabase(Path(__file__).resolve().parents[2] / "assets" / "track-segments")
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+
+def init_lap_analyzer_routes(analyzer_dir: Path) -> None:
+    """Call once, during WebServer construction, before `define_lap_analyzer_routes()`
+    -- same idiom as save_viewer_routes.init_save_viewer_routes()."""
+    global _analyzer_dir  # pylint: disable=global-statement
+    _analyzer_dir = analyzer_dir
+
 
 def stop_lap_analyzer_watch_loop() -> None:
     """Signal `lap_analyzer_watch_loop()` to stop -- called from WebServer's own
@@ -163,10 +171,25 @@ def _update_cached_session_name(session_id: str, new_name: str) -> None:
 
 
 def define_lap_analyzer_routes(server: "WebServer") -> None:
-    """Define REST API routes for the lap-analyzer telemetry visualizer, under
-    /lap-analyzer/api/v1/*. Read-only for now -- rename/mark-good/delete are a
-    later phase, per the write-API gate design in the API spec.
+    """Define routes serving the lap-analyzer SPA under /lap-analyzer/* and its REST
+    API under /lap-analyzer/api/v1/*. The API is read-only for now -- mark-good/
+    delete are a later phase, per the write-API gate design in the API spec.
     """
+
+    @server.http_route('/lap-analyzer/')
+    async def lapAnalyzerIndex():
+        return await server.send_from_directory(_analyzer_dir, 'index.html')
+
+    @server.http_route('/lap-analyzer/<path:path>')
+    async def lapAnalyzerStatic(path: str):
+        # Serve a real built asset directly; fall back to index.html for any unknown
+        # path so the client-side router can resolve it -- same reasoning and
+        # traversal-safety check as save_viewer_routes.py's own static+fallback route.
+        root = _analyzer_dir.resolve()
+        candidate = (root / path).resolve()
+        if candidate.is_relative_to(root) and candidate.is_file():
+            return await server.send_from_directory(_analyzer_dir, path)
+        return await server.send_from_directory(_analyzer_dir, 'index.html')
 
     @server.http_route('/lap-analyzer/api/v1/sessions')
     async def apiLapAnalyzerSessions():

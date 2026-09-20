@@ -35,6 +35,7 @@ from lib.subsystem.identity import PngSubsysId
 from lib.web_server import BaseWebServer, ClientType
 
 from .lap_analyzer_routes import (define_lap_analyzer_routes,
+                                  init_lap_analyzer_routes,
                                   lap_analyzer_watch_loop,
                                   rebuild_lap_analyzer_cache,
                                   stop_lap_analyzer_watch_loop)
@@ -76,6 +77,7 @@ class WebServer(BaseWebServer):
                  logger: PngLogger,
                  session_dir: Path,
                  viewer_dir: Path,
+                 analyzer_dir: Path,
                  on_ready: Callable[[], None],
                  debug_mode: bool = False):
         """
@@ -87,6 +89,7 @@ class WebServer(BaseWebServer):
             logger (PngLogger): The logger instance.
             session_dir (Path): Directory to scan for saved session JSON files.
             viewer_dir (Path): Directory containing the built f1-save-viewer React app.
+            analyzer_dir (Path): Directory containing the built lap-analyzer React app.
             on_ready (Callable[[], None]): Called once the server is actually listening. This
                 subsystem is only genuinely up at that point, not when it finishes constructing, so
                 it owns the timing of the init-complete token.
@@ -123,6 +126,7 @@ class WebServer(BaseWebServer):
         # for why) -- this is the one config value save-viewer's module needs
         # handed to it before any route can fire.
         init_save_viewer_routes(viewer_dir)
+        init_lap_analyzer_routes(analyzer_dir)
 
         init_state(logger)
         self.define_routes()

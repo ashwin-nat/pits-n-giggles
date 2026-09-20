@@ -66,8 +66,10 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
         session_dir = session_dir_setting if session_dir_setting.is_absolute() \
             else (get_app_base_dir() / session_dir_setting).resolve()
         viewer_dir = Path(__file__).resolve().parent.parent / "external" / "f1-save-viewer" / "dist"
+        analyzer_dir = Path(__file__).resolve().parent.parent / "lap-analyzer" / "dist"
         self.logger.debug("Session directory: %s", session_dir)
         self.logger.debug("Viewer directory: %s", viewer_dir)
+        self.logger.debug("Analyzer directory: %s", analyzer_dir)
 
         self.web_server = WebServer(
             settings=self.settings,
@@ -75,6 +77,7 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
             logger=self.logger,
             session_dir=session_dir,
             viewer_dir=viewer_dir,
+            analyzer_dir=analyzer_dir,
             on_ready=self.notify_ready,
             debug_mode=self.args.debug)
         self.add_task(self.web_server.run(), name="Web Server Task")
