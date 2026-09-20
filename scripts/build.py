@@ -200,6 +200,24 @@ def main():
         shell=True,
     )
 
+    # 1b. Build lap-analyzer React app (telemetry visualizer), same reasoning as the
+    # f1-save-viewer build above -- must precede PyInstaller so dist/ is bundled.
+    analyzer_source = Path("apps/lap-analyzer")
+    analyzer_build_env = {
+        **os.environ,
+        "VITE_BASE_PATH": "/lap-analyzer/",
+        "MSYS_NO_PATHCONV": "1",
+        "MSYS2_ARG_CONV_EXCL": "*",
+    }
+    subprocess.run("pnpm install", cwd=analyzer_source, check=True, shell=True)
+    subprocess.run(
+        "pnpm build",
+        cwd=analyzer_source,
+        env=analyzer_build_env,
+        check=True,
+        shell=True,
+    )
+
     # 2. Run PyInstaller
     pyinstaller_cmd = [
         sys.executable,

@@ -64,3 +64,11 @@ class DriverNotFoundError(PngtError):
     """Raised when telemetry for a driver_index/lap_number cannot be found in the archive."""
     def __init__(self, path, driver_index):
         super().__init__(f"No telemetry found for driver_index {driver_index} in {path}")
+
+class CorruptedTelemetryError(PngtError):
+    """Raised when a lap's .npz entry exists but isn't a valid/readable npz archive
+    (e.g. truncated mid-capture)."""
+    def __init__(self, path, driver_index, lap_number, reason):
+        super().__init__(
+            f"Corrupted telemetry for driver_index {driver_index}, lap {lap_number} in {path}: {reason}"
+        )

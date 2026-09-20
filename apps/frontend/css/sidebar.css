@@ -112,6 +112,30 @@
   text-align: center;
 }
 
+/* Custom icons that don't exist in the bi- font (currently just Lap Analyzer's
+   trail-braking trace) live as standalone SVG assets under /static/icons/ instead
+   of inline markup, referenced here via mask-image rather than <img> so they still
+   track `currentColor` -- every bi- glyph shifts color on hover/active because it's
+   plain text-colored icon-font content; an <img> can't do that, a masked
+   background-color can. Loaded once here (sidebar.css is on every page via
+   base.html) so both the sidebar link and the home page card share one rule. */
+.png-icon-lap-analyzer {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-image: url('/static/icons/lap-analyzer.svg');
+  mask-image: url('/static/icons/lap-analyzer.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.png-sidebar-icon.png-icon-lap-analyzer {
+  height: 18px;
+}
+
 .png-sidebar-label {
   font-size: 13px;
   font-weight: 500;
@@ -179,9 +203,10 @@ body.png-sidebar-collapsed {
 /* --- Mobile: the rail becomes a bottom tab bar ---------------------------------
    Below this breakpoint a fixed left rail eats too much width and overlaps the
    save-viewer's own left <aside>. The same <nav> reflows into a bottom bar
-   (four icons + short labels, full width) that stays clear of any left-edge UI.
-   The wordmark and the collapse toggle have no place in a bottom bar and are
-   dropped; the desktop collapsed/expanded state is irrelevant here. */
+   (icons + short labels, full width, each link `flex: 1` so the bar accommodates
+   however many links sidebar.html actually has) that stays clear of any
+   left-edge UI. The wordmark and the collapse toggle have no place in a bottom
+   bar and are dropped; the desktop collapsed/expanded state is irrelevant here. */
 @media (max-width: 768px) {
   body.png-has-sidebar,
   body.png-sidebar-collapsed {
@@ -242,6 +267,14 @@ body.png-sidebar-collapsed {
   .png-sidebar-icon {
     width: auto;
     font-size: 20px;
+  }
+
+  /* The masked icon has no glyph/font-size to size itself by (unlike every bi-
+     icon above it) -- width: auto on an empty <span> collapses to 0, so it needs
+     an explicit box here too, matching the 20px other icons get from font-size. */
+  .png-sidebar-icon.png-icon-lap-analyzer {
+    width: 20px;
+    height: 20px;
   }
 
   /* Active state: no tinted block, just brighter text + a short bar on the top edge. */

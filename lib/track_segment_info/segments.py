@@ -76,9 +76,9 @@ class TrackSegments:
                         ...type-specific fields...
                     }
                 ],
-                "sectors": {                     (optional)
-                    "s1": int,                   (required if sectors present; must be > 0)
-                    "s2": int,                   (required if sectors present; must be > s1 and < track_length)
+                "sectors": {                     (required)
+                    "s1": int,                   (required; must be > 0)
+                    "s2": int,                   (required; must be > s1 and < track_length)
                 }
             }
 
@@ -102,10 +102,24 @@ class TrackSegments:
 
     @property
     def sectors(self) -> Optional[SectorBoundaries]:
-        """Return the sector boundaries for this track, or None if not defined."""
+        """Return the sector boundaries for this track, or None if no data is loaded.
+        Once data is loaded, sectors is always present -- the schema requires it."""
         if self._track_data is None:
             return None
         return self._track_data.sectors
+
+    @property
+    def track_length(self) -> Optional[float]:
+        """Return the total track length in meters, or None if no data is loaded."""
+        return self._track_data.track_length if self._track_data else None
+
+    @property
+    def segments(self) -> List[BaseSegmentInfo]:
+        """Return every segment, in track order (start_m ascending). Empty list if
+        no data is loaded -- callers that only ever look up a single position via
+        get_segment_info()/get_sector() don't need this; it's for a consumer that
+        wants the full track layout at once (e.g. building a section list)."""
+        return list(self._segments)
 
     def get_segment_info(self, lap_distance: float) -> Optional[BaseSegmentInfo]:
         """
@@ -150,10 +164,10 @@ class TrackSegments:
         -------
         Optional[LapData.Sector]
             The sector if the position falls within a defined sector boundary,
-            otherwise None (no sector data loaded, or position is beyond s3).
+            otherwise None (no track data loaded, or position is out of range).
         """
 
-        if self._track_data is None or self._track_data.sectors is None:
+        if self._track_data is None:
             return None
 
         s = self._track_data.sectors

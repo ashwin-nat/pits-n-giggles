@@ -33,8 +33,8 @@ import numpy as np
 
 from .dto import (DriverRecord, LapMetadata, SensorConfig, SensorType,
                   SessionBest, SessionMetadata, TrackInfo)
-from .exceptions import (DriverNotFoundError, InvalidManifestError,
-                         MalformedSessionError)
+from .exceptions import (CorruptedTelemetryError, DriverNotFoundError,
+                         InvalidManifestError, MalformedSessionError)
 from .manifest import SENSOR_MANIFEST_ENTRY, validate_pngt_zip
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -103,8 +103,15 @@ def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: in
             raw = zf.read(entry)
         except KeyError as exc:
             raise DriverNotFoundError(path, driver_index) from exc
-        with np.load(BytesIO(raw)) as npz:
-            return {name: npz[name] for name in npz.files}
+        try:
+            with np.load(BytesIO(raw)) as npz:
+                return {name: npz[name] for name in npz.files}
+        except (zipfile.BadZipFile, ValueError, OSError, EOFError) as exc:
+            # A truncated/corrupt npz entry (e.g. a crash mid-capture) is a property
+            # of this one archive, not a bug in the reader -- surface it as a
+            # PngtError like every other malformed-data case, not an unstructured
+            # numpy/zipfile exception the caller has no reason to expect.
+            raise CorruptedTelemetryError(path, driver_index, lap_number, str(exc)) from exc
     finally:
         zf.close()
 

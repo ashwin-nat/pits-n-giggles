@@ -38,6 +38,7 @@ from quart import render_template as quart_render_template
 from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
+from quart.utils import run_sync
 
 from lib.error_status import PngHttpPortInUseError
 from lib.event_counter import EventCounter
@@ -569,6 +570,18 @@ class BaseWebServer:
             Request: The current Quart request object.
         """
         return quart_request
+
+    async def run_blocking(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        """
+        Run a blocking (synchronous) call off the event loop, from inside an async
+        route handler
+
+        Args:
+            func: The blocking callable to run.
+            *args: Positional arguments passed through to `func`.
+            **kwargs: Keyword arguments passed through to `func`.
+        """
+        return await run_sync(func)(*args, **kwargs)
 
     async def send_from_directory(self,
                                   directory: Union[str, os.PathLike],
