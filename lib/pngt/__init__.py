@@ -52,10 +52,10 @@ from .ingest.dto import (
     IngestCompletedLap,
     IngestDriverExportData,
     IngestLapMetadata,
-    IngestSensorConfig,
     TelemetryRecorderConfig,
     TelemetrySnapshot,
 )
+from .ingest.mapper import SensorMapper
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
 from .writer import write_session
@@ -72,7 +72,6 @@ __all__ = [
     'IngestCompletedLap',
     'IngestDriverExportData',
     'IngestLapMetadata',
-    'IngestSensorConfig',
     'InvalidHeaderError',
     'InvalidManifestError',
     'LapMetadata',
@@ -83,6 +82,7 @@ __all__ = [
     'PngtError',
     'SensorConfig',
     'SensorDtype',
+    'SensorMapper',
     'SensorType',
     'SessionBest',
     'SessionMetadata',

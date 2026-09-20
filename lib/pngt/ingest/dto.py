@@ -25,8 +25,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from ..dtypes import SensorDtype
-
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 @dataclass
@@ -132,16 +130,6 @@ class IngestLapMetadata:
     pit_out_lap: bool           # True if driver exited pits at start of this lap
     num_points: int             # number of update() calls recorded for this lap
 
-@dataclass
-class IngestSensorConfig:
-    """A single configured sensor. `key` identifies the sensor in buffers and exports;
-    `dtype` carries storage-width information for the file writer. Extraction from a
-    TelemetrySnapshot is handled entirely by SensorMapper -- this class has no knowledge
-    of snapshot fields. Named distinctly from the top-level lib.pngt.SensorConfig (the
-    manifest.json entry shape -- label/unit/type, no dtype)."""
-    key: str              # dotted-path sensor key, e.g. "tyre_temp.fl.inner"
-    dtype: SensorDtype    # storage width hint for the file writer
-
 @dataclass(frozen=True)
 class TelemetryRecorderConfig:
     """Passed to DriverTelemetryRecorder at construction. Frozen -- no hot reloading of
@@ -151,16 +139,22 @@ class TelemetryRecorderConfig:
     validation -- matching the repo convention that pydantic is reserved for real
     validation boundaries (see e.g. lib/track_segment_info, which validates loaded JSON).
     Also keeps this class from reading as another app-config schema; lib/config owns
-    that role."""
-    sensors: list[IngestSensorConfig]
+    that role.
+
+    `sensors` is just dotted keys, not (key, dtype) pairs -- SensorMapper.get_dtype() is
+    the single source of truth for a sensor's storage width, so there's no second place
+    for that fact to drift out of sync with. The recorder asks the injected mapper for
+    dtype wherever it needs it (missing-value sentinel selection), and validates every
+    configured key against the mapper at construction, failing fast on an unknown one."""
+    sensors: list[str]
 
 @dataclass
 class IngestCompletedLap:
     """Pairs a lap's metadata with its telemetry data. All lists in `telemetry` are the
     same length; missing float values are stored as float('nan'), missing int values as
-    -1 -- see dtypes.SensorDtype. Named distinctly from the top-level lib.pngt.CompletedLap,
-    which additionally validates array-length agreement -- an on-disk/write-time concern
-    this layer doesn't have."""
+    -1, per the dtype SensorMapper.get_dtype() reports for that sensor. Named distinctly
+    from the top-level lib.pngt.CompletedLap, which additionally validates array-length
+    agreement -- an on-disk/write-time concern this layer doesn't have."""
     metadata: IngestLapMetadata
     telemetry: dict[str, list]  # "lap_distance" + configured sensor keys, all equal length
 
@@ -168,9 +162,10 @@ class IngestCompletedLap:
 class IngestDriverExportData:
     """Returned by DriverTelemetryRecorder.export(). Everything the file writer needs for
     one driver. No NumPy dependency -- the file writer converts these lists to arrays at
-    write time using each SensorConfig's dtype. Named distinctly from the top-level
-    lib.pngt.DriverExportData, whose in_progress_lap is a single optional CompletedLap
-    rather than this layer's always-present (possibly empty) in-progress fields."""
+    write time, using dtypes sourced from SensorMapper.get_dtype(). Named distinctly from
+    the top-level lib.pngt.DriverExportData, whose in_progress_lap is a single optional
+    CompletedLap rather than this layer's always-present (possibly empty) in-progress
+    fields."""
     driver_index: int
 
     completed_laps: list[IngestCompletedLap]
