@@ -35,10 +35,10 @@ storage-width vocabulary rather than format- or ingest-specific.
 There is exactly one `__init__.py` for the whole package, at `lib/pngt/`. `ingest/`
 has no `__init__.py` of its own — it's a plain namespace package, same as
 `lib/ipc/pubsub/` or `lib/ipc/reqrep/` elsewhere in this repo — and the top-level
-`__init__.py` imports straight from `.ingest.dto`, `.ingest.mapper` (and, once
-built, `.ingest.recorder`). Reach for `lib.pngt.ingest.dto` directly only from
-inside this package (e.g. `mapper.py` importing `TelemetrySnapshot`); everyone
-outside the package imports from `lib.pngt`.
+`__init__.py` imports straight from `.ingest.dto`, `.ingest.mapper`,
+`.ingest.recorder`. Reach for `lib.pngt.ingest.dto` directly only from
+inside this package (e.g. `mapper.py` importing `BaseTelemetrySnapshot`);
+everyone outside the package imports from `lib.pngt`.
 
 ## On-disk layout
 
@@ -77,7 +77,7 @@ would just waste CPU).
 | `reader.py` | `read_header()` / `read_manifest()` / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
 | `filename.py` | `suggest_filename()` — cosmetic default filename, never used implicitly by `write_session()` |
-| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `TelemetrySnapshot`, `IngestLapMetadata`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, the `SensorMapper` extension point (`get_value()` + `get_dtype()`, no concrete implementation shipped — see `ingest/`'s own docs), plus `DriverTelemetryRecorder` once built |
+| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses it elsewhere -- see below), `IngestLapMetadata`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, the `SensorMapper` extension point (`get_value()` + `get_dtype()`, no concrete implementation shipped), and `DriverTelemetryRecorder` (accumulation, lap rollover, export — flashback rollback not yet built) — see `ingest/`'s own docs |
 
 ## Usage
 
@@ -119,13 +119,17 @@ delete_laps(dest, 0, [1])                   # in-place, full archive rebuild
 
 The ingest layer's DTOs come from the same `lib.pngt` import, disambiguated by the
 `Ingest` prefix. `TelemetryRecorderConfig.sensors` is just dotted keys -- dtype comes
-from whatever concrete `SensorMapper` is in use, not a field here:
+from whatever concrete `SensorMapper` is in use, not a field here. `BaseTelemetrySnapshot`
+only carries the two fields every snapshot must have (`lap_distance`, `lap_time_ms`);
+a real snapshot with actual sensor fields (e.g. `speed`) subclasses it elsewhere --
+see `apps/backend/state_mgmt_layer/data_per_driver`'s own `TelemetrySnapshot`, not
+this package:
 
 ```python
-from lib.pngt import TelemetryRecorderConfig, TelemetrySnapshot
+from lib.pngt import TelemetryRecorderConfig, BaseTelemetrySnapshot
 
 config = TelemetryRecorderConfig(sensors=["speed", "gear"])
-snapshot = TelemetrySnapshot(lap_distance=12.3, speed=245.1)
+snapshot = BaseTelemetrySnapshot(lap_distance=12.3, lap_time_ms=45000)
 ```
 
 ## Notes

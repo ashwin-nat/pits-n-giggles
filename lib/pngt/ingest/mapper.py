@@ -26,22 +26,23 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from ..dtypes import SensorDtype
-from .dto import TelemetrySnapshot
+from .dto import BaseTelemetrySnapshot
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SensorMapper(ABC):
-    """Maps dotted sensor keys to values extracted from a TelemetrySnapshot, and to their
-    storage-width dtype. DriverTelemetryRecorder is completely decoupled from
-    TelemetrySnapshot's actual field names -- it only ever calls get_value()/get_dtype()
-    with the dotted keys from TelemetryRecorderConfig.sensors, never touches a
-    TelemetrySnapshot attribute directly. A sensor's dtype has exactly one source of
-    truth here, on the mapper -- not a second, independently-declared field elsewhere
-    that could drift out of agreement with it.
+    """Maps dotted sensor keys to values extracted from a snapshot object, and to their
+    storage-width dtype. DriverTelemetryRecorder is completely decoupled from the
+    snapshot's actual field names -- it only ever calls get_value()/get_dtype() with the
+    dotted keys from TelemetryRecorderConfig.sensors, never touches a snapshot attribute
+    directly except lap_distance (see BaseTelemetrySnapshot). A sensor's dtype has exactly one
+    source of truth here, on the mapper -- not a second, independently-declared field
+    elsewhere that could drift out of agreement with it.
 
-    A real sensor catalog (e.g. one covering every F1 telemetry field) is
-    game-/domain-specific and belongs with whatever code actually populates
-    TelemetrySnapshot from real packets, not in this generic library. A minimal
+    A real sensor catalog (e.g. one covering every F1 telemetry field), and the concrete
+    snapshot dataclass it reads from, are both game-/domain-specific and belong with
+    whatever code actually populates that snapshot from real packets -- e.g.
+    apps/backend's own TelemetrySnapshot -- not in this generic library. A minimal
     concrete implementation, mapping two sensors:
 
         class ExampleSensorMapper(SensorMapper):
@@ -73,7 +74,7 @@ class SensorMapper(ABC):
     @abstractmethod
     def get_value(
         self,
-        snapshot: TelemetrySnapshot,
+        snapshot: BaseTelemetrySnapshot,
         sensor_key: str,
     ) -> Optional[Union[float, int]]:
         """Return the value for sensor_key from snapshot. Return None if the value is

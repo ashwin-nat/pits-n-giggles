@@ -49,13 +49,14 @@ from .exceptions import (
 )
 from .filename import suggest_filename
 from .ingest.dto import (
+    BaseTelemetrySnapshot,
     IngestCompletedLap,
     IngestDriverExportData,
     IngestLapMetadata,
     TelemetryRecorderConfig,
-    TelemetrySnapshot,
 )
 from .ingest.mapper import SensorMapper
+from .ingest.recorder import DriverTelemetryRecorder
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
 from .writer import write_session
@@ -63,12 +64,14 @@ from .writer import write_session
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
+    'BaseTelemetrySnapshot',
     'CompletedLap',
     'CorruptedTelemetryError',
     'DeleteLapsResult',
     'DriverExportData',
     'DriverNotFoundError',
     'DriverRecord',
+    'DriverTelemetryRecorder',
     'IngestCompletedLap',
     'IngestDriverExportData',
     'IngestLapMetadata',
@@ -87,7 +90,6 @@ __all__ = [
     'SessionBest',
     'SessionMetadata',
     'TelemetryRecorderConfig',
-    'TelemetrySnapshot',
     'TrackInfo',
     'UnsupportedFormatError',
     'UnsupportedVersionError',

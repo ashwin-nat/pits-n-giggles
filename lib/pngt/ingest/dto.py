@@ -27,93 +27,36 @@ from typing import Optional
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
-@dataclass
-class TelemetrySnapshot:
-    """A strongly typed snapshot of all available sensor values at a single point in
-    time, passed to DriverTelemetryRecorder.update() on every telemetry packet. The
-    caller populates whatever fields the sim reported for this packet; the recorder
-    filters internally to the sensors it was configured to record via SensorMapper.
+@dataclass(slots=True)
+class BaseTelemetrySnapshot:
+    """The core fields every real snapshot must carry, regardless of which sensors
+    were configured for recording -- unlike everything else on a snapshot, these
+    aren't optional, sensor-mapper-routed data.
 
-    Ordered-int sensors (e.g. ERS deploy mode) are typed plain `int`, not an IntEnum --
-    the enum itself is owned by whoever builds this snapshot from real sim packets, not
-    by this layer. This layer never inspects the int's meaning, only stores it.
+    `lap_distance` is also the one field DriverTelemetryRecorder ever accesses
+    directly, rather than through SensorMapper.get_value() -- it's the mandatory
+    x-axis for all telemetry, needed unconditionally for buffering decisions
+    (append/overwrite/drop) before any configured-sensor extraction happens at
+    all, so it can't be routed through the same optional, per-sensor machinery as
+    everything else. `lap_time_ms` is mandatory for the same "always present"
+    reason, but isn't touched by the recorder's own buffering logic -- it's just
+    guaranteed data for whichever consumer wants to read it.
+
+    A real snapshot's full shape (every other sensor field an actual sim packet
+    can report) is game-/domain-specific and belongs with whatever code builds it
+    from real packets -- e.g. apps/backend's own TelemetrySnapshot, which
+    subclasses this and adds its ~40 F1-specific fields on top -- not in this
+    generic library. Subclassing (rather than a structural Protocol) makes these
+    real, inherited fields with one definition, not something every consumer has
+    to redeclare identically to satisfy a shape.
+
+    `slots=True` -- one of these is built per telemetry packet, per driver
+    (~60 Hz), so the __dict__ overhead a plain dataclass instance would carry
+    is a real, avoidable cost at that volume. Every subclass must also declare
+    `slots=True`, or its own __dict__ reappears and this saves nothing.
     """
-    # Mandatory -- the x-axis for all sensor data
     lap_distance: float  # metres from start line
-
-    # Driver inputs
-    throttle: Optional[float] = None   # 0.0-1.0
-    brake: Optional[float] = None      # 0.0-1.0
-    steering: Optional[float] = None   # -1.0 (full left) to 1.0 (full right)
-    clutch: Optional[float] = None     # 0.0-1.0
-
-    # Vehicle state
-    speed: Optional[float] = None      # km/h
-    gear: Optional[int] = None         # 0 = reverse, 1-8 = forward
-    engine_rpm: Optional[float] = None
-    drs: Optional[int] = None          # 0 = off, 1 = on
-
-    # ERS
-    ers_deploy_mode: Optional[int] = None  # ERSDeployMode.value; enum owned by the producer
-    ers_store_energy: Optional[float] = None
-    ers_deployed_this_lap: Optional[float] = None
-    ers_harvested_mguk: Optional[float] = None
-
-    # Fuel
-    fuel_mix: Optional[int] = None
-    fuel_in_tank: Optional[float] = None
-    fuel_remaining_laps: Optional[float] = None
-
-    # Tyre temperatures
-    tyre_inner_temp_fl: Optional[float] = None
-    tyre_inner_temp_fr: Optional[float] = None
-    tyre_inner_temp_rl: Optional[float] = None
-    tyre_inner_temp_rr: Optional[float] = None
-    tyre_surface_temp_fl: Optional[float] = None
-    tyre_surface_temp_fr: Optional[float] = None
-    tyre_surface_temp_rl: Optional[float] = None
-    tyre_surface_temp_rr: Optional[float] = None
-
-    # Tyre pressures
-    tyre_pressure_fl: Optional[float] = None
-    tyre_pressure_fr: Optional[float] = None
-    tyre_pressure_rl: Optional[float] = None
-    tyre_pressure_rr: Optional[float] = None
-
-    # Tyre wear
-    tyre_wear_fl: Optional[float] = None
-    tyre_wear_fr: Optional[float] = None
-    tyre_wear_rl: Optional[float] = None
-    tyre_wear_rr: Optional[float] = None
-
-    # Tyre damage
-    tyre_damage_fl: Optional[float] = None
-    tyre_damage_fr: Optional[float] = None
-    tyre_damage_rl: Optional[float] = None
-    tyre_damage_rr: Optional[float] = None
-
-    # Brake temperatures
-    brake_temp_fl: Optional[float] = None
-    brake_temp_fr: Optional[float] = None
-    brake_temp_rl: Optional[float] = None
-    brake_temp_rr: Optional[float] = None
-
-    # Suspension
-    suspension_position_fl: Optional[float] = None
-    suspension_position_fr: Optional[float] = None
-    suspension_position_rl: Optional[float] = None
-    suspension_position_rr: Optional[float] = None
-
-    # G-forces
-    g_force_lateral: Optional[float] = None
-    g_force_longitudinal: Optional[float] = None
-    g_force_vertical: Optional[float] = None
-
-    # Engine
-    engine_temperature: Optional[float] = None
-
-    # Aero
-    front_brake_bias: Optional[float] = None
+    lap_time_ms: int      # elapsed time this lap, milliseconds
 
 @dataclass
 class IngestLapMetadata:
