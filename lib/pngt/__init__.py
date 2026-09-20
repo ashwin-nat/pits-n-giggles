@@ -48,6 +48,14 @@ from .exceptions import (
     UnsupportedVersionError,
 )
 from .filename import suggest_filename
+from .ingest.dto import (
+    IngestCompletedLap,
+    IngestDriverExportData,
+    IngestLapMetadata,
+    IngestSensorConfig,
+    TelemetryRecorderConfig,
+    TelemetrySnapshot,
+)
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
 from .writer import write_session
@@ -61,6 +69,10 @@ __all__ = [
     'DriverExportData',
     'DriverNotFoundError',
     'DriverRecord',
+    'IngestCompletedLap',
+    'IngestDriverExportData',
+    'IngestLapMetadata',
+    'IngestSensorConfig',
     'InvalidHeaderError',
     'InvalidManifestError',
     'LapMetadata',
@@ -74,6 +86,8 @@ __all__ = [
     'SensorType',
     'SessionBest',
     'SessionMetadata',
+    'TelemetryRecorderConfig',
+    'TelemetrySnapshot',
     'TrackInfo',
     'UnsupportedFormatError',
     'UnsupportedVersionError',

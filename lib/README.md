@@ -14,7 +14,7 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `tyre_wear_extrapolator/` | Weather-aware tyre wear regression and prediction |
 | `race_ctrl/` | Race control message parsing and factory |
 | `delta/` | Lap delta and sector time computation |
-| `pngt/` | `.pngt` session file format — read/write for the ZIP-based telemetry session container |
+| `pngt/` | `.pngt` session file format (read/write for the ZIP-based telemetry session container) plus, under `pngt/ingest/`, the per-driver telemetry accumulation used to build the data that gets written — one package, since the two are always used together |
 | `file_discovery.py` | Generic multi-handler directory scan + mtime cache engine for recording files |
 | `ipc/` | Inter-process communication between subsystems |
 | `subsystem/` | Child-side lifecycle base for launcher-managed subsystems (boot, handshake, heartbeat, stats, teardown) |

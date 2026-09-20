@@ -5,12 +5,37 @@ Read/write library for the `.pngt` session file format — a ZIP-based container
 holds one recorded F1 sim session's driver metadata and per-lap telemetry, for the
 Telemetry Visualizer feature.
 
-This module is deliberately **format-agnostic**: it has zero embedded knowledge of
-what sensors exist. `write_session()` takes whatever `SensorConfig` list it's given
-and serializes it; it never hardcodes a real F1 sensor key (`speed`, `tyre_temp.fl`,
-etc). The actual F1 sensor catalog and packet-to-telemetry mapping belong to the
-(separate, not-yet-built) ingest layer — this library only knows how to lay data out
-on disk, read it back, and apply a handful of in-place mutations.
+This top-level package holds two things that are always used together and so live
+under one module, but stay logically separate:
+
+- **The format layer** (this directory's own files — `dto.py`, `dtypes.py`,
+  `reader.py`, `writer.py`, `mutate.py`, `manifest.py`, `filename.py`,
+  `exceptions.py`) is deliberately **format-agnostic**: it has zero embedded
+  knowledge of what sensors exist. `write_session()` takes whatever `SensorConfig`
+  list it's given and serializes it; it never hardcodes a real F1 sensor key
+  (`speed`, `tyre_temp.fl`, etc). It only knows how to lay data out on disk, read it
+  back, and apply a handful of in-place mutations.
+- **The ingest layer** (`ingest/`) owns the F1 sensor catalog and per-driver
+  telemetry accumulation during a live session — see `ingest/`'s own docs and
+  `plans/telemetry_recording/telemetry-ingest-spec.md`. It has no knowledge of the
+  `.pngt` ZIP layout or NumPy; it hands the format layer plain Python data
+  (`DriverExportData`) to write.
+
+Neither submodule imports the other's DTOs or file-I/O code, and the ingest layer's
+DTOs that would otherwise collide with the format layer's own — `CompletedLap`,
+`DriverExportData`, `LapMetadata`, `SensorConfig` — are named `Ingest*` (see
+`ingest/dto.py`) precisely because they mean something different in each layer and
+both are now reachable from the same `lib.pngt` namespace. Only `SensorDtype`
+(`dtypes.py`) is a single shared definition, since it's a genuinely shared
+storage-width vocabulary rather than format- or ingest-specific.
+
+There is exactly one `__init__.py` for the whole package, at `lib/pngt/`. `ingest/`
+has no `__init__.py` of its own — it's a plain namespace package, same as
+`lib/ipc/pubsub/` or `lib/ipc/reqrep/` elsewhere in this repo — and the top-level
+`__init__.py` imports straight from `.ingest.dto` (and, once built, `.ingest.mapper`
+/ `.ingest.recorder`). Reach for `lib.pngt.ingest.dto` directly only from inside this
+package (e.g. `mapper.py` importing `IngestSensorConfig`); everyone outside the
+package imports from `lib.pngt`.
 
 ## On-disk layout
 
@@ -49,6 +74,7 @@ would just waste CPU).
 | `reader.py` | `read_header()` / `read_manifest()` / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
 | `filename.py` | `suggest_filename()` — cosmetic default filename, never used implicitly by `write_session()` |
+| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `TelemetrySnapshot`, `IngestLapMetadata`, `IngestSensorConfig`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, plus `DriverTelemetryRecorder`/`SensorMapper` once built — see `ingest/`'s own docs |
 
 ## Usage
 
@@ -86,6 +112,16 @@ telemetry = read_lap_telemetry(dest, 0, 1)  # -> dict[str, np.ndarray], exactly 
 rename_session(dest, "Spa GP (renamed)")    # in-place, session_uid untouched
 mark_lap_good(dest, 0, 1)                   # in-place, idempotent
 delete_laps(dest, 0, [1])                   # in-place, full archive rebuild
+```
+
+The ingest layer's DTOs come from the same `lib.pngt` import, disambiguated by the
+`Ingest` prefix:
+
+```python
+from lib.pngt import IngestSensorConfig, SensorDtype, TelemetryRecorderConfig, TelemetrySnapshot
+
+config = TelemetryRecorderConfig(sensors=[IngestSensorConfig(key="speed", dtype=SensorDtype.FLOAT32)])
+snapshot = TelemetrySnapshot(lap_distance=12.3, speed=245.1)
 ```
 
 ## Notes
@@ -141,7 +177,7 @@ delete_laps(dest, 0, [1])                   # in-place, full archive rebuild
 
 ## Not in scope here
 
-Recording live telemetry into these DTOs, the sensor catalog itself, config schema,
-the REST API, and the frontend are a separate, not-yet-built ingest layer. This
-module only reads, writes, and mutates `.pngt` files given data the caller already
-has.
+Config schema, the REST API, and the frontend live elsewhere in the app. Recording
+live telemetry into these DTOs and the sensor catalog itself is `ingest/`'s job
+(see above) — this file's own format layer only reads, writes, and mutates `.pngt`
+files given data the caller (the ingest layer, at session end) already has.
