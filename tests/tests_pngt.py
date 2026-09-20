@@ -34,11 +34,12 @@ import pytest
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from lib.pngt import (CompletedLap, DriverExportData, DriverNotFoundError,
-                      DriverRecord, InvalidHeaderError, InvalidManifestError,
-                      LapMetadata, MalformedSessionError, NotAZipFileError,
-                      SensorConfig, SensorDtype, SensorType, SessionBest,
-                      SessionMetadata, TrackInfo, UnsupportedFormatError,
+from lib.pngt import (CompletedLap, CorruptedTelemetryError,
+                      DriverExportData, DriverNotFoundError, DriverRecord,
+                      InvalidHeaderError, InvalidManifestError, LapMetadata,
+                      MalformedSessionError, NotAZipFileError, SensorConfig,
+                      SensorDtype, SensorType, SessionBest, SessionMetadata,
+                      TrackInfo, UnsupportedFormatError,
                       UnsupportedVersionError, delete_laps, mark_lap_good,
                       read_driver_laps, read_header, read_lap_telemetry,
                       read_manifest, read_session, rename_session,
@@ -451,6 +452,25 @@ def test_read_lap_telemetry_missing_lap_raises_driver_not_found(tmp_path):
 
     with pytest.raises(DriverNotFoundError):
         read_lap_telemetry(dest, 1, 99)
+
+
+def test_read_lap_telemetry_corrupted_npz_raises_corrupted_telemetry_error(tmp_path):
+    """A truncated/corrupt .npz entry (e.g. a crash mid-capture) must surface as a
+    PngtError like every other malformed-data case, not an unstructured numpy/zipfile
+    exception the caller (the web API route) has no except clause for."""
+    dest = tmp_path / "session.pngt"
+    write_session(dest, sample_session(), sample_sensors(), sample_dtypes(), sample_drivers(), sample_driver_data())
+
+    def truncate_lap1_npz(name, data):
+        if name != "drivers/01/lap_001.npz":
+            return data
+        return data[:len(data) // 2]
+
+    patched = tmp_path / "patched.pngt"
+    _rebuild_zip(dest, patched, patch_entry=truncate_lap1_npz)
+
+    with pytest.raises(CorruptedTelemetryError):
+        read_lap_telemetry(patched, 1, 1)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Restricted drivers

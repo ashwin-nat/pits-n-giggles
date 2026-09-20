@@ -236,13 +236,22 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
             _check_telemetry_driver(entry, driver_index)
             sensors = _resolve_telemetry_sensors(entry, server.request.args.get('sensors', ''))
             arrays = _read_telemetry_arrays(server, entry, driver_index, lap_number)
+            # TelemetryPoint stays a plain dict -- its keys are whichever sensors were
+            # requested, a genuinely dynamic shape a fixed model wouldn't fit (see
+            # lap_analyzer_api.py's module docstring). Stays inside this try block: a
+            # per-sensor array shorter than lap_distance (e.g. a truncated recording)
+            # raises IndexError here, which must still return the API's error
+            # envelope, not Quart's default unstructured 500 page.
+            points = telemetry_points_to_api(arrays['lap_distance'], arrays, sensors)
         except _TelemetryRequestError as exc:
             return api_error(exc.code, exc.message), exc.status
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            server.m_logger.exception(
+                "Lap-analyzer telemetry: unexpected error building response for %s/%s/%s: %s",
+                session_id, driver_index, lap_number, exc)
+            return api_error(
+                'INTERNAL_ERROR', 'Failed to build telemetry response'), HTTPStatus.INTERNAL_SERVER_ERROR
 
-        # TelemetryPoint stays a plain dict -- its keys are whichever sensors were
-        # requested, a genuinely dynamic shape a fixed model wouldn't fit (see
-        # lap_analyzer_api.py's module docstring).
-        points = telemetry_points_to_api(arrays['lap_distance'], arrays, sensors)
         return server.jsonify({
             'sessionId': session_id,
             'driverIndex': driver_index,
@@ -278,7 +287,10 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
 
         full_path = server.m_session_dir / entry.rel_path
         try:
-            rename_session(full_path, new_name)
+            # rename_session() rewrites the whole zip archive on disk -- a blocking
+            # call with no async equivalent, so it must not run directly on the
+            # event loop (see BaseWebServer.run_blocking's own docstring).
+            await server.run_blocking(rename_session, full_path, new_name)
         except PngtError as exc:
             server.m_logger.exception("Lap-analyzer rename: failed to rename %s: %s", full_path, exc)
             return api_error(

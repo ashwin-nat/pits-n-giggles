@@ -37,6 +37,7 @@ from .dto import (
 )
 from .dtypes import SensorDtype
 from .exceptions import (
+    CorruptedTelemetryError,
     DriverNotFoundError,
     InvalidHeaderError,
     InvalidManifestError,
@@ -55,6 +56,7 @@ from .writer import write_session
 
 __all__ = [
     'CompletedLap',
+    'CorruptedTelemetryError',
     'DeleteLapsResult',
     'DriverExportData',
     'DriverNotFoundError',

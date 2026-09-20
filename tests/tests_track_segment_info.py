@@ -743,11 +743,28 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
             TrackSegmentsDatabase(missing)
 
     def test_invalid_json_raises_decode_error(self):
-        """Malformed JSON should bubble up as a decode error."""
+        """Malformed JSON should bubble up as a decode error. Track files are
+        repo-controlled assets, not untrusted runtime input -- a bad one should fail
+        loudly at startup/dev time, not be silently skipped."""
         bad_json = os.path.join(self._tmp.name, "bad.json")
         with open(bad_json, "w", encoding="utf-8") as fh:
             fh.write("{ not-valid-json }")
         with self.assertRaises(json.JSONDecodeError):
+            TrackSegmentsDatabase(self._tmp.name)
+
+    def test_missing_sectors_raises_validation_error(self):
+        """`sectors` is a mandatory field -- a file missing it should fail fast at
+        startup, same reasoning as test_invalid_json_raises_decode_error."""
+        missing_sectors = {
+            "circuit_name": "Delta Circuit",
+            "circuit_number": 4,
+            "track_length": 1000,
+            "segments": [],
+        }
+        path = os.path.join(self._tmp.name, "Delta Circuit.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(missing_sectors, fh)
+        with self.assertRaises(ValidationError):
             TrackSegmentsDatabase(self._tmp.name)
 
     # --- get_sector() -------------------------------------------------------------------------

@@ -248,6 +248,36 @@ async def _load_handler_state(
     )
 
 
+def _scan_and_group_files(
+    session_dir: Path,
+    logger: logging.Logger,
+    handlers: List[DiscoveryConfig],
+) -> Dict[int, List[Path]]:
+    """The walk (`rglob`) plus every file's `stat()` for mtime-sorting -- run inside
+    `asyncio.to_thread` by `discover_all()` below, same reasoning as that function's
+    own cache load/save: a session directory with thousands of files would otherwise
+    stall the event loop on every startup scan and every watchfiles-triggered
+    rebuild, for the walk and every stat() call, not just the cache I/O.
+    """
+    all_files = [
+        p.relative_to(session_dir) for p in session_dir.rglob('*')
+        if p.is_file() and not p.name.startswith('.')
+    ]
+    logger.debug("discover_all: found %d files in %s across %d handler(s)",
+                len(all_files), session_dir, len(handlers))
+
+    files_by_handler: Dict[int, List[Path]] = {id(h): [] for h in handlers}
+    for rel_path in all_files:
+        handler = _match_handler(rel_path.name, handlers, logger, rel_path)
+        if handler is not None:
+            files_by_handler[id(handler)].append(rel_path)
+
+    for handler_id, files in files_by_handler.items():
+        files.sort(key=lambda p: (session_dir / p).stat().st_mtime, reverse=True)
+        files_by_handler[handler_id] = files
+    return files_by_handler
+
+
 async def discover_all(
     session_dir: Path,
     logger: logging.Logger,
@@ -268,24 +298,12 @@ async def discover_all(
     if not session_dir.exists():
         return
 
-    all_files = [
-        p.relative_to(session_dir) for p in session_dir.rglob('*')
-        if p.is_file() and not p.name.startswith('.')
-    ]
-    logger.debug("discover_all: found %d files in %s across %d handler(s)",
-                len(all_files), session_dir, len(handlers))
-
-    files_by_handler: Dict[int, List[Path]] = {id(h): [] for h in handlers}
-    for rel_path in all_files:
-        handler = _match_handler(rel_path.name, handlers, logger, rel_path)
-        if handler is not None:
-            files_by_handler[id(handler)].append(rel_path)
+    files_by_handler = await asyncio.to_thread(_scan_and_group_files, session_dir, logger, handlers)
 
     states: Dict[int, _HandlerState] = {}
     for config in handlers:
-        files = sorted(files_by_handler[id(config)],
-                       key=lambda p: (session_dir / p).stat().st_mtime, reverse=True)
-        states[id(config)] = await _load_handler_state(session_dir, logger, app_version, config, files)
+        states[id(config)] = await _load_handler_state(
+            session_dir, logger, app_version, config, files_by_handler[id(config)])
 
     async def _tagged(config: DiscoveryConfig, file_idx: int, total: int, rel: Path, state: _HandlerState):
         rel_path, entry = await _parse_one(
