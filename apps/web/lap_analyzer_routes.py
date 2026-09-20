@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from pydantic import ValidationError
+from quart import url_for
 from watchfiles import awatch
 
 from lib.pngt import (DriverNotFoundError, PngtError, read_lap_telemetry,
@@ -170,6 +171,36 @@ def _update_cached_session_name(session_id: str, new_name: str) -> None:
     _by_slug = {**_by_slug, session_id: new_entry}
 
 
+async def render_lap_analyzer_index(server: "WebServer") -> Any:
+    """Read the built React index.html and inject the shared sidebar stylesheet and
+    markup, same as save_viewer_routes.py's render_save_viewer_index() -- lap-analyzer
+    runs inside the same navigation chrome as every other dashboard, not standalone.
+
+    Returns:
+        A Quart-compatible (body, status, headers) tuple serving index.html.
+    """
+    index_path = _analyzer_dir / 'index.html'
+    html = index_path.read_text(encoding='utf-8')
+
+    sidebar_css_url = url_for('static', filename='css/sidebar.css')
+    bootstrap_icons_link = (
+        '<link rel="stylesheet" '
+        'href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" '
+        'integrity="sha384-tViUnnbYAV00FLIhhi3v/dWt3Jxw4gZQcNoSCxCIFNJVCx7/D55/wXsrNIRANwdD" '
+        'crossorigin="anonymous">'
+    )
+    head_injection = f'{bootstrap_icons_link}<link rel="stylesheet" href="{sidebar_css_url}">'
+    html = html.replace('</head>', f'{head_injection}</head>', 1)
+
+    sidebar_html = await server.render_template('partials/sidebar.html', active_page='lap-analyzer')
+    sidebar_js_url = url_for('static', filename='js/sidebar.js')
+    html = html.replace('<body>', '<body class="png-has-sidebar">', 1)
+    html = html.replace('<div id="root">', f'{sidebar_html}<div id="root">', 1)
+    html = html.replace('</body>', f'<script src="{sidebar_js_url}"></script></body>', 1)
+
+    return html, HTTPStatus.OK, {'Content-Type': 'text/html; charset=utf-8'}
+
+
 def define_lap_analyzer_routes(server: "WebServer") -> None:
     """Define routes serving the lap-analyzer SPA under /lap-analyzer/* and its REST
     API under /lap-analyzer/api/v1/*. The API is read-only for now -- mark-good/
@@ -178,7 +209,7 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
 
     @server.http_route('/lap-analyzer/')
     async def lapAnalyzerIndex():
-        return await server.send_from_directory(_analyzer_dir, 'index.html')
+        return await render_lap_analyzer_index(server)
 
     @server.http_route('/lap-analyzer/<path:path>')
     async def lapAnalyzerStatic(path: str):
@@ -189,7 +220,7 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         candidate = (root / path).resolve()
         if candidate.is_relative_to(root) and candidate.is_file():
             return await server.send_from_directory(_analyzer_dir, path)
-        return await server.send_from_directory(_analyzer_dir, 'index.html')
+        return await render_lap_analyzer_index(server)
 
     @server.http_route('/lap-analyzer/api/v1/sessions')
     async def apiLapAnalyzerSessions():

@@ -35,9 +35,12 @@
 
 .png-home-cards {
   display: grid;
+  /* max-width capped so auto-fill lands on exactly 2 columns (4 cards -> a 2x2
+     grid) instead of 3+1 -- still collapses to 1 column naturally on narrow
+     viewports via auto-fill, same as before, just without the wide 3-up case. */
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.5rem;
-  max-width: 1100px;
+  max-width: 700px;
 }
 
 .png-home-card {
@@ -61,6 +64,14 @@
 .png-home-card-icon {
   font-size: 2rem;
   line-height: 1;
+}
+
+/* The Lap Analyzer card's icon is a masked asset (see .png-icon-lap-analyzer in
+   sidebar.css), not a bi- icon font glyph -- font-size doesn't size it, so give
+   it an explicit box instead, matching the font-size above's cap-height. */
+.png-icon-lap-analyzer.png-home-card-icon {
+  width: 2rem;
+  height: 2rem;
 }
 
 .png-home-card-title-row {

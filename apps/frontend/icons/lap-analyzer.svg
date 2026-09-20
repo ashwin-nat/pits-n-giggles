@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Axes, x-axis running past where the trace meets it, like a real chart's axis line -->
+  <path d="M2 1 V21 H24" />
+  <!-- Trail-braking trace: held, then a smooth, gradual release down to the x-axis -->
+  <path d="M4 5 H9 C13 5 16 21 21 21" />
+</svg>

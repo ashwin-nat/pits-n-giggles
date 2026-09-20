@@ -19,6 +19,15 @@
       <i class="bi bi-floppy-fill png-sidebar-icon" aria-hidden="true"></i>
       <span class="png-sidebar-label">Save Data</span>
     </a>
+    <a class="png-sidebar-link{% if active_page == 'lap-analyzer' %} png-sidebar-link-active{% endif %}" href="/lap-analyzer/" title="Lap Analyzer">
+      <!-- Trail-braking trace, not a stock icon: full brake held, then a smooth,
+           gradual release down to zero -- distinct from bi-graph-up's straight
+           uptrend, which reads as "growth", not "telemetry trace". Rendered via
+           mask-image (see .png-icon-lap-analyzer), not <img>, so it still tracks
+           currentColor -- same hover/active color shift every bi- glyph gets. -->
+      <span class="png-sidebar-icon png-icon-lap-analyzer" aria-hidden="true"></span>
+      <span class="png-sidebar-label">Lap Analyzer</span>
+    </a>
   </div>
   <button type="button" class="png-sidebar-toggle" title="Collapse sidebar" aria-expanded="true">
     <i class="bi bi-chevron-bar-left png-sidebar-toggle-icon png-sidebar-toggle-icon-collapse" aria-hidden="true"></i>
