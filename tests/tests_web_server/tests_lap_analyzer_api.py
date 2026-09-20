@@ -31,8 +31,10 @@ LocalFileProvider and RemoteApiProvider") actually depends on.
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
-from apps.web.lap_analyzer_api import (driver_to_api, lap_to_api,
+from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
+                                       driver_to_api, lap_to_api,
                                        session_to_api,
                                        telemetry_points_to_api,
                                        title_case_session_type,
@@ -219,3 +221,43 @@ def test_track_section_unnamed_corner_uses_empty_label():
     the API's label is whatever's there, not synthesized from the corner number."""
     seg = CornerSegmentInfo(name="", start_m=311, end_m=480, corner_number=1)
     assert track_section_to_api(seg)['label'] == ""
+
+
+def test_rename_session_request_accepts_valid_name():
+    request = RenameSessionRequest.model_validate({"name": "League Race Night"})
+    assert request.name == "League Race Night"
+
+
+def test_rename_session_request_rejects_empty_name():
+    with pytest.raises(ValidationError):
+        RenameSessionRequest.model_validate({"name": ""})
+
+
+def test_rename_session_request_rejects_whitespace_only_name():
+    """min_length=1 alone wouldn't catch this -- a single space has length 1."""
+    with pytest.raises(ValidationError):
+        RenameSessionRequest.model_validate({"name": "   "})
+
+
+def test_rename_session_request_rejects_over_length_name():
+    with pytest.raises(ValidationError):
+        RenameSessionRequest.model_validate({"name": "x" * 256})
+
+
+def test_rename_session_request_accepts_name_at_length_limit():
+    request = RenameSessionRequest.model_validate({"name": "x" * 255})
+    assert len(request.name) == 255
+
+
+def test_rename_session_request_rejects_non_dict_body():
+    """A malformed/missing JSON body (server.request.get_json(silent=True) returns
+    None) must fail validation, not raise an unrelated AttributeError."""
+    with pytest.raises(ValidationError):
+        RenameSessionRequest.model_validate(None)
+
+
+def test_api_error_envelope_shape():
+    result = api_error('SESSION_NOT_FOUND', 'Unknown session id: foo')
+    assert result == {
+        'error': {'code': 'SESSION_NOT_FOUND', 'message': 'Unknown session id: foo'},
+    }

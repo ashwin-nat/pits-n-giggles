@@ -35,6 +35,11 @@ entirely rather than populated. The .pngt format has no is_ai field to source it
 from -- it was removed project-wide (see the `remove is_ai` commit) because there's no
 reliable signal to record it from in the first place. apps/lap-analyzer's own
 Driver type (types/api.ts) already reflects this: it has no isAi field either.
+
+Response shapes are plain dicts, built directly in the API's camelCase -- there's
+no wire-format translation to buy back with a model here. Pydantic is used only
+where it's actually validating untrusted input: RenameSessionRequest, the one
+request body this API takes.
 """
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
@@ -43,11 +48,28 @@ import math
 from typing import Any, Dict, List
 
 import numpy as np
+from pydantic import BaseModel, Field, field_validator
 
 from lib.pngt import DriverRecord, LapMetadata, SensorConfig
 from lib.track_segment_info.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
+
+# -------------------------------------- MODELS ------------------------------------------------------------------------
+
+class RenameSessionRequest(BaseModel):
+    """PATCH /sessions/:sessionId/name's request body. `min_length`/`max_length`
+    cover the 400 INVALID_NAME cases the API spec calls "empty string or exceeds
+    character limit"; the extra validator catches a whitespace-only name, which
+    min_length=1 alone wouldn't (a single space has length 1)."""
+    name: str = Field(min_length=1, max_length=255)
+
+    @field_validator('name')
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('name must not be blank')
+        return v
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -60,13 +82,12 @@ def title_case_session_type(raw: str) -> str:
     return ' '.join(w[:1].upper() + w[1:] for w in words)
 
 
+def api_error(code: str, message: str) -> Dict[str, Any]:
+    return {'error': {'code': code, 'message': message}}
+
+
 def _sensor_to_api(sensor: SensorConfig) -> Dict[str, Any]:
-    return {
-        'key': sensor.key,
-        'label': sensor.label,
-        'unit': sensor.unit,
-        'type': sensor.type.value,
-    }
+    return {'key': sensor.key, 'label': sensor.label, 'unit': sensor.unit, 'type': sensor.type.value}
 
 
 def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:

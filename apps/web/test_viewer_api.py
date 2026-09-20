@@ -42,6 +42,13 @@ def _get(session: requests.Session, url: str) -> requests.Response:
     return r
 
 
+def _patch(session: requests.Session, url: str, json_body: dict) -> requests.Response:
+    print(f"  --> PATCH {url} {json_body}", flush=True)
+    r = session.patch(url, json=json_body, timeout=TIMEOUT)
+    print(f"  <-- {r.status_code}", flush=True)
+    return r
+
+
 def run(base_url: str) -> None:
     base_url = base_url.rstrip("/") + "/save-viewer"
     session = requests.Session()
@@ -336,6 +343,59 @@ def run_lap_analyzer(base_url: str) -> None:
               ok and body == [], f"got {r.status_code}, body={body!r}" if not (ok and body == []) else "")
     except Exception as exc:  # pylint: disable=broad-exception-caught
         _check("Unknown trackId returns 200 with an empty array", False, str(exc))
+
+    # Renames write to the actual .pngt file on disk -- restore the original name
+    # afterward so re-running this script doesn't drift the fixture's session_name.
+    original_name = sessions[0].get("name") if sessions else None
+    print("\n[LA-11] PATCH /sessions/<id>/name — expect 200 + reflected immediately in GET /sessions")
+    if first_id and original_name is not None:
+        try:
+            new_name = f"{original_name} (renamed by smoke test)"
+            r = _patch(session, f"{base_url}/sessions/{first_id}/name", {"name": new_name})
+            ok = r.status_code == 200
+            body = r.json() if ok else {}
+            _check("PATCH /sessions/<id>/name returns 200 with the new name",
+                  ok and body.get("id") == first_id and body.get("name") == new_name,
+                  f"got {r.status_code}, body={body!r}" if not ok else "")
+
+            r2 = _get(session, f"{base_url}/sessions")
+            renamed_session = next((s for s in r2.json() if s.get("id") == first_id), None) if r2.status_code == 200 else None
+            _check("GET /sessions reflects the new name immediately (no rebuild wait)",
+                  renamed_session is not None and renamed_session.get("name") == new_name,
+                  f"got {renamed_session!r}")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _check("PATCH /sessions/<id>/name returns 200 with the new name", False, str(exc))
+        finally:
+            # Best-effort restore, even if an assertion above failed.
+            try:
+                _patch(session, f"{base_url}/sessions/{first_id}/name", {"name": original_name})
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+    else:
+        _check("PATCH /sessions/<id>/name returns 200 with the new name", False, "no session id available")
+
+    print("\n[LA-12] PATCH /sessions/<id>/name with an empty name — expect 400 INVALID_NAME")
+    if first_id:
+        try:
+            r = _patch(session, f"{base_url}/sessions/{first_id}/name", {"name": ""})
+            ok = r.status_code == 400
+            code = r.json().get("error", {}).get("code") if ok else None
+            _check("Empty name returns 400 with INVALID_NAME",
+                  ok and code == "INVALID_NAME", f"got {r.status_code}, code={code!r}")
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            _check("Empty name returns 400 with INVALID_NAME", False, str(exc))
+    else:
+        _check("Empty name returns 400 with INVALID_NAME", False, "no session id available")
+
+    print("\n[LA-13] PATCH /sessions/does-not-exist/name — expect 404 SESSION_NOT_FOUND")
+    try:
+        r = _patch(session, f"{base_url}/sessions/does-not-exist/name", {"name": "Whatever"})
+        ok = r.status_code == 404
+        code = r.json().get("error", {}).get("code") if ok else None
+        _check("Unknown session id returns 404 with SESSION_NOT_FOUND",
+              ok and code == "SESSION_NOT_FOUND", f"got {r.status_code}, code={code!r}")
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        _check("Unknown session id returns 404 with SESSION_NOT_FOUND", False, str(exc))
 
 
 def main() -> None:

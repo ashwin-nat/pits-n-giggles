@@ -33,19 +33,24 @@ WebServer exists per process, so there's nothing per-instance state would buy he
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import dataclasses
 import time
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
+from pydantic import ValidationError
 from watchfiles import awatch
 
-from lib.pngt import DriverNotFoundError, PngtError, read_lap_telemetry
+from lib.pngt import (DriverNotFoundError, PngtError, read_lap_telemetry,
+                      rename_session)
 from lib.track_segment_info import TrackSegmentsDatabase
 
-from .lap_analyzer_api import (driver_to_api, lap_to_api, session_to_api,
+from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
+                               lap_to_api, session_to_api,
                                telemetry_points_to_api, track_section_to_api)
-from .pngt_discovery import CACHE_FILE, PngtSessionEntry, build_pngt_session_list
+from .pngt_discovery import (CACHE_FILE, PngtSessionEntry,
+                             build_pngt_session_list)
 from .session_discovery import CACHE_FILE as JSON_CACHE_FILE
 
 if TYPE_CHECKING:
@@ -72,13 +77,6 @@ def stop_lap_analyzer_watch_loop() -> None:
     web_server.py never reaches into this module's underscore-prefixed state
     directly (same reasoning as not injecting attributes onto WebServer)."""
     _watch_stop.set()
-
-
-def _lap_analyzer_error(code: str, message: str) -> Dict[str, Any]:
-    """The lap-analyzer API's own error envelope (see API spec's Error Handling
-    section) -- distinct from the save-viewer routes' plain {'error': 'string'}
-    convention, since the two are independently specced APIs."""
-    return {'error': {'code': code, 'message': message}}
 
 
 class _TelemetryRequestError(Exception):
@@ -152,6 +150,18 @@ def _read_telemetry_arrays(
     return arrays
 
 
+def _update_cached_session_name(session_id: str, new_name: str) -> None:
+    """Patches the renamed session's name into both module-level cache structures
+    in place, immediately -- see apiLapAnalyzerRenameSession's own comment for why
+    this doesn't just wait for the watch loop to notice and rebuild."""
+    global _sessions_cache, _by_slug  # pylint: disable=global-statement
+    old_entry = _by_slug[session_id]
+    new_entry = dataclasses.replace(old_entry, session=dataclasses.replace(
+        old_entry.session, session_name=new_name))
+    _sessions_cache = [new_entry if e.slug == session_id else e for e in _sessions_cache]
+    _by_slug = {**_by_slug, session_id: new_entry}
+
+
 def define_lap_analyzer_routes(server: "WebServer") -> None:
     """Define REST API routes for the lap-analyzer telemetry visualizer, under
     /lap-analyzer/api/v1/*. Read-only for now -- rename/mark-good/delete are a
@@ -174,8 +184,8 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         await _cache_ready.wait()
         entry = _by_slug.get(session_id)
         if entry is None:
-            return _lap_analyzer_error('SESSION_NOT_FOUND',
-                                       f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
         return server.jsonify([driver_to_api(d) for d in entry.drivers]), HTTPStatus.OK
 
     @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/drivers/<int:driver_index>/laps')
@@ -183,10 +193,10 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         await _cache_ready.wait()
         entry = _by_slug.get(session_id)
         if entry is None:
-            return _lap_analyzer_error('SESSION_NOT_FOUND',
-                                       f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
         if not any(d.driver_index == driver_index for d in entry.drivers):
-            return _lap_analyzer_error(
+            return api_error(
                 'DRIVER_NOT_FOUND', f'Driver {driver_index} not in session {session_id}'
             ), HTTPStatus.NOT_FOUND
         # Restricted/scope-excluded drivers legitimately have no laps.json at all
@@ -204,8 +214,11 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
             sensors = _resolve_telemetry_sensors(entry, server.request.args.get('sensors', ''))
             arrays = _read_telemetry_arrays(server, entry, driver_index, lap_number)
         except _TelemetryRequestError as exc:
-            return _lap_analyzer_error(exc.code, exc.message), exc.status
+            return api_error(exc.code, exc.message), exc.status
 
+        # TelemetryPoint stays a plain dict -- its keys are whichever sensors were
+        # requested, a genuinely dynamic shape a fixed model wouldn't fit (see
+        # lap_analyzer_api.py's module docstring).
         points = telemetry_points_to_api(arrays['lap_distance'], arrays, sensors)
         return server.jsonify({
             'sessionId': session_id,
@@ -223,6 +236,41 @@ def define_lap_analyzer_routes(server: "WebServer") -> None:
         track = _track_segments_db.get(track_id)
         sections = [track_section_to_api(seg) for seg in track.segments] if track is not None else []
         return server.jsonify(sections), HTTPStatus.OK
+
+    @server.http_route('/lap-analyzer/api/v1/sessions/<session_id>/name', methods=['PATCH'])
+    async def apiLapAnalyzerRenameSession(session_id: str):
+        await _cache_ready.wait()
+        entry = _by_slug.get(session_id)
+        if entry is None:
+            return api_error('SESSION_NOT_FOUND',
+                             f'Unknown session id: {session_id}'), HTTPStatus.NOT_FOUND
+
+        body = await server.request.get_json(silent=True)
+        try:
+            request = RenameSessionRequest.model_validate(body)
+        except ValidationError as exc:
+            message = "; ".join(e['msg'] for e in exc.errors())
+            return api_error('INVALID_NAME', message), HTTPStatus.BAD_REQUEST
+        new_name = request.name
+
+        full_path = server.m_session_dir / entry.rel_path
+        try:
+            rename_session(full_path, new_name)
+        except PngtError as exc:
+            server.m_logger.exception("Lap-analyzer rename: failed to rename %s: %s", full_path, exc)
+            return api_error(
+                'INTERNAL_ERROR', 'Failed to rename the recording'), HTTPStatus.INTERNAL_SERVER_ERROR
+
+        # Patch the in-memory cache immediately, rather than waiting for the watch
+        # loop to notice the rewrite's mtime bump and rebuild -- a GET /sessions
+        # right after this response should already reflect the new name. The slug
+        # (session_id/the dict key) never changes; only the entry's own session_name
+        # does. The on-disk gzip cache is left to the watch loop to reconcile, same
+        # as any other external edit to a .pngt file -- it's a startup-time
+        # optimization, not this module's runtime source of truth.
+        _update_cached_session_name(session_id, new_name)
+
+        return server.jsonify({'id': session_id, 'name': new_name}), HTTPStatus.OK
 
 
 async def rebuild_lap_analyzer_cache(server: "WebServer") -> None:
