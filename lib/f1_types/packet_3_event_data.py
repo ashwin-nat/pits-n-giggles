@@ -897,7 +897,7 @@ class PacketEventData(F1PacketBase):
                 struct.error: If the binary data does not match the expected format.
             """
 
-            self.vehicleIdx = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])
+            self.vehicleIdx = self.COMPILED_PACKET_STRUCT.unpack(data[:self.PACKET_LEN])[0]
 
         def __str__(self) -> str:
             """
@@ -977,8 +977,8 @@ class PacketEventData(F1PacketBase):
                 struct.error: If the binary data does not match the expected format.
             """
 
-            if packet_format <= 2025:
-                self.vehicleIdx = self.COMPILED_PACKET_STRUCT_23_24.unpack(data[:self.PACKET_LEN_23_24])
+            if packet_format < 2025:
+                self.vehicleIdx = self.COMPILED_PACKET_STRUCT_23_24.unpack(data[:self.PACKET_LEN_23_24])[0]
                 self.stopTime = 0.0
             else:
                 self.vehicleIdx, self.stopTime = self.COMPILED_PACKET_STRUCT_25.unpack(data[:self.PACKET_LEN_25])
