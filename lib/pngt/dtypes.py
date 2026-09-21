@@ -30,10 +30,12 @@ import numpy as np
 
 class SensorDtype(Enum):
     """Storage width for a sensor's recorded values. Shared as-is by this module (which
-    maps it to an actual np.dtype when writing a lap's .npz file) and by
-    lib/pngt/ingest (which carries it on SensorConfig purely as a hint for the writer,
-    without ever touching NumPy itself) -- one definition, since the two are meant to be
-    used together rather than kept mutually unaware of each other."""
+    maps it to an actual np.dtype when writing a lap's .npz file, taking dtypes as a
+    separate `dict[str, SensorDtype]` argument to write_session()) and by
+    lib/pngt/ingest, which never touches NumPy itself and has no dtype-bearing config
+    field at all -- SensorMapper.get_dtype() is the ingest layer's only source of a
+    sensor's dtype. One shared definition, since the two are meant to be used together
+    rather than kept mutually unaware of each other."""
     FLOAT32 = "float32"
     INT8 = "int8"
     INT16 = "int16"

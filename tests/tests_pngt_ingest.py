@@ -205,6 +205,26 @@ def test_stub_sensor_mapper_missing_dtype_raises():
         mapper.get_dtype("speed")
 
 # ----------------------------------------------------------------------------------------------------------------------
+# TelemetryRecorderConfig
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_telemetry_recorder_config_coerces_list_to_tuple():
+    """frozen=True alone doesn't stop the list a `sensors` field points at from being
+    mutated in place after construction -- __post_init__ copies into a tuple instead,
+    so later mutating the list passed in has no effect on the config."""
+    sensors = ["speed", "gear"]
+    config = TelemetryRecorderConfig(sensors=sensors)
+
+    sensors.append("drs")
+
+    assert config.sensors == ("speed", "gear")
+
+
+def test_telemetry_recorder_config_rejects_duplicate_keys():
+    with pytest.raises(ValueError):
+        TelemetryRecorderConfig(sensors=["speed", "speed"])
+
+# ----------------------------------------------------------------------------------------------------------------------
 # DriverTelemetryRecorder -- normal path (no flashback yet)
 # ----------------------------------------------------------------------------------------------------------------------
 

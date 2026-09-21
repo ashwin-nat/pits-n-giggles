@@ -17,9 +17,12 @@ Full behavioural spec: `plans/telemetry_recording/telemetry-ingest-spec.md`.
   `SensorMapper.get_dtype()` for the writer to act on later.
 - Sensor extraction *and* dtype are both injected via the `SensorMapper` ABC, so the
   recorder never hardcodes an F1-specific field name or its storage width.
-  `TelemetryRecorderConfig.sensors` is just a `list[str]` of dotted keys, not
-  `(key, dtype)` pairs — dtype has exactly one source of truth (the mapper), not a
-  second field that could drift out of agreement with it. This package ships only
+  `TelemetryRecorderConfig.sensors` is just a `tuple[str, ...]` of dotted keys
+  (coerced from whatever iterable is passed in, and rejected if it has duplicates),
+  not `(key, dtype)` pairs — dtype has exactly one source of truth (the mapper), not a
+  second field that could drift out of agreement with it. A tuple, not a `list`,
+  because `frozen=True` on the dataclass alone doesn't stop a list it points at from
+  being mutated in place after a recorder is already built from it. This package ships only
   the interface — a real sensor catalog (e.g. one covering every F1 telemetry
   field), and the concrete snapshot subclass it reads from, are both
   game-/domain-specific and belong with whatever code actually populates that

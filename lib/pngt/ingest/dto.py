@@ -88,8 +88,19 @@ class TelemetryRecorderConfig:
     the single source of truth for a sensor's storage width, so there's no second place
     for that fact to drift out of sync with. The recorder asks the injected mapper for
     dtype wherever it needs it (missing-value sentinel selection), and validates every
-    configured key against the mapper at construction, failing fast on an unknown one."""
-    sensors: list[str]
+    configured key against the mapper at construction, failing fast on an unknown one.
+
+    `sensors` is a `tuple`, not a `list`: `frozen=True` alone only stops `self.sensors`
+    from being rebound, not the list it points at from being mutated in place after
+    construction -- which would desync a recorder already built from it (its cached
+    `_dtypes` and buffers snapshot `sensors` at `__init__` time). `__post_init__` coerces
+    whatever iterable is passed in, so construction still accepts a plain list."""
+    sensors: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "sensors", tuple(self.sensors))
+        if len(self.sensors) != len(set(self.sensors)):
+            raise ValueError(f"sensors must contain unique keys, got duplicates in {self.sensors!r}")
 
 @dataclass
 class IngestCompletedLap:
