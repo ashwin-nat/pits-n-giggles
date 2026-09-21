@@ -234,8 +234,7 @@ class DriversListRsp(BaseAPI):
             if not 1 <= driver_data.m_driver_info.position <= self.m_session_state.m_num_active_cars:
                 continue
 
-            if driver_data.m_driver_info.position == 1:
-                self.m_curr_lap = driver_data.m_lap_info.m_current_lap
+            self._setCurrLapNonTt(driver_data)
             self.m_json_rsp.append(self._getDriverJSON(index,driver_data))
 
     def __initTTDict(self) -> None:
@@ -416,7 +415,6 @@ class DriversListRsp(BaseAPI):
     def _getDeltaInfoJSON(self, driver_data: DataPerDriver) -> Dict[str, Any]:
         """Extract delta information section for JSON response."""
         return {
-            "delta": driver_data.m_lap_info.m_delta_to_car_in_front,
             "delta-to-car-in-front": driver_data.m_lap_info.m_delta_to_car_in_front,
             "delta-to-leader": driver_data.m_lap_info.m_delta_to_leader,
         }
@@ -706,3 +704,11 @@ class DriversListRsp(BaseAPI):
             "s2-time-ms": last_lap_data.m_sector2TimeInMS,
             "s3-time-ms": last_lap_data.m_sector3TimeInMS,
         }
+
+    def _setCurrLapNonTt(self, driver_data: DataPerDriver) -> None:
+        """Set the current lap for non-TT mode."""
+        if self.m_is_spectator_mode:
+            if driver_data.m_driver_info.position == 1:
+                self.m_curr_lap = driver_data.m_lap_info.m_current_lap
+        elif driver_data.m_driver_info.is_player:
+            self.m_curr_lap = driver_data.m_lap_info.m_current_lap
