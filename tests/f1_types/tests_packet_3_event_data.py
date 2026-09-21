@@ -144,3 +144,86 @@ class TestPacketEventData(F1TypesTest):
         parsed_json = parsed_packet.toJSON()
         self.jsonComparisionUtil(expected_json, parsed_json)
         self.assertFalse(hasattr(parsed_packet, '__dict__'))
+
+    def test_f1_24_drive_through_served(self):
+        """Test for F1 2024 Drive Through Penalty Served event."""
+
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 24, self.m_num_players)
+        raw_packet = b'DTSV\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {
+            "event-string-code": "DTSV",
+            "event-details": {
+                "vehicle-idx": 7,
+            }
+        }
+
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertIsInstance(parsed_packet.mEventDetails.vehicleIdx, int)
+
+    def test_f1_24_stop_go_served(self):
+        """Test for F1 2024 Stop-Go Penalty Served event (pre-2025 format, no stop-time field)."""
+
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 24, self.m_num_players)
+        raw_packet = b'SGSV\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {
+            "event-string-code": "SGSV",
+            "event-details": {
+                "vehicle-idx": 15,
+                "stop-time": 0.0,
+            }
+        }
+
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertIsInstance(parsed_packet.mEventDetails.vehicleIdx, int)
+
+    def test_f1_25_stop_go_served(self):
+        """Test for F1 2025 Stop-Go Penalty Served event (2025+ format, with stop-time field).
+
+        Regression test: on the 2025+ packet format, vehicleIdx must unpack to a plain
+        int (not a 1-tuple), since it is used as a list index downstream.
+        """
+
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 25, self.m_num_players)
+        raw_packet = b'SGSV\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {
+            "event-string-code": "SGSV",
+            "event-details": {
+                "vehicle-idx": 15,
+                "stop-time": 0.0,
+            }
+        }
+
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertIsInstance(parsed_packet.mEventDetails.vehicleIdx, int)
+
+    def test_f1_26_stop_go_served_actual(self):
+        """Test for F1 2026 Stop-Go Penalty Served event with an actual game packet.
+
+        Regression test: on the 2025+ packet format, vehicleIdx must unpack to a plain
+        int (not a 1-tuple), since it is used as a list index downstream.
+        """
+
+        random_header = F1TypesTest.getRandomHeader(F1PacketType.EVENT, 26, self.m_num_players)
+        raw_packet = b'SGSV\x15\x00\x00 A\x00\x00\x00\x00\x00\x00\x00'
+        expected_json = {
+            "event-string-code": "SGSV",
+            "event-details": {
+                "vehicle-idx": 21,
+                "stop-time": 10.0,
+            }
+        }
+
+        parsed_packet = PacketEventData(random_header, raw_packet)
+        parsed_json = parsed_packet.toJSON()
+        self.jsonComparisionUtil(expected_json, parsed_json)
+        self.assertFalse(hasattr(parsed_packet, '__dict__'))
+        self.assertIsInstance(parsed_packet.mEventDetails.vehicleIdx, int)
