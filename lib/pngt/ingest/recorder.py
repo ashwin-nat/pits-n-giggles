@@ -22,6 +22,7 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+import bisect
 from dataclasses import dataclass
 from typing import Optional
 
@@ -85,8 +86,13 @@ class DriverTelemetryRecorder:
         self._completed_laps: list[_InternalCompletedLap] = []
 
     def update(self, snapshot: BaseTelemetrySnapshot, frame_id: int) -> None:
-        """Called on every telemetry packet (~60 Hz). See the spec's Flashback Handling
-        section for how frame_id drives rollback -- not yet implemented here."""
+        """Called on every telemetry packet (~60 Hz). A frame_id lower than the last one
+        seen is unambiguously a flashback (lower layers already discard out-of-order
+        packets, so this can't be a late one) -- rewind recorded state to it before
+        processing this snapshot as a normal sample against the now-truncated buffers."""
+        if self._last_frame_id is not None and frame_id < self._last_frame_id:
+            self._rollback(frame_id)
+
         lap_distance_buffer = self._current_buffers["lap_distance"]
 
         if not lap_distance_buffer:
@@ -165,3 +171,37 @@ class DriverTelemetryRecorder:
         if value is not None:
             return value
         return float("nan") if self._dtypes[key] is SensorDtype.FLOAT32 else -1
+
+    def _rollback(self, target_frame_id: int) -> None:
+        """The sim's flashback buffer is 20-30 seconds, so the rewind target is always
+        within the current lap or at most one completed lap back -- no deeper rollback
+        is possible. Case A/B below per the spec's Flashback Handling section."""
+        if not self._frame_id_buffer or target_frame_id < self._frame_id_buffer[0]:
+            self._rollback_case_b(target_frame_id)
+        else:
+            self._rollback_case_a(target_frame_id)
+
+    def _rollback_case_a(self, target_frame_id: int) -> None:
+        """Target is within the current (in-progress) lap -- truncate every buffer to
+        just past the last sample at or before target_frame_id."""
+        keep = bisect.bisect_right(self._frame_id_buffer, target_frame_id)
+        self._frame_id_buffer = self._frame_id_buffer[:keep]
+        for key, values in self._current_buffers.items():
+            self._current_buffers[key] = values[:keep]
+
+    def _rollback_case_b(self, target_frame_id: int) -> None:
+        """Target predates the current lap -- discard it, unwind the last completed lap
+        back into _current_buffers, truncated to target_frame_id within that lap. The
+        restored lap's metadata is discarded; it's no longer a completed lap and will be
+        re-finalised when on_lap_change() fires again."""
+        if not self._completed_laps:
+            # No earlier lap to restore from -- target predates all recorded data.
+            self._current_buffers = self._new_buffers()
+            self._frame_id_buffer = []
+            return
+
+        restored = self._completed_laps.pop()
+        keep = bisect.bisect_right(restored.frame_ids, target_frame_id)
+        self._frame_id_buffer = restored.frame_ids[:keep]
+        self._current_buffers = {key: values[:keep] for key, values in restored.telemetry.items()}
+        self._current_lap_number = restored.metadata.lap_number

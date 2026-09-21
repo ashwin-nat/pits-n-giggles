@@ -350,3 +350,89 @@ def test_recorder_export_is_non_mutating():
     second = recorder.export()
 
     assert first == second
+
+# ----------------------------------------------------------------------------------------------------------------------
+# DriverTelemetryRecorder -- flashback detection + rollback
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_recorder_flashback_case_a_truncates_within_current_lap():
+    """Target frame_id (3) falls within the current lap's own buffer (frames 1-5) --
+    truncate to it, then process the flashback packet itself as a normal append against
+    the now-truncated last sample."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2)
+    recorder.update(_FakeSnapshot(lap_distance=20.0, lap_time_ms=0, speed=120.0, gear=3), frame_id=3)
+    recorder.update(_FakeSnapshot(lap_distance=30.0, lap_time_ms=0, speed=130.0, gear=4), frame_id=4)
+    recorder.update(_FakeSnapshot(lap_distance=40.0, lap_time_ms=0, speed=140.0, gear=5), frame_id=5)
+
+    # Flashback to frame 3: buffers truncate to [1, 2, 3], then this packet appends as frame 3 again.
+    recorder.update(_FakeSnapshot(lap_distance=25.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=3)
+
+    export = recorder.export()
+
+    assert export.in_progress_telemetry == {
+        "lap_distance": [0.0, 10.0, 20.0, 25.0],
+        "speed": [100.0, 110.0, 120.0, 999.0],
+        "gear": [1, 2, 3, 9],
+    }
+    assert export.in_progress_num_points == 4
+    assert export.completed_laps == []
+
+
+def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalising_it():
+    """Target frame_id (1) predates the current (second) lap entirely -- pop the last
+    completed lap, truncate it to the target, restore it as the new current buffer, then
+    process the flashback packet itself as a normal append. Once re-finalised via a
+    second on_lap_change(), it becomes a genuinely new completed lap -- the original
+    IngestLapMetadata object is gone, discarded by the rollback."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=100.0, gear=1), frame_id=1)
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=110.0, gear=2), frame_id=2)
+    original_lap_1 = sample_lap_metadata(lap_number=1)
+    recorder.on_lap_change(original_lap_1)  # current_lap_number becomes 2
+
+    recorder.update(_FakeSnapshot(lap_distance=0.0, lap_time_ms=0, speed=200.0, gear=3), frame_id=3)
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=210.0, gear=4), frame_id=4)
+
+    # Flashback to frame 1, before lap 2 ever started: lap 1 is popped and truncated to
+    # frame 1, restored as the current buffer, then this packet appends as frame 1 again.
+    recorder.update(_FakeSnapshot(lap_distance=5.0, lap_time_ms=0, speed=999.0, gear=9), frame_id=1)
+
+    export = recorder.export()
+    assert export.completed_laps == []  # lap 1 was popped, not restored to completed_laps
+    assert export.in_progress_lap_number == 1  # the restored lap's own number, not 2
+    assert export.in_progress_telemetry == {
+        "lap_distance": [0.0, 5.0],
+        "speed": [100.0, 999.0],
+        "gear": [1, 9],
+    }
+
+    # Re-finalising with a fresh IngestLapMetadata proves the restored data is treated as
+    # a genuinely new lap, independent of the original (discarded) object.
+    redone_lap_1 = sample_lap_metadata(lap_number=1)
+    recorder.on_lap_change(redone_lap_1)
+    final_export = recorder.export()
+
+    assert redone_lap_1 is not original_lap_1
+    assert redone_lap_1.num_points == 2
+    assert original_lap_1.num_points == 2  # untouched since being discarded -- still its old value
+    assert len(final_export.completed_laps) == 1
+    assert final_export.completed_laps[0].metadata is redone_lap_1
+    assert final_export.in_progress_lap_number == 2
+
+
+def test_recorder_flashback_case_b_with_no_earlier_lap_clears_buffers():
+    """Target frame_id predates even the first sample ever recorded, with no completed
+    lap to restore from -- buffers are cleared, not crashed, and recording continues
+    normally from the flashback packet itself."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=10.0, lap_time_ms=0, speed=1.0, gear=1), frame_id=5)
+
+    recorder.update(_FakeSnapshot(lap_distance=3.0, lap_time_ms=0, speed=2.0, gear=2), frame_id=2)
+
+    export = recorder.export()
+
+    assert export.in_progress_telemetry == {"lap_distance": [3.0], "speed": [2.0], "gear": [2]}
+    assert export.in_progress_num_points == 1
+    assert export.in_progress_lap_number == 1

@@ -48,6 +48,17 @@ Full behavioural spec: `plans/telemetry_recording/telemetry-ingest-spec.md`.
   first `update()` call (if it happens before any `on_lap_change()`) seeds it
   to `1` purely as an `export()` label for whatever partial lap recording
   started mid-session on — not a claim about which lap it actually is.
+- Flashback detection is frame_id-only, never the sim's own (unreliable)
+  flashback event packet: lower layers already discard out-of-order packets,
+  so any `frame_id` lower than the last one seen is unambiguously a rewind.
+  Rollback truncates in place (Case A, `bisect.bisect_right` against
+  `_frame_id_buffer`) when the target is still within the current lap, or
+  pops and truncates the last completed lap back into the current buffer
+  (Case B) when it isn't — discarding that lap's `IngestLapMetadata` for
+  good; it's re-finalised as a new object when `on_lap_change()` fires again.
+  The sim's 20-30s flashback buffer means the rewind target is never more
+  than one completed lap back, so Case B never needs to reach further than
+  the single most recently completed lap.
 
 ## Structure
 
@@ -60,7 +71,7 @@ from `lib.pngt`, not `lib.pngt.ingest.dto`, unless you're inside this package.
 |---|---|
 | `dto.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses this and adds its own fields), `TelemetryRecorderConfig` (no collision with the parent package, plain names), plus `IngestLapMetadata`, `IngestCompletedLap`, `IngestDriverExportData` (named with the `Ingest` prefix because the parent package's `dto.py` already has a `LapMetadata`/`CompletedLap`/`DriverExportData` meaning something different) |
 | `mapper.py` | `SensorMapper` ABC only (`get_value()` + `get_dtype()`) — no concrete implementation ships here, see Design principles above |
-| `recorder.py` | `DriverTelemetryRecorder` — accumulation, lap rollover, export (flashback detection/rollback not yet built) |
+| `recorder.py` | `DriverTelemetryRecorder` — accumulation, lap rollover, flashback detection/rollback, export |
 
 ## Not in scope here
 

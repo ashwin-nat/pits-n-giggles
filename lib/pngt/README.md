@@ -77,7 +77,7 @@ would just waste CPU).
 | `reader.py` | `read_header()` / `read_manifest()` / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
 | `filename.py` | `suggest_filename()` — cosmetic default filename, never used implicitly by `write_session()` |
-| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses it elsewhere -- see below), `IngestLapMetadata`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, the `SensorMapper` extension point (`get_value()` + `get_dtype()`, no concrete implementation shipped), and `DriverTelemetryRecorder` (accumulation, lap rollover, export — flashback rollback not yet built) — see `ingest/`'s own docs |
+| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses it elsewhere -- see below), `IngestLapMetadata`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, the `SensorMapper` extension point (`get_value()` + `get_dtype()`, no concrete implementation shipped), and `DriverTelemetryRecorder` (accumulation, lap rollover, flashback detection/rollback, export) — see `ingest/`'s own docs |
 
 ## Usage
 
