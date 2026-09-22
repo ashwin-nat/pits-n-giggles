@@ -45,7 +45,7 @@ from watchfiles import awatch
 
 from lib.pngt import (DriverNotFoundError, PngtError, read_lap_telemetry,
                       rename_session)
-from lib.track_segment_info import TrackSegmentsDatabase
+from lib.track_segments_classifier import TrackSegmentsDatabase
 
 from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
                                lap_to_api, session_to_api,

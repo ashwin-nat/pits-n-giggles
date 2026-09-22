@@ -42,9 +42,9 @@ from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
 from apps.web.pngt_discovery import PngtSessionEntry
 from lib.pngt import (DriverRecord, LapMetadata, SensorConfig, SensorType,
                       SessionBest, SessionMetadata, TrackInfo)
-from lib.track_segment_info.types import (ComplexCornerSegmentInfo,
-                                          CornerSegmentInfo,
-                                          StraightSegmentInfo)
+from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
+                                                 CornerSegmentInfo,
+                                                 StraightSegmentInfo)
 
 
 @pytest.mark.parametrize("raw,expected", [

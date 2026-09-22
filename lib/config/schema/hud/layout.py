@@ -49,6 +49,7 @@ class OverlayId(str, Enum):
     TYRE_SETS        = "tyre_sets_standalone"
     PACE_COMP        = "pace_comp_standalone"
     TRAFFIC_MONITOR  = "traffic_monitor_standalone"
+    LAST_CORNER_STATS = "last_corner_stats_standalone"
 
     @property
     def display_name(self) -> str:
@@ -70,6 +71,7 @@ class OverlayId(str, Enum):
             OverlayId.TYRE_SETS:       "Tyre Sets",
             OverlayId.PACE_COMP:       "Pace Comparison",
             OverlayId.TRAFFIC_MONITOR: "Traffic Monitor",
+            OverlayId.LAST_CORNER_STATS: "Last Corner Stats",
         }[self]
 
 # -------------------------------------- MODELS ------------------------------------------------------------------------
@@ -147,6 +149,7 @@ DEFAULT_OVERLAY_LAYOUT: Dict[str, OverlayPosition] = {
     OverlayId.TYRE_SETS:       OverlayPosition(x=420,  y=840),
     OverlayId.PACE_COMP:       OverlayPosition(x=830,  y=840),
     OverlayId.TRAFFIC_MONITOR: OverlayPosition(x=1240, y=840),
+    OverlayId.LAST_CORNER_STATS: OverlayPosition(x=10,   y=1070),
 }
 
 # -------------------------------------- HELPERS -----------------------------------------------------------------------

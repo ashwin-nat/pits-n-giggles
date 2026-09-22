@@ -352,8 +352,8 @@ class StreamOverlayData(BaseAPI):
         #   -120   -> 5180
         #   -5400  -> 5200
         #
-        if self.m_circuit_len:
-            dist = lap_data.m_lapDistance % self.m_circuit_len
+        if self.m_circuit_len: # TODO: do we need this if check? we have sector info directly
+            dist = self.m_ref_obj.m_lap_info.m_lap_dist_wrapped
             sector = str(lap_data.m_sector)
         else:
             dist = None
@@ -376,7 +376,7 @@ class StreamOverlayData(BaseAPI):
             "ers-mode" : str(car_status.m_ersDeployMode),
             "circuit-position" : dist,
             "sector" : sector,
-            "circuit-length" : self.m_circuit_len,
+            "circuit-length" : self.m_circuit_len, # TODO: can we get rid of this? segments db has this info
             "pit-limiter-enabled" : pit_limiter,
         }
 
@@ -402,6 +402,13 @@ class StreamOverlayData(BaseAPI):
             "mguk-harv-power-w" : harv_power_mguk,
             "mguh-harv-power-w" : harv_power_mguh,
         }
+
+    def _getLastCornerStatsData(self) -> Dict[str, Any]:
+        """Get last corner stats data."""
+        if not self.m_ref_obj:
+            return {}
+
+        return self.m_ref_obj.m_last_corner_tracker.stats().to_dict()
 
     def toJSON(self, stream_overlay_start_sample_data: Optional[bool] = False) -> Dict[str, Any]:
         """Dump this object into JSON
@@ -452,6 +459,7 @@ class StreamOverlayData(BaseAPI):
             "pace-comparison" : self.m_pace_comp_json,
             "motion" : self.m_motion_json,
             "2026-regs-info" : self.m_2026_regs_json,
+            "last-corner-stats" : self._getLastCornerStatsData()
         }
 
         if self.m_export_hud_data:
