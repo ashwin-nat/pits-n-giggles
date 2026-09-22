@@ -54,7 +54,6 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     throttle: Optional[float] = None   # 0.0-1.0
     brake: Optional[float] = None      # 0.0-1.0
     steering: Optional[float] = None   # -1.0 (full left) to 1.0 (full right)
-    clutch: Optional[float] = None     # 0.0-1.0
 
     # Vehicle state
     speed: Optional[float] = None      # km/h

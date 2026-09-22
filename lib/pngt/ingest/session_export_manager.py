@@ -23,28 +23,42 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+from typing import Callable, Iterable, Optional
 
-from ..dto import SessionBest
-from .dto import BaseTelemetrySnapshot, IngestDriverExportData, IngestLapMetadata, TelemetryRecorderConfig
+from ..dto import DriverRecord, SessionBest, SessionMetadata
+from ..writer import write_session
+from .dto import IngestDriverExportData, TelemetryRecorderConfig
+from .export_adapter import adapt_driver_export
 from .mapper import SensorMapper
-from .recorder import DriverTelemetryRecorder
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class SessionExportScopeConfig:
+    """Recording-scope knobs. Game-agnostic on its own -- an app wiring these from real
+    config (e.g. Phase 9's TelemetryRecordingSettings) is what gives them meaning."""
     enabled_in_spectator_mode: bool = False
     record_other_players_cars: bool = False
 
 
+@dataclass(frozen=True)
+class DriverExportCandidate:
+    """One driver's export-time scope facts, plus `export_fn` -- a zero-arg callable
+    returning its IngestDriverExportData. Not a recorder reference directly: the caller
+    may need extra work first (e.g. reconciling against Session History), so `export_fn`
+    can be that wrapper method just as easily as a bare `recorder.export`."""
+    driver_index: int
+    export_fn: Callable[[], IngestDriverExportData]
+    is_telemetry_public: bool
+    is_player: bool
+
+
 class SessionExportManager:
-    """Owns one DriverTelemetryRecorder per driver for the current session, applies
-    recording-scope rules, and tracks the running session-best lap. Constructed once per
-    session, not rebuilt per query. See this package's README for the full design
-    rationale (scope rule table, late-arrival ordering, why `_discarded` exists
-    independently of `_recorders`).
-    """
+    """Two responsibilities: aggregating each driver's already-recorded data
+    (export_scoped(), scope-filtered) and writing it to a .pngt file (write_pngt()).
+    Records nothing itself and owns no per-driver state -- each driver feeds its own
+    DriverTelemetryRecorder directly over the session. Constructed once per session."""
 
     def __init__(
         self,
@@ -54,126 +68,31 @@ class SessionExportManager:
     ) -> None:
         """
         Args:
-            scope_config (SessionExportScopeConfig): Recording-scope knobs (spectator
-                mode, other drivers' cars).
-            recorder_config (TelemetryRecorderConfig): Sensor selection passed straight
-                through to each driver's DriverTelemetryRecorder.
-            mapper (SensorMapper): Sensor key resolver passed straight through to each
-                driver's DriverTelemetryRecorder.
+            scope_config (SessionExportScopeConfig): Recording-scope knobs.
+            recorder_config (TelemetryRecorderConfig): Sensor keys recorders were built
+                with -- write_pngt() uses these for the .pngt manifest.
+            mapper (SensorMapper): Resolves each sensor key's SensorConfig/dtype for the
+                manifest -- write_pngt() uses mapper.sensor_config(), not part of the
+                ABC itself, so a mapper without one raises AttributeError there.
         """
         self._scope_config = scope_config
         self._recorder_config = recorder_config
         self._mapper = mapper
-        self._recorders: dict[int, DriverTelemetryRecorder] = {}
-        self._discarded: set[int] = set()
-        self._session_best: Optional[SessionBest] = None
 
-    # TODO: see if this can be removed. we will call update once per driver, since the driver recorder will
-    # lie in DataPerDriver
-    def update(self, driver_index: int, snapshot: BaseTelemetrySnapshot, frame_id: int) -> None:
-        """Routes a telemetry sample to driver_index's recorder, creating it eagerly on
-        first call for a never-seen, not-yet-discarded driver_index. No-ops for a
-        discarded driver.
-
-        Args:
-            driver_index (int): The driver this sample belongs to.
-            snapshot (BaseTelemetrySnapshot): The telemetry sample to record.
-            frame_id (int): The sim's own per-packet frame identifier, used for
-                flashback detection.
-        """
-        if driver_index in self._discarded:
-            return
-        recorder = self._recorders.get(driver_index)
-        if recorder is None:
-            recorder = DriverTelemetryRecorder(driver_index, self._recorder_config, self._mapper)
-            self._recorders[driver_index] = recorder
-        recorder.update(snapshot, frame_id)
-
-    def on_lap_change(self, driver_index: int, completed_lap: IngestLapMetadata) -> None:
-        """Finalises driver_index's current lap and updates the running session-best
-        tracker if the completed lap is valid and faster than the current best. No-ops
-        for a discarded driver, or one with no recorder yet (no update() call has
-        happened for them, so there's nothing to finalise).
-
-        Args:
-            driver_index (int): The driver whose lap just completed.
-            completed_lap (IngestLapMetadata): Metadata for the lap that just ended.
-        """
-        if driver_index in self._discarded:
-            return
-        recorder = self._recorders.get(driver_index)
-        if recorder is None:
-            return
-        recorder.on_lap_change(completed_lap)
-
-        if not completed_lap.valid or completed_lap.lap_time_ms is None:
-            return
-        if self._session_best is None or completed_lap.lap_time_ms < self._session_best.lap_time_ms:
-            self._session_best = SessionBest(
-                driver_index=driver_index,
-                lap_number=completed_lap.lap_number,
-                lap_time_ms=completed_lap.lap_time_ms,
-            )
-
-    def apply_scope_update(
-        self,
-        driver_index: int,
-        *,
-        is_telemetry_public: bool,
-        is_player: bool,
-        is_spectating: bool,
-    ) -> None:
-        """Re-evaluates driver_index's recording scope against newly-known facts -- the
-        late-arrival discard trigger point (see this package's README). Marks the driver
-        discarded, and drops any recorder already accumulated for them, the moment they
-        fall out of scope. Idempotent for an already-discarded driver.
-
-        Args:
-            driver_index (int): The driver whose scope facts just became known.
-            is_telemetry_public (bool): Whether this driver has consented to their
-                telemetry being visible to others.
-            is_player (bool): Whether this is the local player's own car.
-            is_spectating (bool): Whether the app is currently spectating rather than
-                driving.
-        """
-        if driver_index in self._discarded:
-            return
-        if not self._in_scope(
-            is_telemetry_public=is_telemetry_public,
-            is_player=is_player,
-            is_spectating=is_spectating,
-        ):
-            self._discarded.add(driver_index)
-            self._recorders.pop(driver_index, None)
-
-    def export_all(self) -> dict[int, IngestDriverExportData]:
-        """Exports every active (non-discarded) recorder. export() itself is
-        non-mutating, so this can be called more than once if needed."""
-        return {
-            driver_index: recorder.export()
-            for driver_index, recorder in self._recorders.items()
-            if driver_index not in self._discarded
-        }
-
-    def session_best(self) -> Optional[SessionBest]:
-        """The fastest valid lap seen across all drivers so far this session, or None if
-        no valid lap has completed yet."""
-        return self._session_best
-
-    def clear(self) -> None:
-        """Resets all state for reuse across a session boundary (reset in place, not
-        reconstructed)."""
-        self._recorders.clear()
-        self._discarded.clear()
-        self._session_best = None
-
-    def _in_scope(
+    def in_scope(
         self,
         *,
         is_telemetry_public: bool,
         is_player: bool,
         is_spectating: bool,
     ) -> bool:
+        """Recording-scope rule:
+            - not public -> never in scope
+            - spectating -> in scope only if `enabled_in_spectator_mode` (no "own car"
+              while spectating, so `record_other_players_cars` doesn't apply)
+            - driving, own car -> always in scope (if public)
+            - driving, another car -> in scope only if `record_other_players_cars`
+        """
         if not is_telemetry_public:
             return False
         if is_spectating:
@@ -181,3 +100,66 @@ class SessionExportManager:
         if is_player:
             return True
         return self._scope_config.record_other_players_cars
+
+    def export_scoped(
+        self,
+        candidates: Iterable[DriverExportCandidate],
+        *,
+        is_spectating: bool,
+    ) -> dict[int, IngestDriverExportData]:
+        """Aggregates every in-scope driver's data in one pass, at session end.
+        `is_spectating` is session-wide, not per-driver."""
+        result: dict[int, IngestDriverExportData] = {}
+        for candidate in candidates:
+            if self.in_scope(
+                is_telemetry_public=candidate.is_telemetry_public,
+                is_player=candidate.is_player,
+                is_spectating=is_spectating,
+            ):
+                result[candidate.driver_index] = candidate.export_fn()
+        return result
+
+    def compute_session_best(
+        self,
+        driver_exports: dict[int, IngestDriverExportData],
+    ) -> Optional[SessionBest]:
+        """Scans already-exported data for the fastest valid lap across all drivers."""
+        best: Optional[SessionBest] = None
+        for driver_index, export in driver_exports.items():
+            for lap in export.completed_laps:
+                if not lap.metadata.valid or lap.metadata.lap_time_ms is None:
+                    continue
+                if best is None or lap.metadata.lap_time_ms < best.lap_time_ms:
+                    best = SessionBest(
+                        driver_index=driver_index,
+                        lap_number=lap.metadata.lap_number,
+                        lap_time_ms=lap.metadata.lap_time_ms,
+                    )
+        return best
+
+    def write_pngt(
+        self,
+        dest_path: Path,
+        session: SessionMetadata,
+        drivers: list[DriverRecord],
+        driver_exports: dict[int, IngestDriverExportData],
+    ) -> Path:
+        """Writes export_scoped()'s result to a .pngt file. Synchronous (blocking ZIP
+        write) -- offloading is the caller's call.
+
+        `session`/`drivers` come from the caller: session/driver identity data this
+        class has no access to. Every driver needs a `drivers` entry (including
+        out-of-scope ones); each entry's `is_telemetry_public` must agree with whether
+        that index is a key in `driver_exports`, or write_session() rejects it.
+
+        Returns:
+            Path: dest_path, once written.
+        """
+        sensor_keys = self._recorder_config.sensors
+        sensors = [self._mapper.sensor_config(key) for key in sensor_keys]
+        dtypes = {key: self._mapper.get_dtype(key) for key in sensor_keys}
+        driver_data = {
+            driver_index: adapt_driver_export(export)
+            for driver_index, export in driver_exports.items()
+        }
+        return write_session(dest_path, session, sensors, dtypes, drivers, driver_data)

@@ -27,11 +27,13 @@ SOFTWARE.
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Tuple)
 
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
+from apps.backend.state_mgmt_layer.pngt_export import write_pngt_file
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import report_session_save_skipped_from_child
 from lib.config import CaptureSettings, OverlayId, PngSettings
@@ -44,6 +46,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData, SafetyCarType)
+from lib.file_path import resolve_user_file
 from lib.inter_task_communicator import (
     AsyncInterTaskCommunicator, FinalClassificationNotification,
     HudCycleMfdNotification, HudMfdInteractionNotification,
@@ -513,6 +516,7 @@ class F1TelemetryHandler:
             # Perform the auto save stuff only if configured
             if self._shouldSaveData():
                 await self.postGameDumpToFile(final_json, session_uid=packet.m_header.m_sessionUID)
+                await self.postGameDumpToPngtFile(session_uid=packet.m_header.m_sessionUID)
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -848,6 +852,33 @@ class F1TelemetryHandler:
         except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
+
+    async def postGameDumpToPngtFile(self, session_uid: int) -> None:
+        """
+        Write the session's recorded telemetry to a .pngt file.
+
+        Arguments:
+            session_uid (int): Session UID for which the final classification was received.
+        """
+
+        event_str = self.m_session_state_ref.getEventInfoStr()
+        if not event_str:
+            return
+
+        now = datetime.now().astimezone()
+        timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
+        date_str = now.strftime("%Y_%m_%d")
+        dir_path = Path(resolve_user_file("data")) / date_str / "telemetry"
+        dir_path.mkdir(parents=True, exist_ok=True)
+        dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
+
+        try:
+            # blocking ZIP write, offloaded to avoid stalling the event loop
+            await asyncio.to_thread(write_pngt_file, self.m_session_state_ref, dest_path)
+            self.m_logger.info("Wrote telemetry to %s. Session UID %d", dest_path, session_uid)
+        except Exception: # pylint: disable=broad-exception-caught
+            # No need to crash the app just because write failed
+            self.m_logger.exception("Failed to write telemetry to %s", dest_path)
 
     def getStats(self) -> Dict[str, Any]:
         """Get telemetry handler stats.

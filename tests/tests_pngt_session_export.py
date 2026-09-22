@@ -36,13 +36,24 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.pngt import (
     BaseTelemetrySnapshot,
+    DriverExportCandidate,
+    DriverRecord,
+    IngestCompletedLap,
+    IngestDriverExportData,
     IngestLapMetadata,
+    SensorConfig,
     SensorDtype,
     SensorMapper,
+    SensorType,
     SessionBest,
     SessionExportManager,
     SessionExportScopeConfig,
+    SessionMetadata,
     TelemetryRecorderConfig,
+    TrackInfo,
+    read_driver_laps,
+    read_lap_telemetry,
+    read_session,
 )
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -55,8 +66,8 @@ class _FakeSnapshot(BaseTelemetrySnapshot):
 
 
 class _FakeMapper(SensorMapper):
-    """Resolves exactly one sensor, "speed" -- enough to exercise recorder construction
-    without needing any real (F1-specific) sensor catalog."""
+    """Resolves exactly one sensor, "speed" -- enough to exercise aggregation and
+    manifest-building without needing any real (F1-specific) sensor catalog."""
 
     def get_value(self, snapshot, sensor_key):
         if sensor_key != "speed":
@@ -68,21 +79,32 @@ class _FakeMapper(SensorMapper):
             raise KeyError(sensor_key)
         return SensorDtype.FLOAT32
 
+    def sensor_config(self, sensor_key):
+        if sensor_key != "speed":
+            raise KeyError(sensor_key)
+        return SensorConfig(key="speed", label="Speed", unit="km/h", type=SensorType.CONTINUOUS)
 
-def make_snapshot(lap_distance: float, lap_time_ms: int, speed: float = 200.0) -> _FakeSnapshot:
-    return _FakeSnapshot(lap_distance=lap_distance, lap_time_ms=lap_time_ms, speed=speed)
 
-
-def make_lap(lap_number: int, lap_time_ms: int = 90_000, valid: bool = True) -> IngestLapMetadata:
-    return IngestLapMetadata(
-        lap_number=lap_number,
-        lap_time_ms=lap_time_ms,
-        valid=valid,
-        tyre_compound="Soft",
-        tyre_laps=lap_number,
-        pit_in_lap=False,
-        pit_out_lap=False,
-        num_points=0,
+def make_ingest_export(driver_index: int, lap_number: int, lap_time_ms: int, valid: bool = True) -> IngestDriverExportData:
+    lap = IngestCompletedLap(
+        metadata=IngestLapMetadata(
+            lap_number=lap_number,
+            lap_time_ms=lap_time_ms,
+            valid=valid,
+            tyre_compound="Soft",
+            tyre_laps=lap_number,
+            pit_in_lap=False,
+            pit_out_lap=False,
+            num_points=2,
+        ),
+        telemetry={"lap_distance": [0.0, 100.0], "lap_time_ms": [0, 1000], "speed": [50.0, 150.0]},
+    )
+    return IngestDriverExportData(
+        driver_index=driver_index,
+        completed_laps=[lap],
+        in_progress_lap_number=lap_number + 1,
+        in_progress_telemetry={},
+        in_progress_num_points=0,
     )
 
 
@@ -96,160 +118,126 @@ def fixture_manager() -> SessionExportManager:
 
 
 def own_car_scope() -> dict:
-    return {"is_telemetry_public": True, "is_player": True, "is_spectating": False}
+    return {"is_telemetry_public": True, "is_player": True}
 
 
 def other_human_scope() -> dict:
-    return {"is_telemetry_public": True, "is_player": False, "is_spectating": False}
+    return {"is_telemetry_public": True, "is_player": False}
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Tests -- recorder lifecycle
+# Tests -- in_scope() decision table
 # ----------------------------------------------------------------------------------------------------------------------
 
-def test_update_creates_recorder_on_first_call(manager: SessionExportManager) -> None:
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    assert 0 in manager._recorders  # pylint: disable=protected-access
-    assert manager.export_all().keys() == {0}
-
-
-def test_update_noop_for_already_discarded_driver(manager: SessionExportManager) -> None:
-    manager.apply_scope_update(0, is_telemetry_public=False, is_player=True, is_spectating=False)
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    assert 0 not in manager._recorders  # pylint: disable=protected-access
-    assert manager.export_all() == {}
-
-
-def test_scope_disqualification_before_telemetry_prevents_recorder_creation(manager: SessionExportManager) -> None:
-    """Scope facts arriving first must be remembered even with no recorder yet --
-    otherwise a restricted driver would get a recorder built for them anyway on first
-    telemetry."""
-    manager.apply_scope_update(3, is_telemetry_public=False, is_player=False, is_spectating=False)
-    manager.update(3, make_snapshot(5.0, 500), frame_id=1)
-    manager.update(3, make_snapshot(15.0, 600), frame_id=2)
-    assert 3 not in manager._recorders  # pylint: disable=protected-access
-
-
-def test_scope_disqualification_after_telemetry_drops_recorder(manager: SessionExportManager) -> None:
-    manager.update(1, make_snapshot(10.0, 1000), frame_id=1)
-    assert 1 in manager._recorders  # pylint: disable=protected-access
-    manager.apply_scope_update(1, is_telemetry_public=False, is_player=False, is_spectating=False)
-    assert 1 not in manager._recorders  # pylint: disable=protected-access
-    assert manager.export_all() == {}
-
-
-def test_apply_scope_update_does_not_un_discard(manager: SessionExportManager) -> None:
-    manager.apply_scope_update(2, is_telemetry_public=False, is_player=True, is_spectating=False)
-    manager.apply_scope_update(2, **own_car_scope())
-    manager.update(2, make_snapshot(10.0, 1000), frame_id=1)
-    assert 2 not in manager._recorders  # pylint: disable=protected-access
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Tests -- scope decision table
-# ----------------------------------------------------------------------------------------------------------------------
-
-def test_own_car_always_recorded_even_when_other_players_cars_disabled() -> None:
+def test_own_car_always_in_scope_even_when_other_players_cars_disabled() -> None:
     manager = SessionExportManager(
         scope_config=SessionExportScopeConfig(record_other_players_cars=False),
         recorder_config=TelemetryRecorderConfig(sensors=("speed",)),
         mapper=_FakeMapper(),
     )
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(0, **own_car_scope())
-    assert 0 in manager.export_all()
+    assert manager.in_scope(**own_car_scope(), is_spectating=False) is True
 
 
-@pytest.mark.parametrize("record_other_players_cars,expected_recorded", [(False, False), (True, True)])
-def test_other_human_car_respects_record_other_players_cars(
-    record_other_players_cars: bool,
-    expected_recorded: bool,
-) -> None:
+@pytest.mark.parametrize("record_other_players_cars,expected", [(False, False), (True, True)])
+def test_other_human_car_respects_record_other_players_cars(record_other_players_cars: bool, expected: bool) -> None:
     manager = SessionExportManager(
         scope_config=SessionExportScopeConfig(record_other_players_cars=record_other_players_cars),
         recorder_config=TelemetryRecorderConfig(sensors=("speed",)),
         mapper=_FakeMapper(),
     )
-    manager.update(1, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(1, **other_human_scope())
-    assert (1 in manager.export_all()) is expected_recorded
+    assert manager.in_scope(**other_human_scope(), is_spectating=False) is expected
 
 
-@pytest.mark.parametrize("enabled_in_spectator_mode,expected_recorded", [(False, False), (True, True)])
-def test_spectator_mode_gate_applies_regardless_of_is_player(
-    enabled_in_spectator_mode: bool,
-    expected_recorded: bool,
-) -> None:
+@pytest.mark.parametrize("enabled_in_spectator_mode,expected", [(False, False), (True, True)])
+def test_spectator_mode_gate_applies_regardless_of_is_player(enabled_in_spectator_mode: bool, expected: bool) -> None:
     manager = SessionExportManager(
         scope_config=SessionExportScopeConfig(enabled_in_spectator_mode=enabled_in_spectator_mode),
         recorder_config=TelemetryRecorderConfig(sensors=("speed",)),
         mapper=_FakeMapper(),
     )
-    manager.update(4, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(4, is_telemetry_public=True, is_player=True, is_spectating=True)
-    assert (4 in manager.export_all()) is expected_recorded
+    assert manager.in_scope(is_telemetry_public=True, is_player=True, is_spectating=True) is expected
 
 
-def test_restricted_telemetry_discarded_regardless_of_other_flags(manager: SessionExportManager) -> None:
-    manager.update(5, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(5, is_telemetry_public=False, is_player=True, is_spectating=False)
-    assert 5 not in manager.export_all()
+def test_restricted_telemetry_never_in_scope(manager: SessionExportManager) -> None:
+    assert manager.in_scope(is_telemetry_public=False, is_player=True, is_spectating=False) is False
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Tests -- on_lap_change routing + session best
+# Tests -- export_scoped()
 # ----------------------------------------------------------------------------------------------------------------------
 
-def test_on_lap_change_noop_without_a_recorder(manager: SessionExportManager) -> None:
-    manager.on_lap_change(9, make_lap(1))  # no update() ever called for driver 9
-    assert manager.session_best() is None
-
-
-def test_on_lap_change_noop_for_discarded_driver(manager: SessionExportManager) -> None:
-    manager.update(6, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(6, is_telemetry_public=False, is_player=True, is_spectating=False)
-    manager.on_lap_change(6, make_lap(1, lap_time_ms=80_000))
-    assert manager.session_best() is None
-
-
-def test_session_best_tracks_fastest_valid_lap_across_drivers(manager: SessionExportManager) -> None:
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    manager.update(1, make_snapshot(10.0, 1000), frame_id=1)
-
-    manager.on_lap_change(0, make_lap(1, lap_time_ms=95_000))
-    manager.on_lap_change(1, make_lap(1, lap_time_ms=88_000))
-    manager.on_lap_change(0, make_lap(2, lap_time_ms=90_000))
-
-    assert manager.session_best() == SessionBest(driver_index=1, lap_number=1, lap_time_ms=88_000)
-
-
-def test_session_best_ignores_invalid_laps(manager: SessionExportManager) -> None:
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    manager.on_lap_change(0, make_lap(1, lap_time_ms=50_000, valid=False))
-    assert manager.session_best() is None
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Tests -- export_all / clear
-# ----------------------------------------------------------------------------------------------------------------------
-
-def test_export_all_excludes_discarded_drivers(manager: SessionExportManager) -> None:
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    manager.update(1, make_snapshot(10.0, 1000), frame_id=1)
-    manager.apply_scope_update(1, is_telemetry_public=False, is_player=False, is_spectating=False)
-
-    result = manager.export_all()
+def test_export_scoped_includes_only_in_scope_drivers(manager: SessionExportManager) -> None:
+    candidates = [
+        DriverExportCandidate(0, lambda: make_ingest_export(0, 1, 90_000), **own_car_scope()),
+        DriverExportCandidate(1, lambda: make_ingest_export(1, 1, 91_000), is_telemetry_public=False, is_player=False),
+    ]
+    result = manager.export_scoped(candidates, is_spectating=False)
     assert result.keys() == {0}
+    assert result[0].driver_index == 0
 
 
-def test_clear_resets_to_a_fresh_state(manager: SessionExportManager) -> None:
-    manager.update(0, make_snapshot(10.0, 1000), frame_id=1)
-    manager.on_lap_change(0, make_lap(1, lap_time_ms=88_000))
-    manager.apply_scope_update(1, is_telemetry_public=False, is_player=False, is_spectating=False)
+def test_export_scoped_does_not_call_export_fn_for_out_of_scope_candidates(manager: SessionExportManager) -> None:
+    calls = []
 
-    manager.clear()
+    def tracked_export():
+        calls.append(1)
+        return make_ingest_export(1, 1, 90_000)
 
-    assert manager.export_all() == {}
-    assert manager.session_best() is None
-    assert manager._recorders == {}  # pylint: disable=protected-access
-    assert manager._discarded == set()  # pylint: disable=protected-access
+    candidates = [DriverExportCandidate(1, tracked_export, is_telemetry_public=False, is_player=False)]
+    manager.export_scoped(candidates, is_spectating=False)
 
-    # behaves like a fresh instance afterward
-    manager.update(1, make_snapshot(10.0, 1000), frame_id=1)
-    assert 1 in manager.export_all()
+    assert calls == []
+
+
+def test_export_scoped_empty_candidates_returns_empty_dict(manager: SessionExportManager) -> None:
+    assert manager.export_scoped([], is_spectating=False) == {}
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Tests -- compute_session_best()
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_compute_session_best_picks_fastest_valid_lap_across_drivers(manager: SessionExportManager) -> None:
+    driver_exports = {
+        0: make_ingest_export(0, 1, 95_000),
+        1: make_ingest_export(1, 1, 88_000),
+    }
+    assert manager.compute_session_best(driver_exports) == SessionBest(driver_index=1, lap_number=1, lap_time_ms=88_000)
+
+
+def test_compute_session_best_ignores_invalid_laps(manager: SessionExportManager) -> None:
+    driver_exports = {0: make_ingest_export(0, 1, 50_000, valid=False)}
+    assert manager.compute_session_best(driver_exports) is None
+
+
+def test_compute_session_best_empty_input_returns_none(manager: SessionExportManager) -> None:
+    assert manager.compute_session_best({}) is None
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Tests -- write_pngt() (aggregation output -> real .pngt file, round trip)
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_write_pngt_round_trips(manager: SessionExportManager, tmp_path) -> None:
+    driver_exports = {0: make_ingest_export(0, 1, 88_500)}
+    session = SessionMetadata(
+        session_uid=42, session_name="Test", session_type="Race", app_version="1.0.0",
+        game_year=2025, formula="F1", game_version="1.30", timestamp="2026-09-23T00:00:00Z",
+        track=TrackInfo(id=10, name="Spa"), laps_count=1,
+        session_best=manager.compute_session_best(driver_exports),
+    )
+    drivers = [
+        DriverRecord(0, "Driver Zero", "Team A", 1, None, None, is_telemetry_public=True),
+        DriverRecord(1, "Driver One", "Team B", 2, None, None, is_telemetry_public=False),
+    ]
+
+    dest_path = manager.write_pngt(tmp_path / "session.pngt", session, drivers, driver_exports)
+
+    assert dest_path.exists()
+    parsed = read_session(dest_path)
+    assert parsed.session.session_uid == 42
+    assert parsed.session.session_best.lap_time_ms == 88_500
+    assert {d.driver_index for d in parsed.drivers} == {0, 1}
+
+    laps = read_driver_laps(dest_path, driver_index=0)
+    assert [lap.lap_number for lap in laps] == [1]
+    assert read_driver_laps(dest_path, driver_index=1) == []  # restricted, no folder at all
+
+    telemetry = read_lap_telemetry(dest_path, driver_index=0, lap_number=1)
+    assert list(telemetry["speed"]) == pytest.approx([50.0, 150.0])

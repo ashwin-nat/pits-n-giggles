@@ -34,6 +34,9 @@ from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SessionType,
                           TrackID)
 from lib.last_corner_stats import LastCornerTracker, TelemetrySample
+from lib.pngt import (DriverTelemetryRecorder, IngestCompletedLap,
+                      IngestDriverExportData, IngestLapMetadata,
+                      TelemetryRecorderConfig)
 from lib.race_ctrl import (CarDamageRaceControlMessage,
                            DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
@@ -46,6 +49,8 @@ from .lap_info import LapInfo
 from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .pit_info import PitInfo
+from .sensor_mapper import F1SensorMapper
+from .telemetry_recorder import TelemetrySnapshot
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
 
@@ -110,6 +115,7 @@ class DataPerDriver:
         m_race_ctrl (DriverRaceControlManager): Manager for race control messages specific to the driver.
         m_delta_mgr (LapDeltaManager): Lap delta manager
         m_last_corner_tracker (LastCornerTracker): Tracks stats regarding last corner
+        m_tel_rec (DriverTelemetryRecorder): Telemetry recorder for the driver
     """
 
     __slots__ = (
@@ -131,6 +137,8 @@ class DataPerDriver:
         "m_delta_mgr",
         "m_last_corner_tracker",
         "m_state_ref",
+        "m_tel_rec",
+        "m_tel_rec_last_frame_id",
     )
 
     CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
@@ -224,6 +232,15 @@ class DataPerDriver:
 
         # State/parent ref
         self.m_state_ref: "SessionState" = state_ref
+
+        self.m_tel_rec: DriverTelemetryRecorder = DriverTelemetryRecorder(
+            driver_index=index,
+            config=TelemetryRecorderConfig(sensors=F1SensorMapper.known_sensor_keys()),
+            mapper=F1SensorMapper(),
+        )
+        # Diagnostic only -- mirrors DriverTelemetryRecorder's own flashback trigger
+        # (frame_id decreasing), for logging (lib/pngt has no logger).
+        self.m_tel_rec_last_frame_id: Optional[int] = None
 
     @property
     def is_valid(self) -> bool:
@@ -634,6 +651,20 @@ class DataPerDriver:
         # If old_lap_number is less than max lap num in the dict, then scrap the now outdated data
         if is_flashback and session_type and session_type.isRaceTypeSession():
             self._handleFlashBack(old_lap_number)
+
+        # skip zeroth lap
+        if old_lap_number > 0 and not is_flashback:
+            self.m_tel_rec.on_lap_change(IngestLapMetadata(
+                lap_number=old_lap_number,
+                # lap_time_ms/valid are not known yet here, will be filled at export time from Session History pkt
+                lap_time_ms=None,
+                valid=False,
+                tyre_compound=str(self.m_tyre_info.tyre_vis_compound),
+                tyre_laps=69, # TODO
+                pit_in_lap=False,
+                pit_out_lap=False,
+                num_points=0,  # overwritten in place by on_lap_change() itself
+            ))
 
         # Check if the old lap number is already present in the snapshots (lap already processed)
         if old_lap_number in self.m_per_lap_snapshots:
@@ -1488,3 +1519,100 @@ class DataPerDriver:
                 circuit_pos_m=lap_dist,
                 speed_kmph=pkt.m_speed
             ))
+
+    def addTelemetrySnapshot(self, frame_id: int):
+        """Record the snapshot at this point
+
+        Args:
+            frame_id (int): Frame ID
+        """
+        car_status_pkt = self.m_packet_copies.m_packet_car_status
+        car_telemetry_pkt = self.m_packet_copies.m_packet_car_telemetry
+        tyre_wear = self.m_tyre_info.tyre_wear.latest
+
+        raw_lap_distance = self.m_lap_info.m_lap_dist_raw
+        if raw_lap_distance is not None and raw_lap_distance < 0:
+            self.m_logger.debug(
+                "Driver %s - negative raw lap distance %.2f (pit exit, before crossing the line)",
+                str(self), raw_lap_distance,
+            )
+
+        snapshot = TelemetrySnapshot(
+            # TODO: re-evaluate if normalized can be used
+            lap_distance=raw_lap_distance,
+            lap_time_ms=self.m_lap_info.m_curr_lap_ms,
+
+            throttle=(car_telemetry_pkt.m_throttle if car_telemetry_pkt else None),
+            brake=(car_telemetry_pkt.m_brake if car_telemetry_pkt else None),
+            steering=(car_telemetry_pkt.m_steer if car_telemetry_pkt else None),
+
+            speed=(car_telemetry_pkt.m_speed if car_telemetry_pkt else None),
+            gear=(car_telemetry_pkt.m_gear if car_telemetry_pkt else None),
+            engine_rpm=(car_telemetry_pkt.m_engineRPM if car_telemetry_pkt else None),
+
+            ers_deploy_mode=(car_status_pkt.m_ersDeployMode.value if car_status_pkt else None),
+            ers_store_energy=(car_status_pkt.m_ersStoreEnergy if car_status_pkt else None),
+
+            tyre_wear_fl=tyre_wear.fl_tyre_wear if tyre_wear else None,
+            tyre_wear_fr=tyre_wear.fr_tyre_wear if tyre_wear else None,
+            tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
+            tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
+        )
+        if self.m_tel_rec_last_frame_id is not None and frame_id < self.m_tel_rec_last_frame_id:
+            self.m_logger.debug(
+                "Driver %s - telemetry recorder flashback trigger: frame_id %d < last %d "
+                "(lap_distance=%s) -- DriverTelemetryRecorder will roll back",
+                str(self), frame_id, self.m_tel_rec_last_frame_id, snapshot.lap_distance,
+            )
+        self.m_tel_rec_last_frame_id = frame_id
+        self.m_tel_rec.update(snapshot, frame_id)
+
+    def exportTelemetry(self) -> IngestDriverExportData:
+        """Exports recorded telemetry, reconciling lap_time_ms/valid against Session
+        History (onLapChange() can't know either -- only Session History reports them).
+        A lap with no matching Session History entry yet is left unreconciled."""
+        export = self.m_tel_rec.export()
+        history = self.m_packet_copies.m_packet_session_history
+        if history is None:
+            self._logTelemetryExportSummary(export.completed_laps)
+            return export
+
+        lap_history = history.m_lapHistoryData[:history.m_numLaps]
+        reconciled_laps = []
+        for lap in export.completed_laps:
+            idx = lap.metadata.lap_number - 1
+            if 0 <= idx < len(lap_history):
+                hist_lap = lap_history[idx]
+                reconciled_laps.append(IngestCompletedLap(
+                    metadata=replace(
+                        lap.metadata,
+                        lap_time_ms=hist_lap.m_lapTimeInMS or None,
+                        valid=hist_lap.isLapValid(),
+                    ),
+                    telemetry=lap.telemetry,
+                ))
+            else:
+                reconciled_laps.append(lap)
+
+        self._logTelemetryExportSummary(reconciled_laps)
+        return IngestDriverExportData(
+            driver_index=export.driver_index,
+            completed_laps=reconciled_laps,
+            in_progress_lap_number=export.in_progress_lap_number,
+            in_progress_telemetry=export.in_progress_telemetry,
+            in_progress_num_points=export.in_progress_num_points,
+        )
+
+    def _logTelemetryExportSummary(self, completed_laps: list) -> None:
+        """One log line per completed lap: point count + lap_distance range."""
+        for lap in completed_laps:
+            distances = lap.telemetry.get("lap_distance", [])
+            if distances:
+                self.m_logger.debug(
+                    "Driver %s - lap %d export: %d point(s), lap_distance range [%.2f, %.2f]",
+                    str(self), lap.metadata.lap_number, len(distances), min(distances), max(distances),
+                )
+            else:
+                self.m_logger.debug(
+                    "Driver %s - lap %d export: 0 points", str(self), lap.metadata.lap_number,
+                )

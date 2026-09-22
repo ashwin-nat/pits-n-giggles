@@ -247,7 +247,7 @@ def test_recorder_export_before_any_update():
 
     assert export.driver_index == 0
     assert export.completed_laps == []
-    assert export.in_progress_telemetry == {"lap_distance": [], "speed": [], "gear": []}
+    assert export.in_progress_telemetry == {"lap_distance": [], "lap_time_ms": [], "speed": [], "gear": []}
     assert export.in_progress_num_points == 0
     assert export.in_progress_lap_number == 1  # default label, never told otherwise
 
@@ -263,6 +263,7 @@ def test_recorder_normal_accumulation():
 
     assert export.in_progress_telemetry == {
         "lap_distance": [0.0, 10.0, 20.0],
+        "lap_time_ms": [0, 0, 0],
         "speed": [100.0, 150.0, 200.0],
         "gear": [3, 4, 5],
     }
@@ -278,7 +279,9 @@ def test_recorder_stationary_update_in_place():
 
     export = recorder.export()
 
-    assert export.in_progress_telemetry == {"lap_distance": [10.0], "speed": [105.0], "gear": [3]}
+    assert export.in_progress_telemetry == {
+        "lap_distance": [10.0], "lap_time_ms": [0], "speed": [105.0], "gear": [3],
+    }
     assert export.in_progress_num_points == 1
 
 
@@ -290,7 +293,9 @@ def test_recorder_lap_distance_decrease_dropped():
 
     export = recorder.export()
 
-    assert export.in_progress_telemetry == {"lap_distance": [10.0], "speed": [100.0], "gear": [3]}
+    assert export.in_progress_telemetry == {
+        "lap_distance": [10.0], "lap_time_ms": [0], "speed": [100.0], "gear": [3],
+    }
     assert export.in_progress_num_points == 1
 
 
@@ -332,11 +337,14 @@ def test_recorder_multi_lap():
     assert lap_1_metadata.num_points == 2  # mutated in place by on_lap_change()
     assert export.completed_laps[0].telemetry == {
         "lap_distance": [0.0, 10.0],
+        "lap_time_ms": [0, 0],
         "speed": [100.0, 150.0],
         "gear": [3, 4],
     }
     assert export.in_progress_lap_number == 2  # lap_1_metadata.lap_number + 1
-    assert export.in_progress_telemetry == {"lap_distance": [0.0], "speed": [200.0], "gear": [5]}
+    assert export.in_progress_telemetry == {
+        "lap_distance": [0.0], "lap_time_ms": [0], "speed": [200.0], "gear": [5],
+    }
     assert export.in_progress_num_points == 1
 
 
@@ -373,6 +381,7 @@ def test_recorder_flashback_case_a_truncates_within_current_lap():
 
     assert export.in_progress_telemetry == {
         "lap_distance": [0.0, 10.0, 20.0, 25.0],
+        "lap_time_ms": [0, 0, 0, 0],
         "speed": [100.0, 110.0, 120.0, 999.0],
         "gear": [1, 2, 3, 9],
     }
@@ -404,6 +413,7 @@ def test_recorder_flashback_case_b_restores_completed_lap_then_reallows_finalisi
     assert export.in_progress_lap_number == 1  # the restored lap's own number, not 2
     assert export.in_progress_telemetry == {
         "lap_distance": [0.0, 5.0],
+        "lap_time_ms": [0, 0],
         "speed": [100.0, 999.0],
         "gear": [1, 9],
     }
@@ -433,6 +443,8 @@ def test_recorder_flashback_case_b_with_no_earlier_lap_clears_buffers():
 
     export = recorder.export()
 
-    assert export.in_progress_telemetry == {"lap_distance": [3.0], "speed": [2.0], "gear": [2]}
+    assert export.in_progress_telemetry == {
+        "lap_distance": [3.0], "lap_time_ms": [0], "speed": [2.0], "gear": [2],
+    }
     assert export.in_progress_num_points == 1
     assert export.in_progress_lap_number == 1

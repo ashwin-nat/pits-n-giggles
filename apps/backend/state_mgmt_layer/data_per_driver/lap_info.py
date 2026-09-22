@@ -62,6 +62,10 @@ class LapInfo:
         m_curr_sector (Optional[LapData.Sector]): Current lap sector.
         m_curr_lap_invalid (Optional[bool]): Current lap validity
         m_curr_status (Optional[LapData.DriverStatus]): Current lap driver status
+        m_lap_dist_wrapped (Optional[float]): m_lapDistance wrapped onto [0, circuit_len)
+            out laps tend to have negative lap dist. for example, if circuit len is 5000, and car is at
+            dist=4500, it would be -500
+        m_lap_dist_raw (Optional[float]): raw lap distance, may be negative
     """
     m_best_lap_ms: Optional[int] = None
     m_best_lap_obj: Optional[LapHistoryData] = None
@@ -88,6 +92,7 @@ class LapInfo:
     m_curr_lap_invalid: Optional[bool] = None
     m_curr_status: Optional[LapData.DriverStatus] = None
     m_lap_dist_wrapped: Optional[float] = None
+    m_lap_dist_raw: Optional[float] = None
 
     def processLapDataUpdate(self, lap_data: LapData, circuit_len: float) -> None:
         """Update the lap information based on the provided lap data object"""
@@ -101,6 +106,7 @@ class LapInfo:
         # in the same meters unit consumers (segment lookups, track-position
         # display) expect.
         self.m_lap_dist_wrapped = lap_data.m_lapDistance % circuit_len if circuit_len else lap_data.m_lapDistance
+        self.m_lap_dist_raw = lap_data.m_lapDistance
         self.m_curr_lap_invalid = lap_data.m_currentLapInvalid
         self.m_curr_status = lap_data.m_driverStatus
         self.m_curr_sector = lap_data.m_sector

@@ -78,7 +78,6 @@ class F1SensorMapper(SensorMapper):
         "throttle": _CatalogEntry("throttle", SensorDtype.FLOAT32, "Throttle", "%", SensorType.CONTINUOUS),
         "brake": _CatalogEntry("brake", SensorDtype.FLOAT32, "Brake", "%", SensorType.CONTINUOUS),
         "steering": _CatalogEntry("steering", SensorDtype.FLOAT32, "Steering", "", SensorType.CONTINUOUS),
-        "clutch": _CatalogEntry("clutch", SensorDtype.FLOAT32, "Clutch", "%", SensorType.CONTINUOUS),
         "speed": _CatalogEntry("speed", SensorDtype.FLOAT32, "Speed", "km/h", SensorType.CONTINUOUS),
         "gear": _CatalogEntry("gear", SensorDtype.INT8, "Gear", "", SensorType.DISCRETE),
         "engine_rpm": _CatalogEntry("engine_rpm", SensorDtype.FLOAT32, "Engine RPM", "rpm", SensorType.CONTINUOUS),

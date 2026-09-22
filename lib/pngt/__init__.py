@@ -55,9 +55,10 @@ from .ingest.dto import (
     IngestLapMetadata,
     TelemetryRecorderConfig,
 )
+from .ingest.export_adapter import InProgressLapContext, adapt_driver_export
 from .ingest.mapper import SensorMapper
 from .ingest.recorder import DriverTelemetryRecorder
-from .ingest.session_export_manager import SessionExportManager, SessionExportScopeConfig
+from .ingest.session_export_manager import DriverExportCandidate, SessionExportManager, SessionExportScopeConfig
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
 from .writer import write_session
@@ -69,6 +70,7 @@ __all__ = [
     'CompletedLap',
     'CorruptedTelemetryError',
     'DeleteLapsResult',
+    'DriverExportCandidate',
     'DriverExportData',
     'DriverNotFoundError',
     'DriverRecord',
@@ -76,6 +78,7 @@ __all__ = [
     'IngestCompletedLap',
     'IngestDriverExportData',
     'IngestLapMetadata',
+    'InProgressLapContext',
     'InvalidHeaderError',
     'InvalidManifestError',
     'LapMetadata',
@@ -96,6 +99,7 @@ __all__ = [
     'TrackInfo',
     'UnsupportedFormatError',
     'UnsupportedVersionError',
+    'adapt_driver_export',
     'delete_laps',
     'mark_lap_good',
     'read_driver_laps',
