@@ -57,6 +57,7 @@ from .ingest.dto import (
 )
 from .ingest.mapper import SensorMapper
 from .ingest.recorder import DriverTelemetryRecorder
+from .ingest.session_export_manager import SessionExportManager, SessionExportScopeConfig
 from .mutate import delete_laps, mark_lap_good, rename_session
 from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
 from .writer import write_session
@@ -88,6 +89,8 @@ __all__ = [
     'SensorMapper',
     'SensorType',
     'SessionBest',
+    'SessionExportManager',
+    'SessionExportScopeConfig',
     'SessionMetadata',
     'TelemetryRecorderConfig',
     'TrackInfo',

@@ -72,14 +72,27 @@ from `lib.pngt`, not `lib.pngt.ingest.dto`, unless you're inside this package.
 | `dto.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses this and adds its own fields), `TelemetryRecorderConfig` (no collision with the parent package, plain names), plus `IngestLapMetadata`, `IngestCompletedLap`, `IngestDriverExportData` (named with the `Ingest` prefix because the parent package's `dto.py` already has a `LapMetadata`/`CompletedLap`/`DriverExportData` meaning something different) |
 | `mapper.py` | `SensorMapper` ABC only (`get_value()` + `get_dtype()`) — no concrete implementation ships here, see Design principles above |
 | `recorder.py` | `DriverTelemetryRecorder` — accumulation, lap rollover, flashback detection/rollback, export |
+| `session_export_manager.py` | `SessionExportManager` — owns one `DriverTelemetryRecorder` per driver, applies recording-scope rules, tracks the running session-best lap |
 
-## Not in scope here
+## `SessionExportManager`
 
-Owning multiple drivers, scope filtering (spectator mode, other players' cars,
-`Restricted` telemetry), session-best tracking, and assembling/writing the final
-`.pngt` file are `SessionExportManager`'s job (not yet built — see the top-level
-implementation plan's Phase 8). This package only accumulates one driver's telemetry
-and hands back plain data at `export()`.
+Owns multiple drivers' recorders, applies scope filtering (spectator mode, other
+drivers' cars, non-public telemetry — via plain `bool` facts the caller supplies, not
+any game-specific enum), and tracks the running session-best lap across all drivers.
+Game-/domain-agnostic like the rest of this package: it only takes
+`BaseTelemetrySnapshot`/`IngestLapMetadata` objects and plain scope booleans, and only
+hands back `Ingest*` DTOs from `export_all()`. It has no knowledge of packets, any
+particular sim's session state, or the `.pngt` file format — assembling/writing the
+final file from its output is the caller's job (see the top-level implementation
+plan's Phase 8).
+
+Late-arrival handling is the interesting part: recording-scope facts (is this driver's
+telemetry public, is this the player's own car, is the app spectating) typically arrive
+asynchronously relative to telemetry samples. A recorder is created eagerly on first
+`update()` for a driver not already known to be out of scope; `apply_scope_update()` is
+the one place scope gets (re-)evaluated, and once a driver is discarded it stays
+discarded for the rest of the session. See the class docstring for the full ordering
+argument.
 
 The concrete `TelemetrySnapshot` (every real F1 sensor field, subclassing
 `BaseTelemetrySnapshot`) and its `SensorMapper` implementation both live in
