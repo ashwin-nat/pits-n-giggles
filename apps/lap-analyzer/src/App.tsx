@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProviderContext, type ActiveProvider } from "./providers/ProviderContext";
 import { LocalFileProvider } from "./providers/LocalFileProvider";
@@ -8,6 +8,12 @@ import { ChartArea } from "./components/chart/ChartArea";
 import { useTelemetryStore } from "./store/telemetryStore";
 
 const queryClient = new QueryClient();
+
+// apps/web always mounts this SPA at /lap-analyzer/ (see render_lap_analyzer_index
+// in lap_analyzer_routes.py); a standalone `pnpm dev`/local dist/ is always served
+// from "/". Reading the live URL avoids depending on a build-time constant (Vite's
+// `base`, see vite.config.ts) staying in sync with how the page actually got here.
+const IS_BACKEND_MODE = window.location.pathname.startsWith("/lap-analyzer/");
 
 export function App() {
   const [active, setActive] = useState<ActiveProvider | null>(null);
@@ -23,6 +29,16 @@ export function App() {
     setActive({ provider, id: crypto.randomUUID() });
   }
 
+  // Backend mode has exactly one provider -- select it automatically instead
+  // of making the user click a button that was only ever there for Phase 6
+  // manual testing.
+  useEffect(() => {
+    if (IS_BACKEND_MODE) {
+      switchProvider(new RemoteApiProvider());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     // Reset so selecting the same path again still fires a change event --
@@ -33,10 +49,6 @@ export function App() {
       return;
     }
     switchProvider(new LocalFileProvider(file));
-  }
-
-  function handleUseBackend() {
-    switchProvider(new RemoteApiProvider());
   }
 
   return (
@@ -50,23 +62,16 @@ export function App() {
         <div className="flex h-screen flex-col bg-slate-950">
           <header className="flex items-center gap-3 border-b border-slate-800 bg-slate-900 px-4 py-2">
             <p className="text-sm font-semibold text-slate-100">Lap Analyzer</p>
-            <input
-              type="file"
-              accept=".pngt"
-              onChange={handleFileChange}
-              className="cursor-pointer text-xs text-slate-400 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-100 file:hover:bg-slate-600"
-            />
-            {/* RemoteApiProvider toggle -- Phase 6 manual end-to-end testing against a
-                real backend (see /lap-analyzer/api/v1/*) alongside the existing local-file
-                path. Not gated behind a dev-only flag: both providers implement the same
-                interface, so there is no production-safety reason to hide this. */}
-            <button
-              type="button"
-              onClick={handleUseBackend}
-              className="cursor-pointer rounded border-0 bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-600"
-            >
-              Use Backend
-            </button>
+            {/* Standalone/dev mode only -- backend mode has no local file to browse for,
+                it always talks to RemoteApiProvider (see IS_BACKEND_MODE above). */}
+            {!IS_BACKEND_MODE && (
+              <input
+                type="file"
+                accept=".pngt"
+                onChange={handleFileChange}
+                className="cursor-pointer text-xs text-slate-400 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-100 file:hover:bg-slate-600"
+              />
+            )}
           </header>
           <div className="min-h-0 flex-1">
             <Layout>
