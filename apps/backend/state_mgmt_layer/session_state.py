@@ -1071,13 +1071,6 @@ class SessionState:
             if driver_obj and driver_obj.is_valid
         ]
         driver_exports = self.m_export_mgr.export_scoped(candidates, is_spectating=is_spectating)
-
-        self.m_logger.debug(
-            "exportTelemetry: %d/%d known driver(s) in scope (is_spectating=%s)",
-            len(driver_exports),
-            sum(1 for obj in self.m_driver_data if obj is not None),
-            is_spectating,
-        )
         session_best = self.m_export_mgr.compute_session_best(driver_exports)
         return driver_exports, session_best
 

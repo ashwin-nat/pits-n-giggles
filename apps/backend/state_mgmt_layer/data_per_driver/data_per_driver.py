@@ -138,7 +138,6 @@ class DataPerDriver:
         "m_last_corner_tracker",
         "m_state_ref",
         "m_tel_rec",
-        "m_tel_rec_last_frame_id",
     )
 
     CAR_DMG_RACE_CTRL_MSG_INTERESTED_FIELDS = [
@@ -238,9 +237,6 @@ class DataPerDriver:
             config=TelemetryRecorderConfig(sensors=F1SensorMapper.known_sensor_keys()),
             mapper=F1SensorMapper(),
         )
-        # Diagnostic only -- mirrors DriverTelemetryRecorder's own flashback trigger
-        # (frame_id decreasing), for logging (lib/pngt has no logger).
-        self.m_tel_rec_last_frame_id: Optional[int] = None
 
     @property
     def is_valid(self) -> bool:
@@ -1531,11 +1527,6 @@ class DataPerDriver:
         tyre_wear = self.m_tyre_info.tyre_wear.latest
 
         raw_lap_distance = self.m_lap_info.m_lap_dist_raw
-        if raw_lap_distance is not None and raw_lap_distance < 0:
-            self.m_logger.debug(
-                "Driver %s - negative raw lap distance %.2f (pit exit, before crossing the line)",
-                str(self), raw_lap_distance,
-            )
 
         snapshot = TelemetrySnapshot(
             # TODO: re-evaluate if normalized can be used
@@ -1558,13 +1549,6 @@ class DataPerDriver:
             tyre_wear_rl=tyre_wear.rl_tyre_wear if tyre_wear else None,
             tyre_wear_rr=tyre_wear.rr_tyre_wear if tyre_wear else None,
         )
-        if self.m_tel_rec_last_frame_id is not None and frame_id < self.m_tel_rec_last_frame_id:
-            self.m_logger.debug(
-                "Driver %s - telemetry recorder flashback trigger: frame_id %d < last %d "
-                "(lap_distance=%s) -- DriverTelemetryRecorder will roll back",
-                str(self), frame_id, self.m_tel_rec_last_frame_id, snapshot.lap_distance,
-            )
-        self.m_tel_rec_last_frame_id = frame_id
         self.m_tel_rec.update(snapshot, frame_id)
 
     def exportTelemetry(self) -> IngestDriverExportData:
@@ -1574,7 +1558,6 @@ class DataPerDriver:
         export = self.m_tel_rec.export()
         history = self.m_packet_copies.m_packet_session_history
         if history is None:
-            self._logTelemetryExportSummary(export.completed_laps)
             return export
 
         lap_history = history.m_lapHistoryData[:history.m_numLaps]
@@ -1594,7 +1577,6 @@ class DataPerDriver:
             else:
                 reconciled_laps.append(lap)
 
-        self._logTelemetryExportSummary(reconciled_laps)
         return IngestDriverExportData(
             driver_index=export.driver_index,
             completed_laps=reconciled_laps,
@@ -1602,17 +1584,3 @@ class DataPerDriver:
             in_progress_telemetry=export.in_progress_telemetry,
             in_progress_num_points=export.in_progress_num_points,
         )
-
-    def _logTelemetryExportSummary(self, completed_laps: list) -> None:
-        """One log line per completed lap: point count + lap_distance range."""
-        for lap in completed_laps:
-            distances = lap.telemetry.get("lap_distance", [])
-            if distances:
-                self.m_logger.debug(
-                    "Driver %s - lap %d export: %d point(s), lap_distance range [%.2f, %.2f]",
-                    str(self), lap.metadata.lap_number, len(distances), min(distances), max(distances),
-                )
-            else:
-                self.m_logger.debug(
-                    "Driver %s - lap %d export: 0 points", str(self), lap.metadata.lap_number,
-                )

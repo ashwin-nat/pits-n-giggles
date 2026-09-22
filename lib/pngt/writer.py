@@ -250,5 +250,5 @@ def _write_lap_npz(zf: zipfile.ZipFile, name: str, dtypes: dict[str, SensorDtype
         arrays[key] = np.asarray(values, dtype=dtype)
 
     buf = BytesIO()
-    np.savez(buf, **arrays)
+    np.savez_compressed(buf, **arrays)
     zf.writestr(name, buf.getvalue(), compress_type=zipfile.ZIP_STORED)
