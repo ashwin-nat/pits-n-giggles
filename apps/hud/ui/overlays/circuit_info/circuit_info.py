@@ -28,7 +28,7 @@ from typing import Any, Dict, Optional, final
 from lib.config import OverlayId, PngSettings
 from lib.f1_types import F1Utils
 from lib.logger import PngLogger
-from lib.track_segment_info import (ComplexCornerSegmentInfo,
+from lib.track_segments_classifier import (ComplexCornerSegmentInfo,
                                     CornerSegmentInfo, TrackSegmentsDatabase)
 
 from ....common import get_ref_row

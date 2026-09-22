@@ -203,6 +203,7 @@ datas.extend([
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_sets", "tyre_sets_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/tyre_wear", "tyre_wear_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages/weather", "weather_page.qml"),
+    qml_file("apps/hud/ui/overlays/mfd/pages/last_corner_stats", "last_corner_stats_page.qml"),
     qml_file("apps/hud/ui/overlays/mfd/pages", "standalone_wrapper.qml")
 ])
 
