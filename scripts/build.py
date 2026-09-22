@@ -210,6 +210,11 @@ def main():
         "MSYS2_ARG_CONV_EXCL": "*",
     }
     subprocess.run("pnpm install", cwd=analyzer_source, check=True, shell=True)
+    # Bundled static asset (src/assets/segments/*.json, gitignored) -- without this,
+    # import.meta.glob in src/lib/segments.ts finds nothing and the track progress
+    # bar silently renders empty. Must precede the build below since Vite's glob
+    # resolves at build time, not runtime.
+    subprocess.run("pnpm sync-segments", cwd=analyzer_source, check=True, shell=True)
     subprocess.run(
         "pnpm build",
         cwd=analyzer_source,
