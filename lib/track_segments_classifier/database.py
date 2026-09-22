@@ -26,7 +26,7 @@ import json
 from pathlib import Path
 from typing import Dict, Iterator, Optional
 
-from .segments import TrackSegments
+from .classifier import TrackSegmentsClassifier
 from .types import BaseSegmentInfo, SectorBoundaries
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -50,11 +50,11 @@ class TrackSegmentsDatabase:
         if not base_path.is_dir():
             raise NotADirectoryError(f"Track segments path is not a directory: {base_path}")
 
-        self._db: Dict[int, TrackSegments] = {}
+        self._db: Dict[int, TrackSegmentsClassifier] = {}
         for json_file in base_path.glob("*.json"):
             with json_file.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
-            ts = TrackSegments()
+            ts = TrackSegmentsClassifier()
             ts.load_track_data(data)
             if ts.circuit_number is not None:
                 self._db[ts.circuit_number] = ts
@@ -90,11 +90,11 @@ class TrackSegmentsDatabase:
             return None
         return ts.get_sector(lap_distance)
 
-    def get(self, circuit_number: int) -> Optional[TrackSegments]:
+    def get(self, circuit_number: int) -> Optional[TrackSegmentsClassifier]:
         """Return the :class:`TrackSegments` for *circuit_number*, or ``None``."""
         return self._db.get(circuit_number)
 
-    def __getitem__(self, circuit_number: int) -> TrackSegments:
+    def __getitem__(self, circuit_number: int) -> TrackSegmentsClassifier:
         return self._db[circuit_number]
 
     def __contains__(self, circuit_number: int) -> bool:

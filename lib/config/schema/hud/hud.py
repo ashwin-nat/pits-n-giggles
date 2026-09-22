@@ -542,6 +542,12 @@ class HudSettings(ConfigDiffMixin, BaseModel):
         description="Show title bar in traffic monitor overlay",
         json_schema_extra={"ui": {"type": "check_box", "visible": True, "group": "Traffic Monitor"}},
     )
+    show_last_corner_stats: bool = overlay_enable_field(
+        description="Enable last corner stats standalone overlay",
+        group="Last Corner Stats",
+        default=False,
+        preview_image="assets/overlay-previews/last-corner-stats.png",
+    )
 
     # ============== AUTO-HIDE IN MENU ==============
     auto_hide_in_menu: bool = Field(
@@ -683,6 +689,7 @@ class HudSettings(ConfigDiffMixin, BaseModel):
             OverlayId.TYRE_SETS:       self.show_tyre_sets,
             OverlayId.PACE_COMP:       self.show_pace_comp,
             OverlayId.TRAFFIC_MONITOR: self.show_traffic_monitor,
+            OverlayId.LAST_CORNER_STATS: self.show_last_corner_stats,
         }
         return [oid for oid, is_on in enabled.items() if is_on]
 

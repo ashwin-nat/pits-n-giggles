@@ -35,11 +35,11 @@ from ..hf_types import HudOverlayData, InputTelemetryData, LiveSessionMotionInfo
 from ..overlays import (BaseOverlay, CircuitInfoOverlay, HudOverlay,
                         InputTelemetryOverlay, LapTimerOverlay, MfdOverlay,
                         PuOverlay, TimingTowerOverlay, TrackRadarOverlay)
-from ..overlays.mfd.pages import (FuelInfoPage, LapTimesPage, MfdPageBase,
-                                  PaceCompPage, PitRejoinPredictionPage,
-                                  StandalonePageHost, TrafficMonitorPage,
-                                  TyreInfoPage, TyreSetsPage,
-                                  WeatherForecastPage)
+from ..overlays.mfd.pages import (FuelInfoPage, LapTimesPage,
+                                  LastCornerStatsPage, MfdPageBase, PaceCompPage,
+                                  PitRejoinPredictionPage, StandalonePageHost,
+                                  TrafficMonitorPage, TyreInfoPage,
+                                  TyreSetsPage, WeatherForecastPage)
 from .window_mgr import WindowManager
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
@@ -53,6 +53,7 @@ class OverlaysMgr:
     STANDALONE_PAGE_CLASSES: List[Type[MfdPageBase]] = [
         FuelInfoPage, TyreInfoPage, LapTimesPage, WeatherForecastPage,
         PitRejoinPredictionPage, TyreSetsPage, PaceCompPage, TrafficMonitorPage,
+        LastCornerStatsPage,
     ]
 
     def __init__(self,

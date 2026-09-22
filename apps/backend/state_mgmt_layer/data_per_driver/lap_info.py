@@ -87,13 +87,20 @@ class LapInfo:
     m_curr_sector: Optional[LapData.Sector] = None
     m_curr_lap_invalid: Optional[bool] = None
     m_curr_status: Optional[LapData.DriverStatus] = None
+    m_lap_dist_wrapped: Optional[float] = None
 
-    def processLapDataUpdate(self, lap_data: LapData) -> None:
+    def processLapDataUpdate(self, lap_data: LapData, circuit_len: float) -> None:
         """Update the lap information based on the provided lap data object"""
         self.m_delta_to_car_in_front = lap_data.deltaToFrontTotalMs
         self.m_delta_to_leader = lap_data.deltaToLeaderTotalMs
 
         self.m_curr_lap_ms = lap_data.m_currentLapTimeInMS
+        # m_lapDistance can be negative (e.g. on an outlap, before crossing the
+        # start/finish line) or exceed circuit_len across a lap boundary - wrap
+        # it onto [0, circuit_len) so it's always a valid position on the track,
+        # in the same meters unit consumers (segment lookups, track-position
+        # display) expect.
+        self.m_lap_dist_wrapped = lap_data.m_lapDistance % circuit_len if circuit_len else lap_data.m_lapDistance
         self.m_curr_lap_invalid = lap_data.m_currentLapInvalid
         self.m_curr_status = lap_data.m_driverStatus
         self.m_curr_sector = lap_data.m_sector

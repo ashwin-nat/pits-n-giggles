@@ -80,7 +80,7 @@ class TelemetryRecorderConfig:
     is built internally from already-validated lib/config settings (Phase 9's
     build_recorder_config()), not from untrusted input, so it doesn't need pydantic's
     validation -- matching the repo convention that pydantic is reserved for real
-    validation boundaries (see e.g. lib/track_segment_info, which validates loaded JSON).
+    validation boundaries (see e.g. lib/track_segments_classifier, which validates loaded JSON).
     Also keeps this class from reading as another app-config schema; lib/config owns
     that role.
 

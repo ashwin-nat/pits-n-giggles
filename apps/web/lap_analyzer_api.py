@@ -51,7 +51,7 @@ import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
 from lib.pngt import DriverRecord, LapMetadata, SensorConfig
-from lib.track_segment_info.types import BaseSegmentInfo
+from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
 
@@ -181,7 +181,7 @@ def telemetry_points_to_api(
 
 
 def track_section_to_api(segment: BaseSegmentInfo) -> Dict[str, Any]:
-    """Maps one lib/track_segment_info segment to the API's TrackSection shape.
+    """Maps one lib/track_segments_classifier segment to the API's TrackSection shape.
 
     Mirrors apps/lap-analyzer/src/lib/segments.ts's toSections() field for
     field, including corner_numbers derivation -- one-element list for a

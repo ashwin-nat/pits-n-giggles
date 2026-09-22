@@ -29,7 +29,7 @@ from apps.hud.common import get_ers_mode_color, get_ref_row_index
 from apps.hud.ui.overlays.mfd.pages.base_page import MfdPageBase
 from lib.config import MfdPageId, OverlayId, PngSettings
 from lib.table_differ import TableDiffer
-from lib.track_segment_info import TrackSegmentsDatabase
+from lib.track_segments_classifier import TrackSegmentsDatabase
 
 from .utils import get_traffic_window, resolve_location, sort_by_rel_distance
 
