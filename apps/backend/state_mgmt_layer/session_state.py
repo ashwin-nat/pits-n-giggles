@@ -320,7 +320,7 @@ class SessionState:
         """
         driver_obj.m_driver_info.position = lap_data.m_carPosition
         driver_obj.m_driver_info.grid_position = lap_data.m_gridPosition
-        driver_obj.m_lap_info.processLapDataUpdate(lap_data)
+        driver_obj.m_lap_info.processLapDataUpdate(lap_data, self.m_session_info.m_track_len)
 
     def _handleLapChangeLogic(self, driver_obj: DataPerDriver, lap_data: LapData) -> None:
         """Handle lap change detection and snapshot capture

@@ -352,10 +352,11 @@ class StreamOverlayData(BaseAPI):
         #   -120   -> 5180
         #   -5400  -> 5200
         #
-        dist = lap_data.m_lapDistance
         if self.m_circuit_len: # TODO: do we need this if check? we have sector info directly
+            dist = self.m_ref_obj.m_lap_info.m_lap_dist_wrapped
             sector = str(lap_data.m_sector)
         else:
+            dist = None
             sector = None
 
         return {
