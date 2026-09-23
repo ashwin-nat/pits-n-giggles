@@ -59,6 +59,7 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
     SUBSYS_ID = PngSubsysId.BACKEND
     PUBSUB = PubSubRole.PUBLISHER
     DEALER = True
+    PROCESS_POOL_WORKERS = 1  # .pngt export's CPU-bound compression, off the event loop's GIL
 
     PROFILE = False
 

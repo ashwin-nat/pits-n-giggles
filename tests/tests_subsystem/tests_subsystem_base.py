@@ -6,9 +6,11 @@ Nothing here binds a real IPC port, so these stay parallel-safe.
 
 import argparse
 import asyncio
+import concurrent.futures
 import logging
 import sys
 import threading
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import FrozenInstanceError, dataclass, field
 from typing import Generic, Optional
 
@@ -217,6 +219,27 @@ class _FakeMgmtSync:
 
     def close(self):
         self.calls.append("close")
+
+class _FakeProcessPool:
+    """Stands in for ProcessPoolExecutor - runs fn inline (no real subprocess) and records
+    what was submitted/shut down, the same fake-over-real-IO approach as the IPC classes
+    above."""
+
+    def __init__(self):
+        self.submitted = []
+        self.shutdown_calls = []
+
+    def submit(self, fn, *args, **kwargs):
+        self.submitted.append((fn, args, kwargs))
+        future = concurrent.futures.Future()
+        try:
+            future.set_result(fn(*args, **kwargs))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            future.set_exception(exc)
+        return future
+
+    def shutdown(self, wait=True, cancel_futures=False):
+        self.shutdown_calls.append((wait, cancel_futures))
 
 # -------------------------------------- IDENTITY ----------------------------------------------------------------------
 
@@ -976,6 +999,79 @@ async def test_adopt_task_wraps_a_task_its_owner_created():
     assert handle.start() is task
 
     await task
+
+# -------------------------------------- PROCESS POOL -------------------------------------------------------------------
+
+def test_process_pool_not_built_by_default():
+    """PROCESS_POOL_WORKERS defaults to 0 - most subsystems never spawn a worker process."""
+
+    app = _StubAsync()
+
+    assert _StubAsync.PROCESS_POOL_WORKERS == 0
+    assert app._process_pool is None  # pylint: disable=protected-access
+
+async def test_run_in_process_asserts_when_pool_not_built():
+    """Calling run_in_process() without declaring PROCESS_POOL_WORKERS fails loudly, not
+    with a confusing AttributeError two frames down."""
+
+    app = _StubAsync()
+
+    with pytest.raises(AssertionError, match="PROCESS_POOL_WORKERS"):
+        app.run_in_process(len, [1, 2, 3])
+
+class _WithProcessPool(_StubAsync):
+    """Declares PROCESS_POOL_WORKERS - the one class var that opts a subsystem in."""
+
+    PROCESS_POOL_WORKERS = 3
+
+def test_process_pool_built_with_declared_worker_count():
+    """The pool the base builds actually carries the declared count, not a hardcoded one."""
+
+    app = _WithProcessPool()
+
+    assert isinstance(app._process_pool, ProcessPoolExecutor)  # pylint: disable=protected-access
+    assert app._process_pool._max_workers == 3  # pylint: disable=protected-access
+
+class _WithFakeProcessPool(_StubAsync):
+    """Swaps in the fake pool so dispatch/teardown tests never spawn a real subprocess."""
+
+    PROCESS_POOL_WORKERS = 1
+
+    def _build_process_pool(self):
+        return _FakeProcessPool()
+
+async def test_run_in_process_dispatches_fn_with_args_and_kwargs():
+    """fn's args/kwargs survive the functools.partial wrapping run_in_process() does."""
+
+    app = _WithFakeProcessPool()
+
+    def _add(a, b, *, c):
+        return a + b + c
+
+    result = await app.run_in_process(_add, 1, 2, c=3)
+
+    assert result == 6
+    assert len(app._process_pool.submitted) == 1  # pylint: disable=protected-access
+
+async def test_run_in_process_propagates_a_raised_exception():
+    """A worker-side failure surfaces to the awaiter, same as any other executor dispatch."""
+
+    app = _WithFakeProcessPool()
+
+    def _boom():
+        raise ValueError("kaboom")
+
+    with pytest.raises(ValueError, match="kaboom"):
+        await app.run_in_process(_boom)
+
+async def test_close_data_plane_shuts_down_the_process_pool():
+    """Teardown shuts the pool down alongside the IPC handles, so no worker process lingers."""
+
+    app = _WithFakeProcessPool()
+
+    await app._close_data_plane()  # pylint: disable=protected-access
+
+    assert app._process_pool.shutdown_calls == [(True, True)]  # pylint: disable=protected-access
 
 # -------------------------------------- IPC WIRING, ASYNC -------------------------------------------------------------
 

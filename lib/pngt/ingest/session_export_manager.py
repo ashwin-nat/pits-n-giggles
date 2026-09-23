@@ -144,8 +144,7 @@ class SessionExportManager:
         drivers: list[DriverRecord],
         driver_exports: dict[int, IngestDriverExportData],
     ) -> Path:
-        """Writes export_scoped()'s result to a .pngt file. Synchronous (blocking ZIP
-        write) -- offloading is the caller's call.
+        """Writes export_scoped()'s result to a .pngt file.
 
         `session`/`drivers` come from the caller: session/driver identity data this
         class has no access to. Every driver needs a `drivers` entry (including

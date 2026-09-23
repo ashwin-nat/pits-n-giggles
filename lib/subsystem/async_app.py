@@ -23,8 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import functools
 import sys
 from abc import abstractmethod
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Awaitable, Callable, Dict, Generic, List, Optional
 
 from lib.ipc import (IpcDealerAsync, IpcPublisherAsync, IpcServerAsync,
@@ -123,6 +125,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         PUBSUB                   PubSubRole.NONE; PUBLISHER populates self.publisher,
                                  SUBSCRIBER populates self.subscriber
         DEALER                   False; True populates self.dealer
+        PROCESS_POOL_WORKERS     0; >0 builds the pool run_in_process() dispatches to
 
     SUBSYS_ID is enforced at import time by PngSubsystem.__init_subclass__. The rest are only
     read where they are used, and the handle properties below assert if you reach for one
@@ -130,6 +133,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     """
 
     ABSTRACT = True
+    PROCESS_POOL_WORKERS: int = 0
 
     def __init__(self) -> None:
         """Construct the subsystem. Nothing is started until main() runs."""
@@ -145,6 +149,7 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         self._subscriber: Optional[IpcSubscriberAsync] = self._build_subscriber()
         self._dealer: Optional[IpcDealerAsync] = self._build_dealer()
         self._background_tasks: set = set()
+        self._process_pool: Optional[ProcessPoolExecutor] = self._build_process_pool()
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
 
@@ -235,6 +240,37 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
                                       exc_info=t.exception())
 
         task.add_done_callback(_on_done)
+
+    # -------------------------------------- PROCESS POOL ---------------------------------------------------------------
+
+    def _build_process_pool(self) -> Optional[ProcessPoolExecutor]:
+        """Returns:
+            Optional[ProcessPoolExecutor]: The pool, or None unless PROCESS_POOL_WORKERS > 0
+        """
+
+        if self.PROCESS_POOL_WORKERS <= 0:
+            return None
+        return ProcessPoolExecutor(max_workers=self.PROCESS_POOL_WORKERS)
+
+    def run_in_process(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Awaitable[Any]:
+        """Run fn(*args, **kwargs) in a worker process, for CPU-bound work asyncio.to_thread()
+        can't actually get off this subsystem's event loop - a thread still contends with the
+        loop for the GIL for the work's whole duration, a separate process doesn't.
+
+        fn and its arguments/return value must be picklable. Requires PROCESS_POOL_WORKERS > 0.
+
+        Args:
+            fn (Callable[..., Any]): Function to run in the worker process
+            *args: Positional arguments for fn
+            **kwargs: Keyword arguments for fn
+
+        Returns:
+            Awaitable[Any]: Resolves to fn's return value
+        """
+
+        assert self._process_pool is not None, "Process pool is not built - check PROCESS_POOL_WORKERS"
+        loop = asyncio.get_running_loop()
+        return loop.run_in_executor(self._process_pool, functools.partial(fn, *args, **kwargs))
 
     # -------------------------------------- IPC HANDLES ---------------------------------------------------------------
 
@@ -392,6 +428,8 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
             self._subscriber.close()
         if self._dealer is not None:
             await self._dealer.close()
+        if self._process_pool is not None:
+            self._process_pool.shutdown(wait=True, cancel_futures=True)
 
     # -------------------------------------- RUN -----------------------------------------------------------------------
 

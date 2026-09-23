@@ -25,6 +25,7 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -34,7 +35,7 @@ from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
-from apps.backend.state_mgmt_layer.pngt_export import write_pngt_file
+from apps.backend.state_mgmt_layer.pngt_export import build_pngt_write_args
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import report_session_save_skipped_from_child
 from lib.config import CaptureSettings, OverlayId
@@ -506,10 +507,12 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
-            # Perform the auto save stuff only if configured
+            # Fire-and-forget: since this runs on the telemetry ingress task
             if self._shouldSaveData():
-                await self.postGameDumpToFile(final_json, session_uid=packet.m_header.m_sessionUID)
-                await self.postGameDumpToPngtFile(session_uid=packet.m_header.m_sessionUID)
+                self.m_subsystem.fire_and_forget(
+                    self._autoSaveSessionData(final_json, packet.m_header.m_sessionUID),
+                    name="Auto-save Session Data",
+                )
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -806,6 +809,17 @@ class F1TelemetryHandler:
         self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
 
+    async def _autoSaveSessionData(self, final_json: Dict[str, Any], session_uid: int) -> None:
+        """Writes the auto-save JSON and the .pngt telemetry dump for one session. Run via
+        fire_and_forget() from the ingress task -- see handleFinalClassification().
+
+        Args:
+            final_json (Dict): Dictionary containing JSON data after final classification
+            session_uid (int): Session UID for which the final classification was received.
+        """
+        await self.postGameDumpToFile(final_json, session_uid=session_uid)
+        await self.postGameDumpToPngtFile(session_uid=session_uid)
+
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
@@ -864,9 +878,12 @@ class F1TelemetryHandler:
         dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
 
         try:
-            # blocking ZIP write, offloaded to avoid stalling the event loop
-            await asyncio.to_thread(write_pngt_file, self.m_session_state_ref, dest_path)
-            self.m_logger.info("Wrote telemetry to %s. Session UID %d", dest_path, session_uid)
+            start_time = time.perf_counter()
+            args = build_pngt_write_args(self.m_session_state_ref, dest_path)
+            await self.m_subsystem.run_in_process(self.m_session_state_ref.m_export_mgr.write_pngt, *args)
+            elapsed_sec = time.perf_counter() - start_time
+            self.m_logger.info("Wrote telemetry to %s. Session UID %d. took %.3f sec",
+                               dest_path, session_uid, elapsed_sec)
         except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write telemetry to %s", dest_path)

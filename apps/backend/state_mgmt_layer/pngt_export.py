@@ -24,18 +24,23 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
-from lib.pngt import DriverRecord, SessionMetadata, TrackInfo
+from lib.pngt import DriverRecord, IngestDriverExportData, SessionMetadata, TrackInfo
 
 if TYPE_CHECKING:
     from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
-def write_pngt_file(session_state: "SessionState", dest_path: Path) -> Path:
-    """Builds session/driver metadata (F1-specific, so not SessionExportManager's job)
-    and hands off to SessionExportManager.write_pngt() for the rest.
+def build_pngt_write_args(
+    session_state: "SessionState",
+    dest_path: Path,
+) -> Tuple[Path, SessionMetadata, list[DriverRecord], dict[int, IngestDriverExportData]]:
+    """Builds SessionExportManager.write_pngt()'s args from session_state -- F1-specific
+    identity data this generic manager has no access to. Cheap (dict/list construction
+    only) -- safe to call inline on the event loop. Actually calling write_pngt() with
+    these args, and deciding whether/how to offload that call, is the caller's job.
 
     Args:
         session_state (SessionState): The session to export.
@@ -43,7 +48,8 @@ def write_pngt_file(session_state: "SessionState", dest_path: Path) -> Path:
             exist -- this function doesn't create it.
 
     Returns:
-        Path: dest_path, once the file has been written.
+        Tuple: (dest_path, session, drivers, driver_exports), ready for
+            session_state.m_export_mgr.write_pngt(*result).
     """
     driver_exports, session_best = session_state.exportTelemetry()
 
@@ -81,4 +87,4 @@ def write_pngt_file(session_state: "SessionState", dest_path: Path) -> Path:
         if driver_obj is not None
     ]
 
-    return session_state.m_export_mgr.write_pngt(dest_path, session, drivers, driver_exports)
+    return dest_path, session, drivers, driver_exports
