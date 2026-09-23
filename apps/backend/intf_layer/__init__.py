@@ -22,12 +22,9 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-from .telemetry_ui_tasks import (frontEndMessageTask, highFreqLocalUpdateTask,
-                                 hudInteractionTask, lowFreqLocalUpdateTask)
+from .telemetry_ui_tasks import highFreqLocalUpdateTask, lowFreqLocalUpdateTask
 
 __all__ = [
-    "frontEndMessageTask",
     "highFreqLocalUpdateTask",
-    "hudInteractionTask",
     "lowFreqLocalUpdateTask",
 ]

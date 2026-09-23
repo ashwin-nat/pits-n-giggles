@@ -28,7 +28,7 @@ import logging
 from apps.backend.state_mgmt_layer import SessionState
 from lib.config import PngSettings
 from lib.error_status import PngTelemetryPortInUseError, is_port_in_use_error
-from lib.subsystem import AddTask
+from lib.subsystem import AsyncSubsystem
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
@@ -42,7 +42,7 @@ def initTelemetryLayer(
         ver_str: str,
         shutdown_event: asyncio.Event,
         session_state: SessionState,
-        add_task: AddTask) -> F1TelemetryHandler:
+        subsystem: AsyncSubsystem) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
@@ -52,11 +52,16 @@ def initTelemetryLayer(
         ver_str (str): Version string
         shutdown_event (asyncio.Event): Shutdown event
         session_state (SessionState): Handle to the session state
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
+        subsystem (AsyncSubsystem): The backend subsystem - used for add_task, fire_and_forget
+            (frontend/HUD notification dispatch) and its dealer
 
     Returns:
         F1TelemetryHandler: Telemetry handler
     """
+
+    # Kept as a plain queue rather than fire_and_forget - per-packet forwarding at telemetry
+    # rate would otherwise spawn a task per packet.
+    packet_forward_queue: asyncio.Queue = asyncio.Queue()
 
     try:
         handler = setupTelemetryTask(
@@ -65,7 +70,9 @@ def initTelemetryLayer(
             session_state=session_state,
             logger=logger,
             ver_str=ver_str,
-            add_task=add_task
+            add_task=subsystem.add_task,
+            subsystem=subsystem,
+            packet_forward_queue=packet_forward_queue,
         )
     except OSError as e:
         logger.error("setupTelemetryTask failed with error %s", e)
@@ -75,7 +82,8 @@ def initTelemetryLayer(
 
     udp_forwarder = setupForwarder(
         forwarding_targets=settings.Forwarding.forwarding_targets,
-        add_task=add_task,
+        packet_forward_queue=packet_forward_queue,
+        add_task=subsystem.add_task,
         shutdown_event=shutdown_event,
         logger=logger
     )

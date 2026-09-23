@@ -27,13 +27,18 @@ import asyncio
 import logging
 from typing import List, Tuple
 
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.subsystem import AddTask
+
+# Waking up periodically to recheck shutdown_event, rather than blocking on queue.get()
+# indefinitely, is what lets this task exit cleanly - there is no unblock signal to fall back on
+# now that the ITC singleton is gone.
+_QUEUE_POLL_TIMEOUT_SEC = 0.2
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupForwarder(forwarding_targets: List[Tuple[str, int]],
+                   packet_forward_queue: asyncio.Queue,
                    add_task: AddTask,
                    shutdown_event: asyncio.Event,
                    logger: logging.Logger) -> AsyncUDPForwarder:
@@ -41,6 +46,7 @@ def setupForwarder(forwarding_targets: List[Tuple[str, int]],
 
     Args:
         forwarding_targets (List[Tuple[str, int]]): Initial forwarding targets (may be empty)
+        packet_forward_queue (asyncio.Queue): Queue the telemetry handler pushes raw packets to
         add_task (AddTask): The subsystem's add_task, which registers rather than starts
         shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
@@ -50,24 +56,30 @@ def setupForwarder(forwarding_targets: List[Tuple[str, int]],
     """
 
     udp_forwarder = AsyncUDPForwarder(forwarding_targets, logger)
-    add_task(udpForwardingTask(udp_forwarder, shutdown_event, logger), name="UDP Forwarder Task")
+    add_task(udpForwardingTask(packet_forward_queue, udp_forwarder, shutdown_event, logger),
+             name="UDP Forwarder Task")
     logger.debug("UDP Forwarder task registered. Initial targets=%s", forwarding_targets)
     return udp_forwarder
 
-async def udpForwardingTask(udp_forwarder: AsyncUDPForwarder,
+async def udpForwardingTask(packet_forward_queue: asyncio.Queue,
+                            udp_forwarder: AsyncUDPForwarder,
                             shutdown_event: asyncio.Event,
                             logger: logging.Logger) -> None:
     """UDP Forwarding Task
 
     Args:
+        packet_forward_queue (asyncio.Queue): Queue the telemetry handler pushes raw packets to
         udp_forwarder (AsyncUDPForwarder): Forwarder instance (shared with IPC handler for hot-reload)
         shutdown_event (asyncio.Event): Shutdown event
         logger (logging.Logger): Logger
     """
 
     while not shutdown_event.is_set():
-        if packet := await AsyncInterTaskCommunicator().receive("packet-forward"):
-            await udp_forwarder.forward(packet)
+        try:
+            packet = await asyncio.wait_for(packet_forward_queue.get(), timeout=_QUEUE_POLL_TIMEOUT_SEC)
+        except asyncio.TimeoutError:
+            continue
+        await udp_forwarder.forward(packet)
 
     udp_forwarder.close()
     logger.debug("Shutting down UDP Forwarder task...")

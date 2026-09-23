@@ -22,14 +22,10 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import asyncio
-
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import (PeriodicUpdateData,
                                                 StreamOverlayData)
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
-from lib.ipc import IpcDealerAsync, IpcPublisherAsync
-from lib.subsystem.identity import PngSubsysId
+from lib.ipc import IpcPublisherAsync
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -61,32 +57,3 @@ async def highFreqLocalUpdateTask(
     data = StreamOverlayData(session_state, export_hud_data=True, export_pu_data=True).toJSON(
         stream_overlay_start_sample_data)
     await ipc_pub.publish("stream-overlay-update", data)
-
-async def frontEndMessageTask(
-    dealer: IpcDealerAsync,
-    shutdown_event: asyncio.Event) -> None:
-    """Task to forward aperiodic frontend messages (toasts, markers, etc.) to apps/web via the
-    router/dealer channel.
-
-    Args:
-        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
-        shutdown_event (asyncio.Event): Event to signal shutdown
-    """
-
-    while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("frontend-update"):
-            await dealer.fire(str(PngSubsysId.WEB), "frontend-update", message.toJSON())
-
-async def hudInteractionTask(
-    dealer: IpcDealerAsync,
-    shutdown_event: asyncio.Event) -> None:
-    """Task to forward HUD button-press notifications via ZeroMQ DEALER.
-
-    Args:
-        dealer (IpcDealerAsync): The ZeroMQ DEALER async client
-        shutdown_event (asyncio.Event): Event to signal shutdown
-    """
-
-    while not shutdown_event.is_set():
-        if message := await AsyncInterTaskCommunicator().receive("hud-notifier"):
-            await dealer.fire(str(PngSubsysId.HUD), str(message.m_message_type), message.toJSON())

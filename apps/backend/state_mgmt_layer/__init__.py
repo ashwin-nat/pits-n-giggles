@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .state_layer_init import initStateManagementLayer, SessionState
+from .tyre_delta import TyreDeltaMessage
 from . import intf
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -33,6 +34,7 @@ __all__ = [
 
     # Data structure
     "SessionState",
+    "TyreDeltaMessage",
 
     # Module
     "intf",

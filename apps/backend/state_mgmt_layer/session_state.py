@@ -25,12 +25,13 @@
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from apps.backend.state_mgmt_layer.session_info import SessionInfo
+from apps.backend.state_mgmt_layer.tyre_delta import TyreDeltaMessage
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
 from lib.config import CaptureSettings, PngSettings
@@ -44,10 +45,8 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketLapPositionsData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus)
-from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                         SessionChangeNotification,
-                                         TyreDeltaMessage)
+                          PacketTyreSetsData, ResultStatus, SessionType,
+                          TrackID)
 from lib.logger import PngLogger
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
@@ -57,6 +56,12 @@ from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            race_ctrl_event_msg_factory)
 from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
+
+# The type of the callback SessionState uses to trigger an external API lookup on a session
+# change - see apps/backend/state_mgmt_layer/external_api.py, which fire_and_forget dispatches
+# the actual (I/O-bound) lookup. Kept as a plain callback so this module doesn't need to know
+# about fire_and_forget or external_api's implementation.
+NotifyExternalApi = Callable[[TrackID, SessionType, "PacketSessionData.FormulaType"], None]
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -73,7 +78,7 @@ class SessionState:
     Cast them forth - communicate.
 
     TLDR: only CPU bound operations allowed here. If you need to perform any I/O bound operation,
-    offload it to a separate task via the inter task communicator
+    dispatch it via the subsystem's fire_and_forget instead
     """
 
     __slots__ = (
@@ -109,18 +114,22 @@ class SessionState:
         'm_flashback_occurred',
         'm_in_menu',
         'm_track_segments_db',
+        'm_notify_external_api',
     )
 
     def __init__(self,
                  logger: PngLogger,
                  settings: PngSettings,
-                 ver_str: str) -> None:
+                 ver_str: str,
+                 notify_external_api: NotifyExternalApi) -> None:
         """Init the DriverData object
 
         Args:
             logger (PngLogger): Logger
             settings (PngSettings): Settings
             ver_str (str): Version string
+            notify_external_api (NotifyExternalApi): Callback fired on a session change, to
+                trigger the (I/O-bound) external API lookup in the background
         """
 
         self.m_logger = logger
@@ -161,6 +170,7 @@ class SessionState:
         self.m_track_segments_db = TrackSegmentsDatabase(
             Path(__file__).parents[3] / "assets/track-segments"
         )
+        self.m_notify_external_api: NotifyExternalApi = notify_external_api
 
     ####### Control Methods ########
 
@@ -890,7 +900,7 @@ class SessionState:
         session_changed = self._processSessionUpdateHelper(packet)
         self.m_session_info.processSessionUpdate(packet)
         if session_changed:
-            await self._notifyExternalApiTask()
+            self._notifyExternalApiTask()
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
@@ -1463,13 +1473,13 @@ class SessionState:
 
         return session_changed
 
-    async def _notifyExternalApiTask(self) -> None:
-        """Notify the external api task that the session has been updated"""
-        await AsyncInterTaskCommunicator().send("external-api-update", SessionChangeNotification(
-            trackID=self.m_session_info.m_track,
-            session_type=self.m_session_info.m_session_type,
-            formula_type=self.m_session_info.m_formula
-        ))
+    def _notifyExternalApiTask(self) -> None:
+        """Dispatch the (I/O-bound) external API lookup in the background - see NotifyExternalApi"""
+        self.m_notify_external_api(
+            self.m_session_info.m_track,
+            self.m_session_info.m_session_type,
+            self.m_session_info.m_formula
+        )
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information

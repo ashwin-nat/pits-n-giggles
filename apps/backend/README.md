@@ -47,7 +47,7 @@ The telemetry packet processing task is designed to run as efficiently as possib
 
 If an I/O-bound action is needed (e.g. logging, sending updates to the frontend, saving to disk):
 
-- **Use [`AsyncInterTaskCommunicator`](https://github.com/ashwin-nat/pits-n-giggles/blob/main/lib/inter_task_communicator.py) to offload the work** to the appropriate subsystem.
+- **Use the subsystem's `fire_and_forget`** (see `lib/subsystem/`) to offload the work as untracked background dispatch.
 - The state management layer must be purely CPU bound and this principle is holy.
 
 > ✅ This keeps the telemetry processing loop fast, avoids blocking, and ensures all I/O is handled in a centralized and isolated manner.

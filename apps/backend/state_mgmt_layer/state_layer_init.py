@@ -22,14 +22,14 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import asyncio
 import logging
 
 from lib.config import PngSettings
-from lib.subsystem import AddTask
+from lib.f1_types import PacketSessionData, SessionType, TrackID
+from lib.subsystem import AsyncSubsystem
 
 from .session_state import SessionState
-from .external_api import initExternalApiTask
+from .external_api import handleExternalApiUpdate
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -37,25 +37,27 @@ def initStateManagementLayer(
     logger: logging.Logger,
     settings: PngSettings,
     ver_str: str,
-    add_task: AddTask,
-    shutdown_event: asyncio.Event) -> SessionState:
+    subsystem: AsyncSubsystem) -> SessionState:
     """Initialise the state management layer
 
     Args:
         logger (logging.Logger): Logger
         settings (PngSettings): Settings
         ver_str (str): Version string
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
-        shutdown_event (asyncio.Event): Shutdown event
+        subsystem (AsyncSubsystem): The backend subsystem - used for fire_and_forget, to
+            dispatch the (I/O-bound) external API lookup in the background whenever the
+            session changes
 
     Returns:
         SessionState: Handle to the session state data structure
     """
-    ref =  SessionState(
-        logger,
-        settings,
-        ver_str
-    )
-    initExternalApiTask(logger=logger, add_task=add_task, shutdown_event=shutdown_event,
-                        session_state_ref=ref)
+
+    def notify_external_api(
+            track_id: TrackID, session_type: SessionType,
+            formula_type: PacketSessionData.FormulaType) -> None:
+        subsystem.fire_and_forget(
+            handleExternalApiUpdate(logger, track_id, session_type, formula_type, ref),
+            name="External API Update")
+
+    ref = SessionState(logger, settings, ver_str, notify_external_api=notify_external_api)
     return ref
