@@ -25,10 +25,11 @@
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
+from apps.backend.state_mgmt_layer.external_api import handleExternalApiUpdate
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from apps.backend.state_mgmt_layer.session_info import SessionInfo
@@ -46,22 +47,16 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketLapPositionsData, PacketMotionData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, ResultStatus, SessionType,
-                          TrackID)
+                          PacketTyreSetsData, ResultStatus)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            OvertakeRaceCtrlMsg, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
+from lib.subsystem import AsyncSubsystem
 from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
-
-# The type of the callback SessionState uses to trigger an external API lookup on a session
-# change - see apps/backend/state_mgmt_layer/external_api.py, which fire_and_forget dispatches
-# the actual (I/O-bound) lookup. Kept as a plain callback so this module doesn't need to know
-# about fire_and_forget or external_api's implementation.
-NotifyExternalApi = Callable[[TrackID, SessionType, "PacketSessionData.FormulaType"], None]
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
@@ -114,18 +109,16 @@ class SessionState:
         'm_flashback_occurred',
         'm_in_menu',
         'm_track_segments_db',
-        'm_notify_external_api',
+        'm_subsystem',
     )
 
-    def __init__(self,
-                 ctx: AppCtx,
-                 notify_external_api: NotifyExternalApi) -> None:
+    def __init__(self, ctx: AppCtx) -> None:
         """Init the DriverData object
 
         Args:
-            ctx (AppCtx): Backend app context (logger, settings, subsystem)
-            notify_external_api (NotifyExternalApi): Callback fired on a session change, to
-                trigger the (I/O-bound) external API lookup in the background
+            ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem is
+                kept only to fire_and_forget the (I/O-bound) external API lookup on a session
+                change - see _notifyExternalApiTask.
         """
 
         self.m_logger = ctx.logger
@@ -166,7 +159,7 @@ class SessionState:
         self.m_track_segments_db = TrackSegmentsDatabase(
             Path(__file__).parents[3] / "assets/track-segments"
         )
-        self.m_notify_external_api: NotifyExternalApi = notify_external_api
+        self.m_subsystem: AsyncSubsystem = ctx.subsystem
 
     ####### Control Methods ########
 
@@ -1470,12 +1463,18 @@ class SessionState:
         return session_changed
 
     def _notifyExternalApiTask(self) -> None:
-        """Dispatch the (I/O-bound) external API lookup in the background - see NotifyExternalApi"""
-        self.m_notify_external_api(
-            self.m_session_info.m_track,
-            self.m_session_info.m_session_type,
-            self.m_session_info.m_formula
-        )
+        """Dispatch the (I/O-bound) external API lookup in the background via fire_and_forget."""
+        self.m_subsystem.fire_and_forget(
+            handleExternalApiUpdate(
+                self.m_logger,
+                self.m_session_info.m_track,
+                self.m_session_info.m_session_type,
+                self.m_session_info.m_formula,
+                self),
+            name="External API Update "
+                f"{str(self.m_session_info.m_formula)} | "
+                f"{str(self.m_session_info.m_session_type)} | "
+                f"{str(self.m_session_info.m_track)}")
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information

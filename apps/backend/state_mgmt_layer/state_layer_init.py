@@ -23,10 +23,8 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 from apps.backend.app_ctx import AppCtx
-from lib.f1_types import PacketSessionData, SessionType, TrackID
 
 from .session_state import SessionState
-from .external_api import handleExternalApiUpdate
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -34,20 +32,10 @@ def initStateManagementLayer(ctx: AppCtx) -> SessionState:
     """Initialise the state management layer
 
     Args:
-        ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem's
-            fire_and_forget dispatches the (I/O-bound) external API lookup in the background
-            whenever the session changes.
+        ctx (AppCtx): Backend app context (logger, settings, subsystem)
 
     Returns:
         SessionState: Handle to the session state data structure
     """
 
-    def notify_external_api(
-            track_id: TrackID, session_type: SessionType,
-            formula_type: PacketSessionData.FormulaType) -> None:
-        ctx.subsystem.fire_and_forget(
-            handleExternalApiUpdate(ctx.logger, track_id, session_type, formula_type, ref),
-            name="External API Update")
-
-    ref = SessionState(ctx, notify_external_api=notify_external_api)
-    return ref
+    return SessionState(ctx)

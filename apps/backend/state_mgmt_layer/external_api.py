@@ -23,11 +23,15 @@
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
 import logging
+from typing import TYPE_CHECKING
 
 from lib.f1_types import PacketSessionData, SessionType, TrackID
 from lib.openf1 import getMostRecentPoleLap
 
-from .session_state import SessionState
+if TYPE_CHECKING:
+    # Only for the type hint below - session_state.py imports this module's
+    # handleExternalApiUpdate, so importing SessionState back here at runtime would be circular.
+    from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -36,7 +40,7 @@ async def handleExternalApiUpdate(
         track_id: TrackID,
         session_type: SessionType,
         formula_type: PacketSessionData.FormulaType,
-        session_state_ref: SessionState) -> None:
+        session_state_ref: "SessionState") -> None:
     """One-shot external API lookup, fire_and_forget dispatched by SessionState whenever the
     session changes (see SessionState._notifyExternalApiTask).
 
