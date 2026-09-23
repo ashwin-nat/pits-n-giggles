@@ -112,7 +112,8 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
 
         @self.mgmt.on("manual-save")
         async def _manual_save(_args: dict) -> dict:
-            return await handleManualSave(logger=self.logger, session_state=self.session_state)
+            return await handleManualSave(
+                logger=self.logger, session_state=self.session_state, telemetry_handler=self.telemetry_handler)
 
         @self.mgmt.on("udp-action-code-change")
         async def _udp_action_code_change(args: dict) -> dict:

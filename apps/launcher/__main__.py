@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import multiprocessing
 import os
 import sys
 import runpy
@@ -74,6 +75,13 @@ def _dispatch_frozen_submodule():
         print(f"[dispatcher] ERROR: Exception during run_module: {e}")
         traceback.print_exc()
         sys.exit(1)
+
+# ------------------------------------------------------------------------------------
+# multiprocessing.freeze_support() must run before anything else in a frozen build.
+# when a process pool worker is spawned, on windows, it re-invokes the exe.
+# This prevents it from launching a new gui window
+# ------------------------------------------------------------------------------------
+multiprocessing.freeze_support()
 
 # ------------------------------------------------------------------------------------
 # Decide whether to run a submodule dispatcher or the main launcher

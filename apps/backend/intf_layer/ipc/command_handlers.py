@@ -35,15 +35,29 @@ from lib.logger import PngLogger
 async def handleManualSave(
         logger: PngLogger,
         session_state: SessionState,
+        telemetry_handler: F1TelemetryHandler,
         ) -> dict:
-    """Handle manual save command"""
+    """Handle manual save command. Writes both race-info JSON and the .pngt telemetry
+    dump, same as the auto-save paths (final classification, just-in-case).
+    """
+
+    # Captured now, synchronously, before ManualSaveRsp's own await -- a session change
+    # landing on the ingress task mid-save must not be able to corrupt this write.
+    session_uid = session_state.m_session_info.m_session_uid or 0
+    pngt_write = telemetry_handler.preparePngtWrite()
+
     try:
-        return await ManualSaveRsp(logger, session_state).saveToDisk()
+        rsp = await ManualSaveRsp(logger, session_state).saveToDisk()
     except ValueError as e:
-        return {"status": "error", "message": str(e)}
+        rsp = {"status": "error", "message": str(e)}
     except Exception as e:  # pylint: disable=broad-except
         logger.exception("Unexpected error during manual save")
-        return {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
+        rsp = {"status": "error", "message": f"{e.__class__.__name__}: {e}"}
+
+    # This write can hog the IPC/mgmt task. This will cause heartbeats to miss and the
+    # launcher to kill the core subsystem. Hence fire and forget in process worker pool
+    telemetry_handler.firePngtWrite(pngt_write, session_uid)
+    return rsp
 
 async def handleForwardingConfigChange(
         msg: dict,
