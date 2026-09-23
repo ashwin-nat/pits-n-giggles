@@ -22,58 +22,47 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import asyncio
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from lib.inter_task_communicator import AsyncInterTaskCommunicator, SessionChangeNotification
+from lib.f1_types import PacketSessionData, SessionType, TrackID
 from lib.openf1 import getMostRecentPoleLap
 
-from lib.subsystem import AddTask
-
-from .session_state import SessionState
+if TYPE_CHECKING:
+    # Only for the type hint below - session_state.py imports this module's
+    # handleExternalApiUpdate, so importing SessionState back here at runtime would be circular.
+    from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initExternalApiTask(
-    logger: logging.Logger,
-    add_task: AddTask,
-    shutdown_event: asyncio.Event,
-    session_state_ref: SessionState) -> None:
-    """Initialise the state management layer
-
-    Args:
-        logger (logging.Logger): Logger
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
-        shutdown_event (asyncio.Event): Shutdown event
-        session_state_ref (SessionState): Reference to the session state
-    """
-    add_task(externalApiTask(logger, shutdown_event, session_state_ref), name="External API Task")
-
-async def externalApiTask(
+async def handleExternalApiUpdate(
         logger: logging.Logger,
-        shutdown_event: asyncio.Event,
-        session_state_ref: SessionState) -> None:
-    """The actual task that calls the external API's
+        track_id: TrackID,
+        session_type: SessionType,
+        formula_type: PacketSessionData.FormulaType,
+        session_state_ref: "SessionState") -> None:
+    """One-shot external API lookup, fire_and_forget dispatched by SessionState whenever the
+    session changes (see SessionState._notifyExternalApiTask).
 
     Args:
         logger (logging.Logger): Logger
-        shutdown_event (asyncio.Event): Shutdown event
-        session_state_ref (SessionState): Reference to the session state
+        track_id (TrackID): The new session's track
+        session_type (SessionType): The new session's type
+        formula_type (PacketSessionData.FormulaType): The new session's formula type
+        session_state_ref (SessionState): Reference to the session state, updated in place
     """
 
-    while not shutdown_event.is_set():
-        message: Optional[SessionChangeNotification] = await AsyncInterTaskCommunicator().receive("external-api-update")
-        if message:
-            if not message.m_formula_type.is_f1() or not message.m_session_type.isTimeTrialTypeSession():
-                logger.debug("Skipping external API update as session is unsupported. %s", message)
-                pole_lap = None
-            else:
-                try:
-                    pole_lap = await getMostRecentPoleLap(track_id=message.m_trackID, logger=logger)
-                except Exception as e: # pylint: disable=broad-exception-caught
-                    logger.error("Error fetching most recent pole lap: %s", e)
-                    pole_lap = None
-            session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
+    if not formula_type.is_f1() or not session_type.isTimeTrialTypeSession():
+        logger.debug("Skipping external API update as session is unsupported. "
+                     "track=%s session_type=%s formula_type=%s", track_id, session_type, formula_type)
+        pole_lap = None
+    else:
+        try:
+            pole_lap = await getMostRecentPoleLap(track_id=track_id, logger=logger)
+        except Exception as e: # pylint: disable=broad-exception-caught
+            logger.error("Error fetching most recent pole lap: %s", e)
+            pole_lap = None
 
-    logger.debug("Shutting down External API task...")
+    # No session-identity guard here: a session change takes seconds (loading screens etc.), far
+    # longer than this lookup, so a stale write racing a newer session is not worth guarding against.
+    session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap

@@ -20,22 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# -------------------------------------- IMPORTS -----------------------------------------------------------------------
+# ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from .state_layer_init import initStateManagementLayer, SessionState
-from .tyre_delta import TyreDeltaMessage
-from . import intf
+from dataclasses import dataclass
 
-# -------------------------------------- EXPORTS -----------------------------------------------------------------------
+from lib.config import PngSettings
+from lib.logger import PngLogger
+from lib.subsystem import AsyncSubsystem
 
-__all__ = [
-    # Init
-    "initStateManagementLayer",
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-    # Data structure
-    "SessionState",
-    "TyreDeltaMessage",
+@dataclass(frozen=True)
+class AppCtx:
+    """Bundles the handles that every backend layer's init function and top-level class need:
+    the logger, settings and the owning subsystem (for add_task/fire_and_forget, its version
+    string, and its IPC surfaces). Built once in BackendSubsystem.__init__ and threaded down
+    instead of passing the same args individually through each layer.
+    """
 
-    # Module
-    "intf",
-]
+    logger: PngLogger
+    settings: PngSettings
+    subsystem: AsyncSubsystem

@@ -897,6 +897,72 @@ async def test_cancel_reaches_the_task_once_started():
     with pytest.raises(asyncio.CancelledError):
         await task
 
+async def test_fire_and_forget_runs_without_a_handle():
+    """The whole point: no SubsystemTask comes back, but the coroutine still runs."""
+
+    app = _StubAsync()
+    ran = []
+
+    async def _work():
+        ran.append(True)
+
+    result = app.fire_and_forget(_work(), name="Work")
+    await asyncio.sleep(0)
+
+    assert result is None
+    assert ran == [True]
+
+async def test_fire_and_forget_logs_a_raised_exception(caplog):
+    """A failure is logged with a traceback rather than left for asyncio to warn about."""
+
+    app = _StubAsync()
+
+    async def _boom():
+        raise ValueError("kaboom")
+
+    with caplog.at_level(logging.ERROR, logger=app.logger.name):
+        app.fire_and_forget(_boom(), name="Boom")
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)  # let the done-callback run after the task raises
+
+    assert "Boom" in caplog.text
+    assert "kaboom" in caplog.text
+
+async def test_fire_and_forget_forgets_the_task_once_done():
+    """Nothing is held past completion - success or failure - so nothing leaks."""
+
+    app = _StubAsync()
+
+    async def _work():
+        return None
+
+    async def _boom():
+        raise ValueError("kaboom")
+
+    app.fire_and_forget(_work(), name="Work")
+    app.fire_and_forget(_boom(), name="Boom")
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)  # let both done-callbacks run
+
+    assert app._background_tasks == set()  # pylint: disable=protected-access
+
+async def test_fire_and_forget_cancellation_is_not_logged_as_a_failure():
+    """A cancelled task has no exception to report - t.exception() would raise instead."""
+
+    app = _StubAsync()
+
+    async def _hang():
+        await asyncio.sleep(60)
+
+    app.fire_and_forget(_hang(), name="Hang")
+    await asyncio.sleep(0)
+    task = next(iter(app._background_tasks))  # pylint: disable=protected-access
+    task.cancel()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)  # let the done-callback run after cancellation lands
+
+    assert app._background_tasks == set()  # pylint: disable=protected-access
+
 async def test_adopt_task_wraps_a_task_its_owner_created():
     """IpcPublisherAsync creates its own reconnect task; the registry still has to gather it."""
 
