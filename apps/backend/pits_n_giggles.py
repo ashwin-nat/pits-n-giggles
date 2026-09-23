@@ -25,9 +25,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, override
 
-from apps.backend.intf_layer import (frontEndMessageTask,
-                                     highFreqLocalUpdateTask,
-                                     hudInteractionTask,
+from apps.backend.app_ctx import AppCtx
+from apps.backend.intf_layer import (highFreqLocalUpdateTask,
                                      lowFreqLocalUpdateTask)
 from apps.backend.intf_layer.ipc import (handleCaptureConfigChange,
                                          handleForwardingConfigChange,
@@ -38,7 +37,6 @@ from apps.backend.state_mgmt_layer import (SessionState,
                                            initStateManagementLayer)
 from apps.backend.state_mgmt_layer.intf import RaceInfoData
 from apps.backend.telemetry_layer import F1TelemetryHandler, initTelemetryLayer
-from lib.inter_task_communicator import AsyncInterTaskCommunicator
 from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
                            arg, run_subsystem)
 
@@ -76,21 +74,17 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
             "on the screen before the race start - that is when the game starts sending telemetry data")
 
-        self.session_state: SessionState = initStateManagementLayer(
+        ctx = AppCtx(
             logger=self.logger,
             settings=self.settings,
-            ver_str=self.version,
-            add_task=self.add_task,
-            shutdown_event=self.shutdown_event)
+            subsystem=self)
+
+        self.session_state: SessionState = initStateManagementLayer(ctx)
 
         self.telemetry_handler: F1TelemetryHandler = initTelemetryLayer(
-            settings=self.settings,
+            ctx,
             replay_server=self.args.replay_server,
-            logger=self.logger,
-            ver_str=self.version,
-            shutdown_event=self.shutdown_event,
-            session_state=self.session_state,
-            add_task=self.add_task)
+            session_state=self.session_state)
 
         self._register_dealer_routes()
         self._register_mgmt_routes()
@@ -133,7 +127,8 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
                 args, self.logger, self.telemetry_handler, self.session_state)
 
     def _register_publish_tasks(self) -> None:
-        """The periodic publishes, plus the two event-driven forwarders."""
+        """The two periodic publishes. Aperiodic frontend/HUD notifications are fired directly
+        by the telemetry handler via fire_and_forget - see initTelemetryLayer."""
 
         self.add_periodic(
             self.settings.Display.local_telemetry_interval_ms,
@@ -149,11 +144,6 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
             self.publisher,
             self.settings.StreamOverlay.show_sample_data_at_start,
             name="High Frequency Local Update Task")
-
-        self.add_task(frontEndMessageTask(self.dealer, self.shutdown_event),
-                      name="Front End Message Task")
-        self.add_task(hudInteractionTask(self.dealer, self.shutdown_event),
-                      name="HUD Interaction Task")
 
     @override
     def collect_stats(self) -> Dict[str, Any]:
@@ -173,7 +163,7 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
 
     @override
     async def on_shutdown(self, reason: str) -> None:
-        """Release the ITC receivers and stop the telemetry handler.
+        """Stop the telemetry handler.
 
         The base closes the publisher and dealer once this returns.
 
@@ -182,9 +172,6 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
         """
 
         self.logger.debug("Shutting down the backend. Reason: %s", reason)
-        # Releases the frontend-update, hud-notifier, packet-forward and external-api-update
-        # receivers from their await, so their tasks can see the shutdown event and exit.
-        await AsyncInterTaskCommunicator().unblock_receivers()
         await self.telemetry_handler.stop()
 
 # -------------------------------------- ENTRY POINT -------------------------------------------------------------------

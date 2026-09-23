@@ -31,12 +31,13 @@ from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Tuple)
 
+from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.state_mgmt_layer.pngt_export import write_pngt_file
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import report_session_save_skipped_from_child
-from lib.config import CaptureSettings, OverlayId, PngSettings
+from lib.config import CaptureSettings, OverlayId
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -47,15 +48,10 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData, SafetyCarType)
 from lib.file_path import resolve_user_file
-from lib.inter_task_communicator import (
-    AsyncInterTaskCommunicator, FinalClassificationNotification,
-    HudCycleMfdNotification, HudMfdInteractionNotification,
-    HudPrevPageMfdNotification, HudToggleNotification, ITCMessage,
-    TyreDeltaNotificationMessageCollection)
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
-from lib.subsystem import AddTask, SubsystemTask
+from lib.subsystem import AsyncSubsystem, PngSubsysId, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
                                    telemetry_transport_factory)
 from lib.wdt import WatchDogTimerAsync
@@ -108,35 +104,33 @@ class UdpActionCodes:
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
-        settings: PngSettings,
+        ctx: AppCtx,
         replay_server: bool,
         session_state: SessionState,
-        logger: PngLogger,
-        ver_str: str,
-        add_task: AddTask) -> "F1TelemetryHandler":
+        packet_forward_queue: asyncio.Queue) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
 
     Args:
-        settings (PngSettings): App settings
+        ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem's
+            add_task registers rather than starts the telemetry tasks, and fire_and_forget
+            dispatches frontend/HUD notifications and the dealer.
         replay_server (bool): Whether to enable the TCP replay debug server.
         session_state (SessionState): Handle to the session state
-        logger (PngLogger): Logger instance
-        ver_str (str): Version string
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
+        packet_forward_queue (asyncio.Queue): Queue the forwarding task drains - kept as a
+            plain queue (not fire-and-forget) so per-packet forwarding doesn't spawn a task
+            per packet
 
     Returns:
         F1TelemetryHandler: Telemetry handler server
     """
 
     telemetry_server = F1TelemetryHandler(
-        settings=settings,
-        logger=logger,
+        ctx=ctx,
         session_state=session_state,
         replay_server=replay_server,
-        ver_str=ver_str,
+        packet_forward_queue=packet_forward_queue,
     )
-    telemetry_server.register_tasks(add_task)
-
+    telemetry_server.register_tasks(ctx.subsystem)
     return telemetry_server
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -150,26 +144,23 @@ class F1TelemetryHandler:
     """
 
     def __init__(self,
-        settings: PngSettings,
-        logger: PngLogger,
+        ctx: AppCtx,
         session_state: SessionState,
-        replay_server: bool = False,
-        ver_str: str = "dev") -> None:
+        packet_forward_queue: asyncio.Queue,
+        replay_server: bool = False) -> None:
         """
         Initialize F1TelemetryHandler.
 
         Parameters:
-            - settings (PngSettings): Png settings
-            - port (int): The port number for telemetry.
-            - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
-            - logger (PngLogger): Logger
-            - capture_settings (CaptureSettings): Capture settings
-            - wdt_interval (float): Watchdog interval
-            - udp_custom_action_code (Optional[int]): UDP custom action code.
-            - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
+            - ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem
+                is used for fire_and_forget (frontend/HUD notification dispatch) and its dealer.
+            - session_state (SessionState): Handle to the session state
+            - packet_forward_queue (asyncio.Queue): Queue the forwarding task drains
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
-            - ver_str (str): Version string
         """
+        settings = ctx.settings
+        logger = ctx.logger
+
         transport = telemetry_transport_factory(
             settings.Network.telemetry_port, replay_server, logger
         )
@@ -180,6 +171,8 @@ class F1TelemetryHandler:
         )
         self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
+        self.m_subsystem: AsyncSubsystem = ctx.subsystem
+        self.m_packet_forward_queue: asyncio.Queue = packet_forward_queue
 
         self.m_last_session_uid: Optional[int] = None
         self.m_final_classification_processed: bool = False
@@ -190,7 +183,7 @@ class F1TelemetryHandler:
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_udp_forwarder: Optional[AsyncUDPForwarder] = None
-        self.m_version: str = ver_str
+        self.m_version: str = ctx.subsystem.version
         self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
@@ -223,18 +216,18 @@ class F1TelemetryHandler:
         self.m_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
-    def register_tasks(self, add_task: AddTask) -> None:
+    def register_tasks(self, subsys: AsyncSubsystem) -> None:
         """Register this layer's three long-lived tasks with the subsystem.
 
         The receive loop's handle is kept because stop() cancels it - run() is a socket receive
         loop with no cooperative exit.
 
         Args:
-            add_task (AddTask): The subsystem's add_task, which registers rather than starts
+            subsys: Async subsystem handle
         """
-        self.m_manager_task = add_task(self.run(), name="Game Telemetry Listener Task")
-        add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
-        add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
+        self.m_manager_task = subsys.add_task(self.run(), name="Game Telemetry Listener Task")
+        subsys.add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
+        subsys.add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
 
     def updateUdpActionCode(self, key: str, val: int) -> None:
         """
@@ -355,7 +348,7 @@ class F1TelemetryHandler:
             self.m_wdt.kick()
             self.m_session_state_ref.m_pkt_count += 1
             if self.m_should_forward:
-                await AsyncInterTaskCommunicator().send("packet-forward", packet)
+                await self.m_packet_forward_queue.put(packet)
 
         @self.m_manager.on_any_packet()
         async def handleSessionUidGate(packet: F1PacketBase) -> None:
@@ -524,11 +517,9 @@ class F1TelemetryHandler:
 
             if session_type and (session_type.isRaceTypeSession() or session_type.isQualiTypeSession()) and player_info:
                 player_position = player_info.m_driver_info.position
-                message = ITCMessage(
-                    m_message_type=ITCMessage.MessageType.FINAL_CLASSIFICATION_NOTIFICATION,
-                    m_message=FinalClassificationNotification(player_position)
-                )
-                await AsyncInterTaskCommunicator().send("frontend-update", message)
+                self._notifyFrontend(
+                    "final-classification-notification",
+                    {"player-position": player_position})
 
         @self.m_manager.on_packet(F1PacketType.CAR_DAMAGE)
         async def processCarDamageUpdate(packet: PacketCarDamageData):
@@ -936,25 +927,45 @@ class F1TelemetryHandler:
             and self.m_button_debouncer.onButtonPress(action_code)
         )
 
+    def _notifyFrontend(self, message_type: str, message: Dict[str, Any]) -> None:
+        """Fire the frontend notification at apps/web, untracked.
+
+        Args:
+            message_type (str): The "message-type" field apps/frontend/js/app.js switches on
+            message (Dict[str, Any]): The already-JSON payload
+        """
+        self.m_subsystem.fire_and_forget(
+            self.m_subsystem.dealer.fire(str(PngSubsysId.WEB), "frontend-update",
+                                         {"message-type": message_type, "message": message}),
+            name=f"Frontend notify: {message_type}")
+
+    def _notifyHud(self, message_type: str, message: Dict[str, Any]) -> None:
+        """Fire the HUD notification at apps/hud, untracked.
+
+        Args:
+            message_type (str): The dealer topic - apps/hud/ipc/dealer.py routes on this exact
+                string
+            message (Dict[str, Any]): The already-JSON payload
+        """
+        self.m_subsystem.fire_and_forget(
+            self.m_subsystem.dealer.fire(str(PngSubsysId.HUD), message_type,
+                                         {"message-type": message_type, "message": message}),
+            name=f"HUD notify: {message_type}")
+
     async def _processCustomMarkerCreate(self) -> None:
         """Update the data structures with custom marker information
         """
 
         if custom_marker_obj := self.m_session_state_ref.getInsertCustomMarkerEntryObj():
-            await AsyncInterTaskCommunicator().send("frontend-update", ITCMessage(
-                m_message_type=ITCMessage.MessageType.CUSTOM_MARKER,
-                m_message=custom_marker_obj))
+            self._notifyFrontend("custom-marker", custom_marker_obj.toJSON())
 
     async def _processTyreDeltaSound(self) -> None:
         """Send the tyre delta notification to the frontend."""
         if messages := self.m_session_state_ref.getTyreDeltaNotificationMessages():
-            await AsyncInterTaskCommunicator().send(
-                "frontend-update",
-                ITCMessage(
-                    m_message_type=ITCMessage.MessageType.TYRE_DELTA_NOTIFICATION_V2,
-                    m_message=TyreDeltaNotificationMessageCollection(messages)
-                )
-            )
+            self._notifyFrontend("tyre-delta-v2", {
+                "curr-tyre-type": str(messages[0].m_curr_tyre_type),
+                "tyre-delta-messages": [message.toJSON() for message in messages]
+            })
 
     async def _processToggleHud(self, oid: Optional[str] = '') -> None:
         """Send the toggle HUD notification to the HUD manager.
@@ -962,43 +973,19 @@ class F1TelemetryHandler:
         Args:
             oid (Optional[str]): The overlay ID to toggle.
         """
-        await AsyncInterTaskCommunicator().send(
-            "hud-notifier",
-            ITCMessage(
-                m_message_type=ITCMessage.MessageType.HUD_TOGGLE_NOTIFICATION,
-                m_message=HudToggleNotification(oid)
-            )
-        )
+        self._notifyHud("hud-toggle-notification", {"oid": oid})
 
     async def _processCycleMFD(self) -> None:
         """Send the cycle MFD notification to the HUD manager."""
-        await AsyncInterTaskCommunicator().send(
-            "hud-notifier",
-            ITCMessage(
-                m_message_type=ITCMessage.MessageType.HUD_CYCLE_MFD_NOTIFICATION,
-                m_message=HudCycleMfdNotification()
-            )
-        )
+        self._notifyHud("hud-cycle-mfd-notification", {})
 
     async def _processPrevPageMFD(self) -> None:
         """Send the previous page MFD notification to the HUD manager."""
-        await AsyncInterTaskCommunicator().send(
-            "hud-notifier",
-            ITCMessage(
-                m_message_type=ITCMessage.MessageType.HUD_PREV_PAGE_MFD_NOTIFICATION,
-                m_message=HudPrevPageMfdNotification() # same message, different type. No extra info needed for prev page
-            )
-        )
+        self._notifyHud("hud-prev-page-mfd-notification", {})
 
     async def _processMFDInteraction(self) -> None:
         """Send the MFD interaction notification to the HUD manager."""
-        await AsyncInterTaskCommunicator().send(
-            "hud-notifier",
-            ITCMessage(
-                m_message_type=ITCMessage.MessageType.HUD_MFD_INTERACTION_NOTIFICATION,
-                m_message=HudMfdInteractionNotification()
-            )
-        )
+        self._notifyHud("hud-mfd-interaction-notification", {})
 
     async def _handle_udp_action(self,
                                  buttons: PacketEventData.Buttons,

@@ -27,14 +27,17 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
 from apps.backend.state_mgmt_layer.data_per_driver.sensor_mapper import F1SensorMapper
+from apps.backend.state_mgmt_layer.external_api import handleExternalApiUpdate
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
 from apps.backend.state_mgmt_layer.session_info import SessionInfo
+from apps.backend.state_mgmt_layer.tyre_delta import TyreDeltaMessage
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.config import CaptureSettings, PngSettings
+from lib.config import CaptureSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           FinalClassificationData, LapData,
@@ -46,10 +49,6 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData, ResultStatus)
-from lib.inter_task_communicator import (AsyncInterTaskCommunicator,
-                                         SessionChangeNotification,
-                                         TyreDeltaMessage)
-from lib.logger import PngLogger
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
 from lib.pngt import (DriverExportCandidate, IngestDriverExportData,
@@ -59,6 +58,7 @@ from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            OvertakeRaceCtrlMsg, SessionRaceControlManager,
                            race_ctrl_event_msg_factory)
+from lib.subsystem import AsyncSubsystem
 from lib.track_segments_classifier import TrackSegmentsDatabase
 from lib.tyre_wear_extrapolator import TyreWearPerLap
 
@@ -77,7 +77,7 @@ class SessionState:
     Cast them forth - communicate.
 
     TLDR: only CPU bound operations allowed here. If you need to perform any I/O bound operation,
-    offload it to a separate task via the inter task communicator
+    dispatch it via the subsystem's fire_and_forget instead
     """
 
     __slots__ = (
@@ -114,21 +114,19 @@ class SessionState:
         'm_in_menu',
         'm_track_segments_db',
         'm_export_mgr',
+        'm_subsystem',
     )
 
-    def __init__(self,
-                 logger: PngLogger,
-                 settings: PngSettings,
-                 ver_str: str) -> None:
+    def __init__(self, ctx: AppCtx) -> None:
         """Init the DriverData object
 
         Args:
-            logger (PngLogger): Logger
-            settings (PngSettings): Settings
-            ver_str (str): Version string
+            ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem is
+                kept only to fire_and_forget the (I/O-bound) external API lookup on a session
+                change - see _notifyExternalApiTask.
         """
 
-        self.m_logger = logger
+        self.m_logger = ctx.logger
         self.m_pkt_count: int = 0
         self.m_driver_data: List[Optional[DataPerDriver]] = [None] * MAX_DRIVERS
         self.m_player_index: Optional[int] = None
@@ -144,18 +142,18 @@ class SessionState:
         self.m_fastest_s3_ms: Optional[int] = None
         self.m_time_trial_packet : Optional[PacketTimeTrialData] = None
         self.m_overtakes_history = OvertakesHistory()
-        self.m_session_info: SessionInfo = SessionInfo(settings, logger)
+        self.m_session_info: SessionInfo = SessionInfo(ctx.settings, self.m_logger)
         self.m_first_session_update_received: bool = False
-        self.m_png_version: str = ver_str
+        self.m_png_version: str = ctx.subsystem.version
         self.m_pkt_fmt: Optional[int] = None
         self.m_game_version: Optional[str] = None
 
         # Config params
-        self.m_process_car_setups: bool = settings.Privacy.process_car_setup
-        self.m_save_race_ctrl_msgs: bool = settings.Capture.save_race_ctrl_msg
-        self.m_weather_aware_prediction: bool = settings.Prediction.weather_aware_prediction
-        self.m_tyre_wear_window_size: Optional[int] = settings.Prediction.tyre_wear_window_size
-        self.m_power_filter_window_size: int = settings.Prediction.harvest_power_window_size
+        self.m_process_car_setups: bool = ctx.settings.Privacy.process_car_setup
+        self.m_save_race_ctrl_msgs: bool = ctx.settings.Capture.save_race_ctrl_msg
+        self.m_weather_aware_prediction: bool = ctx.settings.Prediction.weather_aware_prediction
+        self.m_tyre_wear_window_size: Optional[int] = ctx.settings.Prediction.tyre_wear_window_size
+        self.m_power_filter_window_size: int = ctx.settings.Prediction.harvest_power_window_size
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -166,6 +164,7 @@ class SessionState:
         self.m_track_segments_db = TrackSegmentsDatabase(
             Path(__file__).parents[3] / "assets/track-segments"
         )
+        self.m_subsystem: AsyncSubsystem = ctx.subsystem
 
         # Aggregates + writes at export time only; each DataPerDriver records its own.
         # sensors must match F1SensorMapper.known_sensor_keys() used by DataPerDriver.
@@ -909,7 +908,7 @@ class SessionState:
         session_changed = self._processSessionUpdateHelper(packet)
         self.m_session_info.processSessionUpdate(packet)
         if session_changed:
-            await self._notifyExternalApiTask()
+            self._notifyExternalApiTask()
 
     def processCollisionEvent(self, packet: PacketEventData.Collision) -> None:
         """Process the collision event update packet and update the necessary fields
@@ -1506,13 +1505,19 @@ class SessionState:
 
         return session_changed
 
-    async def _notifyExternalApiTask(self) -> None:
-        """Notify the external api task that the session has been updated"""
-        await AsyncInterTaskCommunicator().send("external-api-update", SessionChangeNotification(
-            trackID=self.m_session_info.m_track,
-            session_type=self.m_session_info.m_session_type,
-            formula_type=self.m_session_info.m_formula
-        ))
+    def _notifyExternalApiTask(self) -> None:
+        """Dispatch the (I/O-bound) external API lookup in the background via fire_and_forget."""
+        self.m_subsystem.fire_and_forget(
+            handleExternalApiUpdate(
+                self.m_logger,
+                self.m_session_info.m_track,
+                self.m_session_info.m_session_type,
+                self.m_session_info.m_formula,
+                self),
+            name="External API Update "
+                f"{str(self.m_session_info.m_formula)} | "
+                f"{str(self.m_session_info.m_session_type)} | "
+                f"{str(self.m_session_info.m_track)}")
 
     def _getCollisionObj(self, driver_1_index: int, driver_2_index: int) -> Optional[CollisionRecord]:
         """Returns a collision object containing collision information
