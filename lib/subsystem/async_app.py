@@ -136,25 +136,15 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
 
         super().__init__()
         self._tasks: List[SubsystemTask] = []
-        # Safe to build with no loop running: asyncio.Event stopped capturing a loop at
-        # construction in 3.10, and binds lazily on the first wait(). SyncSubsystem has always
-        # built its threading.Event here.
         self.shutdown_event: asyncio.Event = asyncio.Event()
         self._shutdown_requested: asyncio.Event = asyncio.Event()
         self._shutdown_reason: str = "N/A"
 
-        # Built here, before the subclass's own __init__ body, so that it can attach handlers
-        # and register tasks alongside the rest of its wiring. These bind real sockets, which
-        # is why a subsystem is a process rather than an object you make several of.
-        #
-        # Each is assigned exactly once, from a builder that owns its own condition. They stay
-        # Optional because a subsystem sits on at most one end of the pub/sub fabric and may
-        # want neither - so None here means "this subsystem declared no such endpoint", never
-        # "not built yet". The properties below turn that None into a readable assert.
         self._mgmt_server: Optional[IpcServerAsync] = self._build_mgmt_ipc()
         self._publisher: Optional[IpcPublisherAsync] = self._build_publisher()
         self._subscriber: Optional[IpcSubscriberAsync] = self._build_subscriber()
         self._dealer: Optional[IpcDealerAsync] = self._build_dealer()
+        self._background_tasks: set = set()
 
     # -------------------------------------- MUST IMPLEMENT ------------------------------------------------------------
 
@@ -192,20 +182,6 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
     def _adopt_task(self, task: asyncio.Task) -> SubsystemTask:
         """Register a task that its own owner already created.
 
-        Private because add_task() is the registration API and this has one caller - the
-        publisher, below. Make it public again if a subsystem ever owns a task of its own that
-        it cannot hand over as a coroutine.
-
-        IpcPublisherAsync creates its reconnect task itself, and close() cancels it, so it
-        cannot hand over a bare coroutine. Giving it a run() coroutine instead was tried and
-        reverted: start() has 19 callers in tests/ipc/tests_pubsub.py that rely on it returning
-        immediately.
-
-        Such a task still belongs in the registry, so that it is logged with the rest and so
-        that the subsystem comes down if it dies unexpectedly. The cost is that cancelling it
-        surfaces as a cancelled child in the gather, which is why the backend's shutdown ends
-        in CancelledError where the web app's completes normally.
-
         Args:
             task (asyncio.Task): An already-created task
 
@@ -239,6 +215,26 @@ class AsyncSubsystem(PngSubsystem[ArgsT], Generic[ArgsT]):
         return self.add_task(
             periodic_task(interval_ms, self.shutdown_event, self.logger, task_coro, *args, **kwargs),
             name=name)
+
+    def fire_and_forget(self, coro: Awaitable[Any], name: str) -> None:
+        """Run coro without tracking its result - for callers that just want it to happen.
+        Does not return a handle/ref, caller doesn't need to maintain a handle to the task
+
+        Args:
+            coro (Awaitable[Any]): Coroutine to run
+            name (str): Task name, as it appears in logs
+        """
+
+        task = asyncio.create_task(coro, name=name)
+        self._background_tasks.add(task)
+
+        def _on_done(t: asyncio.Task) -> None:
+            self._background_tasks.discard(t)
+            if not t.cancelled() and t.exception() is not None:
+                self.logger.exception("Fire-and-forget task '%s' failed", t.get_name(),
+                                      exc_info=t.exception())
+
+        task.add_done_callback(_on_done)
 
     # -------------------------------------- IPC HANDLES ---------------------------------------------------------------
 
