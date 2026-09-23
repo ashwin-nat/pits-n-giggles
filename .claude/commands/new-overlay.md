@@ -116,12 +116,13 @@ In `on_settings_change`, inside the `udp_action_codes_diff` block under `"HUD"`,
 
 #### A6. Register UDP interact in backend (if applicable)
 
-Follow the same three-file pattern as the generic overlay steps 5–8 below for:
-- `apps/backend/telemetry_layer/telemetry_handler.py` — `UdpActionCodes` dataclass + `_MAP` + `handleButtonStatus`
-- `lib/inter_task_communicator.py` — new notification dataclass + `MessageType` value
+Follow the same two-file pattern as the generic overlay steps 5–8 below for:
+- `apps/backend/telemetry_layer/telemetry_handler.py` — `UdpActionCodes` dataclass + `_MAP` + `handleButtonStatus` + a new `_process<Action>`/`_notifyHud(...)` call
 - `apps/hud/ipc/dealer.py` — add `@dealer.route(...)` handler
 
-The backend needs no forwarding change: `hudInteractionTask` fires every `hud-notifier` message at the HUD generically, using the `MessageType` value as the topic.
+The backend needs no separate forwarding task: `F1TelemetryHandler._notifyHud` fires the dealer
+call directly (via the subsystem's `fire_and_forget`), using the literal topic string as both the
+dealer topic and the "message-type" field.
 
 #### A7. Create the page class — `apps/hud/ui/overlays/mfd/pages/gap_to_leader/`
 
@@ -347,31 +348,30 @@ await self._handle_udp_action(
     lambda: self._processToggleHud('<overlay_name>')
 )
 ```
-For extra interactions, add a new `_process<Action>` private method following the pattern of `_processCycleMFD`, and a matching `HudXxxNotification` dataclass + `MessageType` enum value (steps B6 and B7 below).
+For extra interactions, add a new `_process<Action>` private method following the pattern of `_processCycleMFD` (step B6 below).
 
-#### B6. New ITC notification types (only if extra interactions beyond toggle)
+#### B6. New notification (only if extra interactions beyond toggle)
 
-Edit `lib/inter_task_communicator.py`:
-
-**a)** Add a new `@dataclass` notification class following the pattern of `HudCycleMfdNotification`:
+Add a new `_process<Action>` method to `F1TelemetryHandler` (in `telemetry_handler.py`)
+following the pattern of `_processCycleMFD`:
 ```python
-@dataclass
-class Hud<Action>Notification:
-    ...
+async def _process<Action>(self) -> None:
+    """Send the <action> notification to the HUD manager."""
+    self._notifyHud("hud-<action>-notification", {...})
 ```
+The dict passed to `_notifyHud` is the JSON payload - build it inline from a couple of
+primitive fields (see `_processToggleHud`'s `{"oid": oid}`). Only reach for a dedicated payload
+type (following the pattern of `TyreDeltaMessage` in `apps/backend/state_mgmt_layer/tyre_delta.py`)
+if the notification carries real structure worth naming and reusing elsewhere.
 
-**b)** Add a new `MessageType` enum value:
-```python
-HUD_<ACTION>_NOTIFICATION = "hud-<action>-notification"
-```
+#### B7. Backend dispatch — nothing extra to do
 
-#### B7. Backend forwarding — nothing to do
-
-`hudInteractionTask` in `apps/backend/intf_layer/telemetry_ui_tasks.py` forwards **any** ITC message on the `hud-notifier` queue to the HUD generically:
-```python
-await dealer.fire(str(PngSubsysId.HUD), str(message.m_message_type), message.toJSON())
-```
-The router/dealer topic is the `MessageType` value you added in B6b, so no per-event mapping is needed. (This step used to edit a `client_event_mappings` table in `telemetry_web_server.py`, back when the HUD was a socketio client. That file and that mechanism are gone.)
+`F1TelemetryHandler._notifyHud` fires **any** notification straight at the HUD via the
+subsystem's `fire_and_forget`, generically. The literal string you chose in B6
+(`"hud-<action>-notification"`) is both the router/dealer topic and the "message-type" field, so
+no per-event mapping is needed. (This step used to edit a `client_event_mappings` table in
+`telemetry_web_server.py`, back when the HUD was a socketio client. That file and that mechanism
+are gone.)
 
 #### B8. HUD dealer handlers — `apps/hud/ipc/dealer.py`
 

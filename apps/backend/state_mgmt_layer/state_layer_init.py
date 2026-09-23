@@ -22,40 +22,20 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-import asyncio
-import logging
-
-from lib.config import PngSettings
-from lib.subsystem import AddTask
+from apps.backend.app_ctx import AppCtx
 
 from .session_state import SessionState
-from .external_api import initExternalApiTask
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
-def initStateManagementLayer(
-    logger: logging.Logger,
-    settings: PngSettings,
-    ver_str: str,
-    add_task: AddTask,
-    shutdown_event: asyncio.Event) -> SessionState:
+def initStateManagementLayer(ctx: AppCtx) -> SessionState:
     """Initialise the state management layer
 
     Args:
-        logger (logging.Logger): Logger
-        settings (PngSettings): Settings
-        ver_str (str): Version string
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
-        shutdown_event (asyncio.Event): Shutdown event
+        ctx (AppCtx): Backend app context (logger, settings, subsystem)
 
     Returns:
         SessionState: Handle to the session state data structure
     """
-    ref =  SessionState(
-        logger,
-        settings,
-        ver_str
-    )
-    initExternalApiTask(logger=logger, add_task=add_task, shutdown_event=shutdown_event,
-                        session_state_ref=ref)
-    return ref
+
+    return SessionState(ctx)

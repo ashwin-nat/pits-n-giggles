@@ -33,7 +33,6 @@ This directory contains shared code used across multiple apps in the Pits N Gigg
 | `button_debouncer.py` | Debounce logic for UDP-triggered actions |
 | `event_counter.py` | Event counting utilities |
 | `custom_marker_tracker.py` | User-defined marker tracking |
-| `inter_task_communicator.py` | Cross-task message passing |
 | `child_proc_mgmt.py` | Child process lifecycle management |
 | `save_to_disk.py` | Session data serialization and autosave |
 | `error_status.py` | Error state tracking |
