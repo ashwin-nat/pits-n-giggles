@@ -30,11 +30,12 @@ from datetime import datetime
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Tuple)
 
+from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import report_session_save_skipped_from_child
-from lib.config import CaptureSettings, OverlayId, PngSettings
+from lib.config import CaptureSettings, OverlayId
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
@@ -47,7 +48,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
-from lib.subsystem import AddTask, AsyncSubsystem, PngSubsysId, SubsystemTask
+from lib.subsystem import AsyncSubsystem, PngSubsysId, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
                                    telemetry_transport_factory)
 from lib.wdt import WatchDogTimerAsync
@@ -100,25 +101,18 @@ class UdpActionCodes:
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def setupTelemetryTask(
-        settings: PngSettings,
+        ctx: AppCtx,
         replay_server: bool,
         session_state: SessionState,
-        logger: PngLogger,
-        ver_str: str,
-        add_task: AddTask,
-        subsystem: AsyncSubsystem,
         packet_forward_queue: asyncio.Queue) -> "F1TelemetryHandler":
     """Entry point to start the F1 telemetry server.
 
     Args:
-        settings (PngSettings): App settings
+        ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem's
+            add_task registers rather than starts the telemetry tasks, and fire_and_forget
+            dispatches frontend/HUD notifications and the dealer.
         replay_server (bool): Whether to enable the TCP replay debug server.
         session_state (SessionState): Handle to the session state
-        logger (PngLogger): Logger instance
-        ver_str (str): Version string
-        add_task (AddTask): The subsystem's add_task, which registers rather than starts
-        subsystem (AsyncSubsystem): The backend subsystem - used for fire_and_forget
-            (frontend/HUD notification dispatch) and its dealer
         packet_forward_queue (asyncio.Queue): Queue the forwarding task drains - kept as a
             plain queue (not fire-and-forget) so per-packet forwarding doesn't spawn a task
             per packet
@@ -128,16 +122,12 @@ def setupTelemetryTask(
     """
 
     telemetry_server = F1TelemetryHandler(
-        settings=settings,
-        logger=logger,
+        ctx=ctx,
         session_state=session_state,
         replay_server=replay_server,
-        ver_str=ver_str,
-        subsystem=subsystem,
         packet_forward_queue=packet_forward_queue,
     )
-    telemetry_server.register_tasks(add_task)
-
+    telemetry_server.register_tasks(ctx.subsystem)
     return telemetry_server
 
 # -------------------------------------- TELEMETRY PACKET HANDLERS -----------------------------------------------------
@@ -151,31 +141,23 @@ class F1TelemetryHandler:
     """
 
     def __init__(self,
-        settings: PngSettings,
-        logger: PngLogger,
+        ctx: AppCtx,
         session_state: SessionState,
-        subsystem: AsyncSubsystem,
         packet_forward_queue: asyncio.Queue,
-        replay_server: bool = False,
-        ver_str: str = "dev") -> None:
+        replay_server: bool = False) -> None:
         """
         Initialize F1TelemetryHandler.
 
         Parameters:
-            - settings (PngSettings): Png settings
-            - port (int): The port number for telemetry.
-            - forwarding_targets (List[Tuple[str, int]]): List of IP addr port pairs to forward packets to
-            - logger (PngLogger): Logger
-            - capture_settings (CaptureSettings): Capture settings
-            - wdt_interval (float): Watchdog interval
-            - udp_custom_action_code (Optional[int]): UDP custom action code.
-            - udp_tyre_delta_action_code (Optional[int]): UDP tyre delta action code
-            - subsystem (AsyncSubsystem): The backend subsystem - used for fire_and_forget
-                (frontend/HUD notification dispatch) and its dealer
+            - ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem
+                is used for fire_and_forget (frontend/HUD notification dispatch) and its dealer.
+            - session_state (SessionState): Handle to the session state
             - packet_forward_queue (asyncio.Queue): Queue the forwarding task drains
             - replay_server: bool: If true, init in replay mode (TCP). Else init in live mode (UDP)
-            - ver_str (str): Version string
         """
+        settings = ctx.settings
+        logger = ctx.logger
+
         transport = telemetry_transport_factory(
             settings.Network.telemetry_port, replay_server, logger
         )
@@ -186,7 +168,7 @@ class F1TelemetryHandler:
         )
         self.m_logger: PngLogger = logger
         self.m_session_state_ref: SessionState = session_state
-        self.m_subsystem: AsyncSubsystem = subsystem
+        self.m_subsystem: AsyncSubsystem = ctx.subsystem
         self.m_packet_forward_queue: asyncio.Queue = packet_forward_queue
 
         self.m_last_session_uid: Optional[int] = None
@@ -198,7 +180,7 @@ class F1TelemetryHandler:
 
         self.m_should_forward: bool = bool(settings.Forwarding.forwarding_targets)
         self.m_udp_forwarder: Optional[AsyncUDPForwarder] = None
-        self.m_version: str = ver_str
+        self.m_version: str = ctx.subsystem.version
         self.m_wdt: WatchDogTimerAsync = WatchDogTimerAsync(
             status_callback=self.m_session_state_ref.setConnectedToSim,
             timeout=float(settings.Network.wdt_interval_sec),
@@ -231,18 +213,18 @@ class F1TelemetryHandler:
         self.m_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
-    def register_tasks(self, add_task: AddTask) -> None:
+    def register_tasks(self, subsys: AsyncSubsystem) -> None:
         """Register this layer's three long-lived tasks with the subsystem.
 
         The receive loop's handle is kept because stop() cancels it - run() is a socket receive
         loop with no cooperative exit.
 
         Args:
-            add_task (AddTask): The subsystem's add_task, which registers rather than starts
+            subsys: Async subsystem handle
         """
-        self.m_manager_task = add_task(self.run(), name="Game Telemetry Listener Task")
-        add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
-        add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
+        self.m_manager_task = subsys.add_task(self.run(), name="Game Telemetry Listener Task")
+        subsys.add_task(self.getWatchdogTask(), name="Watchdog Timer Task")
+        subsys.add_task(self.getMenuWatchdogTask(), name="Menu Silence WDT Task")
 
     def updateUdpActionCode(self, key: str, val: int) -> None:
         """

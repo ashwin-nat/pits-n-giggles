@@ -23,12 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
-import logging
 
+from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
-from lib.config import PngSettings
 from lib.error_status import PngTelemetryPortInUseError, is_port_in_use_error
-from lib.subsystem import AsyncSubsystem
 
 from .telemetry_forwarder import setupForwarder
 from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
@@ -36,24 +34,17 @@ from .telemetry_handler import F1TelemetryHandler, setupTelemetryTask
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
 def initTelemetryLayer(
-        settings: PngSettings,
+        ctx: AppCtx,
         replay_server: bool,
-        logger: logging.Logger,
-        ver_str: str,
-        shutdown_event: asyncio.Event,
-        session_state: SessionState,
-        subsystem: AsyncSubsystem) -> F1TelemetryHandler:
+        session_state: SessionState) -> F1TelemetryHandler:
     """Initialize the telemetry layer
 
     Args:
-        settings (PngSettings): Png settings
+        ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem's
+            add_task registers the telemetry/forwarder tasks, and fire_and_forget dispatches
+            frontend/HUD notifications and the dealer routes.
         replay_server (bool): Whether to enable the TCP replay debug server.
-        logger (logging.Logger): Logger instance
-        ver_str (str): Version string
-        shutdown_event (asyncio.Event): Shutdown event
         session_state (SessionState): Handle to the session state
-        subsystem (AsyncSubsystem): The backend subsystem - used for add_task, fire_and_forget
-            (frontend/HUD notification dispatch) and its dealer
 
     Returns:
         F1TelemetryHandler: Telemetry handler
@@ -65,27 +56,23 @@ def initTelemetryLayer(
 
     try:
         handler = setupTelemetryTask(
-            settings=settings,
+            ctx=ctx,
             replay_server=replay_server,
             session_state=session_state,
-            logger=logger,
-            ver_str=ver_str,
-            add_task=subsystem.add_task,
-            subsystem=subsystem,
             packet_forward_queue=packet_forward_queue,
         )
     except OSError as e:
-        logger.error("setupTelemetryTask failed with error %s", e)
+        ctx.logger.error("setupTelemetryTask failed with error %s", e)
         if is_port_in_use_error(e.errno):
             raise PngTelemetryPortInUseError() from e
         raise  # Re-raise if it's a different OSError
 
     udp_forwarder = setupForwarder(
-        forwarding_targets=settings.Forwarding.forwarding_targets,
+        forwarding_targets=ctx.settings.Forwarding.forwarding_targets,
         packet_forward_queue=packet_forward_queue,
-        add_task=subsystem.add_task,
-        shutdown_event=shutdown_event,
-        logger=logger
+        add_task=ctx.subsystem.add_task,
+        shutdown_event=ctx.subsystem.shutdown_event,
+        logger=ctx.logger
     )
     handler.set_udp_forwarder(udp_forwarder)
     return handler

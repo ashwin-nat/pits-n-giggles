@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) [2024] [Ashwin Natarajan]
+# Copyright (c) [2025] [Ashwin Natarajan]
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,32 +22,22 @@
 
 # ------------------------- IMPORTS ------------------------------------------------------------------------------------
 
-from apps.backend.app_ctx import AppCtx
-from lib.f1_types import PacketSessionData, SessionType, TrackID
+from dataclasses import dataclass
 
-from .session_state import SessionState
-from .external_api import handleExternalApiUpdate
+from lib.config import PngSettings
+from lib.logger import PngLogger
+from lib.subsystem import AsyncSubsystem
 
-# -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
+# -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-def initStateManagementLayer(ctx: AppCtx) -> SessionState:
-    """Initialise the state management layer
-
-    Args:
-        ctx (AppCtx): Backend app context (logger, settings, subsystem). The subsystem's
-            fire_and_forget dispatches the (I/O-bound) external API lookup in the background
-            whenever the session changes.
-
-    Returns:
-        SessionState: Handle to the session state data structure
+@dataclass(frozen=True)
+class AppCtx:
+    """Bundles the handles that every backend layer's init function and top-level class need:
+    the logger, settings and the owning subsystem (for add_task/fire_and_forget, its version
+    string, and its IPC surfaces). Built once in BackendSubsystem.__init__ and threaded down
+    instead of passing the same args individually through each layer.
     """
 
-    def notify_external_api(
-            track_id: TrackID, session_type: SessionType,
-            formula_type: PacketSessionData.FormulaType) -> None:
-        ctx.subsystem.fire_and_forget(
-            handleExternalApiUpdate(ctx.logger, track_id, session_type, formula_type, ref),
-            name="External API Update")
-
-    ref = SessionState(ctx, notify_external_api=notify_external_api)
-    return ref
+    logger: PngLogger
+    settings: PngSettings
+    subsystem: AsyncSubsystem

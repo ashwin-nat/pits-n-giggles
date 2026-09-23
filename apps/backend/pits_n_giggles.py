@@ -25,6 +25,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, override
 
+from apps.backend.app_ctx import AppCtx
 from apps.backend.intf_layer import (highFreqLocalUpdateTask,
                                      lowFreqLocalUpdateTask)
 from apps.backend.intf_layer.ipc import (handleCaptureConfigChange,
@@ -73,20 +74,17 @@ class BackendSubsystem(AsyncSubsystem[BackendArgs]):
             "Starting F1 telemetry backend. NOTE: The tables will be empty until the red lights appear "
             "on the screen before the race start - that is when the game starts sending telemetry data")
 
-        self.session_state: SessionState = initStateManagementLayer(
+        ctx = AppCtx(
             logger=self.logger,
             settings=self.settings,
-            ver_str=self.version,
             subsystem=self)
 
+        self.session_state: SessionState = initStateManagementLayer(ctx)
+
         self.telemetry_handler: F1TelemetryHandler = initTelemetryLayer(
-            settings=self.settings,
+            ctx,
             replay_server=self.args.replay_server,
-            logger=self.logger,
-            ver_str=self.version,
-            shutdown_event=self.shutdown_event,
-            session_state=self.session_state,
-            subsystem=self)
+            session_state=self.session_state)
 
         self._register_dealer_routes()
         self._register_mgmt_routes()
