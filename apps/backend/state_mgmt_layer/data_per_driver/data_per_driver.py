@@ -49,8 +49,8 @@ from .lap_info import LapInfo
 from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .pit_info import PitInfo
-from .sensor_mapper import F1SensorMapper
-from .telemetry_recorder import TelemetrySnapshot
+from .telemetry_recorder.sensor_mapper import F1SensorMapper
+from .telemetry_recorder.telemetry_recorder import TelemetrySnapshot
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
 

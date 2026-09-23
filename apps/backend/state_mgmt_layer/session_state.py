@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
-from apps.backend.state_mgmt_layer.data_per_driver.sensor_mapper import F1SensorMapper
+from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.sensor_mapper import F1SensorMapper
 from apps.backend.state_mgmt_layer.external_api import handleExternalApiUpdate
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
