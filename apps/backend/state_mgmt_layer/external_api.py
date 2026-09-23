@@ -63,4 +63,6 @@ async def handleExternalApiUpdate(
             logger.error("Error fetching most recent pole lap: %s", e)
             pole_lap = None
 
+    # No session-identity guard here: a session change takes seconds (loading screens etc.), far
+    # longer than this lookup, so a stale write racing a newer session is not worth guarding against.
     session_state_ref.m_session_info.m_most_recent_pole_lap = pole_lap
