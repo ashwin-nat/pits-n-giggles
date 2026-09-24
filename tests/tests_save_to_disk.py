@@ -54,6 +54,21 @@ class TestSaveRaceInfo(F1TelemetryUnitTestsBase):
 
             self.assertEqual(content, test_data, "File contents do not match input data.")
 
+    async def test_save_race_info_leaves_no_tmp_file(self):
+        # Guards the .tmp + os.replace() atomicity: a reader scanning the directory must
+        # never see a partially-written file at the final path.
+        test_data = {"driver": "Leclerc", "position": 3}
+        test_filename = "race-info.json"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_path = Path(tmpdir)
+            file_path = await save_json_to_file(test_data, test_filename, base_path)
+
+            race_info_dir = file_path.parent
+            self.assertEqual(
+                {p.name for p in race_info_dir.iterdir()}, {test_filename},
+                "Expected only the final file, no leftover .tmp")
+
     def test_save_race_info_handles_permission_error(self):
         test_data = {"driver": "Verstappen", "position": 1}
         test_filename = "race-info.json"

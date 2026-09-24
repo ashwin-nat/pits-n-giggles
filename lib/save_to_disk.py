@@ -24,6 +24,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -61,8 +62,11 @@ async def save_json_to_file(
     dir_path.mkdir(parents=True, exist_ok=True)
 
     file_path = dir_path / filename
+    # Write here, then rename atomically -- a reader must never see a truncated file_path.
+    tmp_path = file_path.with_name(file_path.name + ".tmp")
     json_str = json.dumps(data, separators=(",", ":"))
-    async with aiofiles.open(file_path, mode='w', encoding='utf-8') as json_file:
+    async with aiofiles.open(tmp_path, mode='w', encoding='utf-8') as json_file:
         await json_file.write(json_str)
+    os.replace(tmp_path, file_path)
 
     return file_path
