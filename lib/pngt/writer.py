@@ -209,10 +209,7 @@ def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
 
 
 def _write_lap_npz(zf: zipfile.ZipFile, name: str, lap: CompletedLap) -> None:
-    arrays = {
-        key: np.asarray(values, dtype=np.int64 if key == "lap_time_ms" else np.float32)
-        for key, values in lap.telemetry.items()
-    }
+    arrays = {key: np.asarray(values, dtype=np.float32) for key, values in lap.telemetry.items()}
     buf = BytesIO()
     np.savez_compressed(buf, **arrays)
     zf.writestr(name, buf.getvalue(), compress_type=zipfile.ZIP_STORED)

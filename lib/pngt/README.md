@@ -29,8 +29,9 @@ A driver with `is_telemetry_public == False` appears in `drivers.json` but has
 **no** `drivers/{idx}/` folder at all — `read_driver_laps()` returns `[]` for one,
 not an error. JSON entries are `ZIP_DEFLATED`; `.npz` entries are `ZIP_STORED`
 (numpy's own compression, if any, lives inside the `.npz`, so double-compressing
-would just waste CPU). Every sensor array is `float32`; `NaN` is the only missing
-value (`lap_time_ms` is the one non-sensor exception, stored as `int64`).
+would just waste CPU). Every array in a lap's `.npz` — every sensor,
+`lap_distance`, and `lap_time_ms` alike — is `float32`; `NaN` is the only
+missing value.
 
 ## Structure
 
