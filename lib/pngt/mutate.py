@@ -21,8 +21,8 @@
 # SOFTWARE.
 
 """
-This module is not thread-safe or process-safe.
-Locking is the consumer's responsibility, if needed.
+This module is not thread-safe or process-safe. Locking is the consumer's
+responsibility, if needed.
 
 Every function here is synchronous, blocking disk I/O (a full archive rebuild for
 delete_laps/mark_lap_good/rename_session). An async caller must not call these
@@ -32,15 +32,13 @@ apps/web/session_discovery.py already does for its own sync disk-heavy functions
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
-import json
 import os
-import zipfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Iterator, Union
 
-from .dto import DeleteLapsResult, MarkLapGoodResult, SessionBest
-from .exceptions import DriverNotFoundError, MalformedSessionError
-from .manifest import validate_pngt_zip
+from .archive import read_json, rebuild_archive, recompute_totals, validate_pngt_zip
+from .dto import DeleteLapsResult, MarkLapGoodResult
+from .exceptions import DriverNotFoundError
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
@@ -51,7 +49,7 @@ def delete_laps(
 ) -> DeleteLapsResult:
     """Removes the specified laps for one driver from a .pngt file.
 
-    Full archive rebuild — ZIP has no true delete. Atomic: writes to a .tmp file,
+    Full archive rebuild -- ZIP has no true delete. Atomic: writes to a .tmp file,
     only replaces the original via os.replace() once the rebuild succeeds.
 
     Raises DriverNotFoundError if driver_index has no folder in the archive.
@@ -69,7 +67,7 @@ def delete_laps(
         if laps_entry not in zf.namelist():
             raise DriverNotFoundError(path, driver_index)
 
-        existing_laps = _read_json(zf, laps_entry, path).get("laps", [])
+        existing_laps = read_json(zf, laps_entry, path).get("laps", [])
         existing_numbers = {lap["lap_number"] for lap in existing_laps}
         to_delete = set(lap_numbers)
         missing = sorted(to_delete - existing_numbers)
@@ -79,10 +77,10 @@ def delete_laps(
         remaining_laps = [lap for lap in existing_laps if lap["lap_number"] not in to_delete]
         driver_folder_removed = not remaining_laps
 
-        session_raw = _read_json(zf, "session.json", path)
-        drivers_raw = _read_json(zf, "drivers.json", path)
-        new_laps_count, new_session_best = _recompute_session_totals(
-            zf, path, drivers_raw, driver_index, remaining_laps
+        session_raw = read_json(zf, "session.json", path)
+        drivers_raw = read_json(zf, "drivers.json", path)
+        new_laps_count, new_session_best = recompute_totals(
+            _other_drivers_laps(zf, path, drivers_raw, driver_index, remaining_laps)
         )
         all_names = zf.namelist()
     finally:
@@ -107,7 +105,7 @@ def delete_laps(
         skip_names |= {f"{folder}/lap_{n:03d}.npz" for n in to_delete}
 
     tmp_path = path.with_name(path.name + ".tmp")
-    _rebuild_archive(path, tmp_path, skip_names=skip_names, overrides=overrides)
+    rebuild_archive(path, tmp_path, skip_names=skip_names, overrides=overrides)
     os.replace(tmp_path, path)
 
     return DeleteLapsResult(
@@ -126,7 +124,7 @@ def mark_lap_good(
 ) -> MarkLapGoodResult:
     """Sets is_good=True for the specified lap. No-op if already True.
 
-    Does NOT support unmarking — there is no parameter or code path in this
+    Does NOT support unmarking -- there is no parameter or code path in this
     function that can set is_good back to False. If unmarking is ever needed,
     it must be a new, separate function.
 
@@ -141,10 +139,8 @@ def mark_lap_good(
         if laps_entry not in zf.namelist():
             raise DriverNotFoundError(path, driver_index)
 
-        laps = _read_json(zf, laps_entry, path).get("laps", [])
+        laps = read_json(zf, laps_entry, path).get("laps", [])
     finally:
-        # Must be closed before the rebuild's os.replace() -- an open handle on `path`
-        # blocks renaming over it on Windows.
         zf.close()
 
     target = next((lap for lap in laps if lap["lap_number"] == lap_number), None)
@@ -156,7 +152,7 @@ def mark_lap_good(
 
     target["is_good"] = True
     tmp_path = path.with_name(path.name + ".tmp")
-    _rebuild_archive(path, tmp_path, skip_names={laps_entry}, overrides={laps_entry: {"laps": laps}})
+    rebuild_archive(path, tmp_path, skip_names={laps_entry}, overrides={laps_entry: {"laps": laps}})
     os.replace(tmp_path, path)
 
     return MarkLapGoodResult(driver_index=driver_index, lap_number=lap_number, already_good=False)
@@ -171,86 +167,27 @@ def rename_session(
     path = Path(pngt_path)
     zf = validate_pngt_zip(path)
     try:
-        session_raw = _read_json(zf, "session.json", path)
+        session_raw = read_json(zf, "session.json", path)
     finally:
         zf.close()
 
     session_raw["session_name"] = new_name
     tmp_path = path.with_name(path.name + ".tmp")
-    _rebuild_archive(path, tmp_path, skip_names={"session.json"}, overrides={"session.json": session_raw})
+    rebuild_archive(path, tmp_path, skip_names={"session.json"}, overrides={"session.json": session_raw})
     os.replace(tmp_path, path)
 
 
-def _read_json(zf: zipfile.ZipFile, name: str, path) -> dict:
-    try:
-        raw = zf.read(name)
-    except KeyError as exc:
-        raise MalformedSessionError(path, f"{name} is missing") from exc
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise MalformedSessionError(path, f"{name} is not valid JSON: {exc}") from exc
-
-
-def _write_json(zf: zipfile.ZipFile, name: str, data: dict) -> None:
-    zf.writestr(name, json.dumps(data).encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
-
-
-def _recompute_session_totals(
-    zf: zipfile.ZipFile,
-    path,
-    drivers_raw: dict,
-    changed_driver_index: int,
-    changed_driver_laps: list[dict],
-) -> tuple[int, Optional[SessionBest]]:
-    """Recomputes laps.count and session_best across every driver, using
-    changed_driver_laps in place of changed_driver_index's on-disk laps.json
-    (which hasn't been rewritten yet) and reading every other driver's laps.json
-    from the still-open archive."""
-    total = 0
-    best_driver = None
-    best_lap = None
-    best_time = None
-
+def _other_drivers_laps(zf, path, drivers_raw: dict, changed_driver_index: int, changed_driver_laps: list[dict]) -> Iterator:
+    """Yields (driver_index, lap dicts) for every driver in drivers_raw, using
+    changed_driver_laps in place of changed_driver_index's on-disk laps.json (which
+    hasn't been rewritten yet) and reading every other driver's laps.json from the
+    still-open archive. A driver with no folder (Restricted) is skipped."""
     for driver in drivers_raw.get("drivers", []):
         idx = driver["driver_index"]
         if idx == changed_driver_index:
-            laps = changed_driver_laps
-        else:
-            entry = f"drivers/{idx:02d}/laps.json"
-            if entry not in zf.namelist():
-                continue
-            laps = _read_json(zf, entry, path).get("laps", [])
-
-        total += len(laps)
-        for lap in laps:
-            if lap.get("valid") and lap.get("lap_time_ms") is not None:
-                if best_time is None or lap["lap_time_ms"] < best_time:
-                    best_time = lap["lap_time_ms"]
-                    best_driver = idx
-                    best_lap = lap["lap_number"]
-
-    session_best = None if best_time is None else SessionBest(
-        driver_index=best_driver, lap_number=best_lap, lap_time_ms=best_time
-    )
-    return total, session_best
-
-
-def _rebuild_archive(
-    src_path: Path,
-    dest_path: Path,
-    *,
-    skip_names: set,
-    overrides: dict,
-) -> None:
-    """Copies every entry from src_path into a new archive at dest_path, skipping
-    skip_names entirely and replacing the content of any entry named in overrides
-    with its (JSON-serialized) value. Every other entry is copied byte-for-byte,
-    preserving its original compression type."""
-    with zipfile.ZipFile(src_path) as src_zf, zipfile.ZipFile(dest_path, "w") as dst_zf:
-        for name in src_zf.namelist():
-            if name in overrides:
-                _write_json(dst_zf, name, overrides[name])
-            elif name not in skip_names:
-                info = src_zf.getinfo(name)
-                dst_zf.writestr(name, src_zf.read(name), compress_type=info.compress_type)
+            yield idx, changed_driver_laps
+            continue
+        entry = f"drivers/{idx:02d}/laps.json"
+        if entry not in zf.namelist():
+            continue
+        yield idx, read_json(zf, entry, path).get("laps", [])

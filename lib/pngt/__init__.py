@@ -29,13 +29,15 @@ from .dto import (
     DriverRecord,
     LapMetadata,
     MarkLapGoodResult,
+    ParsedDriver,
+    ParsedLap,
+    ParsedSessionMetadata,
     SensorConfig,
     SensorType,
     SessionBest,
     SessionMetadata,
     TrackInfo,
 )
-from .dtypes import SensorDtype
 from .exceptions import (
     CorruptedTelemetryError,
     DriverNotFoundError,
@@ -47,7 +49,6 @@ from .exceptions import (
     UnsupportedFormatError,
     UnsupportedVersionError,
 )
-from .filename import suggest_filename
 from .ingest.dto import (
     BaseTelemetrySnapshot,
     IngestCompletedLap,
@@ -64,7 +65,7 @@ from .ingest.session_export_manager import (
     SessionExportScopeConfig,
 )
 from .mutate import delete_laps, mark_lap_good, rename_session
-from .reader import ParsedSession, read_driver_laps, read_header, read_lap_telemetry, read_manifest, read_session
+from .reader import ParsedSession, read_driver_laps, read_lap_telemetry, read_session
 from .writer import write_session
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
@@ -89,10 +90,12 @@ __all__ = [
     'MalformedSessionError',
     'MarkLapGoodResult',
     'NotAZipFileError',
+    'ParsedDriver',
+    'ParsedLap',
     'ParsedSession',
+    'ParsedSessionMetadata',
     'PngtError',
     'SensorConfig',
-    'SensorDtype',
     'SensorMapper',
     'SensorType',
     'SessionBest',
@@ -107,11 +110,8 @@ __all__ = [
     'delete_laps',
     'mark_lap_good',
     'read_driver_laps',
-    'read_header',
     'read_lap_telemetry',
-    'read_manifest',
     'read_session',
     'rename_session',
-    'suggest_filename',
     'write_session',
 ]
