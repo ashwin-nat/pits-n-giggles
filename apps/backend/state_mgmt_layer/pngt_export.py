@@ -26,21 +26,44 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Tuple
 
-from lib.pngt import DriverRecord, IngestDriverExportData, SessionMetadata, TrackInfo
+from lib.pngt import DriverExportData, DriverRecord, SensorConfig, SessionMetadata, TrackInfo
+
+from .data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
 
 if TYPE_CHECKING:
     from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
+def in_export_scope(
+    *,
+    is_public: bool,
+    is_player: bool,
+    is_spectating: bool,
+    spectator_mode: bool,
+    other_players: bool,
+) -> bool:
+    """Whether a driver's telemetry is included in the .pngt export.
+        - not public -> never
+        - spectating -> only if spectator_mode (no "own car" while spectating)
+        - driving, own car -> always (if public)
+        - driving, another car -> only if other_players
+    """
+    if not is_public:
+        return False
+    if is_spectating:
+        return spectator_mode
+    if is_player:
+        return True
+    return other_players
+
+
 def build_pngt_write_args(
     session_state: "SessionState",
     dest_path: Path,
-) -> Tuple[Path, SessionMetadata, list[DriverRecord], dict[int, IngestDriverExportData]]:
-    """Builds SessionExportManager.write_pngt()'s args from session_state -- F1-specific
-    identity data this generic manager has no access to. Cheap (dict/list construction
-    only) -- safe to call inline on the event loop. Actually calling write_pngt() with
-    these args, and deciding whether/how to offload that call, is the caller's job.
+) -> Tuple[Path, SessionMetadata, list[SensorConfig], list[DriverRecord], dict[int, DriverExportData]]:
+    """Builds write_session()'s args from session_state -- F1-specific identity data
+    the format-agnostic writer has no access to. Cheap (dict/list construction only)
 
     Args:
         session_state (SessionState): The session to export.
@@ -48,10 +71,23 @@ def build_pngt_write_args(
             exist -- this function doesn't create it.
 
     Returns:
-        Tuple: (dest_path, session, drivers, driver_exports), ready for
-            session_state.m_export_mgr.write_pngt(*result).
+        Tuple: (dest_path, session, sensors, drivers, driver_data), ready for
+            write_session(*result).
     """
-    driver_exports, session_best = session_state.exportTelemetry()
+    # TODO: hook up actual config (Phase 9) instead of this hardcoded scope.
+    is_spectating = bool(session_state.m_session_info.m_is_spectating)
+    driver_data: dict[int, DriverExportData] = {}
+    for index, driver_obj in enumerate(session_state.m_driver_data):
+        if driver_obj is None or not driver_obj.is_valid:
+            continue
+        if in_export_scope(
+            is_public=bool(driver_obj.m_driver_info.telemetry_setting),
+            is_player=bool(driver_obj.m_driver_info.is_player),
+            is_spectating=is_spectating,
+            spectator_mode=False,
+            other_players=True,
+        ):
+            driver_data[index] = driver_obj.exportTelemetry()
 
     session_info = session_state.m_session_info
     session = SessionMetadata(
@@ -67,12 +103,8 @@ def build_pngt_write_args(
             id=session_info.m_track.value if session_info.m_track else 0,
             name=str(session_info.m_track or ""),
         ),
-        laps_count=session_info.m_total_laps or 0,
-        session_best=session_best,
     )
 
-    # is_telemetry_public = "has driver_data" (write_pngt()'s contract), not the raw
-    # telemetry_setting flag -- scope can exclude a PUBLIC driver too.
     drivers = [
         DriverRecord(
             driver_index=index,
@@ -81,10 +113,11 @@ def build_pngt_write_args(
             car_number=driver_obj.m_driver_info.driver_number or 0,
             nationality=None,
             platform=None,
-            is_telemetry_public=index in driver_exports,
         )
         for index, driver_obj in enumerate(session_state.m_driver_data)
         if driver_obj is not None and driver_obj.is_valid
     ]
 
-    return dest_path, session, drivers, driver_exports
+    sensors = [sensor.config for sensor in F1_SENSORS]
+
+    return dest_path, session, sensors, drivers, driver_data
