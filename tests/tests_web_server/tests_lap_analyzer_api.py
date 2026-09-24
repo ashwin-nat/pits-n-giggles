@@ -40,8 +40,8 @@ from apps.web.lap_analyzer_api import (RenameSessionRequest, api_error,
                                        title_case_session_type,
                                        track_section_to_api)
 from apps.web.pngt_discovery import PngtSessionEntry
-from lib.pngt import (DriverRecord, LapMetadata, SensorConfig, SensorType,
-                      SessionBest, SessionMetadata, TrackInfo)
+from lib.pngt import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
+                      SensorConfig, SensorType, SessionBest, TrackInfo)
 from lib.track_segments_classifier.types import (ComplexCornerSegmentInfo,
                                                  CornerSegmentInfo,
                                                  StraightSegmentInfo)
@@ -59,7 +59,7 @@ def test_title_case_session_type(raw, expected):
 
 
 def _entry(session_best=SessionBest(driver_index=1, lap_number=2, lap_time_ms=90000)):
-    session = SessionMetadata(
+    session = ParsedSessionMetadata(
         session_uid=1, session_name="Test Session", session_type="time_trial",
         app_version="1.4.2", game_year=2026, formula="F1", game_version="1.05",
         timestamp="2024-06-01T14:32:00Z", track=TrackInfo(id=10, name="Spa-Francorchamps"),
@@ -96,7 +96,7 @@ def test_session_to_api_null_session_best():
 
 
 def test_driver_to_api_public_telemetry():
-    driver = DriverRecord(driver_index=1, name="VERSTAPPEN", team="RED BULL RACING",
+    driver = ParsedDriver(driver_index=1, name="VERSTAPPEN", team="RED BULL RACING",
                           car_number=1, nationality="NED", platform="PC", is_telemetry_public=True)
     assert driver_to_api(driver) == {
         'index': 1, 'name': "VERSTAPPEN", 'team': "RED BULL RACING", 'carNumber': 1,
@@ -106,7 +106,7 @@ def test_driver_to_api_public_telemetry():
 
 
 def test_driver_to_api_restricted_telemetry():
-    driver = DriverRecord(driver_index=16, name="LECLERC", team="FERRARI",
+    driver = ParsedDriver(driver_index=16, name="LECLERC", team="FERRARI",
                           car_number=16, nationality="MON", platform=None, is_telemetry_public=False)
     result = driver_to_api(driver)
     assert result['telemetrySettings'] == "Restricted"
@@ -114,8 +114,8 @@ def test_driver_to_api_restricted_telemetry():
 
 
 def test_lap_to_api_completed_lap():
-    lap = LapMetadata(lap_number=12, lap_time_ms=75340, valid=True, tyre_compound="Soft",
-                      tyre_laps=5, pit_in_lap=False, pit_out_lap=False, num_points=100, is_good=True)
+    lap = ParsedLap(lap_number=12, lap_time_ms=75340, valid=True, tyre_compound="Soft",
+                    tyre_laps=5, pit_in_lap=False, pit_out_lap=False, num_points=100, is_good=True)
     assert lap_to_api(lap) == {
         'lapNumber': 12, 'lapTime': 75340, 'valid': True, 'tyreCompound': "Soft",
         'tyreLaps': 5, 'pitInLap': False, 'pitOutLap': False, 'isGood': True,
@@ -123,8 +123,8 @@ def test_lap_to_api_completed_lap():
 
 
 def test_lap_to_api_out_lap_no_time():
-    lap = LapMetadata(lap_number=1, lap_time_ms=None, valid=False, tyre_compound="Medium",
-                      tyre_laps=1, pit_in_lap=False, pit_out_lap=True, num_points=50, is_good=False)
+    lap = ParsedLap(lap_number=1, lap_time_ms=None, valid=False, tyre_compound="Medium",
+                    tyre_laps=1, pit_in_lap=False, pit_out_lap=True, num_points=50, is_good=False)
     result = lap_to_api(lap)
     assert result['lapTime'] is None
     assert result['valid'] is False

@@ -29,11 +29,11 @@ apps/web/test_viewer_api.py).
 
 import apps.web.lap_analyzer_routes as routes
 from apps.web.pngt_discovery import PngtSessionEntry
-from lib.pngt import SessionMetadata, TrackInfo
+from lib.pngt import ParsedSessionMetadata, TrackInfo
 
 
 def _entry(slug: str, name: str) -> PngtSessionEntry:
-    session = SessionMetadata(
+    session = ParsedSessionMetadata(
         session_uid=1, session_name=name, session_type="race", app_version="1.0",
         game_year=2026, formula="F1", game_version="1.0", timestamp="2024-01-01T00:00:00Z",
         track=TrackInfo(id=1, name="Test Track"), laps_count=1, session_best=None,

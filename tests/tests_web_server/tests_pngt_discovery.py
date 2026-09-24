@@ -42,8 +42,8 @@ from apps.web.pngt_discovery import (CACHE_FILE, build_pngt_session_list,
                                      find_pngt_files, slugify)
 from lib.logger import PngLogger
 from lib.pngt import (CompletedLap, DriverExportData, DriverRecord,
-                      LapMetadata, SensorConfig, SensorDtype, SensorType,
-                      SessionBest, SessionMetadata, TrackInfo, write_session)
+                      LapMetadata, SensorConfig, SensorType, SessionMetadata,
+                      TrackInfo, write_session)
 
 logging.setLoggerClass(PngLogger)
 
@@ -63,8 +63,6 @@ def _session(name="Test Session", timestamp="2024-06-01T14:32:00Z"):
         game_version="1.00",
         timestamp=timestamp,
         track=TrackInfo(id=999, name="Fake Circuit"),
-        laps_count=1,
-        session_best=SessionBest(driver_index=1, lap_number=1, lap_time_ms=90000),
     )
 
 
@@ -74,13 +72,13 @@ def _sensors():
 
 def _drivers():
     return [DriverRecord(driver_index=1, name="Driver A", team="Team A",
-                         car_number=1, nationality="GB", platform="Steam", is_telemetry_public=True)]
+                         car_number=1, nationality="GB", platform="Steam")]
 
 
 def _driver_data():
     lap = CompletedLap(
         metadata=LapMetadata(lap_number=1, lap_time_ms=90000, valid=True, tyre_compound="Soft",
-                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False, num_points=2, is_good=True),
+                             tyre_laps=1, pit_in_lap=False, pit_out_lap=False),
         telemetry={"lap_distance": [0.0, 100.0], "speed": [100.0, 110.0]},
     )
     return {1: DriverExportData(driver_index=1, completed_laps=[lap])}
@@ -88,10 +86,7 @@ def _driver_data():
 
 def _write_pngt(path: Path, name="Test Session", timestamp="2024-06-01T14:32:00Z") -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    return write_session(
-        path, _session(name, timestamp), _sensors(),
-        {"speed": SensorDtype.FLOAT32}, _drivers(), _driver_data(),
-    )
+    return write_session(path, _session(name, timestamp), _sensors(), _drivers(), _driver_data())
 
 
 async def _build_final(session_dir: Path):
