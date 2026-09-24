@@ -507,10 +507,13 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
-            # Fire-and-forget: since this runs on the telemetry ingress task
+            # Tracked via m_save_task (not fire_and_forget) so stop() can wait for the
+            # .pngt write - it's heavy enough (a full session's telemetry) to still be
+            # running when the app is closed, and an untracked task would just be killed
+            # mid-write with no error, no log, and no file.
             if self._shouldSaveData():
                 pngt_write = self.preparePngtWrite()
-                self.m_subsystem.fire_and_forget(
+                self.m_save_task = asyncio.create_task(
                     self._autoSaveSessionData(final_json, packet.m_header.m_sessionUID, pngt_write),
                     name="Auto-save Session Data",
                 )
@@ -816,8 +819,8 @@ class F1TelemetryHandler:
         session_uid: int,
         pngt_write: Optional[Tuple[Path, tuple]],
     ) -> None:
-        """Writes the auto-save JSON and the .pngt telemetry dump for one session. Run via
-        fire_and_forget() from the ingress task -- see handleFinalClassification().
+        """Writes the auto-save JSON and the .pngt telemetry dump for one session. Run as
+        m_save_task from the ingress task -- see handleFinalClassification().
 
         Args:
             final_json (Dict): Dictionary containing JSON data after final classification
@@ -829,6 +832,7 @@ class F1TelemetryHandler:
         if pngt_write is not None:
             dest_path, args = pngt_write
             await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
+        self.m_save_task = None
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
