@@ -25,14 +25,17 @@ SOFTWARE.
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 import asyncio
+import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
                     Tuple)
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
+from apps.backend.state_mgmt_layer.pngt_export import build_pngt_write_args
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import report_session_save_skipped_from_child
 from lib.config import CaptureSettings, OverlayId
@@ -45,6 +48,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketParticipantsData, PacketSessionData,
                           PacketSessionHistoryData, PacketTimeTrialData,
                           PacketTyreSetsData, SafetyCarType)
+from lib.file_path import resolve_user_file
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
@@ -503,9 +507,13 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
-            # Perform the auto save stuff only if configured
+            # Fire-and-forget: since this runs on the telemetry ingress task
             if self._shouldSaveData():
-                await self.postGameDumpToFile(final_json, session_uid=packet.m_header.m_sessionUID)
+                pngt_write = self.preparePngtWrite()
+                self.m_subsystem.fire_and_forget(
+                    self._autoSaveSessionData(final_json, packet.m_header.m_sessionUID, pngt_write),
+                    name="Auto-save Session Data",
+                )
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -802,6 +810,26 @@ class F1TelemetryHandler:
         self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
 
+    async def _autoSaveSessionData(
+        self,
+        final_json: Dict[str, Any],
+        session_uid: int,
+        pngt_write: Optional[Tuple[Path, tuple]],
+    ) -> None:
+        """Writes the auto-save JSON and the .pngt telemetry dump for one session. Run via
+        fire_and_forget() from the ingress task -- see handleFinalClassification().
+
+        Args:
+            final_json (Dict): Dictionary containing JSON data after final classification
+            session_uid (int): Session UID for which the final classification was received.
+            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, or
+                None if there was nothing to write.
+        """
+        await self.postGameDumpToFile(final_json, session_uid=session_uid)
+        if pngt_write is not None:
+            dest_path, args = pngt_write
+            await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
+
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
         Write the contents of final_json and player recorded events to a file.
@@ -839,6 +867,65 @@ class F1TelemetryHandler:
         except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write race info to %s", final_json_file_name)
+
+    def preparePngtWrite(self) -> Optional[Tuple[Path, tuple]]:
+        """Captures everything postGameDumpToPngtFile() needs from session_state.
+        Synchronous, and must run before any await in the caller
+
+        Returns:
+            Optional[Tuple[Path, tuple]]: (dest_path, write_pngt()'s args), or None if
+                session data isn't available to build a filename from.
+        """
+        event_str = self.m_session_state_ref.getEventInfoStr()
+        if not event_str:
+            return None
+
+        now = datetime.now().astimezone()
+        timestamp_str = now.strftime("%Y_%m_%d_%H_%M_%S")
+        date_str = now.strftime("%Y_%m_%d")
+        dir_path = Path(resolve_user_file("data")) / date_str / "telemetry"
+        dir_path.mkdir(parents=True, exist_ok=True)
+        dest_path = dir_path / f"{event_str}{timestamp_str}.pngt"
+
+        return dest_path, build_pngt_write_args(self.m_session_state_ref, dest_path)
+
+    def firePngtWrite(self, pngt_write: Optional[Tuple[Path, tuple]], session_uid: int) -> None:
+        """Writes the .pngt in the background via fire_and_forget()
+
+        Args:
+            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, or
+                None if there was nothing to write.
+            session_uid (int): Session UID, for the write's own log messages.
+        """
+        if pngt_write is None:
+            return
+        dest_path, args = pngt_write
+        self.m_subsystem.fire_and_forget(
+            self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid),
+            name="Manual Save .pngt Write",
+        )
+
+    async def postGameDumpToPngtFile(self, dest_path: Path, args: tuple, session_uid: int) -> None:
+        """
+        Write the session's recorded telemetry to a .pngt file, from args
+        preparePngtWrite() already captured synchronously. Must not read session_state
+        itself
+
+        Arguments:
+            dest_path (Path): Where to write -- from preparePngtWrite().
+            args (tuple): write_pngt()'s args -- from preparePngtWrite().
+            session_uid (int): Session UID for which the final classification was received.
+        """
+
+        try:
+            start_time = time.perf_counter()
+            await self.m_subsystem.run_in_process(self.m_session_state_ref.m_export_mgr.write_pngt, *args)
+            elapsed_sec = time.perf_counter() - start_time
+            self.m_logger.info("Wrote telemetry to %s. Session UID %d. took %.3f sec",
+                               dest_path, session_uid, elapsed_sec)
+        except Exception: # pylint: disable=broad-exception-caught
+            # No need to crash the app just because write failed
+            self.m_logger.exception("Failed to write telemetry to %s", dest_path)
 
     def getStats(self) -> Dict[str, Any]:
         """Get telemetry handler stats.
@@ -982,8 +1069,9 @@ class F1TelemetryHandler:
 
         Caller's responsibility: only call this for a genuine UID change (i.e. there was a
         prior session - not on the very first UID the app ever sees). Must be called before
-        m_last_session_uid is overwritten and before clearAllDataStructures runs, since
-        ManualSaveRsp snapshots session_state synchronously at construction time.
+        m_last_session_uid is overwritten and before clearAllDataStructures runs, since both
+        ManualSaveRsp and preparePngtWrite() snapshot session_state synchronously here, at
+        construction/call time.
 
         Args:
             outgoing_session_uid (int): UID of the session about to be cleared.
@@ -1022,20 +1110,36 @@ class F1TelemetryHandler:
         except ValueError as e:
             self.m_logger.warning("Not saving just in case data for session %d: %s", outgoing_session_uid, e)
             return
-        self.m_save_task = asyncio.create_task(self._saveJustInCaseDataTask(outgoing_session_uid, save_rsp),
-                                                name="Just in case save task")
+        # Captured now, synchronously, same as save_rsp above - not inside the task, since
+        # clearAllDataStructures() runs right after this method returns.
+        pngt_write = self.preparePngtWrite()
+        self.m_save_task = asyncio.create_task(
+            self._saveJustInCaseDataTask(outgoing_session_uid, save_rsp, pngt_write),
+            name="Just in case save task")
 
-    async def _saveJustInCaseDataTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
-        """Write the pre-prepared save data to disk.
+    async def _saveJustInCaseDataTask(
+        self,
+        session_uid: int,
+        save_rsp: ManualSaveRsp,
+        pngt_write: Optional[Tuple[Path, tuple]],
+    ) -> None:
+        """Write the pre-prepared save data to disk - race-info JSON and, if there was
+        anything to write, the .pngt telemetry dump too.
 
         Args:
             session_uid (int): The session UID for which the suspicious session start event was received.
             save_rsp (ManualSaveRsp): Already-prepared save response (data captured before task creation).
+            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, captured
+                at the same time as save_rsp, or None if there was nothing to write.
         """
         try:
             rsp = await save_rsp.saveToDisk()
             self.m_logger.info("Saving just in case data. Session UID %d. status=%s", session_uid, rsp)
         except Exception as e: # pylint: disable=broad-exception-caught
             self.m_logger.error("Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
+
+        if pngt_write is not None:
+            dest_path, args = pngt_write
+            await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
 
         self.m_save_task = None

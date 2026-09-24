@@ -110,7 +110,7 @@ class LapMetadata:
 @dataclass(frozen=True)
 class CompletedLap:
     metadata: LapMetadata
-    telemetry: dict[str, list]  # "lap_distance" + sensor keys, all equal length
+    telemetry: dict[str, list]  # "lap_distance" + "lap_time_ms" + sensor keys, all equal length
 
     def __post_init__(self) -> None:
         # Array-length agreement is an invariant of this telemetry dict alone -- doesn't

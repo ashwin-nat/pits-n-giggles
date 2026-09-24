@@ -27,10 +27,10 @@ Full behavioural spec: `plans/telemetry_recording/telemetry-ingest-spec.md`.
   field), and the concrete snapshot subclass it reads from, are both
   game-/domain-specific and belong with whatever code actually populates that
   snapshot from real packets (`apps/backend/state_mgmt_layer/data_per_driver`'s own
-  `TelemetrySnapshot`), not in this generic library. The recorder only ever needs `lap_distance`
-  directly (see `BaseTelemetrySnapshot` below); everything else goes through the
-  mapper. A stub implementation for exercising `DriverTelemetryRecorder` in tests
-  lives in `tests/tests_pngt_ingest.py`, not here.
+  `TelemetrySnapshot`), not in this generic library. The recorder only ever needs
+  `lap_distance`/`lap_time_ms` directly (see `BaseTelemetrySnapshot` below); everything
+  else goes through the mapper. A stub implementation for exercising
+  `DriverTelemetryRecorder` in tests lives in `tests/tests_pngt_ingest.py`, not here.
 - Ordered-int sensors (e.g. ERS deploy mode) are typed plain `int` on the real
   snapshot dataclass, not as an `IntEnum` — the enum itself is owned by whoever
   builds the snapshot from real sim packets, not by this layer.
@@ -72,14 +72,26 @@ from `lib.pngt`, not `lib.pngt.ingest.dto`, unless you're inside this package.
 | `dto.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses this and adds its own fields), `TelemetryRecorderConfig` (no collision with the parent package, plain names), plus `IngestLapMetadata`, `IngestCompletedLap`, `IngestDriverExportData` (named with the `Ingest` prefix because the parent package's `dto.py` already has a `LapMetadata`/`CompletedLap`/`DriverExportData` meaning something different) |
 | `mapper.py` | `SensorMapper` ABC only (`get_value()` + `get_dtype()`) — no concrete implementation ships here, see Design principles above |
 | `recorder.py` | `DriverTelemetryRecorder` — accumulation, lap rollover, flashback detection/rollback, export |
+| `session_export_manager.py` | `SessionExportManager` — aggregates each driver's already-recorded data (scope-filtered) and writes it to a `.pngt` file |
+| `export_adapter.py` | `adapt_driver_export()` — converts `IngestDriverExportData` (this package's shape) to `DriverExportData` (the parent package's writer-facing shape) |
 
-## Not in scope here
+## `SessionExportManager`
 
-Owning multiple drivers, scope filtering (spectator mode, other players' cars,
-`Restricted` telemetry), session-best tracking, and assembling/writing the final
-`.pngt` file are `SessionExportManager`'s job (not yet built — see the top-level
-implementation plan's Phase 8). This package only accumulates one driver's telemetry
-and hands back plain data at `export()`.
+Two responsibilities, both at export time (never records anything itself, owns no
+per-driver state — each driver feeds its own `DriverTelemetryRecorder` directly):
+
+1. **Aggregating** (`export_scoped()`) — caller hands it one `DriverExportCandidate`
+   per driver (`driver_index`, an `export_fn` callable, scope facts) plus a session-wide
+   `is_spectating` flag. `in_scope()` decides which candidates' `export_fn` gets called.
+   `export_fn` isn't tied to `recorder.export()` directly, since the caller may need
+   extra work first (e.g. reconciling lap times against data this package knows
+   nothing about).
+2. **Writing** (`write_pngt()`) — takes `export_scoped()`'s result plus caller-supplied
+   `SessionMetadata`/`DriverRecord`s (identity data this class can't know) and calls
+   `write_session()`, using its own `mapper`/`recorder_config` for the sensor manifest.
+
+Game-agnostic throughout — never imports anything F1-specific.
+`compute_session_best()` scans an aggregated result for the fastest valid lap.
 
 The concrete `TelemetrySnapshot` (every real F1 sensor field, subclassing
 `BaseTelemetrySnapshot`) and its `SensorMapper` implementation both live in

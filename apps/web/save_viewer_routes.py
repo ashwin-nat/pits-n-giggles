@@ -242,13 +242,9 @@ async def sessions_watch_loop(server: "WebServer") -> None:
         server.m_logger.warning(
             "Session directory %s does not exist -- file watcher not started", server.m_session_dir)
         return
-    # Also ignores the pngt cache file and .pngt files themselves -- this watcher
-    # only ever looks for *.json (see session_discovery.find_json_files), so a
-    # telemetry recording finishing (or its own cache being rewritten) has nothing
-    # for it to find and would otherwise trigger a wasted full rescan.
     async for _ in awatch(
             server.m_session_dir, stop_event=_watch_stop,
-            watch_filter=lambda _, p: not p.endswith((CACHE_FILE, PNGT_CACHE_FILE, '.pngt'))):
+            watch_filter=lambda _, p: not p.endswith((CACHE_FILE, PNGT_CACHE_FILE, '.pngt', '.tmp'))):
         try:
             await rebuild_session_cache(server)
         except Exception:  # pylint: disable=broad-exception-caught

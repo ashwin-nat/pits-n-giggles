@@ -38,9 +38,9 @@ class BaseTelemetrySnapshot:
     x-axis for all telemetry, needed unconditionally for buffering decisions
     (append/overwrite/drop) before any configured-sensor extraction happens at
     all, so it can't be routed through the same optional, per-sensor machinery as
-    everything else. `lap_time_ms` is mandatory for the same "always present"
-    reason, but isn't touched by the recorder's own buffering logic -- it's just
-    guaranteed data for whichever consumer wants to read it.
+    everything else. `lap_time_ms` is mandatory for the same reason, and -- like
+    `lap_distance` -- is buffered and exported unconditionally, never gated behind
+    `TelemetryRecorderConfig.sensors` or routed through `SensorMapper`.
 
     A real snapshot's full shape (every other sensor field an actual sim packet
     can report) is game-/domain-specific and belongs with whatever code builds it
@@ -110,7 +110,7 @@ class IngestCompletedLap:
     from the top-level lib.pngt.CompletedLap, which additionally validates array-length
     agreement -- an on-disk/write-time concern this layer doesn't have."""
     metadata: IngestLapMetadata
-    telemetry: dict[str, list]  # "lap_distance" + configured sensor keys, all equal length
+    telemetry: dict[str, list]  # "lap_distance" + "lap_time_ms" + configured sensor keys, all equal length
 
 @dataclass
 class IngestDriverExportData:

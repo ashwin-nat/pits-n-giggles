@@ -145,7 +145,8 @@ class DriverTelemetryRecorder:
         )
 
     def _new_buffers(self) -> dict[str, list]:
-        buffers: dict[str, list] = {"lap_distance": []}
+        # mandatory BaseTelemetrySnapshot fields, not mapper-routed sensors -- always buffered
+        buffers: dict[str, list] = {"lap_distance": [], "lap_time_ms": []}
         for key in self._config.sensors:
             buffers[key] = []
         return buffers
@@ -156,12 +157,14 @@ class DriverTelemetryRecorder:
 
     def _append_sample(self, snapshot: BaseTelemetrySnapshot, frame_id: int) -> None:
         self._current_buffers["lap_distance"].append(snapshot.lap_distance)
+        self._current_buffers["lap_time_ms"].append(snapshot.lap_time_ms)
         for key in self._config.sensors:
             self._current_buffers[key].append(self._sample_value(snapshot, key))
         self._frame_id_buffer.append(frame_id)
 
     def _overwrite_last_sample(self, snapshot: BaseTelemetrySnapshot, frame_id: int) -> None:
         self._current_buffers["lap_distance"][-1] = snapshot.lap_distance
+        self._current_buffers["lap_time_ms"][-1] = snapshot.lap_time_ms
         for key in self._config.sensors:
             self._current_buffers[key][-1] = self._sample_value(snapshot, key)
         self._frame_id_buffer[-1] = frame_id

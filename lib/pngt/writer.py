@@ -176,7 +176,7 @@ def _validate_lap(lap: CompletedLap, sensor_keys: set) -> None:
     # respectively) and are enforced by their own __post_init__ instead of here. What's
     # left is a genuinely cross-object check: a telemetry key must exist in the sensor
     # registry, which is a separate write_session() argument this lap doesn't know about.
-    unknown_keys = set(lap.telemetry.keys()) - sensor_keys - {"lap_distance"}
+    unknown_keys = set(lap.telemetry.keys()) - sensor_keys - {"lap_distance", "lap_time_ms"}
     if unknown_keys:
         raise ValueError(
             f"Unregistered sensor key(s) in telemetry for lap {lap.metadata.lap_number}: {sorted(unknown_keys)}"
@@ -241,9 +241,14 @@ def _write_json(zf: zipfile.ZipFile, name: str, data: dict) -> None:
 def _write_lap_npz(zf: zipfile.ZipFile, name: str, dtypes: dict[str, SensorDtype], lap: CompletedLap) -> None:
     arrays = {}
     for key, values in lap.telemetry.items():
-        dtype = np.float32 if key == "lap_distance" else numpy_dtype(dtypes[key])
+        if key == "lap_distance":
+            dtype = np.float32
+        elif key == "lap_time_ms":
+            dtype = np.int64
+        else:
+            dtype = numpy_dtype(dtypes[key])
         arrays[key] = np.asarray(values, dtype=dtype)
 
     buf = BytesIO()
-    np.savez(buf, **arrays)
+    np.savez_compressed(buf, **arrays)
     zf.writestr(name, buf.getvalue(), compress_type=zipfile.ZIP_STORED)
