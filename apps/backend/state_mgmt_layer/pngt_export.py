@@ -84,7 +84,7 @@ def build_pngt_write_args(
             is_telemetry_public=index in driver_exports,
         )
         for index, driver_obj in enumerate(session_state.m_driver_data)
-        if driver_obj is not None
+        if driver_obj is not None and driver_obj.is_valid
     ]
 
     return dest_path, session, drivers, driver_exports
