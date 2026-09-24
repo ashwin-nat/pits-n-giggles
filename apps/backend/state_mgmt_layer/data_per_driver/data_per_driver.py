@@ -648,6 +648,14 @@ class DataPerDriver:
         if is_flashback and session_type and session_type.isRaceTypeSession():
             self._handleFlashBack(old_lap_number)
 
+        # Must run before m_tel_rec.on_lap_change() below -- finalClassificationEventUpdater()
+        # re-calls onLapChange() for the last lap at session end, which would otherwise
+        # double-record that lap in the telemetry recorder too.
+        if old_lap_number in self.m_per_lap_snapshots:
+            self.m_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
+                             str(self), old_lap_number)
+            return
+
         # skip zeroth lap
         if old_lap_number > 0 and not is_flashback:
             self.m_tel_rec.on_lap_change(IngestLapMetadata(
@@ -661,12 +669,6 @@ class DataPerDriver:
                 pit_out_lap=False,
                 num_points=0,  # overwritten in place by on_lap_change() itself
             ))
-
-        # Check if the old lap number is already present in the snapshots (lap already processed)
-        if old_lap_number in self.m_per_lap_snapshots:
-            self.m_logger.debug("Driver %s - lap %d already in per_lap_snapshots. Possible flashback",
-                             str(self), old_lap_number)
-            return
 
         # Store the snapshot data for the old lap
         if self.m_car_info.m_2026_regs:
