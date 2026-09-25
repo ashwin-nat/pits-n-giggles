@@ -659,7 +659,7 @@ class DataPerDriver:
                 # lap_time_ms/valid are not known yet here, will be filled at export time from Session History pkt
                 lap_time_ms=None,
                 valid=False,
-                tyre_compound=str(self.m_tyre_info.tyre_vis_compound),
+                tyre_compound=self._getCurrentTyreCompoundStr(),
                 tyre_laps=69, # TODO
                 pit_in_lap=False,
                 pit_out_lap=False,
@@ -1022,6 +1022,17 @@ class DataPerDriver:
         self.m_logger.debug("Driver %s - completed processing delayed tyre set change. New tyre wear: [%s]. "
                             "History: [%s]", str(self), str(initial_tyre_wear),
                             str(self.m_tyre_info.m_tyre_set_history_manager))
+
+    def _getCurrentTyreCompoundStr(self) -> str:
+        """Get the current tyre compound for pngt export. "" if not yet known (e.g. no
+        car status packet received yet), never the literal string "None" -- tyre_vis_compound
+        is Optional and str(None) == "None" would otherwise leak into the exported lap.
+
+        Returns:
+            str: The tyre compound, or "" if unknown
+        """
+        compound = self.m_tyre_info.tyre_vis_compound
+        return str(compound) if compound is not None else ""
 
     def _getCurrentTyreSetKey(self) -> Optional[str]:
         """Get the unique ID key for the currently equipped tyre set
@@ -1582,7 +1593,7 @@ class DataPerDriver:
             in_progress_lap = CompletedLap(
                 metadata=replace(
                     in_progress_lap.metadata,
-                    tyre_compound=str(self.m_tyre_info.tyre_vis_compound),
+                    tyre_compound=self._getCurrentTyreCompoundStr(),
                     tyre_laps=69, # TODO
                     pit_in_lap=False,
                     pit_out_lap=False,

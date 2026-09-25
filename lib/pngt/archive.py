@@ -117,6 +117,16 @@ def recompute_totals(driver_laps: Iterable[tuple[int, list[dict]]]) -> tuple[int
     return total, session_best
 
 
+def session_best_to_dict(best: Optional[SessionBest]) -> Optional[dict]:
+    """session.json's laps.session_best shape. Shared by write_session() and
+    delete_laps() so the two can't drift into writing different shapes for it."""
+    return None if best is None else {
+        "driver_index": best.driver_index,
+        "lap_number": best.lap_number,
+        "lap_time_ms": best.lap_time_ms,
+    }
+
+
 def read_json(zf: zipfile.ZipFile, name: str, path) -> dict:
     try:
         raw = zf.read(name)

@@ -36,7 +36,8 @@ import os
 from pathlib import Path
 from typing import Iterator, Union
 
-from .archive import read_json, rebuild_archive, recompute_totals, validate_pngt_zip
+from .archive import (read_json, rebuild_archive, recompute_totals,
+                      session_best_to_dict, validate_pngt_zip)
 from .dto import DeleteLapsResult, MarkLapGoodResult
 from .exceptions import DriverNotFoundError
 
@@ -62,9 +63,10 @@ def delete_laps(
 
     zf = validate_pngt_zip(path)
     try:
+        all_names = set(zf.namelist())
         folder = f"drivers/{driver_index:02d}"
         laps_entry = f"{folder}/laps.json"
-        if laps_entry not in zf.namelist():
+        if laps_entry not in all_names:
             raise DriverNotFoundError(path, driver_index)
 
         existing_laps = read_json(zf, laps_entry, path).get("laps", [])
@@ -78,22 +80,22 @@ def delete_laps(
         driver_folder_removed = not remaining_laps
 
         session_raw = read_json(zf, "session.json", path)
+        # drivers_raw is only read to enumerate driver indices for the totals below.
+        # NOTE: it is never rewritten here, so a driver whose folder driver_folder_removed
+        # just dropped keeps is_telemetry_public=true in drivers.json -- stale, pre-existing
+        # (not introduced by this restructure). Not fixed for now: delete_laps() itself may
+        # go away (no clear use case for it), so revisit only if it stays.
         drivers_raw = read_json(zf, "drivers.json", path)
         new_laps_count, new_session_best = recompute_totals(
-            _other_drivers_laps(zf, path, drivers_raw, driver_index, remaining_laps)
+            _other_drivers_laps(zf, path, drivers_raw, driver_index, remaining_laps, all_names)
         )
-        all_names = zf.namelist()
     finally:
         # Must be closed before the rebuild's os.replace() -- an open handle on `path`
         # blocks renaming over it on Windows.
         zf.close()
 
     session_raw["laps"]["count"] = new_laps_count
-    session_raw["laps"]["session_best"] = None if new_session_best is None else {
-        "driver_index": new_session_best.driver_index,
-        "lap_number": new_session_best.lap_number,
-        "lap_time_ms": new_session_best.lap_time_ms,
-    }
+    session_raw["laps"]["session_best"] = session_best_to_dict(new_session_best)
 
     skip_names = {"session.json"}
     overrides = {"session.json": session_raw}
@@ -177,17 +179,22 @@ def rename_session(
     os.replace(tmp_path, path)
 
 
-def _other_drivers_laps(zf, path, drivers_raw: dict, changed_driver_index: int, changed_driver_laps: list[dict]) -> Iterator:
+def _other_drivers_laps(
+    zf, path, drivers_raw: dict, changed_driver_index: int, changed_driver_laps: list[dict], all_names: set,
+) -> Iterator:
     """Yields (driver_index, lap dicts) for every driver in drivers_raw, using
     changed_driver_laps in place of changed_driver_index's on-disk laps.json (which
     hasn't been rewritten yet) and reading every other driver's laps.json from the
-    still-open archive. A driver with no folder (Restricted) is skipped."""
+    still-open archive. A driver with no folder (Restricted) is skipped. `all_names`
+    is the archive's namelist, precomputed once by the caller -- namelist() rebuilds
+    a list from scratch on every call, so calling it per driver here would make this
+    an O(drivers x entries) scan on a large session."""
     for driver in drivers_raw.get("drivers", []):
         idx = driver["driver_index"]
         if idx == changed_driver_index:
             yield idx, changed_driver_laps
             continue
         entry = f"drivers/{idx:02d}/laps.json"
-        if entry not in zf.namelist():
+        if entry not in all_names:
             continue
         yield idx, read_json(zf, entry, path).get("laps", [])
