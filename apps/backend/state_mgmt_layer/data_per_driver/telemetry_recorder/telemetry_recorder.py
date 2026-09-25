@@ -23,9 +23,10 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
+from operator import attrgetter
 from typing import Optional
 
-from lib.pngt import BaseTelemetrySnapshot
+from lib.pngt import BaseTelemetrySnapshot, RecordedSensor, SensorConfig, SensorType
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -34,13 +35,12 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     """A strongly typed snapshot of all available F1 sensor values at a single point in
     time, passed to lib.pngt.DriverTelemetryRecorder.update() on every telemetry packet.
     The caller populates whatever fields the sim reported for this packet; the recorder
-    filters internally to the sensors it was configured to record via SensorMapper.
+    reads only the fields F1_SENSORS (below) names.
 
     Every field below (other than the inherited, mandatory `lap_distance` and
-    `lap_time_ms`) is F1-domain-specific, which is why this subclass lives here
-    in apps/backend rather than in lib/pngt/ingest -- that package only owns the
-    core fields every snapshot must carry (see BaseTelemetrySnapshot); everything
-    else here is read through a SensorMapper implementation this app also owns.
+    `lap_time_ms`) is F1-domain-specific, which is why this subclass lives here in
+    apps/backend rather than in lib/pngt -- that package only owns the core fields
+    every snapshot must carry (see BaseTelemetrySnapshot).
 
     Ordered-int sensors (e.g. ERS deploy mode) are typed plain `int`, not an IntEnum --
     the enum itself is owned by whoever builds this snapshot from real sim packets, not
@@ -57,7 +57,7 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
 
     # Vehicle state
     speed: Optional[float] = None      # km/h
-    gear: Optional[int] = None         # 0 = reverse, 1-8 = forward
+    gear: Optional[int] = None         # -1 = reverse, 0 = neutral, 1-8 = forward
     engine_rpm: Optional[float] = None
 
     # ERS
@@ -69,3 +69,28 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     tyre_wear_fr: Optional[float] = None
     tyre_wear_rl: Optional[float] = None
     tyre_wear_rr: Optional[float] = None
+
+# -------------------------------------- CONSTANTS ----------------------------------------------------------------------
+
+# The F1 sensor catalog: each entry's manifest description plus how to read its value
+# off a TelemetrySnapshot.
+F1_SENSORS: tuple[RecordedSensor[TelemetrySnapshot], ...] = (
+    RecordedSensor(SensorConfig("throttle", "Throttle", "%", SensorType.CONTINUOUS), attrgetter("throttle")),
+    RecordedSensor(SensorConfig("brake", "Brake", "%", SensorType.CONTINUOUS), attrgetter("brake")),
+    RecordedSensor(SensorConfig("steering", "Steering", "", SensorType.CONTINUOUS), attrgetter("steering")),
+    RecordedSensor(SensorConfig("speed", "Speed", "km/h", SensorType.CONTINUOUS), attrgetter("speed")),
+    RecordedSensor(SensorConfig("gear", "Gear", "", SensorType.DISCRETE), attrgetter("gear")),
+    RecordedSensor(SensorConfig("engine_rpm", "Engine RPM", "rpm", SensorType.CONTINUOUS), attrgetter("engine_rpm")),
+    RecordedSensor(SensorConfig("ers.deploy_mode", "ERS Deploy Mode", "", SensorType.DISCRETE),
+                   attrgetter("ers_deploy_mode")),
+    RecordedSensor(SensorConfig("ers.store_energy", "ERS Store Energy", "J", SensorType.CONTINUOUS),
+                   attrgetter("ers_store_energy")),
+    RecordedSensor(SensorConfig("tyre_wear.fl", "Tyre Wear FL", "%", SensorType.CONTINUOUS),
+                   attrgetter("tyre_wear_fl")),
+    RecordedSensor(SensorConfig("tyre_wear.fr", "Tyre Wear FR", "%", SensorType.CONTINUOUS),
+                   attrgetter("tyre_wear_fr")),
+    RecordedSensor(SensorConfig("tyre_wear.rl", "Tyre Wear RL", "%", SensorType.CONTINUOUS),
+                   attrgetter("tyre_wear_rl")),
+    RecordedSensor(SensorConfig("tyre_wear.rr", "Tyre Wear RR", "%", SensorType.CONTINUOUS),
+                   attrgetter("tyre_wear_rr")),
+)

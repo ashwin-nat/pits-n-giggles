@@ -5,40 +5,11 @@ Read/write library for the `.pngt` session file format — a ZIP-based container
 holds one recorded F1 sim session's driver metadata and per-lap telemetry, for the
 Telemetry Visualizer feature.
 
-This top-level package holds two things that are always used together and so live
-under one module, but stay logically separate:
-
-- **The format layer** (this directory's own files — `dto.py`, `dtypes.py`,
-  `reader.py`, `writer.py`, `mutate.py`, `manifest.py`, `filename.py`,
-  `exceptions.py`) is deliberately **format-agnostic**: it has zero embedded
-  knowledge of what sensors exist. `write_session()` takes whatever `SensorConfig`
-  list it's given and serializes it; it never hardcodes a real F1 sensor key
-  (`speed`, `tyre_temp.fl`, etc). It only knows how to lay data out on disk, read it
-  back, and apply a handful of in-place mutations.
-- **The ingest layer** (`ingest/`) owns the F1 sensor catalog and per-driver
-  telemetry accumulation during a live session — see `ingest/`'s own docs and
-  `plans/telemetry_recording/telemetry-ingest-spec.md`. It has no knowledge of the
-  `.pngt` ZIP layout or NumPy; it hands the format layer plain Python data
-  (`DriverExportData`) to write.
-
-Neither submodule imports the other's DTOs or file-I/O code, and the ingest layer's
-DTOs that would otherwise collide with the format layer's own — `CompletedLap`,
-`DriverExportData`, `LapMetadata` — are named `Ingest*` (see `ingest/dto.py`)
-precisely because they mean something different in each layer and both are now
-reachable from the same `lib.pngt` namespace. (The format layer's `SensorConfig`
-has no ingest-layer counterpart to collide with: `TelemetryRecorderConfig.sensors`
-is just dotted keys, with dtype sourced from `SensorMapper.get_dtype()` instead of
-a declared field — see `ingest/`'s own docs.) Only `SensorDtype` (`dtypes.py`) is a
-single shared definition, since it's a genuinely shared
-storage-width vocabulary rather than format- or ingest-specific.
-
-There is exactly one `__init__.py` for the whole package, at `lib/pngt/`. `ingest/`
-has no `__init__.py` of its own — it's a plain namespace package, same as
-`lib/ipc/pubsub/` or `lib/ipc/reqrep/` elsewhere in this repo — and the top-level
-`__init__.py` imports straight from `.ingest.dto`, `.ingest.mapper`,
-`.ingest.recorder`. Reach for `lib.pngt.ingest.dto` directly only from
-inside this package (e.g. `mapper.py` importing `BaseTelemetrySnapshot`);
-everyone outside the package imports from `lib.pngt`.
+Format-agnostic: it has zero embedded knowledge of what sensors exist.
+`write_session()` takes whatever `SensorConfig` list it's given and serializes it; it
+never hardcodes a real F1 sensor key (`speed`, `tyre_temp.fl`, etc). The F1 sensor
+catalog and the concrete snapshot type it reads from both live in
+`apps/backend/state_mgmt_layer/data_per_driver` — see `RecordedSensor` below.
 
 ## On-disk layout
 
@@ -54,36 +25,31 @@ drivers/{driver_index:02d}/
     lap_{lap_number:03d}.npz     # this lap's telemetry arrays
 ```
 
-`header.json` and `manifest.json` are deliberately separate: `header.json` is the
-two-field identity blob read unconditionally on every open (before anything else is
-trusted); `manifest.json` is the actual itemized "what's in this archive" sensor
-list — a better fit for the word "manifest" than a format/version pair.
-
 A driver with `is_telemetry_public == False` appears in `drivers.json` but has
 **no** `drivers/{idx}/` folder at all — `read_driver_laps()` returns `[]` for one,
 not an error. JSON entries are `ZIP_DEFLATED`; `.npz` entries are `ZIP_STORED`
 (numpy's own compression, if any, lives inside the `.npz`, so double-compressing
-would just waste CPU).
+would just waste CPU). Every array in a lap's `.npz` — every sensor,
+`lap_distance`, and `lap_time_ms` alike — is `float32`; `NaN` is the only
+missing value.
 
 ## Structure
 
 | File | Purpose |
 |---|---|
-| `dto.py` | Public dataclass contract: `SessionMetadata`, `TrackInfo`, `SessionBest`, `SensorConfig`, `DriverRecord`, `LapMetadata`, `CompletedLap`, `DriverExportData`, `DeleteLapsResult`, `MarkLapGoodResult`, plus the `SensorType` enum (the one field this library validates against a closed set — see Notes) |
-| `dtypes.py` | `SensorDtype` enum and its mapping to NumPy dtypes / missing-value sentinels (`nan` for float32, `-1` for int dtypes) |
-| `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |
-| `manifest.py` | `header.json` validation (`validate_pngt_zip`), shared by every read/mutate entry point |
-| `writer.py` | `write_session()` — validates, applies default-good-lap marking, then writes the ZIP |
-| `reader.py` | `read_header()` / `read_manifest()` / `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
+| `dto.py` | Input dataclasses (`SessionMetadata`, `DriverRecord`, `LapMetadata`, `CompletedLap`, `DriverExportData`, `SensorConfig` + `SensorType`, `DeleteLapsResult`, `MarkLapGoodResult`) carrying only caller-filled fields, plus the `Parsed*` read-side subclasses (`ParsedSessionMetadata`, `ParsedDriver`, `ParsedLap`) that add the fields `write_session()` derives |
+| `archive.py` | `header.json` validation (`validate_pngt_zip`), shared JSON read/write helpers, archive rebuild, and `recompute_totals()` (laps count + session best), used by both `writer.py` and `mutate.py` |
+| `writer.py` | `write_session()` — validates, derives `laps_count`/`session_best`/`is_telemetry_public`/`num_points`/`is_good`, then writes the ZIP |
+| `reader.py` | `read_session()` / `read_driver_laps()` / `read_lap_telemetry()` |
 | `mutate.py` | `delete_laps()` / `mark_lap_good()` / `rename_session()` — in-place archive rebuilds |
-| `filename.py` | `suggest_filename()` — cosmetic default filename, never used implicitly by `write_session()` |
-| `ingest/` | Ingest layer, no `__init__.py` of its own (see Structure note below): `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`; a real snapshot subclasses it elsewhere -- see below), `IngestLapMetadata`, `TelemetryRecorderConfig`, `IngestCompletedLap`, `IngestDriverExportData` DTOs, the `SensorMapper` extension point (`get_value()` + `get_dtype()`, no concrete implementation shipped), and `DriverTelemetryRecorder` (accumulation, lap rollover, flashback detection/rollback, export) — see `ingest/`'s own docs |
+| `recorder.py` | `BaseTelemetrySnapshot` (mandatory `lap_distance`/`lap_time_ms`), `RecordedSensor` (a sensor's manifest entry + how to read its value off a snapshot), `DriverTelemetryRecorder` (accumulation, lap rollover, flashback detection/rollback, export) |
+| `exceptions.py` | `PngtError` base and its subclasses — one per failure mode |
 
 ## Usage
 
 ```python
 from lib.pngt import (
-    SessionMetadata, TrackInfo, SessionBest, SensorConfig, SensorDtype, SensorType,
+    SessionMetadata, TrackInfo, SensorConfig, SensorType,
     DriverRecord, DriverExportData, CompletedLap, LapMetadata,
     write_session, read_session, read_driver_laps, read_lap_telemetry,
     delete_laps, mark_lap_good, rename_session,
@@ -94,22 +60,20 @@ session = SessionMetadata(
     app_version="4.4.0", game_year=2025, formula="F1", game_version="1.24",
     timestamp="2026-08-27T14:32:00Z",
     track=TrackInfo(id=10, name="Circuit de Spa-Francorchamps"),  # id = the sim's own TrackID
-    laps_count=1, session_best=SessionBest(driver_index=0, lap_number=1, lap_time_ms=105812),
 )
 sensors = [SensorConfig(key="speed", label="Speed", unit="km/h", type=SensorType.CONTINUOUS)]
-dtypes = {"speed": SensorDtype.FLOAT32}
 drivers = [DriverRecord(driver_index=0, name="Driver 1", team="Red Bull Racing",
-                         car_number=1, nationality="NL", platform="Steam", is_telemetry_public=True)]
+                         car_number=1, nationality="NL", platform="Steam")]
 lap = CompletedLap(
     metadata=LapMetadata(lap_number=1, lap_time_ms=105812, valid=True, tyre_compound="Soft",
-                          tyre_laps=1, pit_in_lap=False, pit_out_lap=False, num_points=3, is_good=False),
+                          tyre_laps=1, pit_in_lap=False, pit_out_lap=False),
     telemetry={"lap_distance": [0.0, 100.0, 200.0], "speed": [100.0, 150.0, 200.0]},
 )
-dest = write_session("session.pngt", session, sensors, dtypes, drivers,
+dest = write_session("session.pngt", session, sensors, drivers,
                       {0: DriverExportData(driver_index=0, completed_laps=[lap])})
 
 parsed = read_session(dest)                 # -> ParsedSession(session, drivers, sensors)
-laps = read_driver_laps(dest, 0)            # -> list[LapMetadata]
+laps = read_driver_laps(dest, 0)            # -> list[ParsedLap]
 telemetry = read_lap_telemetry(dest, 0, 1)  # -> dict[str, np.ndarray], exactly what's in the .npz
 
 rename_session(dest, "Spa GP (renamed)")    # in-place, session_uid untouched
@@ -117,75 +81,77 @@ mark_lap_good(dest, 0, 1)                   # in-place, idempotent
 delete_laps(dest, 0, [1])                   # in-place, full archive rebuild
 ```
 
-The ingest layer's DTOs come from the same `lib.pngt` import, disambiguated by the
-`Ingest` prefix. `TelemetryRecorderConfig.sensors` is just dotted keys -- dtype comes
-from whatever concrete `SensorMapper` is in use, not a field here. `BaseTelemetrySnapshot`
-only carries the two fields every snapshot must have (`lap_distance`, `lap_time_ms`);
-a real snapshot with actual sensor fields (e.g. `speed`) subclasses it elsewhere --
-see `apps/backend/state_mgmt_layer/data_per_driver`'s own `TelemetrySnapshot`, not
-this package:
+### Recording live telemetry
+
+`DriverTelemetryRecorder` accumulates one driver's telemetry over a session and
+produces a `DriverExportData` ready for `write_session()`. It never names a real
+sensor — that comes entirely from the `RecordedSensor` list it's constructed with:
 
 ```python
-from lib.pngt import TelemetryRecorderConfig, BaseTelemetrySnapshot
+from operator import attrgetter
+from lib.pngt import BaseTelemetrySnapshot, RecordedSensor, DriverTelemetryRecorder
 
-config = TelemetryRecorderConfig(sensors=["speed", "gear"])
-snapshot = BaseTelemetrySnapshot(lap_distance=12.3, lap_time_ms=45000)
+@dataclass(slots=True)
+class TelemetrySnapshot(BaseTelemetrySnapshot):
+    speed: float | None = None
+    gear: int | None = None
+
+SENSORS = (
+    RecordedSensor(SensorConfig("speed", "Speed", "km/h", SensorType.CONTINUOUS), attrgetter("speed")),
+    RecordedSensor(SensorConfig("gear", "Gear", "", SensorType.DISCRETE), attrgetter("gear")),
+)
+
+recorder = DriverTelemetryRecorder(driver_index=0, sensors=SENSORS)
+recorder.update(TelemetrySnapshot(lap_distance=12.3, lap_time_ms=45000, speed=201.4, gear=6), frame_id=1)
+recorder.on_lap_change(LapMetadata(lap_number=1, lap_time_ms=None, valid=False,
+                                    tyre_compound="Soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False))
+export = recorder.export()  # -> DriverExportData
 ```
+
+`RecordedSensor.get` returning `None` means "unavailable this packet" — stored as
+`NaN`, never raised. The real F1 catalog (`F1_SENSORS`) lives next to the real
+`TelemetrySnapshot` in `apps/backend/state_mgmt_layer/data_per_driver`, not here.
 
 ## Notes
 
-- **`sensors` is a top-level parameter/field, not nested in `SessionMetadata`.** It maps
-  to its own `manifest.json` entry, distinct from `session.json`, so the Python API
-  mirrors the on-disk split: `write_session(dest, session, sensors, dtypes, drivers,
-  driver_data)`, and `read_session()` returns them as separate `ParsedSession.sensors`.
-  `read_manifest()` reads the registry on its own, returning the same `list[SensorConfig]`
-  shape — there's one `SensorConfig` class used on both the read and write path, no
-  separate read-only type.
-- **`dtype` is a separate `dtypes: dict[str, SensorDtype]` argument to `write_session()`,
-  not a field on `SensorConfig`.** It has no on-disk representation — `manifest.json`
-  entries only ever carry `label`/`unit`/`type` — so keeping it off `SensorConfig`
-  means the same class works unmodified for both reading and writing, with no nullable
-  field. The tradeoff: every sensor's `key` must have a matching entry in `dtypes`, or
-  `write_session()` fails fast with `ValueError` at the validation step, before any I/O
-  — not a `KeyError` surfacing later inside the NPZ writer.
-- **Only sensor `type` (a `SensorType` enum: `CONTINUOUS`/`DISCRETE`) is
-  validated against a closed set.** `session_type` and `tyre_compound` are documented
-  in the format spec as caller-owned labels (the spec itself gives `tyre_compound` as
-  illustrative examples, not an exhaustive list) — this library passes them straight
-  through as plain strings rather than rejecting values it doesn't recognize, keeping
-  sim-specific domain knowledge out of a format-agnostic library. `is_telemetry_public`
-  is a plain `bool` (not a string), so there's no invalid-value question there at all —
-  `False` is what drives the no-folder-on-disk behavior. Sensor `type` is different:
-  this library's own behavior (which the viewer relies on for interpolation) depends on
-  it directly, so it's a real `Enum` rather than a bare string.
-- **Validation is split by where the invariant lives, not centralized in `write_session()`.**
-  A check that only depends on one object's own fields raises `ValueError` straight from
-  that object's `__post_init__`, before `write_session()` is ever called:
-  `SensorConfig` validates its own `type`; `CompletedLap` validates that its telemetry
-  arrays all agree in length; `DriverExportData` validates that its `in_progress_lap`
-  (if any) has no final `lap_time_ms` and isn't `valid`. `write_session()` itself only
-  checks what genuinely spans two independently-constructed arguments and so can't be
-  caught any earlier: a sensor missing from `dtypes`, an unregistered sensor key in a
-  lap's telemetry, or a `driver_data`/`drivers` mismatch. Either way every failure is a
-  `ValueError`, raised as early as the data allows — nothing is silently dropped or
-  defaulted. `write_session()` writes to a `.tmp` sibling and `os.replace()`s onto
-  `dest_path` for partial-write safety — every mutation in `mutate.py` follows the same
-  atomic rebuild-then-replace pattern.
-- **Default-good-lap marking**: if no lap in a driver's `completed_laps` for a given
-  `write_session()` call already has `is_good=True`, the fastest valid lap
-  (`valid=True`, minimum `lap_time_ms`) is automatically marked good. Set `is_good`
-  explicitly on a lap yourself to opt out of this. Applies only to `completed_laps`,
-  never to `in_progress_lap`. `delete_laps()` never auto-promotes a replacement good
-  lap after a deletion — that's a fresh `write_session()` or `mark_lap_good()` call.
-- Reading is forward-compatible by construction, not by special-casing: unknown JSON
-  fields are ignored (plain `dict` parsing, not a strict schema), and
-  `read_lap_telemetry()` returns exactly the array names present in that lap's
-  `.npz` — an older file with fewer sensors or a newer file with extra ones both work
-  with zero extra code.
+- **`sensors` is a top-level parameter, not nested in `SessionMetadata`.** It maps
+  to its own `manifest.json` entry, distinct from `session.json`: `write_session(dest,
+  session, sensors, drivers, driver_data)`, and `read_session()` returns them as
+  `ParsedSession.sensors`.
+- **Input types carry only what the caller fills; `write_session()` derives and
+  persists the rest.** `SessionMetadata` has no `laps_count`/`session_best`,
+  `DriverRecord` has no `is_telemetry_public`, `LapMetadata` has no `num_points`/
+  `is_good` — those come back on the read side via `ParsedSessionMetadata`/
+  `ParsedDriver`/`ParsedLap`, which subclass the input types and add exactly those
+  fields. A driver's `is_telemetry_public` is `driver_index in driver_data`, not a
+  separate flag to keep in sync.
+- **Only sensor `type` (`SensorType`: `CONTINUOUS`/`DISCRETE`) is validated against
+  a closed set.** `session_type` and `tyre_compound` are caller-owned labels, passed
+  through as plain strings — the format spec gives `tyre_compound` as illustrative
+  examples, not an exhaustive list, keeping sim-specific domain knowledge out of
+  this format-agnostic library.
+- **Validation is split by where the invariant lives.** A check that only depends
+  on one object's own fields raises `ValueError` straight from that object's
+  `__post_init__` (`SensorConfig`'s `type`, `CompletedLap`'s telemetry array-length
+  agreement, `DriverExportData`'s in-progress-lap constraint). `write_session()`
+  itself only checks what spans two independently-constructed arguments: a
+  duplicate sensor key, an unregistered sensor key in a lap's telemetry, or a
+  `driver_data` entry for a `driver_index` not in `drivers`.
+- **Default-good-lap marking**: the fastest valid+timed lap (`valid=True`, minimum
+  `lap_time_ms`) among a driver's `completed_laps` is always marked good at write
+  time. Applies only to `completed_laps`, never to `in_progress_lap`. `delete_laps()`
+  never auto-promotes a replacement good lap after a deletion — that's a fresh
+  `write_session()` or `mark_lap_good()` call.
+- Reading is forward-compatible by construction: unknown JSON fields are ignored
+  (plain `dict` parsing, not a strict schema), and `read_lap_telemetry()` returns
+  exactly the array names present in that lap's `.npz`.
+- `write_session()` writes to a `.tmp` sibling and `os.replace()`s onto `dest_path`;
+  every mutation in `mutate.py` follows the same atomic rebuild-then-replace pattern.
 
 ## Not in scope here
 
-Config schema, the REST API, and the frontend live elsewhere in the app. Recording
-live telemetry into these DTOs and the sensor catalog itself is `ingest/`'s job
-(see above) — this file's own format layer only reads, writes, and mutates `.pngt`
-files given data the caller (the ingest layer, at session end) already has.
+Config schema, the REST API, and the frontend live elsewhere in the app. The real
+F1 sensor catalog and `TelemetrySnapshot` live in
+`apps/backend/state_mgmt_layer/data_per_driver` — this package only reads, writes,
+and mutates `.pngt` files given data the caller already has, and accumulates
+telemetry into `DriverExportData` given a `RecordedSensor` list the caller supplies.

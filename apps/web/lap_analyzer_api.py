@@ -50,7 +50,7 @@ from typing import Any, Dict, List
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
 
-from lib.pngt import DriverRecord, LapMetadata, SensorConfig
+from lib.pngt import ParsedDriver, ParsedLap, SensorConfig
 from lib.track_segments_classifier.types import BaseSegmentInfo
 
 from .pngt_discovery import PngtSessionEntry
@@ -113,7 +113,7 @@ def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:
     }
 
 
-def driver_to_api(driver: DriverRecord) -> Dict[str, Any]:
+def driver_to_api(driver: ParsedDriver) -> Dict[str, Any]:
     return {
         'index': driver.driver_index,
         'name': driver.name,
@@ -125,7 +125,7 @@ def driver_to_api(driver: DriverRecord) -> Dict[str, Any]:
     }
 
 
-def lap_to_api(lap: LapMetadata) -> Dict[str, Any]:
+def lap_to_api(lap: ParsedLap) -> Dict[str, Any]:
     return {
         'lapNumber': lap.lap_number,
         'lapTime': lap.lap_time_ms,
@@ -141,15 +141,11 @@ def lap_to_api(lap: LapMetadata) -> Dict[str, Any]:
 def _to_json_value(value: Any) -> Any:
     """One raw npz sample -> a JSON-safe Python value.
 
-    float32's own missing-sample sentinel is NaN (see lib/pngt/dtypes.py) -- that
-    becomes None here, since literal NaN has no representation in standard JSON and
+    Every sensor array is float32; NaN is its only missing-sample marker, and it
+    becomes None here since literal NaN has no representation in standard JSON and
     would fail to parse on the browser side (Quart's default JSON provider emits the
-    bare `NaN` token, which JS's own `JSON.parse` rejects). The integer dtypes' own
-    missing-sample sentinel, -1, is passed through unchanged: it's indistinguishable
-    from a genuine sensor value at this layer (e.g. gear == -1 for reverse), and
-    LocalFileProvider.ts makes the same choice not to special-case it -- converting
-    it here would be a real behavioural difference between the two providers, not a
-    fix.
+    bare `NaN` token, which JS's own `JSON.parse` rejects). A real value that happens
+    to be -1 (e.g. gear == -1 for reverse) is passed through unchanged.
     """
     native = value.item() if hasattr(value, 'item') else value
     if isinstance(native, float) and math.isnan(native):

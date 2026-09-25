@@ -29,34 +29,20 @@ from typing import Optional
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 class SensorType(Enum):
-    """How the viewer must interpolate this sensor's values between samples. The only
-    sensor property this library validates against a closed set: unlike tyre_compound/
-    session_type (caller-owned labels passed straight through), this one gates behavior
-    the reader/writer/viewer actually depend on, not sim-specific domain knowledge."""
+    """How the viewer must interpolate this sensor's values between samples."""
     CONTINUOUS = "continuous"
     DISCRETE = "discrete"
 
 @dataclass(frozen=True)
 class SensorConfig:
-    """A single entry in manifest.json's sensor registry, as stored on disk and as
-    returned by read_manifest()/read_session(). No dtype field: manifest.json's sensor
-    registry only ever carries label/unit/type, and dtype has no on-disk representation
-    to recover on read. write_session() takes dtypes as a separate `dict[str,
-    SensorDtype]` argument (keyed by sensor key) instead — the true per-array dtype
-    otherwise lives implicitly in each lap's .npz file, recovered via
-    read_lap_telemetry()'s returned ndarrays' own .dtype.
-    """
+    """A sensor registry entry: manifest.json's {key: {label, unit, type}}. Every
+    sensor's values are stored float32 on disk; there is no dtype field."""
     key: str
     label: str
     unit: str
     type: SensorType
 
     def __post_init__(self) -> None:
-        # The one field this library validates against a closed set (see SensorType's
-        # docstring) -- enforced here, at construction, rather than by write_session(),
-        # since it's an invariant of this object alone. Enforced via isinstance rather
-        # than a value check: SensorType being an Enum means a bad literal can only
-        # reach here via duck-typed/incorrectly-constructed input.
         if not isinstance(self.type, SensorType):
             raise ValueError(f"Invalid sensor type {self.type!r} for sensor {self.key!r}; expected a SensorType")
 
@@ -73,6 +59,8 @@ class SessionBest:
 
 @dataclass(frozen=True)
 class SessionMetadata:
+    """Caller-filled session identity. laps_count/session_best are write_session()-
+    derived, not part of this input type -- see ParsedSessionMetadata."""
     session_uid: int
     session_name: str
     session_type: str
@@ -82,21 +70,22 @@ class SessionMetadata:
     game_version: str
     timestamp: str  # ISO-8601, passed through verbatim, never parsed
     track: TrackInfo
-    laps_count: int
-    session_best: Optional[SessionBest]
 
 @dataclass(frozen=True)
 class DriverRecord:
+    """Caller-filled driver identity. is_telemetry_public is write_session()-derived
+    from whether driver_index is a key in driver_data -- see ParsedDriver."""
     driver_index: int
     name: str
     team: str
     car_number: int
     nationality: Optional[str]
     platform: Optional[str]
-    is_telemetry_public: bool
 
 @dataclass(frozen=True)
 class LapMetadata:
+    """Caller-filled lap facts. num_points/is_good are write_session()-derived --
+    see ParsedLap."""
     lap_number: int
     lap_time_ms: Optional[int]
     valid: bool
@@ -104,8 +93,6 @@ class LapMetadata:
     tyre_laps: int
     pit_in_lap: bool
     pit_out_lap: bool
-    num_points: int
-    is_good: bool
 
 @dataclass(frozen=True)
 class CompletedLap:
@@ -113,9 +100,6 @@ class CompletedLap:
     telemetry: dict[str, list]  # "lap_distance" + "lap_time_ms" + sensor keys, all equal length
 
     def __post_init__(self) -> None:
-        # Array-length agreement is an invariant of this telemetry dict alone -- doesn't
-        # need the sensor registry or any other object, so it's checked here rather than
-        # by write_session().
         lengths = {key: len(values) for key, values in self.telemetry.items()}
         if len(set(lengths.values())) > 1:
             raise ValueError(f"Mismatched telemetry array lengths for lap {self.metadata.lap_number}: {lengths}")
@@ -127,9 +111,6 @@ class DriverExportData:
     in_progress_lap: Optional[CompletedLap] = None
 
     def __post_init__(self) -> None:
-        # Whether a lap is "in progress" is this object's own structure (which field it's
-        # assigned to), so the constraint that follows from that -- no final time, not
-        # valid -- is this object's own invariant, not write_session()'s.
         if self.in_progress_lap is not None:
             meta = self.in_progress_lap.metadata
             if meta.lap_time_ms is not None or meta.valid:
@@ -150,3 +131,22 @@ class MarkLapGoodResult:
     driver_index: int
     lap_number: int
     already_good: bool
+
+# -------------------------------------- READ-SIDE TYPES ----------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ParsedSessionMetadata(SessionMetadata):
+    """SessionMetadata plus the fields write_session() derives and persists."""
+    laps_count: int
+    session_best: Optional[SessionBest]
+
+@dataclass(frozen=True)
+class ParsedDriver(DriverRecord):
+    """DriverRecord plus the field write_session() derives and persists."""
+    is_telemetry_public: bool
+
+@dataclass(frozen=True)
+class ParsedLap(LapMetadata):
+    """LapMetadata plus the fields write_session() derives and persists."""
+    num_points: int
+    is_good: bool

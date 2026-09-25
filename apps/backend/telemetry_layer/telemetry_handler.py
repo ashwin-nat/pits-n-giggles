@@ -53,6 +53,7 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
 from lib.file_path import resolve_user_file
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
+from lib.pngt import write_session
 from lib.save_to_disk import save_json_to_file
 from lib.subsystem import AsyncSubsystem, PngSubsysId, SubsystemTask
 from lib.telemetry_manager import (AsyncF1TelemetryManager,
@@ -879,7 +880,7 @@ class F1TelemetryHandler:
         Synchronous, and must run before any await in the caller
 
         Returns:
-            Optional[Tuple[Path, tuple]]: (dest_path, write_pngt()'s args), or None if
+            Optional[Tuple[Path, tuple]]: (dest_path, write_session()'s args), or None if
                 session data isn't available to build a filename from.
         """
         event_str = self.m_session_state_ref.getEventInfoStr()
@@ -919,14 +920,14 @@ class F1TelemetryHandler:
 
         Arguments:
             dest_path (Path): Where to write -- from preparePngtWrite().
-            args (tuple): write_pngt()'s args -- from preparePngtWrite().
+            args (tuple): write_session()'s args -- from preparePngtWrite().
             session_uid (int): Session UID for which the final classification was received.
         """
 
         report_pngt_save_start_from_child(str(dest_path))
         try:
             start_time = time.perf_counter()
-            await self.m_subsystem.run_in_process(self.m_session_state_ref.m_export_mgr.write_pngt, *args)
+            await self.m_subsystem.run_in_process(write_session, *args)
             elapsed_sec = time.perf_counter() - start_time
             self.m_logger.info("Wrote telemetry to %s. Session UID %d. took %.3f sec",
                                dest_path, session_uid, elapsed_sec)

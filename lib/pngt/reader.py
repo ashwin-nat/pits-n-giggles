@@ -31,45 +31,31 @@ from typing import Union
 
 import numpy as np
 
-from .dto import (DriverRecord, LapMetadata, SensorConfig, SensorType,
-                  SessionBest, SessionMetadata, TrackInfo)
+from .archive import SENSOR_MANIFEST_ENTRY, read_json, validate_pngt_zip
+from .dto import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
+                  SensorConfig, SensorType, SessionBest, TrackInfo)
 from .exceptions import (CorruptedTelemetryError, DriverNotFoundError,
                          InvalidManifestError, MalformedSessionError)
-from .manifest import SENSOR_MANIFEST_ENTRY, validate_pngt_zip
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class ParsedSession:
-    session: SessionMetadata
-    drivers: list[DriverRecord]
+    session: ParsedSessionMetadata
+    drivers: list[ParsedDriver]
     sensors: list[SensorConfig]
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
-def read_header(path: Union[Path, str]) -> None:
-    """Cheap validity check only — raises if the file isn't a well-formed .pngt
-    archive, otherwise returns None."""
-    validate_pngt_zip(path).close()
-
-
-def read_manifest(path: Union[Path, str]) -> list[SensorConfig]:
-    """Reads the sensor registry from manifest.json."""
-    zf = validate_pngt_zip(path)
-    try:
-        return _read_sensor_manifest(zf, path)
-    finally:
-        zf.close()
-
-
 def read_session(path: Union[Path, str]) -> ParsedSession:
     """Reads header.json + manifest.json + session.json + drivers.json into a
-    ParsedSession."""
+    ParsedSession. Raises NotAZipFileError/InvalidHeaderError/UnsupportedFormatError/
+    UnsupportedVersionError/InvalidManifestError/MalformedSessionError."""
     zf = validate_pngt_zip(path)
     try:
-        session_raw = _read_json(zf, "session.json", path)
-        drivers_raw = _read_json(zf, "drivers.json", path)
-        sensors = _read_sensor_manifest(zf, path)  # inlined on the already-open zf, avoids a second open+validate
+        session_raw = read_json(zf, "session.json", path)
+        drivers_raw = read_json(zf, "drivers.json", path)
+        sensors = _read_sensor_manifest(zf, path)
         session = _dict_to_session(session_raw, path)
         drivers = [_dict_to_driver(d, path) for d in drivers_raw.get("drivers", [])]
         return ParsedSession(session=session, drivers=drivers, sensors=sensors)
@@ -77,15 +63,15 @@ def read_session(path: Union[Path, str]) -> ParsedSession:
         zf.close()
 
 
-def read_driver_laps(path: Union[Path, str], driver_index: int) -> list[LapMetadata]:
-    """Reads lap metadata for one driver. A Restricted driver has no folder on disk —
+def read_driver_laps(path: Union[Path, str], driver_index: int) -> list[ParsedLap]:
+    """Reads lap metadata for one driver. A Restricted driver has no folder on disk --
     this is expected, documented behavior, so it returns [] rather than raising."""
     zf = validate_pngt_zip(path)
     try:
         entry = f"drivers/{driver_index:02d}/laps.json"
         if entry not in zf.namelist():
             return []
-        laps_raw = _read_json(zf, entry, path)
+        laps_raw = read_json(zf, entry, path)
         return [_dict_to_lap_metadata(lap, path) for lap in laps_raw.get("laps", [])]
     finally:
         zf.close()
@@ -93,9 +79,8 @@ def read_driver_laps(path: Union[Path, str], driver_index: int) -> list[LapMetad
 
 def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: int) -> dict:
     """Reads one lap's telemetry arrays. Returns exactly the array names present in
-    that .npz file — no assumption of a fixed sensor set, so older files with fewer
-    sensors and newer files with unrecognized sensor keys both work with zero
-    special-case code."""
+    that .npz file -- an older file with fewer sensors or a newer one with extra
+    sensor keys both work with zero special-case code."""
     zf = validate_pngt_zip(path)
     try:
         entry = f"drivers/{driver_index:02d}/lap_{lap_number:03d}.npz"
@@ -107,24 +92,9 @@ def read_lap_telemetry(path: Union[Path, str], driver_index: int, lap_number: in
             with np.load(BytesIO(raw)) as npz:
                 return {name: npz[name] for name in npz.files}
         except (zipfile.BadZipFile, ValueError, OSError, EOFError) as exc:
-            # A truncated/corrupt npz entry (e.g. a crash mid-capture) is a property
-            # of this one archive, not a bug in the reader -- surface it as a
-            # PngtError like every other malformed-data case, not an unstructured
-            # numpy/zipfile exception the caller has no reason to expect.
             raise CorruptedTelemetryError(path, driver_index, lap_number, str(exc)) from exc
     finally:
         zf.close()
-
-
-def _read_json(zf: zipfile.ZipFile, name: str, path) -> dict:
-    try:
-        raw = zf.read(name)
-    except KeyError as exc:
-        raise MalformedSessionError(path, f"{name} is missing") from exc
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise MalformedSessionError(path, f"{name} is not valid JSON: {exc}") from exc
 
 
 def _read_sensor_manifest(zf: zipfile.ZipFile, path) -> list[SensorConfig]:
@@ -147,12 +117,12 @@ def _read_sensor_manifest(zf: zipfile.ZipFile, path) -> list[SensorConfig]:
         raise InvalidManifestError(path, f"sensor entry has an invalid 'type': {exc}") from exc
 
 
-def _dict_to_session(raw: dict, path) -> SessionMetadata:
+def _dict_to_session(raw: dict, path) -> ParsedSessionMetadata:
     try:
         track_raw = raw["track"]
         laps_raw = raw["laps"]
         session_best_raw = laps_raw.get("session_best")
-        return SessionMetadata(
+        return ParsedSessionMetadata(
             session_uid=raw["session_uid"],
             session_name=raw["session_name"],
             session_type=raw["session_type"],
@@ -173,9 +143,9 @@ def _dict_to_session(raw: dict, path) -> SessionMetadata:
         raise MalformedSessionError(path, f"session.json missing required field {exc}") from exc
 
 
-def _dict_to_driver(raw: dict, path) -> DriverRecord:
+def _dict_to_driver(raw: dict, path) -> ParsedDriver:
     try:
-        return DriverRecord(
+        return ParsedDriver(
             driver_index=raw["driver_index"],
             name=raw["name"],
             team=raw["team"],
@@ -188,9 +158,9 @@ def _dict_to_driver(raw: dict, path) -> DriverRecord:
         raise MalformedSessionError(path, f"drivers.json entry missing required field {exc}") from exc
 
 
-def _dict_to_lap_metadata(raw: dict, path) -> LapMetadata:
+def _dict_to_lap_metadata(raw: dict, path) -> ParsedLap:
     try:
-        return LapMetadata(
+        return ParsedLap(
             lap_number=raw["lap_number"],
             lap_time_ms=raw.get("lap_time_ms"),
             valid=raw["valid"],
@@ -198,7 +168,7 @@ def _dict_to_lap_metadata(raw: dict, path) -> LapMetadata:
             tyre_laps=raw["tyre_laps"],
             pit_in_lap=raw["pit_in_lap"],
             pit_out_lap=raw["pit_out_lap"],
-            num_points=raw.get("num_points", 0),
+            num_points=raw["num_points"],
             is_good=raw["is_good"],
         )
     except KeyError as exc:

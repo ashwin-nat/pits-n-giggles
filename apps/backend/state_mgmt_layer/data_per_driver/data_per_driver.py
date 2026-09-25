@@ -34,9 +34,7 @@ from lib.f1_types import (CarDamageData, CarStatusData, F1Utils, LapData,
                           PacketLapPositionsData, ResultStatus, SessionType,
                           TrackID)
 from lib.last_corner_stats import LastCornerTracker, TelemetrySample
-from lib.pngt import (DriverTelemetryRecorder, IngestCompletedLap,
-                      IngestDriverExportData, IngestLapMetadata,
-                      TelemetryRecorderConfig)
+from lib.pngt import CompletedLap, DriverExportData, DriverTelemetryRecorder, LapMetadata
 from lib.race_ctrl import (CarDamageRaceControlMessage,
                            DriverPittingRaceCtrlMsg, DriverRaceControlManager,
                            TyreChangeRaceControlMessage, WingChangeRaceCtrlMsg)
@@ -49,8 +47,7 @@ from .lap_info import LapInfo
 from .packet_copies import PacketCopies
 from .per_lap_snapshot import PerLapSnapshotEntry
 from .pit_info import PitInfo
-from .telemetry_recorder.sensor_mapper import F1SensorMapper
-from .telemetry_recorder.telemetry_recorder import TelemetrySnapshot
+from .telemetry_recorder.telemetry_recorder import F1_SENSORS, TelemetrySnapshot
 from .tyre_info import TyreInfo, TyreSetHistoryEntry, TyreSetInfo
 from .warns_pens_info import WarningPenaltyHistory
 
@@ -234,8 +231,7 @@ class DataPerDriver:
 
         self.m_tel_rec: DriverTelemetryRecorder = DriverTelemetryRecorder(
             driver_index=index,
-            config=TelemetryRecorderConfig(sensors=F1SensorMapper.known_sensor_keys()),
-            mapper=F1SensorMapper(),
+            sensors=F1_SENSORS,
         )
 
     @property
@@ -658,7 +654,7 @@ class DataPerDriver:
 
         # skip zeroth lap
         if old_lap_number > 0 and not is_flashback:
-            self.m_tel_rec.on_lap_change(IngestLapMetadata(
+            self.m_tel_rec.on_lap_change(LapMetadata(
                 lap_number=old_lap_number,
                 # lap_time_ms/valid are not known yet here, will be filled at export time from Session History pkt
                 lap_time_ms=None,
@@ -667,7 +663,6 @@ class DataPerDriver:
                 tyre_laps=69, # TODO
                 pit_in_lap=False,
                 pit_out_lap=False,
-                num_points=0,  # overwritten in place by on_lap_change() itself
             ))
 
         # Store the snapshot data for the old lap
@@ -1553,36 +1548,50 @@ class DataPerDriver:
         )
         self.m_tel_rec.update(snapshot, frame_id)
 
-    def exportTelemetry(self) -> IngestDriverExportData:
+    def exportTelemetry(self) -> DriverExportData:
         """Exports recorded telemetry, reconciling lap_time_ms/valid against Session
-        History (onLapChange() can't know either -- only Session History reports them).
-        A lap with no matching Session History entry yet is left unreconciled."""
+        History (onLapChange() can't know either -- only Session History reports them)
+        and filling the in-progress lap's tyre/pit facts from current state (the
+        recorder itself has no access to those -- only telemetry samples). A completed
+        lap with no matching Session History entry yet is left unreconciled."""
         export = self.m_tel_rec.export()
+
+        completed_laps = export.completed_laps
         history = self.m_packet_copies.m_packet_session_history
-        if history is None:
-            return export
+        if history is not None:
+            lap_history = history.m_lapHistoryData[:history.m_numLaps]
+            reconciled_laps = []
+            for lap in completed_laps:
+                idx = lap.metadata.lap_number - 1
+                if 0 <= idx < len(lap_history):
+                    hist_lap = lap_history[idx]
+                    reconciled_laps.append(CompletedLap(
+                        metadata=replace(
+                            lap.metadata,
+                            lap_time_ms=hist_lap.m_lapTimeInMS or None,
+                            valid=hist_lap.isLapValid(),
+                        ),
+                        telemetry=lap.telemetry,
+                    ))
+                else:
+                    reconciled_laps.append(lap)
+            completed_laps = reconciled_laps
 
-        lap_history = history.m_lapHistoryData[:history.m_numLaps]
-        reconciled_laps = []
-        for lap in export.completed_laps:
-            idx = lap.metadata.lap_number - 1
-            if 0 <= idx < len(lap_history):
-                hist_lap = lap_history[idx]
-                reconciled_laps.append(IngestCompletedLap(
-                    metadata=replace(
-                        lap.metadata,
-                        lap_time_ms=hist_lap.m_lapTimeInMS or None,
-                        valid=hist_lap.isLapValid(),
-                    ),
-                    telemetry=lap.telemetry,
-                ))
-            else:
-                reconciled_laps.append(lap)
+        in_progress_lap = export.in_progress_lap
+        if in_progress_lap is not None:
+            in_progress_lap = CompletedLap(
+                metadata=replace(
+                    in_progress_lap.metadata,
+                    tyre_compound=str(self.m_tyre_info.tyre_vis_compound),
+                    tyre_laps=69, # TODO
+                    pit_in_lap=False,
+                    pit_out_lap=False,
+                ),
+                telemetry=in_progress_lap.telemetry,
+            )
 
-        return IngestDriverExportData(
+        return DriverExportData(
             driver_index=export.driver_index,
-            completed_laps=reconciled_laps,
-            in_progress_lap_number=export.in_progress_lap_number,
-            in_progress_telemetry=export.in_progress_telemetry,
-            in_progress_num_points=export.in_progress_num_points,
+            completed_laps=completed_laps,
+            in_progress_lap=in_progress_lap,
         )

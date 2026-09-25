@@ -39,9 +39,9 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 from lib.logger import PngLogger
-from lib.pngt import (DriverRecord, LapMetadata, PngtError, SensorConfig,
-                      SensorType, SessionBest, SessionMetadata, TrackInfo,
-                      read_driver_laps, read_session)
+from lib.pngt import (ParsedDriver, ParsedLap, ParsedSessionMetadata,
+                      PngtError, SensorConfig, SensorType, SessionBest,
+                      TrackInfo, read_driver_laps, read_session)
 
 from lib.file_discovery import DiscoveryConfig, discover_all, find_files
 
@@ -60,20 +60,20 @@ class PngtSessionEntry:
     parsed once via lib.pngt.reader and cached by file mtime."""
     slug: str
     rel_path: str
-    session: SessionMetadata
-    drivers: List[DriverRecord]
+    session: ParsedSessionMetadata
+    drivers: List[ParsedDriver]
     sensors: List[SensorConfig]
-    laps_by_driver: Dict[int, List[LapMetadata]]
+    laps_by_driver: Dict[int, List[ParsedLap]]
 
 
 @dataclass(frozen=True)
 class _ParsedPngtFile:
     """Raw parse output, before slug assignment -- see `_make_entry` for why slug
     assignment is a separate step that never runs inside the threaded parse."""
-    session: SessionMetadata
-    drivers: List[DriverRecord]
+    session: ParsedSessionMetadata
+    drivers: List[ParsedDriver]
     sensors: List[SensorConfig]
-    laps_by_driver: Dict[int, List[LapMetadata]]
+    laps_by_driver: Dict[int, List[ParsedLap]]
 
 # -------------------------------------- FUNCTIONS ---------------------------------------------------------------------
 
@@ -99,13 +99,13 @@ def _unique_slug(base: str, taken: set) -> str:
         n += 1
     return f"{base}-{n}"
 
-# ---- SessionMetadata / DriverRecord / LapMetadata / SensorConfig <-> plain dict ----
+# ---- ParsedSessionMetadata / ParsedDriver / ParsedLap / SensorConfig <-> plain dict ----
 # Explicit field-by-field, mirroring lib/pngt/reader.py's own style, rather than
 # dataclasses.asdict()+reconstruct -- keeps this cache format decoupled from the
 # dataclass definitions' field order/shape and makes exactly what's persisted visible
 # at a glance.
 
-def _session_to_dict(session: SessionMetadata) -> Dict[str, Any]:
+def _session_to_dict(session: ParsedSessionMetadata) -> Dict[str, Any]:
     return {
         'session_uid': session.session_uid,
         'session_name': session.session_name,
@@ -125,9 +125,9 @@ def _session_to_dict(session: SessionMetadata) -> Dict[str, Any]:
     }
 
 
-def _dict_to_session(raw: Dict[str, Any]) -> SessionMetadata:
+def _dict_to_session(raw: Dict[str, Any]) -> ParsedSessionMetadata:
     session_best_raw = raw.get('session_best')
-    return SessionMetadata(
+    return ParsedSessionMetadata(
         session_uid=raw['session_uid'],
         session_name=raw['session_name'],
         session_type=raw['session_type'],
@@ -146,7 +146,7 @@ def _dict_to_session(raw: Dict[str, Any]) -> SessionMetadata:
     )
 
 
-def _driver_to_dict(driver: DriverRecord) -> Dict[str, Any]:
+def _driver_to_dict(driver: ParsedDriver) -> Dict[str, Any]:
     return {
         'driver_index': driver.driver_index,
         'name': driver.name,
@@ -158,8 +158,8 @@ def _driver_to_dict(driver: DriverRecord) -> Dict[str, Any]:
     }
 
 
-def _dict_to_driver(raw: Dict[str, Any]) -> DriverRecord:
-    return DriverRecord(
+def _dict_to_driver(raw: Dict[str, Any]) -> ParsedDriver:
+    return ParsedDriver(
         driver_index=raw['driver_index'],
         name=raw['name'],
         team=raw['team'],
@@ -170,7 +170,7 @@ def _dict_to_driver(raw: Dict[str, Any]) -> DriverRecord:
     )
 
 
-def _lap_to_dict(lap: LapMetadata) -> Dict[str, Any]:
+def _lap_to_dict(lap: ParsedLap) -> Dict[str, Any]:
     return {
         'lap_number': lap.lap_number,
         'lap_time_ms': lap.lap_time_ms,
@@ -184,8 +184,8 @@ def _lap_to_dict(lap: LapMetadata) -> Dict[str, Any]:
     }
 
 
-def _dict_to_lap(raw: Dict[str, Any]) -> LapMetadata:
-    return LapMetadata(
+def _dict_to_lap(raw: Dict[str, Any]) -> ParsedLap:
+    return ParsedLap(
         lap_number=raw['lap_number'],
         lap_time_ms=raw.get('lap_time_ms'),
         valid=raw['valid'],

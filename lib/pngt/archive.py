@@ -25,10 +25,12 @@
 import json
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Iterable, Optional, Union
 
-from .exceptions import (InvalidHeaderError, NotAZipFileError,
-                         UnsupportedFormatError, UnsupportedVersionError)
+from .dto import SessionBest
+from .exceptions import (InvalidHeaderError, MalformedSessionError,
+                         NotAZipFileError, UnsupportedFormatError,
+                         UnsupportedVersionError)
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
@@ -41,10 +43,8 @@ ZIP_MAGIC = b"PK\x03\x04"
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
 
 def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:
-    """Validates a .pngt file per the format spec's mandatory open sequence: sniff
-    ZIP magic bytes, open as a ZipFile, read header.json, assert format then
-    version. Returns the open ZipFile positioned for further reads by the caller —
-    the caller is responsible for closing it.
+    """Sniffs ZIP magic bytes, opens as a ZipFile, reads header.json, checks format
+    then version. Returns the open ZipFile; the caller is responsible for closing it.
 
     Raises NotAZipFileError / InvalidHeaderError / UnsupportedFormatError /
     UnsupportedVersionError.
@@ -59,8 +59,6 @@ def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:
     try:
         zf = zipfile.ZipFile(path)  # pylint: disable=consider-using-with
     except zipfile.BadZipFile as exc:
-        # Magic bytes matched but the archive structure itself is truncated/corrupt --
-        # still "not a valid ZIP file" from the caller's point of view.
         raise NotAZipFileError(path) from exc
 
     try:
@@ -93,3 +91,62 @@ def validate_pngt_zip(path: Union[Path, str]) -> zipfile.ZipFile:
         raise UnsupportedVersionError(path, actual_version, HEADER_VERSION)
 
     return zf
+
+
+def recompute_totals(driver_laps: Iterable[tuple[int, list[dict]]]) -> tuple[int, Optional[SessionBest]]:
+    """Given each driver's lap dicts (as written to laps.json), returns the total
+    lap count across all drivers and the fastest valid+timed lap as SessionBest (or
+    None if no lap qualifies). Used by both write_session() and delete_laps(), so
+    laps.count always means the same thing regardless of which one last touched
+    the file."""
+    total = 0
+    best_driver = best_lap = best_time = None
+
+    for driver_index, laps in driver_laps:
+        total += len(laps)
+        for lap in laps:
+            if lap.get("valid") and lap.get("lap_time_ms") is not None:
+                if best_time is None or lap["lap_time_ms"] < best_time:
+                    best_time = lap["lap_time_ms"]
+                    best_driver = driver_index
+                    best_lap = lap["lap_number"]
+
+    session_best = None if best_time is None else SessionBest(
+        driver_index=best_driver, lap_number=best_lap, lap_time_ms=best_time
+    )
+    return total, session_best
+
+
+def read_json(zf: zipfile.ZipFile, name: str, path) -> dict:
+    try:
+        raw = zf.read(name)
+    except KeyError as exc:
+        raise MalformedSessionError(path, f"{name} is missing") from exc
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise MalformedSessionError(path, f"{name} is not valid JSON: {exc}") from exc
+
+
+def write_json(zf: zipfile.ZipFile, name: str, data: dict) -> None:
+    zf.writestr(name, json.dumps(data).encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
+
+
+def rebuild_archive(
+    src_path: Path,
+    dest_path: Path,
+    *,
+    skip_names: set,
+    overrides: dict,
+) -> None:
+    """Copies every entry from src_path into a new archive at dest_path, skipping
+    skip_names and replacing the content of any entry named in overrides with its
+    (JSON-serialized) value. Every other entry is copied byte-for-byte, preserving
+    its original compression type."""
+    with zipfile.ZipFile(src_path) as src_zf, zipfile.ZipFile(dest_path, "w") as dst_zf:
+        for name in src_zf.namelist():
+            if name in overrides:
+                write_json(dst_zf, name, overrides[name])
+            elif name not in skip_names:
+                info = src_zf.getinfo(name)
+                dst_zf.writestr(name, src_zf.read(name), compress_type=info.compress_type)

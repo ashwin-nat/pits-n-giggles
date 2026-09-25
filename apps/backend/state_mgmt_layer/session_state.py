@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer.data_per_driver import DataPerDriver
-from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.sensor_mapper import F1SensorMapper
 from apps.backend.state_mgmt_layer.external_api import handleExternalApiUpdate
 from apps.backend.state_mgmt_layer.overtakes import (GetOvertakesStatus,
                                                      OvertakesHistory)
@@ -51,9 +50,6 @@ from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           PacketTyreSetsData, ResultStatus)
 from lib.overtake_analyzer import (OvertakeAnalyzer, OvertakeAnalyzerMode,
                                    OvertakeRecord)
-from lib.pngt import (DriverExportCandidate, IngestDriverExportData,
-                      SessionBest, SessionExportManager,
-                      SessionExportScopeConfig, TelemetryRecorderConfig)
 from lib.race_analyzer import getFastestTimesJson, getTyreStintRecordsDict
 from lib.race_ctrl import (DriverAiStatusChange, MessageType,
                            OvertakeRaceCtrlMsg, SessionRaceControlManager,
@@ -113,7 +109,6 @@ class SessionState:
         'm_flashback_occurred',
         'm_in_menu',
         'm_track_segments_db',
-        'm_export_mgr',
         'm_subsystem',
     )
 
@@ -165,15 +160,6 @@ class SessionState:
             Path(__file__).parents[3] / "assets/track-segments"
         )
         self.m_subsystem: AsyncSubsystem = ctx.subsystem
-
-        # Aggregates + writes at export time only; each DataPerDriver records its own.
-        # sensors must match F1SensorMapper.known_sensor_keys() used by DataPerDriver.
-        # TODO: hook up actual config (Phase 9) instead of this hardcoded scope_config.
-        self.m_export_mgr: SessionExportManager = SessionExportManager(
-            scope_config=SessionExportScopeConfig(record_other_players_cars=True),
-            recorder_config=TelemetryRecorderConfig(sensors=F1SensorMapper.known_sensor_keys()),
-            mapper=F1SensorMapper(),
-        )
 
     ####### Control Methods ########
 
@@ -1048,30 +1034,6 @@ class SessionState:
             input_mode=CollisionAnalyzerMode.INPUT_MODE_LIST_COLLISION_RECORDS,
             input_data=self.m_collision_records)
         return collision_analyzer.toJSON()
-
-    def exportTelemetry(self) -> Tuple[Dict[int, IngestDriverExportData], Optional[SessionBest]]:
-        """Consolidates every known driver's already-recorded telemetry
-
-        Returns:
-            Tuple[Dict[int, IngestDriverExportData], Optional[SessionBest]]: Exported
-            data for in-scope drivers only, and the fastest valid lap among them (None
-            if no valid lap completed).
-        """
-        is_spectating = bool(self.m_session_info.m_is_spectating)
-        # export_fn=driver_obj.exportTelemetry (reconciles vs Session History), not the raw recorder
-        candidates = [
-            DriverExportCandidate(
-                driver_index=index,
-                export_fn=driver_obj.exportTelemetry,
-                is_telemetry_public=bool(driver_obj.m_driver_info.telemetry_setting),
-                is_player=bool(driver_obj.m_driver_info.is_player),
-            )
-            for index, driver_obj in enumerate(self.m_driver_data)
-            if driver_obj and driver_obj.is_valid
-        ]
-        driver_exports = self.m_export_mgr.export_scoped(candidates, is_spectating=is_spectating)
-        session_best = self.m_export_mgr.compute_session_best(driver_exports)
-        return driver_exports, session_best
 
     def getOvertakeJSON(self, driver_name: str=None) -> Tuple[GetOvertakesStatus, Dict[str, Any]]:
         """Get the JSON value containing key overtake information
