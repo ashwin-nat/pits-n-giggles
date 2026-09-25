@@ -149,6 +149,10 @@ class SubsystemCard(QFrame):
             'Unsupported': {
                 'bg': '#2a2a3d',
                 'color': '#9cdcfe'
+            },
+            'Saving': {
+                'bg': '#2a2a3d',
+                'color': '#4a9eff'
             }
         }
 

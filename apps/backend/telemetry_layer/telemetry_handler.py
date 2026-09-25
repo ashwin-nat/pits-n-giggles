@@ -37,7 +37,9 @@ from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
 from apps.backend.state_mgmt_layer.pngt_export import build_pngt_write_args
 from lib.button_debouncer import ButtonDebouncer
-from lib.child_proc_mgmt import report_session_save_skipped_from_child
+from lib.child_proc_mgmt import (report_pngt_save_end_from_child,
+                                  report_pngt_save_start_from_child,
+                                  report_session_save_skipped_from_child)
 from lib.config import CaptureSettings, OverlayId
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
@@ -921,6 +923,7 @@ class F1TelemetryHandler:
             session_uid (int): Session UID for which the final classification was received.
         """
 
+        report_pngt_save_start_from_child(str(dest_path))
         try:
             start_time = time.perf_counter()
             await self.m_subsystem.run_in_process(self.m_session_state_ref.m_export_mgr.write_pngt, *args)
@@ -930,6 +933,8 @@ class F1TelemetryHandler:
         except Exception: # pylint: disable=broad-exception-caught
             # No need to crash the app just because write failed
             self.m_logger.exception("Failed to write telemetry to %s", dest_path)
+        finally:
+            report_pngt_save_end_from_child(str(dest_path))
 
     def getStats(self) -> Dict[str, Any]:
         """Get telemetry handler stats.
