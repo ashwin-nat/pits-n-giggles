@@ -38,6 +38,10 @@ _SESSION_SAVE_SKIPPED_TAG_PREFIX = "<<PNG_SESSION_SAVE_SKIPPED:"
 _SESSION_SAVE_SKIPPED_TAG_REGEX = re.compile(fr"{_SESSION_SAVE_SKIPPED_TAG_PREFIX}(.+?)>>")
 _INTEGRATION_FAIL_TAG_PREFIX = "<<PNG_INTEGRATION_FAIL:"
 _INTEGRATION_FAIL_TAG_REGEX = re.compile(fr"{_INTEGRATION_FAIL_TAG_PREFIX}(.+?)>>")
+_PNGT_SAVE_START_TAG_PREFIX = "<<PNG_PNGT_SAVE_START:"
+_PNGT_SAVE_START_TAG_REGEX = re.compile(fr"{_PNGT_SAVE_START_TAG_PREFIX}(.+?)>>")
+_PNGT_SAVE_END_TAG_PREFIX = "<<PNG_PNGT_SAVE_END:"
+_PNGT_SAVE_END_TAG_REGEX = re.compile(fr"{_PNGT_SAVE_END_TAG_PREFIX}(.+?)>>")
 
 # Set by the integration runner on the app it spawns, and inherited by every process below
 # it. Gates the two things that exist only for that runner: the session save tokens here,
@@ -178,4 +182,51 @@ def extract_save_skipped_from_line(line: str) -> Optional[str]:
         Optional[str]: The reason if the line carries the token, else None
     """
     match = _SESSION_SAVE_SKIPPED_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_pngt_save_start_from_child(file_path: str) -> None:
+    """Call this in the child process just before it starts writing a .pngt telemetry dump.
+
+    Paired with report_pngt_save_end_from_child() so a consumer can measure how long the
+    write took, or notice one that never finished.
+
+    Args:
+        file_path (str): Path the .pngt file will be written to
+    """
+    print(f"{_PNGT_SAVE_START_TAG_PREFIX}{file_path}>>", flush=True)
+
+def extract_pngt_save_start_from_line(line: str) -> Optional[str]:
+    """Parse a .pngt save-start path from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The path if the line carries the token, else None
+    """
+    match = _PNGT_SAVE_START_TAG_REGEX.search(line)
+    return match.group(1) if match else None
+
+def report_pngt_save_end_from_child(file_path: str) -> None:
+    """Call this in the child process once a .pngt telemetry write attempt has concluded,
+    whether it succeeded or raised.
+
+    Emitted unconditionally on completion (see postGameDumpToPngtFile's finally block) so a
+    consumer waiting on start -> end never hangs on a write that failed.
+
+    Args:
+        file_path (str): Path the .pngt file was written to
+    """
+    print(f"{_PNGT_SAVE_END_TAG_PREFIX}{file_path}>>", flush=True)
+
+def extract_pngt_save_end_from_line(line: str) -> Optional[str]:
+    """Parse a .pngt save-end path from a line of stdout.
+
+    Args:
+        line (str): A line of text from the child process's stdout
+
+    Returns:
+        Optional[str]: The path if the line carries the token, else None
+    """
+    match = _PNGT_SAVE_END_TAG_REGEX.search(line)
     return match.group(1) if match else None

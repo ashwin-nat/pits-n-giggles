@@ -327,8 +327,6 @@ async def discover_all(
         state.all_entries.append(entry)
 
         entries = sorted(state.all_entries, key=config.sort_key, reverse=True)
-        logger.debug("discover_all (%s): %d/%d done - %d entries so far",
-                     config.cache_filename, completed_by_handler[id(config)], len(state.files), len(entries))
         yield config, entries
 
     for config in handlers:

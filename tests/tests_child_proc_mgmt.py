@@ -13,12 +13,16 @@ from tests_base import F1TelemetryUnitTestsBase
 
 from lib.child_proc_mgmt import (_INTEGRATION_FAIL_TAG_PREFIX,
                                  _INTEGRATION_TEST_ENV_VAR,
+                                 _PNGT_SAVE_END_TAG_PREFIX,
+                                 _PNGT_SAVE_START_TAG_PREFIX,
                                  _SESSION_SAVE_SKIPPED_TAG_PREFIX,
                                  _SESSION_SAVED_TAG_PREFIX,
                                  enable_integration_test_mode,
                                  extract_integration_fail_from_line,
                                  extract_ipc_port_from_line,
                                  extract_pid_from_line,
+                                 extract_pngt_save_end_from_line,
+                                 extract_pngt_save_start_from_line,
                                  extract_save_skipped_from_line,
                                  extract_saved_path_from_line,
                                  is_init_complete, is_integration_test_mode,
@@ -26,6 +30,8 @@ from lib.child_proc_mgmt import (_INTEGRATION_FAIL_TAG_PREFIX,
                                  report_integration_fail,
                                  report_ipc_port_from_child,
                                  report_pid_from_child,
+                                 report_pngt_save_end_from_child,
+                                 report_pngt_save_start_from_child,
                                  report_session_save_skipped_from_child,
                                  report_session_saved_from_child)
 
@@ -195,10 +201,10 @@ class TestIpcPortExtraction(TestChildProcMgmt):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-# Stdout tokens the child emits for the integration runner, as
+# Stdout tokens the child only emits under the integration runner, as
 # (prefix, reporter, extractor, payload). Lines are built from the module's own prefix, so a
 # renamed tag fails here rather than silently passing against a literal nothing emits any more.
-TOKENS = [
+GATED_TOKENS = [
     (_SESSION_SAVED_TAG_PREFIX, report_session_saved_from_child, extract_saved_path_from_line,
      "data/2026_01_01/race-info/Race_Monza.json"),
     (_SESSION_SAVE_SKIPPED_TAG_PREFIX, report_session_save_skipped_from_child,
@@ -208,6 +214,17 @@ TOKENS = [
      "HUD exited unexpectedly (code: 3221225477) | exiting with code -1073741819"),
 ]
 
+# Stdout tokens the child emits unconditionally, whatever the mode.
+UNCONDITIONAL_TOKENS = [
+    (_PNGT_SAVE_START_TAG_PREFIX, report_pngt_save_start_from_child,
+     extract_pngt_save_start_from_line, "data/2026_01_01/telemetry/Race_Monza_2026_01_01_12_00_00.pngt"),
+    (_PNGT_SAVE_END_TAG_PREFIX, report_pngt_save_end_from_child,
+     extract_pngt_save_end_from_line, "data/2026_01_01/telemetry/Race_Monza_2026_01_01_12_00_00.pngt"),
+]
+
+TOKENS = GATED_TOKENS + UNCONDITIONAL_TOKENS
+
+GATED_TOKEN_IDS = [p.strip("<:") for p, _, _, _ in GATED_TOKENS]
 TOKEN_IDS = [p.strip("<:") for p, _, _, _ in TOKENS]
 
 
@@ -228,7 +245,7 @@ def test_token_extraction_ignores_unrelated_lines(prefix, report_fn, extract_fn,
             assert extract_fn(f"{other_prefix}{other_payload}>>") is None
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", GATED_TOKENS, ids=GATED_TOKEN_IDS)
 def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, prefix, report_fn,
                                                        extract_fn, payload):
     """A normal build must print nothing: report_integration_fail runs on the crash path."""
@@ -237,7 +254,7 @@ def test_reporters_are_silent_outside_integration_mode(monkeypatch, capsys, pref
     assert capsys.readouterr().out == ""
 
 
-@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", TOKENS, ids=TOKEN_IDS)
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", GATED_TOKENS, ids=GATED_TOKEN_IDS)
 def test_reporters_emit_inside_integration_mode(monkeypatch, capsys, prefix, report_fn,
                                                 extract_fn, payload):
     """The emit half of the round trip - what the runner's output pump actually reads.
@@ -246,6 +263,18 @@ def test_reporters_emit_inside_integration_mode(monkeypatch, capsys, prefix, rep
     never executed and a broken token would ship green.
     """
     monkeypatch.setenv(_INTEGRATION_TEST_ENV_VAR, "1")
+    report_fn(payload)
+    line = capsys.readouterr().out.strip()
+    assert line == f"{prefix}{payload}>>"
+    assert extract_fn(line) == payload
+
+
+@pytest.mark.parametrize("prefix, report_fn, extract_fn, payload", UNCONDITIONAL_TOKENS,
+                         ids=[p.strip("<:") for p, _, _, _ in UNCONDITIONAL_TOKENS])
+def test_unconditional_reporters_emit_outside_integration_mode(monkeypatch, capsys, prefix,
+                                                                report_fn, extract_fn, payload):
+    """Unlike the gated tokens, these fire whether or not the integration runner is involved."""
+    monkeypatch.delenv(_INTEGRATION_TEST_ENV_VAR, raising=False)
     report_fn(payload)
     line = capsys.readouterr().out.strip()
     assert line == f"{prefix}{payload}>>"

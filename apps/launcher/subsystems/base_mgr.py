@@ -329,6 +329,8 @@ class PngAppMgrBase(QObject):
         self._state = AppState.STOPPED
         # Overrides the state's own display string when set (crash reason, restart counter)
         self._status_label: Optional[str] = None
+        # Takes priority over both when set (e.g. "Saving"); None defers to the above
+        self._activity_label: Optional[str] = None
 
         # Auto-restart configuration
         self.auto_restart = config.auto_restart
@@ -361,6 +363,11 @@ class PngAppMgrBase(QObject):
         # Lifecycle stats
         self._lifecycle_stats = EventCounter()
 
+        # Optional stdout line handlers, tried in registration order ahead of the regular
+        # info_log fallback in _capture_output. A handler returning True claims the line -
+        # it has already done whatever it needed with it, so it must not also reach the log.
+        self._line_handlers: List[Callable[[str], bool]] = []
+
     @property
     def ipc_port(self) -> Optional[int]:
         """IPC port reported by the running child, or None if there is no child or it has not
@@ -370,7 +377,18 @@ class PngAppMgrBase(QObject):
     @property
     def status(self) -> str:
         """Display string for the current state"""
-        return self._status_label or self._state.value
+        return self._activity_label or self._status_label or self._state.value
+
+    def _set_activity_label(self, label: Optional[str]):
+        """Override the status display with a transient activity (e.g. "Saving"), or clear it
+
+        Args:
+            label: Text to display in place of the current status, or None to clear it
+        """
+        if self._activity_label == label:
+            return
+        self._activity_label = label
+        self._publish_status()
 
     @property
     def is_running(self) -> bool:
@@ -386,6 +404,17 @@ class PngAppMgrBase(QObject):
             reason: Exit reason
         """
         self.exit_reasons[code] = reason
+
+    def register_line_handler(self, handler: Callable[[str], bool]):
+        """Register a handler tried against every non-token stdout line before it falls
+        through to info_log, in _capture_output.
+
+        Args:
+            handler: Called with the rstripped line. Return True to claim it (it is then not
+                     passed to info_log); return False to let it (or the next handler) fall
+                     through.
+        """
+        self._line_handlers.append(handler)
 
     def get_buttons(self) -> List[QPushButton]:
         """
@@ -747,7 +776,13 @@ class PngAppMgrBase(QObject):
                 continue
 
             # ---------------------------------------------------------
-            # 4. Regular stdout (non-token) - send to info log
+            # 4. Optional line handlers - each gets a chance to claim the line
+            # ---------------------------------------------------------
+            if any(handler(line) for handler in self._line_handlers):
+                continue
+
+            # ---------------------------------------------------------
+            # 5. Regular stdout (non-token) - send to info log
             # ---------------------------------------------------------
             self.info_log(line, src=self.SHORT_NAME)
 

@@ -579,10 +579,6 @@ async def build_session_list(
         # bottleneck, throttle to yielding every N completions (as before) or maintain
         # all_raw in sorted order incrementally instead of re-sorting per snapshot.
         sessions, slug_map = _snapshot(all_raw)
-        logger.debug(
-            "build_session_list: %d/%d done - %d sessions so far",
-            completed, total, len(sessions),
-        )
         yield sessions, slug_map
 
     # Prune deleted files and persist the updated cache

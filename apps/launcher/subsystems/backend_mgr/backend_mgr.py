@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING, List
 
 from PySide6.QtWidgets import QPushButton
 
+from lib.child_proc_mgmt import (extract_pngt_save_end_from_line,
+                                 extract_pngt_save_start_from_line)
 from lib.error_status import PNG_ERROR_CODE_UDP_TELEMETRY_PORT_IN_USE
 from lib.ipc import IpcClientSync
 
@@ -77,6 +79,7 @@ class BackendAppMgr(BackendSettingsChangeBase):
             can_restart=False,
             settings_field='Network -> "F1 UDP Telemetry Port"'
         ))
+        self.register_line_handler(self._handle_pngt_write_notification)
 
     def get_buttons(self) -> List[QPushButton]:
         """Return a list of button objects directly
@@ -97,6 +100,7 @@ class BackendAppMgr(BackendSettingsChangeBase):
         self.set_button_tooltip(self.start_stop_button, "Stop")
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.manual_save_button, True)
+        self._set_activity_label(None)
 
     def post_stop(self):
         """Update buttons after app stop"""
@@ -104,6 +108,7 @@ class BackendAppMgr(BackendSettingsChangeBase):
         self.set_button_tooltip(self.start_stop_button, "Start")
         self.set_button_state(self.start_stop_button, True)
         self.set_button_state(self.manual_save_button, False)
+        self._set_activity_label(None)
 
     def manual_save(self):
         """Send a manual save command to the backend."""
@@ -139,3 +144,24 @@ class BackendAppMgr(BackendSettingsChangeBase):
             self.debug_log(f"{self.DISPLAY_NAME}:Error during start/stop: {e}")
             # If no exception, it will be handled in post_start/post_stop
             self.set_button_state(self.start_stop_button, True)
+
+    def _handle_pngt_write_notification(self, line: str) -> bool:
+        """Handle the pngt write status. set the label
+
+        Args:
+            line (str): stdout line
+
+        Returns:
+            bool: True if a pngt write (start/end) notification
+        """
+        if extract_pngt_save_start_from_line(line):
+            self.debug_log("Received pngt save start notification")
+            self._set_activity_label("Saving")
+            return True
+
+        if extract_pngt_save_end_from_line(line):
+            self.debug_log("Received pngt save end notification")
+            self._set_activity_label(None)
+            return True
+
+        return False
