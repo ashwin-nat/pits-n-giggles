@@ -621,6 +621,23 @@ def test_write_session_rejects_unregistered_sensor_key(tmp_path):
         write_session(tmp_path / "session.pngt", session, sample_sensors(), drivers, driver_data)
 
 
+def test_write_session_rejects_lap_missing_lap_distance(tmp_path):
+    # num_points is derived from telemetry["lap_distance"] -- a lap without that key
+    # must fail fast, not silently write num_points=0 and an npz missing the axis
+    # the viewer needs to plot anything.
+    session = sample_session()
+    drivers = sample_drivers()
+    driver_data = sample_driver_data()
+    bad_lap = dataclasses.replace(
+        driver_data[1].completed_laps[0],
+        telemetry={k: v for k, v in driver_data[1].completed_laps[0].telemetry.items() if k != "lap_distance"},
+    )
+    driver_data[1] = dataclasses.replace(driver_data[1], completed_laps=[bad_lap, driver_data[1].completed_laps[1]])
+
+    with pytest.raises(ValueError):
+        write_session(tmp_path / "session.pngt", session, sample_sensors(), drivers, driver_data)
+
+
 def test_sensor_config_rejects_invalid_type():
     # Sensor `type` IS validated -- unlike session_type/tyre_compound -- and that check is
     # SensorConfig's own invariant, enforced at construction rather than by write_session().

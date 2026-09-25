@@ -30,7 +30,8 @@ from typing import Union
 
 import numpy as np
 
-from .archive import HEADER_FORMAT, HEADER_VERSION, recompute_totals, write_json
+from .archive import (HEADER_FORMAT, HEADER_VERSION, recompute_totals,
+                      session_best_to_dict, write_json)
 from .dto import (CompletedLap, DriverExportData, DriverRecord, SensorConfig,
                   SessionMetadata)
 
@@ -149,6 +150,11 @@ def _validate_lap(lap: CompletedLap, sensor_keys: set) -> None:
     # gives it as illustrative examples, not a closed enum, keeping real-sim domain
     # knowledge out of this format-agnostic library (see _validate_sensors for the same
     # reasoning on session_type).
+    if "lap_distance" not in lap.telemetry:
+        # num_points is derived from this array (see _lap_dict) -- silently defaulting
+        # to 0 for a lap that's missing it entirely would be worse than failing fast.
+        raise ValueError(f"Lap {lap.metadata.lap_number} telemetry is missing the mandatory 'lap_distance' array")
+
     unknown_keys = set(lap.telemetry.keys()) - sensor_keys - {"lap_distance", "lap_time_ms"}
     if unknown_keys:
         raise ValueError(
@@ -172,11 +178,7 @@ def _session_to_dict(session: SessionMetadata, laps_count: int, session_best) ->
         },
         "laps": {
             "count": laps_count,
-            "session_best": None if session_best is None else {
-                "driver_index": session_best.driver_index,
-                "lap_number": session_best.lap_number,
-                "lap_time_ms": session_best.lap_time_ms,
-            },
+            "session_best": session_best_to_dict(session_best),
         },
     }
 
@@ -203,7 +205,7 @@ def _lap_dict(lap: CompletedLap, is_good: bool) -> dict:
         "tyre_laps": metadata.tyre_laps,
         "pit_in_lap": metadata.pit_in_lap,
         "pit_out_lap": metadata.pit_out_lap,
-        "num_points": len(lap.telemetry.get("lap_distance", [])),
+        "num_points": len(lap.telemetry["lap_distance"]),
         "is_good": is_good,
     }
 
