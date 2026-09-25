@@ -30,6 +30,7 @@ from .display import DisplaySettings
 from .forwarding import _LOCALHOST_ALIASES, ForwardingSettings
 from .https import HttpsSettings
 from .hud.hud import HudSettings
+from .lap_recording import LapRecordingSettings
 from .mcp_cfg import McpSettings
 from .network import NetworkSettings
 from .pit_time_loss import PitTimeLossF1, PitTimeLossF2
@@ -52,6 +53,7 @@ class PngSettings(ConfigDiffMixin, BaseModel):
     TimeLossInPitsF2: PitTimeLossF2 = Field(default_factory=PitTimeLossF2, description="Pit Time Loss F2")  # type: ignore[valid-type]
     Prediction: PredictionSettings = Field(default_factory=PredictionSettings, description="Prediction")
     MCP: McpSettings = Field(default_factory=McpSettings, description="MCP")
+    LapRecording: LapRecordingSettings = Field(default_factory=LapRecordingSettings, description="Lap Recording")
     model_config = ConfigDict(str_strip_whitespace=True)
 
     @model_validator(mode="after")

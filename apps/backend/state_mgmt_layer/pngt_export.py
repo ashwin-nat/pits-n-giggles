@@ -74,7 +74,7 @@ def build_pngt_write_args(
         Tuple: (dest_path, session, sensors, drivers, driver_data), ready for
             write_session(*result).
     """
-    # TODO: hook up actual config (Phase 9) instead of this hardcoded scope.
+    lap_recording_settings = session_state.m_lap_recording_settings
     is_spectating = bool(session_state.m_session_info.m_is_spectating)
     driver_data: dict[int, DriverExportData] = {}
     for index, driver_obj in enumerate(session_state.m_driver_data):
@@ -84,8 +84,8 @@ def build_pngt_write_args(
             is_public=bool(driver_obj.m_driver_info.telemetry_setting),
             is_player=bool(driver_obj.m_driver_info.is_player),
             is_spectating=is_spectating,
-            spectator_mode=False,
-            other_players=True,
+            spectator_mode=lap_recording_settings.record_in_spectator_mode,
+            other_players=lap_recording_settings.record_other_cars,
         ):
             driver_data[index] = driver_obj.exportTelemetry()
 

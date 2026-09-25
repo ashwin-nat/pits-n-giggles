@@ -215,9 +215,13 @@ class F1TelemetryHandler:
         )
 
         self.m_manager_task: Optional[SubsystemTask] = None
-        # Task handle because asyncio expects a handle to be saved,
-        # otherwise it is not guaranteed to be run to completion without being garbage collected
-        self.m_save_task: Optional[asyncio.Task] = None
+        # Task handles because asyncio expects a handle to be saved, otherwise it is not
+        # guaranteed to be run to completion without being garbage collected. Separate
+        # slots per format -- JSON and pngt are independent writes (see
+        # _shouldSaveJsonData()/shouldSavePngtData()), so one can be in flight, timed
+        # out, or cancelled without affecting the other.
+        self.m_json_save_task: Optional[asyncio.Task] = None
+        self.m_pngt_save_task: Optional[asyncio.Task] = None
         self.registerCallbacks()
 
     def register_tasks(self, subsys: AsyncSubsystem) -> None:
@@ -303,22 +307,24 @@ class F1TelemetryHandler:
             self.m_manager_task.cancel()
         self.m_wdt.stop()
         self.m_menu_wdt.stop()
-        if self.m_save_task:
-            self.m_logger.debug("Waiting for save task to complete...")
-
-            try:
-                await asyncio.wait_for(self.m_save_task, timeout=5.0)
-                self.m_logger.debug("Save task completed.")
-
-            except asyncio.TimeoutError:
-                self.m_logger.debug("Save task timed out. Cancelling...")
-
-                self.m_save_task.cancel()
-                await asyncio.gather(self.m_save_task, return_exceptions=True)
-
-                self.m_logger.debug("Save task cancelled.")
-
+        await self._waitForSaveTask(self.m_json_save_task, "JSON")
+        await self._waitForSaveTask(self.m_pngt_save_task, "pngt")
         self.m_logger.debug("Telemetry handler stopped. manager and wdt stopped.")
+
+    async def _waitForSaveTask(self, task: Optional[asyncio.Task], label: str) -> None:
+        """Waits up to 5s for a save task to finish, cancelling it if it doesn't.
+        No-op if task is None (nothing was in flight)."""
+        if not task:
+            return
+        self.m_logger.debug("Waiting for %s save task to complete...", label)
+        try:
+            await asyncio.wait_for(task, timeout=5.0)
+            self.m_logger.debug("%s save task completed.", label)
+        except asyncio.TimeoutError:
+            self.m_logger.debug("%s save task timed out. Cancelling...", label)
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            self.m_logger.debug("%s save task cancelled.", label)
 
     def getWatchdogTask(self) -> Coroutine:
         """
@@ -510,16 +516,25 @@ class F1TelemetryHandler:
             final_json = self.m_session_state_ref.processFinalClassificationUpdate(packet)
             self.m_final_classification_processed = True
 
-            # Tracked via m_save_task (not fire_and_forget) so stop() can wait for the
-            # .pngt write - it's heavy enough (a full session's telemetry) to still be
-            # running when the app is closed, and an untracked task would just be killed
-            # mid-write with no error, no log, and no file.
-            if self._shouldSaveData():
-                pngt_write = self.preparePngtWrite()
-                self.m_save_task = asyncio.create_task(
-                    self._autoSaveSessionData(final_json, packet.m_header.m_sessionUID, pngt_write),
-                    name="Auto-save Session Data",
+            # Tracked via m_json_save_task/m_pngt_save_task (not fire_and_forget) so
+            # stop() can wait for them - a .pngt write especially is heavy enough (a
+            # full session's telemetry) to still be running when the app is closed,
+            # and an untracked task would just be killed mid-write with no error, no
+            # log, and no file. JSON and pngt are independent decisions and independent
+            # tasks -- one being off/slow/failing must not affect the other.
+            if self._shouldSaveJsonData():
+                self.m_json_save_task = asyncio.create_task(
+                    self._autoSaveJsonTask(final_json, packet.m_header.m_sessionUID),
+                    name="Auto-save Session Data (JSON)",
                 )
+            if self.shouldSavePngtData():
+                pngt_write = self.preparePngtWrite()
+                if pngt_write is not None:
+                    dest_path, args = pngt_write
+                    self.m_pngt_save_task = asyncio.create_task(
+                        self._autoSavePngtTask(dest_path, args, packet.m_header.m_sessionUID),
+                        name="Auto-save Session Data (pngt)",
+                    )
 
             # Notify the frontend about the final classification
             session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -816,26 +831,29 @@ class F1TelemetryHandler:
         self.m_session_state_ref.setRaceOngoing()
         self.m_final_classification_processed = False
 
-    async def _autoSaveSessionData(
-        self,
-        final_json: Dict[str, Any],
-        session_uid: int,
-        pngt_write: Optional[Tuple[Path, tuple]],
-    ) -> None:
-        """Writes the auto-save JSON and the .pngt telemetry dump for one session. Run as
-        m_save_task from the ingress task -- see handleFinalClassification().
+    async def _autoSaveJsonTask(self, final_json: Dict[str, Any], session_uid: int) -> None:
+        """Writes the auto-save JSON for one session. Run as m_json_save_task from the
+        ingress task -- see handleFinalClassification().
 
         Args:
             final_json (Dict): Dictionary containing JSON data after final classification
             session_uid (int): Session UID for which the final classification was received.
-            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, or
-                None if there was nothing to write.
         """
         await self.postGameDumpToFile(final_json, session_uid=session_uid)
-        if pngt_write is not None:
-            dest_path, args = pngt_write
-            await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
-        self.m_save_task = None
+        self.m_json_save_task = None
+
+    async def _autoSavePngtTask(self, dest_path: Path, args: tuple, session_uid: int) -> None:
+        """Writes the .pngt telemetry dump for one session. Run as m_pngt_save_task --
+        shared by handleFinalClassification() and _saveJustInCaseIfNeeded(), since
+        both just need preparePngtWrite()'s result written and the slot cleared after.
+
+        Args:
+            dest_path (Path): Where to write -- from preparePngtWrite().
+            args (tuple): write_session()'s args -- from preparePngtWrite().
+            session_uid (int): Session UID, for the write's own log messages.
+        """
+        await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
+        self.m_pngt_save_task = None
 
     async def postGameDumpToFile(self, final_json: Dict[str, Any], session_uid: int) -> None:
         """
@@ -877,7 +895,10 @@ class F1TelemetryHandler:
 
     def preparePngtWrite(self) -> Optional[Tuple[Path, tuple]]:
         """Captures everything postGameDumpToPngtFile() needs from session_state.
-        Synchronous, and must run before any await in the caller
+        Synchronous, and must run before any await in the caller. Does NOT check
+        shouldSavePngtData() -- that's the caller's job (same as JSON autosave's
+        _shouldSaveJsonData()), so a caller that wants to attempt a pngt write
+        unconditionally (or has already decided) isn't forced through it.
 
         Returns:
             Optional[Tuple[Path, tuple]]: (dest_path, write_session()'s args), or None if
@@ -948,12 +969,13 @@ class F1TelemetryHandler:
             "manager": self.m_manager.getStats(),
         }
 
-    def _shouldSaveData(self) -> bool:
+    def _shouldSaveJsonData(self) -> bool:
         """
-        Check if data should be saved based on the current session type.
+        Check if the race-info JSON should be auto-saved, based on Capture settings
+        for the current session type.
 
         Returns:
-            bool: True if data should be saved, False otherwise.
+            bool: True if the JSON should be saved, False otherwise.
         """
 
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
@@ -975,6 +997,44 @@ class F1TelemetryHandler:
         # story). Announce it, so a consumer can tell a deliberate skip from a failed save.
         self.m_logger.debug("Not autosaving %s data - disabled for this session type", curr_session_type)
         report_session_save_skipped_from_child(f"autosave-disabled:{curr_session_type}")
+        return False
+
+    def shouldSavePngtData(self) -> bool:
+        """
+        Check if the .pngt telemetry dump should be saved, based on LapRecording
+        settings for the current session type. Deliberately separate from
+        _shouldSaveJsonData(): pngt saving has its own settings, not the Capture
+        (JSON) autosave-by-session-type ones. Public (unlike _shouldSaveJsonData())
+        -- callers outside this class (e.g. command_handlers.handleManualSave) decide
+        with it too, the same way they already call preparePngtWrite() directly.
+
+        Returns:
+            bool: True if the .pngt should be saved, False otherwise.
+        """
+        settings = self.m_session_state_ref.m_lap_recording_settings
+        if not settings.enable:
+            return False
+
+        curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
+        if not curr_session_type:
+            self.m_logger.warning("Session type is None. Not saving pngt data. Ignore if first session.")
+            report_session_save_skipped_from_child("pngt-session-type-unknown")
+            return False
+
+        if curr_session_type.isFpTypeSession() and settings.record_in_fp:
+            return True
+        if curr_session_type.isQualiTypeSession() and settings.record_in_quali:
+            return True
+        if curr_session_type.isRaceTypeSession() and settings.record_in_race:
+            return True
+        if curr_session_type.isTimeTrialTypeSession() and settings.record_in_tt:
+            return True
+
+        # Either recording is off for this session type, or it is a mode we never
+        # record (movie, story). Announce it, so a consumer can tell a deliberate
+        # skip from a failed save.
+        self.m_logger.debug("Not saving pngt data for %s - disabled for this session type", curr_session_type)
+        report_session_save_skipped_from_child(f"pngt-recording-disabled:{curr_session_type}")
         return False
 
     def _isUdpActionButtonPressed(self,
@@ -1093,7 +1153,11 @@ class F1TelemetryHandler:
         if self.m_final_classification_processed:
             return
 
-        if not self._shouldSaveData():
+        # JSON and pngt are independent decisions -- one being off for this session
+        # type must not silently skip the other.
+        should_save_json = self._shouldSaveJsonData()
+        should_save_pngt = self.shouldSavePngtData()
+        if not should_save_json and not should_save_pngt:
             return
 
         # A UID change fires on any packet, so an outgoing "session" can be a lead-in blip of
@@ -1105,51 +1169,49 @@ class F1TelemetryHandler:
             report_session_save_skipped_from_child("no-lap-data")
             return
 
-        if self.m_save_task:
+        if self.m_json_save_task or self.m_pngt_save_task:
             self.m_logger.debug("A save task is already running.")
             return
 
         self.m_logger.warning(
             "Session %d ended without a final classification. Saving data just in case.",
             outgoing_session_uid)
-        try:
-            save_rsp = ManualSaveRsp(
-                logger=self.m_logger,
-                session_state=self.m_session_state_ref,
-                reason="Just_in_case")
-        except ValueError as e:
-            self.m_logger.warning("Not saving just in case data for session %d: %s", outgoing_session_uid, e)
-            return
-        # Captured now, synchronously, same as save_rsp above - not inside the task, since
-        # clearAllDataStructures() runs right after this method returns.
-        pngt_write = self.preparePngtWrite()
-        self.m_save_task = asyncio.create_task(
-            self._saveJustInCaseDataTask(outgoing_session_uid, save_rsp, pngt_write),
-            name="Just in case save task")
 
-    async def _saveJustInCaseDataTask(
-        self,
-        session_uid: int,
-        save_rsp: ManualSaveRsp,
-        pngt_write: Optional[Tuple[Path, tuple]],
-    ) -> None:
-        """Write the pre-prepared save data to disk - race-info JSON and, if there was
-        anything to write, the .pngt telemetry dump too.
+        if should_save_json:
+            try:
+                save_rsp = ManualSaveRsp(
+                    logger=self.m_logger,
+                    session_state=self.m_session_state_ref,
+                    reason="Just_in_case")
+                self.m_json_save_task = asyncio.create_task(
+                    self._saveJustInCaseJsonTask(outgoing_session_uid, save_rsp),
+                    name="Just in case save task (JSON)")
+            except ValueError as e:
+                self.m_logger.warning("Not saving just in case data for session %d: %s", outgoing_session_uid, e)
+
+        if should_save_pngt:
+            # Captured now, synchronously - not inside the task, since
+            # clearAllDataStructures() runs right after this method returns.
+            pngt_write = self.preparePngtWrite()
+            if pngt_write is not None:
+                dest_path, args = pngt_write
+                self.m_pngt_save_task = asyncio.create_task(
+                    self._autoSavePngtTask(dest_path, args, outgoing_session_uid),
+                    name="Just in case save task (pngt)")
+
+    async def _saveJustInCaseJsonTask(self, session_uid: int, save_rsp: ManualSaveRsp) -> None:
+        """Writes the just-in-case JSON via the pre-built ManualSaveRsp. Run as
+        m_json_save_task -- see _saveJustInCaseIfNeeded().
 
         Args:
             session_uid (int): The session UID for which the suspicious session start event was received.
-            save_rsp (ManualSaveRsp): Already-prepared save response (data captured before task creation).
-            pngt_write (Optional[Tuple[Path, tuple]]): preparePngtWrite()'s result, captured
-                at the same time as save_rsp, or None if there was nothing to write.
+            save_rsp (ManualSaveRsp): Already-prepared save response (data captured
+                before task creation).
         """
         try:
             rsp = await save_rsp.saveToDisk()
             self.m_logger.info("Saving just in case data. Session UID %d. status=%s", session_uid, rsp)
         except Exception as e: # pylint: disable=broad-exception-caught
-            self.m_logger.error("Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
-
-        if pngt_write is not None:
-            dest_path, args = pngt_write
-            await self.postGameDumpToPngtFile(dest_path, args, session_uid=session_uid)
-
-        self.m_save_task = None
+            self.m_logger.error(
+                "Error occurred while saving just in case data for session %d: %s", session_uid, str(e))
+        self.m_json_save_task = None

@@ -44,7 +44,9 @@ async def handleManualSave(
     # Captured now, synchronously, before ManualSaveRsp's own await -- a session change
     # landing on the ingress task mid-save must not be able to corrupt this write.
     session_uid = session_state.m_session_info.m_session_uid or 0
-    pngt_write = telemetry_handler.preparePngtWrite()
+    # preparePngtWrite() no longer checks this itself -- every caller decides for itself,
+    # same as the auto-save paths' _shouldSaveJsonData()/shouldSavePngtData() split.
+    pngt_write = telemetry_handler.preparePngtWrite() if telemetry_handler.shouldSavePngtData() else None
 
     try:
         rsp = await ManualSaveRsp(logger, session_state).saveToDisk()

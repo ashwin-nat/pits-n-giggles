@@ -36,6 +36,7 @@ from .schema.hud.layout import OverlayId, OverlayPosition
 from .schema.hud.mfd import MfdPageId, MfdPageSettings, MfdSettings
 from .schema.hud.timing_tower import (TimingTowerColId, TimingTowerColOptions,
                                       TimingTowerColSettings)
+from .schema.lap_recording import LapRecordingSettings
 from .schema.network import NetworkSettings
 from .schema.pit_time_loss import PitTimeLossF1, PitTimeLossF2
 from .schema.png import PngSettings
@@ -51,6 +52,7 @@ __all__ = [
     'AutoOpenDashboardMode',
     'DisplaySettings',
     'ForwardingSettings',
+    'LapRecordingSettings',
     'NetworkSettings',
     'PitTimeLossF1',
     'PitTimeLossF2',
