@@ -8,6 +8,10 @@ export interface SensorDefinition {
   label: string;
   unit: string;
   type: "continuous" | "discrete";
+  // Known-fixed (min, max), e.g. throttle/brake are 0-100. When present, the
+  // chart's y-axis is clamped to exactly this range instead of deriving one
+  // from the recorded data -- see ChartLane's yAxisRange.
+  range?: [number, number];
 }
 
 export interface SessionBest {

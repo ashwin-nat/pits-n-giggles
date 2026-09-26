@@ -61,6 +61,50 @@ function findNearestIndex(points: InterpolatedPoint[], distance: number): number
   return lo;
 }
 
+// The y-axis range for a lane: either the sensor's fixed manifest range
+// (always clamped to it, verbatim) or one derived once from the full trace
+// data (primary + reference, whichever points are actually being charted --
+// e.g. rate-mode values, not raw ones, when in Rate view). This is
+// deliberately computed from the *whole* dataset, not the currently zoomed
+// x-window -- wheel-zoom/pan only ever calls setScale("x", ...), so as long
+// as nothing re-derives this from view state, the y-axis stays put while
+// zooming/panning on x, which is what makes a chart readable while zoomed.
+function computeYAxisRange(
+  sensor: SensorDefinition,
+  primary: InterpolatedPoint[],
+  reference: InterpolatedPoint[] | undefined
+): [number, number] {
+  if (sensor.range !== undefined) {
+    return sensor.range;
+  }
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of primary) {
+    if (p.value === null) continue;
+    if (p.value < min) min = p.value;
+    if (p.value > max) max = p.value;
+  }
+  if (reference !== undefined) {
+    for (const p of reference) {
+      if (p.value === null) continue;
+      if (p.value < min) min = p.value;
+      if (p.value > max) max = p.value;
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return [0, 1];
+  }
+  // Same padding rationale as the old scales.y.range function this replaces:
+  // discrete sensors get fixed +/-1 unit padding (percentage padding fights
+  // uPlot's "nice number" snapping on small integer ranges like DRS's 0/1),
+  // continuous ones get uPlot's own 10% padding helper.
+  if (sensor.type === "discrete") {
+    return [Math.floor(min) - 1, Math.ceil(max) + 1];
+  }
+  const [rangeMin, rangeMax] = uPlot.rangeNum(min, max, 0.1, true);
+  return [rangeMin ?? min, rangeMax ?? max];
+}
+
 function formatValue(sensor: SensorDefinition, value: number | null, viewMode: ViewMode): string {
   if (value === null) {
     return "--";
@@ -161,6 +205,17 @@ export function ChartLane({
   const boundsRef = useRef({ dataMin, dataMax });
   boundsRef.current = { dataMin, dataMax };
 
+  // Derived once per dataset (or sensor range), not per zoomed view -- see
+  // computeYAxisRange. Read at chart-creation time via this ref for the same
+  // stale-closure reason as boundsRef, and pushed to a live chart via the
+  // dedicated effect below.
+  const yRange = useMemo(
+    () => computeYAxisRange(sensor, displayedPrimary, hasReference ? displayedReference : undefined),
+    [sensor, displayedPrimary, displayedReference, hasReference]
+  );
+  const yRangeRef = useRef(yRange);
+  yRangeRef.current = yRange;
+
   // Rebuild the uPlot instance when the sensor or view mode changes -- both
   // change series count/paths/axis label, which uPlot doesn't support
   // mutating in place. Data/scale/focus-zone updates below are imperative
@@ -207,21 +262,17 @@ export function ChartLane({
       series,
       scales: {
         x: { time: false },
-        // Without padding, a discrete sensor's min/max step (e.g. Gear's top
-        // gear) sits exactly on the plot's top/bottom edge and looks
-        // clipped. For continuous sensors, percentage padding is fine. For
-        // discrete ones a percentage doesn't work: a binary 0/1 sensor
-        // (DRS) has min=max-1=... a 1-unit range, and uPlot's "nice number"
-        // snapping rounds 10% of that back down to exactly [0, 1] again --
-        // no visible padding at all, so the 0 baseline sits on the border
-        // and disappears into it. Fixed +/-1 unit padding sidesteps the
-        // snapping entirely and always leaves visible headroom.
+        // auto: false with an explicit initial min/max -- the axis range
+        // comes from computeYAxisRange (fixed sensor.range, or derived once
+        // from the full dataset) and is kept in sync by the setScale effect
+        // below, never recomputed from whatever's in the current zoomed
+        // x-window. With auto: true, uPlot re-derives min/max from the
+        // visible slice on every x zoom/pan, which made the y-axis rescale
+        // itself mid-zoom.
         y: {
-          auto: true,
-          range:
-            sensor.type === "discrete"
-              ? (_u, min, max) => [Math.floor(min) - 1, Math.ceil(max) + 1]
-              : (_u, min, max) => uPlot.rangeNum(min, max, 0.1, true),
+          auto: false,
+          min: yRangeRef.current[0],
+          max: yRangeRef.current[1],
         },
       },
       axes: [
@@ -391,6 +442,15 @@ export function ChartLane({
       chart.setScale("x", { min: viewport.distanceStart, max: viewport.distanceEnd });
     }
   }, [viewport, dataMin, dataMax]);
+
+  // yRange changes (new lap/reference data, or a view-mode switch that
+  // doesn't trigger the chart-rebuild effect below) -> y scale. Deliberately
+  // separate from the wheel-zoom/pan handlers, which only ever touch the x
+  // scale -- this is the only thing that ever calls setScale("y", ...), so
+  // zooming/panning on x never perturbs it.
+  useEffect(() => {
+    chartRef.current?.setScale("y", { min: yRange[0], max: yRange[1] });
+  }, [yRange]);
 
   // Externally-driven crosshair (from a sibling lane) -> move this chart's
   // cursor without re-firing onCrosshairMove (fireHook = false avoids the

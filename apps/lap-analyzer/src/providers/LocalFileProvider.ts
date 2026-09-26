@@ -20,7 +20,7 @@ interface HeaderJson {
 }
 
 interface ManifestJson {
-  sensors?: Record<string, { label?: string; unit?: string; type?: string }>;
+  sensors?: Record<string, { label?: string; unit?: string; type?: string; range?: [number, number] }>;
 }
 
 interface SessionJson {
@@ -132,7 +132,7 @@ export class LocalFileProvider implements LapAnalyzerProvider {
       if (def.label === undefined || def.unit === undefined || (def.type !== "continuous" && def.type !== "discrete")) {
         throw new InvalidManifestError(this.label, `sensor '${key}' is missing required fields or has an invalid type`);
       }
-      return { key, label: def.label, unit: def.unit, type: def.type };
+      return { key, label: def.label, unit: def.unit, type: def.type, range: def.range };
     });
 
     const sessionJson = readJsonEntry<SessionJson>(entries, "session.json");
