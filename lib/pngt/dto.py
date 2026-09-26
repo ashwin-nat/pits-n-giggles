@@ -35,16 +35,21 @@ class SensorType(Enum):
 
 @dataclass(frozen=True)
 class SensorConfig:
-    """A sensor registry entry: manifest.json's {key: {label, unit, type}}. Every
-    sensor's values are stored float32 on disk; there is no dtype field."""
+    """A sensor registry entry: manifest.json's {key: {label, unit, type, range?}}. Every
+    sensor's values are stored float32 on disk; there is no dtype field. `range`, when
+    given, is the sensor's known-fixed (min, max) -- e.g. throttle/brake are 0-100 -- and
+    is a hint for viewers (axis scaling); it is not enforced against recorded values."""
     key: str
     label: str
     unit: str
     type: SensorType
+    range: Optional[tuple[float, float]] = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.type, SensorType):
             raise ValueError(f"Invalid sensor type {self.type!r} for sensor {self.key!r}; expected a SensorType")
+        if self.range is not None and self.range[0] >= self.range[1]:
+            raise ValueError(f"Invalid range {self.range!r} for sensor {self.key!r}; expected (min, max) with min < max")
 
 @dataclass(frozen=True)
 class TrackInfo:

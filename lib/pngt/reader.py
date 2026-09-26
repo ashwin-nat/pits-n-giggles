@@ -108,7 +108,13 @@ def _read_sensor_manifest(zf: zipfile.ZipFile, path) -> list[SensorConfig]:
         raise InvalidManifestError(path, f"{SENSOR_MANIFEST_ENTRY} is not valid JSON: {exc}") from exc
     try:
         return [
-            SensorConfig(key=key, label=meta["label"], unit=meta["unit"], type=SensorType(meta["type"]))
+            SensorConfig(
+                key=key,
+                label=meta["label"],
+                unit=meta["unit"],
+                type=SensorType(meta["type"]),
+                range=tuple(meta["range"]) if "range" in meta else None,
+            )
             for key, meta in raw.get("sensors", {}).items()
         ]
     except KeyError as exc:

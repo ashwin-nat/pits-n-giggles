@@ -87,7 +87,10 @@ def api_error(code: str, message: str) -> Dict[str, Any]:
 
 
 def _sensor_to_api(sensor: SensorConfig) -> Dict[str, Any]:
-    return {'key': sensor.key, 'label': sensor.label, 'unit': sensor.unit, 'type': sensor.type.value}
+    d = {'key': sensor.key, 'label': sensor.label, 'unit': sensor.unit, 'type': sensor.type.value}
+    if sensor.range is not None:
+        d['range'] = list(sensor.range)
+    return d
 
 
 def session_to_api(entry: PngtSessionEntry) -> Dict[str, Any]:

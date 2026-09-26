@@ -75,8 +75,10 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
 # The F1 sensor catalog: each entry's manifest description plus how to read its value
 # off a TelemetrySnapshot.
 F1_SENSORS: tuple[RecordedSensor[TelemetrySnapshot], ...] = (
-    RecordedSensor(SensorConfig("throttle", "Throttle", "%", SensorType.CONTINUOUS), attrgetter("throttle")),
-    RecordedSensor(SensorConfig("brake", "Brake", "%", SensorType.CONTINUOUS), attrgetter("brake")),
+    RecordedSensor(SensorConfig("throttle", "Throttle", "%", SensorType.CONTINUOUS, range=(0, 100)),
+                   attrgetter("throttle")),
+    RecordedSensor(SensorConfig("brake", "Brake", "%", SensorType.CONTINUOUS, range=(0, 100)),
+                   attrgetter("brake")),
     RecordedSensor(SensorConfig("steering", "Steering", "", SensorType.CONTINUOUS), attrgetter("steering")),
     RecordedSensor(SensorConfig("speed", "Speed", "km/h", SensorType.CONTINUOUS), attrgetter("speed")),
     RecordedSensor(SensorConfig("gear", "Gear", "", SensorType.DISCRETE), attrgetter("gear")),

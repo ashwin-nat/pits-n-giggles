@@ -87,7 +87,7 @@ def write_session(
         write_json(zf, "header.json", {"format": HEADER_FORMAT, "version": HEADER_VERSION})
         write_json(zf, "manifest.json", {
             "sensors": {
-                sensor.key: {"label": sensor.label, "unit": sensor.unit, "type": sensor.type.value}
+                sensor.key: _sensor_manifest_entry(sensor)
                 for sensor in sensors
             }
         })
@@ -113,6 +113,13 @@ def _default_good_flags(laps: list[CompletedLap]) -> list[bool]:
         return [False] * len(laps)
     fastest = min(valid_laps, key=lambda lap: lap.metadata.lap_time_ms)
     return [lap is fastest for lap in laps]
+
+
+def _sensor_manifest_entry(sensor: SensorConfig) -> dict:
+    entry = {"label": sensor.label, "unit": sensor.unit, "type": sensor.type.value}
+    if sensor.range is not None:
+        entry["range"] = list(sensor.range)
+    return entry
 
 
 def _validate_sensors(sensors: list[SensorConfig]) -> None:
