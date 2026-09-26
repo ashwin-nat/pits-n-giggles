@@ -107,10 +107,7 @@ function formatValue(sensor: SensorDefinition, value: number | null, viewMode: V
     }
   }
   const unit = viewMode === "rate" ? `${sensor.unit}/m` : sensor.unit;
-  // Discrete sensors (gear, DRS, flags, ...) are never fractional -- values
-  // just happen to arrive as float32 because everything is serialized that
-  // way (see the pngt format), not because the real quantity has a decimal
-  // part. Rendering "8.0" would claim a precision that doesn't exist.
+  // Discrete values are never fractional -- float32 is just the wire format.
   const precision = sensor.type === "discrete" ? 0 : 1;
   return `${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
 }
@@ -288,6 +285,14 @@ export function ChartLane({
           stroke: axisColor,
           grid: { stroke: gridColor },
           ticks: { stroke: gridColor },
+          // Discrete sensors only take whole-number values -- uPlot's
+          // default increments include fractional ticks like "2.5".
+          ...(sensor.type === "discrete"
+            ? {
+                incrs: [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000],
+                values: (_u: uPlot, splits: number[]) => splits.map((v) => String(Math.round(v))),
+              }
+            : {}),
         },
       ],
       legend: { show: false },
@@ -481,9 +486,7 @@ export function ChartLane({
     chartRef.current?.redraw(false);
   }, [focusZone, effectiveViewMode]);
 
-  // Falls back to the lap's last point when no crosshair is set, so this
-  // column is never blank once a lap is loaded -- see the redesign plan's
-  // "no-crosshair value" decision.
+  // No crosshair -> falls back to the lap's last point, never blank.
   const primaryIdx =
     crosshairPosition === null ? displayedPrimary.length - 1 : findNearestIndex(displayedPrimary, crosshairPosition);
   const primaryValue = displayedPrimary[primaryIdx]?.value ?? null;
@@ -499,10 +502,7 @@ export function ChartLane({
       <div className="flex flex-col gap-1.5 bg-slate-900 px-3 py-2 text-xs">
         <span className="font-medium text-slate-200">{sensor.label}</span>
         {hasReference ? (
-          // With a reference lap loaded, the big anchor value would just be
-          // one of these two rows repeated in a bigger font -- redundant
-          // rather than a third data point, so it's dropped in favor of
-          // showing both colored rows at equal size.
+          // Big anchor value would just repeat one of these rows -- skip it.
           <div className="flex flex-col gap-0.5 text-base font-semibold">
             <span style={{ color: primaryColor }}>{formatValue(sensor, primaryValue, effectiveViewMode)}</span>
             <span style={{ color: referenceColor }}>{formatValue(sensor, referenceValue, effectiveViewMode)}</span>

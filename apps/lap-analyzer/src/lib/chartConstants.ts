@@ -11,11 +11,8 @@ export const DISTANCE_GRID_RESOLUTION_M = 1;
 // section for why this is a sample count rather than a distance.
 export const SMOOTHING_WINDOW_SAMPLES = 10;
 
-// Taller than the frontend spec's original 120/80/60 table -- that felt
-// visibly squished in practice, especially for discrete step lines. One
-// height for every sensor regardless of type -- a discrete lane (e.g. Gear)
-// sitting visibly shorter than a continuous one (e.g. Speed) right next to
-// it read as a layout bug, not a deliberate size difference.
+// One height for every sensor type -- a shorter discrete lane next to a
+// taller continuous one read as a layout bug, not a deliberate difference.
 export const LANE_HEIGHT_PX = 160;
 
 // The x-axis (tick labels + "Distance (m)" title) needs its own vertical
