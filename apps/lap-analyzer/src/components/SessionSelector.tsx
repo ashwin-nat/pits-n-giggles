@@ -15,7 +15,6 @@ interface SessionSelectorProps {
 }
 
 const ALL_TRACKS = "__all_tracks__";
-const ALL_FORMULAS = "__all_formulas__";
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -35,16 +34,28 @@ function formulaLabel(session: Session): string {
   return `${session.formula} ${session.gameYear}`.trim();
 }
 
+// Distinct from ALL_TRACKS -- "unset" hides the session list, ALL_TRACKS
+// is an active choice that reveals it.
+const UNSET = "";
+
 export function SessionSelector({ selection, onChange, restrictToSessionId }: SessionSelectorProps) {
   const { data: sessions, isLoading, error } = useSessions();
-  const [trackFilter, setTrackFilter] = useState(ALL_TRACKS);
-  const [formulaFilter, setFormulaFilter] = useState(ALL_FORMULAS);
+  const [formulaFilter, setFormulaFilter] = useState(UNSET);
+  const [trackFilter, setTrackFilter] = useState(UNSET);
 
   const restricted = restrictToSessionId !== undefined;
   const restrictToSession = restricted ? sessions?.find((s) => s.id === restrictToSessionId) : undefined;
 
-  const tracks = useMemo(() => Array.from(new Set((sessions ?? []).map((s) => s.trackName))).sort(), [sessions]);
   const formulas = useMemo(() => Array.from(new Set((sessions ?? []).map(formulaLabel))).sort(), [sessions]);
+  // Only tracks that actually have a session under the selected formula --
+  // "applicable" tracks, not every track in the full session list.
+  const tracks = useMemo(
+    () =>
+      Array.from(
+        new Set((sessions ?? []).filter((s) => formulaLabel(s) === formulaFilter).map((s) => s.trackName))
+      ).sort(),
+    [sessions, formulaFilter]
+  );
 
   const filtered = useMemo(() => {
     if (restricted) {
@@ -59,12 +70,13 @@ export function SessionSelector({ selection, onChange, restrictToSessionId }: Se
         (s) => s.trackId === restrictToSession.trackId && s.formula === restrictToSession.formula
       );
     }
-    return (sessions ?? []).filter((s) => {
-      const trackOk = trackFilter === ALL_TRACKS || s.trackName === trackFilter;
-      const formulaOk = formulaFilter === ALL_FORMULAS || formulaLabel(s) === formulaFilter;
-      return trackOk && formulaOk;
-    });
-  }, [sessions, trackFilter, formulaFilter, restricted, restrictToSession]);
+    if (formulaFilter === UNSET || trackFilter === UNSET) {
+      return [];
+    }
+    return (sessions ?? []).filter(
+      (s) => formulaLabel(s) === formulaFilter && (trackFilter === ALL_TRACKS || s.trackName === trackFilter)
+    );
+  }, [sessions, formulaFilter, trackFilter, restricted, restrictToSession]);
 
   if (isLoading) {
     return <LoadingSkeleton className="h-16" />;
@@ -73,50 +85,71 @@ export function SessionSelector({ selection, onChange, restrictToSessionId }: Se
     return <ErrorMessage what="sessions" error={error} />;
   }
 
+  // Changing a filter invalidates whatever was picked below it.
+  function handleFormulaChange(value: string) {
+    setFormulaFilter(value);
+    setTrackFilter(UNSET);
+    onChange({ sessionId: null });
+  }
+
+  function handleTrackChange(value: string) {
+    setTrackFilter(value);
+    onChange({ sessionId: null });
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {!restricted && (
         <div className="flex gap-2">
           <select
             value={formulaFilter}
-            onChange={(e) => setFormulaFilter(e.target.value)}
+            onChange={(e) => handleFormulaChange(e.target.value)}
             className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
           >
-            <option value={ALL_FORMULAS}>All Formulas</option>
+            <option value={UNSET} disabled>
+              Select formula...
+            </option>
             {formulas.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
             ))}
           </select>
-          <select
-            value={trackFilter}
-            onChange={(e) => setTrackFilter(e.target.value)}
-            className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
-          >
-            <option value={ALL_TRACKS}>All Tracks</option>
-            {tracks.map((t) => (
-              <option key={t} value={t}>
-                {t}
+          {formulaFilter !== UNSET && (
+            <select
+              value={trackFilter}
+              onChange={(e) => handleTrackChange(e.target.value)}
+              className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+            >
+              <option value={UNSET} disabled>
+                Select track...
               </option>
-            ))}
-          </select>
+              <option value={ALL_TRACKS}>All Tracks</option>
+              {tracks.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
-      <select
-        value={selection.sessionId ?? ""}
-        onChange={(e) => onChange({ sessionId: e.target.value || null })}
-        className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-100"
-      >
-        <option value="" disabled>
-          Select a session...
-        </option>
-        {filtered.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.trackName} {s.type} • {formatDate(s.date)}
+      {(restricted || trackFilter !== UNSET) && (
+        <select
+          value={selection.sessionId ?? ""}
+          onChange={(e) => onChange({ sessionId: e.target.value || null })}
+          className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-sm text-slate-100"
+        >
+          <option value="" disabled>
+            Select a session...
           </option>
-        ))}
-      </select>
+          {filtered.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.trackName} {s.type} • {formatDate(s.date)}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
