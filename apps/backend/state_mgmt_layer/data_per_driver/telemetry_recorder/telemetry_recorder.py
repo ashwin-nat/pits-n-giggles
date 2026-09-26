@@ -108,8 +108,7 @@ F1_SENSORS: tuple[RecordedSensor[TelemetrySnapshot], ...] = (
             key="gear",
             label="Gear",
             unit="",
-            type=SensorType.DISCRETE,
-            range=(-1, 8)), # -1 for reverse
+            type=SensorType.DISCRETE), # -1 for reverse
         get=attrgetter("gear")),
     RecordedSensor(
         config=SensorConfig(
