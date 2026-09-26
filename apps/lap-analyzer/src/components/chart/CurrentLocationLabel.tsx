@@ -47,9 +47,14 @@ export function CurrentLocationLabel({ crosshairPosition }: CurrentLocationLabel
 
   return (
     <div className="border-b border-slate-800 bg-slate-900 px-4 py-1.5 text-center text-sm font-medium text-slate-200">
-      {/* Non-breaking space keeps the row's height stable when there's
-          nothing to show, instead of the header jumping as you hover. */}
-      {label ?? " "}
+      {/* A real non-breaking space (not a plain " ", which the browser
+          whitespace-collapses to nothing) so this div always has a line box
+          to render, whether label is null (no segment/meta yet) or ""
+          (a real but unnamed TrackSection -- see track_segments_classifier).
+          Without it, an empty div has no content to establish a line height,
+          so the row shrinks to just its padding as you hover across an
+          unnamed corner. */}
+      {label || " "}
     </div>
   );
 }
