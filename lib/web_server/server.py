@@ -39,6 +39,7 @@ from quart import request as quart_request
 from quart import send_from_directory as quart_send_from_directory
 from quart import url_for
 from quart.utils import run_sync
+from starlette.middleware.gzip import GZipMiddleware
 
 from lib.error_status import PngHttpPortInUseError
 from lib.event_counter import EventCounter
@@ -115,6 +116,7 @@ class BaseWebServer:
         else:
             self.m_sio = None
             self.m_sio_app = self.m_app
+        self.m_sio_app = GZipMiddleware(self.m_sio_app, minimum_size=500)
         self._server: Optional[uvicorn.Server] = None
         self._define_static_file_routes()
 
