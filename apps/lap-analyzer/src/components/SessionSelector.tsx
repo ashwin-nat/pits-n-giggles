@@ -22,7 +22,13 @@ function formatDate(iso: string): string {
   if (iso === "" || Number.isNaN(date.getTime())) {
     return "";
   }
-  return date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formulaLabel(session: Session): string {
@@ -107,7 +113,7 @@ export function SessionSelector({ selection, onChange, restrictToSessionId }: Se
         </option>
         {filtered.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.trackName} {s.type} • {formatDate(s.date)} • v{s.appVersion}
+            {s.trackName} {s.type} • {formatDate(s.date)}
           </option>
         ))}
       </select>
