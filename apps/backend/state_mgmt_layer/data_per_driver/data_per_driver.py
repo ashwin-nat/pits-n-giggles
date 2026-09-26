@@ -1541,9 +1541,9 @@ class DataPerDriver:
             lap_distance=raw_lap_distance,
             lap_time_ms=self.m_lap_info.m_curr_lap_ms,
 
-            throttle=(car_telemetry_pkt.m_throttle if car_telemetry_pkt else None),
-            brake=(car_telemetry_pkt.m_brake if car_telemetry_pkt else None),
-            steering=(car_telemetry_pkt.m_steer if car_telemetry_pkt else None),
+            throttle=(car_telemetry_pkt.m_throttle*100.0 if car_telemetry_pkt else None),
+            brake=(car_telemetry_pkt.m_brake*100.0 if car_telemetry_pkt else None),
+            steering=(car_telemetry_pkt.m_steer*100.0 if car_telemetry_pkt else None),
 
             speed=(car_telemetry_pkt.m_speed if car_telemetry_pkt else None),
             gear=(car_telemetry_pkt.m_gear if car_telemetry_pkt else None),
