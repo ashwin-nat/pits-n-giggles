@@ -1015,10 +1015,13 @@ class F1TelemetryHandler:
         if not settings.enable:
             return False
 
+        if self.m_session_state_ref.m_session_info.m_is_spectating and not settings.record_in_spectator_mode:
+            self.m_logger.debug("Not saving pngt data - spectating and record_in_spectator_mode is disabled")
+            return False
+
         curr_session_type = self.m_session_state_ref.m_session_info.m_session_type
         if not curr_session_type:
             self.m_logger.warning("Session type is None. Not saving pngt data. Ignore if first session.")
-            report_session_save_skipped_from_child("pngt-session-type-unknown")
             return False
 
         if curr_session_type.isFpTypeSession() and settings.record_in_fp:
@@ -1034,7 +1037,6 @@ class F1TelemetryHandler:
         # record (movie, story). Announce it, so a consumer can tell a deliberate
         # skip from a failed save.
         self.m_logger.debug("Not saving pngt data for %s - disabled for this session type", curr_session_type)
-        report_session_save_skipped_from_child(f"pngt-recording-disabled:{curr_session_type}")
         return False
 
     def _isUdpActionButtonPressed(self,
