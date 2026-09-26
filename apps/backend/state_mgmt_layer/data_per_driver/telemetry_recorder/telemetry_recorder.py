@@ -52,18 +52,19 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
     carry is a real saving at that volume, not a premature one.
     """
     # Driver inputs
-    throttle: Optional[float] = None   # 0.0-1.0
-    brake: Optional[float] = None      # 0.0-1.0
-    steering: Optional[float] = None   # -1.0 (full left) to 1.0 (full right)
+    throttle: Optional[float] = None
+    brake: Optional[float] = None
+    steering: Optional[float] = None
 
     # Vehicle state
-    speed: Optional[float] = None      # km/h
-    gear: Optional[int] = None         # -1 = reverse, 0 = neutral, 1-8 = forward
+    speed: Optional[float] = None
+    gear: Optional[int] = None
     engine_rpm: Optional[float] = None
 
     # ERS
-    ers_deploy_mode: Optional[int] = None  # ERSDeployMode.value; enum owned by the producer
-    ers_store_energy: Optional[float] = None
+    ers_deploy_mode: Optional[int] = None
+    ers_store_energy_j: Optional[float] = None
+    ers_store_energy_perc: Optional[float] = None
 
     # Tyre wear
     tyre_wear_fl: Optional[float] = None
@@ -136,12 +137,20 @@ F1_SENSORS: tuple[RecordedSensor[TelemetrySnapshot], ...] = (
         get=attrgetter("ers_deploy_mode")),
     RecordedSensor(
         config=SensorConfig(
-            key="ers.store_energy",
+            key="ers.store_energy_j",
             label="ERS Store Energy",
             unit="J",
             type=SensorType.CONTINUOUS,
             range=(0, CarStatusData.MAX_ERS_STORE_ENERGY)),
-        get=attrgetter("ers_store_energy")),
+        get=attrgetter("ers_store_energy_j")),
+    RecordedSensor(
+        config=SensorConfig(
+            key="ers.store_energy",
+            label="ERS Store Percentage",
+            unit="%",
+            type=SensorType.CONTINUOUS,
+            range=(0, 100)),
+        get=attrgetter("ers_store_energy_perc")),
 
     # ------ TYRE WEAR -------
     RecordedSensor(

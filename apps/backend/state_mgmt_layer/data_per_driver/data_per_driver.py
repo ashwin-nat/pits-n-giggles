@@ -1533,6 +1533,7 @@ class DataPerDriver:
         car_status_pkt = self.m_packet_copies.m_packet_car_status
         car_telemetry_pkt = self.m_packet_copies.m_packet_car_telemetry
         tyre_wear = self.m_tyre_info.tyre_wear.latest
+        ers_store_energy_j = car_status_pkt.m_ersStoreEnergy if car_status_pkt else None
 
         raw_lap_distance = self.m_lap_info.m_lap_dist_raw
 
@@ -1550,7 +1551,9 @@ class DataPerDriver:
             engine_rpm=(car_telemetry_pkt.m_engineRPM if car_telemetry_pkt else None),
 
             ers_deploy_mode=(car_status_pkt.m_ersDeployMode.value if car_status_pkt else None),
-            ers_store_energy=(car_status_pkt.m_ersStoreEnergy if car_status_pkt else None),
+            ers_store_energy_j=ers_store_energy_j,
+            ers_store_energy_perc=((ers_store_energy_j / CarStatusData.MAX_ERS_STORE_ENERGY) * 100.0) \
+                if ers_store_energy_j is not None else None,
 
             tyre_wear_fl=tyre_wear.fl_tyre_wear if tyre_wear else None,
             tyre_wear_fr=tyre_wear.fr_tyre_wear if tyre_wear else None,
