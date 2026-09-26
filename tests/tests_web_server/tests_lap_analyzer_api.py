@@ -194,6 +194,32 @@ def test_telemetry_points_int_missing_sentinel_passed_through():
     assert points[1]['gear'] == -1
 
 
+def test_telemetry_points_includes_lap_time_ms_even_when_not_requested():
+    """lap_time_ms is mandatory, like lap_distance -- always in the point dict
+    regardless of `sensors`, since the chart area's delta trace needs it even when
+    the user hasn't selected any sensor that happens to be named that."""
+    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
+    arrays = {
+        'lap_distance': lap_distance,
+        'lap_time_ms': np.array([1000.0, 1016.0], dtype=np.float32),
+        'speed': np.array([100.0, 110.0], dtype=np.float32),
+    }
+    points = telemetry_points_to_api(lap_distance, arrays, ['speed'])
+
+    assert points[0]['lap_time_ms'] == pytest.approx(1000.0)
+    assert points[1]['lap_time_ms'] == pytest.approx(1016.0)
+
+
+def test_telemetry_points_omits_lap_time_ms_when_absent_from_arrays():
+    """Older recordings predating the mandatory lap_time_ms array shouldn't raise --
+    just omit it, same as any other array missing from this lap's own npz."""
+    lap_distance = np.array([0.0, 1.0], dtype=np.float32)
+    arrays = {'lap_distance': lap_distance}
+    points = telemetry_points_to_api(lap_distance, arrays, [])
+
+    assert 'lap_time_ms' not in points[0]
+
+
 def test_track_section_straight():
     seg = StraightSegmentInfo(name="Kemmel Straight", start_m=890, end_m=2100)
     assert track_section_to_api(seg) == {

@@ -167,10 +167,18 @@ def telemetry_points_to_api(
     absent from `sensor_arrays` (an older or narrower recording than the session's
     current manifest) is simply omitted from every point, not set to null -- null is
     reserved for a *present* array's own missing-sample value (see _to_json_value).
+
+    lap_time_ms is included unconditionally, like lap_distance -- it's a mandatory
+    pngt array (lib/pngt/recorder.py's BaseTelemetrySnapshot), not something the
+    caller opts into via `sensors`. The chart area uses it to derive the delta trace
+    against a reference lap regardless of which sensors the user has selected.
     """
     points: List[Dict[str, Any]] = []
+    lap_time_ms = sensor_arrays.get('lap_time_ms')
     for i, distance in enumerate(lap_distance):
         point: Dict[str, Any] = {'lapDistance': _to_json_value(distance)}
+        if lap_time_ms is not None:
+            point['lap_time_ms'] = _to_json_value(lap_time_ms[i])
         for sensor in sensors:
             array = sensor_arrays.get(sensor)
             if array is not None:

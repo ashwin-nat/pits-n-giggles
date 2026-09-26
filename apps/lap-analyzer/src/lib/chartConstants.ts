@@ -57,3 +57,4 @@ export const MAX_LANE_HEIGHT_PX = 400;
 // chart trace is just "primary" or "comparison" now, no per-driver variation.
 export const PRIMARY_TRACE_COLOR = "#ef4444"; // red-500
 export const COMPARISON_TRACE_COLOR = "#3b82f6"; // blue-500
+export const DELTA_TRACE_COLOR = "#facc15"; // amber-400 -- distinct from both above

@@ -6,6 +6,7 @@ import { useTelemetryStore } from "../../store/telemetryStore";
 import { buildDistanceGrid, interpolateToGrid, type InterpolatedPoint } from "../../lib/interpolation";
 import {
   COMPARISON_TRACE_COLOR,
+  DELTA_TRACE_COLOR,
   MAX_LANE_HEIGHT_PX,
   MIN_LANE_HEIGHT_PX,
   LANE_HEIGHT_STEP_PX,
@@ -14,6 +15,19 @@ import {
 } from "../../lib/chartConstants";
 import { ChartLane } from "./ChartLane";
 import type { ChartTraceVisibility } from "./ChartLegend";
+import type { SensorDefinition } from "../../types/api";
+
+// Synthetic sensor -- not part of any session's manifest. lap_time_ms is a
+// mandatory pngt array (like lap_distance), always present in TelemetryPoint
+// regardless of the user's sensor selection (see LocalFileProvider.ts and
+// lap_analyzer_api.py's telemetry_points_to_api()), so it can always be
+// interpolated to build the delta trace below once a reference lap exists.
+const DELTA_SENSOR: SensorDefinition = {
+  key: "lap_time_ms",
+  label: "Delta",
+  unit: "s",
+  type: "continuous",
+};
 
 export interface ChartDomain {
   dataMin: number;
@@ -123,7 +137,24 @@ export function ChartLaneList({
     }
     const domain: ChartDomain | null =
       grid.length > 0 ? { dataMin: grid[0], dataMax: grid[grid.length - 1] } : null;
-    return { primaryMap, referenceMap, domain };
+
+    // Delta trace: primary's elapsed lap time minus reference's, at each point on
+    // the shared distance grid -- i.e. how far ahead/behind primary is at that
+    // point on track, in seconds. Positive = primary is behind (took longer to
+    // reach that distance); negative = primary is ahead. Only meaningful once a
+    // reference lap is actually loaded.
+    let deltaPoints: InterpolatedPoint[] | null = null;
+    if (referenceTelemetry !== undefined) {
+      const primaryTime = interpolateToGrid(telemetry, DELTA_SENSOR, grid);
+      const referenceTime = interpolateToGrid(referenceTelemetry, DELTA_SENSOR, grid);
+      deltaPoints = grid.map((lapDistance, i) => {
+        const p = primaryTime[i].value;
+        const r = referenceTime[i].value;
+        return { lapDistance, value: p === null || r === null ? null : (p - r) / 1000 };
+      });
+    }
+
+    return { primaryMap, referenceMap, domain, deltaPoints };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry, referenceTelemetry, session, primary.sensors.join(",")]);
 
@@ -161,6 +192,7 @@ export function ChartLaneList({
   const color = PRIMARY_TRACE_COLOR;
   const referenceActive = reference !== null && reference.lapNumber !== null && referenceDriver !== undefined;
   const referenceColor = referenceActive ? COMPARISON_TRACE_COLOR : undefined;
+  const showDelta = referenceActive && interpolated.deltaPoints !== null;
 
   const sensorManifest = session.sensorManifest;
 
@@ -203,6 +235,29 @@ export function ChartLaneList({
         <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-slate-950 to-transparent py-2">
           <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300 shadow">Loading…</span>
         </div>
+      )}
+      {showDelta && (
+        <ChartLane
+          key="__delta__"
+          sensor={DELTA_SENSOR}
+          primaryColor={DELTA_TRACE_COLOR}
+          primaryPoints={interpolated.deltaPoints!}
+          viewport={viewport}
+          onViewportChange={setViewport}
+          crosshairPosition={crosshairPosition}
+          onCrosshairMove={onCrosshairMove}
+          focusZone={activeSection}
+          isBottomLane={false}
+          // Not part of `order`/heightOverrides -- it's a synthetic lane, always
+          // pinned above the real sensor lanes, so move/resize don't apply to it.
+          onIncreaseHeight={() => {}}
+          onDecreaseHeight={() => {}}
+          onMoveUp={() => {}}
+          onMoveDown={() => {}}
+          canMoveUp={false}
+          canMoveDown={false}
+          showTooltip={isHovering}
+        />
       )}
       {orderedKeys.map((key, index) => {
         const sensor = sensorManifest.find((s) => s.key === key);

@@ -262,17 +262,24 @@ export function ChartLane({
       series,
       scales: {
         x: { time: false },
-        // auto: false with an explicit initial min/max -- the axis range
-        // comes from computeYAxisRange (fixed sensor.range, or derived once
-        // from the full dataset) and is kept in sync by the setScale effect
+        // auto: false with a static `range` tuple -- the axis range comes
+        // from computeYAxisRange (fixed sensor.range, or derived once from
+        // the full dataset) and is kept in sync by the setScale effect
         // below, never recomputed from whatever's in the current zoomed
         // x-window. With auto: true, uPlot re-derives min/max from the
         // visible slice on every x zoom/pan, which made the y-axis rescale
         // itself mid-zoom.
+        //
+        // `range` (not top-level `min`/`max` keys, which uPlot's Scale type
+        // documents as *current resolved* state, not init input) -- using
+        // `min`/`max` here worked by accident on some rebuilds and silently
+        // left the scale at {min: null, max: null} (nothing drawn, no axis)
+        // on others, e.g. whenever a sensor with a fixed sensor.range (like
+        // Throttle/Brake's 0-100%) got its uPlot instance rebuilt for an
+        // unrelated reason -- toggling a reference lap on, in particular.
         y: {
           auto: false,
-          min: yRangeRef.current[0],
-          max: yRangeRef.current[1],
+          range: [yRangeRef.current[0], yRangeRef.current[1]],
         },
       },
       axes: [
