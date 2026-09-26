@@ -63,7 +63,10 @@ class LapRecordingSettings(ConfigDiffMixin, BaseModel):
         json_schema_extra={
             "ui": {
                 "type" : "check_box",
-                "visible": True
+                "visible": True,
+                "ext_info" : [
+                    "Records all cars in the session if enabled"
+                ],
             }
         }
     )
