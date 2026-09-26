@@ -32,16 +32,15 @@ export function getLaneHeightPx(sensor: SensorDefinition): number {
   return SMALL_CONTINUOUS_SENSOR_KEYS.has(sensor.key) ? CONTINUOUS_SMALL_LANE_HEIGHT_PX : CONTINUOUS_LANE_HEIGHT_PX;
 }
 
-// The x-axis (tick labels + "Distance (m)" title, shown only on the
-// bottom-most lane per spec) needs its own vertical space on top of the
-// plot area -- it isn't optional headroom the lane height already includes.
-// Without this, whichever lane ends up on the bottom loses most of its
-// already-small height to axis text, squeezing the actual data line flush
-// against the top border (most visible on a short discrete lane).
+// The x-axis (tick labels + "Distance (m)" title) needs its own vertical
+// space on top of the plot area -- it isn't optional headroom the lane
+// height already includes. Every lane renders its own axis now (ChartLane),
+// so this is unconditional; without it the data line would sit flush
+// against the plot's bottom edge, squeezed by axis text drawn over it.
 export const X_AXIS_EXTRA_HEIGHT_PX = 40;
 
-export function getChartHeightPx(sensor: SensorDefinition, isBottomLane: boolean, heightOverridePx?: number): number {
-  return (heightOverridePx ?? getLaneHeightPx(sensor)) + (isBottomLane ? X_AXIS_EXTRA_HEIGHT_PX : 0);
+export function getChartHeightPx(sensor: SensorDefinition, heightOverridePx?: number): number {
+  return (heightOverridePx ?? getLaneHeightPx(sensor)) + X_AXIS_EXTRA_HEIGHT_PX;
 }
 
 // Per-lane resize step/bounds -- view-local state (ChartLaneList), not
