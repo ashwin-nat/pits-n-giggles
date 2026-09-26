@@ -45,10 +45,16 @@ function buildBarSegments(sections: TrackSection[], trackLength: number): BarSeg
   return result;
 }
 
-function isSameSection(active: ActiveSection | null, section: TrackSection): boolean {
+function isSameSection(active: ActiveSection | null, section: { label: string; distanceStart: number }): boolean {
   return (
     active !== null && active.label === section.label && active.distanceStart === section.distanceStart
   );
+}
+
+const UNCLASSIFIED_LABEL = "Unclassified";
+
+function gapToActiveSection(gap: { distanceStart: number; distanceEnd: number }): ActiveSection {
+  return { label: UNCLASSIFIED_LABEL, distanceStart: gap.distanceStart, distanceEnd: gap.distanceEnd };
 }
 
 function segmentTooltip(section: TrackSection): string {
@@ -114,6 +120,15 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
     }
   }
 
+  function handleGapClick(gap: { distanceStart: number; distanceEnd: number }) {
+    if (isSameSection(activeSection, { label: UNCLASSIFIED_LABEL, distanceStart: gap.distanceStart })) {
+      setActiveSection(null);
+      setViewport(null);
+    } else {
+      setActiveSection(gapToActiveSection(gap));
+    }
+  }
+
   return (
     <div className="border-b border-slate-800 bg-slate-900 px-4 py-2">
       <div className="relative h-6 w-full">
@@ -132,11 +147,19 @@ export function TrackProgressBar({ crosshairPosition }: TrackProgressBarProps) {
             const flexStyle = { flexGrow: span, flexBasis: 0 };
 
             if (bar.kind === "gap") {
+              const gapActive = isSameSection(activeSection, {
+                label: UNCLASSIFIED_LABEL,
+                distanceStart: bar.distanceStart,
+              });
               return (
-                <div
+                <button
                   key={`gap-${bar.distanceStart}`}
+                  type="button"
+                  onClick={() => handleGapClick(bar)}
                   style={flexStyle}
-                  className={`h-full border-r border-slate-950/40 bg-slate-700 last:border-r-0 ${roundedClass}`}
+                  className={`h-full border-r border-slate-950/40 bg-slate-700 hover:bg-slate-600 last:border-r-0 ${roundedClass} ${
+                    gapActive ? "brightness-150" : ""
+                  }`}
                 />
               );
             }
