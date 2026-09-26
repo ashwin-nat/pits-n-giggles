@@ -52,6 +52,18 @@ function findNearestIndex(points: InterpolatedPoint[], distance: number): number
   return lo;
 }
 
+// Rate mode's last grid point is always null by design (computeRateOfChange
+// has no next sample to diff against), so the literal last index isn't a
+// safe "last known value" -- walk back to the last non-null one instead.
+function lastValueIndex(points: InterpolatedPoint[]): number {
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i].value !== null) {
+      return i;
+    }
+  }
+  return points.length - 1;
+}
+
 // The y-axis range for a lane: either the sensor's fixed manifest range
 // (always clamped to it, verbatim) or one derived once from the full trace
 // data (primary + reference, whichever points are actually being charted --
@@ -488,12 +500,12 @@ export function ChartLane({
 
   // No crosshair -> falls back to the lap's last point, never blank.
   const primaryIdx =
-    crosshairPosition === null ? displayedPrimary.length - 1 : findNearestIndex(displayedPrimary, crosshairPosition);
+    crosshairPosition === null ? lastValueIndex(displayedPrimary) : findNearestIndex(displayedPrimary, crosshairPosition);
   const primaryValue = displayedPrimary[primaryIdx]?.value ?? null;
   const referenceIdx = !hasReference
     ? null
     : crosshairPosition === null
-      ? displayedReference!.length - 1
+      ? lastValueIndex(displayedReference!)
       : findNearestIndex(displayedReference!, crosshairPosition);
   const referenceValue = referenceIdx === null ? null : displayedReference![referenceIdx]?.value ?? null;
 
