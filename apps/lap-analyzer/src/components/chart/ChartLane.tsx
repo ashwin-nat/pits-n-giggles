@@ -22,7 +22,6 @@ export interface ChartLaneProps {
   crosshairPosition: number | null;
   onCrosshairMove: (distanceM: number | null) => void;
   focusZone: ActiveSection | null;
-  isBottomLane: boolean;
   heightOverridePx?: number;
   onIncreaseHeight: () => void;
   onDecreaseHeight: () => void;
@@ -30,17 +29,9 @@ export interface ChartLaneProps {
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  // False while the mouse is outside the whole chart area (ChartLaneList),
-  // even though crosshairPosition itself stays put -- see ChartLaneList.
-  showTooltip: boolean;
 }
 
 type ViewMode = "value" | "rate";
-
-// Roughly ChartArea's sticky header height (progress bar + legend + distance
-// axis) plus the point-tooltip's own height and a small margin -- below this
-// screen Y, opening the tooltip upward would push it behind that header.
-const TOOLTIP_FLIP_THRESHOLD_PX = 170;
 
 // Points sit on a distance-sorted grid -- binary search instead of a linear
 // scan, since this runs on every crosshair move (up to 2x per visible lane).
@@ -59,6 +50,18 @@ function findNearestIndex(points: InterpolatedPoint[], distance: number): number
     return lo - 1;
   }
   return lo;
+}
+
+// Rate mode's last grid point is always null by design (computeRateOfChange
+// has no next sample to diff against), so the literal last index isn't a
+// safe "last known value" -- walk back to the last non-null one instead.
+function lastValueIndex(points: InterpolatedPoint[]): number {
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i].value !== null) {
+      return i;
+    }
+  }
+  return points.length - 1;
 }
 
 // The y-axis range for a lane: either the sensor's fixed manifest range
@@ -116,7 +119,9 @@ function formatValue(sensor: SensorDefinition, value: number | null, viewMode: V
     }
   }
   const unit = viewMode === "rate" ? `${sensor.unit}/m` : sensor.unit;
-  return `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`;
+  // Discrete values are never fractional -- float32 is just the wire format.
+  const precision = sensor.type === "discrete" ? 0 : 1;
+  return `${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
 }
 
 // One uPlot instance per sensor. Renders primary (solid) and, when present,
@@ -134,7 +139,6 @@ export function ChartLane({
   crosshairPosition,
   onCrosshairMove,
   focusZone,
-  isBottomLane,
   heightOverridePx,
   onIncreaseHeight,
   onDecreaseHeight,
@@ -142,7 +146,6 @@ export function ChartLane({
   onMoveDown,
   canMoveUp,
   canMoveDown,
-  showTooltip,
 }: ChartLaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
@@ -258,7 +261,7 @@ export function ChartLane({
 
     const options: uPlot.Options = {
       width: container.clientWidth || 600,
-      height: getChartHeightPx(sensor, isBottomLane, heightOverridePx),
+      height: getChartHeightPx(heightOverridePx),
       series,
       scales: {
         x: { time: false },
@@ -284,8 +287,7 @@ export function ChartLane({
       },
       axes: [
         {
-          show: isBottomLane,
-          label: isBottomLane ? "Distance (m)" : undefined,
+          show: true,
           stroke: axisColor,
           grid: { stroke: gridColor },
           ticks: { stroke: gridColor },
@@ -295,6 +297,14 @@ export function ChartLane({
           stroke: axisColor,
           grid: { stroke: gridColor },
           ticks: { stroke: gridColor },
+          // Discrete sensors only take whole-number values -- uPlot's
+          // default increments include fractional ticks like "2.5".
+          ...(sensor.type === "discrete"
+            ? {
+                incrs: [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000],
+                values: (_u: uPlot, splits: number[]) => splits.map((v) => String(Math.round(v))),
+              }
+            : {}),
         },
       ],
       legend: { show: false },
@@ -369,7 +379,7 @@ export function ChartLane({
     );
 
     const resizeObserver = new ResizeObserver(() => {
-      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(sensor, isBottomLane, heightOverridePx) });
+      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(heightOverridePx) });
     });
     resizeObserver.observe(container);
 
@@ -406,7 +416,7 @@ export function ChartLane({
     // rather than juggle a stale heightOverridePx closure inside the
     // ResizeObserver callback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sensor.key, sensor.type, effectiveViewMode, hasReference, isBottomLane, heightOverridePx]);
+  }, [sensor.key, sensor.type, effectiveViewMode, hasReference, heightOverridePx]);
 
   // Data updates -- doesn't rebuild the chart.
   useEffect(() => {
@@ -488,45 +498,65 @@ export function ChartLane({
     chartRef.current?.redraw(false);
   }, [focusZone, effectiveViewMode]);
 
-  const primaryIdx = crosshairPosition === null ? null : findNearestIndex(displayedPrimary, crosshairPosition);
-  const primaryValue = primaryIdx === null ? null : displayedPrimary[primaryIdx]?.value ?? null;
-  const referenceIdx =
-    crosshairPosition === null || !hasReference ? null : findNearestIndex(displayedReference!, crosshairPosition);
-  const referenceValue = referenceIdx === null || !hasReference ? null : displayedReference![referenceIdx]?.value ?? null;
-
-  // Follows the selected point instead of a static header readout -- pixel
-  // position comes straight from the live chart instance (same valToPos
-  // uPlot itself uses), so it tracks zoom/pan and per-lane height changes
-  // with no extra bookkeeping. Anchored to the primary series' y; a
-  // reference row is appended into the same box rather than getting its own
-  // separately-positioned tooltip, since two floating boxes chasing two
-  // different y positions would be more visual noise than signal.
-  const chart = chartRef.current;
-  const tooltipLeft =
-    !collapsed && chart !== null && crosshairPosition !== null ? chart.valToPos(crosshairPosition, "x") : null;
-  // Anchored to whichever trace is actually visible -- if primary is
-  // legend-toggled off, anchoring to its (invisible) y-position left the
-  // tooltip floating disconnected from the reference line the user is
-  // actually looking at.
-  const anchorValue = primaryVisible ? primaryValue : hasReference && referenceVisible ? referenceValue : null;
-  const tooltipTop = tooltipLeft !== null && anchorValue !== null ? chart!.valToPos(anchorValue, "y") : null;
-
-  // Opens above the point by default, but the topmost lane sits right under
-  // ChartArea's sticky header (progress bar + legend + distance axis) --
-  // for a point near the top of that lane's own plot, opening upward pushes
-  // the tooltip behind that header (lower z-index, same bug class as
-  // InfoTooltip's placement fix). Flip below when there isn't roughly a
-  // tooltip's worth of room above the point on screen.
-  const pointScreenTop =
-    tooltipTop !== null ? (containerRef.current?.getBoundingClientRect().top ?? 0) + tooltipTop : null;
-  const tooltipBelow = pointScreenTop !== null && pointScreenTop < TOOLTIP_FLIP_THRESHOLD_PX;
+  // No crosshair -> falls back to the lap's last point, never blank.
+  const primaryIdx =
+    crosshairPosition === null ? lastValueIndex(displayedPrimary) : findNearestIndex(displayedPrimary, crosshairPosition);
+  const primaryValue = displayedPrimary[primaryIdx]?.value ?? null;
+  const referenceIdx = !hasReference
+    ? null
+    : crosshairPosition === null
+      ? lastValueIndex(displayedReference!)
+      : findNearestIndex(displayedReference!, crosshairPosition);
+  const referenceValue = referenceIdx === null ? null : displayedReference![referenceIdx]?.value ?? null;
 
   return (
-    <div className="border-b border-slate-800">
-      <div className="flex items-center justify-between gap-3 bg-slate-900 px-3 py-1.5 text-xs">
+    <div className="grid grid-cols-[180px_1fr] border-b border-slate-800">
+      <div className="flex flex-col gap-1.5 bg-slate-900 px-3 py-2 text-xs">
         <span className="font-medium text-slate-200">{sensor.label}</span>
-        <div className="flex items-center gap-3 text-slate-300">
-          <div className="flex items-center gap-0.5 border-r border-slate-700 pr-2">
+        {hasReference ? (
+          // Big anchor value would just repeat one of these rows -- skip it.
+          <div className="flex flex-col gap-0.5 text-base font-semibold">
+            <span style={{ color: primaryColor }}>{formatValue(sensor, primaryValue, effectiveViewMode)}</span>
+            <span style={{ color: referenceColor }}>{formatValue(sensor, referenceValue, effectiveViewMode)}</span>
+          </div>
+        ) : (
+          <span className="text-xl font-semibold" style={{ color: primaryColor }}>
+            {formatValue(sensor, primaryValue, effectiveViewMode)}
+          </span>
+        )}
+        {canRate && (
+          <div className="flex items-center gap-1 text-slate-300">
+            <button
+              type="button"
+              onClick={() => setViewMode("value")}
+              className={`rounded px-1.5 py-0.5 ${viewMode === "value" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
+            >
+              Value
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("rate")}
+              className={`rounded px-1.5 py-0.5 ${viewMode === "rate" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
+            >
+              Rate
+            </button>
+            {/* Always hoverable, not just once Rate is active -- the point
+                is to explain the feature *before* someone tries it. The
+                negative-values note only makes sense once Rate mode is
+                showing real data, so it's appended only then. */}
+            <InfoTooltip
+              text={
+                viewMode === "rate"
+                  ? "Shows how fast this value is changing per metre of track -- useful for spotting where wear, temperature, or other values change fastest, like which corner is hardest on your tyres. Values can go negative -- that just means this sensor is decreasing at that point on track, even if its overall value never goes negative."
+                  : "Shows how fast this value is changing per metre of track -- useful for spotting where wear, temperature, or other values change fastest, like which corner is hardest on your tyres."
+              }
+            >
+              <span className="cursor-help text-slate-500">ⓘ</span>
+            </InfoTooltip>
+          </div>
+        )}
+        <div className="mt-auto flex items-center gap-2 border-t border-slate-800 pt-1.5 text-slate-300">
+          <div className="flex items-center gap-0.5 border-r border-slate-700 pr-1.5">
             <button
               type="button"
               onClick={onMoveUp}
@@ -562,67 +592,12 @@ export function ChartLane({
               +
             </button>
           </div>
-          {canRate && (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setViewMode("value")}
-                className={`rounded px-1.5 py-0.5 ${viewMode === "value" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
-              >
-                Value
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("rate")}
-                className={`rounded px-1.5 py-0.5 ${viewMode === "rate" ? "bg-slate-700 text-slate-100" : "text-slate-500"}`}
-              >
-                Rate
-              </button>
-              {/* Always hoverable, not just once Rate is active -- the point
-                  is to explain the feature *before* someone tries it. The
-                  negative-values note only makes sense once Rate mode is
-                  showing real data, so it's appended only then. */}
-              <InfoTooltip
-                text={
-                  viewMode === "rate"
-                    ? "Shows how fast this value is changing per metre of track -- useful for spotting where wear, temperature, or other values change fastest, like which corner is hardest on your tyres. Values can go negative -- that just means this sensor is decreasing at that point on track, even if its overall value never goes negative."
-                    : "Shows how fast this value is changing per metre of track -- useful for spotting where wear, temperature, or other values change fastest, like which corner is hardest on your tyres."
-                }
-              >
-                <span className="cursor-help text-slate-500">ⓘ</span>
-              </InfoTooltip>
-            </div>
-          )}
           <button type="button" onClick={() => setCollapsed((c) => !c)} className="text-slate-500 hover:text-slate-200">
             {collapsed ? "∨" : "∧"}
           </button>
         </div>
       </div>
-      <div className="relative">
-        <div ref={containerRef} style={{ display: collapsed ? "none" : "block" }} />
-        {showTooltip && tooltipTop !== null && (
-          <div
-            className="pointer-events-none absolute z-10 flex flex-col gap-0.5 whitespace-nowrap rounded-md border border-slate-700 bg-slate-800/95 px-2 py-1 text-xs text-slate-100 shadow-lg"
-            style={{
-              left: tooltipLeft!,
-              top: tooltipTop,
-              transform: tooltipBelow ? "translate(-50%, 10px)" : "translate(-50%, calc(-100% - 10px))",
-            }}
-          >
-            <span className="text-[10px] text-slate-400">{Math.round(crosshairPosition!)} m</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: primaryColor }} />
-              {formatValue(sensor, primaryValue, effectiveViewMode)}
-            </span>
-            {hasReference && (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: referenceColor }} />
-                {formatValue(sensor, referenceValue, effectiveViewMode)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      <div ref={containerRef} style={{ display: collapsed ? "none" : "block" }} />
     </div>
   );
 }

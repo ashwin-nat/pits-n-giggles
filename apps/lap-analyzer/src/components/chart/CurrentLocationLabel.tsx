@@ -47,9 +47,9 @@ export function CurrentLocationLabel({ crosshairPosition }: CurrentLocationLabel
 
   return (
     <div className="border-b border-slate-800 bg-slate-900 px-4 py-1.5 text-center text-sm font-medium text-slate-200">
-      {/* Non-breaking space keeps the row's height stable when there's
-          nothing to show, instead of the header jumping as you hover. */}
-      {label ?? " "}
+      {/* Real nbsp (not " ", which collapses) keeps the row's line box
+          when label is null or an unnamed corner's "". */}
+      {label || " "}
     </div>
   );
 }

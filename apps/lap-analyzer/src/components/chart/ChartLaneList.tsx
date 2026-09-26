@@ -7,11 +7,11 @@ import { buildDistanceGrid, interpolateToGrid, type InterpolatedPoint } from "..
 import {
   COMPARISON_TRACE_COLOR,
   DELTA_TRACE_COLOR,
+  LANE_HEIGHT_PX,
   MAX_LANE_HEIGHT_PX,
   MIN_LANE_HEIGHT_PX,
   LANE_HEIGHT_STEP_PX,
   PRIMARY_TRACE_COLOR,
-  getLaneHeightPx,
 } from "../../lib/chartConstants";
 import { ChartLane } from "./ChartLane";
 import type { ChartTraceVisibility } from "./ChartLegend";
@@ -29,21 +29,12 @@ const DELTA_SENSOR: SensorDefinition = {
   type: "continuous",
 };
 
-export interface ChartDomain {
-  dataMin: number;
-  dataMax: number;
-}
-
 interface ChartLaneListProps {
   visibility: ChartTraceVisibility;
   // Lifted to ChartArea so TrackProgressBar's cursor marker can share the
   // same crosshair position -- see ChartArea.
   crosshairPosition: number | null;
   onCrosshairMove: (position: number | null) => void;
-  // Reports the loaded lap's distance range (the same ceil(first)/floor(last)
-  // grid bound every ChartLane derives its own zoom-clamp from) so ChartArea
-  // can drive the shared DistanceAxis above the lanes -- see ChartArea.
-  onDomainChange: (domain: ChartDomain | null) => void;
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
@@ -61,7 +52,6 @@ export function ChartLaneList({
   visibility,
   crosshairPosition,
   onCrosshairMove,
-  onDomainChange,
 }: ChartLaneListProps) {
   const primary = useTelemetryStore((state) => state.primary);
   const reference = useTelemetryStore((state) => state.reference);
@@ -76,15 +66,6 @@ export function ChartLaneList({
   // added/removed without reshuffling lanes that stay selected.
   const [order, setOrder] = useState<string[]>(() => [...primary.sensors]);
   const [heightOverrides, setHeightOverrides] = useState<Record<string, number>>({});
-
-  // Point-tooltip visibility -- separate from crosshairPosition, which stays
-  // put on purpose when the mouse leaves (see ChartLane's setCursor hook).
-  // Tooltips shouldn't: they should disappear together as soon as the mouse
-  // leaves this whole area, not linger at the last position. Tracked on the
-  // wrapping div below rather than per-lane, since React's onMouseEnter/Leave
-  // only fires for the wrapper's own boundary, not every child crossed while
-  // moving between lanes.
-  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     setOrder((prev) => {
@@ -135,8 +116,6 @@ export function ChartLaneList({
         referenceMap.set(key, interpolateToGrid(referenceTelemetry, sensor, grid));
       }
     }
-    const domain: ChartDomain | null =
-      grid.length > 0 ? { dataMin: grid[0], dataMax: grid[grid.length - 1] } : null;
 
     // Delta trace: primary's elapsed lap time minus reference's, at each point on
     // the shared distance grid -- i.e. how far ahead/behind primary is at that
@@ -154,16 +133,9 @@ export function ChartLaneList({
       });
     }
 
-    return { primaryMap, referenceMap, domain, deltaPoints };
+    return { primaryMap, referenceMap, deltaPoints };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry, referenceTelemetry, session, primary.sensors.join(",")]);
-
-  // Reported up rather than read directly by ChartArea/DistanceAxis --
-  // interpolated (and the grid it's built from) is this component's own
-  // memoized state, not something a sibling can reach into.
-  useEffect(() => {
-    onDomainChange(interpolated?.domain ?? null);
-  }, [interpolated, onDomainChange]);
 
   if (primary.lapNumber === null) {
     return <EmptyState>Select a lap to begin</EmptyState>;
@@ -202,7 +174,7 @@ export function ChartLaneList({
       return;
     }
     setHeightOverrides((prev) => {
-      const current = prev[key] ?? getLaneHeightPx(sensor);
+      const current = prev[key] ?? LANE_HEIGHT_PX;
       const next = Math.min(MAX_LANE_HEIGHT_PX, Math.max(MIN_LANE_HEIGHT_PX, current + deltaPx));
       return { ...prev, [key]: next };
     });
@@ -227,7 +199,7 @@ export function ChartLaneList({
   const orderedKeys = order.filter((key) => primary.sensors.includes(key));
 
   return (
-    <div className="relative" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
+    <div className="relative">
       {/* isFetching with data already present (from placeholderData -- see
           useTelemetry) means the lap/sensors just changed and the previous
           lap's chart is still showing underneath while the new one loads. */}
@@ -247,7 +219,6 @@ export function ChartLaneList({
           crosshairPosition={crosshairPosition}
           onCrosshairMove={onCrosshairMove}
           focusZone={activeSection}
-          isBottomLane={false}
           // Not part of `order`/heightOverrides -- it's a synthetic lane, always
           // pinned above the real sensor lanes, so move/resize don't apply to it.
           onIncreaseHeight={() => {}}
@@ -256,7 +227,6 @@ export function ChartLaneList({
           onMoveDown={() => {}}
           canMoveUp={false}
           canMoveDown={false}
-          showTooltip={isHovering}
         />
       )}
       {orderedKeys.map((key, index) => {
@@ -280,7 +250,6 @@ export function ChartLaneList({
             crosshairPosition={crosshairPosition}
             onCrosshairMove={onCrosshairMove}
             focusZone={activeSection}
-            isBottomLane={index === orderedKeys.length - 1}
             heightOverridePx={heightOverrides[key]}
             onIncreaseHeight={() => resizeLane(key, LANE_HEIGHT_STEP_PX)}
             onDecreaseHeight={() => resizeLane(key, -LANE_HEIGHT_STEP_PX)}
@@ -288,7 +257,6 @@ export function ChartLaneList({
             onMoveDown={() => moveLane(key, 1)}
             canMoveUp={index > 0}
             canMoveDown={index < orderedKeys.length - 1}
-            showTooltip={isHovering}
           />
         );
       })}

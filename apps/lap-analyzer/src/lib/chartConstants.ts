@@ -1,7 +1,6 @@
 // Hardcoded chart tuning constants -- "hardcode now, make configurable later
 // if needed" per the frontend spec (see its Rate section). Nothing here reads
 // from the sensor manifest or a settings source.
-import type { SensorDefinition } from "../types/api";
 
 // The shared distance grid interpolation/rate-of-change operate on. 1 metre
 // per the frontend spec's Interpolation section.
@@ -12,36 +11,19 @@ export const DISTANCE_GRID_RESOLUTION_M = 1;
 // section for why this is a sample count rather than a distance.
 export const SMOOTHING_WINDOW_SAMPLES = 10;
 
-// Taller than the frontend spec's original 120/80/60 table -- that felt
-// visibly squished in practice, especially for discrete step lines.
-export const CONTINUOUS_LANE_HEIGHT_PX = 160;
-export const CONTINUOUS_SMALL_LANE_HEIGHT_PX = 110;
-export const DISCRETE_LANE_HEIGHT_PX = 90;
+// One height for every sensor type -- a shorter discrete lane next to a
+// taller continuous one read as a layout bug, not a deliberate difference.
+export const LANE_HEIGHT_PX = 160;
 
-// The frontend spec calls out throttle/brake/ERS as "continuous small" by
-// example, but the real sensor catalog doesn't exist yet -- it's built by
-// the ingest layer in Phase 7. This is a provisional key list matched
-// against the fixture's sensors, meant to be revisited once real sensor keys
-// are known, not a final catalog.
-const SMALL_CONTINUOUS_SENSOR_KEYS = new Set(["throttle", "brake"]);
-
-export function getLaneHeightPx(sensor: SensorDefinition): number {
-  if (sensor.type === "discrete") {
-    return DISCRETE_LANE_HEIGHT_PX;
-  }
-  return SMALL_CONTINUOUS_SENSOR_KEYS.has(sensor.key) ? CONTINUOUS_SMALL_LANE_HEIGHT_PX : CONTINUOUS_LANE_HEIGHT_PX;
-}
-
-// The x-axis (tick labels + "Distance (m)" title, shown only on the
-// bottom-most lane per spec) needs its own vertical space on top of the
-// plot area -- it isn't optional headroom the lane height already includes.
-// Without this, whichever lane ends up on the bottom loses most of its
-// already-small height to axis text, squeezing the actual data line flush
-// against the top border (most visible on a short discrete lane).
+// The x-axis (tick labels + "Distance (m)" title) needs its own vertical
+// space on top of the plot area -- it isn't optional headroom the lane
+// height already includes. Every lane renders its own axis now (ChartLane),
+// so this is unconditional; without it the data line would sit flush
+// against the plot's bottom edge, squeezed by axis text drawn over it.
 export const X_AXIS_EXTRA_HEIGHT_PX = 40;
 
-export function getChartHeightPx(sensor: SensorDefinition, isBottomLane: boolean, heightOverridePx?: number): number {
-  return (heightOverridePx ?? getLaneHeightPx(sensor)) + (isBottomLane ? X_AXIS_EXTRA_HEIGHT_PX : 0);
+export function getChartHeightPx(heightOverridePx?: number): number {
+  return (heightOverridePx ?? LANE_HEIGHT_PX) + X_AXIS_EXTRA_HEIGHT_PX;
 }
 
 // Per-lane resize step/bounds -- view-local state (ChartLaneList), not
