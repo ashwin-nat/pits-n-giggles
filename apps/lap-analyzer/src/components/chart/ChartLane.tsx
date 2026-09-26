@@ -252,7 +252,7 @@ export function ChartLane({
 
     const options: uPlot.Options = {
       width: container.clientWidth || 600,
-      height: getChartHeightPx(sensor, heightOverridePx),
+      height: getChartHeightPx(heightOverridePx),
       series,
       scales: {
         x: { time: false },
@@ -362,7 +362,7 @@ export function ChartLane({
     );
 
     const resizeObserver = new ResizeObserver(() => {
-      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(sensor, heightOverridePx) });
+      chart.setSize({ width: container.clientWidth || 600, height: getChartHeightPx(heightOverridePx) });
     });
     resizeObserver.observe(container);
 

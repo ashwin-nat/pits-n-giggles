@@ -7,11 +7,11 @@ import { buildDistanceGrid, interpolateToGrid, type InterpolatedPoint } from "..
 import {
   COMPARISON_TRACE_COLOR,
   DELTA_TRACE_COLOR,
+  LANE_HEIGHT_PX,
   MAX_LANE_HEIGHT_PX,
   MIN_LANE_HEIGHT_PX,
   LANE_HEIGHT_STEP_PX,
   PRIMARY_TRACE_COLOR,
-  getLaneHeightPx,
 } from "../../lib/chartConstants";
 import { ChartLane } from "./ChartLane";
 import type { ChartTraceVisibility } from "./ChartLegend";
@@ -174,7 +174,7 @@ export function ChartLaneList({
       return;
     }
     setHeightOverrides((prev) => {
-      const current = prev[key] ?? getLaneHeightPx(sensor);
+      const current = prev[key] ?? LANE_HEIGHT_PX;
       const next = Math.min(MAX_LANE_HEIGHT_PX, Math.max(MIN_LANE_HEIGHT_PX, current + deltaPx));
       return { ...prev, [key]: next };
     });
