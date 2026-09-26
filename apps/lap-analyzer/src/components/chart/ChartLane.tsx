@@ -107,7 +107,12 @@ function formatValue(sensor: SensorDefinition, value: number | null, viewMode: V
     }
   }
   const unit = viewMode === "rate" ? `${sensor.unit}/m` : sensor.unit;
-  return `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`;
+  // Discrete sensors (gear, DRS, flags, ...) are never fractional -- values
+  // just happen to arrive as float32 because everything is serialized that
+  // way (see the pngt format), not because the real quantity has a decimal
+  // part. Rendering "8.0" would claim a precision that doesn't exist.
+  const precision = sensor.type === "discrete" ? 0 : 1;
+  return `${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
 }
 
 // One uPlot instance per sensor. Renders primary (solid) and, when present,
