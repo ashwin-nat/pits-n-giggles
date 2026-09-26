@@ -81,7 +81,8 @@ def build_pngt_write_args(
         if driver_obj is None or not driver_obj.is_valid:
             continue
         if in_export_scope(
-            is_public=bool(driver_obj.m_driver_info.telemetry_setting),
+            # is_public=bool(driver_obj.m_driver_info.telemetry_setting),
+            is_public=True, # TODO: figure this out later
             is_player=bool(driver_obj.m_driver_info.is_player),
             is_spectating=is_spectating,
             spectator_mode=lap_recording_settings.record_in_spectator_mode,
