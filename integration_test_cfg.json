@@ -193,6 +193,7 @@
         "pace_comp_show_title": true,
         "show_traffic_monitor": true,
         "traffic_monitor_show_title": true,
+        "show_last_corner_stats": true,
         "auto_hide_in_menu": true,
         "menu_silence_threshold_sec": 3.0,
         "overlays_opacity": 100,
@@ -205,11 +206,6 @@
             "timing_tower": {
                 "x": -1737,
                 "y": 17,
-                "scale_factor": 1.0
-            },
-            "mfd": {
-                "x": -842,
-                "y": 27,
                 "scale_factor": 1.0
             },
             "input_telemetry": {
@@ -235,6 +231,11 @@
             "pu": {
                 "x": -1831,
                 "y": 217,
+                "scale_factor": 1.0
+            },
+            "mfd": {
+                "x": -842,
+                "y": 27,
                 "scale_factor": 1.0
             },
             "fuel_info": {
@@ -275,6 +276,11 @@
             "traffic_monitor_standalone": {
                 "x": -684,
                 "y": 810,
+                "scale_factor": 1.0
+            },
+            "last_corner_stats_standalone": {
+                "x": -926,
+                "y": 677,
                 "scale_factor": 1.0
             }
         }
@@ -351,5 +357,14 @@
     "MCP": {
         "mcp_http_server_enable": true,
         "mcp_http_port": 4770
+    },
+    "LapRecording": {
+        "enable": true,
+        "record_other_cars": true,
+        "record_in_spectator_mode": true,
+        "record_in_race": true,
+        "record_in_quali": true,
+        "record_in_fp": true,
+        "record_in_tt": true
     }
 }
