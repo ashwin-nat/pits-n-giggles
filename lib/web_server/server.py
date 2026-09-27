@@ -104,6 +104,10 @@ class BaseWebServer:
         )
         self.m_app.config['PROPAGATE_EXCEPTIONS'] = False
 
+        # Gzip only the Quart layer; Engine.IO's own polling responses set their own
+        # Content-Length and don't tolerate being re-compressed after the fact.
+        compressed_app = GZipMiddleware(self.m_app, minimum_size=500)
+
         if enable_socketio:
             self.m_sio = socketio.AsyncServer(
                 async_mode='asgi',
@@ -111,12 +115,11 @@ class BaseWebServer:
                 logger=False,
                 engineio_logger=False
             )
-            self.m_sio_app = socketio.ASGIApp(self.m_sio, self.m_app)
+            self.m_sio_app = socketio.ASGIApp(self.m_sio, compressed_app)
             self._register_base_socketio_events()
         else:
             self.m_sio = None
-            self.m_sio_app = self.m_app
-        self.m_sio_app = GZipMiddleware(self.m_sio_app, minimum_size=500)
+            self.m_sio_app = compressed_app
         self._server: Optional[uvicorn.Server] = None
         self._define_static_file_routes()
 
