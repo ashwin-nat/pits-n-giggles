@@ -320,6 +320,11 @@ def start_app(config_file: str, port: int, coverage_enabled: bool, cwd: Optional
     # Inherited by the launcher and everything it spawns.
     enable_integration_test_mode()
 
+    # Native access-violation crashes leave no Python traceback. faulthandler dumps the
+    # crashing thread's stack to stderr, which the launcher forwards into png.log like any
+    # other child output line. Inherited by the launcher and everything it spawns.
+    os.environ["PYTHONFAULTHANDLER"] = "1"
+
     app_cmd_base = [
         "-m", "apps.launcher",
         "--ipc-port", str(port),
@@ -635,6 +640,12 @@ def main(config_file: str, telemetry_port: int, http_port: int, proto: str, cove
     try:
         # Process each test file
         for index, file in enumerate(files):
+            if _report_if_app_died():
+                logger.test_log(
+                    f"[FATAL] Aborting remaining {len(files) - index} file(s) - "
+                    f"the app is gone, so there is nothing left to replay against.")
+                break
+
             logger.test_log("=" * 80)
             logger.test_log(f">>> Test {index + 1}/{len(files)}: {Path(file).name} <<<")
             logger.test_log("=" * 80)
