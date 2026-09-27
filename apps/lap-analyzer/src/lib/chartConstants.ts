@@ -13,7 +13,7 @@ export const SMOOTHING_WINDOW_SAMPLES = 10;
 
 // One height for every sensor type -- a shorter discrete lane next to a
 // taller continuous one read as a layout bug, not a deliberate difference.
-export const LANE_HEIGHT_PX = 160;
+export const LANE_HEIGHT_PX = 100;
 
 // The x-axis (tick labels + "Distance (m)" title) needs its own vertical
 // space on top of the plot area -- it isn't optional headroom the lane
