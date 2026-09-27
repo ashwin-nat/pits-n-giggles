@@ -47,6 +47,27 @@ export function attachWheelZoomAndPan(
     return { distanceStart: start, distanceEnd: end };
   }
 
+  // Unlike `clamp`, preserves width by translating instead of clamping each
+  // edge independently -- otherwise panning from full zoom-out shrank the
+  // window on the first pixel of drag (looked like a zoom).
+  function clampPan(min: number, max: number): ViewportRange {
+    const { dataMin, dataMax } = getBounds();
+    const width = max - min;
+    if (width >= dataMax - dataMin) {
+      return { distanceStart: dataMin, distanceEnd: dataMax };
+    }
+    let start = min;
+    let end = max;
+    if (start < dataMin) {
+      start = dataMin;
+      end = dataMin + width;
+    } else if (end > dataMax) {
+      end = dataMax;
+      start = dataMax - width;
+    }
+    return { distanceStart: start, distanceEnd: end };
+  }
+
   function onWheel(e: WheelEvent) {
     e.preventDefault();
     const { dataMin, dataMax } = getBounds();
@@ -71,6 +92,7 @@ export function attachWheelZoomAndPan(
 
   function stopDragging() {
     dragging = false;
+    over.style.cursor = "grab";
   }
 
   function onPointerDown(e: PointerEvent) {
@@ -86,6 +108,7 @@ export function attachWheelZoomAndPan(
     dragStartMin = u.scales.x.min ?? dataMin;
     dragStartMax = u.scales.x.max ?? dataMax;
     over.setPointerCapture(e.pointerId);
+    over.style.cursor = "grabbing";
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -104,7 +127,7 @@ export function attachWheelZoomAndPan(
     const deltaPx = e.clientX - dragStartX;
     const rect = over.getBoundingClientRect();
     const deltaVal = (deltaPx / rect.width) * (dragStartMax - dragStartMin);
-    const range = clamp(dragStartMin - deltaVal, dragStartMax - deltaVal);
+    const range = clampPan(dragStartMin - deltaVal, dragStartMax - deltaVal);
     u.setScale("x", { min: range.distanceStart, max: range.distanceEnd });
     onViewportChange(range);
   }
@@ -114,6 +137,7 @@ export function attachWheelZoomAndPan(
     over.releasePointerCapture(e.pointerId);
   }
 
+  over.style.cursor = "grab";
   over.addEventListener("wheel", onWheel, { passive: false });
   over.addEventListener("pointerdown", onPointerDown);
   over.addEventListener("pointermove", onPointerMove);
