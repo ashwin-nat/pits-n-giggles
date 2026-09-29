@@ -142,17 +142,22 @@ class WebServer(BaseWebServer):
 
     def define_routes(self) -> None:
         """Define all HTTP routes for the web server."""
+        self._defineHomeRoute()
         if not self.m_headless:
             self._defineTemplateFileRoutes()
             self._defineDataRoutes()
         self._defineSaveViewerRoutes()
 
-    def _defineTemplateFileRoutes(self) -> None:
-        """Define routes for rendering HTML templates."""
+    def _defineHomeRoute(self) -> None:
+        """Define the hub page. Headless hides its live-view links."""
 
         @self.http_route('/')
         async def homeView() -> str:
-            return await self.render_template('home.html', active_page='home', version=self.m_ver_str)
+            return await self.render_template(
+                'home.html', active_page='home', version=self.m_ver_str, headless=self.m_headless)
+
+    def _defineTemplateFileRoutes(self) -> None:
+        """Define routes for rendering HTML templates."""
 
         @self.http_route('/live')
         async def liveView() -> str:
@@ -279,7 +284,8 @@ class WebServer(BaseWebServer):
         )
         html = html.replace('</head>', f'{head_injection}</head>', 1)
 
-        sidebar_html = await self.render_template('partials/sidebar.html', active_page='save-viewer')
+        sidebar_html = await self.render_template(
+            'partials/sidebar.html', active_page='save-viewer', headless=self.m_headless)
         sidebar_js_url = url_for('static', filename='js/sidebar.js')
         html = html.replace('<body class="', '<body class="png-has-sidebar ', 1)
         html = html.replace('<div id="root">', f'{sidebar_html}<div id="root">', 1)
