@@ -164,6 +164,7 @@ datas += copy_metadata("fastmcp")
 # Frontend assets (CSS, HTML, JS)
 datas.extend(collect_directory("apps/frontend/css", "apps/frontend/css"))
 datas.extend(collect_directory("apps/frontend/html", "apps/frontend/html"))
+datas.extend(collect_directory("apps/frontend/icons", "apps/frontend/icons"))
 datas.extend(collect_directory("apps/frontend/js", "apps/frontend/js"))
 
 # All assets (icons, images, fonts, etc.)
