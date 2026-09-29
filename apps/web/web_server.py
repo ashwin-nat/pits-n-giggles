@@ -79,7 +79,8 @@ class WebServer(BaseWebServer):
                  session_dir: Path,
                  viewer_dir: Path,
                  on_ready: Callable[[], None],
-                 debug_mode: bool = False):
+                 debug_mode: bool = False,
+                 headless: bool = False):
         """
         Initialize the WebServer.
 
@@ -93,6 +94,8 @@ class WebServer(BaseWebServer):
                 subsystem is only genuinely up at that point, not when it finishes constructing, so
                 it owns the timing of the init-complete token.
             debug_mode (bool, optional): Enable or disable debug mode. Defaults to False.
+            headless (bool, optional): Serve only the save-viewer routes (no live routes, no
+                browser auto-open). Defaults to False.
         """
         super().__init__(
             port=settings.Network.server_port,
@@ -107,6 +110,7 @@ class WebServer(BaseWebServer):
             key_path=settings.HTTPS.key_path,
             debug_mode=debug_mode)
         self.m_on_ready: Callable[[], None] = on_ready
+        self.m_headless: bool = headless
         self.m_dealer: Optional[IpcDealerAsync] = None
         self.m_race_table_cache: Optional[Dict[str, Any]] = None
         self.m_stream_overlay_cache: Optional[Dict[str, Any]] = None
@@ -138,8 +142,9 @@ class WebServer(BaseWebServer):
 
     def define_routes(self) -> None:
         """Define all HTTP routes for the web server."""
-        self._defineTemplateFileRoutes()
-        self._defineDataRoutes()
+        if not self.m_headless:
+            self._defineTemplateFileRoutes()
+            self._defineDataRoutes()
         self._defineSaveViewerRoutes()
 
     def _defineTemplateFileRoutes(self) -> None:
@@ -397,7 +402,7 @@ class WebServer(BaseWebServer):
         asyncio.create_task(self._rebuild_session_cache(), name="Session Initial Scan")
         asyncio.create_task(self._sessions_watch_loop(), name="Session Watch Loop")
 
-        if self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
+        if not self.m_headless and self.m_auto_open_dashboard != AutoOpenDashboardMode.DISABLED:
             proto = 'https' if self.m_cert_path else 'http'
             path = _AUTO_OPEN_DASHBOARD_PATHS[self.m_auto_open_dashboard]
             webbrowser.open(f'{proto}://localhost:{self.m_port}{path}', new=2)

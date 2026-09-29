@@ -1308,3 +1308,26 @@ def test_run_subsystem_runs_a_healthy_subsystem():
         pass
 
     run_subsystem(_Fine)   # must not raise or exit
+
+# -------------------------------------- DATA PLANE OPT-OUT ------------------------------------------------------------
+
+def test_data_plane_opt_out_builds_no_endpoints():
+    """A subsystem that declares PUBSUB/DEALER but opts out builds none of them.
+
+    Settings are None under _boot_env, so building a declared endpoint would raise here.
+    """
+
+    class _Headless(_StubAsync):
+        PUBSUB = PubSubRole.SUBSCRIBER
+        DEALER = True
+
+        def should_run_data_plane(self):
+            return False
+
+    app = _Headless()
+    app._register_ipc_tasks()  # pylint: disable=protected-access
+    assert app._tasks == []  # pylint: disable=protected-access
+    with pytest.raises(AssertionError):
+        _ = app.subscriber
+    with pytest.raises(AssertionError):
+        _ = app.dealer

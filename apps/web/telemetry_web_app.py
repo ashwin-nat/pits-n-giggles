@@ -22,12 +22,14 @@
 
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, override
 
 from lib.file_path import get_app_base_dir
+from lib.logger import PngLogger, get_logger
 from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
-                           run_subsystem)
+                           arg, run_subsystem)
 from lib.version import get_version
 from lib.web_server import ClientType
 
@@ -36,11 +38,20 @@ from .web_server import WebServer
 
 # -------------------------------------- CLASS DEFINITIONS -------------------------------------------------------------
 
-class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
+@dataclass(frozen=True)
+class WebArgs(SubsystemArgs):
+    """The web app's flags, on top of the base --config-file and --debug."""
+
+    headless: bool = arg(False, "Run without a launcher or live data; serves the save-viewer only")
+    log_file: str = arg("png_web_headless.log", "Log file name (headless only)")
+
+class WebSubsystem(AsyncSubsystem[WebArgs]):
     """The unified web app - serves the live dashboards, save-viewer and home page.
 
     Consumes broker telemetry over pub/sub and bridges browser pulls to the backend over the
-    router/dealer channel.
+    router/dealer channel. With --headless it runs standalone: no launcher, no broker, no
+    backend, just the save-viewer served from the session directory. The config file must
+    already exist (see apps/generate_default_config.py).
     """
 
     CONFIG_REQUIRED = True
@@ -55,6 +66,27 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
     DEALER = True
 
     PROFILE = False
+
+    @override
+    def should_run_mgmt_ipc(self) -> bool:
+        """Headless runs have no launcher to handshake with."""
+
+        return not self.args.headless
+
+    @override
+    def should_run_data_plane(self) -> bool:
+        """Headless runs have no broker or backend to talk to."""
+
+        return not self.args.headless
+
+    @override
+    def make_logger(self) -> PngLogger:
+        """JSONL on stdout is the launcher's channel; headless logs plain text to a file."""
+
+        if self.args.headless:
+            return get_logger(
+                str(self.SUBSYS_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
+        return super().make_logger()
 
     def __init__(self) -> None:
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
@@ -76,8 +108,11 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
             session_dir=session_dir,
             viewer_dir=viewer_dir,
             on_ready=self.notify_ready,
-            debug_mode=self.args.debug)
+            debug_mode=self.args.debug,
+            headless=self.args.headless)
         self.add_task(self.web_server.run(), name="Web Server Task")
+        if self.args.headless:
+            return
 
         # Broker telemetry. These only cache the latest payload - emission to browsers happens
         # on the web server's own timer below, not at broker cadence.
@@ -114,6 +149,8 @@ class WebSubsystem(AsyncSubsystem[SubsystemArgs]):
             Dict[str, Any]: Stats body
         """
 
+        if self.args.headless:
+            return {"web_server": self.web_server.get_stats()}
         return {
             "web_server": self.web_server.get_stats(),
             "ipc_sub": self.subscriber.get_stats(),
