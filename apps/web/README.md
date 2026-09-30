@@ -42,7 +42,7 @@ Then open `http://localhost:<Network.server_port>/` (default 4768).
 | `--headless` | off | Run without a launcher or live data |
 | `--log-file` | `png_web_headless.log` | Log file (plain text). Nothing is written to stdout |
 | `--debug` | off | Debug logging |
-| `[config_file]` (positional) | `png_config.json` | Config to load |
+| `--config-file` | `png_config.json` | Config to load |
 
 ### Configuration
 
