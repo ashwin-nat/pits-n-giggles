@@ -123,6 +123,15 @@ def find_files(session_dir: Path, glob: str) -> List[Path]:
     ]
 
 
+def watch_filter(suffix: str, exclude_hidden: bool = True) -> Callable[[Any, str], bool]:
+    """Build an `awatch(watch_filter=...)` predicate accepting only `*<suffix>` files.
+    With `exclude_hidden`, names starting with '.' (cache files, sync-client dotfiles) are rejected."""
+    def _accept(_change: Any, path: str) -> bool:
+        name = Path(path).name
+        return name.endswith(suffix) and not (exclude_hidden and name.startswith('.'))
+    return _accept
+
+
 def _load_cache(cache_path: Path, app_version: str) -> Dict[str, Any]:
     try:
         with open(cache_path, 'rb') as f:

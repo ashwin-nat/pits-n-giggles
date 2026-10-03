@@ -44,8 +44,9 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from quart import send_file, url_for
 from watchfiles import awatch
 
-from .pngt_discovery import CACHE_FILE as PNGT_CACHE_FILE
-from .session_discovery import CACHE_FILE, build_session_list, formula_group_key
+from lib.file_discovery import watch_filter
+
+from .session_discovery import build_session_list, formula_group_key
 
 if TYPE_CHECKING:
     from .web_server import WebServer
@@ -242,9 +243,9 @@ async def sessions_watch_loop(server: "WebServer") -> None:
         server.m_logger.warning(
             "Session directory %s does not exist -- file watcher not started", server.m_session_dir)
         return
-    async for _ in awatch(
-            server.m_session_dir, stop_event=_watch_stop,
-            watch_filter=lambda _, p: not p.endswith((CACHE_FILE, PNGT_CACHE_FILE, '.pngt', '.tmp'))):
+    async for changes in awatch(
+            server.m_session_dir, stop_event=_watch_stop, watch_filter=watch_filter('.json')):
+        server.m_logger.debug("Session cache: change detected: %s", sorted(changes))
         try:
             await rebuild_session_cache(server)
         except Exception:  # pylint: disable=broad-exception-caught

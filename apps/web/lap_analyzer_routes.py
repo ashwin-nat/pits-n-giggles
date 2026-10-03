@@ -43,6 +43,7 @@ from pydantic import ValidationError
 from quart import url_for
 from watchfiles import awatch
 
+from lib.file_discovery import watch_filter
 from lib.pngt import (DriverNotFoundError, PngtError, read_lap_telemetry,
                       rename_session)
 from lib.track_segments_classifier import TrackSegmentsDatabase
@@ -50,9 +51,7 @@ from lib.track_segments_classifier import TrackSegmentsDatabase
 from .lap_analyzer_api import (RenameSessionRequest, api_error, driver_to_api,
                                lap_to_api, session_to_api,
                                telemetry_points_to_api, track_section_to_api)
-from .pngt_discovery import (CACHE_FILE, PngtSessionEntry,
-                             build_pngt_session_list)
-from .session_discovery import CACHE_FILE as JSON_CACHE_FILE
+from .pngt_discovery import PngtSessionEntry, build_pngt_session_list
 
 if TYPE_CHECKING:
     from .web_server import WebServer
@@ -365,19 +364,15 @@ async def rebuild_lap_analyzer_cache(server: "WebServer") -> None:
 
 
 async def lap_analyzer_watch_loop(server: "WebServer") -> None:
-    """Background task: rebuild the .pngt cache whenever watchfiles detects a
-    change. A separate watcher from sessions_watch_loop's, on the same directory --
-    each must ignore the *other* format's cache file as well as its own, or the two
-    watchers would keep re-triggering each other's rebuilds.
-    """
+    """Background task: rebuild the .pngt cache whenever a .pngt file changes."""
     if not server.m_session_dir.exists():
         server.m_logger.warning(
             "Session directory %s does not exist -- lap-analyzer file watcher not started",
             server.m_session_dir)
         return
-    async for _ in awatch(
-            server.m_session_dir, stop_event=_watch_stop,
-            watch_filter=lambda _, p: not p.endswith((CACHE_FILE, JSON_CACHE_FILE))):
+    async for changes in awatch(
+            server.m_session_dir, stop_event=_watch_stop, watch_filter=watch_filter('.pngt')):
+        server.m_logger.debug("Lap-analyzer cache: change detected: %s", sorted(changes))
         try:
             await rebuild_lap_analyzer_cache(server)
         except Exception:  # pylint: disable=broad-exception-caught

@@ -35,7 +35,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from lib.file_discovery import DiscoveryConfig, discover_all
+from lib.file_discovery import DiscoveryConfig, discover_all, watch_filter
 from lib.logger import PngLogger
 
 logging.setLoggerClass(PngLogger)
@@ -139,3 +139,23 @@ async def test_missing_session_dir_yields_nothing(tmp_path):
     alpha = _make_handler("*.alpha", ".cache_alpha.json.gz")
     results = await _run_all(tmp_path / "does-not-exist", [alpha])
     assert results[0] == []
+
+
+@pytest.mark.parametrize("path, expected", [
+    ("/s/race.json", True),
+    ("/s/sub/race.json", True),
+    ("/s/.png_session_cache.json.gz", False),
+    ("/s/.png_pngt_cache.json.gz", False),
+    ("/s/desktop.ini", False),
+    ("/s/race.json.tmp", False),
+    ("/s/race.pngt", False),
+    ("/s/.hidden.json", False),
+])
+def test_watch_filter_json(path, expected):
+    assert watch_filter('.json')(None, path) is expected
+
+
+def test_watch_filter_include_hidden():
+    accept = watch_filter('.gz', exclude_hidden=False)
+    assert accept(None, "/s/.png_session_cache.json.gz") is True
+    assert accept(None, "/s/race.json") is False
