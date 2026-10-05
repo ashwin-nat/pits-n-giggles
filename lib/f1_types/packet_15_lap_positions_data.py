@@ -67,7 +67,7 @@ class PacketLapPositionsData(F1PacketBase):
         super().__init__(header)
         self.m_numLaps: int
         self.m_lapStart: int
-        self.m_lapPositions: List[int]
+        self.m_lapPositions: List[List[int]]
         self.m_numCars: int
 
         self.m_numLaps, self.m_lapStart = self.COMPILED_PACKET_STRUCT_BASE.unpack(packet[:self.PACKET_LEN_BASE])

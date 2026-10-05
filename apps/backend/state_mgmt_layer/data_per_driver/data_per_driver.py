@@ -105,7 +105,7 @@ class DataPerDriver:
         m_warning_penalty_history (WarningPenaltyHistory): History of warnings and penalties received by the driver.
         m_packet_copies (PacketCopies): Copies of various data packets related to the driver's performance.
         m_per_lap_snapshots (Dict[int, PerLapSnapshotEntry]): Snapshots of the driver's performance per lap
-        m_position_history (List[int]): List of positions of the driver
+        m_position_history (Dict[int, int]): Game-sent position at the start of each lap index (0 = grid)
         m_pending_tyre_change (Optional[PendingTyreChange]): Tyre set change awaiting further packets, if any.
         m_current_set_last_seen_lap (Optional[int]): Lap at which a tyre sets packet last confirmed the fitted
                                                     set already recorded in the stint history.
@@ -208,10 +208,7 @@ class DataPerDriver:
         self.m_per_lap_snapshots: Dict[int, PerLapSnapshotEntry] = {}
 
         # Positions history (F1 25+)
-        if total_laps:
-            self.m_position_history: List[int] = [0] * (total_laps + 1) # +1 for zeroth lap
-        else:
-            self.m_position_history: List[int] = None
+        self.m_position_history: Dict[int, int] = {}
 
         # Tyre set change awaiting further packets
         self.m_pending_tyre_change: Optional[PendingTyreChange] = None
@@ -561,9 +558,6 @@ class DataPerDriver:
 
         self.m_tyre_info.m_tyre_wear_extrapolator.total_laps = total_laps
         self.m_car_info.m_fuel_rate_recommender.total_laps   = total_laps
-
-        if not self.m_position_history:
-            self.m_position_history = [0] * (total_laps + 1) # +1 for zeroth lap
 
     def _handleFlashBack(self, old_lap_number: int) -> None:
         """Handle a flashback. Remove data from the histories
@@ -1156,14 +1150,22 @@ class DataPerDriver:
         Returns:
             Dict[str, Any]: Position history JSON
         """
+        if self.m_position_history:
+            history = [
+                {"lap-number": lap, "position": position}
+                for lap, position in sorted(self.m_position_history.items())
+            ]
+        else:
+            history = [
+                {"lap-number": lap, "position": snapshot.m_track_position}
+                for lap, snapshot in self._getNextLapSnapshot()
+            ]
+
         return {
             "name": self.m_driver_info.name,
             "team": self.m_driver_info.team,
             "driver-number": self.m_driver_info.driver_number,
-            "driver-position-history": [
-                {"lap-number": lap, "position": snapshot.m_track_position}
-                for lap, snapshot in self._getNextLapSnapshot()
-            ],
+            "driver-position-history": history,
         }
 
     def getSpeedTrapRecordJSON(self) -> Dict[str, Any]:
@@ -1389,45 +1391,16 @@ class DataPerDriver:
         return F1Utils.SECTOR_STATUS_YELLOW
 
     def processPositionsHistoryUpdate(self, packet: PacketLapPositionsData, position_history: List[int]) -> None:
-        """Update the position history and packet copy.
+        """Merge a lap positions packet into the position history, keyed by lap index.
 
         Args:
             packet (PacketLapPositionsData): The incoming lap positions packet
             position_history (List[int]): The position history
         """
 
-        # Defer this update if the position history is not yet initialized
-        if not self.m_position_history:
-            self.m_logger.debug("Position history: %s", str(self.m_position_history))
-            return
-
-        assert len(position_history) == packet.m_numLaps
-
-        # Update the history and packet copy
-        self._insert_sublist(
-            target=self.m_position_history,
-            insert=position_history,
-            start=packet.m_lapStart
-        )
-
-    def _insert_sublist(self,target: List[int], insert: List[int], start: int) -> None:
-        """
-        Inserts elements of `insert` into `target` starting at index `start`.
-
-        Modifies the `target` list in-place.
-
-        Args:
-            target (List[int]): The list to insert into (must be large enough).
-            insert (List[int]): The list of items to insert.
-            start (int): The index in `target` at which to start inserting.
-
-        Raises:
-            ValueError: If the insertion would exceed the bounds of `target`.
-        """
-        if start < 0 or start + len(insert) > len(target):
-            raise ValueError("Insert range goes out of bounds of the target list.")
-
-        target[start:start + len(insert)] = insert
+        for offset, position in enumerate(position_history):
+            if position: # 0 = no record for this lap
+                self.m_position_history[packet.m_lapStart + offset] = position
 
     def addCarDamageRaceCtrlMsg(self, car_damage: CarDamageData) -> None:
         """Add race control messages for car damage changes
