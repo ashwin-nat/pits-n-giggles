@@ -67,59 +67,45 @@
     },
     {
       "type": "corner",
-      "start_m": 2350,
-      "end_m": 2600,
-      "name": "Clark",
-      "corner_number": 9
-    },
-    {
-      "type": "corner",
-      "start_m": 2700,
-      "end_m": 3130,
-      "name": "",
-      "corner_number": 10
-    },
-    {
-      "type": "corner",
       "start_m": 3175,
       "end_m": 3365,
       "name": "",
-      "corner_number": 11
+      "corner_number": 9
     },
     {
       "type": "corner",
       "start_m": 3366,
       "end_m": 3600,
       "name": "",
-      "corner_number": 12
+      "corner_number": 10
     },
     {
       "type": "corner",
       "start_m": 4000,
       "end_m": 4230,
       "name": "Ascari",
-      "corner_number": 13
+      "corner_number": 11
     },
     {
       "type": "corner",
       "start_m": 4300,
       "end_m": 4530,
       "name": "Stewart",
-      "corner_number": 14
+      "corner_number": 12
     },
     {
       "type": "corner",
       "start_m": 4550,
       "end_m": 4720,
       "name": "Prost",
-      "corner_number": 15
+      "corner_number": 13
     },
     {
       "type": "corner",
       "start_m": 4721,
       "end_m": 4900,
       "name": "",
-      "corner_number": 16
+      "corner_number": 14
     },
     {
       "type": "straight",
