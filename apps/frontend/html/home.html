@@ -12,6 +12,7 @@
         <p class="png-home-subtitle">v{{ version }}</p>
       </header>
       <div class="png-home-cards">
+        {% if not headless %}
         <a class="png-home-card" href="/live">
           <i class="bi bi-car-front-fill png-home-card-icon" aria-hidden="true"></i>
           <div class="png-home-card-title-row">
@@ -28,12 +29,14 @@
           </div>
           <p class="png-home-card-desc">Real-time track map, weather, tyre stints, and deep race-engineering detail.</p>
         </a>
+        {% endif %}
         <a class="png-home-card" href="/save-viewer/">
           <i class="bi bi-floppy-fill png-home-card-icon" aria-hidden="true"></i>
           <h2 class="png-home-card-title">Save Viewer</h2>
           <p class="png-home-card-desc">Browse and analyse previously saved sessions.</p>
         </a>
       </div>
+      {% if not headless %}
       <aside class="png-home-tip">
         <i class="bi bi-lightbulb png-home-tip-icon" aria-hidden="true"></i>
         <p class="png-home-tip-text">
@@ -44,5 +47,6 @@
           <em>Save View</em>.
         </p>
       </aside>
+      {% endif %}
     </main>
 {% endblock %}
