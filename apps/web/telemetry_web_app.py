@@ -23,9 +23,11 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
+import sys
 from pathlib import Path
 from typing import Any, Dict, override
 
+from lib.error_status import PNG_ERROR_CODE_HTTP_PORT_IN_USE
 from lib.file_path import get_app_base_dir
 from lib.logger import PngLogger, get_logger
 from lib.subsystem import (AsyncSubsystem, PngSubsysId, PubSubRole, SubsystemArgs,
@@ -94,6 +96,20 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
 
         if self.args.headless:
             print("Web server stopped.", flush=True)
+
+    @override
+    def main(self) -> None:
+        """Run, and tell a headless user on stderr when the port is taken (logs go to a file)."""
+
+        try:
+            super().main()
+        except SystemExit as e:
+            if self.args.headless and e.code == PNG_ERROR_CODE_HTTP_PORT_IN_USE:
+                net = self.settings.Network
+                print(f"Error: cannot start, port {net.server_port} on {net.bind_address} is already in use.\n"
+                      "Stop the other process or change Network.server_port in the config file.",
+                      file=sys.stderr, flush=True)
+            raise
 
     def __init__(self) -> None:
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
