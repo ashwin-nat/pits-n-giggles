@@ -40,10 +40,19 @@ class TrackSegmentsDatabase:
     ----------
     path : str | Path
         Directory containing JSON files, each with the structure expected by
-        :class:`TrackSegmentsClassifier`. Any invalid file raises at construction.
+        :class:`TrackSegmentsClassifier`.
     cache : bool
         Passed to every classifier as `use_cache`. No default: enable it only when
         this database is queried for one car moving along the track.
+
+    Raises
+    ------
+    pydantic.ValidationError
+        A file fails validation; the file name is attached to the error as a note.
+    ValueError
+        Two files declare the same circuit_number.
+    json.JSONDecodeError
+        A file is not valid JSON.
     """
 
     def __init__(self, path: "str | Path", *, cache: bool) -> None:
@@ -54,10 +63,20 @@ class TrackSegmentsDatabase:
             raise NotADirectoryError(f"Track segments path is not a directory: {base_path}")
 
         self._db: Dict[int, TrackSegmentsClassifier] = {}
-        for json_file in base_path.glob("*.json"):
+        sources: Dict[int, str] = {}
+        for json_file in sorted(base_path.glob("*.json")):
             with json_file.open("r", encoding="utf-8") as fh:
                 data = json.load(fh)
-            ts = TrackSegmentsClassifier.model_validate({**data, "use_cache": cache})
+            try:
+                ts = TrackSegmentsClassifier.model_validate({**data, "use_cache": cache})
+            except ValueError as e:
+                e.add_note(f"in track segments file {json_file.name}")
+                raise
+            if ts.circuit_number in sources:
+                raise ValueError(
+                    f"Duplicate circuit_number {ts.circuit_number} in {sources[ts.circuit_number]} and {json_file.name}"
+                )
+            sources[ts.circuit_number] = json_file.name
             self._db[ts.circuit_number] = ts
 
     def get_segment_info(self, circuit_number: int, lap_distance: float) -> Optional[SegmentInfo]:

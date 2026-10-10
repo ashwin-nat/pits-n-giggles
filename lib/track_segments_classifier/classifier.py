@@ -66,8 +66,8 @@ class TrackSegmentsClassifier(BaseModel):
     sectors: Optional[SectorBoundaries] = None
     use_cache: bool
 
-    # Cache is a dataclass because pydantic has a custom __setattr__ that has a significant performance penalty
-    # This way, since the cache property is not being directly set by the user, we can avoid the overhead penalty
+    # Public field for read speed (PrivateAttr reads are far slower); a dataclass so cache writes skip pydantic's __setattr__.
+    # Safe because the class is internal: input data never reaches it.
     cache: CacheState = Field(default_factory=CacheState, exclude=True)
 
     @model_validator(mode="after")

@@ -23,14 +23,12 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from .database import TrackSegmentsDatabase
-from .classifier import TrackSegmentsClassifier
 from .types import (ComplexCornerSegmentInfo, CornerSegmentInfo,
                     StraightSegmentInfo)
 
 # -------------------------------------- EXPORTS -----------------------------------------------------------------------
 
 __all__ = [
-    "TrackSegmentsClassifier",
     "TrackSegmentsDatabase",
 
     "ComplexCornerSegmentInfo",

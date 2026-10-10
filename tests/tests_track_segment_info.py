@@ -32,7 +32,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pydantic import ValidationError
 
 from lib.f1_types.packet_2_lap_data import LapData
-from lib.track_segments_classifier import TrackSegmentsClassifier, TrackSegmentsDatabase
+from lib.track_segments_classifier import TrackSegmentsDatabase
+from lib.track_segments_classifier.classifier import TrackSegmentsClassifier
 from lib.track_segments_classifier.types import (BaseSegmentInfo,
                                            ComplexCornerSegmentInfo,
                                            CornerSegmentInfo,
@@ -990,6 +991,29 @@ class TestTrackSegmentsDatabase(F1TelemetryUnitTestsBase):
             fh.write("{ not-valid-json }")
         with self.assertRaises(json.JSONDecodeError):
             TrackSegmentsDatabase(self._tmp.name, cache=False)
+
+    def _write(self, name: str, circuit: dict) -> None:
+        with open(os.path.join(self._tmp.name, name), "w", encoding="utf-8") as fh:
+            json.dump(circuit, fh)
+
+    def test_duplicate_circuit_number_raises(self):
+        """Two files with the same circuit_number fail construction and name both files."""
+        self._write("zz_dup.json", {**_CIRCUIT_A, "circuit_name": "Duplicate of Alpha"})
+        with self.assertRaises(ValueError) as ctx:
+            TrackSegmentsDatabase(self._tmp.name, cache=False)
+        message = str(ctx.exception)
+        self.assertIn("zz_dup.json", message)
+        self.assertIn(f"{_CIRCUIT_A['circuit_name']}.json", message)
+
+    def test_invalid_file_fails_construction(self):
+        """A file that fails validation fails the whole database and the error names the file."""
+        bad = {"circuit_name": "Bad", "circuit_number": 50, "track_length": 1000, "segments": [
+            {"type": "corner", "name": "", "start_m": 0, "end_m": 100, "corner_number": 2},  # numbering skips 1
+        ]}
+        self._write("bad_circuit.json", bad)
+        with self.assertRaises(ValidationError) as ctx:
+            TrackSegmentsDatabase(self._tmp.name, cache=False)
+        self.assertIn("bad_circuit.json", " ".join(ctx.exception.__notes__))
 
     # --- get_sector() -------------------------------------------------------------------------
 
