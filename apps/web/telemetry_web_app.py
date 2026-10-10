@@ -23,6 +23,7 @@
 # -------------------------------------- IMPORTS -----------------------------------------------------------------------
 
 from dataclasses import dataclass
+import signal
 import sys
 from pathlib import Path
 from typing import Any, Dict, override
@@ -169,6 +170,9 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
         """Run the server, then tear down. No launcher exists to ask for it, and uvicorn
         consumes SIGINT without ending the process."""
 
+        # Uvicorn re-raises SIGTERM on exit with whatever handler it replaced. The default
+        # kills the process before the exit funnel runs, so install one that doesn't.
+        signal.signal(signal.SIGTERM, lambda *_: self.request_shutdown("SIGTERM"))
         try:
             await self.web_server.run()
         finally:
