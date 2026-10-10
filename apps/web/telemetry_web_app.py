@@ -88,6 +88,13 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
                 str(self.SUBSYS_ID), self.args.debug, jsonl=False, file_path=self.args.log_file)
         return super().make_logger()
 
+    @override
+    def on_exit(self) -> None:
+        """Tell a headless user the server is down, whichever way it got there."""
+
+        if self.args.headless:
+            print("Web server stopped.", flush=True)
+
     def __init__(self) -> None:
         """Build the web server and wire the subscriber, dealer and emit timers to it."""
 
@@ -107,7 +114,7 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
             logger=self.logger,
             session_dir=session_dir,
             viewer_dir=viewer_dir,
-            on_ready=self.notify_ready,
+            on_ready=self._announce_headless if self.args.headless else self.notify_ready,
             debug_mode=self.args.debug,
             headless=self.args.headless)
         self.add_task(self.web_server.run(), name="Web Server Task")
@@ -140,6 +147,14 @@ class WebSubsystem(AsyncSubsystem[WebArgs]):
                           name="Race Table Emit Task")
         self.add_periodic(refresh_interval, streamOverlayEmitTask, self.web_server,
                           name="Stream Overlay Emit Task")
+
+    def _announce_headless(self) -> None:
+        """Print the startup banner to stdout; the log file is not where a user looks first."""
+
+        print(f"Pits n' Giggles web server started (headless), version {self.version}\n"
+              f"  Config: {Path(self.args.config_file).resolve()}\n"
+              f"  Log:    {Path(self.args.log_file).resolve()}\n"
+              "Press Ctrl+C to stop.", flush=True)
 
     @override
     def collect_stats(self) -> Dict[str, Any]:

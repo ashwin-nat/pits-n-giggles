@@ -40,7 +40,7 @@ Then open `http://localhost:<Network.server_port>/` (default 4768).
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--headless` | off | Run without a launcher or live data |
-| `--log-file` | `png_web_headless.log` | Log file (plain text). Nothing is written to stdout |
+| `--log-file` | `png_web_headless.log` | Log file (plain text). Stdout only gets the start and stop messages (version, config and log paths) |
 | `--debug` | off | Debug logging |
 | `--config-file` | `png_config.json` | Config to load |
 
