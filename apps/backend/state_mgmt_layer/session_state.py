@@ -239,6 +239,11 @@ class SessionState:
         Args:
             settings (LapAnalyzerSettings): The new lap analyzer settings
         """
+        if self.m_lap_analyzer_settings.enable and not settings.enable:
+            # Re-enabling within the same lap would otherwise splice both periods into one lap
+            for driver_obj in self.m_driver_data:
+                if driver_obj is not None:
+                    driver_obj.m_tel_rec.discard_in_progress_lap()
         self.m_lap_analyzer_settings = settings
 
     def setRaceOngoing(self) -> None:

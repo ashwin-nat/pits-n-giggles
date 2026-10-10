@@ -286,3 +286,22 @@ def test_recorder_flashback_case_b_with_no_earlier_lap_clears_buffers():
         "lap_distance": [3.0], "lap_time_ms": [0], "speed": [2.0], "gear": [2],
     }
     assert export.in_progress_lap.metadata.lap_number == 1
+
+def test_recorder_discard_in_progress_lap_keeps_completed_laps_and_restarts_cleanly():
+    """A pause in updates must not splice two recording periods into one lap."""
+    recorder = _recorder()
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=1.0, gear=1), frame_id=1)
+    recorder.on_lap_change(sample_lap_metadata(lap_number=1))
+    recorder.update(_FakeSnapshot(lap_distance=1.0, lap_time_ms=10, speed=2.0, gear=2), frame_id=2)
+    recorder.update(_FakeSnapshot(lap_distance=2.0, lap_time_ms=20, speed=3.0, gear=3), frame_id=3)
+
+    recorder.discard_in_progress_lap()
+    assert recorder.export().in_progress_lap is None
+    assert len(recorder.export().completed_laps) == 1
+
+    recorder.update(_FakeSnapshot(lap_distance=50.0, lap_time_ms=500, speed=9.0, gear=4), frame_id=100)
+    export = recorder.export()
+    assert export.in_progress_lap.telemetry == {
+        "lap_distance": [50.0], "lap_time_ms": [500], "speed": [9.0], "gear": [4],
+    }
+    assert export.in_progress_lap.metadata.lap_number == 2

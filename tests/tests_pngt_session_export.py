@@ -27,12 +27,15 @@
 
 import os
 import sys
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
+from apps.backend.state_mgmt_layer.session_state import SessionState
 from apps.backend.state_mgmt_layer.pngt_export import (_filter_export, in_export_scope,
                                                        selected_sensors)
 from lib.config import LapAnalyzerSensorSettings, LapAnalyzerSettings
@@ -133,3 +136,22 @@ def test_filter_export_without_in_progress_lap():
     out = _filter_export(DriverExportData(driver_index=0, completed_laps=[_lap(1)]), {"brake"})
     assert out.in_progress_lap is None
     assert set(out.completed_laps[0].telemetry) == {"lap_distance", "lap_time_ms", "brake"}
+
+# ----------------------------------------------------------------------------------------------------------------------
+# SessionState.updateLapAnalyzerSettings()
+# ----------------------------------------------------------------------------------------------------------------------
+
+def _fake_state(enable: bool):
+    driver = SimpleNamespace(m_tel_rec=MagicMock())
+    return SimpleNamespace(m_lap_analyzer_settings=LapAnalyzerSettings(enable=enable),
+                           m_driver_data=[driver, None]), driver
+
+
+@pytest.mark.parametrize("old,new,discards", [(True, False, True), (False, True, False),
+                                              (True, True, False), (False, False, False)])
+def test_update_settings_discards_in_progress_lap_only_when_disabling(old, new, discards):
+    state, driver = _fake_state(old)
+    new_settings = LapAnalyzerSettings(enable=new)
+    SessionState.updateLapAnalyzerSettings(state, new_settings)
+    assert state.m_lap_analyzer_settings is new_settings
+    assert driver.m_tel_rec.discard_in_progress_lap.called is discards

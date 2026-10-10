@@ -119,6 +119,13 @@ class DriverTelemetryRecorder(Generic[S]):
         self._frame_id_buffer = []
         self._current_lap_number = metadata.lap_number + 1
 
+    def discard_in_progress_lap(self) -> None:
+        """Drop the current lap's samples, so a pause in updates can't leave a hole mid-lap.
+        Completed laps are kept."""
+        self._current_buffers = self._new_buffers()
+        self._frame_id_buffer = []
+        self._last_frame_id = None
+
     def export(self) -> DriverExportData:
         """May be called multiple times safely -- never mutates internal state."""
         completed_laps = [
