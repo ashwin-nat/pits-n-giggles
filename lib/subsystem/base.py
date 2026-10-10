@@ -158,10 +158,10 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         reach are the IPC handles: those bind sockets and report a port to the launcher, which
         is not constructor work, and they are built later from the settings loaded here.
 
-        Four hooks are called from here - pre_boot(), make_logger(), should_run_mgmt_ipc(), and
-        on_exit() if the config load fails. All four therefore run BEFORE the subclass's own
-        __init__ body, so an override must keep to class vars and to self.args / self.logger,
-        and whatever one of them sets must not be assigned over further down. HudSubsystem is
+        Three hooks are called from here - pre_boot(), make_logger() and should_run_mgmt_ipc().
+        All three therefore run BEFORE the subclass's own __init__ body, so an override must
+        keep to class vars and to self.args / self.logger, and whatever one of them sets must
+        not be assigned over further down. HudSubsystem is
         the worked example: its _winmm is a class attribute for exactly this reason.
         """
 
@@ -194,6 +194,8 @@ class PngSubsystem(ABC, Generic[ArgsT]):
     def _report_fatal(self, e: BaseException) -> NoReturn:
         """Report a boot failure and exit with the code the launcher expects.
 
+        on_exit() is not called: the run phase never started, and the process is about to end.
+
         The launcher maps a child's exit code to a dialog - PngTelemetryPortInUseError's 102
         becomes "UDP port in use" naming the setting to change. Letting the exception escape
         instead would exit 1, which is the generic "Unknown" branch.
@@ -210,7 +212,6 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         """
 
         self.logger.exception("Boot failed: %s", e)
-        self.on_exit()
         stop_profiler(self._profiler, str(self.SUBSYS_ID), self.logger)
         sys.exit(e.exit_code if isinstance(e, PngError) else 1)
 
@@ -260,19 +261,16 @@ class PngSubsystem(ABC, Generic[ArgsT]):
         """Run before the logger exists, for anything the rest of the boot depends on.
 
         Called from __init__, so self.args is set but nothing else is. Paired with on_exit(),
-        which is guaranteed to run in a finally.
+        which runs in main()'s finally. A boot failure exits before that, so only
+        process-scoped effects belong here.
         """
 
     def on_exit(self) -> None:
-        """Undo whatever pre_boot() did. Runs on every exit path.
+        """Undo whatever pre_boot() did. Runs on every exit path of the run phase.
 
         Named for when it runs, which is last: after run_forever()/the task gather has returned
         and after on_shutdown() has torn the subsystem down. It is not a pre-shutdown hook -
-        on_shutdown() is that.
-
-        The one exception to "last" is a failed config load, which __init__ reports and exits
-        from - so this can also run before the subclass's own __init__ body has, and must not
-        assume anything that body sets exists.
+        on_shutdown() is that. It does not run when the constructor fails on a bad config.
         """
 
     # -------------------------------------- BASE OWNED ----------------------------------------------------------------

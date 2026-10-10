@@ -55,8 +55,8 @@ class _StubSync(SyncSubsystem[ArgsT], Generic[ArgsT]):
 
     SUBSYS_ID = PngSubsysId.HUD
 
-    # Counted by pre_boot() and on_exit(), both of which the base constructor can call before
-    # this __init__ body runs - so they have to exist on the class, not be assigned down there.
+    # Counted by pre_boot(), which the base constructor calls before this __init__ body runs -
+    # so it has to exist on the class, not be assigned down there.
     pre_boot_calls = 0
     on_exit_calls = 0
 
@@ -634,8 +634,8 @@ def test_config_failure_in_the_constructor_exits_with_a_code(monkeypatch, raised
 
     assert exc.value.code == expected_code
 
-def test_on_exit_runs_when_the_constructor_fails_on_config(monkeypatch):
-    """pre_boot() has already run by then, so its side effects still have to be undone."""
+def test_on_exit_does_not_run_when_the_constructor_fails_on_config(monkeypatch):
+    """The run phase never started and the process is about to exit, so there is nothing to undo."""
 
     calls = []
 
@@ -652,7 +652,7 @@ def test_on_exit_runs_when_the_constructor_fails_on_config(monkeypatch):
     with pytest.raises(SystemExit):
         _BadConfig()
 
-    assert calls == ["on_exit"]
+    assert calls == []
 
 def test_bare_exception_exits_one(monkeypatch):
     """An unexpected exception -> SystemExit(1), logged with a traceback."""
