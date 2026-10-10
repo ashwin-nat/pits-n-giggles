@@ -41,10 +41,11 @@ from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
                           PacketCarSetupData, PacketCarStatusData,
                           PacketCarTelemetry2Data, PacketCarTelemetryData,
                           PacketEventData, PacketFinalClassificationData,
-                          PacketLapData, PacketMotionData,
-                          PacketParticipantsData, PacketSessionData,
-                          PacketSessionHistoryData, PacketTimeTrialData,
-                          PacketTyreSetsData, SafetyCarType)
+                          PacketLapData, PacketLapPositionsData,
+                          PacketMotionData, PacketParticipantsData,
+                          PacketSessionData, PacketSessionHistoryData,
+                          PacketTimeTrialData, PacketTyreSetsData,
+                          SafetyCarType)
 from lib.logger import PngLogger
 from lib.packet_forwarder import AsyncUDPForwarder
 from lib.save_to_disk import save_json_to_file
@@ -604,17 +605,15 @@ class F1TelemetryHandler:
             self._kick_periodic_packet_timer()
             self.m_session_state_ref.processTimeTrialUpdate(packet)
 
-        # We're not using this data, no need to waste CPU cycles processing it.
-        # Commenting it out for now
-        # @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
-        # async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
-        #     """Update the data structures with lap positions information
+        @self.m_manager.on_packet(F1PacketType.LAP_POSITIONS)
+        async def processLapPositionsUpdate(packet: PacketLapPositionsData) -> None:
+            """Update the data structures with lap positions information
 
-        #     Args:
-        #         packet (PacketLapPositionsData): The lap positions update packet
-        #     """
+            Args:
+                packet (PacketLapPositionsData): The lap positions update packet
+            """
 
-        #     self.m_session_state_ref.processLapPositionsUpdate(packet)
+            self.m_session_state_ref.processLapPositionsUpdate(packet)
 
         @self.m_manager.on_packet(F1PacketType.CAR_TELEMETRY_2)
         async def processCarTelemetry2Update(packet: PacketCarTelemetry2Data) -> None:

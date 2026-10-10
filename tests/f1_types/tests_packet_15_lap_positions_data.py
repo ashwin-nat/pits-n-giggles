@@ -21,12 +21,12 @@
 # SOFTWARE.
 
 import random
-from lib.f1_types import PacketLapPositionsData, F1PacketType
+from lib.f1_types import PacketHeader, PacketLapPositionsData, F1PacketType
 from .tests_parser_base import F1TypesTest
 
 class TestPacketLapPositionsData(F1TypesTest):
     """
-    Tests for TestPacketTimeTrialData
+    Tests for PacketLapPositionsData
     """
     def setUp(self) -> None:
         """
@@ -84,7 +84,6 @@ class TestPacketLapPositionsData(F1TypesTest):
             lap_positions=lap_positions,
         )
         serialised = generated_test_obj.to_bytes()
-        from lib.f1_types import PacketHeader
         parsed_header = PacketHeader(serialised[:PacketHeader.PACKET_LEN])
         self.assertEqual(self.m_header_26, parsed_header)
         payload_bytes = serialised[PacketHeader.PACKET_LEN:]
@@ -93,6 +92,53 @@ class TestPacketLapPositionsData(F1TypesTest):
         self.jsonComparisionUtil(generated_test_obj.toJSON(), parsed_obj.toJSON())
         self.assertEqual(len(parsed_obj.m_lapPositions[0]), num_cars)
         self.assertFalse(hasattr(generated_test_obj, '__dict__'))
+
+    def _round_trip(self, header: PacketHeader, num_cars: int, num_laps: int, lap_start: int) -> None:
+        """Build a packet, serialise, re-parse and compare"""
+
+        lap_positions = [
+            [random.randint(0, num_cars) for _ in range(num_cars)]
+            for _ in range(num_laps)
+        ]
+        obj = PacketLapPositionsData.from_values(header, num_laps, lap_start, lap_positions)
+        serialised = obj.to_bytes()
+        payload = serialised[PacketHeader.PACKET_LEN:]
+        expected_len = 2 + num_cars * PacketLapPositionsData.MAX_LAPS
+        self.assertEqual(len(payload), expected_len)
+
+        parsed = PacketLapPositionsData(PacketHeader(serialised[:PacketHeader.PACKET_LEN]), payload)
+        self.assertEqual(obj, parsed)
+        self.assertEqual(parsed.m_numCars, num_cars)
+        self.assertEqual(parsed.m_lapStart, lap_start)
+        self.assertEqual(parsed.m_lapPositions, lap_positions)
+        self.assertEqual(parsed.to_bytes(), serialised)
+
+    def test_f1_25_random(self):
+        """
+        Test 22-car round trip for F1 2025
+        """
+
+        num_laps = random.randint(1, PacketLapPositionsData.MAX_LAPS)
+        self._round_trip(self.m_header_25, PacketLapPositionsData.MAX_CARS, num_laps, random.randint(0, 255))
+
+    def test_max_laps_boundary(self):
+        """
+        Test a full 50-lap packet with a non-zero lap start (second segment) for both formats
+        """
+
+        max_laps = PacketLapPositionsData.MAX_LAPS
+        self._round_trip(self.m_header_25, PacketLapPositionsData.MAX_CARS, max_laps, max_laps)
+        self._round_trip(self.m_header_26, PacketLapPositionsData.MAX_CARS_2026, max_laps, max_laps)
+
+    def test_wrong_length_payload(self):
+        """
+        Test that a truncated payload is rejected
+        """
+
+        payload = PacketLapPositionsData.from_values(self.m_header_26, 1, 0, [[1] * 24]).to_bytes()
+        payload = payload[PacketHeader.PACKET_LEN:]
+        with self.assertRaises(Exception):
+            PacketLapPositionsData(self.m_header_26, payload[:-1])
 
     def test_f1_26_actual(self):
         """
