@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from operator import attrgetter
 from typing import Optional
 
+from lib.config import LapAnalyzerSensorSettings
 from lib.pngt import BaseTelemetrySnapshot, RecordedSensor, SensorConfig, SensorType
 from lib.f1_types import CarStatusData
 
@@ -74,115 +75,119 @@ class TelemetrySnapshot(BaseTelemetrySnapshot):
 
 # -------------------------------------- CONSTANTS ----------------------------------------------------------------------
 
-# The F1 sensor catalog: each entry's manifest description plus how to read its value
-# off a TelemetrySnapshot.
-F1_SENSORS: tuple[RecordedSensor[TelemetrySnapshot], ...] = (
+def _label(field: str) -> str:
+    """Manifest label for a LapAnalyzerSensorSettings field. A typo raises at import."""
+    return LapAnalyzerSensorSettings.model_fields[field].description
+
+# LapAnalyzerSensorSettings field name -> how to record it: manifest description plus how to
+# read its value off a TelemetrySnapshot.
+F1_SENSORS: dict[str, RecordedSensor[TelemetrySnapshot]] = {
 
     # ------- INPUTS -----------
-    RecordedSensor(
+    "throttle": RecordedSensor(
         config=SensorConfig(
             key="throttle",
-            label="Throttle",
+            label=_label("throttle"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("throttle")),
-    RecordedSensor(
+    "brake": RecordedSensor(
         config=SensorConfig(
             key="brake",
-            label="Brake",
+            label=_label("brake"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("brake")),
-    RecordedSensor(
+    "steering": RecordedSensor(
         config=SensorConfig(
             key="steering",
-            label="Steering",
+            label=_label("steering"),
             unit="%",
             type=SensorType.CONTINUOUS),
         get=attrgetter("steering")),
 
     # ---- CAR STATE -----
-    RecordedSensor(
+    "gear": RecordedSensor(
         config=SensorConfig(
             key="gear",
-            label="Gear",
+            label=_label("gear"),
             unit="",
             type=SensorType.DISCRETE), # -1 for reverse
         get=attrgetter("gear")),
-    RecordedSensor(
+    "speed": RecordedSensor(
         config=SensorConfig(
             key="speed",
-            label="Speed",
+            label=_label("speed"),
             unit="kmph",
             type=SensorType.CONTINUOUS),
         get=attrgetter("speed")),
-    RecordedSensor(
+    "engine_rpm": RecordedSensor(
         config=SensorConfig(
             key="engine_rpm",
-            label="Engine RPM",
+            label=_label("engine_rpm"),
             unit="rpm",
             type=SensorType.CONTINUOUS),
         get=attrgetter("engine_rpm")),
 
     # ------ ERS --------
-    RecordedSensor(
+    "ers_deploy_mode": RecordedSensor(
         config=SensorConfig(
             key="ers.deploy_mode",
-            label="ERS Deploy Mode",
+            label=_label("ers_deploy_mode"),
             unit="",
             type=SensorType.DISCRETE,
             range=(0, 3)),
         get=attrgetter("ers_deploy_mode")),
-    RecordedSensor(
+    "ers_store_energy_j": RecordedSensor(
         config=SensorConfig(
             key="ers.store_energy_j",
-            label="ERS Store Energy",
+            label=_label("ers_store_energy_j"),
             unit="J",
             type=SensorType.CONTINUOUS,
             range=(0, CarStatusData.MAX_ERS_STORE_ENERGY)),
         get=attrgetter("ers_store_energy_j")),
-    RecordedSensor(
+    "ers_store_energy_perc": RecordedSensor(
         config=SensorConfig(
             key="ers.store_energy",
-            label="ERS Store Percentage",
+            label=_label("ers_store_energy_perc"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("ers_store_energy_perc")),
 
     # ------ TYRE WEAR -------
-    RecordedSensor(
+    "tyre_wear_fl": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.fl",
-            label="Tyre Wear FL",
+            label=_label("tyre_wear_fl"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_fl")),
-    RecordedSensor(
+    "tyre_wear_fr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.fr",
-            label="Tyre Wear FR",
+            label=_label("tyre_wear_fr"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_fr")),
-    RecordedSensor(
+    "tyre_wear_rl": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rl",
-            label="Tyre Wear RL",
+            label=_label("tyre_wear_rl"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_rl")),
-    RecordedSensor(
+    "tyre_wear_rr": RecordedSensor(
         config=SensorConfig(
             key="tyre_wear.rr",
-            label="Tyre Wear RR",
+            label=_label("tyre_wear_rr"),
             unit="%",
             type=SensorType.CONTINUOUS,
             range=(0, 100)),
         get=attrgetter("tyre_wear_rr")),
-)
+}

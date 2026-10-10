@@ -36,7 +36,7 @@ from apps.backend.state_mgmt_layer.session_info import SessionInfo
 from apps.backend.state_mgmt_layer.tyre_delta import TyreDeltaMessage
 from lib.collisions_analyzer import (CollisionAnalyzer, CollisionAnalyzerMode,
                                      CollisionRecord)
-from lib.config import CaptureSettings, LapRecordingSettings
+from lib.config import CaptureSettings, LapAnalyzerSettings
 from lib.custom_marker_tracker import CustomMarkerEntry, CustomMarkersHistory
 from lib.f1_types import (MAX_DRIVERS, CarStatusData, F1Utils,
                           FinalClassificationData, LapData,
@@ -110,7 +110,7 @@ class SessionState:
         'm_in_menu',
         'm_track_segments_db',
         'm_subsystem',
-        'm_lap_recording_settings',
+        'm_lap_analyzer_settings',
     )
 
     def __init__(self, ctx: AppCtx) -> None:
@@ -150,7 +150,7 @@ class SessionState:
         self.m_weather_aware_prediction: bool = ctx.settings.Prediction.weather_aware_prediction
         self.m_tyre_wear_window_size: Optional[int] = ctx.settings.Prediction.tyre_wear_window_size
         self.m_power_filter_window_size: int = ctx.settings.Prediction.harvest_power_window_size
-        self.m_lap_recording_settings: LapRecordingSettings = ctx.settings.LapRecording
+        self.m_lap_analyzer_settings: LapAnalyzerSettings = ctx.settings.LapAnalyzer
 
         self.m_custom_markers_history = CustomMarkersHistory()
         self.m_connected_to_sim: bool = False
@@ -275,7 +275,7 @@ class SessionState:
 
         num_active_cars = 0
         should_recompute_fastest_lap = False
-        record_laps = self.m_lap_recording_settings.enable
+        record_laps = self.m_lap_analyzer_settings.enable
         for index, lap_data in enumerate(packet.m_lapData):
 
             driver_obj = self._getObjectByIndex(index, reason="Lap data update")

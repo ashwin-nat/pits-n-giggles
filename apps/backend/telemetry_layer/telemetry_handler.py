@@ -35,11 +35,12 @@ from typing import (Any, Awaitable, Callable, Coroutine, Dict, List, Optional,
 from apps.backend.app_ctx import AppCtx
 from apps.backend.state_mgmt_layer import SessionState
 from apps.backend.state_mgmt_layer.intf import ManualSaveRsp
-from apps.backend.state_mgmt_layer.pngt_export import build_pngt_write_args
+from apps.backend.state_mgmt_layer.pngt_export import (build_pngt_write_args,
+                                                       selected_sensors)
 from lib.button_debouncer import ButtonDebouncer
 from lib.child_proc_mgmt import (report_pngt_save_end_from_child,
-                                  report_pngt_save_start_from_child,
-                                  report_session_save_skipped_from_child)
+                                 report_pngt_save_start_from_child,
+                                 report_session_save_skipped_from_child)
 from lib.config import CaptureSettings, OverlayId
 from lib.event_counter import EventCounter
 from lib.f1_types import (F1PacketBase, F1PacketType, PacketCarDamageData,
@@ -1000,7 +1001,7 @@ class F1TelemetryHandler:
 
     def shouldSavePngtData(self) -> bool:
         """
-        Check if the .pngt telemetry dump should be saved, based on LapRecording
+        Check if the .pngt telemetry dump should be saved, based on LapAnalyzer
         settings for the current session type. Deliberately separate from
         _shouldSaveJsonData(): pngt saving has its own settings, not the Capture
         (JSON) autosave-by-session-type ones. Public (unlike _shouldSaveJsonData())
@@ -1010,8 +1011,12 @@ class F1TelemetryHandler:
         Returns:
             bool: True if the .pngt should be saved, False otherwise.
         """
-        settings = self.m_session_state_ref.m_lap_recording_settings
+        settings = self.m_session_state_ref.m_lap_analyzer_settings
         if not settings.enable:
+            return False
+
+        if not selected_sensors(settings):
+            self.m_logger.info("Not saving pngt data - no sensors selected")
             return False
 
         if self.m_session_state_ref.m_session_info.m_is_spectating and not settings.record_in_spectator_mode:

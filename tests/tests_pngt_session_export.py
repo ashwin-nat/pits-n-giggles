@@ -32,7 +32,11 @@ import pytest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apps.backend.state_mgmt_layer.pngt_export import in_export_scope
+from apps.backend.state_mgmt_layer.data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
+from apps.backend.state_mgmt_layer.pngt_export import (_filter_export, in_export_scope,
+                                                       selected_sensors)
+from lib.config import LapAnalyzerSensorSettings, LapAnalyzerSettings
+from lib.pngt import CompletedLap, DriverExportData, LapMetadata
 
 # ----------------------------------------------------------------------------------------------------------------------
 # in_export_scope() decision table
@@ -63,3 +67,69 @@ def test_spectator_mode_gate_applies_regardless_of_is_player(spectator_mode, exp
     assert in_export_scope(
         is_public=True, is_player=True, is_spectating=True, spectator_mode=spectator_mode, other_players=True,
     ) is expected
+
+# ----------------------------------------------------------------------------------------------------------------------
+# F1_SENSORS <-> LapAnalyzerSensorSettings mapping
+# ----------------------------------------------------------------------------------------------------------------------
+
+def test_sensor_keys_match_config_fields():
+    assert F1_SENSORS.keys() == LapAnalyzerSensorSettings.model_fields.keys()
+
+
+def test_pngt_sensor_keys_unique():
+    keys = [s.config.key for s in F1_SENSORS.values()]
+    assert len(keys) == len(set(keys))
+
+
+@pytest.mark.parametrize("field", list(F1_SENSORS))
+def test_manifest_label_comes_from_own_config_field(field):
+    assert F1_SENSORS[field].config.label == LapAnalyzerSensorSettings.model_fields[field].description
+
+# ----------------------------------------------------------------------------------------------------------------------
+# selected_sensors()
+# ----------------------------------------------------------------------------------------------------------------------
+
+BEGINNER_KEYS = {"throttle", "brake", "steering", "speed", "gear", "engine_rpm"}
+
+
+def _all_off() -> dict:
+    return {f: False for f in LapAnalyzerSensorSettings.model_fields}
+
+
+def test_selected_sensors_disabled_is_empty():
+    assert selected_sensors(LapAnalyzerSettings(enable=False)) == []
+
+
+def test_selected_sensors_defaults_are_beginner_six():
+    assert {s.key for s in selected_sensors(LapAnalyzerSettings())} == BEGINNER_KEYS
+
+
+def test_selected_sensors_all_off_is_empty():
+    assert selected_sensors(LapAnalyzerSettings(Sensors=_all_off())) == []
+
+# ----------------------------------------------------------------------------------------------------------------------
+# _filter_export()
+# ----------------------------------------------------------------------------------------------------------------------
+
+def _lap(number: int, *, in_progress: bool = False) -> CompletedLap:
+    meta = LapMetadata(lap_number=number, lap_time_ms=None if in_progress else 90000, valid=not in_progress,
+                       tyre_compound="soft", tyre_laps=1, pit_in_lap=False, pit_out_lap=False)
+    return CompletedLap(meta, {"lap_distance": [0, 1, 2], "lap_time_ms": [0, 10, 20],
+                               "throttle": [1, 2, 3], "brake": [4, 5, 6], "ers.deploy_mode": [0, 1, 2]})
+
+
+def test_filter_export_keeps_mandatory_plus_selected():
+    data = DriverExportData(driver_index=3, completed_laps=[_lap(1), _lap(2)],
+                            in_progress_lap=_lap(3, in_progress=True))
+    out = _filter_export(data, {"throttle"})
+    assert out.driver_index == 3
+    for lap in [*out.completed_laps, out.in_progress_lap]:
+        assert set(lap.telemetry) == {"lap_distance", "lap_time_ms", "throttle"}
+        assert all(len(v) == 3 for v in lap.telemetry.values())
+    assert out.in_progress_lap.metadata.lap_number == 3
+
+
+def test_filter_export_without_in_progress_lap():
+    out = _filter_export(DriverExportData(driver_index=0, completed_laps=[_lap(1)]), {"brake"})
+    assert out.in_progress_lap is None
+    assert set(out.completed_laps[0].telemetry) == {"lap_distance", "lap_time_ms", "brake"}
