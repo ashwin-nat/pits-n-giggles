@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QFrame,
 from lib.config import PngSettings
 
 from .collapsible_group import CollapsibleGroup
+from .lap_analyzer_page import LapAnalyzerPage
 from .overlay_settings_page import OverlaySettingsPage
 from .reorderable_collection import ReorderableCollection
 from .searchable_widget import SearchableWidget
@@ -90,6 +91,9 @@ class SettingsWindow(QDialog):
         # Track collapsible group header widgets keyed by group title, per category
         # { category_index: { group_title: collapsible_container_widget } }
         self.collapsible_groups: Dict[int, Dict[str, QWidget]] = {}
+
+        # Domain-specific pages that keep derived widgets of their own, keyed by category name
+        self.custom_pages: Dict[str, LapAnalyzerPage] = {}
 
         self.setup_ui()
 
@@ -363,11 +367,16 @@ class SettingsWindow(QDialog):
     def _create_collapsible_group(self, title: str) -> CollapsibleGroup:
         return CollapsibleGroup(title, self.icons_dict, self)
 
-    def _build_category_content(self, category_name: str, category_model: BaseModel) -> QScrollArea:
+    def _build_category_content(self, category_name: str, category_model: BaseModel) -> QWidget:
         """Build content for a settings category, grouping fields that carry a 'group' UI key
         into collapsible sections. Fields without a group are rendered at the top level as before."""
-        if getattr(type(category_model), 'ui_meta', {}).get("page_type") == "overlay":
+        page_type = getattr(type(category_model), 'ui_meta', {}).get("page_type")
+        if page_type == "overlay":
             return OverlaySettingsPage(category_name, category_model, self)
+        if page_type == "lap_analyzer":
+            page = LapAnalyzerPage(category_name, category_model, self)
+            self.custom_pages[category_name] = page
+            return page
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -1303,6 +1312,8 @@ class SettingsWindow(QDialog):
             field_info = self._get_field_info_from_path(field_path)
             if (field_info.json_schema_extra or {}).get("udp_action_code"):
                 self._refresh_udp_action_pane()
+            for page in self.custom_pages.values():
+                page.on_field_changed(field_path)
         except Exception as e: # pylint: disable=broad-exception-caught
             self.parent_window.error_log(f"Error updating field {field_path}: {e}")
 
@@ -1486,6 +1497,10 @@ class SettingsWindow(QDialog):
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.parent_window.debug_log(f"Could not update widget {field_path}: {e}")
+
+        for page_category, page in self.custom_pages.items():
+            if category_name is None or page_category == category_name:
+                page.refresh()
 
     def _get_nested_value(self, obj: Any, path: str) -> Any:
         """Get a nested value using dot-notation path"""
