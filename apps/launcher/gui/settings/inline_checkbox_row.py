@@ -87,7 +87,7 @@ class InlineCheckBoxRow(QWidget):
             layout.addWidget(checkbox)
         layout.addStretch()
 
-    def paintEvent(self, event) -> None:  # pylint: disable=invalid-name
+    def paintEvent(self, _event) -> None:  # pylint: disable=invalid-name
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(QPen(QColor(_BORDER_COLOR), 1))

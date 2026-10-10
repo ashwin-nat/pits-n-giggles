@@ -62,7 +62,7 @@ _PARTIAL_INDICATOR_STYLE = (
 # -------------------------------------- HELPERS -----------------------------------------------------------------------
 
 # Read once here, because pylint can't see through pydantic's model_fields at every use
-_SENSOR_FIELDS: Dict[str, FieldInfo] = dict(LapAnalyzerSensorSettings.model_fields)  # pylint: disable=not-an-iterable
+_SENSOR_FIELDS: Dict[str, FieldInfo] = dict(LapAnalyzerSensorSettings.model_fields)
 
 def _sensor_meta(field: str) -> Dict[str, Any]:
     return _SENSOR_FIELDS[field].json_schema_extra["sensor"]
