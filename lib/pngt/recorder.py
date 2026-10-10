@@ -26,7 +26,8 @@ import bisect
 from dataclasses import dataclass
 from typing import Callable, Generic, Optional, Sequence, TypeVar
 
-from .dto import CompletedLap, DriverExportData, LapMetadata, SensorConfig
+from .dto import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
+                  LapMetadata, SensorConfig)
 
 # -------------------------------------- CLASSES -----------------------------------------------------------------------
 
@@ -118,6 +119,13 @@ class DriverTelemetryRecorder(Generic[S]):
         self._frame_id_buffer = []
         self._current_lap_number = metadata.lap_number + 1
 
+    def discard_in_progress_lap(self) -> None:
+        """Drop the current lap's samples, so a pause in updates can't leave a hole mid-lap.
+        Completed laps are kept."""
+        self._current_buffers = self._new_buffers()
+        self._frame_id_buffer = []
+        self._last_frame_id = None
+
     def export(self) -> DriverExportData:
         """May be called multiple times safely -- never mutates internal state."""
         completed_laps = [
@@ -147,7 +155,7 @@ class DriverTelemetryRecorder(Generic[S]):
         )
 
     def _new_buffers(self) -> dict[str, list]:
-        buffers: dict[str, list] = {"lap_distance": [], "lap_time_ms": []}
+        buffers: dict[str, list] = {key: [] for key in MANDATORY_TELEMETRY_KEYS}
         for sensor in self._sensors:
             buffers[sensor.config.key] = []
         return buffers

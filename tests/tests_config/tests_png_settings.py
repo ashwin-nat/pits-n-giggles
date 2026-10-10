@@ -25,13 +25,15 @@
 import os
 import sys
 
+import pytest
 from pydantic import ValidationError
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from lib.config import (CaptureSettings, DisplaySettings, ForwardingSettings,
                         NetworkSettings, PngSettings, HttpsSettings, HudSettings,
-                        PrivacySettings, StreamOverlaySettings)
+                        PrivacySettings, SaveViewerSettings,
+                        StreamOverlaySettings)
 
 from .tests_config_base import TestF1ConfigBase
 
@@ -198,3 +200,12 @@ class TestPngSettings(TestF1ConfigBase):
                     target_2="127.0.0.1:20777",
                 ),
             )
+
+
+def test_save_viewer_write_api_default_and_coercion():
+    assert SaveViewerSettings().enable_write_api is True
+    assert SaveViewerSettings(enable_write_api=False).enable_write_api is False
+    assert SaveViewerSettings(enable_write_api="False").enable_write_api is False
+    with pytest.raises(ValidationError):
+        SaveViewerSettings(enable_write_api="notaboolean")
+    assert PngSettings().SaveViewer.enable_write_api is True

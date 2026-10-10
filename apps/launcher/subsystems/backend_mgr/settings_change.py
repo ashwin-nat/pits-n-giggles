@@ -25,7 +25,7 @@
 import json
 from typing import List, Tuple
 
-from lib.config import CaptureSettings, PngSettings
+from lib.config import CaptureSettings, LapAnalyzerSettings, PngSettings
 from lib.ipc import IpcClientSync
 
 from ..base_mgr import PngAppMgrBase
@@ -101,6 +101,12 @@ class BackendSettingsChangeBase(PngAppMgrBase):
         else:
             self.debug_log(f"{self.DISPLAY_NAME} Capture settings NO CHANGE")
 
+        # Lap analyzer settings are read at decision time by the backend - no restart needed, unless the
+        # backend never got them. The new settings are already on disk, so a restart picks them up.
+        lap_analyzer_send_failed = False
+        if self.curr_settings.diff(new_settings, {"LapAnalyzer": []}):
+            lap_analyzer_send_failed = not self.send_lap_analyzer_config_change(new_settings.LapAnalyzer)
+
         if restart_required_fields_diff := self.curr_settings.diff(new_settings, {
             "Network": [
                 "telemetry_port",
@@ -117,7 +123,6 @@ class BackendSettingsChangeBase(PngAppMgrBase):
             ],
             "Logging" : [],
             "Privacy" : [],
-            "LapRecording" : [],
             "StreamOverlay" : [],
             "TimeLossInPitsF1": [],
             "TimeLossInPitsF2": [],
@@ -131,8 +136,8 @@ class BackendSettingsChangeBase(PngAppMgrBase):
         else:
             self.debug_log(f"{self.DISPLAY_NAME} Restart required fields NO CHANGE")
 
-        # Restart if diff is not empty
-        return bool(restart_required_fields_diff)
+        # Restart if diff is not empty. A stopped backend is not started just to apply settings
+        return bool(restart_required_fields_diff) or (lap_analyzer_send_failed and self.is_running)
 
     def send_udp_action_code_change(self, action_code_field: str, value: int) -> None:
         """Send a UDP action code change command to the backend."""
@@ -161,11 +166,26 @@ class BackendSettingsChangeBase(PngAppMgrBase):
         self._send_simple_config_change("capture-config-change",
                                         {"capture": capture_settings.model_dump(mode="json")})
 
-    def _send_simple_config_change(self, command: str, value: dict) -> None:
-        """Send a simple config change command to the backend without restarting it."""
+    def send_lap_analyzer_config_change(self, lap_analyzer_settings: LapAnalyzerSettings) -> bool:
+        """Send updated lap analyzer settings to the backend without restarting it.
+
+        Returns:
+            bool: True if the backend applied them
+        """
+        self.debug_log("Sending lap analyzer config change to backend...")
+        return self._send_simple_config_change("lap-analyzer-config-change",
+                                        {"lap_analyzer": lap_analyzer_settings.model_dump(mode="json")})
+
+    def _send_simple_config_change(self, command: str, value: dict) -> bool:
+        """Send a simple config change command to the backend without restarting it.
+
+        Returns:
+            bool: True if the backend reported success
+        """
         ipc_client = IpcClientSync(self.ipc_port)
         rsp = ipc_client.request(command, value)
         if not rsp or rsp.get("status") != "success":
             self.error_log(f"Failed to update {command}: {rsp}")
-        else:
-            self.debug_log(f"{command} change response: {rsp}")
+            return False
+        self.debug_log(f"{command} change response: {rsp}")
+        return True

@@ -26,7 +26,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Tuple
 
-from lib.pngt import DriverExportData, DriverRecord, SensorConfig, SessionMetadata, TrackInfo
+from lib.config import LapAnalyzerSettings
+from lib.pngt import (MANDATORY_TELEMETRY_KEYS, CompletedLap, DriverExportData,
+                      DriverRecord, SensorConfig, SessionMetadata, TrackInfo)
 
 from .data_per_driver.telemetry_recorder.telemetry_recorder import F1_SENSORS
 
@@ -34,6 +36,27 @@ if TYPE_CHECKING:
     from .session_state import SessionState
 
 # -------------------------------------- FUNCTIONS ----------------------------------------------------------------------
+
+def selected_sensors(settings: LapAnalyzerSettings) -> list[SensorConfig]:
+    """Configs of the sensors the user enabled. Empty means don't save."""
+    if not settings.enable:
+        return []
+    return [sensor.config for field, sensor in F1_SENSORS.items() if getattr(settings.Sensors, field)]
+
+def _filter_lap(lap: CompletedLap, keep_keys: frozenset[str]) -> CompletedLap:
+    return CompletedLap(
+        metadata=lap.metadata,
+        telemetry={key: values for key, values in lap.telemetry.items() if key in keep_keys},
+    )
+
+def _filter_export(data: DriverExportData, sensor_keys: set[str]) -> DriverExportData:
+    """Drop every sensor array not in sensor_keys, keeping the mandatory ones."""
+    keep_keys = frozenset(MANDATORY_TELEMETRY_KEYS) | sensor_keys
+    return DriverExportData(
+        driver_index=data.driver_index,
+        completed_laps=[_filter_lap(lap, keep_keys) for lap in data.completed_laps],
+        in_progress_lap=_filter_lap(data.in_progress_lap, keep_keys) if data.in_progress_lap else None,
+    )
 
 def in_export_scope(
     *,
@@ -74,7 +97,9 @@ def build_pngt_write_args(
         Tuple: (dest_path, session, sensors, drivers, driver_data), ready for
             write_session(*result).
     """
-    lap_recording_settings = session_state.m_lap_recording_settings
+    lap_analyzer_settings = session_state.m_lap_analyzer_settings
+    sensors = selected_sensors(lap_analyzer_settings)
+    sensor_keys = {sensor.key for sensor in sensors}
     is_spectating = bool(session_state.m_session_info.m_is_spectating)
     driver_data: dict[int, DriverExportData] = {}
     for index, driver_obj in enumerate(session_state.m_driver_data):
@@ -85,10 +110,10 @@ def build_pngt_write_args(
             is_public=True, # TODO: figure this out later
             is_player=bool(driver_obj.m_driver_info.is_player),
             is_spectating=is_spectating,
-            spectator_mode=lap_recording_settings.record_in_spectator_mode,
-            other_players=lap_recording_settings.record_other_cars,
+            spectator_mode=lap_analyzer_settings.record_in_spectator_mode,
+            other_players=lap_analyzer_settings.record_other_cars,
         ):
-            driver_data[index] = driver_obj.exportTelemetry()
+            driver_data[index] = _filter_export(driver_obj.exportTelemetry(), sensor_keys)
 
     session_info = session_state.m_session_info
     session = SessionMetadata(
@@ -118,7 +143,5 @@ def build_pngt_write_args(
         for index, driver_obj in enumerate(session_state.m_driver_data)
         if driver_obj is not None and driver_obj.is_valid
     ]
-
-    sensors = [sensor.config for sensor in F1_SENSORS]
 
     return dest_path, session, sensors, drivers, driver_data
